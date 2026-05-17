@@ -25,9 +25,10 @@ git clone https://github.com/Amnibro/Amni-Ai
 cd Amni-Ai
 python -m venv .venv && .venv/Scripts/activate
 pip install -r requirements.txt
-python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"
-python scripts/amni_serve.py --seed --cors
+python install.py                 # one-shot: fetches Gemma-4 bake, launches server, opens browser
 ```
+
+Windows users: double-click `install.bat` instead of running `python install.py`.
 
 Browser → http://127.0.0.1:8001/ — chat with Adam in the Rikku persona.
 
@@ -37,20 +38,19 @@ Browser → http://127.0.0.1:8001/ — chat with Adam in the Rikku persona.
 
 ## What's in this repo
 
-The public source-available skeleton. Everything that's not the proprietary GF(17) math:
+The complete source for a working Adam install (CC BY-NC 4.0).
 
 - **`amni/serve/`** — FastAPI server, persona system, conversation store, 11 skills, web UI, Ollama-compatible `/api/*` endpoints
-- **`amni/inference/`** — Streaming chat wrapper, semantic LUT (lesson bank lookup), KB retriever, web crawler, debugger harness
+- **`amni/inference/`** — Streaming chat wrapper, semantic LUT (lesson bank lookup), KB retriever, web crawler, debugger harness, tiered streaming loader
+- **`amni/compute/`, `amni/core/`** — GF(17) 4-tier Reffelt decomposition, TMU dispatch, PrismTex codec
+- **`amni/a1/`** — AsimovLayer (5 immutable laws), LawKeeper (file-integrity sealing), semantic intent screening, delta writer
+- **`amni/training/`, `amni/model/`, `amni/learning/`** — training pipeline + model orchestration + GF(17) writer
+- **`amni/storage/`** — PTEX page reader/writer + texture catalog
+- **`amni_kernels/`** — Rust kernels (prebuilt Windows `.pyd` included; Mac/Linux build via `cargo build --release`)
 - **`amni/seeds/`** — 41 corpus modules (1792 lessons) — Adam ships smart out of the box
-- **`amni/a1/semantic_intent.py`** — Harm-intent screening (65-phrase bank + 5 encoding pre-decoders)
-- **`amni/runtime.py`** — Bootstrap that fetches the encrypted Reffelt blob from amni-scient.com on first launch
 - **`tests/_v6_*.py`** — Public-API probe tests + unit smokes for every iter15+ feature
 - **`scripts/amni_serve.py`** — Server entry point with `--seed --cors --port` flags
-
-What's NOT here (proprietary, lives in the encrypted runtime blob):
-- GF(17) 4-tier decomposition + TMU dispatch (Rust kernels)
-- AsimovLayer + LawKeeper (5 immutable laws + integrity sealing)
-- Training pipeline + PTEX writer/reader internals
+- **`install.py`, `install.bat`, `install.sh`** — one-shot installers
 
 ---
 
@@ -86,7 +86,7 @@ Adam is a two-license product. See [`NOTICE`](NOTICE) for the canonical statemen
 
 **Original work by Amnibro** (serve layer, persona system, semantic intent layer, runtime fetcher, seed corpora, docs, tests) — licensed under **CC BY-NC 4.0**. Free for personal, research, educational, and non-profit use. Commercial license: **amnibro7@gmail.com**.
 
-**Underlying base model weights** are derived from Google's **Gemma 4 E2B IT**, licensed under **Apache License 2.0** ([`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt)). The Gemma 4 weights have been losslessly re-encoded from fp16 to the Reffelt GF(17) RGBA pixel atlas representation (cosine-similarity 1.0 round-trip; no fine-tuning or lossy compression). The encoded weights inherit Apache 2.0. *Gemma* is a trademark of Google LLC; this product is not endorsed by or affiliated with Google.
+**Underlying base model weights** are derived from Google's **Gemma 4 E2B IT**, licensed under **Apache License 2.0** ([`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt)). The Gemma 4 weights have been losslessly re-encoded from fp16 to the Reffelt GF(17) RGBA pixel atlas representation (cosine-similarity 1.0 round-trip; no fine-tuning or lossy compression). The encoded weights are downloaded from HuggingFace (`Amnibro/gemma-4-E2B-it-gf17`) on first run. They inherit Apache 2.0. *Gemma* is a trademark of Google LLC; this product is not endorsed by or affiliated with Google.
 
 See [`LICENSE`](LICENSE) for the CC BY-NC 4.0 terms and [`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt) for the Apache 2.0 terms.
 

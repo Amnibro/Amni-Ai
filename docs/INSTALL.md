@@ -1,13 +1,8 @@
 # Installing Adam
 
-Adam runs locally on your machine.
+Adam runs locally on your machine. The public clone is a complete, working install — no separate runtime fetch required.
 
-> **⚠️ Honest status (2026-05-17):** The public source you clone from GitHub is a **skeleton**. The Reffelt GF(17) runtime that powers Adam's inference ships as a separate encrypted blob from amni-scient.com — the pipeline that hosts and signs it is still being built (iter25+). Until then:
-> - The server **boots cleanly** and exposes `/healthz`, `/stats`, `/personas`, `/skills`
-> - **Cached lesson-bank LUT hits work** (instant answers to questions Adam has answered before)
-> - **Chat generation returns a clear `runtime not installed` message** when you try to ask anything new
-> 
-> If you want the working private build, email **amnibro7@gmail.com** for a build link. The public-runtime path lands when iter25 ships.
+> **Status (2026-05-17, iter29):** Source-available under CC BY-NC 4.0. Includes Reffelt GF(17) decomposition, AsimovLayer, Rust kernels (prebuilt Windows .pyd; Mac/Linux compile from `amni_kernels/src/`). The `from amni.runtime import fetch` call referenced in older docs is no longer required.
 
 ## Hardware minimums
 
@@ -31,13 +26,14 @@ cd Amni-Ai
 python -m venv .venv
 .venv/Scripts/activate          # on Linux: source .venv/bin/activate
 pip install -r requirements.txt
-python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"
-python scripts/amni_serve.py --seed --cors
+python install.py               # auto-downloads Gemma-4 E2B bake from HuggingFace (~5 GB, one-time)
 ```
 
-The first `fetch()` call downloads the encrypted GF(17) runtime blob (~80 MB) from `amni-scient.com/adam/runtime/` and installs it into `~/.amni_runtime/`. This is a one-time cost.
+`install.py` handles: venv creation (skipped if you already made one), pip install of dependencies, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:8001/`.
 
-Open `http://127.0.0.1:8001/` in a browser — Adam's chat UI loads with the Rikku persona by default. Switch persona via the topbar dropdown (14 built-in: Mentor, Rikku, Yoda, Scientist, Sherlock, Hypatia of Alexandria, etc.).
+On Windows you can double-click `install.bat` instead of typing the python command. On Mac/Linux: `./install.sh`.
+
+Adam's chat UI loads with the Rikku persona by default. Switch persona via the topbar dropdown (14 built-in: Mentor, Rikku, Yoda, Scientist, Sherlock, Hypatia of Alexandria, etc.).
 
 ---
 
@@ -157,7 +153,7 @@ The third test asks Adam to write a function, runs the function in a sandbox, va
 
 ## Troubleshooting
 
-**`RuntimeNotReadyError: Reffelt runtime not installed`** — run `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"` to download the encrypted blob. Requires internet on first run only.
+**`ImportError: cannot import name 'amni_kernels'`** — on Mac/Linux, the prebuilt Windows `.pyd` won't load. Compile from source: `cd amni_kernels && cargo build --release` then move the `.so` next to `amni_kernels/__init__.py`. Requires Rust toolchain (rustup.rs).
 
 **`CUDA out of memory` or `HIP out of memory`** — set `AMNI_BUDGET_MB=3000` in your environment before launch. Adam will stream more aggressively from disk. Sub-3GB means you'll feel it on long responses.
 
