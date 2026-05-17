@@ -119,6 +119,60 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting Anthony confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter27 — Iteration telemetry in /stats (2026-05-17)
+
+**Trigger:** /loop continuously improve adam's coding and problem solving capability please
+
+iter15-26 features fire silently. Anthony has no visibility into how often the quality gate (iter25) blocks promotion vs lets through, how often the perturb loop succeeds at each magnitude (iter15+20), which error hints fire most (iter26), how often the intent screen blocks (iter16), or what fraction of code queries actually need the multi-block stitch (iter24). This iter wires in-process counters at every event site and exposes them.
+
+**1. Counter dict at server init** (`scripts/amni_serve.py`): 14 counters covering every loop feature
+- `tests_passed`, `tests_failed` (iter17)
+- `promoted`, `quality_gated` (iter18 / iter25)
+- `perturb_attempted`, `perturb_succeeded_{small,medium,large}`, `perturb_failed` (iter15 / iter20)
+- `intent_blocked` (iter16)
+- `multi_block_stitched` (iter24)
+- `hint_injected` (iter26)
+- `lut_hits`, `cot_generations`
+
+**2. `_bump(key)` calls at each event site** in `/chat/stream`:
+- intent_blocked: fires before any inference
+- lut_hits: fires on tier1_5_semantic_lesson hit
+- cot_generations: fires when apply_cot triggers fresh streaming
+- multi_block_stitched: fires when >1 ```python``` block is concatenated
+- tests_passed / tests_failed: fires after `_run_with_tests`
+- promoted / quality_gated: fires inside iter25 `_should_promote` branch
+- perturb_attempted: fires when rc!=0 or asserts failed
+- perturb_succeeded_{mag}: fires on `pr["success"]` with magnitude tag
+- perturb_failed: fires when all 3 magnitudes exhausted
+- hint_injected: fires when iter26 `_error_hint` matches the stderr
+
+**3. New endpoints in amni_serve.py:**
+- `GET /stats` — existing, now augmented with `iter_counters` dict + `iter_rates` derived dict
+- `iter_rates` includes: `perturb_success_rate`, `quality_gate_fire_rate`, `tests_pass_rate`, `hint_inject_rate`
+- All rate math uses `max(denom, 1)` so fresh server returns 0.0 instead of ZeroDivisionError
+- `GET /stats/iter` — just the counters dict (lightweight polling endpoint)
+- `POST /stats/iter/reset` — zeros all counters (for benchmark isolation)
+
+**4. Unit coverage (`tests/_v6_8_telemetry_unit.py`):**
+- Static analysis: confirms all 14 counter keys initialized, 12 expected `_bump()` call sites present in source, `/stats` augmentation present, new endpoints registered
+- Rate math safety: verifies zero-denominator handling
+- ALL PASS (4/4)
+
+**Impact:** after running real traffic, Anthony can hit `/stats` and see e.g.:
+```json
+{
+  "iter_counters": {"tests_passed": 23, "tests_failed": 7, "promoted": 18, "quality_gated": 5, "perturb_attempted": 7, "perturb_succeeded_small": 4, "perturb_succeeded_medium": 2, "perturb_failed": 1, "hint_injected": 5, ...},
+  "iter_rates": {"perturb_success_rate": 0.857, "quality_gate_fire_rate": 0.217, "tests_pass_rate": 0.767, "hint_inject_rate": 0.714}
+}
+```
+This tells him: ~77% of generated code passes self-tests on first try, ~86% of remaining failures get rescued by perturb (mostly SMALL), the quality gate filters ~22% of test-passing answers from polluting the bank, and error hints fire on ~71% of perturb attempts.
+
+**Files added:**
+- `tests/_v6_8_telemetry_unit.py`
+
+**Files modified:**
+- `scripts/amni_serve.py` — `_iter_counters` dict + `_bump()` calls at 12 sites + augmented `/stats` + `/stats/iter` + `/stats/iter/reset`
+
 ## v6.8.iter26 — Error-pattern hints injected into perturb prompts (2026-05-17)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please
