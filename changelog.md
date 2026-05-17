@@ -57,6 +57,44 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting Anthony confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter21 — Public GitHub launch (Amnibro/Amni-Ai, CC BY-NC 4.0) (2026-05-16)
+
+**Trigger:** Anthony — "let's set adam up on my github and my amni-scient.com site pages, open sourced but protected from commercial use. Let's wire up the ptex federation and automate it. for each iterative improvement loop, make sure to push the changes to git"
+
+**Live at https://github.com/Amnibro/Amni-Ai** — public, source-available, CC BY-NC 4.0.
+
+**Scope decisions (Anthony):**
+- License: CC BY-NC 4.0
+- What ships: full source EXCEPT AsimovLayer + LawKeeper + Reffelt internals
+- Reffelt distribution: encrypted blob fetched from amni-scient.com on first launch (scaffolded in `amni/runtime.py` — full pipeline iter22+)
+- amni-scient.com integration: download-button-to-distributable model (iter22+)
+- PTEX federation: multi-peer over WebSocket/MLS (iter23+)
+- Loop workflow: every future iter commits + pushes
+
+**Files added:**
+- `LICENSE` (Apache 2.0 → CC BY-NC 4.0)
+- `amni/runtime.py` (Reffelt runtime fetcher stub: `fetch`, `load`, `is_ready`, `status`, `RuntimeNotReadyError`)
+- `.gitignore` (heavy extension)
+
+**First commit:** 164 files, zero sensitive leaks (verified by grep scan against asimov/lawkeeper/reffelt/gf17 patterns).
+
+**Excluded from public repo:**
+- `amni/inference/asimov.py`, `amni/a1/`, `amni/core/`, `amni/compute/`, `amni/training/`, `amni/model/`, `amni/learning/`, `amni_kernels/`, `gf17_translator.py`
+- 4 inference files importing Reffelt: `adam_runtime.py`, `streaming_linear.py`, `tiered.py`, `triton_gdn_patch.py`
+- All legacy `tests/test_*` (a1, federation, integrity, etc.); kept iter15+ `tests/_*.py` probes
+- All legacy `scripts/v*_*` + `scripts/adam1*`; kept `amni_serve.py`, `amni_ask.py`, `amni_chat.py`, `atex_dogfood.py`
+- `docs/checklists/`, `docs/guardian_councils/`, `docs/gf17*`, `architecture_map.md`, `docs/CHIP_ARCHITECTURE_MAP.md`
+- `CLAUDE.md`, `.claude/`, `.github/copilot-instructions.md`
+- `bin/`, `full_lexicon_atlas/`, `manifest.json`, `data/distill_*.jsonl`, `experiences/`, `bakes/`, `logs/`
+
+**Per-iter git pattern established:** every subsequent iter ends with `git add -A && git commit -m "iter<N>: <summary>" && git push origin main` before the ScheduleWakeup call.
+
+**Next iters:**
+- iter22: build Reffelt blob compile→encrypt→host pipeline; deploy first version
+- iter23: amni-scient.com "Download Adam" button page
+- iter24: PTEX federation peer discovery (WebSocket)
+- iter25+: resume coding/problem-solving improvements
+
 ## v6.8.iter20 — Perturb retry re-validates asserts (2026-05-16)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please

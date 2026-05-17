@@ -138,16 +138,23 @@ scripts/__pycache__/
 # KEEP: scripts/amni_serve.py (main entry)
 # KEEP: scripts/install*.py if present
 
-# Reffelt/GF17 test files — reveal internal contracts
-tests/test_reffelt*
-tests/test_*gf17*
-tests/test_*prismtex*
-tests/test_*tmu*
-tests/test_*tier4*
-tests/test_*tier5*
-tests/test_*integrity*
-tests/test_adam1_*
+# Legacy test suite — references internals (a1, adam1, reffelt, federation, foundational tiers, etc.)
+# Public repo ships only the iter15+ probes (tests/_*.py underscore-prefixed)
+tests/test_*
 tests/__pycache__/
+tests/_bench_cache/
+
+# Inference files that import Reffelt internals (amni.compute / amni.core / etc.)
+amni/inference/adam_runtime.py
+amni/inference/streaming_linear.py
+amni/inference/tiered.py
+amni/inference/triton_gdn_patch.py
+
+# Legacy checklists / guardian councils / architecture map — reference internals
+docs/checklists/
+docs/guardian_councils/
+architecture_map.md
+scripts/_inspect_calc_trace.py
 
 # === FINE TO PUBLISH ===
 # amni/seeds/*.py — seed lesson corpora (intentionally distributable)
