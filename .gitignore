@@ -128,6 +128,7 @@ scripts/v*_*
 scripts/adam1*
 scripts/_run_cycles_*.sh
 scripts/_download_*
+scripts/_upload_*
 scripts/__pycache__/
 # KEEP: scripts/amni_serve.py (main entry)
 # KEEP: scripts/install*.py if present

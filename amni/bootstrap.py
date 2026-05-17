@@ -6,7 +6,7 @@ from typing import Dict,Any,Optional
 HOME=Path.home()
 CONFIG_DIR=Path(os.environ.get('AMNI_HOME',str(HOME/'.amni-ai')))
 CONFIG_FILE=CONFIG_DIR/'config.json'
-DEFAULT_HF_REPO='Amnibro/gemma-4-E2B-it-gf17'
+DEFAULT_HF_REPO='amnibro/gemma-4-E2B-it-gf17'
 DEFAULT_BASE_REPO='google/gemma-2-2b-it'
 _DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'workdir':None,'default_persona':'rikku','port':8002,'host':'127.0.0.1','unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
 def _candidate_bake_paths():
