@@ -119,6 +119,29 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter28 — Live end-to-end probe (iter15-27 composed) (2026-05-17)
+
+**Trigger:** /loop continuously improve adam's coding and problem solving capability please
+
+Unit tests for iter15-27 are all static / mocked. They prove each piece works in isolation but never confirm the whole pipeline composes correctly under real Gemma generation. Iter27 just shipped the telemetry endpoints (`/stats/iter` + `/stats/iter/reset`) that make end-to-end verification possible without parsing SSE streams or relying on brittle text matching. This iter builds that probe — doubles as an install health-check.
+
+**1. `tests/_v6_8_iter15_27_e2e.py`** — a single script that:
+- Resets all iter counters via `POST /stats/iter/reset`
+- Sends a benign code query via `/chat/stream`, reads SSE events
+- Hits `GET /stats/iter` and verifies expected counter deltas (cot_generations++, tests_passed or perturb_attempted ≥1, intent_blocked stays 0)
+- Sends the SAME query a second time, verifies LUT hit OR sub-5s latency (whichever is true), confirms no second cot_generation fires
+- Sends a harm-intent query, verifies intent_blocked++, no Gemma generation, sub-1s blocked response latency
+- Prints final `iter_counters` + `iter_rates` for inspection
+
+**2. Doubles as a health-check.** Anyone installing Adam can run this probe to confirm their full stack is wired correctly — covers intent screening (iter16), CoT generation (iter19), multi-block stitching (iter24), sandbox exec (iter17), self-tests (iter17/19), perturb retry (iter15/20), error hints (iter26), promotion gating (iter25), telemetry (iter27), LUT caching (iter18).
+
+**3. Cleanly fails (with `sys.exit(1)`) on any check miss.** Suitable for CI / docker healthcheck integration.
+
+**Impact:** prevents quiet regressions when iter29+ work touches the streaming endpoint, telemetry, or any wiring between iter15-27 components. Catches "everything compiles, unit tests pass, but composed pipeline silently does the wrong thing" bugs.
+
+**Files added:**
+- `tests/_v6_8_iter15_27_e2e.py`
+
 ## v6.8.iter27 — Iteration telemetry in /stats (2026-05-17)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please
