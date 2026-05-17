@@ -165,6 +165,20 @@ docs/guardian_councils/
 architecture_map.md
 scripts/_inspect_calc_trace.py
 
+# A1-era + v5.x docs — overselling claims (230B MoE, etc.) + Reffelt internals leaks
+docs/ADAM_A1_DEMO_SPEC.md
+docs/AMNITEX_METHOD.md
+docs/Adam_Whitepaper.html
+docs/Adam_Whitepaper.pdf
+docs/CHIP_ARCHITECTURE_MAP.md
+docs/RECIPE_v5_*
+docs/RECIPE_v6_*
+docs/atex_deployment.md
+docs/phase*_adam_a1_*
+docs/phase*_design.md
+docs/demo/
+# KEEP: docs/INSTALL.md, docs/TUTORIAL.md, docs/architecture.svg (iter22, v6.8-calibrated)
+
 # === FINE TO PUBLISH ===
 # amni/seeds/*.py — seed lesson corpora (intentionally distributable)
 # amni/serve/ — FastAPI surface, persona, conversation, skills, web UI
