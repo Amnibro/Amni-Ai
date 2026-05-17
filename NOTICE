@@ -1,0 +1,70 @@
+Adam
+Copyright 2026 Amnibro
+
+This product is comprised of two parts under two distinct licenses:
+
+================================================================================
+1. ORIGINAL WORK BY AMNIBRO — CC BY-NC 4.0
+================================================================================
+
+The serve layer (`amni/serve/`), inference layer (`amni/inference/` minus
+imports of internal modules), seed corpora (`amni/seeds/`), semantic intent
+layer (`amni/a1/semantic_intent.py`), runtime fetcher (`amni/runtime.py`),
+public-API probe tests (`tests/_v6_*.py`), documentation, the architecture
+diagram, the persona system, and the Reffelt 4-tier GF(17) decomposition
+(distributed only via the encrypted runtime blob) are original works by
+Amnibro.
+
+These portions are licensed under the Creative Commons
+Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+See LICENSE for the full text.
+
+For commercial licensing of these portions, contact: the maintainer (via GitHub)
+
+================================================================================
+2. INCLUDED THIRD-PARTY WORK
+================================================================================
+
+This product includes weights derived from:
+
+  Gemma 4 E2B (instruction-tuned)
+  Copyright 2026 Google LLC
+  Licensed under the Apache License, Version 2.0
+  See LICENSES/apache-2.0.txt for the full text
+  Original source: https://huggingface.co/google/gemma-4-e2b-it
+  License documentation: https://ai.google.dev/gemma/docs/gemma_4_license
+
+MODIFICATIONS UNDER APACHE 2.0 § 4(b):
+The Gemma 4 E2B weights have been losslessly re-encoded from fp16 to a
+4-tier GF(17) RGBA pixel atlas representation (the "Reffelt decomposition").
+Cosine similarity of the round-tripped weights against the original fp16
+weights is 1.0 (bit-exact reversible). No fine-tuning, distillation, or
+lossy compression has been applied. The transformation is purely a storage
+format conversion.
+
+TRADEMARK NOTICE:
+"Gemma" is a trademark of Google LLC. This product is not endorsed by,
+sponsored by, or affiliated with Google. Reference to Gemma is purely
+attributive in compliance with Apache 2.0 § 4 attribution requirements.
+
+================================================================================
+3. INCLUDED THIRD-PARTY DEPENDENCIES (via pip install -r requirements.txt)
+================================================================================
+
+This product depends on but does not redistribute the following at install
+time. Each carries its own license; see the respective package metadata:
+
+  - PyTorch (BSD 3-Clause)
+  - HuggingFace transformers (Apache 2.0)
+  - FastAPI (MIT)
+  - uvicorn (BSD 3-Clause)
+  - sentence-transformers / MiniLM-L6-v2 (Apache 2.0)
+  - numpy (BSD 3-Clause)
+  - Pillow (HPND)
+
+For a complete list of runtime dependencies and their licenses, see
+`requirements.txt` and run:
+
+    pip show -f <package-name>
+
+after installation for any individual package.

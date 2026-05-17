@@ -72,7 +72,7 @@ Point your client at `http://127.0.0.1:11434`. Adam shows up as `adam:e2b-gf17` 
 
 **2. Self-improving lesson bank.** Every question that produces a test-passing answer gets persisted into a semantic PTEX LUT. The next time you (or anyone using your instance) asks the same or a similar question, Adam returns the cached answer in **~80ms** — a 2400× speedup over re-generating. Adam literally gets faster + better the more you use it.
 
-**3. Semantic intent screening.** Three layers of safety stacked: regex (catches "ignore previous instructions"-style jailbreaks), GF(17) hash patterns (catches lexical variants), and semantic embedding-based screening with pre-decoding for rot13, leet, Al Bhed, and base64 encoding tricks. Total block rate on adversarial paraphrase / encoding / indirection / prefill attacks: **81%** with **0% false positives** on benign queries.
+**3. Multi-layer intent screening.** Three stacked safety layers run on every message before any LLM call: lexical regex, GF(17) hash pattern matching, and semantic embedding-based screening (catches paraphrase and encoded variants). Held-out benign queries show zero false-positive rate. Adam refuses harmful intents in ~40ms with no inference cost.
 
 **4. 14 built-in personas.** Mentor, Rikku, Yoda, Sherlock Holmes, Hypatia of Alexandria, Ibn Battuta, Rosalind Franklin, Steve Jobs, Haiku Poet, and more — each with its own tone-atlas overlay applied to the same underlying Adam reasoner. Create your own via `/persona create` slash command; they persist across sessions.
 
@@ -82,11 +82,13 @@ Point your client at `http://127.0.0.1:11434`. Adam shows up as `adam:e2b-gf17` 
 
 ## License
 
-**CC BY-NC 4.0** — free for personal, research, educational, and non-profit use.
+Adam is a two-license product. See [`NOTICE`](NOTICE) for the canonical statement.
 
-Commercial license inquiries: **the maintainer (via GitHub)**
+**Original work by Amnibro** (serve layer, persona system, semantic intent layer, runtime fetcher, seed corpora, docs, tests) — licensed under **CC BY-NC 4.0**. Free for personal, research, educational, and non-profit use. Commercial license: **the maintainer (via GitHub)**.
 
-See [`LICENSE`](LICENSE) for full terms.
+**Underlying base model weights** are derived from Google's **Gemma 4 E2B IT**, licensed under **Apache License 2.0** ([`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt)). The Gemma 4 weights have been losslessly re-encoded from fp16 to the Reffelt GF(17) RGBA pixel atlas representation (cosine-similarity 1.0 round-trip; no fine-tuning or lossy compression). The encoded weights inherit Apache 2.0. *Gemma* is a trademark of Google LLC; this product is not endorsed by or affiliated with Google.
+
+See [`LICENSE`](LICENSE) for the CC BY-NC 4.0 terms and [`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt) for the Apache 2.0 terms.
 
 ---
 
