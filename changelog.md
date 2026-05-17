@@ -119,6 +119,48 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter30 — Local bake generation (no HF dependency for the bake) (2026-05-17)
+
+**Trigger:** the maintainer — "the [HF bake] repo doesn't even exist". After iter29 made the source deployable, the install path still failed because `bootstrap.download_bake` called `snapshot_download('Amnibro/gemma-4-E2B-it-gf17')` → 404. the maintainer hadn't uploaded a bake to HF. His response: *"I don't really care - we can even host the bake on my website"*.
+
+Picked: **local re-encode**. Zero hosting, zero ongoing maintenance, zero external dependency. The base Gemma weights are public on HF (Apache 2.0); the GF(17) re-encoder code is now public (iter29). So users can generate their own bake on first launch.
+
+**1. Un-ignored 3 scripts** needed for the bake pipeline:
+- `scripts/adam1_bake.py` — top-level orchestrator (HF download → PTEX → GF(17))
+- `scripts/v5_0_3_bake.py` — safetensors → RGBA PTEX (uses `amni.compute.reffelt4.encode_fp16_to_rgba4`)
+- `scripts/v5_5_21_ptex_to_gf17.py` — PTEX → GF(17) digit planes (uses `REFFELT_K4`)
+
+These three were previously gitignored under `scripts/v*_*` and `scripts/adam1*` rules. iter29 made the `amni.compute.*` internals they depend on public, so the gitignore rationale was defunct. Added explicit `!scripts/adam1_bake.py` etc. negations to keep the broader 137-script gitignore in place.
+
+**2. New `bootstrap.generate_bake_local(cfg, target)`** in `amni/bootstrap.py`:
+- Calls `subprocess.run([sys.executable, 'scripts/adam1_bake.py', '--hf-id', base_repo, '--out', target])`
+- `base_repo` defaults to `google/gemma-2-2b-it` (Apache 2.0, public)
+- First-run cost: ~5GB base download from HF + 1-5 min GF(17) re-encode on GPU
+- Output: complete `manifest.json` + PTEX pages at `target/`
+
+**3. `bootstrap.download_bake`** restructured as a two-tier:
+- First try `snapshot_download(hf_bake_repo)`
+- If HF returns ANY error (404, auth, network), fall back to `generate_bake_local`
+- Clear logging at each step so user knows what's happening
+
+**4. Verified bake script loads + shows help:**
+```
+$ python scripts/adam1_bake.py --help
+usage: adam1_bake.py [-h] --hf-id HF_ID --out OUT [--cache-dir ...]
+adam1-bake: convert HF transformer to GF(17) Adam-1 bake
+```
+
+**Net effect:** fresh user clones, runs `python install.py`, install.py runs `amni.cli init`, init calls `download_bake(cfg)`, HF 404s, falls back to local-generate, downloads `google/gemma-2-2b-it` (~5GB, Apache 2.0), re-encodes to GF(17) (~1-5min on GPU), saves to `~/.amni-ai/bakes/gemma4_e2b_it_gf17/`, server starts, browser opens. No HF account, no auth, no the maintainer hosting required.
+
+**Files added:**
+- `scripts/adam1_bake.py`
+- `scripts/v5_0_3_bake.py`
+- `scripts/v5_5_21_ptex_to_gf17.py`
+
+**Files modified:**
+- `.gitignore` — bake-script negations
+- `amni/bootstrap.py` — `download_bake` now HF-then-local-fallback; new `generate_bake_local`
+
 ## v6.8.iter29 — Deployable: reverse iter21 protection, ship complete working source (2026-05-17)
 
 **Trigger:** the maintainer — "we need to get it actually deployable. Just put everything together so they can download and run it now"
