@@ -2,6 +2,68 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.0 — KB write-path perf fix + Phase 3 completion: 421k lossless records (2026-05-16)
+
+**Trigger:** the maintainer — "let's finish the rest." v6.8.30 left Phase 3 partial because bulk HF ingest collapsed at ~0.75 rec/sec past ~30k entries. v6.8.30 blamed `_save_index` autosave; that was wrong.
+
+**1. Root cause diagnosis (probes in `tests/test_v6_9_0_kb_perf_profile.py`):**
+- Synthetic-record stress on a fresh KB: 8k → 232 rec/sec flat, 40k → 252→197, 70k → 252→160. **No cliff** at any record count on a fresh KB.
+- Adds onto a *copy* of the real 65,790-entry KB on E:\: **0.6 rec/sec, 1,788 ms per add.** CLIFF REPRODUCED.
+- Isolated I/O probe on the real page file: `open()+deep_seek+small_read` 100× → **15.5 ms per open**. `open()+shallow_read` → 0.04 ms. Single open + 100 seeks → 0 ms.
+- **Conclusion:** the cliff is `with open(path,'r+b') as f` *every* call in `KnowledgeBase.add()`. On Windows, opening a 67 MB page file on the E:\ NVMe at a deep-seek position costs ~15 ms per open (likely Windows Defender intercepting close-of-modified-file). Multiplied by tens of thousands of adds, this dominates throughput. Not autosave. Not JSON serialization. Not HF streaming.
+
+**2. Fix — `amni/learning/knowledge_base.py`:**
+- Added `self._writers={}` cache keyed by page idx.
+- New `_get_writer(idx, path)` returns cached file handle, opens once on first use.
+- New `_close_writers()` flushes + closes all cached handles.
+- `add()` swaps `with open(...) as f` for `f = self._get_writer(idx, path)` — no per-add open/close.
+- `flush()` now flushes all writer buffers in addition to saving index.
+- `close()` releases writers.
+- Backup: `backups/v6_9_0_pre_kb_perf/knowledge_base.v6.8.30.bak`.
+- No PTEX page format change. No GF(17) digit change. No mmap-read path change. AsimovLayer untouched.
+
+**3. Pass-gate result:**
+- BEFORE: 0.6 rec/sec on the on-top-of-65k scenario.
+- AFTER: **1,262 rec/sec average over 2,000 adds, 0.79 ms per add** (warm path ~0.01 ms).
+- **Speedup: ~2,100×.** Gate was ≥100 rec/sec; beat by 12×.
+- Regression: add → lookup returns correct content; pre-existing prefix lookups unchanged; close → reload preserves new entries. ✓
+
+**4. Phase 3 completion (orchestrator chain ran in ~2 minutes total):**
+- `HuggingFaceH4/CodeAlpaca_20K` — restored 18,000 alpaca_code entries (re-ingested in 2.6s, 6,928 rec/sec).
+- `ise-uiuc/Magicoder-OSS-Instruct-75K` — NEW: 75,000 magicoder entries (OSS-derived real-code instructions, replaces gated `bigcode/the-stack-smol`). Required new `_magicoder` template in `adam1_ingest_hf_to_kb.py` (key prefix `magicoder::`).
+- `nickrosh/Evol-Instruct-Code-80k-v1` — completed to 78,258 evol_code entries (was 37,500 partial).
+- `glaiveai/glaive-code-assistant` — completed to 50,000 glaive_code entries (was ~10k partial).
+- Mid-run housekeeping: pruned 32,000 dirty `alpaca_code::18000..49999` orphans (artifact of first Magicoder run using the wrong template — fixed by adding the `magicoder` template and re-prefixing).
+
+**5. Final knowledge layer (E:\Amni-Ai-KB and `experiences/sibling_code`):**
+| KB / Atlas | Records | Size | Util | Notes |
+|---|---|---|---|---|
+| `canonical` | **196,009** | 607.4 MB | 90.5% | DevDocs 51 slugs (v6.8.30) |
+| `code_hf` | **221,258** | 591.2 MB | 97.9% | alpaca_code 18k + magicoder 75k + evol_code 78,258 + glaive_code 50k |
+| `sibling_code` atlas | 3,878 | 64 MB | n/a | 19 Amni-* siblings (v6.8.30) |
+| **TOTAL** | **421,145** | **~1.26 GB** | — | All TMU-addressable, lossless |
+
+**6. New / changed files:**
+- MOD: `amni/learning/knowledge_base.py` — persistent page-file writer cache (the perf fix).
+- MOD: `scripts/adam1_ingest_hf_to_kb.py` — new `_magicoder` template; `_code_alpaca` accepts `problem`/`solution` field aliases.
+- MOD: `scripts/v6_8_0_knowledge_preload.py` — `_HF_DATASETS` now has `magicoder` slot replacing gated `the_stack`; sets `AMNI_KB_AUTOSAVE_EVERY=1000000` for sub-procs.
+- NEW: `tests/test_v6_9_0_kb_perf_profile.py` — perf probe used for diagnosis.
+- NEW: `docs/guardian_councils/guardian_council_v6_9_0_kb_perf_fix.md` (5-0 ruling).
+- NEW: `docs/checklists/checklist_v6_9_0_kb_perf_phase3_v1.md`.
+- BACKUP: `backups/v6_9_0_pre_kb_perf/knowledge_base.v6.8.30.bak`.
+
+**Pass-gate scoreboard:**
+| Check | Target | Actual | Result |
+|---|---|---|---|
+| Perf fix: on-top-of-65k throughput | ≥100 rec/sec | 1,262 rec/sec | ✅ PASS |
+| Regression: add→lookup→close→reload | round-trips clean | clean | ✅ PASS |
+| Phase 3a (the_stack swap) | ≥20k records | 75,000 (magicoder) | ✅ PASS |
+| Phase 3b (evol completion) | ≥80k total evol_code | 78,258 | ⚠ Slightly under (template skips records lacking both fields) |
+| Phase 3c (glaive completion) | ≥40k total glaive_code | 50,000 | ✅ PASS |
+| Regression: `examples/quickstart.py` | passes | not yet rerun | ⏸ pending the maintainer |
+
+**Awaiting the maintainer confirmation:** (a) attach both KBs and ask a pathlib or magicoder-style question — should retrieve from new KBs; (b) `examples/quickstart.py` still green; (c) no AsimovLayer regression.
+
 ## v6.8.30 — Knowledge Preload: 265k lossless code-knowledge records (2026-05-16)
 
 **Trigger:** the maintainer — "can you figure out a way to grant amni-ai (Adam) huge banks of good coding practices from sources available online at huggingface, github, and others? I want Adam to be able to assist me with all these /ai projects I have in the folder above this one."
@@ -56,6 +118,43 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 | Regression | `examples/quickstart.py` passes | not yet rerun | ⏸ pending the maintainer |
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
+
+## v6.8.iter22 — Landing page + install + tutorial + architecture SVG (2026-05-16)
+
+**Trigger:** the maintainer — "onwards and upwards. how do people install into say ollama or use it standalone. make a nice landing, install page, tutorial, etc. to give people an easy start. Give a basic structure map that shows people what makes Adam different as well (very nice visual)"
+
+**1. `docs/architecture.svg`** — 980×640 side-by-side comparison: Traditional LLM (left, gray) vs Adam (right, amber). 7 architectural layers compared (weights, compression, memory, compute, safety, code output, cross-query memory). Embedded in README via relative path and in landing page via raw.githubusercontent.com URL.
+
+**2. `docs/INSTALL.md`** — three install paths:
+- **Path A standalone:** clone → install → fetch runtime blob → launch (~5 min)
+- **Path B Ollama drop-in:** launch on port 11434, Open WebUI / Continue.dev / LangChain point at Adam. Aliases (`adam:e2b-gf17`, `llama3`, `qwen`, `mistral`) make hardcoded model names resolve.
+- **Path C from source:** extension/skill author guide + file index
+Hardware minimums table, verification curl steps, troubleshooting (OOM, port conflicts, no GPU, RuntimeNotReadyError).
+
+**3. `docs/TUTORIAL.md`** — 8-section first-30-min walkthrough: open chat → switch personas → code+sandbox+self-tests → trial-and-error perturb → skills → semantic-intent jailbreak attempts → stats → custom personas. Concrete demos: Fibonacci 180s cold → 80ms warm (2400× speedup), 4 jailbreak attempts blocked in <40ms.
+
+**4. `README.md` full rewrite:** hero with embedded SVG, 5-line quick-start, comparison table in markdown, "What's in this repo vs what's in the runtime blob", Ollama drop-in section, 5 differentiator bullets, status table.
+
+**5. `amni-scient-site/amni-ai.html` full rewrite:**
+- Removed obsolete v5.x content (dual-server, 9 growth modes, KnowledgeNet vision)
+- Removed `noindex,nofollow` — page now SEO-indexable
+- New PTEX RGBA-grid hero icon
+- Architecture SVG embedded + matching diff table
+- 3-card install grid with code blocks
+- 4-row code-path flow diagram
+- 14-persona chip grid
+- Adversarial harness results table (35% → 81%, 0% benign FP)
+- v6.8-accurate spec table
+- 4 CTAs: GitHub / Install / Tutorial / Download ZIP
+
+**Files added (Amni-Ai):**
+- `docs/architecture.svg`
+- `docs/INSTALL.md`
+- `docs/TUTORIAL.md`
+
+**Files modified:**
+- `README.md` (Amni-Ai, full rewrite)
+- `amni-scient-site/amni-ai.html` (full rewrite, ~200 lines vs ~320 before)
 
 ## v6.8.iter21 — Public GitHub launch (Amnibro/Amni-Ai, CC BY-NC 4.0) (2026-05-16)
 
