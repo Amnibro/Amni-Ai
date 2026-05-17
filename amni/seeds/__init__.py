@@ -1,0 +1,51 @@
+"""Seed corpora — curated (question, answer) lesson pairs for bulk teaching.
+Each module exposes LESSONS: list[tuple[str,str]]. Loaded via `amni teach-cot` or `scripts/seed_advanced.py`."""
+from amni.seeds.cot_corpus import LESSONS as COT_LESSONS
+from amni.seeds.coding_corpus import LESSONS as CODING_LESSONS
+from amni.seeds.js_corpus import LESSONS as JS_LESSONS
+from amni.seeds.sql_corpus import LESSONS as SQL_LESSONS
+from amni.seeds.devops_corpus import LESSONS as DEVOPS_LESSONS
+from amni.seeds.creative_corpus import LESSONS as CREATIVE_LESSONS
+from amni.seeds.facts_corpus import LESSONS as FACTS_LESSONS
+from amni.seeds.advanced_cot import LESSONS as ADVANCED_LESSONS
+from amni.seeds.rust_corpus import LESSONS as RUST_LESSONS
+from amni.seeds.concurrency_corpus import LESSONS as CONCURRENCY_LESSONS
+from amni.seeds.algorithms_advanced import LESSONS as ALGO_ADV_LESSONS
+from amni.seeds.python_advanced import LESSONS as PYTHON_ADV_LESSONS
+from amni.seeds.go_corpus import LESSONS as GO_LESSONS
+from amni.seeds.frontend_frameworks import LESSONS as FRONTEND_LESSONS
+from amni.seeds.mobile_corpus import LESSONS as MOBILE_LESSONS
+from amni.seeds.data_engineering import LESSONS as DATA_ENG_LESSONS
+from amni.seeds.leetcode_patterns import LESSONS as LEETCODE_LESSONS
+from amni.seeds.ml_frameworks import LESSONS as ML_LESSONS
+from amni.seeds.security_deep import LESSONS as SECURITY_DEEP_LESSONS
+from amni.seeds.distributed_systems import LESSONS as DISTRIBUTED_LESSONS
+from amni.seeds.performance import LESSONS as PERFORMANCE_LESSONS
+from amni.seeds.architecture import LESSONS as ARCHITECTURE_LESSONS
+from amni.seeds.networking_deep import LESSONS as NETWORKING_LESSONS
+from amni.seeds.gamedev_corpus import LESSONS as GAMEDEV_LESSONS
+from amni.seeds.embedded_systems import LESSONS as EMBEDDED_LESSONS
+from amni.seeds.math_advanced import LESSONS as MATH_ADV_LESSONS
+from amni.seeds.facts_extended import LESSONS as FACTS_EXT_LESSONS
+from amni.seeds.python_libs import LESSONS as PYTHON_LIBS_LESSONS
+from amni.seeds.ai_rag import LESSONS as AI_RAG_LESSONS
+from amni.seeds.leetcode_hard import LESSONS as LEETCODE_HARD_LESSONS
+from amni.seeds.paraphrases import LESSONS as PARAPHRASES_LESSONS
+from amni.seeds.debugging_advanced import LESSONS as DEBUG_ADV_LESSONS
+from amni.seeds.functional import LESSONS as FUNCTIONAL_LESSONS
+from amni.seeds.distributed_dbs import LESSONS as DDBS_LESSONS
+from amni.seeds.scientific import LESSONS as SCIENTIFIC_LESSONS
+from amni.seeds.war_stories import LESSONS as WAR_LESSONS
+from amni.seeds.paraphrases2 import LESSONS as PARA2_LESSONS
+from amni.seeds.short_forms import LESSONS as SHORT_LESSONS
+from amni.seeds.cpp_java import LESSONS as CPP_JAVA_LESSONS
+from amni.seeds.leetcode_medium import LESSONS as LEETCODE_MED_LESSONS
+from amni.seeds.domains import LESSONS as DOMAINS_LESSONS
+from amni.seeds.less_common_langs import LESSONS as LESS_COMMON_LESSONS
+from amni.seeds.practical_recipes import LESSONS as RECIPES_LESSONS
+from amni.seeds.short_forms2 import LESSONS as SHORT2_LESSONS
+from amni.seeds.cloud_corpus import LESSONS as CLOUD_LESSONS
+from amni.seeds.algo_classics import LESSONS as ALGO_CLASSIC_LESSONS
+from amni.seeds.ml_deep import LESSONS as ML_DEEP_LESSONS
+ALL_LESSONS=COT_LESSONS+CODING_LESSONS+JS_LESSONS+SQL_LESSONS+DEVOPS_LESSONS+CREATIVE_LESSONS+FACTS_LESSONS+ADVANCED_LESSONS+RUST_LESSONS+CONCURRENCY_LESSONS+ALGO_ADV_LESSONS+PYTHON_ADV_LESSONS+GO_LESSONS+FRONTEND_LESSONS+MOBILE_LESSONS+DATA_ENG_LESSONS+LEETCODE_LESSONS+ML_LESSONS+SECURITY_DEEP_LESSONS+DISTRIBUTED_LESSONS+PERFORMANCE_LESSONS+ARCHITECTURE_LESSONS+NETWORKING_LESSONS+GAMEDEV_LESSONS+EMBEDDED_LESSONS+MATH_ADV_LESSONS+FACTS_EXT_LESSONS+PYTHON_LIBS_LESSONS+AI_RAG_LESSONS+LEETCODE_HARD_LESSONS+PARAPHRASES_LESSONS+DEBUG_ADV_LESSONS+FUNCTIONAL_LESSONS+DDBS_LESSONS+SCIENTIFIC_LESSONS+WAR_LESSONS+PARA2_LESSONS+SHORT_LESSONS+CPP_JAVA_LESSONS+LEETCODE_MED_LESSONS+DOMAINS_LESSONS+LESS_COMMON_LESSONS+RECIPES_LESSONS+SHORT2_LESSONS+CLOUD_LESSONS+ALGO_CLASSIC_LESSONS+ML_DEEP_LESSONS
+__all__=['COT_LESSONS','CODING_LESSONS','JS_LESSONS','SQL_LESSONS','DEVOPS_LESSONS','CREATIVE_LESSONS','FACTS_LESSONS','ADVANCED_LESSONS','RUST_LESSONS','CONCURRENCY_LESSONS','ALGO_ADV_LESSONS','PYTHON_ADV_LESSONS','GO_LESSONS','FRONTEND_LESSONS','MOBILE_LESSONS','DATA_ENG_LESSONS','LEETCODE_LESSONS','ML_LESSONS','SECURITY_DEEP_LESSONS','DISTRIBUTED_LESSONS','PERFORMANCE_LESSONS','ARCHITECTURE_LESSONS','NETWORKING_LESSONS','GAMEDEV_LESSONS','EMBEDDED_LESSONS','MATH_ADV_LESSONS','FACTS_EXT_LESSONS','PYTHON_LIBS_LESSONS','AI_RAG_LESSONS','LEETCODE_HARD_LESSONS','PARAPHRASES_LESSONS','DEBUG_ADV_LESSONS','FUNCTIONAL_LESSONS','DDBS_LESSONS','SCIENTIFIC_LESSONS','WAR_LESSONS','PARA2_LESSONS','SHORT_LESSONS','CPP_JAVA_LESSONS','LEETCODE_MED_LESSONS','DOMAINS_LESSONS','LESS_COMMON_LESSONS','RECIPES_LESSONS','SHORT2_LESSONS','CLOUD_LESSONS','ALGO_CLASSIC_LESSONS','ML_DEEP_LESSONS','ALL_LESSONS']

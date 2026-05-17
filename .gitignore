@@ -1,0 +1,157 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+
+# Models (multi-GB)
+models/
+*.gguf
+*.safetensors
+*.bin
+
+# Atlas data (generated/downloadable, multi-GB)
+full_lexicon_atlas/
+
+# Knowledge corpora (generated)
+codenet_raw_knowledge/
+
+# Textures (large assets)
+palace_textures/
+
+# Build artifacts + ALL of bin/ (llama.cpp redistributions, HIP/ROCm kernels — 100s of MB, not Amnibro source)
+bin/
+
+# Cloned repos
+_open_repos/
+
+# Test artifacts
+_test_e2e_tri/
+_tri_e2e/
+
+# Backups
+backups/
+
+# Learnings (runtime generated)
+learnings/
+
+# ARC SDK environments (downloaded)
+environment_files/
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+
+# Secrets
+hf_token.txt
+*.env
+
+# Adam-1 runtime artifacts
+bakes/
+downloaded_models/
+hf_cache/
+checkpoints/
+ptex_hf/
+textures/
+logs/
+eval_reports/
+archive/
+experiences/
+*.gf17res
+*.prismtex
+*.expatlas
+
+# Whitepaper build outputs (keep .md sources)
+docs/whitepaper/*.pdf
+docs/whitepaper/*.aux
+docs/whitepaper/*.log
+docs/whitepaper/*.out
+
+# === PROTECTED: NOT for public repo (per CLAUDE.md / the maintainer directive) ===
+# AsimovLayer + LawKeeper — five immutable laws, integrity sealing
+amni/inference/asimov.py
+amni/a1/
+# Reffelt internals — GF(17) decomposition, TMU dispatch, Rust kernels, all math
+amni/core/
+amni/compute/
+amni/training/
+amni/model/
+amni/learning/
+amni_kernels/
+gf17_translator.py
+# Local agent rules — private to the maintainer's machine
+CLAUDE.md
+.claude/
+.github/copilot-instructions.md
+# Second venv
+bin/mlc-venv/
+# Distillation corpora — multi-GB jsonl
+data/distill_corpus_*.jsonl
+data/*.jsonl
+# Bake manifests + training artifacts
+manifest.json
+amni_kernels/__pycache__/
+*.npz
+!amni/seeds/*.npz
+# Backups dir contents
+backups/*.bak
+backups/*/
+
+# Encrypted runtime blob — fetched from example.com on first launch
+.amni_runtime/
+*.reffelt.enc
+
+# Reffelt design docs — describe the GF(17) decomposition, count as internals
+docs/gf17*
+docs/gf3_*
+docs/whitepaper/
+docs/checklists/checklist_*reffelt*
+docs/checklists/checklist_*gf17*
+docs/checklists/checklist_phase*reffelt*
+docs/guardian_councils/
+
+# Training cycle logs / bake reports
+logs/training_cycles/
+docs/checklists/checklist_*bake*
+docs/checklists/checklist_*train*
+
+# Internal pyproject + manifest with bake refs
+manifest.json
+amni_kernels/
+gf17_translator.py
+
+# Legacy training/experiment scripts (137 v* files referencing internals)
+scripts/v*_*
+scripts/adam1*
+scripts/_run_cycles_*.sh
+scripts/_download_*
+scripts/__pycache__/
+# KEEP: scripts/amni_serve.py (main entry)
+# KEEP: scripts/install*.py if present
+
+# Reffelt/GF17 test files — reveal internal contracts
+tests/test_reffelt*
+tests/test_*gf17*
+tests/test_*prismtex*
+tests/test_*tmu*
+tests/test_*tier4*
+tests/test_*tier5*
+tests/test_*integrity*
+tests/test_adam1_*
+tests/__pycache__/
+
+# === FINE TO PUBLISH ===
+# amni/seeds/*.py — seed lesson corpora (intentionally distributable)
+# amni/serve/ — FastAPI surface, persona, conversation, skills, web UI
+# amni/inference/ (minus asimov.py) — streaming, LUT, encoder
+# scripts/amni_serve.py — main entry
+# tests/ — public test suite

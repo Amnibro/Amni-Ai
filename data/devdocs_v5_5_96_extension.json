@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "curated_for": "v5.5.96 KB extension on E: drive",
+    "target_kb": "E:/Amni-Ai-KB/canonical-extended",
+    "source": "devdocs.io",
+    "count": 11
+  },
+  "flat": [
+    "crystal",
+    "d",
+    "duckdb",
+    "erlang~26",
+    "julia~1.11",
+    "nim",
+    "opengl~4",
+    "qt~6.8",
+    "statsmodels",
+    "vulkan",
+    "zig"
+  ]
+}

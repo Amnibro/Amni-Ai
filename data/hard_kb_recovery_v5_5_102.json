@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "generated": "2026-05-01T16:50:50Z",
+    "src_kb": "E:\\Amni-Ai-KB\\canonical-extended",
+    "k_per_slug": 5,
+    "n_questions": 16
+  },
+  "questions": [
+    {
+      "id": "hkb/d/core_stdc_assert_",
+      "slug": "d",
+      "key": "d::core_stdc_assert_",
+      "q": "In d, briefly describe what `core_stdc_assert_` is or does.",
+      "ref_phrases": [
+        "core.stdc.assert_ D header file for C99.",
+        "License: Distributed under the Boost Software License 1.0 .",
+        "https://dlang.org/phobos/core_stdc_assert_.html"
+      ],
+      "source_excerpt": "core.stdc.assert_ D header file for C99. This module contains bindings to selected types and functions from the standard C header &lt;assert.h&gt; . Note that this is not automatically generated, and may omit some types/functions from the original C header. License: Distributed under the Boost Softw"
+    },
+    {
+      "id": "hkb/d/rt_adi",
+      "slug": "d",
+      "key": "d::rt_adi",
+      "q": "In d, briefly describe what `rt_adi` is or does.",
+      "ref_phrases": [
+        "rt.adi Implementation of dynamic array property support routines.",
+        "License: Distributed under the Boost Software License 1.0 .",
+        "https://dlang.org/phobos/rt_adi.html"
+      ],
+      "source_excerpt": "rt.adi Implementation of dynamic array property support routines. License: Distributed under the Boost Software License 1.0 . (See accompanying file LICENSE) Authors: Walter Bright Source rt/adi.d int _adEq2 (void[] a1, void[] a2, TypeInfo ti); Support for array equality test. Returns: 1 equal 0 not"
+    },
+    {
+      "id": "hkb/d/core_stdcpp_new_",
+      "slug": "d",
+      "key": "d::core_stdcpp_new_",
+      "q": "In d, briefly describe what `core_stdcpp_new_` is or does.",
+      "ref_phrases": [
+        "https://dlang.org/phobos/core_stdcpp_new_.html"
+      ],
+      "source_excerpt": "core.stdcpp.new_ D binding to C++ License: Distributed under the Boost Software License 1.0 . (See accompanying file LICENSE) Authors: Manu Evans Source core/stdcpp/new_.d struct nothrow_t ; enum align_val_t : ulong; class bad_alloc : core.stdcpp.exception.exception; @nogc this(); T* cpp_new (T, Arg"
+    },
+    {
+      "id": "hkb/d/rt_sections_solaris",
+      "slug": "d",
+      "key": "d::rt_sections_solaris",
+      "q": "In d, briefly describe what `rt_sections_solaris` is or does.",
+      "ref_phrases": [
+        "rt.sections_solaris Written in the D programming language.",
+        "This module provides Solaris-specific support for sections.",
+        "License: Boost License 1.0 .",
+        "https://dlang.org/phobos/rt_sections_solaris.html"
+      ],
+      "source_excerpt": "rt.sections_solaris Written in the D programming language. This module provides Solaris-specific support for sections. License: Boost License 1.0 . Authors: Martin Nowak Source rt/sections_solaris.d &copy; 1999&ndash;2021 The D Language Foundation Licensed under the Boost License 1.0. https://dlang."
+    },
+    {
+      "id": "hkb/d/rt_ehalloc",
+      "slug": "d",
+      "key": "d::rt_ehalloc",
+      "q": "In d, briefly describe what `rt_ehalloc` is or does.",
+      "ref_phrases": [
+        "rt.ehalloc Exception allocation, cloning, and release compiler support routines.",
+        "License: Distributed under the Boost Software License 1.0 .",
+        "It has the same interface as rt.lifetime._d_newclass() .",
+        "The compiler must enforce this."
+      ],
+      "source_excerpt": "rt.ehalloc Exception allocation, cloning, and release compiler support routines. License: Distributed under the Boost Software License 1.0 . (See accompanying file LICENSE) Authors: Walter Bright Source rt/dwarfeh.d Throwable _d_newThrowable (const TypeInfo_Class ci); Allocate an exception of type c"
+    },
+    {
+      "id": "hkb/duckdb/use",
+      "slug": "duckdb",
+      "key": "duckdb::sql/statements/use#examples",
+      "q": "In duckdb, briefly describe what `use` is or does.",
+      "ref_phrases": [
+        "https://duckdb.org/docs/sql/statements/use.html"
+      ],
+      "source_excerpt": "USE Statement The USE statement selects a database and optional schema to use as the default. Examples --- Sets the 'memory' database as the default USE memory; --- Sets the 'duck.main' database and schema as the default USE duck.main; Syntax The USE statement sets a default database or database/sch"
+    },
+    {
+      "id": "hkb/duckdb/export_pandas",
+      "slug": "duckdb",
+      "key": "duckdb::guides/python/export_pandas",
+      "q": "In duckdb, briefly describe what `export_pandas` is or does.",
+      "ref_phrases": [
+        "https://duckdb.org/docs/guides/python/export_pandas.html"
+      ],
+      "source_excerpt": "Export to Pandas The result of a query can be converted to a Pandas DataFrame using the df() function. import duckdb # read the result of an arbitrary SQL query to a Pandas DataFrame results = duckdb.sql(\"SELECT 42\").df() results 42 0 42 See Also DuckDB also supports importing from Pandas . &copy; C"
+    },
+    {
+      "id": "hkb/duckdb/files_created_by_duckdb",
+      "slug": "duckdb",
+      "key": "duckdb::operations_manual/footprint_of_duckdb/files_created_by_duckdb",
+      "q": "In duckdb, briefly describe what `files_created_by_duckdb` is or does.",
+      "ref_phrases": [
+        "Files Created by DuckDB DuckDB creates several files and directories on disk.",
+        "This page lists both the global and the local ones.",
+        "The commands can be both dot command and SQL statements.",
+        "The naming of this file follows the ~/.bashrc and ~/.zshrc “run commands” files."
+      ],
+      "source_excerpt": "Files Created by DuckDB DuckDB creates several files and directories on disk. This page lists both the global and the local ones. Global Files and Directories DuckDB creates the following global files and directories in the user's home directory (denoted with ~ ): Location Description Shared between"
+    },
+    {
+      "id": "hkb/duckdb/my_workload_is_slow",
+      "slug": "duckdb",
+      "key": "duckdb::guides/performance/my_workload_is_slow",
+      "q": "In duckdb, briefly describe what `my_workload_is_slow` is or does.",
+      "ref_phrases": [
+        "More detailed instructions are linked for each point.",
+        "Do you have enough memory?",
+        "DuckDB works best if you have 5-10 GB memory per CPU core .",
+        "Are you using a fast disk?"
+      ],
+      "source_excerpt": "My Workload Is Slow If you find that your workload in DuckDB is slow, we recommend performing the following checks. More detailed instructions are linked for each point. Do you have enough memory? DuckDB works best if you have 5-10 GB memory per CPU core . Are you using a fast disk? Network-attached"
+    },
+    {
+      "id": "hkb/duckdb/boolean",
+      "slug": "duckdb",
+      "key": "duckdb::sql/data_types/boolean",
+      "q": "In duckdb, briefly describe what `boolean` is or does.",
+      "ref_phrases": [
+        "However, they are most often created as a result of comparisons or conjunctions.",
+        "For example, the comparison i &gt; 10 results in a Boolean value.",
+        "Below is the truth table for the AND conjunction (i.e., x AND y ).",
+        "https://duckdb.org/docs/sql/data_types/boolean.html"
+      ],
+      "source_excerpt": "Boolean Type Name Aliases Description BOOLEAN BOOL Logical Boolean ( true / false ) The BOOLEAN type represents a statement of truth (“true” or “false”). In SQL, the BOOLEAN field can also have a third state “unknown” which is represented by the SQL NULL value. Select the three possible values of a "
+    },
+    {
+      "id": "hkb/julia~1.11/index",
+      "slug": "julia~1.11",
+      "key": "julia~1.11::stdlib/crc32c/index",
+      "q": "In julia~1.11, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "CRC32c Standard library module for computing the CRC-32c checksum.",
+        "If nb is not supplied, then io will be read until the end of the stream.",
+        "&copy; 2009&ndash;2024 Jeff Bezanson, Stefan Karpinski, Viral B.",
+        "Shah, and other contributors Licensed under the MIT License."
+      ],
+      "source_excerpt": "CRC32c Standard library module for computing the CRC-32c checksum. CRC32c.crc32c Function crc32c(data, crc::UInt32=0x00000000) Compute the CRC-32c checksum of the given data , which can be an Array{UInt8} , a contiguous subarray thereof, or a String . Optionally, you can pass a starting crc integer "
+    },
+    {
+      "id": "hkb/nim/depends",
+      "slug": "nim",
+      "key": "nim::compiler/depends#addDotDependency%2CPPassContext%2CPNode",
+      "q": "In nim, briefly describe what `depends` is or does.",
+      "ref_phrases": [
+        "https://nim-lang.org/docs/compiler/depends.html"
+      ],
+      "source_excerpt": "depends Source Edit Imports options , ast , ropes , pathutils , msgs , lineinfos , modulegraphs Procs proc addDotDependency(c: PPassContext; n: PNode): PNode {....raises: [], tags: [ReadEnvEffect], forbids: [].} Source Edit proc generateDot(graph: ModuleGraph; project: AbsoluteFile) {....raises: [IO"
+    },
+    {
+      "id": "hkb/nim/index",
+      "slug": "nim",
+      "key": "nim::compiler/index",
+      "q": "In nim, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "index Source Edit This module only exists to generate docs for the compiler.",
+        "https://nim-lang.org/docs/compiler/index.html"
+      ],
+      "source_excerpt": "index Source Edit This module only exists to generate docs for the compiler. links main docs compiler user guide Internals of the Nim Compiler Imports nim &copy; 2006&ndash;2024 Andreas Rumpf Licensed under the MIT License. https://nim-lang.org/docs/compiler/index.html"
+    },
+    {
+      "id": "hkb/nim/isolation",
+      "slug": "nim",
+      "key": "nim::isolation#%3Dcopy%2CIsolated%5BT%5D%2CIsolated%5BT%5D",
+      "q": "In nim, briefly describe what `isolation` is or does.",
+      "ref_phrases": [
+        "Warning: This module is experimental and its interface may change.",
+        "The value is moved from src .",
+        "Isolation is checked at compile time.",
+        "Please read https://github.com/nim-lang/RFCs/issues/244 for more details."
+      ],
+      "source_excerpt": "std/isolation Source Edit This module implements the Isolated [ T ] type for safe construction of isolated subgraphs that can be passed efficiently to different channels and threads. Warning: This module is experimental and its interface may change. Types Isolated[T] {.sendable.} = object Isolated d"
+    },
+    {
+      "id": "hkb/nim/condsyms",
+      "slug": "nim",
+      "key": "nim::compiler/condsyms",
+      "q": "In nim, briefly describe what `condsyms` is or does.",
+      "ref_phrases": [
+        "https://nim-lang.org/docs/compiler/condsyms.html"
+      ],
+      "source_excerpt": "condsyms Source Edit Imports options , lineinfos Procs proc countDefinedSymbols(symbols: StringTableRef): int {....raises: [], tags: [], forbids: [].} Source Edit proc defineSymbol(symbols: StringTableRef; symbol: string; value: string = \"true\") {....raises: [], tags: [], forbids: [].} Source Edit p"
+    },
+    {
+      "id": "hkb/nim/since",
+      "slug": "nim",
+      "key": "nim::since",
+      "q": "In nim, briefly describe what `since` is or does.",
+      "ref_phrases": [
+        "If a symbol foo is added in version ( 1 , 3 , 5 ) , use { .",
+        "since : ( 1.3 .",
+        "since : ( 1.4 ) .",
+        "} , so that it works in devel in between releases."
+      ],
+      "source_excerpt": "std/private/since Source Edit since is used to emulate older versions of nim stdlib, see tuse_version . nim . If a symbol foo is added in version ( 1 , 3 , 5 ) , use { . since : ( 1.3 . 5 ) . } , not { . since : ( 1.4 ) . } , so that it works in devel in between releases. The emulation cannot be 100"
+    }
+  ]
+}
