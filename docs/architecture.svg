@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 640" font-family="JetBrains Mono, Consolas, monospace" font-size="13">
+<defs>
+<linearGradient id="adamGrad" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#ffb74d" stop-opacity="0.18"/>
+<stop offset="100%" stop-color="#ffb74d" stop-opacity="0.05"/>
+</linearGradient>
+<linearGradient id="tradGrad" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#5a6168" stop-opacity="0.14"/>
+<stop offset="100%" stop-color="#5a6168" stop-opacity="0.04"/>
+</linearGradient>
+<marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+<polygon points="0 0, 8 4, 0 8" fill="#ffb74d"/>
+</marker>
+<marker id="arrowDim" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+<polygon points="0 0, 8 4, 0 8" fill="#6b7280"/>
+</marker>
+</defs>
+<rect width="980" height="640" fill="#0e1116"/>
+<text x="490" y="34" text-anchor="middle" fill="#ffb74d" font-size="20" font-weight="700" letter-spacing="2">ADAM vs TRADITIONAL LLM</text>
+<text x="490" y="56" text-anchor="middle" fill="#9aa0a8" font-size="11" letter-spacing="1">SAME QUERY · TWO ARCHITECTURES · ONE WORKS LOCALLY ON 4GB</text>
+<text x="245" y="92" text-anchor="middle" fill="#9aa0a8" font-size="14" font-weight="700" letter-spacing="2">TRADITIONAL STACK</text>
+<text x="735" y="92" text-anchor="middle" fill="#ffb74d" font-size="14" font-weight="700" letter-spacing="2">ADAM (GF(17) TEXTURE-NATIVE)</text>
+<line x1="40" y1="110" x2="450" y2="110" stroke="#5a6168" stroke-width="1" stroke-dasharray="2,4"/>
+<line x1="530" y1="110" x2="940" y2="110" stroke="#ffb74d" stroke-width="1" stroke-dasharray="2,4"/>
+<g>
+<rect x="40" y="124" width="410" height="62" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="148" fill="#c9ccd1" font-weight="700">WEIGHTS</text>
+<text x="56" y="170" fill="#9aa0a8" font-size="11">.safetensors · float16 tensors · single blob</text>
+</g>
+<g>
+<rect x="530" y="124" width="410" height="62" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="148" fill="#ffb74d" font-weight="700">WEIGHTS</text>
+<text x="546" y="170" fill="#c9ccd1" font-size="11">.ptex · RGBA pixel atlas · 4 GF(17) digits/weight</text>
+</g>
+<g>
+<rect x="40" y="200" width="410" height="62" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="224" fill="#c9ccd1" font-weight="700">COMPRESSION</text>
+<text x="56" y="246" fill="#9aa0a8" font-size="11">INT8/FP8 quant · LOSSY · accumulates drift</text>
+</g>
+<g>
+<rect x="530" y="200" width="410" height="62" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="224" fill="#ffb74d" font-weight="700">COMPRESSION</text>
+<text x="546" y="246" fill="#c9ccd1" font-size="11">GF(17) base-17 · LOSSLESS · cosine=1.0 roundtrip</text>
+</g>
+<g>
+<rect x="40" y="276" width="410" height="62" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="300" fill="#c9ccd1" font-weight="700">MEMORY</text>
+<text x="56" y="322" fill="#9aa0a8" font-size="11">model.cuda() · entire model resident · 7B = 14GB VRAM</text>
+</g>
+<g>
+<rect x="530" y="276" width="410" height="62" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="300" fill="#ffb74d" font-weight="700">MEMORY</text>
+<text x="546" y="322" fill="#c9ccd1" font-size="11">progressive tier-streaming NVMe→VRAM · d3 hot only · 4GB total</text>
+</g>
+<g>
+<rect x="40" y="352" width="410" height="62" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="376" fill="#c9ccd1" font-weight="700">COMPUTE</text>
+<text x="56" y="398" fill="#9aa0a8" font-size="11">GEMM (matmul) · square arithmetic kernels</text>
+</g>
+<g>
+<rect x="530" y="352" width="410" height="62" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="376" fill="#ffb74d" font-weight="700">COMPUTE</text>
+<text x="546" y="398" fill="#c9ccd1" font-size="11">TMU lookup · GPU texture units (purpose-built hardware)</text>
+</g>
+<g>
+<rect x="40" y="428" width="410" height="62" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="452" fill="#c9ccd1" font-weight="700">SAFETY</text>
+<text x="56" y="474" fill="#9aa0a8" font-size="11">prompt-level keyword filter · bypassed by paraphrase</text>
+</g>
+<g>
+<rect x="530" y="428" width="410" height="62" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="452" fill="#ffb74d" font-weight="700">SAFETY</text>
+<text x="546" y="474" fill="#c9ccd1" font-size="11">5 immutable laws + semantic intent screen · 81% block rate</text>
+</g>
+<g>
+<rect x="40" y="504" width="410" height="62" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="528" fill="#c9ccd1" font-weight="700">CODE OUTPUT</text>
+<text x="56" y="550" fill="#9aa0a8" font-size="11">one-shot generation · user must verify · no feedback loop</text>
+</g>
+<g>
+<rect x="530" y="504" width="410" height="62" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="528" fill="#ffb74d" font-weight="700">CODE OUTPUT</text>
+<text x="546" y="550" fill="#c9ccd1" font-size="11">CoT → sandbox exec → self-tests → perturb SMALL/MED/LARGE → promote</text>
+</g>
+<g>
+<rect x="40" y="580" width="410" height="44" rx="6" fill="url(#tradGrad)" stroke="#5a6168" stroke-width="1"/>
+<text x="56" y="604" fill="#c9ccd1" font-weight="700">MEMORY ACROSS QUERIES</text>
+<text x="56" y="618" fill="#9aa0a8" font-size="11">none · same query asked twice = regenerate from scratch</text>
+</g>
+<g>
+<rect x="530" y="580" width="410" height="44" rx="6" fill="url(#adamGrad)" stroke="#ffb74d" stroke-width="1"/>
+<text x="546" y="604" fill="#ffb74d" font-weight="700">MEMORY ACROSS QUERIES</text>
+<text x="546" y="618" fill="#c9ccd1" font-size="11">permanent PTEX lesson bank · 2nd hit = 0.08s (2400x speedup)</text>
+</g>
+<g>
+<line x1="245" y1="186" x2="245" y2="200" stroke="#6b7280" stroke-width="1" marker-end="url(#arrowDim)"/>
+<line x1="245" y1="262" x2="245" y2="276" stroke="#6b7280" stroke-width="1" marker-end="url(#arrowDim)"/>
+<line x1="245" y1="338" x2="245" y2="352" stroke="#6b7280" stroke-width="1" marker-end="url(#arrowDim)"/>
+<line x1="245" y1="414" x2="245" y2="428" stroke="#6b7280" stroke-width="1" marker-end="url(#arrowDim)"/>
+<line x1="245" y1="490" x2="245" y2="504" stroke="#6b7280" stroke-width="1" marker-end="url(#arrowDim)"/>
+<line x1="245" y1="566" x2="245" y2="580" stroke="#6b7280" stroke-width="1" marker-end="url(#arrowDim)"/>
+</g>
+<g>
+<line x1="735" y1="186" x2="735" y2="200" stroke="#ffb74d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="735" y1="262" x2="735" y2="276" stroke="#ffb74d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="735" y1="338" x2="735" y2="352" stroke="#ffb74d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="735" y1="414" x2="735" y2="428" stroke="#ffb74d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="735" y1="490" x2="735" y2="504" stroke="#ffb74d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="735" y1="566" x2="735" y2="580" stroke="#ffb74d" stroke-width="1.5" marker-end="url(#arrow)"/>
+</g>
+</svg>
