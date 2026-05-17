@@ -119,6 +119,35 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter24 — Multi-block code stitching (shared-state sandbox) (2026-05-17)
+
+**Trigger:** /loop continuously improve adam's coding and problem solving capability please
+
+When Adam emits a CoT-code response with multiple ```python``` blocks (e.g., setup helper in block 1, main+print in block 2), iter17's `runnable[-1]` only ran the LAST block. Block 2's `helper(x)` call hit `NameError: helper not defined` because the def in block 1 never executed. This iter stitches all extracted blocks (in order) into one shared-state script for both auto-exec and self-test runs.
+
+**1. One-line change in both code paths:**
+- `scripts/amni_serve.py` `/chat/stream`: `snippet = ('\n\n'.join(blocks) if len(blocks)>1 else runnable[-1])`
+- `amni/serve/agent.py` `chat()`: same pattern
+- Single-block case unchanged (still uses `runnable[-1]`, no behavior delta)
+
+**2. New `event: multi_block` SSE event** emits `{blocks, runnable, stitched_chars}` when stitching fires. Frontend handler in `amni/serve/web.py` shows a `stitched N blocks` badge.
+
+**3. Unit coverage (`tests/_v6_8_multiblock_unit.py`):**
+- `t_extract_multiple` — confirms regex extracts both blocks from a representative CoT-code response
+- `t_runnable_last_only_fails` — runs the OLD behavior (last block only) in subprocess, asserts it dies with `NameError` on the helper
+- `t_stitched_works` — runs the NEW behavior (all blocks stitched), asserts subprocess exits 0 and prints `Answer: 42`
+- `t_single_block_unchanged` — confirms backwards compatibility on the simple case
+
+**Impact:** code answers like "define dataclass → write algorithm → benchmark it" or "define helper → define algorithm → run tests" now execute correctly. Asserts in the TESTS section also see all definitions (since `_run_with_tests` uses the same `snippet`). Perturb loop (iter15/20) and lesson promotion (iter18) compose naturally — multi-block answers that pass tests get promoted same as single-block ones.
+
+**Files added:**
+- `tests/_v6_8_multiblock_unit.py`
+
+**Files modified:**
+- `scripts/amni_serve.py` — `/chat/stream` snippet selection + new SSE event
+- `amni/serve/agent.py` — `chat()` snippet selection
+- `amni/serve/web.py` — `event: multi_block` handler
+
 ## v6.8.iter23 — Rich assertion failure messages (better perturb signal) (2026-05-17)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please
