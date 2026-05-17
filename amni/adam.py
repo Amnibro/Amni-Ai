@@ -48,6 +48,8 @@ class Adam:
         self._writeback_every=1
     def ask(self,query:str,writeback:bool=True)->Dict[str,Any]:
         t0=time.time()
+        if self.svc is None:
+            return {'answer':f'[Adam runtime not installed — generation requires the GF(17) streaming backend. The bake at `{self.bake}` could not be loaded. Run install.py to fetch from HF, or set AMNI_BAKE env var to point at an existing bake.]','error':f'runtime not installed: {(self.runtime_error or "")[:200]}','tier':'runtime_missing','tokens':0,'wall_s':round(time.time()-t0,3)}
         try:ans,tier,n=self.adam.answer(query,writeback=writeback)
         except Exception as e:return {'answer':None,'error':str(e),'tier':'ERROR','tokens':0,'wall_s':time.time()-t0}
         wall=time.time()-t0

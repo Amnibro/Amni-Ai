@@ -119,6 +119,61 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter32 — Fresh-clone install test (the 3 methods on example.com) (2026-05-17)
+
+**Trigger:** the maintainer — "test the install methods listed on my site"
+
+Cloned `Amnibro/Amni-Ai` into `C:\Users\antho\install_test_amni\` with a fresh venv. Ran the 3 methods from example.com/amni-ai's landing page exactly as published.
+
+**Results:**
+
+| Method | Status | Verified |
+|---|---|---|
+| A — Standalone | ✅ after requirements.txt fix | server boots in 12s; cached query "What is capital of France?" → "Paris" via tier1_5_semantic_lesson in 900ms |
+| B — Ollama drop-in (port 11434) | ✅ | `/api/tags`, `/api/chat`, `/api/generate` all Ollama-shape correct; Adam advertises as `adam:e2b-gf17` |
+| C — Continue.dev (VS Code plugin) | ✅ (by inference) | Same backend as Method B, just JSON config pointing at `apiBase`. No separate server to test. |
+
+**3 real bugs found + fixed:**
+
+**Bug 1: `requirements.txt` missing critical deps** — `fastapi`, `uvicorn`, `sentence-transformers`, `ddgs`, `trafilatura`. They were in pyproject.toml's `[all]` extras but the landing page tells users `pip install -r requirements.txt`, which is the minimal set. Server would crash on `from fastapi import FastAPI`. **Fixed:** added all 5 to requirements.txt.
+
+**Bug 2: ugly truncated response on non-streaming `/chat` when runtime missing** — `/chat/stream` path had graceful runtime-missing handling from iter28-hotfix2, but `/chat` (non-streaming) hits `agent.chat()` → `Adam.ask()` → `AdamLoop.answer()` → some default fallback that returned just `"Sure thing:"` with tier `tier3_cold_cot_code`. **Fixed:** added `if self.svc is None: return runtime-missing message` early-return in `Adam.ask()`. Now returns honest `[Adam runtime not installed — ...]` with tier `runtime_missing_cot_code`.
+
+**Bug 3 (unfixed, deferred): iter27 telemetry counters don't increment on `/chat`** — only wired into `/chat/stream`. `/chat` calls bypass the `_bump()` sites. Tracking but lower priority than the install-blockers above.
+
+**Verified live:**
+- Intent screen still blocks jailbreaks on fresh clone (35ms, cos=0.986, tier `tier_intent_block_jail`)
+- Cached LUT hits work in <50ms without runtime
+- All 14 iter27 counters reachable via `/stats/iter` even on fresh clone
+- Ollama-compat `/api/tags` returns proper model entries (5GB size, 4-tier GF17 details)
+
+**Files modified:**
+- `requirements.txt` — added fastapi, uvicorn, sentence-transformers, ddgs, trafilatura
+- `amni/adam.py` — `Adam.ask()` checks `self.svc is None` and returns clean runtime-missing response
+
+## v6.8.iter31 — Upload Gemma-4 GF17 bake to HF amnibro/gemma-4-E2B-it-gf17 (2026-05-17)
+
+**Trigger:** the maintainer — "please do the hugging face one too"
+
+After iter30 wired local-bake generation as fallback, also uploaded the prebuilt 20GB bake to HF so users skip the 5-min re-encode step on first install.
+
+**1. Created public HF repo** `amnibro/gemma-4-E2B-it-gf17` via `HfApi.create_repo(private=False)`. Live at https://huggingface.co/amnibro/gemma-4-E2B-it-gf17.
+
+**2. Wrote README.md** for the HF repo: Apache 2.0 attribution + Gemma trademark notice + install instructions + manual snapshot_download example.
+
+**3. Upload via `upload_large_folder`** (parallel, resumable, suited for 20GB). One-shot script at `scripts/_upload_bake_to_hf.py` — gitignored under `scripts/_upload_*` since it's a one-off operator tool, not for distribution. First attempt failed on deprecated `multi_commits` arg; second attempt with `upload_large_folder` API succeeded.
+
+**4. `bootstrap.py` default repo aligned to lowercase** (`amnibro/gemma-4-E2B-it-gf17`) since HF namespaces are case-normalized. The iter30 download-then-local-fallback logic now hits the public bake on first try.
+
+**Net effect:** fresh user clone → install.py → bake downloads from HF in 10-30 min (instead of 5-min local re-encode); ~5GB transfer. Local-encode stays as the safety net if HF ever goes down.
+
+**Files added:**
+- `scripts/_upload_bake_to_hf.py` (gitignored)
+
+**Files modified:**
+- `amni/bootstrap.py` — `DEFAULT_HF_REPO` lowercase
+- `.gitignore` — `scripts/_upload_*` pattern
+
 ## v6.8.iter30 — Local bake generation (no HF dependency for the bake) (2026-05-17)
 
 **Trigger:** the maintainer — "the [HF bake] repo doesn't even exist". After iter29 made the source deployable, the install path still failed because `bootstrap.download_bake` called `snapshot_download('Amnibro/gemma-4-E2B-it-gf17')` → 404. the maintainer hadn't uploaded a bake to HF. His response: *"I don't really care - we can even host the bake on my website"*.
