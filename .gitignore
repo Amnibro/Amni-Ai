@@ -76,19 +76,12 @@ docs/whitepaper/*.aux
 docs/whitepaper/*.log
 docs/whitepaper/*.out
 
-# === PROTECTED: NOT for public repo (per CLAUDE.md / the maintainer directive) ===
-# AsimovLayer + LawKeeper — five immutable laws, integrity sealing
-amni/inference/asimov.py
-amni/a1/
-# Reffelt internals — GF(17) decomposition, TMU dispatch, Rust kernels, all math
-amni/core/
-amni/compute/
-amni/training/
-amni/model/
-amni/learning/
-amni_kernels/
-gf17_translator.py
-# Local agent rules — private to the maintainer's machine
+# === ITER29 REVERSAL: full source NOW PUBLIC for deployable install ===
+# Previously gitignored under iter21 (encrypted-blob model). Now distributed
+# under CC BY-NC 4.0 license as the only protection layer. See changelog v6.8.iter29.
+#
+# STILL gitignored (truly local-only):
+# - the maintainer's private rules
 CLAUDE.md
 .claude/
 .github/copilot-instructions.md
@@ -97,9 +90,12 @@ bin/mlc-venv/
 # Distillation corpora — multi-GB jsonl
 data/distill_corpus_*.jsonl
 data/*.jsonl
-# Bake manifests + training artifacts
+# Local bake manifest (per-machine paths)
 manifest.json
+# Rust build artifacts (218MB target dir; users compile locally if no prebuilt .pyd)
+amni_kernels/target/
 amni_kernels/__pycache__/
+# Lesson bank state (per-install)
 *.npz
 !amni/seeds/*.npz
 # Backups dir contents
@@ -126,8 +122,6 @@ docs/checklists/checklist_*train*
 
 # Internal pyproject + manifest with bake refs
 manifest.json
-amni_kernels/
-gf17_translator.py
 
 # Legacy training/experiment scripts (137 v* files referencing internals)
 scripts/v*_*
@@ -150,14 +144,7 @@ tests/_adversarial_jailbreaks.py
 tests/_intent_diag.py
 tests/_v6_8_intent_wire_smoke.py
 
-# Files in public-named dirs that import Reffelt internals (amni.compute / amni.core / etc.)
-amni/inference/adam_runtime.py
-amni/inference/streaming_linear.py
-amni/inference/tiered.py
-amni/inference/triton_gdn_patch.py
-amni/storage/reader.py
-amni/storage/writer.py
-amni/utils/model_resolver.py
+# (iter29) These files are no longer gitignored — they ship as part of the deployable install.
 
 # Legacy checklists / guardian councils / architecture map — reference internals
 docs/checklists/
@@ -165,7 +152,7 @@ docs/guardian_councils/
 architecture_map.md
 scripts/_inspect_calc_trace.py
 
-# A1-era + v5.x docs — overselling claims (230B MoE, etc.) + Reffelt internals leaks
+# A1-era + v5.x docs — still gitignored (overselling 230B MoE claim per the maintainer's iter23-hotfix)
 docs/ADAM_A1_DEMO_SPEC.md
 docs/AMNITEX_METHOD.md
 docs/Adam_Whitepaper.html
@@ -177,7 +164,6 @@ docs/atex_deployment.md
 docs/phase*_adam_a1_*
 docs/phase*_design.md
 docs/demo/
-# KEEP: docs/INSTALL.md, docs/TUTORIAL.md, docs/architecture.svg (iter22, v6.8-calibrated)
 
 # === FINE TO PUBLISH ===
 # amni/seeds/*.py — seed lesson corpora (intentionally distributable)
