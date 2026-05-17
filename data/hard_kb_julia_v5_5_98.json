@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "generated": "2026-05-01T13:50:50Z",
+    "src_kb": "E:\\Amni-Ai-KB\\canonical-extended",
+    "k_per_slug": 5,
+    "n_questions": 5
+  },
+  "questions": [
+    {
+      "id": "hkb/julia~1.11/index",
+      "slug": "julia~1.11",
+      "key": "julia~1.11::stdlib/crc32c/index",
+      "q": "In julia~1.11, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "CRC32c Standard library module for computing the CRC-32c checksum.",
+        "If nb is not supplied, then io will be read until the end of the stream.",
+        "&copy; 2009&ndash;2024 Jeff Bezanson, Stefan Karpinski, Viral B.",
+        "Shah, and other contributors Licensed under the MIT License."
+      ],
+      "source_excerpt": "CRC32c Standard library module for computing the CRC-32c checksum. CRC32c.crc32c Function crc32c(data, crc::UInt32=0x00000000) Compute the CRC-32c checksum of the given data , which can be an Array{UInt8} , a contiguous subarray thereof, or a String . Optionally, you can pass a starting crc integer "
+    },
+    {
+      "id": "hkb/julia~1.11/index",
+      "slug": "julia~1.11",
+      "key": "julia~1.11::stdlib/future/index#Future.randjump",
+      "q": "In julia~1.11, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "Function Future.copy!(dst, src) -&gt; dst Copy src into dst .",
+        "will be deprecated in the future.",
+        "One such step corresponds to the generation of two Float64 numbers.",
+        "One is already pre-computed for steps=big(10)^20 ."
+      ],
+      "source_excerpt": "Future The Future module implements future behavior of already existing functions, which will replace the current version in a future release of Julia. Future.copy! Function Future.copy!(dst, src) -&gt; dst Copy src into dst . This function has moved to Base with Julia 1.1, consider using copy!(dst,"
+    },
+    {
+      "id": "hkb/julia~1.11/index",
+      "slug": "julia~1.11",
+      "key": "julia~1.11::stdlib/future/index",
+      "q": "In julia~1.11, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "Function Future.copy!(dst, src) -&gt; dst Copy src into dst .",
+        "will be deprecated in the future.",
+        "One such step corresponds to the generation of two Float64 numbers.",
+        "One is already pre-computed for steps=big(10)^20 ."
+      ],
+      "source_excerpt": "Future The Future module implements future behavior of already existing functions, which will replace the current version in a future release of Julia. Future.copy! Function Future.copy!(dst, src) -&gt; dst Copy src into dst . This function has moved to Base with Julia 1.1, consider using copy!(dst,"
+    },
+    {
+      "id": "hkb/julia~1.11/index",
+      "slug": "julia~1.11",
+      "key": "julia~1.11::stdlib/future/index#Future.copy!",
+      "q": "In julia~1.11, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "Function Future.copy!(dst, src) -&gt; dst Copy src into dst .",
+        "will be deprecated in the future.",
+        "One such step corresponds to the generation of two Float64 numbers.",
+        "One is already pre-computed for steps=big(10)^20 ."
+      ],
+      "source_excerpt": "Future The Future module implements future behavior of already existing functions, which will replace the current version in a future release of Julia. Future.copy! Function Future.copy!(dst, src) -&gt; dst Copy src into dst . This function has moved to Base with Julia 1.1, consider using copy!(dst,"
+    },
+    {
+      "id": "hkb/julia~1.11/index",
+      "slug": "julia~1.11",
+      "key": "julia~1.11::stdlib/libcurl/index",
+      "q": "In julia~1.11, briefly describe what `index` is or does.",
+      "ref_phrases": [
+        "Please see the libcurl API documentation for help on how to use this package.",
+        "&copy; 2009&ndash;2024 Jeff Bezanson, Stefan Karpinski, Viral B.",
+        "Shah, and other contributors Licensed under the MIT License.",
+        "https://docs.julialang.org/en/v1.11/stdlib/LibCURL/"
+      ],
+      "source_excerpt": "LibCURL This is a simple Julia wrapper around http://curl.haxx.se/libcurl/ generated using Clang.jl . Please see the libcurl API documentation for help on how to use this package. &copy; 2009&ndash;2024 Jeff Bezanson, Stefan Karpinski, Viral B. Shah, and other contributors Licensed under the MIT Lic"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "description": "Canonical 50 DevDocs slugs covering breadth of common languages, frameworks, and infrastructure tools used by Adam-1 for function-knowledge ingestion. All slugs verified against https://devdocs.io/docs.json. Use with: adam1 ingest_devdocs --slug <one or more from this list>.",
+  "categories": {
+    "languages_general_purpose": ["python~3.12", "javascript", "typescript", "rust", "go", "c", "cpp", "kotlin~1.9", "ruby~3.4", "php", "lua~5.4", "perl~5.42", "dart~2", "elixir~1.18", "haskell~9", "ocaml", "clojure~1.11"],
+    "languages_shell_query": ["bash"],
+    "web_frontend": ["html", "css", "dom", "react", "vue~3", "angular", "svelte", "nextjs", "tailwindcss"],
+    "web_backend": ["node", "express~4", "django~5.0", "flask~3.0", "fastapi", "rails~7.1"],
+    "data_ml": ["numpy~2.2", "pandas~2", "pytorch~2.4", "tensorflow~2.9", "matplotlib~3.9"],
+    "infrastructure": ["docker", "kubernetes", "nginx", "redis", "postgresql~17", "sqlite", "ansible", "terraform"],
+    "tooling": ["git", "cmake~3.31", "requests", "jq", "markdown"]
+  },
+  "flat_50": ["python~3.12", "javascript", "typescript", "rust", "go", "c", "cpp", "kotlin~1.9", "ruby~3.4", "php", "lua~5.4", "perl~5.42", "dart~2", "elixir~1.18", "haskell~9", "ocaml", "clojure~1.11", "bash", "html", "css", "dom", "react", "vue~3", "angular", "svelte", "nextjs", "tailwindcss", "node", "express~4", "django~5.0", "flask~3.0", "fastapi", "rails~7.1", "numpy~2.2", "pandas~2", "pytorch~2.4", "tensorflow~2.9", "matplotlib~3.9", "docker", "kubernetes", "nginx", "redis", "postgresql~17", "sqlite", "ansible", "terraform", "git", "cmake~3.31", "requests", "jq", "markdown"],
+  "verified_against_manifest": "2026-04 — devdocs.io/docs.json"
+}
