@@ -119,6 +119,52 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter28-hotfix2 — Fix broken public install (real user report) (2026-05-17)
+
+**Trigger:** Real user (MutantRabbit767) tried to install Adam from `git clone github.com/Amnibro/Amni-Ai`, hit:
+```
+ModuleNotFoundError: No module named 'amni.inference.tiered'
+```
+
+They also flagged: `requirements-dev.txt` doesn't exist (INSTALL.md Path C referenced it), and Path C "Build from source" was just Path A minus the run step. Direct quote: *"did u generate this install file with AI 🥀"*. Yes, I did. And it was broken.
+
+**Root cause:** iter21 gitignored `amni/inference/tiered.py`, `streaming_linear.py`, `adam_runtime.py`, `triton_gdn_patch.py`, `amni/storage/reader.py`, `amni/storage/writer.py`, `amni/utils/model_resolver.py` because they import Reffelt internals. BUT tracked public files were still doing hard `from X import Y` against them:
+- `amni/inference/__init__.py` line 1: `from amni.inference.tiered import ...`
+- `amni/inference/streaming_chat.py` line 6: `from amni.inference.streaming_linear import ...`
+- `amni/storage/__init__.py`: imports `reader` and `writer`
+
+So `Adam()` instantiation triggered a chain of imports that hit a missing module and crashed. Server never started. The runtime blob `amni.runtime.fetch()` stub is itself a `NotImplementedError`, so even if imports succeeded, the actual chat would have a different broken path.
+
+**1. Graceful import patches** (all 3 broken `__init__`-like sites):
+- `amni/inference/__init__.py`: wraps both imports in try/except, stubs symbols to `None` on ImportError
+- `amni/inference/streaming_chat.py`: wraps `streaming_linear` import in try/except + sets `_RUNTIME_AVAILABLE=False` flag + defines `_RuntimeBlobMissing` exception
+- `amni/storage/__init__.py`: same try/except pattern for `WeightReader`, `WeightWriter`, `TextureCatalog`
+
+**2. `StreamingChatService.__init__` checks `_RUNTIME_AVAILABLE`** and raises `_RuntimeBlobMissing` with a clear message pointing to the install path + GitHub docs URL.
+
+**3. `Adam.__init__` catches that exception** and sets `self.svc=None` + `self.runtime_error=<message>`. Logs a clear WARNING line at server boot so the operator knows what's happening. Server keeps starting.
+
+**4. `Adam.chat_persona` and `chat_persona_stream` check `self.svc is None`** and return / yield a clear `runtime_missing` message instead of crashing. Lesson-bank LUT hits (cached persona answers) still work without runtime.
+
+**5. INSTALL.md rewritten:**
+- Added prominent honest banner at top: "Public skeleton ships without runtime — server boots cleanly, /healthz + /stats + cached LUT hits work, chat returns clean runtime-missing message until iter25 ships the blob pipeline"
+- Removed broken `pip install -r requirements-dev.txt` (file doesn't exist)
+- Rewrote Path C "Build from source" to actually be different (extension/skill author guide with concrete examples of what's editable + what's not)
+- Direct contact email for private build: the maintainer (via GitHub)
+
+**6. Verified end-to-end on fresh clone:**
+- Old behavior: `Adam(...)` → `ModuleNotFoundError: amni.inference.tiered`
+- New behavior: `Adam(...)` → svc=None warning logged → chat_persona() returns `{tier: 'runtime_missing', error: 'runtime not installed: ...'}`
+
+**Files modified:**
+- `amni/inference/__init__.py` — try/except wraps
+- `amni/inference/streaming_chat.py` — try/except + `_RUNTIME_AVAILABLE` + `_RuntimeBlobMissing` + StreamingChatService.__init__ check
+- `amni/storage/__init__.py` — try/except wraps
+- `amni/adam.py` — Adam.__init__ catches + sets self.svc=None; chat_persona + chat_persona_stream check self.svc
+- `docs/INSTALL.md` — honest banner + remove requirements-dev.txt reference + rewrite Path C
+
+**Apology:** the user is right. I should have tested fresh-clone install path before publishing iter22 install docs. Future iters: any docs change that says "user clones + runs" must be verified by actually cloning + running in /tmp before committing.
+
 ## v6.8.iter28 — Live end-to-end probe (iter15-27 composed) (2026-05-17)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please

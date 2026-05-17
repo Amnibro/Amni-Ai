@@ -1,2 +1,4 @@
-from amni.inference.tiered import PtexPointerIndex, TieredInference
-from amni.inference.formal_logic import extract_and_reason, PropositionExtractor, RuleEngine, ContestEngine
+try:from amni.inference.tiered import PtexPointerIndex,TieredInference
+except ImportError:PtexPointerIndex=TieredInference=None
+try:from amni.inference.formal_logic import extract_and_reason,PropositionExtractor,RuleEngine,ContestEngine
+except ImportError:extract_and_reason=PropositionExtractor=RuleEngine=ContestEngine=None
