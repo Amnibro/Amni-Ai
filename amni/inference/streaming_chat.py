@@ -18,9 +18,13 @@ class _RuntimeBlobMissing(RuntimeError):
 _GDN_ARCHS=('Qwen3_5ForCausalLM','Qwen3_5MoeForCausalLM','MiniMaxText01ForCausalLM','Qwen3CoderNextForCausalLM')
 _MULTIMODAL_PREFIXES=('model.language_model.',)
 class StreamingChatService:
-    def __init__(self,bake_dir,model_path,budget_mb=4000,device='cuda',lmhead_full=True,enable_prefetch=True,prefetch_horizon=6,pin_embed=True):
+    def __init__(self,bake_dir,model_path,budget_mb=4000,device=None,lmhead_full=True,enable_prefetch=True,prefetch_horizon=6,pin_embed=True):
         if not _RUNTIME_AVAILABLE:
             raise _RuntimeBlobMissing("Reffelt runtime blob not installed. The public Amni-Ai source skeleton ships without the GF(17) streaming backend. To enable chat:\n  python -c \"from amni.runtime import fetch; fetch(license_key='free-noncommercial')\"\n\nSee https://github.com/Amnibro/Amni-Ai/blob/main/docs/INSTALL.md for current install paths. Until the runtime is fetched, only /healthz + /stats + cached lesson-bank LUT hits work.")
+        if device is None:
+            if torch.cuda.is_available():device='cuda'
+            elif hasattr(torch,'xpu') and torch.xpu.is_available():device='xpu'
+            else:device='cpu';print('[StreamingChatService] WARNING: no GPU detected, falling back to CPU (~1 tok/s). Install ROCm (AMD) or CUDA (NVIDIA) torch wheel: see https://pytorch.org/get-started/locally/',flush=True)
         self.tok=AutoTokenizer.from_pretrained(model_path)
         if self.tok.pad_token is None:self.tok.pad_token=self.tok.eos_token
         cfg=AutoConfig.from_pretrained(model_path)
