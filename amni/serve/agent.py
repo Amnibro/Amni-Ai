@@ -128,6 +128,12 @@ def _enrich_assert(assert_str:str)->str:
             lhs_str,rhs_str=body.split(op_str,1)
             return f"_lhs=({lhs_str.strip()});_rhs=({rhs_str.strip()});assert _lhs {op_sym} _rhs, f'{lhs_str.strip()} {op_sym} {rhs_str.strip()} FAILED: lhs={{_lhs!r}}, rhs={{_rhs!r}}'"
     return f"_v=({body.strip()});assert _v, f'{body.strip()} FAILED: evaluated to {{_v!r}}'"
+def _should_promote(snippet:str,asserts:List[str],diversity_score:float,min_diversity:float=0.5,min_code_chars:int=50,min_asserts:int=2)->Tuple[bool,str]:
+    if diversity_score<min_diversity:return False,f'diversity {diversity_score:.2f} < {min_diversity} (trivial test coverage)'
+    code_chars=len((snippet or '').strip())
+    if code_chars<min_code_chars:return False,f'code {code_chars} chars < {min_code_chars} (trivial snippet)'
+    if len(asserts)<min_asserts:return False,f'asserts {len(asserts)} < {min_asserts} (insufficient validation)'
+    return True,f'gate passed: div={diversity_score:.2f}, code={code_chars}c, asserts={len(asserts)}'
 def _run_with_tests(skills,adam,snippet:str,asserts:List[str],timeout:int=8)->Tuple[bool,str,dict]:
     if not asserts:return True,'',{}
     enriched=[_enrich_assert(a) for a in asserts]
@@ -342,11 +348,16 @@ class AmniAgent:
                                             raw_ans+=f'\n\n**[Self-tests — {len(asserts)}/{len(asserts)} passed · diversity={div_score:.2f}]**'
                                             tier+=div_tag
                                             skill_calls.append({'skill':'self_tests','args':{'n':len(asserts)},'result':{'passed':True}})
-                                            try:
-                                                tr=self.adam.teach(message,raw_ans[:2000])
-                                                tier+='_promoted'
-                                                skill_calls.append({'skill':'promote_lesson','args':{},'result':{'lessons_n':tr.get('lessons_n',0)}})
-                                            except Exception:pass
+                                            ok_promote,promo_reason=_should_promote(snippet,asserts,div_score)
+                                            if ok_promote:
+                                                try:
+                                                    tr=self.adam.teach(message,raw_ans[:2000])
+                                                    tier+='_promoted'
+                                                    skill_calls.append({'skill':'promote_lesson','args':{'reason':promo_reason},'result':{'lessons_n':tr.get('lessons_n',0)}})
+                                                except Exception:pass
+                                            else:
+                                                tier+='_quality_gated'
+                                                skill_calls.append({'skill':'promote_lesson','args':{'gated':True,'reason':promo_reason},'result':{}})
                                         else:
                                             raw_ans+=f'\n\n**[Self-tests FAILED — {terr[:200]}]**'
                                             test_failed=True;test_err=terr

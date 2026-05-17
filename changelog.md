@@ -119,6 +119,41 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting Anthony confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter25 — Lesson promotion quality gate (2026-05-17)
+
+**Trigger:** /loop continuously improve adam's coding and problem solving capability please
+
+iter18 promoted any test-passing answer to the permanent lesson bank — including answers with iter19's `_tests_thin` tag (diversity < 0.5, often just two duplicate-arg asserts that prove almost nothing). Over time those trivial lessons pollute the LUT: a future user's question matches one semantically, gets back a low-quality cached answer, and never benefits from a fresh full-CoT generation. This iter gates promotion on quality thresholds. Below-gate answers still display tests-passed (no UX regression for the asking user) but skip the permanent `teach()`.
+
+**1. New `_should_promote(snippet, asserts, diversity_score, ...)` (`amni/serve/agent.py`):**
+- Default thresholds: `diversity >= 0.5`, `len(code) >= 50 chars`, `len(asserts) >= 2`
+- Returns `(ok:bool, reason:str)` — reason explains either why gated or why passed
+- All thresholds tunable per-call
+
+**2. Both code paths gated:**
+- `scripts/amni_serve.py` `/chat/stream`: replaces unconditional `adam.teach()` with gated call. Below gate → tier suffix `_quality_gated` + emits `event: promoted {gated:true, reason}`. Above gate → existing `_promoted` flow + reason included in payload.
+- `amni/serve/agent.py` `chat()`: same pattern + skill_calls entry with gate decision
+
+**3. Frontend (`amni/serve/web.py`):**
+- `event: promoted` handler now distinguishes three states: `learned ✓ #N` (promoted), `gated: <reason>` (quality-gated), `promote: <error>` (failed)
+
+**4. Unit coverage (`tests/_v6_8_promotion_gate_unit.py`):**
+- 6 cases: trivial-diversity gated, short-code gated, too-few-asserts gated, quality-lesson promoted, boundary `div=0.5` promoted, custom-thresholds promoted
+- ALL PASS
+
+**Impact:**
+- Lesson bank stays high-signal. Only answers with diverse adversarial tests (iter19), non-trivial code (≥50 chars), and ≥2 assertions become permanent.
+- Trivial code queries ("write a function that adds two numbers, then print(f(2,3))") still get generated correctly but don't pollute the LUT.
+- A future iter could surface this in `/stats` as `gated_count` for visibility into how often the gate fires.
+
+**Files added:**
+- `tests/_v6_8_promotion_gate_unit.py`
+
+**Files modified:**
+- `amni/serve/agent.py` — `_should_promote` helper + `chat()` gating
+- `scripts/amni_serve.py` — `/chat/stream` gating + new event payload field
+- `amni/serve/web.py` — `event: promoted` handler distinguishes gated state
+
 ## v6.8.iter24 — Multi-block code stitching (shared-state sandbox) (2026-05-17)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please
