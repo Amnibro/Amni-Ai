@@ -160,12 +160,18 @@ def main():
                                         if passed:
                                             final+=f'\n\n**[Self-tests — {len(asserts)}/{len(asserts)} passed · diversity={div_score:.2f}]**'
                                             tier_final+=div_tag
-                                            try:
-                                                promo_ans=final[:2000]
-                                                tr=adam.teach(req.message,promo_ans)
-                                                tier_final+='_promoted'
-                                                yield f'event: promoted\ndata: {_json.dumps({"lessons_n":tr.get("lessons_n",0)})}\n\n'
-                                            except Exception as _pe:yield f'event: promoted\ndata: {_json.dumps({"error":str(_pe)[:120]})}\n\n'
+                                            from amni.serve.agent import _should_promote
+                                            ok_promote,reason=_should_promote(snippet,asserts,div_score)
+                                            if ok_promote:
+                                                try:
+                                                    promo_ans=final[:2000]
+                                                    tr=adam.teach(req.message,promo_ans)
+                                                    tier_final+='_promoted'
+                                                    yield f'event: promoted\ndata: {_json.dumps({"lessons_n":tr.get("lessons_n",0),"reason":reason})}\n\n'
+                                                except Exception as _pe:yield f'event: promoted\ndata: {_json.dumps({"error":str(_pe)[:120]})}\n\n'
+                                            else:
+                                                tier_final+='_quality_gated'
+                                                yield f'event: promoted\ndata: {_json.dumps({"gated":True,"reason":reason})}\n\n'
                                         else:
                                             final+=f'\n\n**[Self-tests FAILED — {terr[:200]}]**'
                                             test_failed=True;test_err=terr
