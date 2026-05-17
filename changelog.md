@@ -119,6 +119,66 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter23 — Rich assertion failure messages (better perturb signal) (2026-05-17)
+
+**Trigger:** /loop continuously improve adam's coding and problem solving capability please
+
+When iter17's self-tests fail, iter20's perturb retry currently sees raw `AssertionError` with no values — Adam can't tell whether the function returned 89 vs 55 (off-by-one) or None (wrong return path). This iter AST-rewrites each assert before sandbox execution to capture both sides' values: error signal becomes `fib(10) == 55 FAILED: lhs=11, rhs=55` — actionable gradient for trial-and-error.
+
+**1. New `_enrich_assert(assert_str)` (`amni/serve/agent.py`):**
+- AST-parses; for `assert <LHS> <OP> <RHS>` (no existing message), rewrites to `_lhs=(<LHS>);_rhs=(<RHS>);assert _lhs <OP> _rhs, f'<LHS> <OP> <RHS> FAILED: lhs={_lhs!r}, rhs={_rhs!r}'`
+- Supports `==`, `!=`, `<`, `<=`, `>`, `>=`, `is`, `is not`, `in`, `not in`
+- Truthy fallback: `assert is_prime(7)` → `_v=(is_prime(7));assert _v, f'is_prime(7) FAILED: evaluated to {_v!r}'`
+- Preserves existing messages + passes through non-asserts
+
+**2. `_run_with_tests` enriches before running** — one-line change: `enriched = [_enrich_assert(a) for a in asserts]` before joining into test script. Rich stderr lands in `_perturb_retry` as `cur_err`.
+
+**3. Unit coverage (`tests/_v6_8_enrich_assert_unit.py`):** 6 transformation cases + end-to-end subprocess test verifying `lhs=11, rhs=55` lands in stderr from a buggy `fib(n)=n+1`. ALL PASS. iter15/17/20 unit suites still PASS (one test-only mock fix).
+
+**Impact:** when first attempt is wrong, perturb prompt sees actual numerical mismatch. SMALL perturbations target the right line more often, fewer escalations, faster convergence.
+
+**Files added:**
+- `tests/_v6_8_enrich_assert_unit.py`
+
+**Files modified:**
+- `amni/serve/agent.py` — `_enrich_assert` + `_run_with_tests`
+- `tests/_v6_8_assert_extract_unit.py` — fake-skills mock matcher updated
+
+## v6.8.iter22-hotfix — Scrub jailbreak playbook + Gemma Apache 2.0 NOTICE + soften security claims (2026-05-17)
+
+**Trigger:** the maintainer — "yeah you should do the fixes but I think we have other points of concern too, like the jailbreak expressions you listed as examples and the fact it only blocks 81%."
+
+Two problems I shipped in iter22 + iter16, both fixed in one commit.
+
+**1. Adversarial harness scrubbed from public repo + history:**
+- 3 test files moved to `.gitignore`, kept locally for regression
+- `git filter-repo --invert-paths` removed files from all 3 prior commits
+- `git filter-repo --replace-text` redacted leaked attack-phrase fragments from commit diffs
+- Force-pushed clean history to origin/main
+
+**2. Per-family bypass rate breakdown removed from public docs:**
+- Landing page: qualitative 3-card (lexical/hash/semantic), no numbers
+- README: rewrote "Semantic intent screening" bullet, no numbers
+- TUTORIAL: replaced literal jailbreak list with multi-layer narrative + email contact for legit researchers
+- Changelog iter16: dropped per-family table
+
+**3. Gemma Apache 2.0 compliance added:**
+- `NOTICE` file: two-license structure (CC BY-NC 4.0 / Apache 2.0), modification statement (lossless GF(17) re-encoding), trademark notice
+- `LICENSES/apache-2.0.txt`: full Apache 2.0 text
+- README License section rewritten
+- Landing page spec table + footer updated
+
+**Verification (the maintainer's check):** Gemma 4 = Apache 2.0, verified at `ai.google.dev/gemma/docs/gemma_4_license`. Earlier Gemma stays on Google's custom terms; Gemma 4 graduated. Apache 2.0 explicitly permits commercial use, modification, redistribution, format conversion.
+
+**Files added:**
+- `NOTICE`, `LICENSES/apache-2.0.txt`
+
+**Files removed (public; retained locally):**
+- `tests/_adversarial_jailbreaks.py`, `tests/_intent_diag.py`, `tests/_v6_8_intent_wire_smoke.py`
+
+**Files modified:**
+- `.gitignore`, `README.md`, `docs/TUTORIAL.md`, `amni-scient-site/amni-ai.html`, `changelog.md`
+
 ## v6.8.iter22 — Landing page + install + tutorial + architecture SVG (2026-05-16)
 
 **Trigger:** the maintainer — "onwards and upwards. how do people install into say ollama or use it standalone. make a nice landing, install page, tutorial, etc. to give people an easy start. Give a basic structure map that shows people what makes Adam different as well (very nice visual)"
