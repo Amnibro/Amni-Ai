@@ -4,6 +4,9 @@
 __pycache__/
 .pytest_cache/
 *.py[cod]
+# but ship the pre-built kernel module (iter29: deployable Adam)
+!amni_kernels.cp*.pyd
+!amni_kernels.cp*.so
 
 # C extensions
 *.so
