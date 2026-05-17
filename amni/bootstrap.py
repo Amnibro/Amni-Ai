@@ -62,14 +62,32 @@ def download_bake(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     try:from huggingface_hub import snapshot_download
     except ImportError:print('[bootstrap] huggingface_hub not installed. pip install huggingface_hub',flush=True);return None
     repo=cfg.get('hf_bake_repo',DEFAULT_HF_REPO)
-    print(f'[bootstrap] downloading bake from HF "{repo}" -> {target} (this may take a few minutes; ~5 GB)',flush=True)
+    print(f'[bootstrap] trying HF bake download "{repo}" -> {target} (~5 GB)',flush=True)
     target.mkdir(parents=True,exist_ok=True)
-    try:snapshot_download(repo_id=repo,local_dir=str(target),local_dir_use_symlinks=False)
+    try:
+        snapshot_download(repo_id=repo,local_dir=str(target),local_dir_use_symlinks=False)
+        print(f'[bootstrap] bake ready at {target}',flush=True);return target
     except Exception as e:
-        print(f'[bootstrap] bake download failed: {e}',flush=True)
-        print(f'[bootstrap] you can manually place the bake at {target} or set AMNI_BAKE env var',flush=True)
-        return None
-    print(f'[bootstrap] bake ready at {target}',flush=True);return target
+        print(f'[bootstrap] HF bake unavailable ({type(e).__name__}: {str(e)[:120]}). Falling back to local-generate.',flush=True)
+    return generate_bake_local(cfg,target,force=force)
+def generate_bake_local(cfg:Dict[str,Any],target:Path,force:bool=False)->Optional[Path]:
+    """Re-encode a public HF base model into a GF(17) bake locally.
+    Requires the encoder chain (amni.compute.reffelt4) and base model download.
+    First-run cost: ~5GB base download + 1-5 min GF(17) re-encode on GPU."""
+    import subprocess,sys
+    base_repo=cfg.get('hf_base_repo',DEFAULT_BASE_REPO)
+    bake_script=Path(__file__).resolve().parents[1]/'scripts'/'adam1_bake.py'
+    if not bake_script.exists():
+        print(f'[bootstrap] cannot generate bake locally: missing {bake_script}',flush=True);return None
+    print(f'[bootstrap] generating bake locally from {base_repo} -> {target}',flush=True)
+    print(f'[bootstrap] first-run cost: ~5GB base download + 1-5 min GF(17) re-encode on GPU',flush=True)
+    target.mkdir(parents=True,exist_ok=True)
+    cmd=[sys.executable,str(bake_script),'--hf-id',base_repo,'--out',str(target)]
+    try:r=subprocess.run(cmd,check=False)
+    except Exception as e:print(f'[bootstrap] local bake generation failed: {e}',flush=True);return None
+    if r.returncode!=0:print(f'[bootstrap] local bake generation exited rc={r.returncode}',flush=True);return None
+    if not (target/'manifest.json').exists():print(f'[bootstrap] local bake completed but manifest.json missing at {target}',flush=True);return None
+    print(f'[bootstrap] local bake ready at {target}',flush=True);return target
 def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     target=Path(cfg.get('model') or (CONFIG_DIR/'models'/'gemma-4-E2B-it'))
     if target.exists() and (target/'config.json').exists() and not force:

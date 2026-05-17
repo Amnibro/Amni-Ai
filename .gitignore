@@ -123,7 +123,7 @@ docs/checklists/checklist_*train*
 # Internal pyproject + manifest with bake refs
 manifest.json
 
-# Legacy training/experiment scripts (137 v* files referencing internals)
+# Legacy training/experiment scripts (137 v* files) — most reference internals or are one-off
 scripts/v*_*
 scripts/adam1*
 scripts/_run_cycles_*.sh
@@ -131,6 +131,10 @@ scripts/_download_*
 scripts/__pycache__/
 # KEEP: scripts/amni_serve.py (main entry)
 # KEEP: scripts/install*.py if present
+# (iter30) UN-IGNORE the bake-building chain: needed for local bake generation
+!scripts/adam1_bake.py
+!scripts/v5_0_3_bake.py
+!scripts/v5_5_21_ptex_to_gf17.py
 
 # Legacy test suite — references internals (a1, adam1, reffelt, federation, foundational tiers, etc.)
 # Public repo ships only the iter15+ probes (tests/_*.py underscore-prefixed)
