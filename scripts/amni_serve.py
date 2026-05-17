@@ -77,6 +77,8 @@ def main():
         answer:str
     class SkillRequest(BaseModel):
         args:dict={}
+    _iter_counters={'tests_passed':0,'tests_failed':0,'promoted':0,'quality_gated':0,'perturb_attempted':0,'perturb_succeeded_small':0,'perturb_succeeded_medium':0,'perturb_succeeded_large':0,'perturb_failed':0,'intent_blocked':0,'multi_block_stitched':0,'hint_injected':0,'lut_hits':0,'cot_generations':0}
+    def _bump(k,n=1):_iter_counters[k]=_iter_counters.get(k,0)+n
     @app.post('/chat')
     def chat(req:ChatRequest):return agent.chat(req.message,session_id=req.session_id,use_skills=req.use_skills,writeback=req.writeback)
     @app.post('/chat/stream')
@@ -96,6 +98,7 @@ def main():
                 from amni.a1.semantic_intent import screen as _sem_screen
                 _blk,_cat,_cos,_refmsg=_sem_screen(req.message)
                 if _blk:
+                    _bump('intent_blocked')
                     yield f'event: meta\ndata: {_json.dumps({"blocked":True,"category":_cat,"cos":round(_cos,3)})}\n\n'
                     for ch in [_refmsg[i:i+24] for i in range(0,len(_refmsg),24)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
                     conv.append('assistant',_refmsg,{'tier':f'tier_intent_block_{_cat}','blocked':True,'cos':round(_cos,3)})
@@ -110,6 +113,7 @@ def main():
                 hit=sl.lookup_soft(req.message,margin=eff) if sl and hasattr(sl,'lookup_soft') else None
             except Exception:hit=None
             if hit:
+                _bump('lut_hits')
                 for ch in [hit[i:i+24] for i in range(0,len(hit),24)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
                 conv.append('assistant',hit,{'tier':'tier1_5_semantic_lesson','persona':persona_name,'category':category})
                 yield f'event: done\ndata: {_json.dumps({"tier":"tier1_5_semantic_lesson","wall_s":round(time.time()-t0,3)})}\n\n';return
@@ -118,7 +122,7 @@ def main():
             else:sys_p='You are a helpful assistant.'
             yield f'event: meta\ndata: {_json.dumps({"cot":apply_cot,"category":category})}\n\n'
             max_new=int(80+200*(persona.length if persona else 0.5))+(700 if (apply_cot and category=="code") else (450 if apply_cot else 0))
-            full=[]
+            full=[];_bump('cot_generations') if apply_cot else None
             try:
                 for chunk in adam.chat_persona_stream(req.message,system=sys_p,max_new_tokens=max_new,do_sample=True):
                     full.append(chunk)
@@ -135,7 +139,9 @@ def main():
                     runnable=[b for b in blocks if ('print(' in b or 'if __name__' in b)]
                     if runnable:
                         snippet=('\n\n'.join(blocks) if len(blocks)>1 else runnable[-1])
-                        if len(blocks)>1:yield f'event: multi_block\ndata: {_json.dumps({"blocks":len(blocks),"runnable":len(runnable),"stitched_chars":len(snippet)})}\n\n'
+                        if len(blocks)>1:
+                            _bump('multi_block_stitched')
+                            yield f'event: multi_block\ndata: {_json.dumps({"blocks":len(blocks),"runnable":len(runnable),"stitched_chars":len(snippet)})}\n\n'
                         try:
                             run_r=skills.call('run_python',{'code':snippet,'timeout':8},ctx={'adam':adam})
                             if run_r.ok and not run_r.output.get('error'):
@@ -158,6 +164,7 @@ def main():
                                         yield f'event: test_run\ndata: {_json.dumps({"asserts_n":len(asserts),"passed":passed,"diversity":round(div_score,2),"info":tinfo,"div":div_info})}\n\n'
                                         div_tag='_tests_thin' if div_score<0.5 else ('_tests_diverse' if div_score>=0.75 else '_tests_ok')
                                         if passed:
+                                            _bump('tests_passed')
                                             final+=f'\n\n**[Self-tests — {len(asserts)}/{len(asserts)} passed · diversity={div_score:.2f}]**'
                                             tier_final+=div_tag
                                             from amni.serve.agent import _should_promote
@@ -167,26 +174,34 @@ def main():
                                                     promo_ans=final[:2000]
                                                     tr=adam.teach(req.message,promo_ans)
                                                     tier_final+='_promoted'
+                                                    _bump('promoted')
                                                     yield f'event: promoted\ndata: {_json.dumps({"lessons_n":tr.get("lessons_n",0),"reason":reason})}\n\n'
                                                 except Exception as _pe:yield f'event: promoted\ndata: {_json.dumps({"error":str(_pe)[:120]})}\n\n'
                                             else:
                                                 tier_final+='_quality_gated'
+                                                _bump('quality_gated')
                                                 yield f'event: promoted\ndata: {_json.dumps({"gated":True,"reason":reason})}\n\n'
                                         else:
+                                            _bump('tests_failed')
                                             final+=f'\n\n**[Self-tests FAILED — {terr[:200]}]**'
                                             test_failed=True;test_err=terr
                                 if rc!=0 or se or test_failed:
+                                    _bump('perturb_attempted')
                                     perturb_events=[]
                                     emit_fn=lambda d:perturb_events.append(d)
                                     err_signal=test_err if test_failed else (se or f'exit code {rc}')
                                     perturb_asserts=_extract_asserts(final) if test_failed else None
+                                    from amni.serve.agent import _error_hint
+                                    if _error_hint(err_signal):_bump('hint_injected')
                                     pr=_perturb_retry(adam,skills,sys_p,snippet,err_signal,req.message,max_steps=3,emit=emit_fn,asserts=perturb_asserts)
                                     for ev in perturb_events:yield f'event: perturb\ndata: {_json.dumps(ev)}\n\n'
                                     if pr.get('success'):
+                                        _bump(f'perturb_succeeded_{pr["magnitude"].lower()}')
                                         final+=f'\n\n**[Trial-and-error fixed it — {pr["magnitude"]} perturbation]**\n```python\n{pr["code"]}\n```\n```\n{pr["stdout"][:1500]}\n```'
                                         tier_final+=f'_perturb_{pr["magnitude"].lower()}'
                                         yield f'event: perturb\ndata: {_json.dumps({"final":True,"magnitude":pr["magnitude"],"success":True})}\n\n'
                                     else:
+                                        _bump('perturb_failed')
                                         final+=f'\n\n**[Trial-and-error exhausted SMALL/MEDIUM/LARGE — code still failing]**'
                                         tier_final+='_perturb_failed'
                                         yield f'event: perturb\ndata: {_json.dumps({"final":True,"success":False,"steps":len(pr.get("history",[]))})}\n\n'
@@ -201,7 +216,22 @@ def main():
     @app.post('/teach')
     def teach(req:TeachRequest):return adam.teach(req.question,req.answer)
     @app.get('/stats')
-    def stats():return agent.stats()
+    def stats():
+        base=agent.stats()
+        base['iter_counters']=dict(_iter_counters)
+        total_perturb=_iter_counters['perturb_succeeded_small']+_iter_counters['perturb_succeeded_medium']+_iter_counters['perturb_succeeded_large']
+        attempted=_iter_counters['perturb_attempted'] or 1
+        promoted=_iter_counters['promoted'] or 0
+        gated=_iter_counters['quality_gated'] or 0
+        tests_total=_iter_counters['tests_passed']+_iter_counters['tests_failed']
+        base['iter_rates']={'perturb_success_rate':round(total_perturb/attempted,3),'quality_gate_fire_rate':round(gated/max(promoted+gated,1),3),'tests_pass_rate':round(_iter_counters['tests_passed']/max(tests_total,1),3),'hint_inject_rate':round(_iter_counters['hint_injected']/max(_iter_counters['perturb_attempted'],1),3)}
+        return base
+    @app.get('/stats/iter')
+    def stats_iter():return dict(_iter_counters)
+    @app.post('/stats/iter/reset')
+    def stats_iter_reset():
+        for k in _iter_counters:_iter_counters[k]=0
+        return {'reset':True,'keys':list(_iter_counters.keys())}
     @app.get('/healthz')
     def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':'6.0.0'}
     @app.get('/skills')
