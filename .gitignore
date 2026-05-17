@@ -144,11 +144,14 @@ tests/test_*
 tests/__pycache__/
 tests/_bench_cache/
 
-# Inference files that import Reffelt internals (amni.compute / amni.core / etc.)
+# Files in public-named dirs that import Reffelt internals (amni.compute / amni.core / etc.)
 amni/inference/adam_runtime.py
 amni/inference/streaming_linear.py
 amni/inference/tiered.py
 amni/inference/triton_gdn_patch.py
+amni/storage/reader.py
+amni/storage/writer.py
+amni/utils/model_resolver.py
 
 # Legacy checklists / guardian councils / architecture map — reference internals
 docs/checklists/
