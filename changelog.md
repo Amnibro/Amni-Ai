@@ -119,6 +119,65 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter29 — Deployable: reverse iter21 protection, ship complete working source (2026-05-17)
+
+**Trigger:** the maintainer — "we need to get it actually deployable. Just put everything together so they can download and run it now"
+
+After a real user (MutantRabbit767) tried to install Adam and hit ModuleNotFoundError on missing Reffelt internals, the iter21 "encrypted blob ships separately" plan stopped being viable. Users want to clone + run. The iter22-iter28-hotfix2 graceful-degradation patches kept the server BOOTING but chat returned `runtime not installed`. That's a useless product.
+
+This iter reverses iter21. CC BY-NC 4.0 license is now the only protection layer — code is fully open, commercial use is legally forbidden.
+
+**1. Reversed .gitignore exclusions** (all previously hidden by iter21):
+- `amni/inference/asimov.py` (AsimovLayer)
+- `amni/a1/` whole dir (asimov, lawkeeper, delta_writer, dual_mind, columns, core, grail, model, triumvirate, semantic_intent was already public)
+- `amni/core/`, `amni/compute/` (GF(17) Reffelt math + PrismTex codec + HIP kernels)
+- `amni/training/`, `amni/model/`, `amni/learning/` (training pipeline + model orchestration)
+- `amni/storage/` (PTEX page reader/writer + texture catalog)
+- `amni/utils/` (model resolver)
+- `amni_kernels/` (Rust crate + prebuilt Windows `.pyd`)
+- `amni/inference/{adam_runtime, streaming_linear, tiered, triton_gdn_patch}.py`
+- `gf17_translator.py`
+
+**STILL gitignored** (truly local):
+- `CLAUDE.md`, `.claude/`, `.github/copilot-instructions.md` — the maintainer's private rules
+- `bin/mlc-venv/`, `bin/` (llama.cpp redistributables — separate distribution)
+- `manifest.json` (per-machine bake paths)
+- `amni_kernels/target/` (Rust build artifacts, 218MB)
+- `data/distill_*.jsonl` (multi-GB training corpora)
+- `experiences/`, `backups/`, `logs/`, `bakes/` (per-install runtime state)
+- `tests/_adversarial_jailbreaks.py`, `tests/_intent_diag.py`, `tests/_v6_8_intent_wire_smoke.py` (security thru obscurity for attackers; iter22-hotfix decision)
+
+**2. Re-staged 105 files in one commit** (`iter29: REVERSE iter21 protection`) + follow-up commit for the prebuilt Windows `.pyd` (`amni_kernels.cp313-win_amd64.pyd`, 1.5MB) which the sub-`.gitignore` had been masking via `*.py[cod]`. Whitelisted with `!amni_kernels.cp*.pyd`.
+
+**3. Fresh clone smoke test PASSES:**
+```
+Importing Adam...  OK
+Importing amni.compute (Reffelt math)...  OK
+Importing amni.inference.streaming_chat...  _RUNTIME_AVAILABLE=True
+Importing amni.inference.tiered...  PtexPointerIndex+TieredInference loaded
+ALL CRITICAL IMPORTS PASS — public clone now has complete working source
+```
+
+**4. INSTALL.md + README.md updated:**
+- Removed the "honest banner" caveat about runtime blob being missing — no longer true
+- Removed `python -c "from amni.runtime import fetch; ..."` step — no longer needed
+- Path A standalone now: clone → venv → `pip install -r requirements.txt` → `python install.py`. Windows: double-click `install.bat`.
+- README "What's in this repo" rewritten to list the full surface (compute, core, a1, training, model, learning, storage, kernels)
+- README License section updated: HuggingFace bake repo `Amnibro/gemma-4-E2B-it-gf17` now mentioned as the download path
+
+**5. The iter21 design lives on as a future option:** `amni/runtime.py` still exists with its `fetch()` stub. If we ever want to switch back to the encrypted-blob model (e.g., for commercial tier), the scaffolding is there.
+
+**Trade-off accepted:** Reffelt math is now visible to anyone who clones. CC BY-NC 4.0 prohibits commercial use; that's the only protection. Anyone using Adam commercially without a license is in violation. Anyone reverse-engineering for non-commercial research/education is within license. This was the maintainer's explicit call after seeing the broken-clone reality.
+
+**Files added (105+):**
+- amni/a1/*, amni/compute/*, amni/core/*, amni/training/*, amni/model/*, amni/learning/*, amni/storage/*, amni/utils/*, amni_kernels/*, amni/inference/{adam_runtime,streaming_linear,tiered,triton_gdn_patch,asimov}.py, gf17_translator.py
+
+**Files modified:**
+- `.gitignore` — removed iter21 exclusions, kept truly-private + per-install items
+- `amni_kernels/.gitignore` — whitelist `*.pyd` for distribution
+- `docs/INSTALL.md` — no more runtime-blob banner; simpler quick-start
+- `README.md` — full repo surface in "What's in this repo"; install steps simplified
+
 ## v6.8.iter28-hotfix2 — Fix broken public install (real user report) (2026-05-17)
 
 **Trigger:** Real user (MutantRabbit767) tried to install Adam from `git clone github.com/Amnibro/Amni-Ai`, hit:
