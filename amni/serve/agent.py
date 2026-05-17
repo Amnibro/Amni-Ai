@@ -112,9 +112,26 @@ def _assert_diversity(asserts:List[str])->Tuple[float,dict]:
     coverage=sum([has_bound,has_neg,has_large])/3.0
     score=0.5*arg_score+0.5*coverage
     return score,{'n':n,'distinct_args':distinct_args,'bound':has_bound,'neg':has_neg,'large':has_large,'arg_score':round(arg_score,2),'coverage':round(coverage,2)}
+def _enrich_assert(assert_str:str)->str:
+    try:tree=ast.parse(assert_str,mode='exec')
+    except SyntaxError:return assert_str
+    if not (tree.body and isinstance(tree.body[0],ast.Assert)):return assert_str
+    node=tree.body[0]
+    if node.msg is not None:return assert_str
+    src=assert_str.strip().rstrip(';,')
+    body=src[len('assert'):].lstrip()
+    if isinstance(node.test,ast.Compare) and len(node.test.ops)==1 and len(node.test.comparators)==1:
+        op_map={ast.Eq:'==',ast.NotEq:'!=',ast.Lt:'<',ast.LtE:'<=',ast.Gt:'>',ast.GtE:'>=',ast.Is:'is',ast.IsNot:'is not',ast.In:'in',ast.NotIn:'not in'}
+        op_sym=op_map.get(type(node.test.ops[0]),'?')
+        op_str=f' {op_sym} '
+        if op_str in body:
+            lhs_str,rhs_str=body.split(op_str,1)
+            return f"_lhs=({lhs_str.strip()});_rhs=({rhs_str.strip()});assert _lhs {op_sym} _rhs, f'{lhs_str.strip()} {op_sym} {rhs_str.strip()} FAILED: lhs={{_lhs!r}}, rhs={{_rhs!r}}'"
+    return f"_v=({body.strip()});assert _v, f'{body.strip()} FAILED: evaluated to {{_v!r}}'"
 def _run_with_tests(skills,adam,snippet:str,asserts:List[str],timeout:int=8)->Tuple[bool,str,dict]:
     if not asserts:return True,'',{}
-    test_code=snippet+'\n\n# --- Adam self-tests ---\n'+'\n'.join(asserts)+'\nprint("ALL_TESTS_PASS")'
+    enriched=[_enrich_assert(a) for a in asserts]
+    test_code=snippet+'\n\n# --- Adam self-tests (enriched) ---\n'+'\n'.join(enriched)+'\nprint("ALL_TESTS_PASS")'
     try:run=skills.call('run_python',{'code':test_code,'timeout':timeout},ctx={'adam':adam})
     except Exception as e:return False,f'test runner exception: {e}',{}
     if not run.ok or run.output.get('error'):return False,run.output.get('error','test sandbox skipped'),{}

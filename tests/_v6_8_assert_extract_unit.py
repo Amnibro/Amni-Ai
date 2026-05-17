@@ -37,8 +37,8 @@ class FakeSkills:
     def __init__(self,r):self.r=r
     def call(self,name,args,ctx):
         code=args['code']
-        if 'assert fib(0)' in code and 'def fib' in code:return FakeResult(True,{'returncode':0,'stdout':'Fib(10): 55\nALL_TESTS_PASS\n','stderr':'','timed_out':False})
-        if 'assert wrong' in code:return FakeResult(True,{'returncode':1,'stdout':'','stderr':'AssertionError\n','timed_out':False})
+        if 'fib(0)' in code and 'def fib' in code:return FakeResult(True,{'returncode':0,'stdout':'Fib(10): 55\nALL_TESTS_PASS\n','stderr':'','timed_out':False})
+        if 'wrong' in code:return FakeResult(True,{'returncode':1,'stdout':'','stderr':'AssertionError\n','timed_out':False})
         return FakeResult(True,{'returncode':0,'stdout':'ok','stderr':'','timed_out':False})
 fib_code='def fib(n,memo={}):\n    if n in memo:return memo[n]\n    if n<=1:return n\n    memo[n]=fib(n-1,memo)+fib(n-2,memo)\n    return memo[n]\nprint(f"Fib(10): {fib(10)}")'
 passed,err,info=_run_with_tests(FakeSkills(None),None,fib_code,['assert fib(0) == 0','assert fib(6) == 8','assert fib(10) == 55'])
