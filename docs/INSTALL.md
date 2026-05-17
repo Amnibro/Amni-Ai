@@ -1,6 +1,13 @@
 # Installing Adam
 
-Adam runs locally on your machine. Three install paths depending on what you want.
+Adam runs locally on your machine.
+
+> **⚠️ Honest status (2026-05-17):** The public source you clone from GitHub is a **skeleton**. The Reffelt GF(17) runtime that powers Adam's inference ships as a separate encrypted blob from amni-scient.com — the pipeline that hosts and signs it is still being built (iter25+). Until then:
+> - The server **boots cleanly** and exposes `/healthz`, `/stats`, `/personas`, `/skills`
+> - **Cached lesson-bank LUT hits work** (instant answers to questions Adam has answered before)
+> - **Chat generation returns a clear `runtime not installed` message** when you try to ask anything new
+> 
+> If you want the working private build, email **amnibro7@gmail.com** for a build link. The public-runtime path lands when iter25 ships.
 
 ## Hardware minimums
 
@@ -87,10 +94,27 @@ git clone https://github.com/Amnibro/Amni-Ai
 cd Amni-Ai
 python -m venv .venv
 .venv/Scripts/activate
-pip install -r requirements.txt -r requirements-dev.txt
+pip install -r requirements.txt
+pip install pytest  # if you want to run tests/_v6_*.py probes
 ```
 
-You'll still need the runtime blob (`amni.runtime.fetch`) — the Reffelt math + Rust kernels ship as a signed encrypted bundle. The Python source for persona, skills, CoT scaffolds, perturb loop, semantic intent screen, and FastAPI server is all in the public repo and freely editable.
+The Python source for persona, skills, CoT scaffolds (iter15-26), perturb loop, semantic intent screen, sandbox-validated code path, lesson promotion, FastAPI server, web UI, and Ollama-compat endpoints is all in the public repo and freely editable. You can:
+
+- Add new skills in `amni/serve/skills.py` (regex detector + handler — Adam dispatches automatically)
+- Add new personas via `POST /personas` (no code changes needed)
+- Extend seed lessons by dropping new modules into `amni/seeds/` and importing them in `amni/seeds/__init__.py`
+- Modify the CoT scaffolds in `amni/serve/agent.py` (`_COT_CODE`, `_COT_MATH`, etc.)
+- Tune the semantic intent layer thresholds via `AMNI_INTENT_COS` env var
+- Add new SSE event handlers in `amni/serve/web.py` for any new agent events
+
+What's NOT in the public source:
+- Reffelt 4-tier GF(17) decomposition + TMU dispatch (`amni/compute/`, `amni/core/`)
+- Rust kernels (`amni_kernels/`)
+- AsimovLayer + LawKeeper file-integrity sealing (`amni/a1/asimov.py`, `amni/a1/lawkeeper.py`)
+- Streaming weight loader (`amni/inference/streaming_linear.py`)
+- Training pipeline (`amni/training/`)
+
+When the runtime blob ships, the encrypted bundle decrypts into `~/.amni_runtime/` and the streaming-chat backend connects to it transparently.
 
 ### Where to look
 

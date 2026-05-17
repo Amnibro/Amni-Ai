@@ -18,8 +18,13 @@ class Adam:
         from amni.inference.semantic_ptex_lut import SemanticPTEXLUT
         self._SemanticPTEXLUT=SemanticPTEXLUT
         t0=time.time()
-        self.svc=StreamingChatService(bake,model,budget_mb=budget_mb)
-        self.svc_boot_s=time.time()-t0
+        self.svc=None;self.svc_boot_s=0.0;self.runtime_error=None
+        try:
+            self.svc=StreamingChatService(bake,model,budget_mb=budget_mb)
+            self.svc_boot_s=time.time()-t0
+        except Exception as e:
+            self.runtime_error=str(e)
+            print(f'[Adam] WARNING: StreamingChatService unavailable — chat generation will return runtime-error messages. Cached lesson-bank LUT hits, /healthz, /stats still work.\n  Reason: {e}',flush=True)
         self.crawler_plugin=None
         if enable_crawler:
             try:
@@ -70,6 +75,10 @@ class Adam:
             ans=cached.get('a','')
             for chunk in [ans[i:i+24] for i in range(0,len(ans),24)]:yield chunk
             return
+        if self.svc is None:
+            msg=f'[Adam runtime not installed — chat generation requires the Reffelt runtime blob. Run `python -c "from amni.runtime import fetch; fetch(license_key=\'free-noncommercial\')"` then restart the server. See https://github.com/Amnibro/Amni-Ai/blob/main/docs/INSTALL.md.]'
+            for chunk in [msg[i:i+48] for i in range(0,len(msg),48)]:yield chunk
+            return
         try:
             for chunk in self.svc.chat_stream(message,system=system,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0):yield chunk
         except Exception as e:yield f'[stream error: {e}]'
@@ -77,6 +86,7 @@ class Adam:
         t0=time.time()
         cached=self.adam.lut.lookup(f'PERSONA::{system[:80]}::{message}') if hasattr(self.adam,'lut') else None
         if cached is not None:return {'answer':cached.get('a'),'tier':'tier1_persona_lut','tokens':0,'wall_s':round(time.time()-t0,3)}
+        if self.svc is None:return {'answer':None,'error':f'runtime not installed: {self.runtime_error}','tier':'runtime_missing','tokens':0,'wall_s':round(time.time()-t0,3)}
         try:resp,n=self.svc.chat(message,system=system,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0)
         except Exception as e:return {'answer':None,'error':str(e),'tier':'persona_error','tokens':0,'wall_s':round(time.time()-t0,3)}
         ans=(resp or '').strip()
