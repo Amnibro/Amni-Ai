@@ -119,6 +119,48 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting Anthony confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter26 — Error-pattern hints injected into perturb prompts (2026-05-17)
+
+**Trigger:** /loop continuously improve adam's coding and problem solving capability please
+
+iter23 enriched AssertionError with lhs/rhs values. But other runtime errors (ImportError, TypeError, IndexError, RecursionError, KeyError, AttributeError, ZeroDivisionError, NameError, ValueError, UnboundLocalError, StopIteration) hit the perturb loop with no targeted signal — just the raw traceback. Adam had to infer fix direction from the error class name alone. This iter pattern-matches stderr and injects a domain-specific fix hint into the perturb prompt.
+
+**1. New `_error_hint(stderr) -> Optional[str]` (`amni/serve/agent.py`):**
+- 11 regex patterns mapped to actionable fix advice
+- Examples:
+  - `IndexError|list index out of range` → "Off-by-one or empty-container access. Check loop bounds (use `range(len(x))` not `range(len(x)+1)`); guard with `if x:` before indexing."
+  - `KeyError` → "Dict key missing. Use `dict.get(k, default)` or check `if k in d:`. Watch for case-sensitivity."
+  - `ModuleNotFoundError|ImportError` → "Use a Python stdlib alternative (math, itertools, collections, functools, re, json, os, sys). Do NOT import third-party packages."
+  - `RecursionError` → "Add a stronger base case, or convert to iteration with an explicit stack/queue."
+  - `TypeError unsupported operand` → "Type mismatch. Cast values explicitly (int(x), str(x)) at the operation site. None often means a function returned nothing."
+  - `ZeroDivisionError` → "Guard the denominator: `if d == 0: return 0`."
+- Returns None for unmatched errors (preserves existing behavior — perturb still fires, just without injected hint)
+- AssertionError pattern is registered but returns None — iter23's `_enrich_assert` already covers it with even richer (lhs/rhs values) info, no need to double up
+
+**2. `_perturb_once` injects the hint** between the failed-error block and the magnitude instruction:
+```
+Your code FAILED at runtime:
+<stderr>
+
+ERROR HINT: Off-by-one or empty-container access. Check loop bounds...
+
+Original code: <code>
+Apply a SMALL perturbation: ...
+```
+
+**3. Unit coverage (`tests/_v6_8_error_hint_unit.py`):**
+- 13 cases: 11 matched patterns + unmatched SyntaxError + empty/None stderr
+- ALL PASS
+- iter15 + iter20 perturb units re-run: all still PASS (backward compatible — adding a hint string doesn't break the prompt structure)
+
+**Impact:** when sandbox exec fails with a non-assert runtime error, Adam now sees a domain-aware hint about *which class of fix* to attempt at the SMALL magnitude. Empirically should reduce escalations to MEDIUM/LARGE on common errors. AssertionError path is unchanged (iter23 still owns it).
+
+**Files added:**
+- `tests/_v6_8_error_hint_unit.py`
+
+**Files modified:**
+- `amni/serve/agent.py` — `_error_hint` helper + `_perturb_once` injects hint into prompt
+
 ## v6.8.iter25 — Lesson promotion quality gate (2026-05-17)
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please

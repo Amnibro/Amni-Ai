@@ -152,8 +152,30 @@ def _validate_python(blocks:List[str])->List[Tuple[int,str,str]]:
         except Exception as e:bad.append((i,code,f'{type(e).__name__}: {e}'))
     return bad
 _PERTURB_HINTS={'SMALL':'Apply a SMALL perturbation: tweak ONE value, fix ONE off-by-one, swap ONE operator, or correct ONE name. Keep structure intact.','MEDIUM':'Apply a MEDIUM perturbation: replace an inner step, restructure a loop or branch, or swap a data structure. Keep the overall approach.','LARGE':'Apply a LARGE perturbation: pick a different algorithm or re-frame the problem. The old approach is wrong.'}
+_ERROR_PATTERNS=[
+    (re.compile(r'ModuleNotFoundError|ImportError'),'Missing import or library. Use a Python stdlib alternative (math, itertools, collections, functools, re, json, os, sys) — those are always available. Do NOT import third-party packages.'),
+    (re.compile(r'IndexError|list index out of range|string index out of range|tuple index out of range'),'Off-by-one or empty-container access. Check loop bounds (use `range(len(x))` not `range(len(x)+1)`); guard with `if x:` before indexing.'),
+    (re.compile(r'KeyError'),'Dict key missing. Use `dict.get(k, default)` or check `if k in d:` before access. Watch for case-sensitivity.'),
+    (re.compile(r"TypeError.*unsupported operand|TypeError.*'NoneType'|TypeError.*can only concatenate"),'Type mismatch. Cast values explicitly (int(x), str(x)) at the operation site. None often means a function returned nothing — add an explicit return.'),
+    (re.compile(r'TypeError.*missing \d+ required positional|takes \d+ positional arguments but'),'Function signature mismatch. Count arguments at call site vs def. Default values can fix optional params.'),
+    (re.compile(r'RecursionError|maximum recursion depth'),'Recursion too deep. Add a stronger base case, or convert to iteration with an explicit stack/queue.'),
+    (re.compile(r'ZeroDivisionError'),'Division by zero. Guard the denominator: `if d == 0: return 0` or `if d != 0: ...`.'),
+    (re.compile(r'AttributeError.*has no attribute'),'Method or attribute does not exist on this object type. Check the class API; you may be confusing list vs str vs dict methods.'),
+    (re.compile(r'NameError.*not defined'),'Variable or function used before defined. Check scope, typos, missing imports. May be hitting a renamed identifier.'),
+    (re.compile(r'ValueError.*literal for int|invalid literal|could not convert'),'String/int conversion failure. Validate input format; strip whitespace; handle non-numeric input gracefully.'),
+    (re.compile(r'UnboundLocalError'),'Local variable referenced before assignment. Initialize the variable at function start, or use `nonlocal`/`global` if intentional.'),
+    (re.compile(r'StopIteration'),'Iterator exhausted unexpectedly. Use a default in `next(it, default)` or wrap in try/except.'),
+    (re.compile(r'AssertionError.*FAILED.*lhs=(.*?), rhs=(.*?)(?:\n|$)',re.DOTALL),None),
+]
+def _error_hint(stderr:str)->Optional[str]:
+    if not stderr:return None
+    for pat,hint in _ERROR_PATTERNS:
+        if pat.search(stderr) and hint:return hint
+    return None
 def _perturb_once(adam,persona_sys:str,code:str,err:str,magnitude:str,user_msg:str)->str:
-    prompt=f'Your code FAILED at runtime:\n```\n{err[:500]}\n```\nOriginal code:\n```python\n{code}\n```\n{_PERTURB_HINTS[magnitude]}\nUser asked: {user_msg}\nOutput ONLY ONE corrected ```python``` block. No prose.'
+    err_hint=_error_hint(err)
+    hint_line=f'\nERROR HINT: {err_hint}\n' if err_hint else ''
+    prompt=f'Your code FAILED at runtime:\n```\n{err[:500]}\n```\n{hint_line}Original code:\n```python\n{code}\n```\n{_PERTURB_HINTS[magnitude]}\nUser asked: {user_msg}\nOutput ONLY ONE corrected ```python``` block. No prose.'
     sys=persona_sys+'\n\nFix runtime errors. Output a clean python code block only.'
     try:r=adam.chat_persona(prompt,system=sys,max_new_tokens=400,do_sample=False)
     except Exception:return ''
