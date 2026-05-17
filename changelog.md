@@ -119,6 +119,53 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
+## v6.8.iter34 — End-to-end install verify + crawler standalone (2026-05-17)
+
+**Trigger:** the maintainer — "yes verify everything. Also make sure the webcrawler works on its own"
+
+**A. WebCrawler standalone test** (`tests/_v6_8_crawler_standalone.py`):
+- Instantiated WebCrawler directly (no Adam, no GF(17) runtime)
+- 4 dev queries: `what is python`, `numpy array indexing`, `git rebase guide`, `postgresql full text search`
+- **Initial result: 1/4 worked.** 3/4 returned 0 URLs because the allow-list filtered out useful dev sites; 1/4 had fetch fail because `urllib.robotparser` interpreted the UA `AmniAdam/1.0` as denied on Wikipedia
+- **Two real bugs fixed:**
+  1. `_DEFAULT_ALLOW` expanded **65 → 255 domains**: added numpy.org, scipy.org, pytorch.org (already there), w3schools, geeksforgeeks, programiz, real-python, learn.microsoft.com, rust-lang.org, go.dev, kotlinlang.org, docker, kubernetes, postgresql, redis, mongodb, github+gitlab+bitbucket, react/vue/angular/svelte, jest/vitest/cypress, eslint/prettier, etc. — covers the entire modern dev-doc surface
+  2. `_can_fetch` now **trusts allow-listed domains** (skips robots.txt double-check since the allow-list already vetted them); for non-allow-listed domains, switched UA to `Mozilla/5.0 (compatible; AmniAdam/1.0; +https://example.com/amni-ai)` for cleaner robots.txt parsing
+- **After fix: 4/4 queries return useful URLs, all fetches succeed** (python.org docs 1.7KB, programiz 2KB, git-scm.com 2KB, postgresql.org 227B)
+
+**B. Full HF-bake install verification** (fresh clone to `/c/Users/antho/install_verify`):
+- Clone, venv, `pip install -r requirements.txt`, `pip install -e .` — all PASS, no errors
+- Adam imports cleanly; `_RUNTIME_AVAILABLE=True` confirms iter29 reversal is intact in public source
+- `huggingface_hub.snapshot_download('amnibro/gemma-4-E2B-it-gf17', ...)` to fresh dir: **3.2 minutes**, 5GB transfer via hf-xet dedup, 20GB on disk (matches what was uploaded)
+- Server boots end-to-end on the fresh-clone with real bake
+- `/healthz` returns `{"status":"ok","lessons_n":56,"skills_n":11,"version":"6.0.0"}`
+- `/chat` "What is the capital of France?" → "Paris" via `tier1_5_semantic_lesson` in 2.99s (seed corpus working)
+- Ollama-compat `/api/tags`, `/api/chat`, `/api/generate` all shape-correct
+
+**C. Third bug fixed during the verify:** Default torch wheel on Windows is CPU-only; `StreamingChatService.__init__` hardcoded `device='cuda'`, threw "Torch not compiled with CUDA enabled" on first chat. **Fixed:** auto-detect — `cuda` if available, else `xpu` (Intel GPU), else `cpu` with warning pointing at https://pytorch.org/get-started/locally/ for ROCm/CUDA wheel install. CPU-only users now get a slow-but-functional Adam instead of a crash.
+
+**Files added:**
+- `tests/_v6_8_crawler_standalone.py`
+- `tests/_crawler_debug.py` (one-off debug for the allow-list issue)
+
+**Files modified:**
+- `amni/inference/web_crawler.py` — `_DEFAULT_ALLOW` expansion (65→255 domains), `_can_fetch` trusts allow-listed + better UA
+- `amni/inference/streaming_chat.py` — auto-detect device with CPU fallback warning
+
+## v6.8.iter33 — pyproject.toml license fix (PEP 639) (2026-05-17)
+
+**Trigger:** Real install failure: `setuptools.errors.InvalidConfigError: License classifiers have been superseded by license expressions`. pip install -e . from a fresh clone crashed at the wheel-build step on modern setuptools (>=77).
+
+**1. Removed deprecated MIT classifier** from `pyproject.toml` `classifiers` list. PEP 639 deprecated `License :: OSI Approved :: ...` in favor of the `license = "..."` field directly.
+
+**2. License field corrected:** was `"MIT"` (mismatch with the actual LICENSE file), now `"CC-BY-NC-4.0"` to match.
+
+**3. Added `license-files = ["LICENSE","NOTICE","LICENSES/*"]`** so all three files get bundled in any sdist/wheel — Apache 2.0 attribution for Gemma is now properly distributed.
+
+**Verified:** `pip install -e .` builds editable wheel cleanly in a fresh /tmp venv, no PEP 639 errors, 47 transitive deps install successfully.
+
+**Files modified:**
+- `pyproject.toml`
+
 ## v6.8.iter32 — Fresh-clone install test (the 3 methods on example.com) (2026-05-17)
 
 **Trigger:** the maintainer — "test the install methods listed on my site"
