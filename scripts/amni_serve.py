@@ -134,7 +134,8 @@ def main():
                     if bad:yield f'event: validate\ndata: {_json.dumps({"syntax_errors":len(bad)})}\n\n'
                     runnable=[b for b in blocks if ('print(' in b or 'if __name__' in b)]
                     if runnable:
-                        snippet=runnable[-1]
+                        snippet=('\n\n'.join(blocks) if len(blocks)>1 else runnable[-1])
+                        if len(blocks)>1:yield f'event: multi_block\ndata: {_json.dumps({"blocks":len(blocks),"runnable":len(runnable),"stitched_chars":len(snippet)})}\n\n'
                         try:
                             run_r=skills.call('run_python',{'code':snippet,'timeout':8},ctx={'adam':adam})
                             if run_r.ok and not run_r.output.get('error'):

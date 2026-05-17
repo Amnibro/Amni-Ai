@@ -318,7 +318,7 @@ class AmniAgent:
                 if blocks and self.skills.has('run_python'):
                     runnable=[b for b in blocks if ('print(' in b or 'if __name__' in b)]
                     if runnable:
-                        snippet=runnable[-1]
+                        snippet=('\n\n'.join(blocks) if len(blocks)>1 else runnable[-1])
                         try:
                             run_r=self.skills.call('run_python',{'code':snippet,'timeout':8},ctx={'adam':self.adam})
                             if run_r.ok and not run_r.output.get('error'):
