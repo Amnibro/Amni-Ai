@@ -1,12 +1,14 @@
 """One-shot bootstrap installer for Adam.
-Cross-platform: detects Python, creates venv, detects GPU vendor, installs vendor-correct PyTorch, installs Adam, runs `amni init`, opens browser.
+Fully automated: detects Python, creates venv, detects GPU vendor, installs vendor-correct PyTorch, installs Adam, builds amni_kernels native extension (auto-installs Rust toolchain if missing), runs `amni init` (downloads bake), opens browser.
 Usage:
-  python install.py                                  # default install + launch (auto GPU detect)
+  python install.py                                  # default: full auto install + launch
   python install.py --gpu nvidia                     # force NVIDIA CUDA torch
   python install.py --gpu amd                        # force AMD ROCm torch (Linux) / TheRock guidance (Windows)
   python install.py --gpu cpu                        # force CPU-only torch (small download, ~1 tok/s)
   python install.py --cuda cu121                     # override CUDA tag (default: cu124)
   python install.py --rocm rocm6.1                   # override ROCm tag (default: rocm6.2)
+  python install.py --install-rust skip              # don't auto-install Rust toolchain even if amni_kernels needs it
+  python install.py --skip-kernels                   # don't build amni_kernels (Adam runs with degraded paths)
   python install.py --no-launch                      # set up but don't start server
   python install.py --skip-model                     # skip ~5 GB bake download
   python install.py --bake-dir E:/Adam/bake          # store bake on external drive
@@ -18,6 +20,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 VENV=ROOT/'.venv'
 TORCH_PKGS=['torch','torchvision','torchaudio']
+RUSTUP_WIN='https://win.rustup.rs/x86_64'
+RUSTUP_UNIX='https://sh.rustup.rs'
 def py():
     return str(VENV/'Scripts'/'python.exe') if platform.system()=='Windows' else str(VENV/'bin'/'python')
 def run(cmd,env=None,**kw):
@@ -25,6 +29,9 @@ def run(cmd,env=None,**kw):
     r=subprocess.run(cmd,shell=isinstance(cmd,str),env=env,**kw)
     if r.returncode!=0:print(f'  [FAIL] exit {r.returncode}',flush=True);sys.exit(r.returncode)
     return r
+def run_soft(cmd,env=None,**kw):
+    print(f'  $ {" ".join(cmd) if isinstance(cmd,list) else cmd}',flush=True)
+    return subprocess.run(cmd,shell=isinstance(cmd,str),env=env,**kw)
 def step(s):print(f'\n=== {s} ===',flush=True)
 def detect_gpu(override='auto'):
     if override!='auto':return override
@@ -90,6 +97,68 @@ def install_torch(vendor,cuda_tag,rocm_tag,env):
     if idx:args+=['--index-url',idx]
     args+=TORCH_PKGS
     run(args,env=env)
+def cargo_path():
+    p=shutil.which('cargo')
+    if p:return p
+    cb=Path.home()/'.cargo'/'bin'/('cargo.exe' if platform.system()=='Windows' else 'cargo')
+    return str(cb) if cb.exists() else None
+def install_rust(env):
+    s=platform.system()
+    if s=='Windows':
+        import urllib.request,tempfile
+        tmp=Path(tempfile.gettempdir())/'rustup-init.exe'
+        print(f'  downloading rustup-init.exe from {RUSTUP_WIN}  (~10 MB)',flush=True)
+        urllib.request.urlretrieve(RUSTUP_WIN,str(tmp))
+        run([str(tmp),'-y','--default-toolchain','stable','--profile','minimal','--no-modify-path'],env=env)
+        try:tmp.unlink()
+        except Exception:pass
+    else:
+        print(f'  downloading rustup install script from {RUSTUP_UNIX}',flush=True)
+        run(f"curl --proto '=https' --tlsv1.2 -sSf {RUSTUP_UNIX} | sh -s -- -y --default-toolchain stable --profile minimal --no-modify-path",env=env)
+def amni_kernels_imports(env):
+    return subprocess.run([py(),'-c','import amni_kernels'],capture_output=True,env=env).returncode==0
+def ensure_amni_kernels(env,install_rust_mode='auto',skip=False):
+    if amni_kernels_imports(env):
+        print('  amni_kernels native extension imports cleanly for this Python — skipping rebuild',flush=True)
+        return True
+    if skip:
+        print('  [skip] --skip-kernels: amni_kernels will not be available (Adam runs with degraded paths)',flush=True)
+        return False
+    py_ver=f'{sys.version_info.major}.{sys.version_info.minor}'
+    print(f'  amni_kernels prebuilt .pyd does not match running Python ({py_ver}) — building from source via maturin',flush=True)
+    print('  this is a one-time ~5-15 min Rust compile + link step',flush=True)
+    cargo=cargo_path()
+    if not cargo:
+        if install_rust_mode=='skip':
+            print('  [WARN] Rust toolchain not found and --install-rust=skip; skipping amni_kernels build',flush=True)
+            print('         Install Rust manually then re-run: https://rustup.rs/',flush=True)
+            return False
+        print('  [auto-install] Rust toolchain not found — installing minimal stable via rustup',flush=True)
+        if platform.system()=='Windows':print('  [note] Windows Rust install needs MSVC build tools (Visual Studio Build Tools 2019+). rustup-init will prompt to install them if missing.',flush=True)
+        try:install_rust(env)
+        except SystemExit:
+            print(f'  [WARN] Rust install failed. Install manually from https://rustup.rs/ then re-run `python install.py`',flush=True)
+            return False
+        except Exception as e:
+            print(f'  [WARN] Rust install failed: {e}',flush=True)
+            print(f'         Install manually from https://rustup.rs/ then re-run `python install.py`',flush=True)
+            return False
+        cargo=cargo_path()
+        if not cargo:
+            print('  [WARN] Rust appears installed but cargo not found on PATH or in ~/.cargo/bin; aborting amni_kernels build',flush=True)
+            return False
+    cargo_dir=str(Path(cargo).parent)
+    env=dict(env);env['PATH']=cargo_dir+os.pathsep+env.get('PATH','')
+    run([py(),'-m','pip','install','maturin>=1.12,<2.0'],env=env)
+    r=run_soft([py(),'-m','maturin','develop','--release'],env=env,cwd=str(ROOT/'amni_kernels'))
+    if r.returncode!=0:
+        print(f'  [WARN] maturin build exited {r.returncode}; proceeding with degraded paths',flush=True)
+        return False
+    if amni_kernels_imports(env):
+        print('  amni_kernels built + installed for this Python ABI',flush=True)
+        return True
+    print('  [WARN] amni_kernels build completed but import still fails — proceeding with degraded paths',flush=True)
+    return False
 def main():
     ap=argparse.ArgumentParser(description='Adam one-shot installer',formatter_class=argparse.RawDescriptionHelpFormatter,epilog=__doc__)
     ap.add_argument('--no-launch',action='store_true',help='Set up but do not start the server')
@@ -101,6 +170,8 @@ def main():
     ap.add_argument('--gpu',choices=['auto','nvidia','amd','cpu'],default='auto',help='GPU vendor for PyTorch (default: auto-detect)')
     ap.add_argument('--cuda',default='cu124',help='CUDA tag for NVIDIA torch (default: cu124)')
     ap.add_argument('--rocm',default='rocm6.2',help='ROCm tag for AMD-Linux torch (default: rocm6.2)')
+    ap.add_argument('--install-rust',choices=['auto','skip'],default='auto',help='Auto-install Rust via rustup when amni_kernels needs to be built (default: auto)')
+    ap.add_argument('--skip-kernels',action='store_true',help='Skip building amni_kernels native extension entirely (Adam runs with degraded paths)')
     args=ap.parse_args()
     env=os.environ.copy()
     if args.home:
@@ -122,21 +193,23 @@ def main():
         print(f'    cd Amni-Ai',flush=True)
         print(f'    python install.py',flush=True)
         sys.exit(2)
-    step('1/5 Creating virtual environment')
+    step('1/6 Creating virtual environment')
     if VENV.exists():print(f'  venv exists at {VENV} — reusing.',flush=True)
     else:run([sys.executable,'-m','venv',str(VENV)])
     run([py(),'-m','pip','install','--upgrade','pip','wheel'],env=env)
-    step('2/5 Detecting GPU and installing vendor-correct PyTorch')
+    step('2/6 Detecting GPU and installing vendor-correct PyTorch')
     vendor=detect_gpu(args.gpu)
     print(f'  GPU vendor: {vendor}  (override with --gpu nvidia|amd|cpu)',flush=True)
     install_torch(vendor,args.cuda,args.rocm,env)
-    step('3/5 Installing Adam')
+    step('3/6 Installing Adam')
     run([py(),'-m','pip','install','-e','.[all]'],env=env)
-    step('4/5 Initializing Adam (config + lessons + optional model download)')
+    step('4/6 Building amni_kernels native extension (if needed for this Python)')
+    ensure_amni_kernels(env,install_rust_mode=args.install_rust,skip=args.skip_kernels)
+    step('5/6 Initializing Adam (config + lessons + optional model download)')
     init_cmd=[py(),'-m','amni.cli','init','--non-interactive']
     if args.skip_model:init_cmd.append('--skip-model')
     run(init_cmd,env=env)
-    step('5/5 Launching Adam')
+    step('6/6 Launching Adam')
     if args.no_launch:
         print(f'  Setup complete. Run: {py()} -m amni.cli serve --port {args.port} --default-persona {args.persona}',flush=True)
         return
