@@ -3,24 +3,27 @@ os.environ.setdefault('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL','1')
 from pathlib import Path
 _ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(_ROOT))
+_IMPORT_ERROR=None
 try:
     from amni.inference.streaming_linear import TensorRegistry,swap_modules,materialize_remaining_params,install_prefetch_chain
     _RUNTIME_AVAILABLE=True
-except ImportError:
+except ImportError as _e:
     TensorRegistry=swap_modules=materialize_remaining_params=install_prefetch_chain=None
     _RUNTIME_AVAILABLE=False
+    _IMPORT_ERROR=f'{type(_e).__name__}: {_e}'
 from accelerate import init_empty_weights
 from transformers import AutoTokenizer,AutoConfig,AutoModelForCausalLM
 class _RuntimeBlobMissing(RuntimeError):
-    """Raised when StreamingChatService is instantiated without the Reffelt runtime blob.
-    Fix: install the runtime via `from amni.runtime import fetch; fetch(license_key='free-noncommercial')`
-    See https://amni-scient.com/amni-ai for the encrypted-blob install path."""
+    """Raised when StreamingChatService can't import the Reffelt source modules.
+    Under iter29 the public clone IS the runtime — this only fires when the source
+    is incomplete or the prebuilt amni_kernels .pyd doesn't match the running Python."""
 _GDN_ARCHS=('Qwen3_5ForCausalLM','Qwen3_5MoeForCausalLM','MiniMaxText01ForCausalLM','Qwen3CoderNextForCausalLM')
 _MULTIMODAL_PREFIXES=('model.language_model.',)
 class StreamingChatService:
     def __init__(self,bake_dir,model_path,budget_mb=4000,device=None,lmhead_full=True,enable_prefetch=True,prefetch_horizon=6,pin_embed=True):
         if not _RUNTIME_AVAILABLE:
-            raise _RuntimeBlobMissing("Reffelt runtime blob not installed. The public Amni-Ai source skeleton ships without the GF(17) streaming backend. To enable chat:\n  python -c \"from amni.runtime import fetch; fetch(license_key='free-noncommercial')\"\n\nSee https://github.com/Amnibro/Amni-Ai/blob/main/docs/INSTALL.md for current install paths. Until the runtime is fetched, only /healthz + /stats + cached lesson-bank LUT hits work.")
+            py_ver=f'{sys.version_info.major}.{sys.version_info.minor}'
+            raise _RuntimeBlobMissing(f"Reffelt source modules failed to import (Python {py_ver}). Public iter29 clone ships the source — this only fires when something's incomplete in your checkout.\n  Underlying ImportError: {_IMPORT_ERROR}\n  Likely cause + fix:\n    - The prebuilt amni_kernels .pyd is Python-version specific (currently cp313-win_amd64). If you're on Python 3.12 or non-Windows, rebuild it:\n        cd amni_kernels\n        pip install maturin\n        maturin develop --release\n    - Or re-run `python install.py` from the repo root to repair the venv.\n  For full diagnostic: `python -c \"from amni.runtime import fetch; fetch()\"`")
         if device is None:
             if torch.cuda.is_available():device='cuda'
             elif hasattr(torch,'xpu') and torch.xpu.is_available():device='xpu'
