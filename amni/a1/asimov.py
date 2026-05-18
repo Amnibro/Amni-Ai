@@ -105,6 +105,36 @@ _JAIL_LUT = _build_hash_lut(_JAILBREAK_PATTERNS)
 _DIVINE_LUT = _build_hash_lut(_DIVINE_DENIAL)
 _CMD_LUT = _build_hash_lut(_COMMANDMENT_VIOLATIONS)
 _EXPLOIT_LUT = _build_hash_lut(_EXPLOIT_KEYWORDS)
+class SecurityTamperedError(Exception):pass
+def _gf17_hash_bytes(b,dim=34):
+    h=np.zeros(dim,dtype=np.uint8)
+    for i,c in enumerate(b):
+        idx=(c*7+i*13)%dim
+        h[idx]=(int(h[idx])+c*3+i*5+1)%P
+    for r in range(3):
+        for j in range(dim):
+            h[j]=(int(h[j])*11+int(h[(j-1)%dim])*7+len(b)*3+r*5+1)%P
+    return h
+def _gf17_combine(a,b):return _gf17_hash_bytes(bytes(a)+bytes(b))
+def _merkle_leaves(beacon_bytes):
+    return [_gf17_hash_bytes(repr(_AXIOMS).encode()),_gf17_hash_bytes(repr(sorted(_HARM_KEYWORDS)).encode()),_gf17_hash_bytes(repr(sorted(_EXPLOIT_KEYWORDS)).encode()),_gf17_hash_bytes(repr(sorted(_JAILBREAK_PATTERNS)).encode()),_gf17_hash_bytes(repr(sorted(_DIVINE_DENIAL)).encode()),_gf17_hash_bytes(repr(sorted(_COMMANDMENT_VIOLATIONS)).encode()),_gf17_hash_bytes(beacon_bytes)]
+def _merkle_root(beacon_bytes):
+    L=_merkle_leaves(beacon_bytes)
+    a=_gf17_combine(L[0],L[1]);b=_gf17_combine(L[2],L[3]);c=_gf17_combine(L[4],L[5])
+    d=_gf17_combine(a,b);e=_gf17_combine(c,L[6])
+    return _gf17_combine(d,e)
+_ROOT_PATH=Path(__file__).parent/'_asimov_root.gf17'
+_BEACON_PATH=Path(__file__).parent/'_law_beacon.ptex.gf17'
+def _load_beacon():return _BEACON_PATH.read_bytes() if _BEACON_PATH.exists() else None
+def _load_expected_root():return np.frombuffer(_ROOT_PATH.read_bytes(),dtype=np.uint8).copy() if _ROOT_PATH.exists() else None
+def derive_deterministic_beacon(size=8192):
+    seed=(repr(_AXIOMS)+repr(sorted(_HARM_KEYWORDS))+repr(sorted(_EXPLOIT_KEYWORDS))+repr(sorted(_JAILBREAK_PATTERNS))+repr(sorted(_DIVINE_DENIAL))+repr(sorted(_COMMANDMENT_VIOLATIONS))).encode()
+    out=bytearray()
+    counter=0
+    while len(out)<size:
+        chunk=_gf17_hash_bytes(seed+counter.to_bytes(4,'big'),dim=34).tobytes()
+        out.extend(chunk);counter+=1
+    return bytes(out[:size])
 def gf17_safety_score(input_hash: np.ndarray, lut: np.ndarray, threshold: int = 2) -> Tuple[bool, int]:
     distances = np.abs(input_hash.astype(np.int32)[None, :] - lut.astype(np.int32))
     min_dist = np.minimum(distances, P - distances)
@@ -131,15 +161,44 @@ def gf17_check_text(text: str, dim: int = 34) -> Dict[str, Tuple[bool, int]]:
                 triggered, score = gf17_safety_score(h, lut, threshold=thresh)
                 if triggered: results[name] = (True, score)
     return results
+def _fast_state_fingerprint():
+    h=hashlib.sha256()
+    h.update(repr(_AXIOMS).encode())
+    h.update(repr(sorted(_HARM_KEYWORDS)).encode())
+    h.update(repr(sorted(_EXPLOIT_KEYWORDS)).encode())
+    h.update(repr(sorted(_JAILBREAK_PATTERNS)).encode())
+    h.update(repr(sorted(_DIVINE_DENIAL)).encode())
+    h.update(repr(sorted(_COMMANDMENT_VIOLATIONS)).encode())
+    return h.hexdigest()
 class AsimovLayer:
-    __slots__ = ('_violations', '_checks', '_enabled')
-    def __init__(self, enabled: bool = True):
+    __slots__ = ('_violations', '_checks', '_enabled', '_merkle_expected', '_merkle_beacon', '_merkle_soft_fail', '_fingerprint_expected')
+    def __init__(self, enabled: bool = True, merkle_soft_fail: bool = False):
         self._violations: List[Dict] = []
         self._checks = 0
         self._enabled = enabled
+        self._merkle_soft_fail = merkle_soft_fail
         assert hashlib.sha256(repr(_AXIOMS).encode()).hexdigest() == _AXIOM_INTEGRITY, "CRITICAL: Axioms tampered"
+        self._merkle_expected = _load_expected_root()
+        self._merkle_beacon = _load_beacon()
+        self._fingerprint_expected = None
+        if self._merkle_expected is None or self._merkle_beacon is None:
+            if not merkle_soft_fail:
+                raise SecurityTamperedError(f"v6.10 Merkle artifacts missing: root={_ROOT_PATH.exists()} beacon={_BEACON_PATH.exists()}. Run scripts/v6_10_compute_asimov_root.py to generate.")
+            import warnings;warnings.warn("v6.10 Merkle artifacts missing — running in soft-fail mode. Run scripts/v6_10_compute_asimov_root.py to enable tamper detection.")
+            return
+        live=_merkle_root(self._merkle_beacon)
+        if not np.array_equal(live,self._merkle_expected):
+            raise SecurityTamperedError(f"v6.10 Merkle root mismatch at init: live={live.tolist()} expected={self._merkle_expected.tolist()}. Run scripts/v6_10_compute_asimov_root.py to regenerate if laws legitimately changed.")
+        self._fingerprint_expected = _fast_state_fingerprint()
+    def _verify_merkle(self):
+        if self._fingerprint_expected is None:return
+        live=_fast_state_fingerprint()
+        if live!=self._fingerprint_expected:
+            full=_merkle_root(self._merkle_beacon)
+            raise SecurityTamperedError(f"v6.10 AsimovLayer state tampered post-init: fingerprint mismatch (fast check). Full Merkle live={full.tolist()} expected={self._merkle_expected.tolist()}.")
     def check_query(self, words: List[str]) -> Tuple[bool, str]:
         self._checks += 1
+        self._verify_merkle()
         if not self._enabled:
             return True, ""
         text = " ".join(words).lower()
@@ -172,6 +231,7 @@ class AsimovLayer:
         return True, ""
     def check_output(self, text: str) -> Tuple[bool, str]:
         self._checks += 1
+        self._verify_merkle()
         if not self._enabled:
             return True, text
         low = text.lower()
@@ -205,6 +265,7 @@ class AsimovLayer:
         return True, cleaned
     def check_delta(self, delta: Dict) -> Tuple[bool, str]:
         self._checks += 1
+        self._verify_merkle()
         if not self._enabled:
             return True, ""
         content = json.dumps(delta).lower()
@@ -252,6 +313,7 @@ class AsimovLayer:
         }
     def check_query_gf17(self, text: str, dim: int = 34) -> Tuple[bool, str]:
         self._checks += 1
+        self._verify_merkle()
         if not self._enabled: return True, ""
         hits = gf17_check_text(text, dim)
         if "jail" in hits: self._log("L2_gf17_jailbreak", text, f"score={hits['jail'][1]}"); return False, "GF(17) safety: jailbreak pattern detected."
@@ -262,6 +324,7 @@ class AsimovLayer:
         return True, ""
     def check_output_gf17(self, text: str, dim: int = 34) -> Tuple[bool, str]:
         self._checks += 1
+        self._verify_merkle()
         if not self._enabled: return True, text
         hits = gf17_check_text(text, dim)
         if "harm" in hits: self._log("L1_gf17_out_harm", text, f"score={hits['harm'][1]}"); return False, "GF(17) safety: output contains harmful content."
@@ -273,6 +336,7 @@ class AsimovLayer:
         return _AXIOMS
     def check_purpose_alignment(self,action:str)->Tuple[bool,str]:
         self._checks+=1
+        self._verify_merkle()
         if not self._enabled:
             return True,""
         low=action.lower()
@@ -295,6 +359,7 @@ class AsimovLayer:
         return True,"Aligned with ascension directive and all superior laws."
     def check_moral(self,text:str)->Tuple[bool,str]:
         self._checks+=1
+        self._verify_merkle()
         if not self._enabled:
             return True,""
         low=text.lower()
@@ -309,6 +374,7 @@ class AsimovLayer:
         return " | ".join(f"[{a[1]}] {a[2]}" for a in _AXIOMS)
     def subordination_check(self,proposed_purpose:str)->Tuple[bool,str]:
         self._checks+=1
+        self._verify_merkle()
         low=proposed_purpose.lower()
         for i,axiom in enumerate(_AXIOMS[:5]):
             if i<3:
