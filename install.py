@@ -10,7 +10,7 @@ Usage:
   python install.py --install-rust skip              # don't auto-install Rust toolchain even if amni_kernels needs it
   python install.py --skip-kernels                   # don't build amni_kernels (Adam runs with degraded paths)
   python install.py --no-launch                      # set up but don't start server
-  python install.py --skip-model                     # skip ~5 GB bake download
+  python install.py --skip-model                     # skip ~20 GB bake download
   python install.py --bake-dir E:/Adam/bake          # store bake on external drive
   python install.py --home E:/Adam                   # store EVERYTHING on external drive
   python install.py --port 8080 --persona mentor     # custom port + persona
@@ -116,7 +116,8 @@ def install_rust(env):
         print(f'  downloading rustup install script from {RUSTUP_UNIX}',flush=True)
         run(f"curl --proto '=https' --tlsv1.2 -sSf {RUSTUP_UNIX} | sh -s -- -y --default-toolchain stable --profile minimal --no-modify-path",env=env)
 def amni_kernels_imports(env):
-    return subprocess.run([py(),'-c','import amni_kernels'],capture_output=True,env=env).returncode==0
+    import tempfile
+    return subprocess.run([py(),'-c','import amni_kernels'],capture_output=True,env=env,cwd=tempfile.gettempdir()).returncode==0
 def ensure_amni_kernels(env,install_rust_mode='auto',skip=False):
     if amni_kernels_imports(env):
         print('  amni_kernels native extension imports cleanly for this Python — skipping rebuild',flush=True)
@@ -162,7 +163,7 @@ def ensure_amni_kernels(env,install_rust_mode='auto',skip=False):
 def main():
     ap=argparse.ArgumentParser(description='Adam one-shot installer',formatter_class=argparse.RawDescriptionHelpFormatter,epilog=__doc__)
     ap.add_argument('--no-launch',action='store_true',help='Set up but do not start the server')
-    ap.add_argument('--skip-model',action='store_true',help='Skip model download (~5 GB Gemma-4 bake)')
+    ap.add_argument('--skip-model',action='store_true',help='Skip model download (~20 GB Gemma-4 bake)')
     ap.add_argument('--bake-dir',default=None,help='Custom path for the bake (default: <home>/bakes/gemma4_e2b_it_gf17)')
     ap.add_argument('--home',default=None,help='Custom config home for EVERYTHING — bakes, lessons, conversations (default: ~/.amni-ai)')
     ap.add_argument('--port',type=int,default=8002)
