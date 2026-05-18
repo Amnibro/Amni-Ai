@@ -21,6 +21,9 @@ def detect_model()->Optional[Path]:
     for p in _candidate_model_paths():
         if p.exists() and (p/'config.json').exists():return p
     return None
+def bake_has_runtime_metadata(bake_dir)->bool:
+    p=Path(bake_dir) if bake_dir else None
+    return bool(p and p.exists() and (p/'config.json').exists() and (p/'tokenizer.json').exists())
 def load_config()->Dict[str,Any]:
     cfg=dict(_DEFAULTS)
     if CONFIG_FILE.exists():
@@ -62,17 +65,20 @@ def download_bake(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     try:from huggingface_hub import snapshot_download
     except ImportError:print('[bootstrap] huggingface_hub not installed. pip install huggingface_hub',flush=True);return None
     repo=cfg.get('hf_bake_repo',DEFAULT_HF_REPO)
-    print(f'[bootstrap] trying HF bake download "{repo}" -> {target} (~5 GB)',flush=True)
+    print(f'[bootstrap] downloading HF bake "{repo}" -> {target} (~20 GB, self-contained GF(17) artifact, one-time)',flush=True)
     target.mkdir(parents=True,exist_ok=True)
     try:
-        snapshot_download(repo_id=repo,local_dir=str(target),local_dir_use_symlinks=False)
+        snapshot_download(repo_id=repo,local_dir=str(target))
         print(f'[bootstrap] bake ready at {target}',flush=True);return target
     except Exception as e:
-        print(f'[bootstrap] HF bake unavailable ({type(e).__name__}: {str(e)[:120]}). Falling back to local-generate.',flush=True)
-    return generate_bake_local(cfg,target,force=force)
+        print(f'[bootstrap] HF bake download failed ({type(e).__name__}: {str(e)[:160]})',flush=True)
+        print(f'[bootstrap] Adam ships as a self-contained GF(17) bake — there is no fallback to upstream Gemma 4 weights for public installs.',flush=True)
+        print(f'[bootstrap] Retry: check network, then re-run `amni init`. If the bake repo "{repo}" is unreachable, file an issue at https://github.com/Amnibro/Amni-Ai/issues',flush=True)
+        return None
 def generate_bake_local(cfg:Dict[str,Any],target:Path,force:bool=False)->Optional[Path]:
-    """Re-encode a public HF base model into a GF(17) bake locally.
-    Requires the encoder chain (amni.compute.reffelt4) and base model download.
+    """DEV-ONLY: re-encode upstream Gemma 4 E2B IT into a GF(17) bake locally.
+    Public install never calls this — the prebuilt HF bake is the only delivery channel.
+    Requires gated HF access to the upstream base model + the encoder chain (amni.compute.reffelt4).
     First-run cost: ~5GB base download + 1-5 min GF(17) re-encode on GPU."""
     import subprocess,sys
     base_repo=cfg.get('hf_base_repo',DEFAULT_BASE_REPO)
@@ -89,6 +95,13 @@ def generate_bake_local(cfg:Dict[str,Any],target:Path,force:bool=False)->Optiona
     if not (target/'manifest.json').exists():print(f'[bootstrap] local bake completed but manifest.json missing at {target}',flush=True);return None
     print(f'[bootstrap] local bake ready at {target}',flush=True);return target
 def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
+    """DEV-ONLY: pull upstream Gemma 4 E2B IT from HF for local re-baking.
+    Public install never calls this — Adam ships as a self-contained GF(17) bake.
+    Only invoke directly when rebuilding the bake from source on a HF-authenticated dev machine."""
+    bake=cfg.get('bake')
+    if bake and bake_has_runtime_metadata(bake) and not force:
+        print(f'[bootstrap] base-model download skipped — prebuilt bake at {bake} already ships tokenizer.json + config.json (sufficient for streaming runtime)',flush=True)
+        return Path(bake)
     target=Path(cfg.get('model') or (CONFIG_DIR/'models'/'gemma-4-E2B-it'))
     if target.exists() and (target/'config.json').exists() and not force:
         print(f'[bootstrap] base model already at {target}',flush=True);return target
@@ -97,8 +110,17 @@ def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     repo=cfg.get('hf_base_repo',DEFAULT_BASE_REPO)
     print(f'[bootstrap] downloading base model from HF "{repo}" -> {target}',flush=True)
     target.mkdir(parents=True,exist_ok=True)
-    try:snapshot_download(repo_id=repo,local_dir=str(target),local_dir_use_symlinks=False,allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*'])
-    except Exception as e:print(f'[bootstrap] base model download failed: {e}',flush=True);return None
+    try:snapshot_download(repo_id=repo,local_dir=str(target),allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*'])
+    except Exception as e:
+        msg=str(e)
+        if '401' in msg or 'gated' in msg.lower() or 'restricted' in msg.lower():
+            print(f'[bootstrap] base model "{repo}" is a GATED HF repo and your machine is not authenticated.',flush=True)
+            print(f'[bootstrap] You usually do NOT need it — the prebuilt bake "{cfg.get("hf_bake_repo",DEFAULT_HF_REPO)}" includes tokenizer + config and is enough to chat.',flush=True)
+            print(f'[bootstrap] If you really want the base weights:  1) accept the license at https://huggingface.co/{repo}   2) `pip install -U huggingface_hub && huggingface-cli login`   3) re-run `amni init`',flush=True)
+            print(f'[bootstrap] Or skip entirely: `python install.py --skip-model` (the bake already supports inference).',flush=True)
+        else:
+            print(f'[bootstrap] base model download failed: {e}',flush=True)
+        return None
     print(f'[bootstrap] base model ready at {target}',flush=True);return target
 def is_first_run()->bool:
     cfg=load_config()

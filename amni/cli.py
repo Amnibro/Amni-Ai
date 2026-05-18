@@ -2,11 +2,13 @@
 Mirrors Amni-Prism's CLI shape so installing both packages gives a coherent toolset."""
 import argparse,sys,os,json,time,webbrowser,threading
 from pathlib import Path
-from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done
+from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done
 def _add_common_adam(p):
     cfg=load_config()
-    p.add_argument('--bake',default=os.environ.get('AMNI_BAKE',cfg.get('bake') or 'E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17'))
-    p.add_argument('--model',default=os.environ.get('AMNI_MODEL',cfg.get('model') or 'E:/Amni-Ai-Models/gemma-4-E2B-it'))
+    default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17')
+    default_model=cfg.get('model') or (cfg.get('bake') if bake_has_runtime_metadata(cfg.get('bake')) else None) or str(CONFIG_DIR/'models'/'gemma-4-E2B-it')
+    p.add_argument('--bake',default=os.environ.get('AMNI_BAKE',default_bake))
+    p.add_argument('--model',default=os.environ.get('AMNI_MODEL',default_model))
     p.add_argument('--lessons',default=cfg.get('lessons') or 'experiences/adam_lessons.npz')
     p.add_argument('--lut-root',default=cfg.get('lut_root') or 'experiences/adam_lut')
 def cmd_init(args):
@@ -16,13 +18,12 @@ def cmd_init(args):
     print(f'Detected bake: {cfg.get("bake") or "(none)"}',flush=True)
     print(f'Detected model: {cfg.get("model") or "(none)"}',flush=True)
     if not args.skip_model and not cfg.get('bake'):
-        if args.non_interactive or _ask('Download Gemma-4 E2B GF(17) bake from HF (~5 GB)?'):
+        if args.non_interactive or _ask('Download Gemma-4 E2B GF(17) bake from HF (~20 GB, one-time)?'):
             b=download_bake(cfg)
             if b:cfg['bake']=str(b)
-    if not args.skip_model and not cfg.get('model'):
-        if args.non_interactive or _ask('Download base Gemma model from HF?'):
-            m=download_base_model(cfg)
-            if m:cfg['model']=str(m)
+    if cfg.get('bake') and bake_has_runtime_metadata(cfg.get('bake')):
+        cfg['model']=str(cfg['bake'])
+        print(f'[init] runtime model dir = bake dir ({cfg["bake"]}) — Adam ships as a self-contained GF(17) artifact; no upstream Gemma 4 download needed.',flush=True)
     ensure_dirs(cfg)
     cfg['first_run_done']=True
     save_config(cfg)

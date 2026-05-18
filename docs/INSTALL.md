@@ -53,13 +53,10 @@ The fastest way to talk to Adam right now.
 ```bash
 git clone https://github.com/Amnibro/Amni-Ai
 cd Amni-Ai
-python -m venv .venv
-.venv/Scripts/activate          # on Linux: source .venv/bin/activate
-pip install -r requirements.txt
-python install.py               # auto-downloads Gemma-4 E2B bake from HuggingFace (~5 GB, one-time)
+python install.py               # auto-downloads Gemma-4 E2B GF(17) bake from HuggingFace (~20 GB, one-time)
 ```
 
-`install.py` handles: venv creation (skipped if you already made one), pip install of dependencies, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:8001/`.
+`install.py` handles **everything**: venv creation, vendor-correct PyTorch (CUDA / ROCm / CPU auto-detect), pip install of dependencies, optional Rust toolchain + amni_kernels native build, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:8002/`. You do **not** need to manually create a venv or `pip install -r requirements.txt` first.
 
 On Windows you can double-click `install.bat` instead of typing the python command. On Mac/Linux: `./install.sh`.
 

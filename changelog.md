@@ -2,6 +2,55 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter39 — Adam ships as self-contained GF(17) bake; no upstream Gemma 4 download for public installs (2026-05-18)
+
+**Trigger:** New-user install failure: `install.py` succeeded on the prebuilt bake `amnibro/gemma-4-E2B-it-gf17` (5 GB, public), then immediately tried to also pull `google/gemma-2-2b-it` and got `401 Cannot access gated repo`. the maintainer's reaction cut to the architectural question: "Shouldn't Adam ship only the baked GF17 version that was pre-built on top of gemma 4 e2b it?" — yes. Public users should never touch upstream Gemma weights.
+
+**Correction to prior changelog draft:** the bake is genuinely re-encoded from Google **Gemma 4 E2B IT** (architecture: `Gemma4ForConditionalGeneration`, model_types `gemma4` / `gemma4_text` / `gemma4_audio` / `gemma4_vision` — multimodal). `DEFAULT_BASE_REPO='google/gemma-2-2b-it'` in `bootstrap.py` is a stale leftover from the Gemma 2 era and was wrong; the public install path now never invokes it, so the stale string is effectively dead.
+
+**Root cause (two bugs stacked):**
+1. `cmd_init` downloaded the base model unconditionally whenever `cfg['model']` was unset — but the prebuilt bake already ships `config.json` + `tokenizer.json` + `generation_config.json` + `chat_template.jinja` + `processor_config.json`, which is *everything* the streaming runtime needs from a "model dir". The base-model download was a leftover from the early dev path where rebaking from upstream was the primary delivery channel.
+2. `_add_common_adam` fell back to hardcoded `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17` / `E:/Amni-Ai-Models/gemma-4-E2B-it` — the maintainer's external-drive paths. On a new user's machine those don't exist, so `AutoTokenizer.from_pretrained('E:/Amni-Ai-Models/gemma-4-E2B-it')` saw a non-existent path, treated it as a repo_id, and threw `Repo id must be in the form 'repo_name' or 'namespace/repo_name'` (the second error in the bug report).
+
+**Fix (architectural pivot — Adam is now a single self-contained artifact):**
+- `bootstrap.py`:
+  - new helper `bake_has_runtime_metadata(bake_dir)` (checks `config.json` + `tokenizer.json` in the bake).
+  - `download_bake` no longer falls back to `generate_bake_local` (which required gated upstream access). On HF bake failure it prints a clean error pointing to the issue tracker.
+  - `download_base_model` and `generate_bake_local` kept as importable for the maintainer's dev rebake workflow but docstrings now flag them DEV-ONLY; the public CLI path never calls them.
+- `cli.py`: `_add_common_adam` defaults derive from `cfg.get('bake')` → `CONFIG_DIR/bakes/...` instead of the maintainer's E: paths. `cmd_init` collapsed: pulls bake only, then sets `cfg['model']=cfg['bake']` so the streaming runtime reads tokenizer + config straight from the bake. No second download, no y/n prompt for base weights.
+
+**Effect for a fresh `git clone → python install.py`:**
+- One HF download: `amnibro/gemma-4-E2B-it-gf17` (5 GB).
+- Zero Google-gated requests, zero 401s, zero need to `huggingface-cli login`.
+- Runtime args resolve: `--bake=<bake-dir>`, `--model=<bake-dir>` (same path).
+
+**Files touched:** `amni/bootstrap.py`, `amni/cli.py`. Originals backed up at `backups/bootstrap.py.v6.8.iter38.bak`, `backups/cli.py.v6.8.iter38.bak`.
+
+**Additional cleanups in the same iter39 pass:**
+
+*Bake size: ~5 GB → ~20 GB.* The on-disk size of the published bake is actually 20 GB (verified via `du -sh E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/`). The "~5 GB" string was a stale estimate from before the audio/vision towers were included. Fixed in `install.py` (docstring + `--skip-model` help text), `amni/bootstrap.py:download_bake` log line, `amni/cli.py:cmd_init` y/n prompt, `docs/INSTALL.md`.
+
+*Deprecated HF arg.* Removed `local_dir_use_symlinks=False` from both `snapshot_download` calls in `amni/bootstrap.py` — huggingface_hub now warns the arg is deprecated and ignored.
+
+*Install command simplified.* `docs/INSTALL.md` and the amni-scient site (`amni-scient-site/amni-ai.html`) previously instructed users to manually create a venv and run `pip install -r requirements.txt` before `python install.py`. Both unnecessary: `install.py` creates the venv itself (step 1/6), installs torch with vendor detection (2/6), pip-installs `-e .[all]` (3/6). New canonical command:
+
+```
+git clone https://github.com/Amnibro/Amni-Ai
+cd Amni-Ai
+python install.py
+```
+
+*Site port: 8001 → 8002.* The site card claimed `localhost:8001` but `install.py` defaults to port 8002.
+
+*Bake-side Apache 2.0 § 4 compliance.* The HF bake repo `amnibro/gemma-4-E2B-it-gf17` only shipped a README.md alongside the weights — when pulled standalone via `snapshot_download`, downstream recipients got the weights without a copy of the Apache 2.0 License (§ 4(a)) or a NOTICE file with the modification disclosure (§ 4(b) + § 4(d)). Closed the gap locally in `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/`:
+  - `LICENSE` — full Apache 2.0 text (copied from `Amni-Ai/LICENSES/apache-2.0.txt`).
+  - `NOTICE` — structured per § 4(b)/4(c)/4(d): upstream source + license, lossless re-encoding modification disclosure (cos=1.0, no fine-tuning, no distillation, no lossy compression — pure storage-format conversion), trademark notice, and explicit separation of the bake's Apache 2.0 weights from the surrounding Adam orchestration code's CC BY-NC 4.0 license.
+  - `README.md` — corrected stale `base_model: google/gemma-2-2b-it` → `google/gemma-4-e2b-it`, dropped the broken `pip install -r requirements.txt` step, added an explicit Apache 2.0 § 4 compliance section.
+
+**Action item the maintainer needs to do manually:** push the updated `LICENSE`, `NOTICE`, and `README.md` from `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` up to `amnibro/gemma-4-E2B-it-gf17` on HuggingFace (`huggingface-cli upload amnibro/gemma-4-E2B-it-gf17 ./LICENSE ./NOTICE ./README.md` from that dir, or via the HF web UI). Until that push, the published HF bake is missing the compliance files.
+
+**Files touched (cleanups):** `install.py`, `amni/bootstrap.py`, `amni/cli.py`, `docs/INSTALL.md`, `amni-scient-site/amni-ai.html`, plus three files in the local bake dir (`LICENSE`, `NOTICE`, `README.md`). Site backup at `backups/amni-scient-amni-ai.html.v6.8.iter38.bak`.
+
 ## v6.8.iter38 — Fully automated install (auto-build amni_kernels, auto-install Rust) (2026-05-18)
 
 **Trigger:** the maintainer — "all of the install should be fully automated." Post-iter37 the install correctly *reported* when amni_kernels couldn't load on a non-cp313 Python, but the fix was still manual (`cd amni_kernels && pip install maturin && maturin develop --release`). For a "git clone → python install.py → working chat" UX, the installer needs to do that build itself, and install Rust first if the user doesn't have it.
