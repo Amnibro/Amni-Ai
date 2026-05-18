@@ -2,6 +2,51 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter38 — Fully automated install (auto-build amni_kernels, auto-install Rust) (2026-05-18)
+
+**Trigger:** Anthony — "all of the install should be fully automated." Post-iter37 the install correctly *reported* when amni_kernels couldn't load on a non-cp313 Python, but the fix was still manual (`cd amni_kernels && pip install maturin && maturin develop --release`). For a "git clone → python install.py → working chat" UX, the installer needs to do that build itself, and install Rust first if the user doesn't have it.
+
+**What iter38 adds to install.py:**
+- New helper `cargo_path()` — searches `PATH` and `~/.cargo/bin` for `cargo`.
+- New helper `install_rust(env)` — Windows: downloads `rustup-init.exe` from `https://win.rustup.rs/x86_64` to TEMP and runs `-y --default-toolchain stable --profile minimal --no-modify-path`. Linux/macOS: pipes `https://sh.rustup.rs` to `sh -s -- -y --default-toolchain stable --profile minimal --no-modify-path`. Minimal profile keeps it small; `--no-modify-path` avoids permanent PATH changes (we prepend `~/.cargo/bin` to the env for this process only).
+- New helper `amni_kernels_imports(env)` — runs `python -c "import amni_kernels"` in the venv and returns whether it imports cleanly.
+- New helper `ensure_amni_kernels(env, install_rust_mode='auto', skip=False)` — the full auto-build flow:
+  1. If amni_kernels already imports → skip.
+  2. If `--skip-kernels` → bail with warning, continue with degraded paths.
+  3. Try `cargo_path()`. If missing and `--install-rust=auto` (default) → install rustup. Windows note: prints a warning that MSVC build tools are required (Visual Studio Build Tools 2019+), rustup-init will prompt to install them.
+  4. With cargo available, `pip install maturin>=1.12,<2.0` in the venv.
+  5. `python -m maturin develop --release` from `amni_kernels/` directory. Maturin builds the Rust extension for the running Python's ABI and copies the resulting `.pyd` / `.so` into the source tree, which the editable `amni-ai` install picks up automatically.
+  6. Re-test `import amni_kernels`. Warn-and-continue if it still fails; many call sites (`amni.compute.gf17_recurrent`, `amni.compute.tmu_engine`, `amni.core.lexicon`) already wrap the import in try/except for graceful degradation.
+- New helper `run_soft(cmd, env=...)` — like `run` but returns the `CompletedProcess` instead of `sys.exit`ing on non-zero. Used for the maturin build so a failure becomes a warn-and-continue rather than aborting the whole install.
+
+**New CLI flags:**
+- `--install-rust auto|skip` (default `auto`) — auto-install Rust toolchain via rustup when amni_kernels needs to build. `skip` warns and proceeds without it.
+- `--skip-kernels` — skip the amni_kernels build step entirely.
+
+**Step count grew from 5 to 6:**
+1/6 venv → 2/6 GPU + torch → **3/6 Adam install** → **4/6 amni_kernels native build (if needed)** → 5/6 init → 6/6 launch.
+
+**Smoke (Anthony's box, Python 3.12.10 + RX 7800 XT):**
+- `cargo_path()` returns `C:\Users\antho\.cargo\bin\cargo.EXE` (Rust already present from prior dev work).
+- `amni_kernels_imports(env)` returns `False` — confirms iter37's friendly ImportError fires on cp313-only .pyd vs running Python 3.12. Detection is correct.
+- Full maturin build path not executed during smoke (5–15 min cold compile); design verified via the helpers.
+
+**What this means for users:**
+- Windows + Python 3.13 (current prebuilt ABI): instant skip, kernels work out of the box.
+- Windows + Python 3.12 / non-Windows: auto-installs Rust if missing, auto-builds amni_kernels via maturin. First install takes an extra 5–15 min for the Rust compile; subsequent installs skip (the new .pyd / .so is now present for that Python ABI).
+- No Rust + no MSVC + no patience: `python install.py --skip-kernels` gets the install through (degraded paths only, no native acceleration).
+
+**Files:**
+- MOD: `install.py` — added `cargo_path`, `install_rust`, `amni_kernels_imports`, `ensure_amni_kernels`, `run_soft`. New step 4/6. New flags `--install-rust`, `--skip-kernels`. Header docstring updated.
+- MOD: `pyproject.toml` — version 6.4.2 → 6.4.3.
+- BACKUP: `backups/install.py.v6.4.2.iter37.bak`.
+
+**Open follow-ups:**
+- Wheel matrix: still worth shipping prebuilt wheels for cp310/3.11/3.12/3.13 × Windows/Linux/macOS so first install is instant for everyone. Auto-build is the safety net, not the headline path.
+- `amni init` bake-download resumability: if the bake stalls mid-download, currently the user re-runs and starts over. Worth a manifest-size sanity check + resume flag.
+
+---
+
 ## v6.8.iter37 — Kill the iter21 "encrypted-blob" stub path that was blocking real users (2026-05-18)
 
 **Trigger:** Discord user MutantRabbit767 successfully ran install.py, downloaded the model, started the server, tried to chat, hit a server-side error pointing them at `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"`, ran that command, and got `NotImplementedError: Runtime fetcher pipeline not yet wired. Build steps (Anthony to do): ...`. Three call sites in the codebase still suggested the iter21 encrypted-blob `fetch()` workflow, but iter29 made the full Reffelt source public under CC BY-NC 4.0 — there is no blob to fetch. The runtime.py stub was never updated to reflect the iter29 reality, leaving users with a broken command at the end of a long install.
