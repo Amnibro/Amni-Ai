@@ -2,6 +2,47 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter40 — GUI installer with user-chosen install path + auto-saved log + one-click "email log to support" (2026-05-18)
+
+**Trigger:** Anthony — "The install path should be determined by users at install. Maybe we need a GUI with debug log posting." The 20 GB bake is a lot to drop on whatever drive `~/.amni-ai/` happens to resolve to (usually a small system SSD on Windows). And the iter39 Discord user had to copy-paste a 620-line PowerShell transcript to share the diagnostic — high friction for both sides.
+
+**New entry point: `installer.py`** (pywebview-based GUI, sits in front of `install.py`):
+- Auto-installs `pywebview>=5` to system Python if missing (~5 MB, one-time). Falls back to printing instructions to use `python install.py` if pywebview install fails (corporate firewall / no pip / etc.).
+- Enumerates local drives with free-space + total via `shutil.disk_usage`. On Windows uses `kernel32.GetLogicalDrives` for the drive-letter bitmask. Default-selects the first non-C: drive with >25 GB free; falls back to first drive with >25 GB free; falls back to drive 0.
+- Form: install drive picker + subfolder text (default `.amni-ai`), GPU vendor (auto-detected, override available), persona, "don't auto-launch server" + "skip amni_kernels build" checkboxes.
+- "Browse…" button opens a native folder picker via `webview.FOLDER_DIALOG`.
+- Free-space hint goes red below 25 GB to discourage installing where the bake won't fit.
+- Click "Start install": GUI spawns `python install.py --home <picked-path> --gpu <picked> --persona <picked> [--no-launch] [--skip-kernels]` as a subprocess and streams `stdout`/`stderr` line-by-line into an in-window console pane via `window.evaluate_js(f'appendLog({json.dumps(line)})')`.
+- Full transcript saves to `<install-dir>/install_log_<timestamp>.txt` (always, success or failure).
+- Post-install actions:
+  - **"Email log to support"** — opens user's default mail client via `mailto:amnibro7@gmail.com` prefilled with subject `Amni-Ai install log [<hostname>]`, body includes platform/Python info + last 30 lines of output + the full log file path with instructions to attach it before sending. (mailto: URLs can't attach files directly, so the body asks the user to attach the saved log manually — workable for support email since the file is right where the body says.)
+  - **"Copy log path"** — `navigator.clipboard.writeText(path)`. For users without a configured desktop mail client, this is the escape hatch: copy path, open Gmail/whatever in browser, paste into a fresh email, attach.
+  - **"Open chat"** — `webbrowser.open('http://127.0.0.1:8002/')`. Shown only on successful install (rc=0).
+- On install failure (rc != 0), the status banner explicitly directs the user to the email button.
+
+**Companion entry points:**
+- `installer.bat` — Windows double-click: checks `where python`, runs `python installer.py`. Errors with a clear message if Python isn't on PATH.
+- `installer.sh` — *nix shebang: prefers `python3`, falls back to `python`, errors clearly if neither is installed.
+
+**Architecture choice — why pywebview vs. tkinter:**
+- Tkinter is stdlib-only but produces a dated 90s-style UI that doesn't match the amni-scient brand and can't easily stream console output with a monospace pane + dark theme without a lot of canvas/text-widget code.
+- pywebview is one ~5 MB dep, uses the system webview (Edge WebView2 on Windows 10/11 — preinstalled since 22H2; WKWebView on macOS; WebKit-GTK on Linux). HTML/CSS/JS frontend, Python `js_api` bridge for events + filesystem ops.
+- Trade-off accepted: pywebview must be available before the install venv exists (chicken/egg solved by pip-installing to system Python in `ensure_pywebview()`). For users behind corporate firewalls who can't pip from system Python, the headless `install.py` is still the no-deps fallback.
+
+**Why mailto: instead of a backend POST relay:**
+- Anthony specified "collect to a file and email to amnibro7@gmail.com." amni-scient.com is a static GitHub Pages site (no backend) so a POST endpoint would need new infrastructure (Cloudflare Worker / Formspree / etc.) with separate auth and rate-limiting.
+- mailto: is zero-infra and gives the user editorial control over what gets sent — they see the body before hitting send.
+- Trade-off: mailto: URL size limits (~2-8 KB depending on mail client) mean only the last 30 lines of log fit inline. The full log goes via manual attach, which the body explicitly asks for. Acceptable for a low-volume support channel.
+
+**Two-stage install design honored Anthony's spec:**
+- Stage 1 = GUI: option collection only, no actual install work.
+- Stage 2 = `install.py`: all the heavy lifting (venv, torch, kernels build, bake download, server launch) — unchanged from iter39 except for being invoked with explicit `--home` from stage 1.
+- Side benefit: stage 2 is still independently runnable via `python install.py` for headless / scripted installs.
+
+**INSTALL.md updated** with Option 1 (GUI) / Option 2 (CLI) split. GUI option recommended for first-time users; CLI option kept for power-users and scripted installs.
+
+**Files added:** `installer.py`, `installer.bat`, `installer.sh`. **Files modified:** `docs/INSTALL.md`, `changelog.md`.
+
 ## v6.8.iter39 — Adam ships as self-contained GF(17) bake; no upstream Gemma 4 download for public installs (2026-05-18)
 
 **Trigger:** New-user install failure: `install.py` succeeded on the prebuilt bake `amnibro/gemma-4-E2B-it-gf17` (5 GB, public), then immediately tried to also pull `google/gemma-2-2b-it` and got `401 Cannot access gated repo`. Anthony's reaction cut to the architectural question: "Shouldn't Adam ship only the baked GF17 version that was pre-built on top of gemma 4 e2b it?" — yes. Public users should never touch upstream Gemma weights.

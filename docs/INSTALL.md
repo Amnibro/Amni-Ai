@@ -48,7 +48,28 @@ The drive needs to be mounted before launching the server each time. Performance
 
 ## Path A — Standalone (recommended)
 
-The fastest way to talk to Adam right now.
+The fastest way to talk to Adam right now. **Two installer options — pick one:**
+
+### Option 1: GUI installer (easiest)
+
+```bash
+git clone https://github.com/Amnibro/Amni-Ai
+cd Amni-Ai
+python installer.py
+```
+
+Opens a window where you pick:
+- **Install drive** (with free space shown per drive — important because the bake is ~20 GB; pick a drive with >25 GB free)
+- **GPU vendor** (auto-detected, override available)
+- **Persona**, launch options
+
+Click "Start install" and the GUI streams every step's output to a console pane. The full install transcript auto-saves to `<install-dir>/install_log_<timestamp>.txt`. If anything fails, click **"Email log to support"** — it opens your mail client prefilled to `amnibro7@gmail.com` with platform info and the last 30 lines of output; attach the saved log file before sending.
+
+On Windows you can double-click `installer.bat` instead of typing the python command. On Mac/Linux: `./installer.sh`.
+
+The GUI installer is a thin pywebview wrapper (~5 MB, auto-installed on first run) that orchestrates `install.py` under the hood with the options you picked.
+
+### Option 2: Headless CLI
 
 ```bash
 git clone https://github.com/Amnibro/Amni-Ai
@@ -57,6 +78,8 @@ python install.py               # auto-downloads Gemma-4 E2B GF(17) bake from Hu
 ```
 
 `install.py` handles **everything**: venv creation, vendor-correct PyTorch (CUDA / ROCm / CPU auto-detect), pip install of dependencies, optional Rust toolchain + amni_kernels native build, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:8002/`. You do **not** need to manually create a venv or `pip install -r requirements.txt` first.
+
+Headless install location can be picked with `--home <path>` (e.g. `--home D:/Adam`). Without it, the bake goes to `~/.amni-ai/` (your user-profile drive, usually C: on Windows — fine if you have >25 GB free there, but if you're on a small system SSD, the GUI installer is the easier way to put the bake elsewhere).
 
 On Windows you can double-click `install.bat` instead of typing the python command. On Mac/Linux: `./install.sh`.
 
