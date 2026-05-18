@@ -32,7 +32,7 @@ def _convert_to_gf17_planes(intermediate_dir,out_dir):
     print(f'  done in {time.time()-t0:.1f}s',flush=True)
 def _copy_tokenizer_files(src,out):
     out=Path(out);src=Path(src)
-    files=['tokenizer.json','tokenizer_config.json','vocab.json','merges.txt','special_tokens_map.json','config.json','generation_config.json']
+    files=['tokenizer.json','tokenizer_config.json','vocab.json','merges.txt','special_tokens_map.json','config.json','generation_config.json','chat_template.jinja','processor_config.json','preprocessor_config.json']
     n=0
     for f in files:
         s=src/f
