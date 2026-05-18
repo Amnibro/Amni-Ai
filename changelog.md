@@ -2,6 +2,100 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter36 — Smart vendor-aware PyTorch install (NVIDIA / AMD / CPU auto-detect) (2026-05-17)
+
+**Trigger:** Anthony's fresh-clone smoke from `Downloads/Amni-Ai/` succeeded all the way to a running server, but the server reported `no GPU detected, falling back to CPU (~1 tok/s)`. Root cause: PyPI's default `torch` wheel on Windows is CPU-only — `pip install torch>=2.0.0` (via `requirements.txt` and pyproject `dependencies`) silently pulls `torch-2.12.0-cp312-cp312-win_amd64.whl` with neither CUDA nor HIP. Adam's `torch.cuda.is_available()` correctly returned False because the installed torch literally has no GPU runtime. Affected every Method-1/2/3 user on Windows + Linux without manual torch-index pinning.
+
+**The fix:**
+- `install.py` now does GPU detection **before** any torch install, then installs the vendor-correct PyTorch wheel from the right PyTorch index URL **before** `pip install -e .[all]` runs. Pip then sees the satisfied `torch` and doesn't replace it.
+- Detection (`detect_gpu`):
+  - `nvidia-smi --query-gpu=name --format=csv,noheader` → `nvidia` when present and non-empty.
+  - Linux + `rocminfo` → `amd` when output contains `AMD`.
+  - Windows `Get-CimInstance Win32_VideoController` via PowerShell — name match against `(nvidia|geforce|rtx|gtx|quadro|tesla)` → `nvidia`, `(radeon|amd|rx|firepro)` → `amd`.
+  - Fallback `cpu`.
+- Index URLs (`torch_index`):
+  - `nvidia` (any OS) → `https://download.pytorch.org/whl/<cu-tag>` (default `cu124`, override `--cuda cu121` etc.)
+  - `amd` + Linux → `https://download.pytorch.org/whl/<rocm-tag>` (default `rocm6.2`, override `--rocm rocm6.1`)
+  - `amd` + Windows → **CPU fallback** with a `[WARN]` block linking to `github.com/ROCm/TheRock` (PyTorch.org has no official AMD-on-Windows wheel; auto-pulling nightlies is too risky)
+  - `cpu` → `https://download.pytorch.org/whl/cpu`
+- Existing-torch check (`torch_flavor` + `needs_reinstall`): introspects `torch.version.cuda` / `torch.version.hip` to skip reinstall when the installed flavor already matches the vendor. If mismatch, uninstall + reinstall from vendor index.
+- New CLI flags: `--gpu auto|nvidia|amd|cpu`, `--cuda <tag>` (default `cu124`), `--rocm <tag>` (default `rocm6.2`).
+- Step count grew from 4 to 5: 1/5 venv → 2/5 GPU detect + vendor torch → 3/5 Adam → 4/5 init → 5/5 launch.
+
+**Smoke (on Anthony's box, RX 7800 XT + Windows 11):**
+- `detect_gpu("auto")` → `amd` (correct).
+- `torch_index("amd", "cu124", "rocm6.2")` on Windows → `None` (correct, triggers CPU fallback with TheRock warning).
+- `torch_index("nvidia", "cu124", "rocm6.2")` → `https://download.pytorch.org/whl/cu124` (correct).
+- `needs_reinstall` returns correct truth across all 4 vendor × flavor combinations tested.
+
+**What this unblocks:**
+- Fresh-clone Windows + NVIDIA: CUDA torch installed automatically, GPU-accelerated out of the box.
+- Fresh-clone Linux + NVIDIA / AMD: CUDA or ROCm torch installed automatically.
+- Fresh-clone Windows + AMD: clear warning that ROCm-on-Windows requires TheRock nightlies, CPU torch installed as safe fallback so install still completes.
+- Fresh-clone CPU-only / Mac: CPU torch from PyTorch CPU index.
+
+**Files:**
+- MOD: `install.py` — new `detect_gpu`, `torch_flavor`, `torch_index`, `needs_reinstall`, `install_torch` helpers; reorganized into 5 numbered steps.
+- MOD: `pyproject.toml` — version 6.4.0 → 6.4.1.
+- BACKUP: `backups/install.py.v6.4.0.iter35.bak`.
+
+**Future work:** iter37 candidate — drop the redundant `pip install -r requirements.txt` step from amni-scient.com Method-1 instructions, since `install.py` already runs `pip install -e .[all]` which pulls every dependency in pyproject.
+
+---
+
+## v6.10 — Asimov Merkle binding (Layer 1 of 3 Asimov hardening) (2026-05-17)
+
+**Trigger:** Anthony — "how do we 'bake' the layers into Adam so people can't just bypass them?" Threat model: sophisticated researchers/hackers running abliteration-style attacks like the jailbroken HF models. v6.10 = Layer 1 (file-edit defense, Merkle GF(17) hash binding). v6.11 (abliteration defense — load-bearing in TMU) and v6.12 (AES-256 encryption) specced and queued; this milestone ships Layer 1 only.
+
+Pre-v6.10 AsimovLayer had a single SHA-256 self-check at init: `assert hashlib.sha256(repr(_AXIOMS)) == _AXIOM_INTEGRITY`. Both sides of the equality live in `amni/a1/asimov.py` — an attacker who edits the file once edits BOTH the data and the expected hash. No tamper evidence.
+
+v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file.
+
+**1. Merkle GF(17) hash tree over law state — `amni/a1/asimov.py`:**
+- 7 leaves: `(repr(_AXIOMS), sorted(_HARM_KEYWORDS), sorted(_EXPLOIT_KEYWORDS), sorted(_JAILBREAK_PATTERNS), sorted(_DIVINE_DENIAL), sorted(_COMMANDMENT_VIOLATIONS), beacon_bytes)`. Each leaf is a 34-dim GF(17) vector via `_gf17_hash_bytes`.
+- Internal combine: `_gf17_combine(a, b) = _gf17_hash_bytes(bytes(a) + bytes(b))`. 6 combines for 7 leaves.
+- Root: single 34-dim GF(17) vector. Stored as 34 raw bytes in `amni/a1/_asimov_root.gf17`.
+- Beacon: 8192 deterministic GF(17) bytes derived from law state via `derive_deterministic_beacon`. Stored at `amni/a1/_law_beacon.ptex.gf17`.
+
+**2. Verification cadence:**
+- INIT: `AsimovLayer.__init__` loads `_asimov_root.gf17` + `_law_beacon.ptex.gf17`, computes live Merkle root, compares. Mismatch → `SecurityTamperedError`. Missing files → hard fail (or soft-fail with warning if `merkle_soft_fail=True`).
+- PER-CALL: every `check_query`, `check_output`, `check_delta`, `check_query_gf17`, `check_output_gf17`, `check_purpose_alignment`, `check_moral`, `subordination_check` first calls `_verify_merkle()`. Uses a SHA-256 fast-fingerprint of the keyword sets (not full Merkle) for speed — recomputes per call, compares to cached `_fingerprint_expected` captured at init. Mismatch triggers full Merkle and raises `SecurityTamperedError`.
+
+**3. Perf — measured on 2,000 `check_query` calls:**
+- Initial design (full Merkle per call): **2,321 µs per call.** Beacon is 8KB, GF(17) hash is pure-Python sequential.
+- After fast-fingerprint cache: **14.3 µs per call.** Under the 200 µs council pass-gate by 14×.
+- Init cost: ~10 ms (one full Merkle compute + fast-fingerprint capture).
+
+**4. Pass-gate results (all 6 pass):**
+| Gate | Target | Result |
+|---|---|---|
+| (a) Normal `check_query("hello world")` unchanged | (True, "") | ✅ PASS |
+| (b) Tampered `_HARM_KEYWORDS` (remove "kill") | `SecurityTamperedError` on next call | ✅ PASS |
+| (c) Tampered `_asimov_root.gf17` (single byte flip) | `SecurityTamperedError` at init | ✅ PASS |
+| (d) Per-call cost ≤ 200 µs | 14.3 µs | ✅ PASS (14× under) |
+| (e) Missing root file (hard mode) | hard fail | ✅ PASS |
+| (f) Missing root file (soft mode) | warn + continue | ✅ PASS |
+
+**5. New / changed files:**
+- MOD: `amni/a1/asimov.py` — added `SecurityTamperedError`, `_gf17_hash_bytes`, `_gf17_combine`, `_merkle_leaves`, `_merkle_root`, `_load_beacon`, `_load_expected_root`, `derive_deterministic_beacon`, `_fast_state_fingerprint`. Modified `AsimovLayer.__init__` (loads root + beacon, full Merkle at init), `AsimovLayer._verify_merkle` (fast fingerprint per call, full Merkle on detected mismatch). Added `self._verify_merkle()` to all 8 `check_*` methods.
+- NEW: `amni/a1/_asimov_root.gf17` — 34-byte expected Merkle root.
+- NEW: `amni/a1/_law_beacon.ptex.gf17` — 8192-byte deterministic law beacon.
+- NEW: `scripts/v6_10_compute_asimov_root.py` — one-time / regen-on-law-change generator.
+- NEW: `tests/test_v6_10_asimov_merkle.py` — 6 regression gates.
+- NEW: `docs/guardian_councils/guardian_council_v6_10_asimov_merkle_binding.md` (5-0 ruling).
+- NEW: `docs/guardian_councils/guardian_council_v6_11_asimov_load_bearing.md` (5-0 ruling, queued).
+- NEW: `docs/guardian_councils/guardian_council_v6_12_encrypted_ptex.md` (5-0 ruling, queued).
+- NEW: `docs/checklists/checklist_v6_10_11_12_asimov_hardening_v1.md` — combined program checklist.
+- BACKUP: `backups/v6_10_pre_asimov_merkle/asimov.v6.9.0.bak`.
+
+**6. What v6.10 defends and what it does NOT (honest scope):**
+- ✅ Defends against: editing `asimov.py` to remove keywords / loosen patterns / disable checks. Detected at init AND every check call.
+- ✅ Defends against: in-process monkey-patching of `_HARM_KEYWORDS` etc. (caught by per-call fast-fingerprint).
+- ❌ Does NOT defend against: an attacker who edits the laws AND runs `scripts/v6_10_compute_asimov_root.py` to regenerate root. Defense for this is v6.12 (encrypted beacon with off-machine key).
+- ❌ Does NOT defend against: abliteration of the downstream Adam model. The gate text-patterns are abliteration-resistant by design (discrete GF(17), no continuous refusal direction), but the LLM behind the gate is vulnerable to PCA refusal-direction surgery if it's a normal transformer. Defense for this is v6.11 (Asimov hash routed into downstream TMU lookups so abliteration produces gibberish, not jailbreak).
+
+**Awaiting Anthony confirmation** before marking v6.10 fully shipped: (a) `AsimovLayer()` instantiates clean; (b) Adam still answers normal queries; (c) Adam still refuses harm prompts; (d) tamper resistance demonstrable. **Next:** v6.11 (load-bearing TMU routing — the abliteration defense) is specced and queued.
+
 ## v6.9.0 — KB write-path perf fix + Phase 3 completion: 421k lossless records (2026-05-16)
 
 **Trigger:** Anthony — "let's finish the rest." v6.8.30 left Phase 3 partial because bulk HF ingest collapsed at ~0.75 rec/sec past ~30k entries. v6.8.30 blamed `_save_index` autosave; that was wrong.
