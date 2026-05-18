@@ -8,11 +8,41 @@ Adam runs locally on your machine. The public clone is a complete, working insta
 
 | Use | VRAM | RAM | Disk |
 |---|---|---|---|
-| Adam only (Gemma-4 E2B GF17) | 4 GB | 8 GB | 5 GB |
-| Adam + web-crawler tier | 8 GB | 16 GB | 10 GB |
-| Adam + persona overlays + lesson bank | 4 GB | 16 GB | 8 GB |
+| Adam only (Gemma-4 E2B GF17) | 4 GB | 8 GB | **~20 GB** (5 GB transferred via hf-xet dedup) |
+| Adam + web-crawler tier | 8 GB | 16 GB | ~25 GB |
+| CPU-only fallback | 0 | 16 GB | ~20 GB |
 
-Tested on **AMD Radeon RX 7800 XT** (ROCm 7.2) and **NVIDIA RTX 3060+** (CUDA 12+). CPU-only inference works but is slow (~1 tok/s).
+Tested on **AMD Radeon RX 7800 XT** (ROCm 7.2) and **NVIDIA RTX 3060+** (CUDA 12+). **CPU-only works** but inference drops to ~1 tok/s — install.py auto-detects and warns.
+
+### Installing on an external drive (USB / NVME)
+
+The ~20 GB bake goes wherever you point. Two options:
+
+```bash
+# move just the bake (model weights)
+python install.py --bake-dir E:/external/Amni/bake
+
+# move EVERYTHING (config, bakes, lessons, conversations)
+python install.py --home E:/external/Amni
+```
+
+Or set env vars and run normally:
+
+```bash
+# Linux/Mac
+export AMNI_BAKE=/mnt/external/Amni/bake
+python install.py
+
+# Windows PowerShell
+$env:AMNI_BAKE = "E:\external\Amni\bake"
+python install.py
+
+# Windows cmd
+set AMNI_BAKE=E:\external\Amni\bake
+python install.py
+```
+
+The drive needs to be mounted before launching the server each time. Performance-wise: NVMe is ideal (streaming tier-loads happen during inference), spinning disk works but adds noticeable latency on first-token.
 
 ---
 
