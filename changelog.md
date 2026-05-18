@@ -2,6 +2,26 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter40-hotfix — chat_template.jinja was missing from the bake; streaming chat now reads the sidecar (2026-05-18)
+
+**Trigger:** Discord user successfully pulled iter40, got Adam running, then every chat returned `[stream error: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed!]`. The error fires from `tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)` in `amni/inference/streaming_chat.py:187`.
+
+**Root cause:** `scripts/adam1_bake.py:_copy_tokenizer_files` shipped a hardcoded list of files to copy from the upstream model dir into the bake — but the list pre-dated the Gemma 3+ convention where the chat template is a sidecar file (`chat_template.jinja`) instead of an embedded key inside `tokenizer_config.json`. Gemma 4 E2B IT uses the sidecar pattern. The bake had `tokenizer.json` + `tokenizer_config.json` + `config.json` + `generation_config.json` but NOT `chat_template.jinja` or `processor_config.json`, so `AutoTokenizer.from_pretrained(bake_dir)` loaded the tokenizer cleanly but with `tok.chat_template == None`.
+
+**Fix (two-layer):**
+1. **`scripts/adam1_bake.py`:** added `chat_template.jinja`, `processor_config.json`, and `preprocessor_config.json` to the file-copy whitelist. Future bakes will include them automatically.
+2. **`amni/inference/streaming_chat.py`:** defense in depth — after `AutoTokenizer.from_pretrained()`, if `self.tok.chat_template` is None/missing, the service now looks for `chat_template.jinja` next to the tokenizer on disk and loads it manually into `self.tok.chat_template`. Logs whether it found one. If even the sidecar is absent, warns clearly with the exact `snapshot_download` recovery command instead of blowing up later inside `apply_chat_template`.
+
+**Bake repo updated locally** at `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` — both files copied from `E:/Amni-Ai-Models/gemma-4-E2B-it/`. **Still needs HF push** to `amnibro/gemma-4-E2B-it-gf17` so existing downstream users can `snapshot_download(... allow_patterns=['chat_template.jinja','processor_config.json'])` to repair their bake without re-downloading the full 20 GB.
+
+**Existing local installs (the Discord user):** the inference-side sidecar load means once they `git pull && pip install -e .` (or just `git pull` if the venv is editable-installed), restart `amni serve`, chat will fire — *if* their bake dir has `chat_template.jinja`. If their bake is from before the HF re-upload, the file is missing and the warning will tell them to pull it. After the HF re-upload, the recovery is:
+```python
+from huggingface_hub import snapshot_download
+snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\models\bakes\gemma4_e2b_it_gf17', allow_patterns=['chat_template.jinja','processor_config.json'])
+```
+
+**Files modified:** `scripts/adam1_bake.py`, `amni/inference/streaming_chat.py`, `changelog.md`. Plus the actual `chat_template.jinja` + `processor_config.json` files in the HF bake repo (uploaded out-of-band).
+
 ## v6.8.iter40 — GUI installer with user-chosen install path + auto-saved log + one-click "email log to support" (2026-05-18)
 
 **Trigger:** the maintainer — "The install path should be determined by users at install. Maybe we need a GUI with debug log posting." The 20 GB bake is a lot to drop on whatever drive `~/.amni-ai/` happens to resolve to (usually a small system SSD on Windows). And the iter39 Discord user had to copy-paste a 620-line PowerShell transcript to share the diagnostic — high friction for both sides.
