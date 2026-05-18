@@ -2,6 +2,51 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter37 — Kill the iter21 "encrypted-blob" stub path that was blocking real users (2026-05-18)
+
+**Trigger:** Discord user MutantRabbit767 successfully ran install.py, downloaded the model, started the server, tried to chat, hit a server-side error pointing them at `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"`, ran that command, and got `NotImplementedError: Runtime fetcher pipeline not yet wired. Build steps (the maintainer to do): ...`. Three call sites in the codebase still suggested the iter21 encrypted-blob `fetch()` workflow, but iter29 made the full Reffelt source public under CC BY-NC 4.0 — there is no blob to fetch. The runtime.py stub was never updated to reflect the iter29 reality, leaving users with a broken command at the end of a long install.
+
+**Root cause analysis (the chain):**
+1. Server boot called `StreamingChatService(bake_dir, model_path)` which can fail for several reasons (incomplete bake, model architecture mismatch, prebuilt `amni_kernels` .pyd compiled for the wrong Python ABI — currently cp313 only).
+2. Adam caught the exception, set `self.svc = None`, stored the real failure in `self.runtime_error`, but the user-facing chat error message at `amni/adam.py:81` ignored `runtime_error` and instead suggested `from amni.runtime import fetch; fetch(...)`.
+3. `amni/inference/streaming_chat.py:23` raised `_RuntimeBlobMissing` with the same misleading fetch-it message whenever `streaming_linear` failed to import.
+4. `amni/runtime.py:fetch()` raised `NotImplementedError` with a TO:DO comment addressed to the maintainer — visible end of the road for the user.
+
+**Fixes:**
+- `amni/runtime.py` — full rewrite for iter29 public-source mode.
+  - `is_ready()` now probes whether `amni.compute.reffelt4` / `amni.compute.ternary5` / `amni.inference.streaming_linear` import cleanly. Under iter29 the public clone IS the runtime, so "ready" = "source modules import".
+  - `fetch(license_key=..., force=..., verbose=...)` is now a no-op success path: when source modules import, it prints `[runtime] Adam runtime is ready (iter29 public-source mode — no fetch needed)` plus per-module status and returns. When imports fail, it raises `RuntimeNotReadyError` with the actual underlying ImportError, the running Python version, and a 3-step fix (re-run install.py / rebuild amni_kernels via maturin / file an issue with `status()` output).
+  - `status()` exposes a structured diagnostic (ready, mode, Python version, per-module import state, first_error, runtime_dir). The doc string at the top of the file explains the iter29 history so future-Claude doesn't reintroduce the encrypted-blob assumption.
+- `amni/adam.py:80-83` — streaming-chat error message now surfaces `self.runtime_error` (the real reason svc is None at boot) instead of suggesting `fetch()`. Mentions the most common root cause (cp313-only prebuilt .pyd) and the maturin rebuild recipe.
+- `amni/inference/streaming_chat.py:6-23` — captures the actual `ImportError` into `_IMPORT_ERROR`, surfaces it in the `_RuntimeBlobMissing` message along with the running Python version and the maturin rebuild instructions. No more "fetch the blob" misdirection.
+- `amni_kernels/__init__.py` — wrap the `from .amni_kernels import *` line in try/except. On ABI mismatch, raise a custom `ImportError` that reports the running Python version and explains how to rebuild from source via maturin. The original "ModuleNotFoundError: No module named 'amni_kernels.amni_kernels'" was technically true but useless to users.
+
+**Smoke (on the maintainer's box, Python 3.12.10):**
+- `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"` — MutantRabbit's exact command — now prints:
+  ```
+  [runtime] Adam runtime is ready (iter29 public-source mode — no fetch needed).
+  [runtime] python=3.12.10  expected_version=v6.8
+  [runtime]   amni.compute.reffelt4: ok
+  [runtime]   amni.compute.ternary5: ok
+  [runtime]   amni.inference.streaming_linear: ok
+  ```
+  Returns `{'ready': True, ...}`. No more NotImplementedError.
+- `python -c "from amni.runtime import status;import json;print(json.dumps(status(),indent=2))"` — full structured diagnostic, suitable for issue reports.
+
+**Files:**
+- MOD: `amni/runtime.py` — replaced encrypted-blob stub with iter29 compatibility shim (45 lines vs prior ~45, similar size).
+- MOD: `amni/adam.py` — line 80-83 error message.
+- MOD: `amni/inference/streaming_chat.py` — lines 6-23 import-guard + error message.
+- MOD: `amni_kernels/__init__.py` — graceful ABI-mismatch error.
+- MOD: `pyproject.toml` — version 6.4.1 → 6.4.2.
+- BACKUP: `backups/runtime.py.v6.4.1.iter36.bak`, `backups/adam.py.v6.4.1.iter36.bak`, `backups/streaming_chat.py.v6.4.1.iter36.bak`, `backups/amni_kernels_init.py.v6.4.1.iter36.bak`.
+
+**Open follow-ups (iter38+):**
+- The prebuilt `amni_kernels` .pyd is cp313-win_amd64 only. Need to either (a) build wheels for cp310/3.11/3.12/3.13 × Windows/Linux/macOS and ship them, or (b) have install.py auto-detect Python version and rebuild via maturin when no matching .pyd is found. (b) is simpler — `maturin develop --release` from `amni_kernels/` works on any platform with a Rust toolchain.
+- Likely some users hit the chat error because their bake download stalled at 2.5 GB instead of completing to ~20 GB. Worth adding a manifest-size sanity check in `amni init` so partial bakes are detected before server boot.
+
+---
+
 ## v6.8.iter36 — Smart vendor-aware PyTorch install (NVIDIA / AMD / CPU auto-detect) (2026-05-17)
 
 **Trigger:** the maintainer's fresh-clone smoke from `Downloads/Amni-Ai/` succeeded all the way to a running server, but the server reported `no GPU detected, falling back to CPU (~1 tok/s)`. Root cause: PyPI's default `torch` wheel on Windows is CPU-only — `pip install torch>=2.0.0` (via `requirements.txt` and pyproject `dependencies`) silently pulls `torch-2.12.0-cp312-cp312-win_amd64.whl` with neither CUDA nor HIP. Adam's `torch.cuda.is_available()` correctly returned False because the installed torch literally has no GPU runtime. Affected every Method-1/2/3 user on Windows + Linux without manual torch-index pinning.

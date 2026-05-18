@@ -78,7 +78,8 @@ class Adam:
             for chunk in [ans[i:i+24] for i in range(0,len(ans),24)]:yield chunk
             return
         if self.svc is None:
-            msg=f'[Adam runtime not installed — chat generation requires the Reffelt runtime blob. Run `python -c "from amni.runtime import fetch; fetch(license_key=\'free-noncommercial\')"` then restart the server. See https://github.com/Amnibro/Amni-Ai/blob/main/docs/INSTALL.md.]'
+            why=(self.runtime_error or 'StreamingChatService was None at server boot — check the server logs for the underlying exception')[:400]
+            msg=f'[Adam streaming chat unavailable — the GF(17) backend failed to initialize at boot. Reason: {why}. Diagnostic: `python -c "from amni.runtime import fetch; fetch()"`. Most common cause: prebuilt amni_kernels .pyd is Python-version-specific (cp313 currently). Rebuild via `cd amni_kernels && pip install maturin && maturin develop --release`, then restart the server.]'
             for chunk in [msg[i:i+48] for i in range(0,len(msg),48)]:yield chunk
             return
         try:

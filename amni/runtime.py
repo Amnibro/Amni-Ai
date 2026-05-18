@@ -1,44 +1,56 @@
-"""Reffelt runtime fetcher — first-launch installer for the encrypted GF(17) engine.
-The public GitHub repo intentionally omits the Reffelt internals (amni.compute, amni.core,
-amni.training, amni.model, amni_kernels). On first launch, this module fetches an encrypted
-blob from example.com that contains the compiled Rust kernels + Python decode/encode
-helpers. The blob is validated by signature, decrypted, and installed into ~/.amni_runtime/.
-Without the blob, importing inference will raise RuntimeNotReadyError with a fix-up command."""
-import os,sys,hashlib,json
+"""Reffelt runtime — iter29 public-source compatibility shim.
+Pre-iter29 (iter21 era) this module downloaded an encrypted .reffelt.enc blob from
+example.com on first launch. Under iter29 the full Reffelt source ships in the
+public git clone under CC BY-NC 4.0, so there is nothing to fetch — the public clone
+IS the runtime. This module is kept so that older error messages and tutorials that
+say `from amni.runtime import fetch; fetch(license_key='...')` still work and report
+honestly instead of raising NotImplementedError.
+
+Compatibility surface (all callable but no-op when public source is importable):
+  is_ready()        -> bool   True when amni.compute.reffelt4 is importable.
+  status()          -> dict   Inspectable state for diagnostics.
+  fetch(...)        -> dict   Returns status() on success, raises RuntimeNotReadyError with
+                              the underlying ImportError if the public source is broken.
+  load()            -> None   No-op when modules are importable. Raises with diagnostic if not.
+  require_runtime() -> None   Guard for callers that depend on Reffelt internals."""
+import os,sys,json
 from pathlib import Path
 from typing import Optional,Dict,Any
-REMOTE_BLOB_URL=os.environ.get('AMNI_RUNTIME_URL','https://example.com/adam/runtime/latest.reffelt.enc')
-REMOTE_SIG_URL=os.environ.get('AMNI_RUNTIME_SIG_URL','https://example.com/adam/runtime/latest.reffelt.sig')
 RUNTIME_DIR=Path(os.environ.get('AMNI_RUNTIME_DIR',str(Path.home()/'.amni_runtime')))
 EXPECTED_VERSION=os.environ.get('AMNI_RUNTIME_VERSION','v6.8')
+_PROBE_MODULES=('amni.compute.reffelt4','amni.compute.ternary5','amni.inference.streaming_linear')
 class RuntimeNotReadyError(RuntimeError):
-    """Raised when Adam's Reffelt runtime blob has not been fetched + installed."""
-def _blob_path()->Path:return RUNTIME_DIR/f'{EXPECTED_VERSION}.reffelt.enc'
-def _sig_path()->Path:return RUNTIME_DIR/f'{EXPECTED_VERSION}.reffelt.sig'
-def _manifest_path()->Path:return RUNTIME_DIR/'manifest.json'
-def is_ready()->bool:
-    return _blob_path().exists() and _blob_path().stat().st_size>0 and _manifest_path().exists()
-def status()->Dict[str,Any]:
-    out={'ready':is_ready(),'blob_path':str(_blob_path()),'sig_path':str(_sig_path()),'manifest_path':str(_manifest_path()),'remote_url':REMOTE_BLOB_URL,'expected_version':EXPECTED_VERSION,'runtime_dir':str(RUNTIME_DIR)}
-    if _manifest_path().exists():
-        try:out['manifest']=json.loads(_manifest_path().read_text())
-        except Exception:pass
+    """Raised when the Reffelt public-source modules cannot be imported."""
+def _probe_imports()->Dict[str,Any]:
+    out={'ok':True,'modules':{},'first_error':None}
+    for m in _PROBE_MODULES:
+        try:__import__(m);out['modules'][m]='ok'
+        except Exception as e:out['modules'][m]=f'{type(e).__name__}: {e}';out['ok']=False;out['first_error']=out['first_error'] or {'module':m,'type':type(e).__name__,'msg':str(e)}
     return out
+def is_ready()->bool:return _probe_imports()['ok']
+def status()->Dict[str,Any]:
+    p=_probe_imports()
+    return {'ready':p['ok'],'mode':'public-source-iter29','expected_version':EXPECTED_VERSION,'runtime_dir':str(RUNTIME_DIR),'python':sys.version.split()[0],'modules':p['modules'],'first_error':p['first_error'],'note':'Under iter29 the public clone IS the runtime — no blob fetch is needed. If ready=False, the Reffelt source modules failed to import; see first_error.'}
 def fetch(license_key:Optional[str]=None,force:bool=False,verbose:bool=True)->Dict[str,Any]:
-    """Download + verify + install the Reffelt runtime blob. license_key is required by
-    the server to enforce CC BY-NC distribution; non-commercial users can request one free."""
-    if is_ready() and not force:
-        if verbose:print(f'[runtime] already installed at {_blob_path()}',flush=True)
-        return status()
-    raise NotImplementedError('Runtime fetcher pipeline not yet wired. Build steps (the maintainer to do): (1) compile amni_kernels Rust to .pyd (2) bundle amni/compute/* + amni/core/* + amni/training/* + amni/model/* as tarball (3) age-encrypt with public key (4) host as https://example.com/adam/runtime/<version>.reffelt.enc + .sig. For now, run from a private full clone with Reffelt source present.')
+    """No-op under iter29 — returns success when the public-source modules import cleanly.
+    Kept for compatibility with older docs and error messages that say `from amni.runtime import fetch; fetch(...)`."""
+    s=status()
+    if s['ready']:
+        if verbose:
+            print('[runtime] Adam runtime is ready (iter29 public-source mode — no fetch needed).',flush=True)
+            print(f'[runtime] python={s["python"]}  expected_version={s["expected_version"]}',flush=True)
+            for m,v in s['modules'].items():print(f'[runtime]   {m}: {v}',flush=True)
+        return s
+    e=s['first_error']
+    raise RuntimeNotReadyError(f'Reffelt public-source modules failed to import (likely cause: wrong Python version for the prebuilt amni_kernels .pyd, or a missing dep).\n  First error: {e["module"]} -> {e["type"]}: {e["msg"]}\n  Fix:\n    1. Re-run `python install.py` from the repo root to repair the venv (auto-detects GPU vendor).\n    2. If the error is from `amni_kernels`, rebuild it with `cd amni_kernels && pip install maturin && maturin develop --release`.\n    3. If still stuck, file an issue at https://github.com/Amnibro/Amni-Ai/issues with the output of `python -c "from amni.runtime import status;import json;print(json.dumps(status(),indent=2))"`.')
 def load()->None:
-    """Decrypt the installed blob in-memory and inject Reffelt modules into sys.modules.
-    Idempotent — calling twice is a no-op."""
-    if 'amni.compute' in sys.modules:return
-    if not is_ready():raise RuntimeNotReadyError(f'Reffelt runtime not installed. Run:\n  python -c "from amni.runtime import fetch; fetch(license_key=\'YOUR_KEY\')"\n\nFree non-commercial license keys at https://example.com/adam/get-key')
-    raise NotImplementedError('Runtime loader stub — public skeleton repo. The actual decrypt + sys.modules injection ships with the runtime blob itself, never with the public source.')
+    """No-op under iter29 — the public source modules import normally via Python's import system.
+    Raises RuntimeNotReadyError with diagnostic when the public-source modules don't import."""
+    s=status()
+    if s['ready']:return
+    e=s['first_error']
+    raise RuntimeNotReadyError(f'Reffelt source failed to import: {e["module"]} -> {e["type"]}: {e["msg"]}. Run `python -c "from amni.runtime import fetch; fetch()"` for full diagnostic + fix steps.')
 def require_runtime():
-    """Decorator-style guard. Call at top of any public function that depends on Reffelt internals."""
-    if 'amni.compute' not in sys.modules:
-        try:load()
-        except NotImplementedError as e:raise RuntimeNotReadyError(str(e))
+    """Guard for callers that depend on Reffelt internals. Raises if public source not importable."""
+    s=status()
+    if not s['ready']:e=s['first_error'];raise RuntimeNotReadyError(f'{e["module"]}: {e["type"]}: {e["msg"]}')
