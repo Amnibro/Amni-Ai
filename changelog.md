@@ -2,6 +2,50 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.5.1 — Strip hardcoded paths + port stability + streaming-endpoint history (2026-05-19)
+
+**Trigger:** First Amni-Ai user-from-the-public-repo test failed at boot: `[Adam streaming chat unavailable — the GF(17) backend failed to initialize at boot. Reason: Repo id must be in the form 'repo_name' or 'namespace/repo_name': 'E:/Amni-Ai-Models/gemma-4-E2B-it'`. That E: path was hardcoded in `scripts/amni_serve.py` argparse defaults (Anthony's drive); the user's machine had no such path, so transformers fell through to HF Hub which rejected the Windows-absolute-path as a repo_id. Anthony's directive: "get rid of all hardcoded paths."
+
+**Three fixes shipped together:**
+
+1. **All user-machine-specific paths nuked from tracked code.** `E:/Amni-Ai-Bakes/...`, `E:/Amni-Ai-Models/...`, `C:/Users/antho/Documents/ai/...`, `C:/Users/antho/.venv/...`, `E:/Amni-Ai-KB/...` all removed.
+   - `amni/bootstrap.py:_candidate_bake_paths` + `_candidate_model_paths` — drop E: entries; add portable candidates `$AMNI_BAKE_PATHS`/`$AMNI_MODEL_PATHS` env (`os.pathsep`-separated), `CONFIG_DIR/bakes`, `./bakes`, `~/amni-bakes`, `~/.amni-ai/bakes`. Same shape for models.
+   - `scripts/amni_serve.py`, `scripts/amni_chat.py`, `scripts/amni_ask.py` — argparse defaults now sourced from `bootstrap.load_config()`. If neither saved config nor candidate detection resolves a bake/model, exit with `FATAL: no usable bake found. Run \`python install.py\``. No more silent fall-through to a non-existent path that gets reinterpreted as an HF repo_id.
+   - `amni/adam.py` docstring usage example uses `load_config()` (not Anthony's E: paths).
+   - `amni/inference/compositional_decoder.py:CompositionalDecoder` — `kb_root=None` default + new `_default_kb_root()` checks `$AMNI_PERSONAL_FUNCTIONS_KB`, `CONFIG_DIR/kb/personal_functions`, `./kb/personal_functions`, `~/.amni-ai/kb/personal_functions`. Raises `FileNotFoundError` with actionable message if none exist.
+   - `scripts/atex_dogfood.py` — `--atex-dir` + `--metrics` defaults are now `./.atex` / `./.atex_metrics.jsonl` (cwd-relative) with `AMNI_ATEX_DIR` / `AMNI_ATEX_METRICS` env overrides.
+   - `tests/_v6_1_live_scan.py`, `tests/_v6_1_live_scan_v2.py`, `tests/_v6_2_reprobe.py`, `tests/_v6_3_obscure_persona_probe.py`, `tests/_v6_4_live_smoke.py` — base URL via `$AMNI_BASE_URL`, scan dir via `$AMNI_SCAN_DIR`, hosts-file probe is `/etc/hosts` on non-Windows. `tests/_v6_4_live_smoke.py` uses `sys.executable` (current interpreter) instead of Anthony's pinned `.venv` path.
+   - `data/devdocs_v5_5_96_extension.json` — `target_kb` field rewritten to relative `kb/canonical-extended`; `curated_for` no longer references "E: drive".
+
+2. **Port stability + kill-prior-process.** `scripts/amni_serve.py` now:
+   - Defaults port to `bootstrap.load_config()['port']` (so the value is single-sourced from `~/.amni-ai/config.json`, no more drift between scripts and CLI).
+   - On boot, calls `_free_port_if_occupied(host, port)`. Probes with a 0.5s connect; if open, finds the PID(s) via `netstat -ano | findstr LISTENING` on Windows or `lsof -ti tcp:N` on POSIX.
+   - **Safety gate:** by default only kills processes whose `tasklist`/`ps comm` name contains `python` or `uvicorn`. Refuses to kill anything else and prints a warning. `--force-port-kill` overrides for advanced cases.
+   - Waits up to 2s for the port to drain after `taskkill /F /PID` before uvicorn binds. Same port every restart. No more orphan `uvicorn` processes blocking the next launch.
+
+3. **Streaming endpoint (`/chat/stream`) now threads history/facts/is_private.** v6.5.0 only wired `/chat`; the SSE-streaming web UI endpoint was bypassed and still forgot names even when the agent path remembered them. Now `gen()` in `scripts/amni_serve.py`:
+   - Calls `conv.history_pairs(n=12)` and `agent.atlas.recall(query, sid, k=3, include_global=True)` and merges (atlas recalls prepended).
+   - Calls `agent._extract_user_facts(conv)` for the system-prompt facts block.
+   - Computes `is_private = detect_personal(msg) | conv.has_personal(20) | any(atlas_recall.is_personal)`.
+   - Passes `history`, `facts`, `is_private` to `adam.chat_persona_stream(...)`.
+   - On final reply: `agent.atlas.record(sid, msg, final, is_personal=is_private)` so the cell-address LUT learns from streamed turns too. Records personal-flagged status on the assistant turn.
+   - Skips `sem_lut.lookup_soft` short-circuit when history exists or is_private (same gating as `/chat`).
+   - Emits `history_n` / `facts_n` / `is_private` in the SSE `meta` event for UI surfacing.
+
+**Files changed:** `amni/bootstrap.py`, `amni/adam.py`, `amni/inference/compositional_decoder.py`, `scripts/amni_serve.py`, `scripts/amni_chat.py`, `scripts/amni_ask.py`, `scripts/atex_dogfood.py`, `tests/_v6_1_live_scan.py`, `tests/_v6_1_live_scan_v2.py`, `tests/_v6_2_reprobe.py`, `tests/_v6_3_obscure_persona_probe.py`, `tests/_v6_4_live_smoke.py`, `data/devdocs_v5_5_96_extension.json`, `pyproject.toml` (6.5.0 → 6.5.1).
+
+**Backups:** `backups/{amni_serve.py, bootstrap.py, amni_chat.py, amni_ask.py, compositional_decoder.py, atex_dogfood.py}.v6.5.1.bak`.
+
+**Verification:**
+- Final grep for `E:/Amni` and `C:/Users/antho/Documents` across tracked code: zero matches in any executable code path. Only remaining hits are in `changelog.md` (historical entries from Anthony's prior scrub commit `6d14ade`, intentionally retained).
+- All 15 PII-leak paranoid tests still PASS (no regression in v6.5.0 privacy boundary).
+- Port helpers `_port_pids`, `_proc_is_python`, `_kill_pid`, `_free_port_if_occupied` unit-tested in isolation: empty-port → empty list; occupied port → returns our PID; `_proc_is_python` correctly identifies our `python.exe`.
+- Anthony's local setup still resolves via saved `~/.amni-ai/config.json` (his E: paths are persisted, not hardcoded in code).
+
+**What another user does to test (after `git pull && pip install -e .`):**
+- If they haven't installed before: `python install.py` (downloads the GF(17) bake from `amnibro/gemma-4-E2B-it-gf17` to `~/.amni-ai/bakes/` or wherever they pass `--home`).
+- Then: `python scripts/amni_serve.py --seed --cors` — picks up the bake automatically via bootstrap, kills any prior server on the configured port, starts fresh on the same port every time.
+
 ## v6.5.0 — Conversation memory + PTEX context atlas + rock-solid federation boundary (2026-05-18)
 
 **Trigger:** Anthony reported Adam losing the user's name across turns. Screenshot: turn 1 "my name is cohen" → "Cohen. Nice to meet you." turn 2 "whats my name?" → "I don't know your name." Anthony's directive: context should be **automatic and truly infinite to storage limits**, not turn-based. Use Reffelt context noncing + PTEX. Federate everything non-erroneous and non-personal so all Adams advance. Personal info stays local-retrievable but never federates.

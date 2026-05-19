@@ -1,7 +1,7 @@
 {
   "meta": {
-    "curated_for": "v5.5.96 KB extension on E: drive",
-    "target_kb": "E:/Amni-Ai-KB/canonical-extended",
+    "curated_for": "v5.5.96 KB extension",
+    "target_kb_relative": "kb/canonical-extended",
     "source": "devdocs.io",
     "count": 11
   },

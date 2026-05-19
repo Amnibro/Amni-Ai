@@ -3,10 +3,22 @@ Wraps StreamingChatService.generate_text to inject KB-matched function/block tem
 Per Anthony's vision: 1.5B Adam behaves like 7B by skipping boilerplate generation via LUT lookups.
 v0.3: dual-matcher — string-prefix matcher fires on exact-prefix hits (cheap, deterministic); embedding-cosine matcher fires on semantic similarity when prefix misses (recall safety net).
 """
-import torch
+import os,torch
+from pathlib import Path
 from amni.inference.function_matcher import FunctionPrefixMatcher
+def _default_kb_root():
+    env=os.environ.get('AMNI_PERSONAL_FUNCTIONS_KB')
+    if env and Path(env).exists():return env
+    try:
+        from amni.bootstrap import CONFIG_DIR
+        for c in [CONFIG_DIR/'kb'/'personal_functions',Path('./kb/personal_functions'),Path.home()/'.amni-ai'/'kb'/'personal_functions']:
+            if c.exists():return str(c)
+    except Exception:pass
+    return None
 class CompositionalDecoder:
-    def __init__(self,svc,kb_root='E:/Amni-Ai-KB/personal_functions',min_match_chars=20,max_template_chars=600,refine_after_inject=8,use_embedding=True,emb_min_cos=0.45,semantic_window_chars=200):
+    def __init__(self,svc,kb_root=None,min_match_chars=20,max_template_chars=600,refine_after_inject=8,use_embedding=True,emb_min_cos=0.45,semantic_window_chars=200):
+        kb_root=kb_root or _default_kb_root()
+        if kb_root is None:raise FileNotFoundError("CompositionalDecoder: no personal_functions KB found. Set $AMNI_PERSONAL_FUNCTIONS_KB or place it at <CONFIG_DIR>/kb/personal_functions, ./kb/personal_functions, or ~/.amni-ai/kb/personal_functions.")
         self.svc=svc
         self.matcher=FunctionPrefixMatcher(kb_root,min_prefix_len=min_match_chars,max_prefix_len=80)
         self.max_template_chars=max_template_chars

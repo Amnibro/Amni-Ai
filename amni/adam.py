@@ -1,9 +1,12 @@
 """Adam facade — single import surface for the deployable model.
 Usage:
   from amni.adam import Adam
-  adam = Adam(bake='E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17', model='E:/Amni-Ai-Models/gemma-4-E2B-it')
+  from amni.bootstrap import load_config
+  cfg = load_config()
+  adam = Adam(bake=cfg['bake'], model=cfg['model'])
   result = adam.ask('What is 2 + 2?')
   print(result['answer'], result['tier'], result['tokens'])
+Paths auto-detect via AMNI_HOME / ~/.amni-ai/config.json / candidate dirs. Set $AMNI_BAKE_PATHS or $AMNI_MODEL_PATHS to add custom locations.
 Wraps AdamLoop with sensible defaults, persistent SemanticPTEXLUT, all tiers enabled.
 """
 import os,json,time,hashlib

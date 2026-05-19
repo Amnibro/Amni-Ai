@@ -19,10 +19,13 @@ CONFIG_FILE=CONFIG_DIR/'config.json'
 DEFAULT_HF_REPO='amnibro/gemma-4-E2B-it-gf17'
 DEFAULT_BASE_REPO='google/gemma-2-2b-it'
 _DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'workdir':None,'default_persona':'rikku','port':8002,'host':'127.0.0.1','unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
+def _extra_candidates(var:str):
+    raw=os.environ.get(var) or ''
+    return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
 def _candidate_bake_paths():
-    return [Path('E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17'),CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17',Path('./bakes/gemma4_e2b_it_gf17'),Path.home()/'amni-bakes'/'gemma4_e2b_it_gf17']
+    return _extra_candidates('AMNI_BAKE_PATHS')+[CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17',Path('./bakes/gemma4_e2b_it_gf17'),Path.home()/'amni-bakes'/'gemma4_e2b_it_gf17',Path.home()/'.amni-ai'/'bakes'/'gemma4_e2b_it_gf17']
 def _candidate_model_paths():
-    return [Path('E:/Amni-Ai-Models/gemma-4-E2B-it'),CONFIG_DIR/'models'/'gemma-4-E2B-it',Path('./models/gemma-4-E2B-it'),Path.home()/'amni-models'/'gemma-4-E2B-it']
+    return _extra_candidates('AMNI_MODEL_PATHS')+[CONFIG_DIR/'models'/'gemma-4-E2B-it',Path('./models/gemma-4-E2B-it'),Path.home()/'amni-models'/'gemma-4-E2B-it',Path.home()/'.amni-ai'/'models'/'gemma-4-E2B-it']
 def detect_bake()->Optional[Path]:
     for p in _candidate_bake_paths():
         if p.exists() and (p/'manifest.json').exists() and (p/'config.json').exists() and (p/'tokenizer.json').exists():return p
