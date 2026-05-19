@@ -1,6 +1,6 @@
 """Live probe v6.4: amni CLI launched server + ReAct goal + PII publish dry-run."""
-import json,time,urllib.request,urllib.error
-BASE='http://127.0.0.1:8002'
+import os,sys,json,time,urllib.request,urllib.error
+BASE=os.environ.get('AMNI_BASE_URL','http://127.0.0.1:8002')
 def post(p,b,t=180):
     r=urllib.request.Request(f'{BASE}{p}',data=json.dumps(b).encode(),headers={'Content-Type':'application/json'})
     try:
@@ -34,7 +34,7 @@ for s in (out.get('steps') or [])[:5]:
     else:print(f'    step: {s.get("tool")} -> {str(s.get("result"))[:140]}',flush=True)
 print('\n=== amni CLI: invoke `amni stats` via subprocess ===',flush=True)
 import subprocess
-r=subprocess.run(['C:/Users/antho/Documents/ai/Amni-Ai/.venv/Scripts/python.exe','-m','amni.cli','--help'],capture_output=True,text=True,timeout=30)
+r=subprocess.run([sys.executable,'-m','amni.cli','--help'],capture_output=True,text=True,timeout=30)
 print(f'  amni --help: stdout first line: {r.stdout.splitlines()[0]!r}',flush=True)
 print(f'  exit code: {r.returncode}',flush=True)
 print('\n=== final stats ===',flush=True)

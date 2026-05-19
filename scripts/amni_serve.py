@@ -15,15 +15,68 @@ Usage:
   python scripts/amni_serve.py --seed
   Then point Open WebUI at http://localhost:8001 or open http://localhost:8001 in a browser.
 """
-import os,sys,argparse,time
+import os,sys,argparse,time,socket,subprocess,signal
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from amni.bootstrap import load_config
+_CFG=load_config()
+def _port_pids(port:int):
+    pids=[]
+    try:
+        if sys.platform=='win32':
+            r=subprocess.run(['netstat','-ano','-p','tcp'],capture_output=True,text=True,timeout=5)
+            for ln in r.stdout.splitlines():
+                if f':{port}' in ln and 'LISTENING' in ln:
+                    parts=ln.split()
+                    if parts and parts[-1].isdigit():pids.append(int(parts[-1]))
+        else:
+            r=subprocess.run(['lsof','-ti',f'tcp:{port}'],capture_output=True,text=True,timeout=5)
+            for ln in r.stdout.strip().splitlines():
+                if ln.strip().isdigit():pids.append(int(ln.strip()))
+    except Exception as e:print(f'[amni_serve] _port_pids({port}) probe failed: {e}',flush=True)
+    return list(set(pids))
+def _proc_is_python(pid:int)->bool:
+    try:
+        if sys.platform=='win32':
+            r=subprocess.run(['tasklist','/FI',f'PID eq {pid}','/FO','CSV','/NH'],capture_output=True,text=True,timeout=5)
+            return 'python' in (r.stdout or '').lower() or 'uvicorn' in (r.stdout or '').lower()
+        r=subprocess.run(['ps','-p',str(pid),'-o','comm='],capture_output=True,text=True,timeout=5)
+        return 'python' in (r.stdout or '').lower() or 'uvicorn' in (r.stdout or '').lower()
+    except Exception:return False
+def _kill_pid(pid:int)->bool:
+    try:
+        if sys.platform=='win32':
+            r=subprocess.run(['taskkill','/F','/PID',str(pid)],capture_output=True,text=True,timeout=5)
+            return r.returncode==0
+        os.kill(pid,signal.SIGKILL);return True
+    except Exception as e:print(f'[amni_serve] kill {pid} failed: {e}',flush=True);return False
+def _free_port_if_occupied(host:str,port:int,kill_unsafe:bool=False):
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.settimeout(0.5)
+    occupied=False
+    try:occupied=(s.connect_ex((host,port))==0)
+    finally:s.close()
+    if not occupied:return
+    pids=_port_pids(port)
+    if not pids:print(f'[amni_serve] port {port} reports occupied but no PID found — proceeding anyway (may fail to bind)',flush=True);return
+    print(f'[amni_serve] port {port} occupied by PID(s) {pids} — checking ownership',flush=True)
+    killed=[]
+    for pid in pids:
+        if pid==os.getpid():print(f'[amni_serve] skipping our own PID {pid}',flush=True);continue
+        if not kill_unsafe and not _proc_is_python(pid):print(f'[amni_serve] PID {pid} is NOT a python/uvicorn process — refusing to kill (use --force-port-kill to override)',flush=True);continue
+        if _kill_pid(pid):killed.append(pid);print(f'[amni_serve] killed prior process PID {pid} on port {port}',flush=True)
+    if killed:
+        for _ in range(20):
+            time.sleep(0.1);s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.settimeout(0.3)
+            try:
+                if s.connect_ex((host,port))!=0:break
+            finally:s.close()
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--bake',default='E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17')
-    ap.add_argument('--model',default='E:/Amni-Ai-Models/gemma-4-E2B-it')
-    ap.add_argument('--port',type=int,default=8001)
-    ap.add_argument('--host',default='127.0.0.1')
+    ap.add_argument('--bake',default=_CFG.get('bake'))
+    ap.add_argument('--model',default=_CFG.get('model') or _CFG.get('bake'))
+    ap.add_argument('--port',type=int,default=int(_CFG.get('port') or 8001))
+    ap.add_argument('--host',default=_CFG.get('host') or '127.0.0.1')
+    ap.add_argument('--force-port-kill',action='store_true',help='Kill ANY process holding the port (default: only kill python/uvicorn processes)')
     ap.add_argument('--lessons',default='experiences/adam_lessons.npz')
     ap.add_argument('--lut-root',default='experiences/adam_lut')
     ap.add_argument('--conv-root',default='experiences/conversations')
@@ -37,6 +90,13 @@ def main():
     ap.add_argument('--default-persona',default=None,help='Default persona name (preset or learned). e.g. rikku, yoda, neutral')
     ap.add_argument('--no-persona',action='store_true',help='Disable persona layer entirely (raw Adam responses)')
     args=ap.parse_args()
+    if not args.bake or not Path(args.bake).exists() or not (Path(args.bake)/'manifest.json').exists():
+        print(f'[amni_serve] FATAL: no usable bake found.\n  Tried: {args.bake!r}\n  Run `python install.py` to fetch the GF(17) bake from Hugging Face, or pass --bake <path-to-bake-with-manifest.json> --model <path-to-model-dir>.\n  Config search order: $AMNI_HOME, ~/.amni-ai/last_install_home.txt pointer, ~/.amni-ai/config.json, then candidate dirs ($AMNI_BAKE_PATHS, CONFIG_DIR/bakes, ./bakes, ~/amni-bakes, ~/.amni-ai/bakes).',flush=True)
+        sys.exit(2)
+    if not args.model or not Path(args.model).exists() or not (Path(args.model)/'config.json').exists():
+        print(f'[amni_serve] FATAL: no usable model dir found.\n  Tried: {args.model!r}\n  The bake itself usually has config.json + tokenizer.json (the runtime can use --model <bake-path> as a fallback). If your bake has these files, pass --model {args.bake!r}.\n  Otherwise run `python install.py` to fetch the upstream model.',flush=True)
+        sys.exit(2)
+    _free_port_if_occupied(args.host,args.port,kill_unsafe=args.force_port_kill)
     try:
         from fastapi import FastAPI,Request,HTTPException
         from pydantic import BaseModel
@@ -107,10 +167,19 @@ def main():
             except Exception:pass
             category=tone_atlas.classify_intent(req.message)
             apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam'
+            from amni.serve.conversation import detect_personal as _dp
+            history_pairs=conv.history_pairs(n=12) if len(conv.turns)>1 else []
+            atlas_recall=agent.atlas.recall(req.message,session_id=conv.session_id,k=3,include_global=True) if getattr(agent,'atlas',None) is not None else []
+            for r in atlas_recall:
+                pair=(r.get('user',''),r.get('assistant',''))
+                if pair[0] and pair[1] and pair not in history_pairs:history_pairs=[pair]+history_pairs
+            history_pairs=history_pairs[-12:]
+            user_facts=agent._extract_user_facts(conv) if hasattr(agent,'_extract_user_facts') else []
+            is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
             sl=getattr(adam,'sem_lut',None)
             try:
                 eff=sl.auto_margin() if sl and hasattr(sl,'auto_margin') else 0.08
-                hit=sl.lookup_soft(req.message,margin=eff) if sl and hasattr(sl,'lookup_soft') else None
+                hit=sl.lookup_soft(req.message,margin=eff) if (sl and hasattr(sl,'lookup_soft') and not history_pairs and not is_private) else None
             except Exception:hit=None
             if hit:
                 _bump('lut_hits')
@@ -120,11 +189,11 @@ def main():
             if apply_cot:scaffold=_pick_cot(category,req.message);sys_p=persona.system_prompt(req.message)+'\n\n'+scaffold
             elif persona:sys_p=persona.system_prompt(req.message)
             else:sys_p='You are a helpful assistant.'
-            yield f'event: meta\ndata: {_json.dumps({"cot":apply_cot,"category":category})}\n\n'
+            yield f'event: meta\ndata: {_json.dumps({"cot":apply_cot,"category":category,"history_n":len(history_pairs),"facts_n":len(user_facts),"is_private":is_private})}\n\n'
             max_new=int(80+200*(persona.length if persona else 0.5))+(700 if (apply_cot and category=="code") else (450 if apply_cot else 0))
             full=[];_bump('cot_generations') if apply_cot else None
             try:
-                for chunk in adam.chat_persona_stream(req.message,system=sys_p,max_new_tokens=max_new,do_sample=True):
+                for chunk in adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True):
                     full.append(chunk)
                     yield f'event: token\ndata: {_json.dumps(chunk)}\n\n'
             except Exception as e:yield f'event: error\ndata: {_json.dumps(str(e))}\n\n';return
@@ -208,7 +277,10 @@ def main():
                             elif run_r.ok and run_r.output.get('error'):
                                 yield f'event: exec\ndata: {_json.dumps({"error":run_r.output["error"]})}\n\n'
                         except Exception as e:yield f'event: exec\ndata: {_json.dumps({"error":str(e)})}\n\n'
-            conv.append('assistant',final,{'tier':tier_final,'persona':persona_name,'category':category})
+            conv.append('assistant',final,{'tier':tier_final,'persona':persona_name,'category':category,'is_private':is_private})
+            if getattr(agent,'atlas',None) is not None and final and final.strip():
+                try:agent.atlas.record(conv.session_id,req.message,final,is_personal=is_private)
+                except Exception as _re:print(f'[amni_serve] /chat/stream atlas record failed: {_re}',flush=True)
             yield f'event: done\ndata: {_json.dumps({"tier":tier_final,"wall_s":round(time.time()-t0,3),"persona":persona_name,"category":category})}\n\n'
         return StreamingResponse(gen(),media_type='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
     @app.post('/ask')

@@ -1,6 +1,9 @@
 """Re-probe of v6.2.0 fixes. Targets the bugs found in the v6.1 capability probe."""
-import json,time,urllib.request,urllib.error
-BASE='http://127.0.0.1:8002'
+import os,json,time,urllib.request,urllib.error
+from pathlib import Path
+BASE=os.environ.get('AMNI_BASE_URL','http://127.0.0.1:8002')
+_REPO=Path(__file__).resolve().parents[1]
+_SCAN_DIR=os.environ.get('AMNI_SCAN_DIR',str(_REPO/'amni'/'serve'))
 def post(p,b,t=180):
     r=urllib.request.Request(f'{BASE}{p}',data=json.dumps(b).encode(),headers={'Content-Type':'application/json'})
     try:
@@ -33,7 +36,7 @@ ask('What is 9 + 9?',sid=sid)
 ask('What was my favorite game again?',sid=sid)
 print('\n--- BUG 3 FIX: post-scan recall should find real content ---',flush=True)
 print('  [first scan amni/serve so we have known content]',flush=True)
-code,r=post('/skills/scan',{'args':{'path':'C:/Users/antho/Documents/ai/Amni-Ai/amni/serve','glob':'*.py','max_files':10}},t=180)
+code,r=post('/skills/scan',{'args':{'path':_SCAN_DIR,'glob':'*.py','max_files':10}},t=180)
 print(f'  scan -> ok={r.get("ok")} added={r.get("output",{}).get("lessons_added")}',flush=True)
 print('  [now query mem skill with high-recall flat-cosine fallback]',flush=True)
 code,r=post('/skills/mem',{'args':{'query':'What is SkillRegistry?'}},t=30)

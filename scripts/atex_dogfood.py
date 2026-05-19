@@ -1,5 +1,5 @@
 """atex_dogfood: drive the ATEX KB during the public-release loop and log every call to JSONL for paper metrics."""
-import argparse,json,sys,time
+import os,argparse,json,sys,time
 from pathlib import Path
 try:sys.stdout.reconfigure(encoding='utf-8')
 except Exception:pass
@@ -91,8 +91,8 @@ def cmd_stats(args):
     return 0
 def main():
     ap=argparse.ArgumentParser(description='atex_dogfood: instrumented KB driver for the public-release loop')
-    ap.add_argument('--atex-dir',default='C:/Users/antho/Documents/ai/atex/.atex',help='where the dogfood KB lives')
-    ap.add_argument('--metrics',default='C:/Users/antho/Documents/ai/atex/.atex_metrics.jsonl',help='JSONL metrics log')
+    ap.add_argument('--atex-dir',default=os.environ.get('AMNI_ATEX_DIR','./.atex'),help='where the dogfood KB lives (env: AMNI_ATEX_DIR)')
+    ap.add_argument('--metrics',default=os.environ.get('AMNI_ATEX_METRICS','./.atex_metrics.jsonl'),help='JSONL metrics log (env: AMNI_ATEX_METRICS)')
     ap.add_argument('--iteration',type=int,default=2,help='loop iteration number')
     sub=ap.add_subparsers(dest='cmd',required=True)
     sp=sub.add_parser('init');sp.set_defaults(func=cmd_init)

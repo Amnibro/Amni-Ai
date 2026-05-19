@@ -1,7 +1,9 @@
 """Probe the persona web-learn pipeline against several genuinely obscure historical figures.
 Goal: verify Adam can scrape DDG -> Wikipedia -> distill into usable persona without manual description."""
-import json,time,urllib.request,urllib.error
-BASE='http://127.0.0.1:8002'
+import os,json,time,urllib.request,urllib.error
+from pathlib import Path
+BASE=os.environ.get('AMNI_BASE_URL','http://127.0.0.1:8002')
+_REPO=Path(__file__).resolve().parents[1]
 def post(p,b,t=180):
     r=urllib.request.Request(f'{BASE}{p}',data=json.dumps(b).encode(),headers={'Content-Type':'application/json'})
     try:
@@ -16,8 +18,8 @@ def delete(p):
     except urllib.error.HTTPError as e:return None
 print('=== OBSCURE PERSONA WEB-LEARN PROBE ===',flush=True)
 print('\nForgetting any cached fallback "Sherlock Holmes" so we relearn fresh:',flush=True)
-import os,json as _json
-pf='C:/Users/antho/Documents/ai/Amni-Ai/experiences/personas.json'
+import json as _json
+pf=os.environ.get('AMNI_PERSONAS_PATH',str(_REPO/'experiences'/'personas.json'))
 if os.path.exists(pf):
     d=_json.load(open(pf,encoding='utf-8'))
     before=len(d.get('personas',[]))
