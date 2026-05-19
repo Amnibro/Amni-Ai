@@ -6,7 +6,7 @@ from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,dow
 def _add_common_adam(p):
     cfg=load_config()
     default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17')
-    default_model=cfg.get('model') or (cfg.get('bake') if bake_has_runtime_metadata(cfg.get('bake')) else None) or str(CONFIG_DIR/'models'/'gemma-4-E2B-it')
+    default_model=cfg.get('model') or cfg.get('bake') or default_bake
     p.add_argument('--bake',default=os.environ.get('AMNI_BAKE',default_bake))
     p.add_argument('--model',default=os.environ.get('AMNI_MODEL',default_model))
     p.add_argument('--lessons',default=cfg.get('lessons') or 'experiences/adam_lessons.npz')

@@ -2,6 +2,27 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.8.iter40-hotfix2 — install pointer + strict bake detection (post-install `serve` without `--home` now finds the right bake) (2026-05-18)
+
+**Trigger:** Discord user MutantRabbit767, after pulling iter40-hotfix and pulling the new HF sidecar files to `Z:\Amni-Ai\models\bakes\gemma4_e2b_it_gf17`, ran `python -m amni.cli serve --port 8002` without `--home Z:\Amni-Ai\models` and got `[Adam streaming chat unavailable] Repo id must use alphanumeric chars: 'C:\Users\cohen\.amni-ai\models\gemma-4-E2B-it'`. The bake the server resolved was `C:\Users\cohen\.amni-ai\bakes\gemma4_e2b_it_gf17` — an orphan from an earlier installer run — and `--model` fell through to the magic fallback `CONFIG_DIR/models/gemma-4-E2B-it`, which doesn't exist on their disk and gets re-interpreted as an HF repo_id by transformers v5.8's stricter parser.
+
+**Three compounding causes, three fixes:**
+
+1. **`amni/cli.py:_add_common_adam` had a magic fallback** for `default_model` that hardcoded `str(CONFIG_DIR/'models'/'gemma-4-E2B-it')` when `bake_has_runtime_metadata(cfg.get('bake'))` was False. The fallback path never exists on a real user's disk, so `AutoTokenizer.from_pretrained(<that path>)` reinterprets it as a HF repo_id and chokes on `:` / `\`. **Fix:** dropped the magic fallback. `default_model` is now `cfg.get('model') or cfg.get('bake') or default_bake`. If the chosen bake is incomplete, transformers errors with a real "file not found at <bake path>" — actionable.
+
+2. **`amni/bootstrap.py:detect_bake` was too lax** — it only required `manifest.json`. An orphan partial bake at the candidate path (e.g. from an interrupted install) won the auction over the real complete bake on a different drive. **Fix:** `detect_bake` now requires `manifest.json` AND `config.json` AND `tokenizer.json` to consider a path a valid bake. `detect_model` similarly tightened to require both `config.json` AND `tokenizer.json` (the latter was missing).
+
+3. **No way to recover `AMNI_HOME` across invocations.** When `install.py --home Z:\X` runs, AMNI_HOME=Z:\X gets baked into that subprocess. When the user later runs `python -m amni.cli serve` (no `--home`), AMNI_HOME isn't set in their shell, so `CONFIG_DIR` reverts to `~/.amni-ai/` and the install at Z:\X is invisible. **Fix:** added `~/.amni-ai/last_install_home.txt`, a tiny pointer file written by `save_config()` whenever `CONFIG_DIR` is non-default. `_resolve_amni_home()` (the new function backing `CONFIG_DIR` at module load) reads it when `AMNI_HOME` isn't set in env. So once the user runs `install.py --home <X>` once, every subsequent `serve` / `amni init` / etc. *without* `--home` auto-rediscovers `<X>` without needing the user to remember.
+
+**Workaround for the current Discord user (until they pull iter40-hotfix2):** PowerShell one-liner that pins `AMNI_HOME` for the session:
+```powershell
+$env:AMNI_HOME='Z:\Amni-Ai\models'; python -m amni.cli serve --port 8002
+```
+
+**After pulling iter40-hotfix2** they should `git pull && python install.py --home Z:\Amni-Ai\models --no-launch` once to lay down the pointer file (the bake re-download will skip since manifest exists and is now also strictly verified), then `python -m amni.cli serve --port 8002` works without any flags.
+
+**Files modified:** `amni/bootstrap.py` (new `_resolve_amni_home`, strict `detect_bake`/`detect_model`, save-config writes install pointer), `amni/cli.py` (magic fallback dropped from `_add_common_adam`), `changelog.md`.
+
 ## v6.8.iter40-hotfix — chat_template.jinja was missing from the bake; streaming chat now reads the sidecar (2026-05-18)
 
 **Trigger:** Discord user successfully pulled iter40, got Adam running, then every chat returned `[stream error: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed!]`. The error fires from `tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)` in `amni/inference/streaming_chat.py:187`.
