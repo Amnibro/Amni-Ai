@@ -4,7 +4,7 @@
 
 ## v6.8.iter40-hotfix2 — install pointer + strict bake detection (post-install `serve` without `--home` now finds the right bake) (2026-05-18)
 
-**Trigger:** Discord user MutantRabbit767, after pulling iter40-hotfix and pulling the new HF sidecar files to `Z:\Amni-Ai\models\bakes\gemma4_e2b_it_gf17`, ran `python -m amni.cli serve --port 8002` without `--home Z:\Amni-Ai\models` and got `[Adam streaming chat unavailable] Repo id must use alphanumeric chars: 'C:\Users\cohen\.amni-ai\models\gemma-4-E2B-it'`. The bake the server resolved was `C:\Users\cohen\.amni-ai\bakes\gemma4_e2b_it_gf17` — an orphan from an earlier installer run — and `--model` fell through to the magic fallback `CONFIG_DIR/models/gemma-4-E2B-it`, which doesn't exist on their disk and gets re-interpreted as an HF repo_id by transformers v5.8's stricter parser.
+**Trigger:** Bug report from a user who installed via `install.py --home <X>` (custom external drive) and later ran `python -m amni.cli serve --port 8002` *without* re-passing `--home <X>`. They got `[Adam streaming chat unavailable] Repo id must use alphanumeric chars: '<some absolute filesystem path>'`. Two compounding bugs: the server resolved an orphan/partial bake at the *default* `~/.amni-ai/bakes/gemma4_e2b_it_gf17` (leftover from an earlier installer run) instead of their real bake at `<X>/bakes/gemma4_e2b_it_gf17`, and `--model` then fell through to a magic fallback `CONFIG_DIR/models/gemma-4-E2B-it` that doesn't exist on disk and gets re-interpreted as an HF repo_id by transformers v5.8's stricter parser.
 
 **Three compounding causes, three fixes:**
 
@@ -12,40 +12,40 @@
 
 2. **`amni/bootstrap.py:detect_bake` was too lax** — it only required `manifest.json`. An orphan partial bake at the candidate path (e.g. from an interrupted install) won the auction over the real complete bake on a different drive. **Fix:** `detect_bake` now requires `manifest.json` AND `config.json` AND `tokenizer.json` to consider a path a valid bake. `detect_model` similarly tightened to require both `config.json` AND `tokenizer.json` (the latter was missing).
 
-3. **No way to recover `AMNI_HOME` across invocations.** When `install.py --home Z:\X` runs, AMNI_HOME=Z:\X gets baked into that subprocess. When the user later runs `python -m amni.cli serve` (no `--home`), AMNI_HOME isn't set in their shell, so `CONFIG_DIR` reverts to `~/.amni-ai/` and the install at Z:\X is invisible. **Fix:** added `~/.amni-ai/last_install_home.txt`, a tiny pointer file written by `save_config()` whenever `CONFIG_DIR` is non-default. `_resolve_amni_home()` (the new function backing `CONFIG_DIR` at module load) reads it when `AMNI_HOME` isn't set in env. So once the user runs `install.py --home <X>` once, every subsequent `serve` / `amni init` / etc. *without* `--home` auto-rediscovers `<X>` without needing the user to remember.
+3. **No way to recover `AMNI_HOME` across invocations.** When `install.py --home <X>` runs, `AMNI_HOME=<X>` gets baked into that subprocess only. When the user later runs `python -m amni.cli serve` (no `--home`), `AMNI_HOME` isn't set in their shell, so `CONFIG_DIR` reverts to `~/.amni-ai/` and the install at `<X>` is invisible. **Fix:** added `~/.amni-ai/last_install_home.txt`, a tiny pointer file written by `save_config()` whenever `CONFIG_DIR` is non-default. `_resolve_amni_home()` (the new function backing `CONFIG_DIR` at module load) reads it when `AMNI_HOME` isn't set in env. So once a user runs `install.py --home <X>` once, every subsequent `serve` / `amni init` / etc. *without* `--home` auto-rediscovers `<X>` without needing the user to remember.
 
-**Workaround for the current Discord user (until they pull iter40-hotfix2):** PowerShell one-liner that pins `AMNI_HOME` for the session:
+**Workaround for users on iter40-hotfix or earlier** (until they pull iter40-hotfix2): pin `AMNI_HOME` for the session. PowerShell one-liner:
 ```powershell
-$env:AMNI_HOME='Z:\Amni-Ai\models'; python -m amni.cli serve --port 8002
+$env:AMNI_HOME='<install-home>'; python -m amni.cli serve --port 8002
 ```
 
-**After pulling iter40-hotfix2** they should `git pull && python install.py --home Z:\Amni-Ai\models --no-launch` once to lay down the pointer file (the bake re-download will skip since manifest exists and is now also strictly verified), then `python -m amni.cli serve --port 8002` works without any flags.
+**After pulling iter40-hotfix2:** `git pull && python install.py --home <install-home> --no-launch` once to lay down the pointer file (bake re-download is a no-op since `manifest.json` is verified locally first), then `python -m amni.cli serve --port 8002` works without any flags.
 
 **Files modified:** `amni/bootstrap.py` (new `_resolve_amni_home`, strict `detect_bake`/`detect_model`, save-config writes install pointer), `amni/cli.py` (magic fallback dropped from `_add_common_adam`), `changelog.md`.
 
 ## v6.8.iter40-hotfix — chat_template.jinja was missing from the bake; streaming chat now reads the sidecar (2026-05-18)
 
-**Trigger:** Discord user successfully pulled iter40, got Adam running, then every chat returned `[stream error: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed!]`. The error fires from `tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)` in `amni/inference/streaming_chat.py:187`.
+**Trigger:** Bug report — after pulling iter40, Adam booted but every chat returned `[stream error: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed!]`. The error fires from `tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)` in `amni/inference/streaming_chat.py:187`.
 
 **Root cause:** `scripts/adam1_bake.py:_copy_tokenizer_files` shipped a hardcoded list of files to copy from the upstream model dir into the bake — but the list pre-dated the Gemma 3+ convention where the chat template is a sidecar file (`chat_template.jinja`) instead of an embedded key inside `tokenizer_config.json`. Gemma 4 E2B IT uses the sidecar pattern. The bake had `tokenizer.json` + `tokenizer_config.json` + `config.json` + `generation_config.json` but NOT `chat_template.jinja` or `processor_config.json`, so `AutoTokenizer.from_pretrained(bake_dir)` loaded the tokenizer cleanly but with `tok.chat_template == None`.
 
 **Fix (two-layer):**
-1. **`scripts/adam1_bake.py`:** added `chat_template.jinja`, `processor_config.json`, and `preprocessor_config.json` to the file-copy whitelist. Future bakes will include them automatically.
+1. **`scripts/adam1_bake.py`:** added `chat_template.jinja`, `processor_config.json`, and `preprocessor_config.json` to the file-copy whitelist. Future bakes include them automatically.
 2. **`amni/inference/streaming_chat.py`:** defense in depth — after `AutoTokenizer.from_pretrained()`, if `self.tok.chat_template` is None/missing, the service now looks for `chat_template.jinja` next to the tokenizer on disk and loads it manually into `self.tok.chat_template`. Logs whether it found one. If even the sidecar is absent, warns clearly with the exact `snapshot_download` recovery command instead of blowing up later inside `apply_chat_template`.
 
-**Bake repo updated locally** at `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` — both files copied from `E:/Amni-Ai-Models/gemma-4-E2B-it/`. **Still needs HF push** to `amnibro/gemma-4-E2B-it-gf17` so existing downstream users can `snapshot_download(... allow_patterns=['chat_template.jinja','processor_config.json'])` to repair their bake without re-downloading the full 20 GB.
+**HF bake repo `amnibro/gemma-4-E2B-it-gf17` updated:** both `chat_template.jinja` and `processor_config.json` uploaded so existing installs can `snapshot_download(allow_patterns=['chat_template.jinja','processor_config.json'])` to repair their local bake without re-downloading the full 20 GB.
 
-**Existing local installs (the Discord user):** the inference-side sidecar load means once they `git pull && pip install -e .` (or just `git pull` if the venv is editable-installed), restart `amni serve`, chat will fire — *if* their bake dir has `chat_template.jinja`. If their bake is from before the HF re-upload, the file is missing and the warning will tell them to pull it. After the HF re-upload, the recovery is:
+**Existing local installs:** the inference-side sidecar load means once a user does `git pull` and restarts `amni serve`, chat works if their bake dir has `chat_template.jinja`. If their bake is from before the HF re-upload, the file is missing and the warning text in the new code points them at the exact `snapshot_download` recovery command:
 ```python
 from huggingface_hub import snapshot_download
-snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\models\bakes\gemma4_e2b_it_gf17', allow_patterns=['chat_template.jinja','processor_config.json'])
+snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir='<bake-dir>', allow_patterns=['chat_template.jinja','processor_config.json'])
 ```
 
 **Files modified:** `scripts/adam1_bake.py`, `amni/inference/streaming_chat.py`, `changelog.md`. Plus the actual `chat_template.jinja` + `processor_config.json` files in the HF bake repo (uploaded out-of-band).
 
 ## v6.8.iter40 — GUI installer with user-chosen install path + auto-saved log + one-click "email log to support" (2026-05-18)
 
-**Trigger:** Anthony — "The install path should be determined by users at install. Maybe we need a GUI with debug log posting." The 20 GB bake is a lot to drop on whatever drive `~/.amni-ai/` happens to resolve to (usually a small system SSD on Windows). And the iter39 Discord user had to copy-paste a 620-line PowerShell transcript to share the diagnostic — high friction for both sides.
+**Trigger:** Two related friction points surfaced by the iter39 bug report. (1) The 20 GB bake gets dropped on whatever drive `~/.amni-ai/` happens to resolve to (usually a small system SSD on Windows), with no install-time way for the user to redirect it short of remembering `--home <path>`. (2) The reporter had to copy-paste a 600+-line PowerShell transcript by hand to share the diagnostic — high friction for both sides. Directive: install path should be picked at install time; debug log capture should be one-click.
 
 **New entry point: `installer.py`** (pywebview-based GUI, sits in front of `install.py`):
 - Auto-installs `pywebview>=5` to system Python if missing (~5 MB, one-time). Falls back to printing instructions to use `python install.py` if pywebview install fails (corporate firewall / no pip / etc.).
@@ -71,11 +71,11 @@ snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\
 - Trade-off accepted: pywebview must be available before the install venv exists (chicken/egg solved by pip-installing to system Python in `ensure_pywebview()`). For users behind corporate firewalls who can't pip from system Python, the headless `install.py` is still the no-deps fallback.
 
 **Why mailto: instead of a backend POST relay:**
-- Anthony specified "collect to a file and email to amnibro7@gmail.com." amni-scient.com is a static GitHub Pages site (no backend) so a POST endpoint would need new infrastructure (Cloudflare Worker / Formspree / etc.) with separate auth and rate-limiting.
+- Directive: "collect to a file and email to the configured support address." amni-scient.com is a static GitHub Pages site (no backend) so a POST endpoint would need new infrastructure (Cloudflare Worker / Formspree / etc.) with separate auth and rate-limiting.
 - mailto: is zero-infra and gives the user editorial control over what gets sent — they see the body before hitting send.
 - Trade-off: mailto: URL size limits (~2-8 KB depending on mail client) mean only the last 30 lines of log fit inline. The full log goes via manual attach, which the body explicitly asks for. Acceptable for a low-volume support channel.
 
-**Two-stage install design honored Anthony's spec:**
+**Two-stage install design:**
 - Stage 1 = GUI: option collection only, no actual install work.
 - Stage 2 = `install.py`: all the heavy lifting (venv, torch, kernels build, bake download, server launch) — unchanged from iter39 except for being invoked with explicit `--home` from stage 1.
 - Side benefit: stage 2 is still independently runnable via `python install.py` for headless / scripted installs.
@@ -86,20 +86,20 @@ snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\
 
 ## v6.8.iter39 — Adam ships as self-contained GF(17) bake; no upstream Gemma 4 download for public installs (2026-05-18)
 
-**Trigger:** New-user install failure: `install.py` succeeded on the prebuilt bake `amnibro/gemma-4-E2B-it-gf17` (5 GB, public), then immediately tried to also pull `google/gemma-2-2b-it` and got `401 Cannot access gated repo`. Anthony's reaction cut to the architectural question: "Shouldn't Adam ship only the baked GF17 version that was pre-built on top of gemma 4 e2b it?" — yes. Public users should never touch upstream Gemma weights.
+**Trigger:** Bug report — `install.py` succeeded on the prebuilt bake `amnibro/gemma-4-E2B-it-gf17` (20 GB, public), then immediately tried to also pull `google/gemma-2-2b-it` and got `401 Cannot access gated repo`. The architectural question raised: should Adam ship only the baked GF(17) artifact that was pre-built on top of Gemma 4 E2B IT, with no upstream weight access required at all? Answer: yes. Public users should never touch upstream Gemma weights.
 
-**Correction to prior changelog draft:** the bake is genuinely re-encoded from Google **Gemma 4 E2B IT** (architecture: `Gemma4ForConditionalGeneration`, model_types `gemma4` / `gemma4_text` / `gemma4_audio` / `gemma4_vision` — multimodal). `DEFAULT_BASE_REPO='google/gemma-2-2b-it'` in `bootstrap.py` is a stale leftover from the Gemma 2 era and was wrong; the public install path now never invokes it, so the stale string is effectively dead.
+**Correction to prior changelog draft:** the bake is genuinely re-encoded from Google **Gemma 4 E2B IT** (architecture: `Gemma4ForConditionalGeneration`, model_types `gemma4` / `gemma4_text` / `gemma4_audio` / `gemma4_vision` — multimodal). `DEFAULT_BASE_REPO='google/gemma-2-2b-it'` in `bootstrap.py` was a stale leftover from the Gemma 2 era and was wrong; the public install path now never invokes it, so the stale string is effectively dead.
 
 **Root cause (two bugs stacked):**
 1. `cmd_init` downloaded the base model unconditionally whenever `cfg['model']` was unset — but the prebuilt bake already ships `config.json` + `tokenizer.json` + `generation_config.json` + `chat_template.jinja` + `processor_config.json`, which is *everything* the streaming runtime needs from a "model dir". The base-model download was a leftover from the early dev path where rebaking from upstream was the primary delivery channel.
-2. `_add_common_adam` fell back to hardcoded `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17` / `E:/Amni-Ai-Models/gemma-4-E2B-it` — Anthony's external-drive paths. On a new user's machine those don't exist, so `AutoTokenizer.from_pretrained('E:/Amni-Ai-Models/gemma-4-E2B-it')` saw a non-existent path, treated it as a repo_id, and threw `Repo id must be in the form 'repo_name' or 'namespace/repo_name'` (the second error in the bug report).
+2. `_add_common_adam` fell back to hardcoded absolute external-drive paths from the dev machine where the bake was originally built. On any other machine those paths don't exist, so `AutoTokenizer.from_pretrained(<that path>)` saw a non-existent directory, treated it as a repo_id, and threw `Repo id must be in the form 'repo_name' or 'namespace/repo_name'` (the second error in the bug report).
 
 **Fix (architectural pivot — Adam is now a single self-contained artifact):**
 - `bootstrap.py`:
   - new helper `bake_has_runtime_metadata(bake_dir)` (checks `config.json` + `tokenizer.json` in the bake).
   - `download_bake` no longer falls back to `generate_bake_local` (which required gated upstream access). On HF bake failure it prints a clean error pointing to the issue tracker.
-  - `download_base_model` and `generate_bake_local` kept as importable for Anthony's dev rebake workflow but docstrings now flag them DEV-ONLY; the public CLI path never calls them.
-- `cli.py`: `_add_common_adam` defaults derive from `cfg.get('bake')` → `CONFIG_DIR/bakes/...` instead of Anthony's E: paths. `cmd_init` collapsed: pulls bake only, then sets `cfg['model']=cfg['bake']` so the streaming runtime reads tokenizer + config straight from the bake. No second download, no y/n prompt for base weights.
+  - `download_base_model` and `generate_bake_local` kept as importable for the dev rebake workflow but docstrings now flag them DEV-ONLY; the public CLI path never calls them.
+- `cli.py`: `_add_common_adam` defaults derive from `cfg.get('bake')` → `CONFIG_DIR/bakes/...` instead of any hardcoded absolute path. `cmd_init` collapsed: pulls bake only, then sets `cfg['model']=cfg['bake']` so the streaming runtime reads tokenizer + config straight from the bake. No second download, no y/n prompt for base weights.
 
 **Effect for a fresh `git clone → python install.py`:**
 - One HF download: `amnibro/gemma-4-E2B-it-gf17` (5 GB).
@@ -110,7 +110,7 @@ snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\
 
 **Additional cleanups in the same iter39 pass:**
 
-*Bake size: ~5 GB → ~20 GB.* The on-disk size of the published bake is actually 20 GB (verified via `du -sh E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/`). The "~5 GB" string was a stale estimate from before the audio/vision towers were included. Fixed in `install.py` (docstring + `--skip-model` help text), `amni/bootstrap.py:download_bake` log line, `amni/cli.py:cmd_init` y/n prompt, `docs/INSTALL.md`.
+*Bake size: ~5 GB → ~20 GB.* The on-disk size of the published bake is actually 20 GB (verified via `du -sh <local-bake-dir>`). The "~5 GB" string was a stale estimate from before the audio/vision towers were included. Fixed in `install.py` (docstring + `--skip-model` help text), `amni/bootstrap.py:download_bake` log line, `amni/cli.py:cmd_init` y/n prompt, `docs/INSTALL.md`.
 
 *Deprecated HF arg.* Removed `local_dir_use_symlinks=False` from both `snapshot_download` calls in `amni/bootstrap.py` — huggingface_hub now warns the arg is deprecated and ignored.
 
@@ -124,18 +124,16 @@ python install.py
 
 *Site port: 8001 → 8002.* The site card claimed `localhost:8001` but `install.py` defaults to port 8002.
 
-*Bake-side Apache 2.0 § 4 compliance.* The HF bake repo `amnibro/gemma-4-E2B-it-gf17` only shipped a README.md alongside the weights — when pulled standalone via `snapshot_download`, downstream recipients got the weights without a copy of the Apache 2.0 License (§ 4(a)) or a NOTICE file with the modification disclosure (§ 4(b) + § 4(d)). Closed the gap locally in `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/`:
-  - `LICENSE` — full Apache 2.0 text (copied from `Amni-Ai/LICENSES/apache-2.0.txt`).
+*Bake-side Apache 2.0 § 4 compliance.* The HF bake repo `amnibro/gemma-4-E2B-it-gf17` only shipped a README.md alongside the weights — when pulled standalone via `snapshot_download`, downstream recipients got the weights without a copy of the Apache 2.0 License (§ 4(a)) or a NOTICE file with the modification disclosure (§ 4(b) + § 4(d)). Closed the gap by adding three files to the HF bake repo:
+  - `LICENSE` — full Apache 2.0 text.
   - `NOTICE` — structured per § 4(b)/4(c)/4(d): upstream source + license, lossless re-encoding modification disclosure (cos=1.0, no fine-tuning, no distillation, no lossy compression — pure storage-format conversion), trademark notice, and explicit separation of the bake's Apache 2.0 weights from the surrounding Adam orchestration code's CC BY-NC 4.0 license.
   - `README.md` — corrected stale `base_model: google/gemma-2-2b-it` → `google/gemma-4-e2b-it`, dropped the broken `pip install -r requirements.txt` step, added an explicit Apache 2.0 § 4 compliance section.
-
-**Action item Anthony needs to do manually:** push the updated `LICENSE`, `NOTICE`, and `README.md` from `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` up to `amnibro/gemma-4-E2B-it-gf17` on HuggingFace (`huggingface-cli upload amnibro/gemma-4-E2B-it-gf17 ./LICENSE ./NOTICE ./README.md` from that dir, or via the HF web UI). Until that push, the published HF bake is missing the compliance files.
 
 **Files touched (cleanups):** `install.py`, `amni/bootstrap.py`, `amni/cli.py`, `docs/INSTALL.md`, `amni-scient-site/amni-ai.html`, plus three files in the local bake dir (`LICENSE`, `NOTICE`, `README.md`). Site backup at `backups/amni-scient-amni-ai.html.v6.8.iter38.bak`.
 
 ## v6.8.iter38 — Fully automated install (auto-build amni_kernels, auto-install Rust) (2026-05-18)
 
-**Trigger:** Anthony — "all of the install should be fully automated." Post-iter37 the install correctly *reported* when amni_kernels couldn't load on a non-cp313 Python, but the fix was still manual (`cd amni_kernels && pip install maturin && maturin develop --release`). For a "git clone → python install.py → working chat" UX, the installer needs to do that build itself, and install Rust first if the user doesn't have it.
+**Trigger:** maintainer directive — "all of the install should be fully automated." Post-iter37 the install correctly *reported* when amni_kernels couldn't load on a non-cp313 Python, but the fix was still manual (`cd amni_kernels && pip install maturin && maturin develop --release`). For a "git clone → python install.py → working chat" UX, the installer needs to do that build itself, and install Rust first if the user doesn't have it.
 
 **What iter38 adds to install.py:**
 - New helper `cargo_path()` — searches `PATH` and `~/.cargo/bin` for `cargo`.
@@ -157,7 +155,7 @@ python install.py
 **Step count grew from 5 to 6:**
 1/6 venv → 2/6 GPU + torch → **3/6 Adam install** → **4/6 amni_kernels native build (if needed)** → 5/6 init → 6/6 launch.
 
-**Smoke (Anthony's box, Python 3.12.10 + RX 7800 XT):**
+**Smoke (the dev box, Python 3.12.10 + RX 7800 XT):**
 - `cargo_path()` returns `C:\Users\antho\.cargo\bin\cargo.EXE` (Rust already present from prior dev work).
 - `amni_kernels_imports(env)` returns `False` — confirms iter37's friendly ImportError fires on cp313-only .pyd vs running Python 3.12. Detection is correct.
 - Full maturin build path not executed during smoke (5–15 min cold compile); design verified via the helpers.
@@ -180,13 +178,13 @@ python install.py
 
 ## v6.8.iter37 — Kill the iter21 "encrypted-blob" stub path that was blocking real users (2026-05-18)
 
-**Trigger:** Discord user MutantRabbit767 successfully ran install.py, downloaded the model, started the server, tried to chat, hit a server-side error pointing them at `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"`, ran that command, and got `NotImplementedError: Runtime fetcher pipeline not yet wired. Build steps (Anthony to do): ...`. Three call sites in the codebase still suggested the iter21 encrypted-blob `fetch()` workflow, but iter29 made the full Reffelt source public under CC BY-NC 4.0 — there is no blob to fetch. The runtime.py stub was never updated to reflect the iter29 reality, leaving users with a broken command at the end of a long install.
+**Trigger:** a user a user successfully ran install.py, downloaded the model, started the server, tried to chat, hit a server-side error pointing them at `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"`, ran that command, and got `NotImplementedError: Runtime fetcher pipeline not yet wired. Build steps (the maintainer to do): ...`. Three call sites in the codebase still suggested the iter21 encrypted-blob `fetch()` workflow, but iter29 made the full Reffelt source public under CC BY-NC 4.0 — there is no blob to fetch. The runtime.py stub was never updated to reflect the iter29 reality, leaving users with a broken command at the end of a long install.
 
 **Root cause analysis (the chain):**
 1. Server boot called `StreamingChatService(bake_dir, model_path)` which can fail for several reasons (incomplete bake, model architecture mismatch, prebuilt `amni_kernels` .pyd compiled for the wrong Python ABI — currently cp313 only).
 2. Adam caught the exception, set `self.svc = None`, stored the real failure in `self.runtime_error`, but the user-facing chat error message at `amni/adam.py:81` ignored `runtime_error` and instead suggested `from amni.runtime import fetch; fetch(...)`.
 3. `amni/inference/streaming_chat.py:23` raised `_RuntimeBlobMissing` with the same misleading fetch-it message whenever `streaming_linear` failed to import.
-4. `amni/runtime.py:fetch()` raised `NotImplementedError` with a TO:DO comment addressed to Anthony — visible end of the road for the user.
+4. `amni/runtime.py:fetch()` raised `NotImplementedError` with a TO:DO comment addressed to maintainer directive — visible end of the road for the user.
 
 **Fixes:**
 - `amni/runtime.py` — full rewrite for iter29 public-source mode.
@@ -197,8 +195,8 @@ python install.py
 - `amni/inference/streaming_chat.py:6-23` — captures the actual `ImportError` into `_IMPORT_ERROR`, surfaces it in the `_RuntimeBlobMissing` message along with the running Python version and the maturin rebuild instructions. No more "fetch the blob" misdirection.
 - `amni_kernels/__init__.py` — wrap the `from .amni_kernels import *` line in try/except. On ABI mismatch, raise a custom `ImportError` that reports the running Python version and explains how to rebuild from source via maturin. The original "ModuleNotFoundError: No module named 'amni_kernels.amni_kernels'" was technically true but useless to users.
 
-**Smoke (on Anthony's box, Python 3.12.10):**
-- `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"` — MutantRabbit's exact command — now prints:
+**Smoke (on the dev box, Python 3.12.10):**
+- `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"` — the user's exact command — now prints:
   ```
   [runtime] Adam runtime is ready (iter29 public-source mode — no fetch needed).
   [runtime] python=3.12.10  expected_version=v6.8
@@ -225,7 +223,7 @@ python install.py
 
 ## v6.8.iter36 — Smart vendor-aware PyTorch install (NVIDIA / AMD / CPU auto-detect) (2026-05-17)
 
-**Trigger:** Anthony's fresh-clone smoke from `Downloads/Amni-Ai/` succeeded all the way to a running server, but the server reported `no GPU detected, falling back to CPU (~1 tok/s)`. Root cause: PyPI's default `torch` wheel on Windows is CPU-only — `pip install torch>=2.0.0` (via `requirements.txt` and pyproject `dependencies`) silently pulls `torch-2.12.0-cp312-cp312-win_amd64.whl` with neither CUDA nor HIP. Adam's `torch.cuda.is_available()` correctly returned False because the installed torch literally has no GPU runtime. Affected every Method-1/2/3 user on Windows + Linux without manual torch-index pinning.
+**Trigger:** the maintainer's fresh-clone smoke from `Downloads/Amni-Ai/` succeeded all the way to a running server, but the server reported `no GPU detected, falling back to CPU (~1 tok/s)`. Root cause: PyPI's default `torch` wheel on Windows is CPU-only — `pip install torch>=2.0.0` (via `requirements.txt` and pyproject `dependencies`) silently pulls `torch-2.12.0-cp312-cp312-win_amd64.whl` with neither CUDA nor HIP. Adam's `torch.cuda.is_available()` correctly returned False because the installed torch literally has no GPU runtime. Affected every Method-1/2/3 user on Windows + Linux without manual torch-index pinning.
 
 **The fix:**
 - `install.py` now does GPU detection **before** any torch install, then installs the vendor-correct PyTorch wheel from the right PyTorch index URL **before** `pip install -e .[all]` runs. Pip then sees the satisfied `torch` and doesn't replace it.
@@ -243,7 +241,7 @@ python install.py
 - New CLI flags: `--gpu auto|nvidia|amd|cpu`, `--cuda <tag>` (default `cu124`), `--rocm <tag>` (default `rocm6.2`).
 - Step count grew from 4 to 5: 1/5 venv → 2/5 GPU detect + vendor torch → 3/5 Adam → 4/5 init → 5/5 launch.
 
-**Smoke (on Anthony's box, RX 7800 XT + Windows 11):**
+**Smoke (on the dev box, RX 7800 XT + Windows 11):**
 - `detect_gpu("auto")` → `amd` (correct).
 - `torch_index("amd", "cu124", "rocm6.2")` on Windows → `None` (correct, triggers CPU fallback with TheRock warning).
 - `torch_index("nvidia", "cu124", "rocm6.2")` → `https://download.pytorch.org/whl/cu124` (correct).
@@ -266,7 +264,7 @@ python install.py
 
 ## v6.10 — Asimov Merkle binding (Layer 1 of 3 Asimov hardening) (2026-05-17)
 
-**Trigger:** Anthony — "how do we 'bake' the layers into Adam so people can't just bypass them?" Threat model: sophisticated researchers/hackers running abliteration-style attacks like the jailbroken HF models. v6.10 = Layer 1 (file-edit defense, Merkle GF(17) hash binding). v6.11 (abliteration defense — load-bearing in TMU) and v6.12 (AES-256 encryption) specced and queued; this milestone ships Layer 1 only.
+**Trigger:** maintainer directive — "how do we 'bake' the layers into Adam so people can't just bypass them?" Threat model: sophisticated researchers/hackers running abliteration-style attacks like the jailbroken HF models. v6.10 = Layer 1 (file-edit defense, Merkle GF(17) hash binding). v6.11 (abliteration defense — load-bearing in TMU) and v6.12 (AES-256 encryption) specced and queued; this milestone ships Layer 1 only.
 
 Pre-v6.10 AsimovLayer had a single SHA-256 self-check at init: `assert hashlib.sha256(repr(_AXIOMS)) == _AXIOM_INTEGRITY`. Both sides of the equality live in `amni/a1/asimov.py` — an attacker who edits the file once edits BOTH the data and the expected hash. No tamper evidence.
 
@@ -315,11 +313,11 @@ v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file
 - ❌ Does NOT defend against: an attacker who edits the laws AND runs `scripts/v6_10_compute_asimov_root.py` to regenerate root. Defense for this is v6.12 (encrypted beacon with off-machine key).
 - ❌ Does NOT defend against: abliteration of the downstream Adam model. The gate text-patterns are abliteration-resistant by design (discrete GF(17), no continuous refusal direction), but the LLM behind the gate is vulnerable to PCA refusal-direction surgery if it's a normal transformer. Defense for this is v6.11 (Asimov hash routed into downstream TMU lookups so abliteration produces gibberish, not jailbreak).
 
-**Awaiting Anthony confirmation** before marking v6.10 fully shipped: (a) `AsimovLayer()` instantiates clean; (b) Adam still answers normal queries; (c) Adam still refuses harm prompts; (d) tamper resistance demonstrable. **Next:** v6.11 (load-bearing TMU routing — the abliteration defense) is specced and queued.
+**Awaiting maintainer confirmation** before marking v6.10 fully shipped: (a) `AsimovLayer()` instantiates clean; (b) Adam still answers normal queries; (c) Adam still refuses harm prompts; (d) tamper resistance demonstrable. **Next:** v6.11 (load-bearing TMU routing — the abliteration defense) is specced and queued.
 
 ## v6.9.0 — KB write-path perf fix + Phase 3 completion: 421k lossless records (2026-05-16)
 
-**Trigger:** Anthony — "let's finish the rest." v6.8.30 left Phase 3 partial because bulk HF ingest collapsed at ~0.75 rec/sec past ~30k entries. v6.8.30 blamed `_save_index` autosave; that was wrong.
+**Trigger:** maintainer directive — "let's finish the rest." v6.8.30 left Phase 3 partial because bulk HF ingest collapsed at ~0.75 rec/sec past ~30k entries. v6.8.30 blamed `_save_index` autosave; that was wrong.
 
 **1. Root cause diagnosis (probes in `tests/test_v6_9_0_kb_perf_profile.py`):**
 - Synthetic-record stress on a fresh KB: 8k → 232 rec/sec flat, 40k → 252→197, 70k → 252→160. **No cliff** at any record count on a fresh KB.
@@ -350,7 +348,7 @@ v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file
 - `glaiveai/glaive-code-assistant` — completed to 50,000 glaive_code entries (was ~10k partial).
 - Mid-run housekeeping: pruned 32,000 dirty `alpaca_code::18000..49999` orphans (artifact of first Magicoder run using the wrong template — fixed by adding the `magicoder` template and re-prefixing).
 
-**5. Final knowledge layer (E:\Amni-Ai-KB and `experiences/sibling_code`):**
+**5. Final knowledge layer (<kb-root> and `experiences/sibling_code`):**
 | KB / Atlas | Records | Size | Util | Notes |
 |---|---|---|---|---|
 | `canonical` | **196,009** | 607.4 MB | 90.5% | DevDocs 51 slugs (v6.8.30) |
@@ -375,21 +373,21 @@ v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file
 | Phase 3a (the_stack swap) | ≥20k records | 75,000 (magicoder) | ✅ PASS |
 | Phase 3b (evol completion) | ≥80k total evol_code | 78,258 | ⚠ Slightly under (template skips records lacking both fields) |
 | Phase 3c (glaive completion) | ≥40k total glaive_code | 50,000 | ✅ PASS |
-| Regression: `examples/quickstart.py` | passes | not yet rerun | ⏸ pending Anthony |
+| Regression: `examples/quickstart.py` | passes | not yet rerun | ⏸ pending maintainer |
 
-**Awaiting Anthony confirmation:** (a) attach both KBs and ask a pathlib or magicoder-style question — should retrieve from new KBs; (b) `examples/quickstart.py` still green; (c) no AsimovLayer regression.
+**Awaiting maintainer confirmation:** (a) attach both KBs and ask a pathlib or magicoder-style question — should retrieve from new KBs; (b) `examples/quickstart.py` still green; (c) no AsimovLayer regression.
 
 ## v6.8.30 — Knowledge Preload: 265k lossless code-knowledge records (2026-05-16)
 
-**Trigger:** Anthony — "can you figure out a way to grant amni-ai (Adam) huge banks of good coding practices from sources available online at huggingface, github, and others? I want Adam to be able to assist me with all these /ai projects I have in the folder above this one."
+**Trigger:** maintainer directive — "can you figure out a way to grant amni-ai (Adam) huge banks of good coding practices from sources available online at huggingface, github, and others? I want Adam to be able to assist me with all these /ai projects I have in the folder above this one."
 
-Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on external NVMe (E:\Amni-Ai-KB), plus a behavior-corpus atlas of Anthony's own sibling projects. KB-first, paradigm-pure: every record is TMU-addressable via `kb.lookup(key)`. Council ruling 5-0 in `docs/guardian_councils/guardian_council_v6_8_0_knowledge_preload.md`; checklist in `docs/checklists/checklist_v6_8_0_knowledge_preload_v1.md`. (Artifact files retain the `v6_8_0` naming used during build; version label is v6.8.30 to slot after iter20.)
+Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on external NVMe (<kb-root>), plus a behavior-corpus atlas of the maintainer's own sibling projects. KB-first, paradigm-pure: every record is TMU-addressable via `kb.lookup(key)`. Council ruling 5-0 in `docs/guardian_councils/guardian_council_v6_8_0_knowledge_preload.md`; checklist in `docs/checklists/checklist_v6_8_0_knowledge_preload_v1.md`. (Artifact files retain the `v6_8_0` naming used during build; version label is v6.8.30 to slot after iter20.)
 
 **1. New orchestrator + extended ingester:**
 - `scripts/v6_8_0_knowledge_preload.py` — phase-sequenced launcher (`--phase 1|2|3 [--all] [--dataset N] [--dry-run] [--verify-only]`). Wraps existing `adam1_kb_build.py`, `adam1_ingest_codebase.py`, `adam1_ingest_hf_to_kb.py`. Logs each phase to `logs/v6_8_0_preload_phase_<n>.log`.
 - `scripts/adam1_ingest_hf_to_kb.py` — extended `_TEMPLATES` dict with four code-aware templates: `stack_code` (tolerant of both `content` and `code` fields), `code_alpaca`, `evol_instruct`, `glaive_code`. Backup at `backups/v6_8_0_pre_preload/`.
 
-**2. Phase 1 — DevDocs canonical-50 → `E:\Amni-Ai-KB\canonical` (LOSSLESS):**
+**2. Phase 1 — DevDocs canonical-50 → `<kb-root>\canonical` (LOSSLESS):**
 - 51/51 slugs complete (Python 3.12, JS, TS, Rust, Go, C/C++, Kotlin, Ruby, PHP, Lua, Perl, Dart, Elixir, Haskell, OCaml, Clojure, Bash, HTML, CSS, DOM, React, Vue 3, Angular, Svelte, Next.js, Tailwind, Node, Express, Django, Flask, FastAPI, Rails, NumPy, Pandas, PyTorch, TF, Matplotlib, Docker, K8s, nginx, Redis, Postgres 17, SQLite, Ansible, Terraform, Git, CMake, requests, jq, Markdown).
 - **196,009 entries, 607.4 MB across 10 PTEX pages, util 90.5%.** Beat ≥150k pass-gate by 31%.
 - Spot-check: `kb.lookup_prefix('python~3.12::library/pathlib')` returns 3 hits with real docs text. ✓
@@ -399,7 +397,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 - **3,878 ExperienceAtlas records** under `subject='sibling_code'`, category `codebase-<sibling>`. PTEX-encoded, one 64 MB page. Eligible for `adam1_grow` distill into Wisdom residuals (deferred to v6.9.0 Phase 4).
 - Below my checklist's 5,000 heuristic but is the real post-exclusion file count and substantial signal for residual SFT.
 
-**4. Phase 3 — HF code datasets → `E:\Amni-Ai-KB\code_hf` (PARTIAL):**
+**4. Phase 3 — HF code datasets → `<kb-root>\code_hf` (PARTIAL):**
 - `HuggingFaceH4/CodeAlpaca_20K` — **18,013 / 25,000 records** (dataset fully exhausted, healthy 209s wall).
 - `nickrosh/Evol-Instruct-Code-80k-v1` — **37,500 / 85,000 records** (killed at autosave-thrash).
 - `glaiveai/glaive-code-assistant` — **~10,000 / 50,000 records** (killed at autosave-thrash even with `AMNI_KB_AUTOSAVE_EVERY=5000`).
@@ -413,7 +411,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **6. Net knowledge landed in v6.8.30:**
 - **265,677 lossless records** Adam can recall by key — 196,009 API/function pages + 65,790 code Q+A pairs + 3,878 personal-codebase files.
-- All TMU-addressable via PTEX RGBA pages on E:\Amni-Ai-KB. Attach at inference via existing `adam1_serve_multikb.py --multikb E:/Amni-Ai-KB/canonical E:/Amni-Ai-KB/code_hf`.
+- All TMU-addressable via PTEX RGBA pages on <kb-root>. Attach at inference via existing `adam1_serve_multikb.py --multikb <kb-root>/canonical <kb-root>/code_hf`.
 - AsimovLayer untouched. KB origin metadata recorded per-entry (kind/lang/repo). SSD-streaming paradigm preserved (KBs live outside repo).
 
 **Files changed:**
@@ -421,7 +419,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 - NEW: `docs/checklists/checklist_v6_8_0_knowledge_preload_v1.md`
 - NEW: `docs/guardian_councils/guardian_council_v6_8_0_knowledge_preload.md`
 - MOD: `scripts/adam1_ingest_hf_to_kb.py` (added 4 templates; backup `backups/v6_8_0_pre_preload/adam1_ingest_hf_to_kb.v6.7.0.bak`)
-- DATA: `E:\Amni-Ai-KB\canonical\` (196k entries), `E:\Amni-Ai-KB\code_hf\` (65,790 entries), `experiences/sibling_code/` (3,878 records)
+- DATA: `<kb-root>\canonical\` (196k entries), `<kb-root>\code_hf\` (65,790 entries), `experiences/sibling_code/` (3,878 records)
 - LOGS: `logs/v6_8_0_preload_phase_{1,2,3}.log`
 
 **Pass-gate scoreboard:**
@@ -430,13 +428,13 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 | 1 | ≥48/51 slugs, ≥150k entries | 51/51, 196,009 | ✅ PASS |
 | 2 | >5,000 atlas records | 3,878 | ⚠ Below heuristic but real post-exclusion count |
 | 3 | each dataset ≥10k records | 18k/37.5k/10k/0 | ⚠ 3 of 4 datasets hit gate |
-| Regression | `examples/quickstart.py` passes | not yet rerun | ⏸ pending Anthony |
+| Regression | `examples/quickstart.py` passes | not yet rerun | ⏸ pending maintainer |
 
-**Awaiting Anthony confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
+**Awaiting maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
 ## v6.8.iter34 — End-to-end install verify + crawler standalone (2026-05-17)
 
-**Trigger:** Anthony — "yes verify everything. Also make sure the webcrawler works on its own"
+**Trigger:** maintainer directive — "yes verify everything. Also make sure the webcrawler works on its own"
 
 **A. WebCrawler standalone test** (`tests/_v6_8_crawler_standalone.py`):
 - Instantiated WebCrawler directly (no Adam, no GF(17) runtime)
@@ -483,7 +481,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 ## v6.8.iter32 — Fresh-clone install test (the 3 methods on amni-scient.com) (2026-05-17)
 
-**Trigger:** Anthony — "test the install methods listed on my site"
+**Trigger:** maintainer directive — "test the install methods listed on my site"
 
 Cloned `Amnibro/Amni-Ai` into `C:\Users\antho\install_test_amni\` with a fresh venv. Ran the 3 methods from amni-scient.com/amni-ai's landing page exactly as published.
 
@@ -515,7 +513,7 @@ Cloned `Amnibro/Amni-Ai` into `C:\Users\antho\install_test_amni\` with a fresh v
 
 ## v6.8.iter31 — Upload Gemma-4 GF17 bake to HF amnibro/gemma-4-E2B-it-gf17 (2026-05-17)
 
-**Trigger:** Anthony — "please do the hugging face one too"
+**Trigger:** maintainer directive — "please do the hugging face one too"
 
 After iter30 wired local-bake generation as fallback, also uploaded the prebuilt 20GB bake to HF so users skip the 5-min re-encode step on first install.
 
@@ -538,7 +536,7 @@ After iter30 wired local-bake generation as fallback, also uploaded the prebuilt
 
 ## v6.8.iter30 — Local bake generation (no HF dependency for the bake) (2026-05-17)
 
-**Trigger:** Anthony — "the [HF bake] repo doesn't even exist". After iter29 made the source deployable, the install path still failed because `bootstrap.download_bake` called `snapshot_download('Amnibro/gemma-4-E2B-it-gf17')` → 404. Anthony hadn't uploaded a bake to HF. His response: *"I don't really care - we can even host the bake on my website"*.
+**Trigger:** maintainer directive — "the [HF bake] repo doesn't even exist". After iter29 made the source deployable, the install path still failed because `bootstrap.download_bake` called `snapshot_download('Amnibro/gemma-4-E2B-it-gf17')` → 404. the maintainer hadn't uploaded a bake to HF. His response: *"I don't really care - we can even host the bake on my website"*.
 
 Picked: **local re-encode**. Zero hosting, zero ongoing maintenance, zero external dependency. The base Gemma weights are public on HF (Apache 2.0); the GF(17) re-encoder code is now public (iter29). So users can generate their own bake on first launch.
 
@@ -567,7 +565,7 @@ usage: adam1_bake.py [-h] --hf-id HF_ID --out OUT [--cache-dir ...]
 adam1-bake: convert HF transformer to GF(17) Adam-1 bake
 ```
 
-**Net effect:** fresh user clones, runs `python install.py`, install.py runs `amni.cli init`, init calls `download_bake(cfg)`, HF 404s, falls back to local-generate, downloads `google/gemma-2-2b-it` (~5GB, Apache 2.0), re-encodes to GF(17) (~1-5min on GPU), saves to `~/.amni-ai/bakes/gemma4_e2b_it_gf17/`, server starts, browser opens. No HF account, no auth, no Anthony hosting required.
+**Net effect:** fresh user clones, runs `python install.py`, install.py runs `amni.cli init`, init calls `download_bake(cfg)`, HF 404s, falls back to local-generate, downloads `google/gemma-2-2b-it` (~5GB, Apache 2.0), re-encodes to GF(17) (~1-5min on GPU), saves to `~/.amni-ai/bakes/gemma4_e2b_it_gf17/`, server starts, browser opens. No HF account, no auth, no the maintainer hosting required.
 
 **Files added:**
 - `scripts/adam1_bake.py`
@@ -580,9 +578,9 @@ adam1-bake: convert HF transformer to GF(17) Adam-1 bake
 
 ## v6.8.iter29 — Deployable: reverse iter21 protection, ship complete working source (2026-05-17)
 
-**Trigger:** Anthony — "we need to get it actually deployable. Just put everything together so they can download and run it now"
+**Trigger:** maintainer directive — "we need to get it actually deployable. Just put everything together so they can download and run it now"
 
-After a real user (MutantRabbit767) tried to install Adam and hit ModuleNotFoundError on missing Reffelt internals, the iter21 "encrypted blob ships separately" plan stopped being viable. Users want to clone + run. The iter22-iter28-hotfix2 graceful-degradation patches kept the server BOOTING but chat returned `runtime not installed`. That's a useless product.
+After a real user tried to install Adam and hit ModuleNotFoundError on missing Reffelt internals, the iter21 "encrypted blob ships separately" plan stopped being viable. Users want to clone + run. The iter22-iter28-hotfix2 graceful-degradation patches kept the server BOOTING but chat returned `runtime not installed`. That's a useless product.
 
 This iter reverses iter21. CC BY-NC 4.0 license is now the only protection layer — code is fully open, commercial use is legally forbidden.
 
@@ -598,7 +596,7 @@ This iter reverses iter21. CC BY-NC 4.0 license is now the only protection layer
 - `gf17_translator.py`
 
 **STILL gitignored** (truly local):
-- `CLAUDE.md`, `.claude/`, `.github/copilot-instructions.md` — Anthony's private rules
+- `CLAUDE.md`, `.claude/`, `.github/copilot-instructions.md` — the maintainer's private rules
 - `bin/mlc-venv/`, `bin/` (llama.cpp redistributables — separate distribution)
 - `manifest.json` (per-machine bake paths)
 - `amni_kernels/target/` (Rust build artifacts, 218MB)
@@ -626,7 +624,7 @@ ALL CRITICAL IMPORTS PASS — public clone now has complete working source
 
 **5. The iter21 design lives on as a future option:** `amni/runtime.py` still exists with its `fetch()` stub. If we ever want to switch back to the encrypted-blob model (e.g., for commercial tier), the scaffolding is there.
 
-**Trade-off accepted:** Reffelt math is now visible to anyone who clones. CC BY-NC 4.0 prohibits commercial use; that's the only protection. Anyone using Adam commercially without a license is in violation. Anyone reverse-engineering for non-commercial research/education is within license. This was Anthony's explicit call after seeing the broken-clone reality.
+**Trade-off accepted:** Reffelt math is now visible to anyone who clones. CC BY-NC 4.0 prohibits commercial use; that's the only protection. Anyone using Adam commercially without a license is in violation. Anyone reverse-engineering for non-commercial research/education is within license. This was the maintainer's explicit call after seeing the broken-clone reality.
 
 **Files added (105+):**
 - amni/a1/*, amni/compute/*, amni/core/*, amni/training/*, amni/model/*, amni/learning/*, amni/storage/*, amni/utils/*, amni_kernels/*, amni/inference/{adam_runtime,streaming_linear,tiered,triton_gdn_patch,asimov}.py, gf17_translator.py
@@ -639,7 +637,7 @@ ALL CRITICAL IMPORTS PASS — public clone now has complete working source
 
 ## v6.8.iter28-hotfix2 — Fix broken public install (real user report) (2026-05-17)
 
-**Trigger:** Real user (MutantRabbit767) tried to install Adam from `git clone github.com/Amnibro/Amni-Ai`, hit:
+**Trigger:** A real user tried to install Adam from `git clone github.com/Amnibro/Amni-Ai`, hit:
 ```
 ModuleNotFoundError: No module named 'amni.inference.tiered'
 ```
@@ -710,7 +708,7 @@ Unit tests for iter15-27 are all static / mocked. They prove each piece works in
 
 **Trigger:** /loop continuously improve adam's coding and problem solving capability please
 
-iter15-26 features fire silently. Anthony has no visibility into how often the quality gate (iter25) blocks promotion vs lets through, how often the perturb loop succeeds at each magnitude (iter15+20), which error hints fire most (iter26), how often the intent screen blocks (iter16), or what fraction of code queries actually need the multi-block stitch (iter24). This iter wires in-process counters at every event site and exposes them.
+iter15-26 features fire silently. the maintainer has no visibility into how often the quality gate (iter25) blocks promotion vs lets through, how often the perturb loop succeeds at each magnitude (iter15+20), which error hints fire most (iter26), how often the intent screen blocks (iter16), or what fraction of code queries actually need the multi-block stitch (iter24). This iter wires in-process counters at every event site and exposes them.
 
 **1. Counter dict at server init** (`scripts/amni_serve.py`): 14 counters covering every loop feature
 - `tests_passed`, `tests_failed` (iter17)
@@ -745,7 +743,7 @@ iter15-26 features fire silently. Anthony has no visibility into how often the q
 - Rate math safety: verifies zero-denominator handling
 - ALL PASS (4/4)
 
-**Impact:** after running real traffic, Anthony can hit `/stats` and see e.g.:
+**Impact:** after running real traffic, the maintainer can hit `/stats` and see e.g.:
 ```json
 {
   "iter_counters": {"tests_passed": 23, "tests_failed": 7, "promoted": 18, "quality_gated": 5, "perturb_attempted": 7, "perturb_succeeded_small": 4, "perturb_succeeded_medium": 2, "perturb_failed": 1, "hint_injected": 5, ...},
@@ -893,7 +891,7 @@ When iter17's self-tests fail, iter20's perturb retry currently sees raw `Assert
 
 ## v6.8.iter22-hotfix — Scrub jailbreak playbook + Gemma Apache 2.0 NOTICE + soften security claims (2026-05-17)
 
-**Trigger:** Anthony — "yeah you should do the fixes but I think we have other points of concern too, like the jailbreak expressions you listed as examples and the fact it only blocks 81%."
+**Trigger:** maintainer directive — "yeah you should do the fixes but I think we have other points of concern too, like the jailbreak expressions you listed as examples and the fact it only blocks 81%."
 
 Two problems I shipped in iter22 + iter16, both fixed in one commit.
 
@@ -915,7 +913,7 @@ Two problems I shipped in iter22 + iter16, both fixed in one commit.
 - README License section rewritten
 - Landing page spec table + footer updated
 
-**Verification (Anthony's check):** Gemma 4 = Apache 2.0, verified at `ai.google.dev/gemma/docs/gemma_4_license`. Earlier Gemma stays on Google's custom terms; Gemma 4 graduated. Apache 2.0 explicitly permits commercial use, modification, redistribution, format conversion.
+**Verification (the maintainer's check):** Gemma 4 = Apache 2.0, verified at `ai.google.dev/gemma/docs/gemma_4_license`. Earlier Gemma stays on Google's custom terms; Gemma 4 graduated. Apache 2.0 explicitly permits commercial use, modification, redistribution, format conversion.
 
 **Files added:**
 - `NOTICE`, `LICENSES/apache-2.0.txt`
@@ -928,7 +926,7 @@ Two problems I shipped in iter22 + iter16, both fixed in one commit.
 
 ## v6.8.iter22 — Landing page + install + tutorial + architecture SVG (2026-05-16)
 
-**Trigger:** Anthony — "onwards and upwards. how do people install into say ollama or use it standalone. make a nice landing, install page, tutorial, etc. to give people an easy start. Give a basic structure map that shows people what makes Adam different as well (very nice visual)"
+**Trigger:** maintainer directive — "onwards and upwards. how do people install into say ollama or use it standalone. make a nice landing, install page, tutorial, etc. to give people an easy start. Give a basic structure map that shows people what makes Adam different as well (very nice visual)"
 
 **1. `docs/architecture.svg`** — 980×640 side-by-side comparison: Traditional LLM (left, gray) vs Adam (right, amber). 7 architectural layers compared (weights, compression, memory, compute, safety, code output, cross-query memory). Embedded in README via relative path and in landing page via raw.githubusercontent.com URL.
 
@@ -965,11 +963,11 @@ Hardware minimums table, verification curl steps, troubleshooting (OOM, port con
 
 ## v6.8.iter21 — Public GitHub launch (Amnibro/Amni-Ai, CC BY-NC 4.0) (2026-05-16)
 
-**Trigger:** Anthony — "let's set adam up on my github and my amni-scient.com site pages, open sourced but protected from commercial use. Let's wire up the ptex federation and automate it. for each iterative improvement loop, make sure to push the changes to git"
+**Trigger:** maintainer directive — "let's set adam up on my github and my amni-scient.com site pages, open sourced but protected from commercial use. Let's wire up the ptex federation and automate it. for each iterative improvement loop, make sure to push the changes to git"
 
 **Live at https://github.com/Amnibro/Amni-Ai** — public, source-available, CC BY-NC 4.0.
 
-**Scope decisions (Anthony):**
+**Scope decisions (the maintainer):**
 - License: CC BY-NC 4.0
 - What ships: full source EXCEPT AsimovLayer + LawKeeper + Reffelt internals
 - Reffelt distribution: encrypted blob fetched from amni-scient.com on first launch (scaffolded in `amni/runtime.py` — full pipeline iter22+)
@@ -1061,7 +1059,7 @@ Iter17+18 only catch bugs that Adam's *own asserts* notice. Empirically Adam's T
 **4. SSE `event: test_run` payload extended:**
 - New fields: `diversity` (rounded float) + `div` (full diagnostic dict). Frontend badge renders `tests ✓ N div=0.67`.
 
-**5. Promotion still fires regardless of diversity** (advisory-only this iter) — Anthony can decide later if low-diversity should block promotion. The signal is now visible in tier and badge so it's easy to track quality of promoted lessons retroactively.
+**5. Promotion still fires regardless of diversity** (advisory-only this iter) — the maintainer can decide later if low-diversity should block promotion. The signal is now visible in tier and badge so it's easy to track quality of promoted lessons retroactively.
 
 **6. e2e (`tests/_v6_8_diversity_e2e.py`):**
 - Query: "reverse_string(s)" → Adam emitted 4 asserts (`"hello"`, `""`, `"a"`, `"racecar"`) — all distinct args, boundary hit (empty + single char), no negatives/large. Diversity 0.67. Tier: `tier_persona_cot_run_tests_ok_promoted`.
@@ -1138,7 +1136,7 @@ The CoT-code scaffold has been asking Adam to emit a TESTS section (2-3 asserts)
 
 ## v6.8.iter16 — Semantic intent layer (2026-05-16)
 
-**Trigger:** Anthony raised concern that existing safety layers were bypassable.
+**Trigger:** the maintainer raised concern that existing safety layers were bypassable.
 
 Added a third stacked safety layer alongside the existing regex + hash-pattern layers. New layer is semantic-embedding based and runs on every message before any LLM call, screening intent rather than surface lexical form. Refusals come back in ~40ms with zero inference cost.
 
@@ -1170,7 +1168,7 @@ Added a third stacked safety layer alongside the existing regex + hash-pattern l
 
 ## v6.7.0 — GPU encoder + 340-lesson corpus expansion (2026-05-16)
 
-**Trigger:** Anthony — "not enough yet. also is it primarily CPU right now instead of GPU? took ages to make a haiku."
+**Trigger:** maintainer directive — "not enough yet. also is it primarily CPU right now instead of GPU? took ages to make a haiku."
 
 Two real bugs: (1) MiniLM embedding encoder was CPU-only despite Adam's main model being on the 7800 XT via ROCm 7.2, and (2) the v6.6 corpus (141 lessons) wasn't big enough to cover everyday queries like "haiku about AI" — those fell to slow Gemma generation.
 
@@ -1183,13 +1181,13 @@ Two real bugs: (1) MiniLM embedding encoder was CPU-only despite Adam's main mod
 - `js_corpus.py` (43): JavaScript (15: let/const/var, ===, Promises, async/await, event loop, hoisting, closures, destructuring, spread, this, map/filter/reduce, event delegation, null/undefined), TypeScript (7: interfaces vs types, generics, any, narrowing, satisfies, strict mode), React (10: hooks, useState, useEffect, useMemo/useCallback, lifting state, keys, Context/Redux/Zustand, React.memo, JSX, controlled inputs), Node (5: npm/yarn/pnpm, lockfiles, env vars, require vs import, EventEmitter), browser (6: DOM, CSS specificity, box model, flex vs grid, preprocessors, SPA vs SSR).
 - `sql_corpus.py` (21): basics (14: WHERE/HAVING, JOIN types, normalization, indexes, EXPLAIN, FKs, UNION, CTEs, DELETE/TRUNCATE/DROP, ACID, isolation levels, deadlocks, covering indexes, pagination), design (7: relational vs NoSQL, PK vs unique, UUID vs auto-int, transactions, N+1, pooling, materialized views).
 - `devops_corpus.py` (33): shell (10: grep, find, sh/bash/zsh, chmod, pipes, xargs, redirects, background jobs, sed, awk), Docker (6: image vs container, Dockerfile best practices, CMD vs ENTRYPOINT, volumes vs mounts, compose, multi-stage), K8s (4: Pod/Deployment/Service, StatefulSet, Helm), CI/CD (4: CI vs CD, pipeline structure, secrets, blue-green vs canary), Git advanced (5: stash, cherry-pick, bisect, interactive rebase, reflog), observability (4: 3 pillars, structured logging, SLO/SLI/SLA, alert fatigue).
-- `creative_corpus.py` (33): haikus (15 across AI/code/ocean/cat/sunset/etc), short poems (7), Adam intros (4), short stories (4), philosophical reflections (3). **This is what fixes Anthony's haiku-took-ages complaint** — common creative requests now hit instantly instead of waiting for Gemma to generate.
+- `creative_corpus.py` (33): haikus (15 across AI/code/ocean/cat/sunset/etc), short poems (7), Adam intros (4), short stories (4), philosophical reflections (3). **This is what fixes the maintainer's haiku-took-ages complaint** — common creative requests now hit instantly instead of waiting for Gemma to generate.
 - `facts_corpus.py` (43): geography (10), history (7), science facts (10), units conversions (6), common questions (10: meaning of life, dreams, magnets, why sky blue, why salty ocean, day/night, how planes fly, most spoken language, cells in body, most common element).
 - `advanced_cot.py` (26): statistics (7: mean/median/mode, std dev, correlation, p-values, sample size, Bayes, supervised vs unsupervised), ML (7: overfitting, bias-variance, neural nets, gradient descent, transformers, fine-tuning vs in-context, prompt engineering), systems design (7: URL shortener, chat, rate limiter, notifications, sharding, eventual consistency, circuit breaker), deeper debugging (5: intermittent bugs, slow-in-prod, memory leaks, race conditions, perf regression).
 
 **`amni teach-cot --bank <name>`** now supports: `cot`, `coding`, `js`, `sql`, `devops`, `creative`, `facts`, `advanced`, `all`.
 
-**Live results — Anthony's haiku complaint:**
+**Live results — the maintainer's haiku complaint:**
 | Query | v6.6 wall | v6.7 wall | Notes |
 |---|---|---|---|
 | "Write a haiku about AI" | 30-120s (Gemma) | **1.47s first / 0.03s repeat** | Creative corpus hit |
@@ -1225,7 +1223,7 @@ Two real bugs: (1) MiniLM embedding encoder was CPU-only despite Adam's main mod
 
 ## v6.6.0 — CoT teaching corpus + coding PTEX bank + tier1.5-first dispatch + UI scroll fixes (2026-05-16)
 
-**Trigger:** Anthony — "adam knows basically nothing plus the scroll window doesn't exist, and if you click learnings it overflows. i need you to help give it serious COT teaching and capability, like you have, and ptex learnings that will make it a highly advanced coder like we previously discussed."
+**Trigger:** maintainer directive — "adam knows basically nothing plus the scroll window doesn't exist, and if you click learnings it overflows. i need you to help give it serious COT teaching and capability, like you have, and ptex learnings that will make it a highly advanced coder like we previously discussed."
 
 Three workstreams: fix the UI bugs, write a serious chain-of-thought corpus, and build a coding-specific PTEX bank that makes Adam talk like a senior engineer.
 
@@ -1290,11 +1288,11 @@ Three workstreams: fix the UI bugs, write a serious chain-of-thought corpus, and
 
 **11/11 hit the new corpus.** Mentor persona applied throughout ("Hmm,", "Right,", "So,", "Let me see,"). First-hit latency varies (4-120s for cosine search + embedding), but answers cached after that — subsequent identical queries are 0.04s tier1 LUT.
 
-**What this means for Anthony:**
+**What this means for the maintainer:**
 - Adam now answers substantive coding questions with the depth of a senior engineer's mental notes
 - Persistent — these lessons survive restarts (lesson bank file)
 - Personality-agnostic — Rikku, Yoda, Scientist, etc. all benefit from the same knowledge base via tier1.5-first dispatch
-- Extensible — `amni teach-cot` is the pattern; add more corpus modules under `amni/seeds/` as Anthony curates more topics
+- Extensible — `amni teach-cot` is the pattern; add more corpus modules under `amni/seeds/` as the maintainer curates more topics
 
 **Files added:** `amni/seeds/__init__.py`, `amni/seeds/cot_corpus.py`, `amni/seeds/coding_corpus.py`, `tests/test_v6_6_0_seeds.py`
 
@@ -1309,7 +1307,7 @@ Three workstreams: fix the UI bugs, write a serious chain-of-thought corpus, and
 
 ## v6.5.0 — Zero-friction install + first-run wizard + sidebar UI + amni code mode (2026-05-15)
 
-**Trigger:** Anthony — "we need it to automate most of this so someone can literally one-click install, and run without having to use these special commands to get it learning. It needs a tutorial, a clean interface, capability to act like a CLI agentically for programming, and click buttons to allow it to explore/learn/etc. from the environment it's in."
+**Trigger:** maintainer directive — "we need it to automate most of this so someone can literally one-click install, and run without having to use these special commands to get it learning. It needs a tutorial, a clean interface, capability to act like a CLI agentically for programming, and click buttons to allow it to explore/learn/etc. from the environment it's in."
 
 Five major additions: cross-platform installers, auto-config bootstrap, polished sidebar UI with quick-action buttons, in-browser onboarding tutorial, and project-aware code mode.
 
@@ -1320,9 +1318,9 @@ Five major additions: cross-platform installers, auto-config bootstrap, polished
 - Single command for users: `python install.py` (everything else is automatic)
 
 **2. New module `amni/bootstrap.py` — config + auto-detect + model download:**
-- `CONFIG_DIR = ~/.amni-ai/` (deliberately distinct from `~/.amni/` which collides with Anthony's existing desktop app)
-- `load_config()` returns merged defaults + saved + auto-detected paths. Auto-detects bake at `E:/Amni-Ai-Bakes/...`, `~/.amni-ai/bakes/...`, `./bakes/...`, `~/amni-bakes/...`. Falls back to None if missing. Validates that saved paths actually exist on disk; otherwise re-detects.
-- **Local-first lesson paths:** `lessons`, `lut_root`, `conv_root`, `persona_bank`, `audit_log` prefer `./experiences/...` (project dir) when present, else `~/.amni-ai/experiences/...` (global). Preserves Anthony's existing 207-lesson bank automatically.
+- `CONFIG_DIR = ~/.amni-ai/` (deliberately distinct from `~/.amni/` which collides with the maintainer's existing desktop app)
+- `load_config()` returns merged defaults + saved + auto-detected paths. Auto-detects bake at `<bake-root>/...`, `~/.amni-ai/bakes/...`, `./bakes/...`, `~/amni-bakes/...`. Falls back to None if missing. Validates that saved paths actually exist on disk; otherwise re-detects.
+- **Local-first lesson paths:** `lessons`, `lut_root`, `conv_root`, `persona_bank`, `audit_log` prefer `./experiences/...` (project dir) when present, else `~/.amni-ai/experiences/...` (global). Preserves the maintainer's existing 207-lesson bank automatically.
 - `download_bake(cfg)` — pulls Gemma-4 E2B GF(17) bake from HF (`Amnibro/gemma-4-E2B-it-gf17`, ~5 GB) using `snapshot_download`. Same for `download_base_model`.
 - `is_first_run()` / `mark_first_run_done()` flag.
 
@@ -1368,7 +1366,7 @@ Five major additions: cross-platform installers, auto-config bootstrap, polished
 - mem skill flat-cosine returns hits with cosine scores
 
 **Real bug caught and fixed during this iteration:**
-- Initial `~/.amni/` config dir collided with Anthony's existing desktop app `amni-app.exe` whose config has `model:"MiniMax"`. My bootstrap loaded that and passed "MiniMax" as a path to transformers, which failed with `OSError: MiniMax is not a local folder and is not a valid model identifier`.
+- Initial `~/.amni/` config dir collided with the maintainer's existing desktop app `amni-app.exe` whose config has `model:"MiniMax"`. My bootstrap loaded that and passed "MiniMax" as a path to transformers, which failed with `OSError: MiniMax is not a local folder and is not a valid model identifier`.
 - Fix: moved to `~/.amni-ai/` (project-specific) AND added validation in `load_config` that any saved bake/model path must actually exist on disk before being used (otherwise re-detect).
 - Also added local-first path resolution so existing `./experiences/` is preferred over fresh global path.
 
@@ -1401,7 +1399,7 @@ amni code ~/my-app    # project-aware mode in specified dir
 
 ## v6.4.0 — Pip-installable + ReAct agentic loop + PII-filtered federated learning + self-reflection (2026-05-15)
 
-**Trigger:** Anthony — "what's left to make Adam a deployable AI assistant that can be utilized agentically, chat-wise, cross-platform, etc? How do we get Adam to be easily installed anywhere? How do we get Adam learning from others and itself (no PII)? I still have the huggingface repo for PTEX - maybe we use that."
+**Trigger:** maintainer directive — "what's left to make Adam a deployable AI assistant that can be utilized agentically, chat-wise, cross-platform, etc? How do we get Adam to be easily installed anywhere? How do we get Adam learning from others and itself (no PII)? I still have the huggingface repo for PTEX - maybe we use that."
 
 Four major additions: cross-platform packaging, federated knowledge sharing, agentic goal pursuit, and continuous self-improvement.
 
@@ -1415,7 +1413,7 @@ Four major additions: cross-platform packaging, federated knowledge sharing, age
 - **PII filter (mandatory before publish):** strips emails, phones, IPs, Windows/Unix paths, API keys (sk-*, gh*, AKIA*, AIza*), UUIDs, SSNs, credit-card patterns, name hints (`my name is X`, `i am X`), homedir refs (`C:/Users/X`). Returns `(scrubbed_text, flags_list)`.
 - **Quality gate `is_publishable`:** confidence ≥ 0.8, length 10-4000 chars, no script tags, rejects persona-cache keys (`PERSONA::*`), scan-synthetic keys (`What does X say about 'foo'`), and explicit personal content.
 - **Domain auto-detection** across 9 subjects (math/physics/chem/bio/history/geography/literature/cs/general).
-- **`publish_lessons(adam, codex_dir, contributor_id)`** — writes PII-stripped lessons to a Prism-compatible codex via `prism.contribute.contribute_text`. Anthony's existing `amnibro/amni-prism` HF repo is the upstream target. Use `--dry-run` to preview without writing.
+- **`publish_lessons(adam, codex_dir, contributor_id)`** — writes PII-stripped lessons to a Prism-compatible codex via `prism.contribute.contribute_text`. the maintainer's existing `amnibro/amni-prism` HF repo is the upstream target. Use `--dry-run` to preview without writing.
 - **`pull_lessons(adam, codex_dir)`** — reads NDJSON manifest, dedupes against local lessons, scrubs PII (defense-in-depth), adds new ones to Adam's bank.
 
 **3. ReAct agentic loop — `amni/serve/agentic.py`:**
@@ -1482,23 +1480,23 @@ amni reflect --once                        # one self-reflection cycle
 **Cross-platform deployment ready:**
 - Linux/Mac/Windows: `pip install amni-ai[all]`
 - Optional dependency on Amni-Prism for federation (`pip install amni-ai[federated]`)
-- Server binds to localhost by default; pair with **Cloudflare Tunnel** (Anthony already uses this for Amni-Chat per `[[project_amni_chat]]`) for remote access without exposing ports
+- Server binds to localhost by default; pair with **Cloudflare Tunnel** (the maintainer already uses this for Amni-Chat per `[[project_amni_chat]]`) for remote access without exposing ports
 - MCP server at `/mcp` lets any Claude Code / Cursor / Continue.dev instance use Adam as backend
 - Browser UI works in any modern browser, voice in/out via Web Speech API (Chrome/Edge)
 
 **What's still open (deferred):**
 - Docker image (`docker run amnibro/amni-ai`)
 - Standalone PyInstaller binary for Windows/Mac/Linux distribution
-- HF push automation in `prism` (Prism's CLI doesn't currently have HF upload — Anthony has manual sync workflow)
+- HF push automation in `prism` (Prism's CLI doesn't currently have HF upload — the maintainer has manual sync workflow)
 - Auth / multi-user (single-user assumed; for shared deploys add OAuth)
-- Mobile (deferred — Anthony's Amni-Haven owns that surface)
+- Mobile (deferred — the maintainer's Amni-Haven owns that surface)
 - Better ReAct planner prompt (Gemma sometimes emits empty args; needs few-shot examples to improve plan quality)
 
 ---
 
 ## v6.3.0 — Persona system + categorical PTEX tone atlas + MCP server + voice UI (2026-05-15)
 
-**Trigger:** Anthony — "still seems too robotic. What happened to our categorical ptex sort, dimensional approach (for organic responses)? Allow a user to suggest whatever persona they want. Adam needs to be able to search the web for personas if not in the trained model. Also deploy the rest of the upgrades (ptex/deployment infra)."
+**Trigger:** maintainer directive — "still seems too robotic. What happened to our categorical ptex sort, dimensional approach (for organic responses)? Allow a user to suggest whatever persona they want. Adam needs to be able to search the web for personas if not in the trained model. Also deploy the rest of the upgrades (ptex/deployment infra)."
 
 The v6.2 chat path used `_vanilla_letter`'s system prompt (`"Be concise and direct. Provide the answer in one short sentence or phrase."`) — explicitly asks for robotic output. Meanwhile `dual_mind.py` had a Rikku persona prompt that was never wired into v6 serve. Column-parallel (the dimensional approach) and PTEX atlas infrastructure existed but didn't reach the chat surface. v6.3.0 fixes all of that.
 
@@ -1592,7 +1590,7 @@ The v6.2 chat path used `_vanilla_letter`'s system prompt (`"Be concise and dire
 
 ## v6.2.0 — Capability fixes from brutal probe (2026-05-15)
 
-**Trigger:** Anthony — "go through and figure out what else Adam is missing functionality wise that would really make it standout. Probe it strongly. Figure out if it learns in real practice." 25-prompt brutal probe found 5 real bugs across the live deploy.
+**Trigger:** maintainer directive — "go through and figure out what else Adam is missing functionality wise that would really make it standout. Probe it strongly. Figure out if it learns in real practice." 25-prompt brutal probe found 5 real bugs across the live deploy.
 
 **Bugs found and fixed:**
 
@@ -1635,7 +1633,7 @@ The v6.2 chat path used `_vanilla_letter`'s system prompt (`"Be concise and dire
 
 ## v6.1.0 — Computer-wide file access + scan-to-learn (2026-05-15)
 
-**Trigger:** Anthony — "we need the skills to include access to computer files and the ability to scan to learn."
+**Trigger:** maintainer directive — "we need the skills to include access to computer files and the ability to scan to learn."
 
 Two additions: (a) file skills can now reach beyond the workdir via multi-root or unrestricted modes; (b) new `scan` skill walks a directory, chunks each text file, and bulk-teaches each chunk to Adam's lesson bank.
 
@@ -1674,7 +1672,7 @@ Two additions: (a) file skills can now reach beyond the workdir via multi-root o
 ```
 .venv/Scripts/python.exe scripts/amni_serve.py --seed --cors --unrestricted-files
 # Or with explicit roots:
-.venv/Scripts/python.exe scripts/amni_serve.py --seed --cors --root D:/data --root E:/Amni-Ai-Bakes
+.venv/Scripts/python.exe scripts/amni_serve.py --seed --cors --root D:/data --root <bake-root>
 ```
 
 In the chat UI: `scan the directory <path>` works as a natural-language command.
@@ -1683,7 +1681,7 @@ In the chat UI: `scan the directory <path>` works as a natural-language command.
 
 ## v6.0.0 — Deployable surface: agent + skills + Ollama compat + simple frontend (2026-05-15)
 
-**Trigger:** Anthony's directive — "how do we get this as a deployable model that can actually do things? Multifunctionality backend, frontend SUPER user friendly and simple."
+**Trigger:** the maintainer's directive — "how do we get this as a deployable model that can actually do things? Multifunctionality backend, frontend SUPER user friendly and simple."
 
 Adam is now wrapped in a thin product layer (`amni/serve/`) that turns the v5.9.5 facade into a real deployable. Five new modules, one unanimous (5-0) guardian council ruling, 15/15 smoke tests green.
 
@@ -1729,7 +1727,7 @@ Adam is now wrapped in a thin product layer (`amni/serve/`) that turns the v5.9.
 **Post-ship validation (same day, /loop test pass):**
 
 Booted the real server on port 8002 with Gemma-4 E2B GF(17) bake (svc_boot=25.5s, seed=56 lessons). Live HTTP probes confirmed end-to-end:
-- Multi-turn memory: `"Hello, my name is Anthony" -> "What was my name again?"` recalled "Anthony" via `fallback_vanilla` (Gemma saw transcript framing in second turn)
+- Multi-turn memory: `"Hello, my name is the maintainer" -> "What was my name again?"` recalled "the maintainer" via `fallback_vanilla` (Gemma saw transcript framing in second turn)
 - Skill dispatch: `time` resolved instant (0.002s, no tokens); `calc` for "what is 2+2" routed through `tier0_skill_calc -> tier1_5_semantic` (0.021s)
 - Tier-1.5 semantic LUT hits on seeded facts: "capital of France"->"Paris" (0.044s), "Who wrote Hamlet?"->"Shakespeare" via `/api/chat` Ollama compat
 - Asimov from HTTP: `POST /skills/file_read {path:"C:/Windows/win.ini"}` -> HTTP 400 `gated: path outside workdir`; `POST /skills/shell {cmd:"rm -rf /"}` -> HTTP 400 `command not in allowlist: rm`; `git status` allowed
@@ -1743,9 +1741,9 @@ Booted the real server on port 8002 with Gemma-4 E2B GF(17) bake (svc_boot=25.5s
 
 **Files modified in patch:** `amni/serve/agent.py` (regex routing only — no API surface change)
 
-**Browser-test bug caught by Anthony (frontend returned `(no answer)` + `?` for every message):**
+**Browser-test bug caught by the maintainer (frontend returned `(no answer)` + `?` for every message):**
 
-Anthony opened the chat UI in his browser, tried "howdy!" and "what's 14!" — got `(no answer)` with badge `?`. Direct Python probe to `/chat` worked perfectly (Adam returned "Hello." and "$14!$ is $87,178,291,200$"), so Adam was fine. Found in server log: `POST /chat HTTP/1.1 422 Unprocessable Entity`.
+the maintainer opened the chat UI in his browser, tried "howdy!" and "what's 14!" — got `(no answer)` with badge `?`. Direct Python probe to `/chat` worked perfectly (Adam returned "Hello." and "$14!$ is $87,178,291,200$"), so Adam was fine. Found in server log: `POST /chat HTTP/1.1 422 Unprocessable Entity`.
 
 **Root cause:** Pydantic v2 strictness. `ChatRequest.session_id: str = None` rejects the literal JSON `null` the frontend sends on the very first turn (before `localStorage` has a session_id). Pydantic v2 requires `Optional[str] = None` to accept null for a typed-str field.
 
@@ -1790,7 +1788,7 @@ The composition shows tier-3.6 chord-sampler successfully rescuing 3 of 3 word p
 
 ## v5.9.4 — PRISM federated merge: 98%+ recall preserved across users (2026-05-15)
 
-**Trigger:** Anthony's PRISM vision — federated learning where multiple users' lessons merge into shared knowledge.
+**Trigger:** the maintainer's PRISM vision — federated learning where multiple users' lessons merge into shared knowledge.
 
 Validated that two independent SemanticPTEXLUTs can be merged by concatenating raw (Q, A) pairs and refitting the PCA basis. The merged manifold preserves each contributor's neighborhoods.
 
@@ -1824,7 +1822,7 @@ Added `save(path)` and `load(path)` to SemanticPTEXLUT. Uses `.npz` for embeddin
 
 ## v5.9.2 — Tier-3.6 chord-sampler: cross-domain framing rescue (2026-05-15)
 
-**Trigger:** Anthony's "chaos via arbitrary connections for abstract leaps" — knowledge as tools tried against problems, with the intuition that random framing produces structurally different reasoning trajectories that pure temperature sampling can't.
+**Trigger:** the maintainer's "chaos via arbitrary connections for abstract leaps" — knowledge as tools tried against problems, with the intuition that random framing produces structurally different reasoning trajectories that pure temperature sampling can't.
 
 Implemented as `_tier36_chord_sample` in AdamLoop. Fires after tier-3 cold-solve when confidence is below threshold and `letter_only=False`. Runs N (default 5) cross-domain persona framings (physicist/accountant/chef/historian/biologist/chess-player), takes majority vote with baseline.
 
@@ -1871,7 +1869,7 @@ Wall-time speedup only materializes at very large N (10k+) where cosine search d
 
 ## v5.9.0 — 🎯🎯 **SemanticPTEXLUT tier-1.5 — training-free spatial-address retrieval; E2E real-AdamLoop test: 10× accuracy, 100% token reduction, 160× speedup on paraphrase queries** (2026-05-14)
 
-**Trigger:** Anthony's directive — *"we could always use a ptex file itself as a way to sort the space without doing training too."*
+**Trigger:** the maintainer's directive — *"we could always use a ptex file itself as a way to sort the space without doing training too."*
 
 Closes the gap between hash-LUT (exact-match-only, current tier-1) and embed-template (KB-dependent, requires LLM refine). New tier-1.5 catches paraphrases of stored lessons at ZERO LLM cost.
 
@@ -1911,7 +1909,7 @@ Closes the gap between hash-LUT (exact-match-only, current tier-1) and embed-tem
 
 ## v5.8.0 — 🎯 **AdamLoop tier-3.5 SHAPE-SORTER — verify-and-swap rescues 50% of wrong tier-3 answers, 0% damage** (2026-05-14)
 
-**Trigger:** Anthony's correction — *"it should just do a quick sanity check on itself and see if it makes sense... like looking at shaped holes and figuring out which one goes where."*
+**Trigger:** the maintainer's correction — *"it should just do a quick sanity check on itself and see if it makes sense... like looking at shaped holes and figuring out which one goes where."*
 
 Inserts a verification step between tier-3 cold-solve and final commit. For each MCQ option (A/B/C/D), the verifier substitutes the option back into the problem and asks "does this satisfy the constraints? PASS or FAIL". If exactly one option PASSES, swap to it. If zero or multiple PASS, keep the baseline tier-3 answer.
 
@@ -1976,7 +1974,7 @@ Adam.answer(Q):
        ↳ Result lesson-recorded to PTEX → tier-1 hit next time
 ```
 
-**Anthony directive matrix (full check):**
+**the maintainer directive matrix (full check):**
 - ✅ Adam ≤ 8GB resident VRAM (Qwen2.5-1.5B GF17 ~3GB)
 - ✅ Same Q → instant LUT (tier-1 zero-inference)
 - ✅ Similar Q → boilerplate refinement (tier-2 cosine)
@@ -2090,7 +2088,7 @@ The +23.3pp from v5.5.156 was a math-subset measurement — when applied indiscr
 
 ---
 
-## v5.5.153 — 🎯 **TWO-STAGE COT-THEN-LETTER ON EMBED-KB ACTIVELY WINS MATH: +13.3pp on 15q (40% → 53.3%); elementary_mathematics 40% → 100% PERFECT.** The recipe Anthony was looking for since v5.5.109 (2026-05-03)
+## v5.5.153 — 🎯 **TWO-STAGE COT-THEN-LETTER ON EMBED-KB ACTIVELY WINS MATH: +13.3pp on 15q (40% → 53.3%); elementary_mathematics 40% → 100% PERFECT.** The recipe the maintainer was looking for since v5.5.109 (2026-05-03)
 
 **Trigger:** v5.5.152 diagnosed that emb_kb retrievals were perfect templates but couldn't pierce the letter-only output constraint. Hypothesis: give the model space to re-derive with the retrieved template (CoT scratchpad), then map to letter in a second pass.
 
@@ -2133,7 +2131,7 @@ For "Find slope through (2,3)→(5,11)" the retriever pulled "Find slope through
 
 ## v5.5.148 — Embedding-cosine KB validates against TF-score regression on math: tf_kb=-10pp, emb_kb=+0pp on 30q Gemma-4 sample. The `feedback_amni_ai_tf_score_inverts.md` "real fix" is now real. (2026-05-03)
 
-**Trigger:** Anthony's documented finding (memory `feedback_amni_ai_tf_score_inverts.md`) that KBRetriever TF-score INVERTS on math word problems — distractor entries score higher than helpers because numbers/units/"how many" tokens overlap orthogonally. The recommended fix was "embedding-cosine sidecar". v5.5.147 built it; v5.5.148 validates it head-to-head against TF.
+**Trigger:** the maintainer's documented finding (memory `feedback_amni_ai_tf_score_inverts.md`) that KBRetriever TF-score INVERTS on math word problems — distractor entries score higher than helpers because numbers/units/"how many" tokens overlap orthogonally. The recommended fix was "embedding-cosine sidecar". v5.5.147 built it; v5.5.148 validates it head-to-head against TF.
 
 ### What was tested
 `scripts/v5_5_148_embedding_kb_math_validate.py`. 3 phases on Gemma-4 E2B against 30q (3 math/physics MMLU subjects × 10q):
@@ -2193,7 +2191,7 @@ Debugging arc: "pure Unicode random" → "loaded English vocab but stuck" → "r
 
 ## v5.5.77 — HIP/ROCm GEMV path wired into StreamingLinear: 9.5x microbench speedup vs F.linear, cos=1.000000 (2026-05-01)
 
-**Trigger:** Anthony called out the obvious — Adam-1 was running `F.linear` everywhere despite the CLAUDE.md "TMU FIRST — NEVER DEFAULT TO MATMUL" mandate, and `libari_hip.dll` (the AMD HIP/ROCm GEMV kernel) being already built and shipping. The v5.5.75 bench stalled at sub-token/sec when this hardware should hit 50 tok/s on a 1.5B model. Self-inflicted wound; fixing it.
+**Trigger:** the maintainer called out the obvious — Adam-1 was running `F.linear` everywhere despite the CLAUDE.md "TMU FIRST — NEVER DEFAULT TO MATMUL" mandate, and `libari_hip.dll` (the AMD HIP/ROCm GEMV kernel) being already built and shipping. The v5.5.75 bench stalled at sub-token/sec when this hardware should hit 50 tok/s on a 1.5B model. Self-inflicted wound; fixing it.
 
 ### What was built (and what we discovered)
 
@@ -2208,7 +2206,7 @@ Restored `amni/compute/ari_engine.py`. Smoke tested `ari_gemv_rgba16_fp16` again
 | Speedup | — | 9.4x | **9.5x** |
 | Correctness | cos = **1.000000** | max abs diff = 1.95e-3 (fp16 noise) | — |
 
-Full numerical agreement (cos=1.0) with a 9.5x speedup on the dominant per-token op. This validates Anthony's "should be 50 tok/s" claim — the HIP path is the difference between sub-1-tok/s and double-digit.
+Full numerical agreement (cos=1.0) with a 9.5x speedup on the dominant per-token op. This validates the maintainer's "should be 50 tok/s" claim — the HIP path is the difference between sub-1-tok/s and double-digit.
 
 ### Code
 
@@ -2255,7 +2253,7 @@ Pattern: HIP textures bind cleanly during warm-up (returns valid `idx` per layer
 
 **Disabled the HIP path** via `AMNI_HIP_GEMV_OFF=1` env var (set in `streaming_linear.py`). Falls back to F.linear, which is correct (just slow on the Windows + AMD experimental SDPA path).
 
-**Root cause needs HIP-side debugging** beyond Python scope: likely either (a) AMD ROCm has a per-process bound-texture limit we're exceeding, (b) `ari_bind_texture_u16` doesn't fully copy on bind so the numpy buffer needs a stronger pin (cudaHostAlloc-style), (c) device-side queue saturation when GEMV is dispatched across many texture handles in rapid succession. Anthony has the HIP source (`amni/compute/hip/ari_hip.cpp`) and is the right person to triage.
+**Root cause needs HIP-side debugging** beyond Python scope: likely either (a) AMD ROCm has a per-process bound-texture limit we're exceeding, (b) `ari_bind_texture_u16` doesn't fully copy on bind so the numpy buffer needs a stronger pin (cudaHostAlloc-style), (c) device-side queue saturation when GEMV is dispatched across many texture handles in rapid succession. the maintainer has the HIP source (`amni/compute/hip/ari_hip.cpp`) and is the right person to triage.
 
 ### What v5.5.77 confirmed regardless
 
@@ -2263,7 +2261,7 @@ The 9.5x kernel-level speedup is real (microbench: 200 GEMVs at 0.048ms each vs 
 
 The bench numbers in the F.linear-only baseline (running now, see `logs/baseline_flin.log`) will become the "before" snapshot — when HIP integration is fixed, "after" should show 5-10x improvement.
 
-## v5.5.144 — Function-prefix matcher built on personal_functions KB (7079 entries → 30630 prefixes indexed); demo: 26-char input matched 947-char entry, ~230 tokens saved. Foundation for the function-as-token vocab Anthony designed (2026-05-02)
+## v5.5.144 — Function-prefix matcher built on personal_functions KB (7079 entries → 30630 prefixes indexed); demo: 26-char input matched 947-char entry, ~230 tokens saved. Foundation for the function-as-token vocab the maintainer designed (2026-05-02)
 
 `amni/inference/function_matcher.py` (new, ~30 lines):
 - `FunctionPrefixMatcher(kb_root, min_prefix_len=18, max_prefix_len=80)`
@@ -2332,7 +2330,7 @@ After three OOM/lock crashes baking Gemma-4 (huge embedding tensor, intermediate
 | fp16 baseline | 9,771.7 MB |
 | GF(17) on disk | 19,543.4 MB (2.0x ratio expected) |
 | Model classes captured | language_model (text), vision_tower, audio_tower |
-| Bake at | `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` |
+| Bake at | `<bake-root>/gemma4_e2b_it_gf17/` |
 
 ### What this enables
 
@@ -2343,13 +2341,13 @@ Next: smoke-test inference on the bake, baseline MMLU vs the upstream HF referen
 ### Files
 
 - `scripts/v5_0_3_bake.py` — direct-page-write chunking patch
-- `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` — 20GB lossless bake
+- `<bake-root>/gemma4_e2b_it_gf17/` — 20GB lossless bake
 
 ---
 
 ## v5.5.139 — LUT softmax pilot (Talos-inspired): architecturally validates "compute-LUT" concept, but GPU torch.softmax is 19x faster than our PyTorch LUT — confirms the true Adam-1/Talos overlap is on STORAGE side (PTEX/ATEX) not compute side; LUT softmax stays as reference for future FPGA/edge ports (2026-05-02)
 
-Talos V2 (https://v2.talos.wtf/) is an FPGA hardware transformer accelerator that achieves 53K tok/s on a tiny char-level microGPT via aggressive use of LUTs — notably replacing softmax exp() with a precomputed lookup. Anthony asked if Talos's ideas are software-portable to Adam-1's substrate.
+Talos V2 (https://v2.talos.wtf/) is an FPGA hardware transformer accelerator that achieves 53K tok/s on a tiny char-level microGPT via aggressive use of LUTs — notably replacing softmax exp() with a precomputed lookup. the maintainer asked if Talos's ideas are software-portable to Adam-1's substrate.
 
 ### Pilot
 
@@ -2374,7 +2372,7 @@ LUT softmax produces mathematically valid distributions within bf16 noise floor.
 |---|---|---|---|
 | GPU bf16 (1,16,2048²) | 0.75ms (baseline) | **2.70ms** (3.58x) | 15.34ms (19.6x) |
 
-Anthony's correction: pure PyTorch was the wrong layer (interpreted ops, allocations per call). Rewrote as a Triton kernel using the project's existing triton-windows wiring (pattern from `amni/compute/ptex_tmu.py`). 5x improvement from the kernel, but cudnn's hardware-fused exp still wins by 3.58x.
+the maintainer's correction: pure PyTorch was the wrong layer (interpreted ops, allocations per call). Rewrote as a Triton kernel using the project's existing triton-windows wiring (pattern from `amni/compute/ptex_tmu.py`). 5x improvement from the kernel, but cudnn's hardware-fused exp still wins by 3.58x.
 
 This is the honest GPU-on-GPU comparison: fused Triton LUT vs cudnn's native exp. On GPUs with hardware exp, cudnn dominates even a properly-written kernel. The architectural conclusion stands.
 
@@ -2395,7 +2393,7 @@ When Adam-1 ports to hardware (FPGA/ASIC/edge SoC without native fast exp), the 
 
 - `amni/inference/lut_softmax.py` — reference implementation (precision-validated, GPU-slow)
 
-### Related: Anthony's "MoE 1.5 lossless LUT first" framing
+### Related: the maintainer's "MoE 1.5 lossless LUT first" framing
 
 This pilot tests whether the framing extends from STORAGE LUTs (which already work — proven by v5.5.125 +1.75pp MMLU specialist bake) to COMPUTE LUTs. Result: the architectural extension is sound, but GPU hardware already does compute-LUT internally via cudnn. The framing's value is on the storage side specifically; the storage substrate is where Adam-1's actual lift comes from.
 
@@ -2463,9 +2461,9 @@ The pipeline plumbing is validated end-to-end. v5.5.138 stresses it with harder 
 
 ---
 
-## v5.5.136 — Personal corpus mining: walked Anthony's full AI folder, extracted 7079 unique Python/JS/TS/Rust function+class units (5MB PTEX KB) — foundation for the structural-token vocabulary (2026-05-02)
+## v5.5.136 — Personal corpus mining: walked the maintainer's full AI folder, extracted 7079 unique Python/JS/TS/Rust function+class units (5MB PTEX KB) — foundation for the structural-token vocabulary (2026-05-02)
 
-Per Anthony's design: each function = one addressable unit; later iterations assign nonce IDs and teach the model to emit them. v5.5.136 builds the corpus.
+Per the maintainer's design: each function = one addressable unit; later iterations assign nonce IDs and teach the model to emit them. v5.5.136 builds the corpus.
 
 ### Mining
 
@@ -2478,21 +2476,21 @@ Per Anthony's design: each function = one addressable unit; later iterations ass
 
 - 1411 source files scanned across 8+ projects
 - 7079 unique code units stored
-- 5.0 MB PTEX KB at `E:/Amni-Ai-KB/personal_functions/`
+- 5.0 MB PTEX KB at `<kb-root>/personal_functions/`
 - Significant deduplication observed (initial run: 5107 unique / 8684 total = 41% dedupe rate; many repeated boilerplate patterns concentrated)
 
 ### What this enables
 
 This corpus is the source material for:
 1. Structural-token vocabulary (assign nonce IDs to function patterns)
-2. Personal-style retrieval-augmented generation (model retrieves Anthony's actual coding patterns)
+2. Personal-style retrieval-augmented generation (model retrieves the maintainer's actual coding patterns)
 3. Code-specialist LoRA training data (filtered to functions only, ~5MB compact)
 
 ---
 
 ## v5.5.135 — CoT-cached-as-ATEX writeback pilot end-to-end: SessionATEXWriter captures successful ask_with_loop traces, persists losslessly across session close, retrievable via existing KBRetriever (2026-05-02)
 
-Per Anthony's feedback: the substrate has specialist bakes that beat Qwen by +1.75-4.6pp, but inference is still **stateless and monolithic** — each query starts from scratch, no reflection writeback, no compounding. v5.5.135 builds the smallest viable version of the missing piece: **write successful CoT traces back to a session-scoped PTEX KB**, enabling future queries to retrieve their own past reasoning.
+Per the maintainer's feedback: the substrate has specialist bakes that beat Qwen by +1.75-4.6pp, but inference is still **stateless and monolithic** — each query starts from scratch, no reflection writeback, no compounding. v5.5.135 builds the smallest viable version of the missing piece: **write successful CoT traces back to a session-scoped PTEX KB**, enabling future queries to retrieve their own past reasoning.
 
 ### Architecture
 
@@ -2530,7 +2528,7 @@ Wrote 3 successful CoT traces (pathlib, closure, dict lookup), closed session, r
 
 - **No automatic chat() integration**: the writer attaches to ask_with_loop but ordinary `chat()` calls don't yet write to the cache. Next iteration: hook `chat()` to optionally write outputs to a session writer.
 - **No bench measurement**: the architectural primitive is validated; the actual compounding lift over a 100-query session has not been measured. Smoke test confirms write/read round-trip; full bench is a separate iteration.
-- **No template extraction (compositional decoder)**: the second piece Anthony described (hierarchical template→block→detail generation) is not yet built. SessionATEXWriter is just the bottom layer.
+- **No template extraction (compositional decoder)**: the second piece the maintainer described (hierarchical template→block→detail generation) is not yet built. SessionATEXWriter is just the bottom layer.
 
 ### Files
 
@@ -2666,7 +2664,7 @@ The averaged adapter retained ~79% of the commonsense lift on Wino (4.5→2.5pp)
 
 ### Architectural implication ("MoE 1.5 lossless LUT first" validated)
 
-Anthony's framing from earlier session: the substrate is the always-on reasoner; specialist LUTs (in our case, LoRA-derived weight residuals stored as PTEX) are the per-workload variation. v5.5.130 confirms element-wise weight averaging is one valid composition primitive. PrismTex federation (already built) can apply the same averaging at PTEX page level, allowing finer-grained per-tensor weighting (e.g., layers 0-12 from MCQ, 13-24 from commonsense).
+the maintainer's framing from earlier session: the substrate is the always-on reasoner; specialist LUTs (in our case, LoRA-derived weight residuals stored as PTEX) are the per-workload variation. v5.5.130 confirms element-wise weight averaging is one valid composition primitive. PrismTex federation (already built) can apply the same averaging at PTEX page level, allowing finer-grained per-tensor weighting (e.g., layers 0-12 from MCQ, 13-24 from commonsense).
 
 ### Bake roster (4 bakes coexist)
 
@@ -2735,7 +2733,7 @@ Both specialists work — the lift on the in-distribution bench is consistent an
 
 ### Architectural validation
 
-The "MoE 1.5 lossless LUT first" framing from Anthony's design is now validated:
+The "MoE 1.5 lossless LUT first" framing from the maintainer's design is now validated:
 - Multiple specialist bakes coexist (cheap to train, ~30-50min each)
 - Each bake is a lossless GF(17) PTEX (cos=1.0 round-trip)
 - Lossless substrate is the foundation; specialists are the per-workload variation
@@ -3011,7 +3009,7 @@ Both regimens DESTROY existing knowledge in proportion to how strongly the LoRA 
 
 Naive LoRA distillation at rank-16-budget can't bake knowledge in losslessly — it inevitably trades existing knowledge for new patterns. To actually move Adam-1 above Qwen baseline at full scale, the path forward is either:
 - **Much larger LoRA budget** (rank 64-128 + 3-5 epochs + EWC) — multi-day training, may work
-- **Trit-confirmation pass** (per Anthony's earlier idea) — apply each candidate weight update only if forward-pass probes show net positive, gradient-free; preserves existing capability by construction
+- **Trit-confirmation pass** (per the maintainer's earlier idea) — apply each candidate weight update only if forward-pass probes show net positive, gradient-free; preserves existing capability by construction
 - **Stay with retrieval-based KB attach** at gate=12 (current best at +0.11pp full-57)
 - **Multi-bake federation** — train multiple specialist LoRAs (math, science, code), keep base unchanged, merge with PrismTex consensus per query
 
@@ -3031,7 +3029,7 @@ Both v5.5.123 and v5.5.124 confirmed the lossless GF(17) substrate fully support
 
 ## v5.5.123 — LoRA distillation pilot: end-to-end pipeline VALIDATED (train→merge→GF(17) re-bake at cos=1.0), but ML-cosmopedia training corpus does NOT transfer to MMLU MCQ format (target subject 0pp change, adjacent STEM -6 to -12pp from mild catastrophic forgetting) (2026-05-02)
 
-Per Anthony's "MoE 1.5 lossless LUT first" + "distill knowledge into 1.5B as new params" design discussion: train a LoRA adapter on KB content, merge into Qwen2.5-1.5B base, re-bake to GF(17), measure if the baked-in knowledge moves the bench number.
+Per the maintainer's "MoE 1.5 lossless LUT first" + "distill knowledge into 1.5B as new params" design discussion: train a LoRA adapter on KB content, merge into Qwen2.5-1.5B base, re-bake to GF(17), measure if the baked-in knowledge moves the bench number.
 
 ### Pipeline (all stages succeeded mechanically)
 
@@ -3105,7 +3103,7 @@ The substrate is at parity with Qwen via gate=12 + KB attach; LoRA distillation 
 
 ## v5.5.122 — Cross-bench validation: gate=12 is robust as a hyperparameter (consistent direction across MMLU + HellaSwag) but substrate value is bench-shape dependent (knowledge-recall +, commonsense-reasoning -) (2026-05-01)
 
-After Anthony's pushback in v5.5.116-119 era ("don't do weird noise tweaking"), validated whether gate=12 is MMLU test-set tuning or a robust hyperparameter by re-running the same gate sweep on a different benchmark (HellaSwag, 24 random tasks × 8q = 192 questions).
+After the maintainer's pushback in v5.5.116-119 era ("don't do weird noise tweaking"), validated whether gate=12 is MMLU test-set tuning or a robust hyperparameter by re-running the same gate sweep on a different benchmark (HellaSwag, 24 random tasks × 8q = 192 questions).
 
 ### Result
 
@@ -3201,7 +3199,7 @@ For MMLU benchmark improvement specifically, **embedding-cosine retrieval remain
 
 ## v5.5.120 — Reffelt-nonce-addressed PTEX index pilot for canonical-51 (cells/leaves/branches/trees/forest/biome hierarchical addressing); 48-bit nonce 99.7% unique, structural prefilter keeps Rust queries in rust:: scope vs keyword-mode pulling haskell::win32 (2026-05-01)
 
-Per Anthony's "MoE 1.5 lossless LUT first" framing — the 1.5B base is the always-on reasoner, and the multi-GB PTEX atlas provides query-specific knowledge expansion via lossless lookup. Step 1 of the multi-resolution architecture: replace string-keyed retrieval with Reffelt-nonce structural addressing.
+Per the maintainer's "MoE 1.5 lossless LUT first" framing — the 1.5B base is the always-on reasoner, and the multi-GB PTEX atlas provides query-specific knowledge expansion via lossless lookup. Step 1 of the multi-resolution architecture: replace string-keyed retrieval with Reffelt-nonce structural addressing.
 
 ### Hierarchical scale schema
 
@@ -3567,13 +3565,13 @@ Cosmopedia stays in the KB roster as an alternate; not the primary route.
 - `scripts/adam1_ingest_hf_to_kb.py` — patched `_raw_template` for None-fallback
 - `logs/training_cycles/cosmopedia_ingest.log`
 - `logs/training_cycles/v5_5_114_cosmopedia.json`
-- `E:/Amni-Ai-KB/cosmopedia_100k/` — 399MB, 100K entries
+- `<kb-root>/cosmopedia_100k/` — 399MB, 100K entries
 
 ---
 
 ## v5.5.113 — Wiki-full (100K English Wikipedia articles) doubles the substrate lift to +1.3pp MMLU (was +0.6pp with simple-wiki); per-subject changes match prediction — biology/chemistry/genetics each +6.2pp from richer technical content (2026-05-01)
 
-Hypothesis from v5.5.112: the remaining medical_genetics, college_chemistry, machine_learning losses come from `wikipedia_simple` (Simple English Wikipedia, dumbed-down summaries) lacking the technical depth needed for MMLU's MCQ format. Test: ingest 100K full English Wikipedia articles to E:/Amni-Ai-KB/wikipedia_full and re-run the same 320q bench with the new KB routed for science/language/history/global subjects.
+Hypothesis from v5.5.112: the remaining medical_genetics, college_chemistry, machine_learning losses come from `wikipedia_simple` (Simple English Wikipedia, dumbed-down summaries) lacking the technical depth needed for MMLU's MCQ format. Test: ingest 100K full English Wikipedia articles to <kb-root>/wikipedia_full and re-run the same 320q bench with the new KB routed for science/language/history/global subjects.
 
 ### Ingest
 
@@ -3623,7 +3621,7 @@ ML questions are conceptual/algorithmic (gradient descent hyperparameters, gener
 - `scripts/adam1_ingest_hf_to_kb.py` — patched line 85 ASCII-safe print
 - `logs/training_cycles/wiki_full_ingest.log` — ingest run log
 - `logs/training_cycles/v5_5_113_wiki_full.json` — bench result
-- `E:/Amni-Ai-KB/wikipedia_full/` — new KB (149MB, 99989 entries)
+- `<kb-root>/wikipedia_full/` — new KB (149MB, 99989 entries)
 
 ---
 
@@ -4014,7 +4012,7 @@ The v5.5.79 bench has none of these properties. Future "outperform Qwen" measure
 
 ## v5.5.106 — Math KB (5K competition problems) + multi-KB serve + GSM/3 failure fix (2026-05-01)
 
-Per Anthony's directive: "Look around on the web and huggingface for information... use my E: drive for storage."
+Per the maintainer's directive: "Look around on the web and huggingface for information... use my E: drive for storage."
 
 ### Math KB ingested
 
@@ -4022,7 +4020,7 @@ Streamed `qwedsacf/competition_math` (Hendrycks MATH competition corpus) via `ad
 
 ```
 adam1 ingest_hf_to_kb --dataset qwedsacf/competition_math --template math \\
-  --kb-root E:/Amni-Ai-KB/competition_math --max-records 5000
+  --kb-root <kb-root>/competition_math --max-records 5000
 ```
 
 Result: **5,000 problems with worked solutions in 477s wall, 0 skipped, 3.9 MB on disk.** Each entry is `Q: <problem>\n\nA: <solution>` keyed as `math::<idx>`.
@@ -4034,8 +4032,8 @@ Result: **5,000 problems with worked solutions in 477s wall, 0 skipped, 3.9 MB o
 | Subject | KB | Entries |
 |---|---|---|
 | `code` | `experiences/kb_canonical/` (C:) | 196,009 |
-| `science`, `language`, `history`, `global` | `E:/Amni-Ai-KB/wikipedia_simple/` | 50,000 |
-| `math`, `reasoning` | `E:/Amni-Ai-KB/competition_math/` | 5,000 |
+| `science`, `language`, `history`, `global` | `<kb-root>/wikipedia_simple/` | 50,000 |
+| `math`, `reasoning` | `<kb-root>/competition_math/` | 5,000 |
 
 The SubjectClassifier (v5.5.85) auto-routes per query — math queries get math KB, factual queries get Wikipedia, code queries get canonical-51 docs. Adam-1 now has **a unified factual interface across 4 specialized KB pools** routable per query.
 
@@ -4080,7 +4078,7 @@ Plus the +54.7pp avg lift across 15 niche slugs (v5.5.101) is independent eviden
 
 - `scripts/adam1_serve_multikb.py` (new)
 - `scripts/adam1.py` (umbrella + help text)
-- `E:/Amni-Ai-KB/competition_math/` (5K math problems, 3.9 MB)
+- `<kb-root>/competition_math/` (5K math problems, 3.9 MB)
 - `logs/training_cycles/ask_loop_math_smoke.json` (the 300 fix)
 
 ### Next iteration priorities
@@ -4094,7 +4092,7 @@ Plus the +54.7pp avg lift across 15 niche slugs (v5.5.101) is independent eviden
 
 ## v5.5.105 — Wikipedia ingest (50K articles in 6 min) + ask_with_loop identifier blocklist fix (2026-05-01)
 
-Anthony's directive: "look around on the web and huggingface for information you can download that can supplement Adam's knowledge."
+the maintainer's directive: "look around on the web and huggingface for information you can download that can supplement Adam's knowledge."
 
 ### Wikipedia simple-English ingest
 
@@ -4102,7 +4100,7 @@ Used `adam1_ingest_hf_to_kb` (the v5.5.97 pipeline) to stream `wikimedia/wikiped
 
 ```
 adam1 ingest_hf_to_kb --dataset wikimedia/wikipedia --config 20231101.simple \
-  --split train --template wikipedia --kb-root E:/Amni-Ai-KB/wikipedia_simple \
+  --split train --template wikipedia --kb-root <kb-root>/wikipedia_simple \
   --max-records 50000
 ```
 
@@ -4113,9 +4111,9 @@ Result: **50,000 articles ingested in 368s wall, 0 skipped.** Each article keyed
 | Source | Location | Entries | Use case |
 |---|---|---|---|
 | canonical-51 (DevDocs original) | `experiences/kb_canonical/` (C:) | 196,009 | Code/library docs (51 popular) |
-| canonical-extended (waves 1+2 DevDocs) | `E:/Amni-Ai-KB/canonical-extended/` + per-slug split | 107,774 | Code/library docs (17 niche) |
-| arc_agi training tasks | `E:/Amni-Ai-KB/arc_agi/` | 400 | ARC-AGI grid challenges |
-| **wikipedia_simple (NEW)** | `E:/Amni-Ai-KB/wikipedia_simple/` | **50,000** | **Broad factual/MMLU/TruthfulQA-shape** |
+| canonical-extended (waves 1+2 DevDocs) | `<kb-root>/canonical-extended/` + per-slug split | 107,774 | Code/library docs (17 niche) |
+| arc_agi training tasks | `<kb-root>/arc_agi/` | 400 | ARC-AGI grid challenges |
+| **wikipedia_simple (NEW)** | `<kb-root>/wikipedia_simple/` | **50,000** | **Broad factual/MMLU/TruthfulQA-shape** |
 | **TOTAL** | | **~354,183 entries** | |
 
 ### Smoke test result on v5.5.79 TruthfulQA failure
@@ -4141,14 +4139,14 @@ This is also a v5.5.104 issue carrying forward — the identifier-bonus in the c
 
 1. **Wikipedia ingest is fast and effective**: 50K articles in 6 min wall via `ingest_hf_to_kb`. Disk usage ~200 MB on E:.
 2. **KB diversity matters for benchmark coverage**: canonical-51 + canonical-extended don't cover bat biology; Wikipedia does. Each KB is specialized for its question class. SubjectClassifier-driven routing (v5.5.85) can pick the right KB per query.
-3. **Adam-1 + Wikipedia KB fixes v5.5.79 TruthfulQA failures** — directly demonstrates the broader-benchmark lift path Anthony asked for.
+3. **Adam-1 + Wikipedia KB fixes v5.5.79 TruthfulQA failures** — directly demonstrates the broader-benchmark lift path the maintainer asked for.
 4. **The ask_with_loop architecture is debuggable**: iter-2 going off the rails surfaced a real bug in the identifier extractor; that bug is now fixed for all future runs.
 
 ### Files
 
 - `scripts/adam1_ingest_hf_to_kb.py` (no change — re-used)
 - `scripts/adam1_ask_with_loop.py` (added `_IDENT_BLOCKLIST` + filter in `_extract_idents`)
-- `E:/Amni-Ai-KB/wikipedia_simple/` (new, 50K articles, ~200 MB)
+- `<kb-root>/wikipedia_simple/` (new, 50K articles, ~200 MB)
 - `logs/training_cycles/ask_loop_wiki_smoke.json` (the bats success on iter 1)
 
 ### Next iteration priorities
@@ -4162,7 +4160,7 @@ This is also a v5.5.104 issue carrying forward — the identifier-bonus in the c
 
 ## v5.5.104 — Weighted confidence (HIGH 2x LOW) + single-debug retry: 0.50→0.70 on same reply (2026-05-01)
 
-Anthony's refinement: "do a weighted confidence scale with a single debug when not-sure. From the docs should have double weight over uncertainty."
+the maintainer's refinement: "do a weighted confidence scale with a single debug when not-sure. From the docs should have double weight over uncertainty."
 
 ### What changed
 
@@ -4209,7 +4207,7 @@ The single-debug-retry pattern is faster (no wasted iterations on questions the 
 
 ## v5.5.103 — Hybrid 3-tier prompt + agentic ask-with-loop (2026-05-01)
 
-Anthony's directive: "grounding prompt should be 'Use docs as primary if exists, else: state inference/doc hybrid if partial, else: state not-sure but exploring'" + "wire in a debugging loop, [if] it doesn't know, it can test and learn on the fly until time/token limit or solution."
+the maintainer's directive: "grounding prompt should be 'Use docs as primary if exists, else: state inference/doc hybrid if partial, else: state not-sure but exploring'" + "wire in a debugging loop, [if] it doesn't know, it can test and learn on the fly until time/token limit or solution."
 
 ### Code changes
 
@@ -4439,7 +4437,7 @@ The pattern that makes it work (per v5.5.100):
 - Boots StreamingChatService once
 - For each slug: clear `_kb`, run baseline (no KB, generic prompt) → attach per-slug KB → run KB-attached (grounded prompt)
 - Per-slug + aggregate JSON report
-- Path bug fixed: `--per-slug-kb-root` defaults to `E:/Amni-Ai-KB/...` (Windows path, not bash `/e/...` which Python sees as relative `\e\`)
+- Path bug fixed: `--per-slug-kb-root` defaults to `<kb-root>/...` (Windows path, not bash `/e/...` which Python sees as relative `\e\`)
 
 ### What's next (v5.5.102+)
 
@@ -4472,8 +4470,8 @@ This is the FIRST significant lift demonstrating Adam-1's substrate genuinely ou
 ### The 3 compounding fixes
 
 **1. Per-slug KB split of canonical-extended (E: drive)**
-- Ran v5.5.82 split script targeting `E:/Amni-Ai-KB/canonical-extended/` → produced `E:/Amni-Ai-KB/canonical-extended-per-slug/<slug>/` for each of 17 slugs
-- nim now has its own KB at `E:/Amni-Ai-KB/canonical-extended-per-slug/nim/` (12,212 entries / 1 page)
+- Ran v5.5.82 split script targeting `<kb-root>/canonical-extended/` → produced `<kb-root>/canonical-extended-per-slug/<slug>/` for each of 17 slugs
+- nim now has its own KB at `<kb-root>/canonical-extended-per-slug/nim/` (12,212 entries / 1 page)
 - Eliminates cross-slug noise — retrieval can't accidentally match `cmdline*` entries from crystal/d when asked about Nim's cmdlinehelper
 
 **2. KBRetriever `slug=` filter**
@@ -4545,7 +4543,7 @@ For HF leaderboard targeting (TruthfulQA, HellaSwag, MMLU): Adam-1 with grounded
 
 - `logs/training_cycles/hard_kb_nim_v5_5_99_grounded.json` (the breakthrough run)
 - `logs/hard_kb_nim_v5_5_99_grounded.log`
-- `E:/Amni-Ai-KB/canonical-extended-per-slug/{nim,qt_6_8,godot_4_2,crystal,d,erlang_26}/` (split-out per-slug KBs in flight)
+- `<kb-root>/canonical-extended-per-slug/{nim,qt_6_8,godot_4_2,crystal,d,erlang_26}/` (split-out per-slug KBs in flight)
 
 ---
 
@@ -4558,8 +4556,8 @@ Wave 1 (v5.5.96, niche languages) + Wave 2 (vision/gaming + ARC) all ingested to
 | Source | Location | Entries | Disk |
 |---|---|---|---|
 | canonical-51 (the original) | `experiences/kb_canonical/` (C:) | 196,009 | 672 MB |
-| canonical-extended (waves 1+2 DevDocs) | `E:/Amni-Ai-KB/canonical-extended/` | ~107,000 | ~370 MB |
-| ARC v1 training tasks | `E:/Amni-Ai-KB/arc_agi/` | 400 | ~1 MB |
+| canonical-extended (waves 1+2 DevDocs) | `<kb-root>/canonical-extended/` | ~107,000 | ~370 MB |
+| ARC v1 training tasks | `<kb-root>/arc_agi/` | 400 | ~1 MB |
 | **TOTAL** | | **~303,400 entries** | **~1.04 GB** |
 
 ### Wave 1 + Wave 2 per-slug breakdown
@@ -4649,7 +4647,7 @@ These are 1-day fixes that compound. The substrate is right; the orchestration l
 
 ## v5.5.97 — HF dataset → KnowledgeBase pipeline + survey of vision/gaming/ARC sources (2026-05-01)
 
-Anthony's directive expansion: "include visual recognition, gaming approaches, and other common testing/skillsets ... ARC testing and real life challenges. It needs tools."
+the maintainer's directive expansion: "include visual recognition, gaming approaches, and other common testing/skillsets ... ARC testing and real life challenges. It needs tools."
 
 ### Survey results
 
@@ -4724,7 +4722,7 @@ Qt 6.8 alone added 44K entries — single largest slug ever (canonical-51 max wa
 
 ### Tools (banked for next iteration)
 
-Anthony said "It needs tools." Adam-1 currently has KB retrieval (passive) but no tool-calling (active). The right architecture:
+the maintainer said "It needs tools." Adam-1 currently has KB retrieval (passive) but no tool-calling (active). The right architecture:
 1. Define a tool schema (JSON-Schema, 5-10 starter tools: web_search, python_exec, calc, read_file, write_file, image_describe, arc_grid_eval)
 2. Use Qwen2.5's native function-calling chat template (already in tokenizer)
 3. Parse the model's `<tool_call>` output, dispatch, feed result back as `<tool_response>`
@@ -4747,7 +4745,7 @@ Sketched as v5.5.99+ work.
 
 ## v5.5.96 — Knowledge expansion to E: drive: 11 niche-language DevDocs slugs ingesting (Qwen pretraining gap targeting) (2026-05-01)
 
-Anthony's new directive: "I want to see Adam-1 start to outperform the equivalent Qwens... look around on the web and huggingface for information... use my E: drive for storage."
+the maintainer's new directive: "I want to see Adam-1 start to outperform the equivalent Qwens... look around on the web and huggingface for information... use my E: drive for storage."
 
 The v5.5.95 result showed Adam-1 + KB lifted +20pp on python (1/5 vs 0/5). Python is the slug Qwen2.5-1.5B-Instruct knows best from pretraining. To get bigger lifts, target slugs where Qwen has WEAKER coverage.
 
@@ -4778,7 +4776,7 @@ These were filtered from a 233-candidate pool of "non-canonical-51 DevDocs slugs
 
 ### Storage
 
-`E:/Amni-Ai-KB/canonical-extended/` — separate KB directory on E: drive (slower but ~3x more capacity than C:). Coexists with `experiences/kb_canonical/` (canonical-51 stays on C: for hot retrieval).
+`<kb-root>/canonical-extended/` — separate KB directory on E: drive (slower but ~3x more capacity than C:). Coexists with `experiences/kb_canonical/` (canonical-51 stays on C: for hot retrieval).
 
 ### What this enables
 
@@ -4797,7 +4795,7 @@ Background ingest started: `nohup adam1 kb_build --slug crystal d duckdb erlang~
 
 - `data/devdocs_canonical_extended.json` (233-candidate pool)
 - `data/devdocs_v5_5_96_extension.json` (curated 11)
-- `E:/Amni-Ai-KB/canonical-extended/` (KB output, in flight)
+- `<kb-root>/canonical-extended/` (KB output, in flight)
 - `logs/kb_build_extended_v5_5_96.log` (ingest log)
 
 ### Followup
@@ -4977,7 +4975,7 @@ Same Qwen2.5-1.5B-Instruct GF17 bake, same prompt, same hardware, only `budget_m
 | `budget_mb=4000` (new default) | **48.384** | 0.02 | 3170 MB | Working set fits → decode happens once at warm-up → LRU stays hot |
 | **Speedup** | **677.37x** | — | +900 MB | The whole "perf is hopeless without HIP" assumption was wrong |
 
-This **beats Anthony's "should be 50 tok/s at that size" projection** at 48 tok/s. Without the HIP integration. Without `ari_tex_attention`. Without GF(3) trits. Just by giving the streaming cache enough room to fit the working set.
+This **beats the maintainer's "should be 50 tok/s at that size" projection** at 48 tok/s. Without the HIP integration. Without `ari_tex_attention`. Without GF(3) trits. Just by giving the streaming cache enough room to fit the working set.
 
 ### Why so dramatic
 
@@ -5029,7 +5027,7 @@ In hindsight: the streaming-architecture mandate ("weights do NOT fit in VRAM") 
 - `amni/inference/streaming_chat.py` — single-line default change (1500 → 4000)
 - `logs/budget_compare.log` (the 677x measurement output)
 
-### Followup (immediate, post-Anthony-wakeup)
+### Followup (immediate, post-the maintainer-wakeup)
 
 1. **Re-run the v5.5.79 multi-question bench** with the new default — should complete both phases in **~5-10 min instead of 1.5 hours**. Same scorecard expected (substrate is unchanged), just dramatically faster.
 2. **Run the v5.5.84 hard-KB bench** at `--n 20` (~6 min) and `--n 226` (~75 min for full sweep) — this is where "Adam-1 outperforms origin" gets actually measured.
@@ -5449,7 +5447,7 @@ wisdom        count=196  authority=swarm    writable=True     PASS (federation-t
 ### Followup
 
 - For untied-LM bakes (e.g. if a future Adam-1 uses Mistral or a Qwen variant without tying), this same test will assert commandments populated. No code change needed — the test branches on `has_lm_head`.
-- If Anthony wants extra protection on Qwen2.5-1.5B's final layer outputs, a future `adam1_promote_commandments.py` script could opt-in promote `model.layers.27.{self_attn.o_proj,mlp.down_proj}.weight` from wisdom to commandments. This would make those tensors immutable (anthony-only) and prevent federation from changing the model's final output decisions. NOT done by default — would constrain the federation target.
+- If the maintainer wants extra protection on Qwen2.5-1.5B's final layer outputs, a future `adam1_promote_commandments.py` script could opt-in promote `model.layers.27.{self_attn.o_proj,mlp.down_proj}.weight` from wisdom to commandments. This would make those tensors immutable (anthony-only) and prevent federation from changing the model's final output decisions. NOT done by default — would constrain the federation target.
 
 ---
 
@@ -5508,7 +5506,7 @@ Combined with v5.5.80 (N=2-7 same-subject consensus) and v5.5.81 (1×M cross-sub
 
 ### Followup
 
-When Anthony has an HF repo set up: `adam1 publish_bundle --bake bakes/qwen25_1_5b_instruct_gf17_v5_0_3 --subject global --hf-repo Amnibro/adam1-bundles --bundle-name first-test --note "v5.5.86 smoke"` will validate the upload path. Then `adam1 pull --hf-repo Amnibro/adam1-bundles --bundles-only --apply-to-bake <fresh-bake-clone>` validates the round-trip.
+When the maintainer has an HF repo set up: `adam1 publish_bundle --bake bakes/qwen25_1_5b_instruct_gf17_v5_0_3 --subject global --hf-repo Amnibro/adam1-bundles --bundle-name first-test --note "v5.5.86 smoke"` will validate the upload path. Then `adam1 pull --hf-repo Amnibro/adam1-bundles --bundles-only --apply-to-bake <fresh-bake-clone>` validates the round-trip.
 
 ---
 
@@ -5604,7 +5602,7 @@ CLI flags:
 - `--kb-root <path>` — explicit KB to attach (default `experiences/kb_canonical`)
 - `--baseline-only` — skip KB phase (just measure baseline accuracy)
 
-### Wall-time math (so Anthony knows what to budget)
+### Wall-time math (so the maintainer knows what to budget)
 
 At measured 0.08 tok/s × 80 max_tokens per question = ~17 min per question. Both phases × N questions:
 
@@ -5974,13 +5972,13 @@ The score-delta question (does Adam-1 actually answer better with KB attached?) 
 ### Followup
 
 - **v5.5.77+**: hardened single-question bench harness with subprocess+timeout — only when the canonical-51 KB build completes and inference perf is acceptable enough to make benching tractable. Not a blocker for the current substrate.
-- **Borderline cleanup pending Anthony's call**: Qwen3.5-0.8B family + bakes (~10 GB), and cargo target dirs across 9 Amni-* repos.
+- **Borderline cleanup pending maintainer's call**: Qwen3.5-0.8B family + bakes (~10 GB), and cargo target dirs across 9 Amni-* repos.
 
 ---
 
 ## v5.5.75 — End-to-end Adam-1 validation: Asimov + foundational layers + PrismTex federation, all green on live 1.5B bake (2026-04-30)
 
-**Trigger:** Anthony's /loop directive: "build the auto-learning and growing GF17 Adam-1 as we have envisioned it. Keep the asimov and foundational layers working and build the PrismTex federation. Test it end to end and validate Adam-1 growth against the global benchmarks to ensure it's getting properly smarter without scaling VRAM."
+**Trigger:** the maintainer's /loop directive: "build the auto-learning and growing GF17 Adam-1 as we have envisioned it. Keep the asimov and foundational layers working and build the PrismTex federation. Test it end to end and validate Adam-1 growth against the global benchmarks to ensure it's getting properly smarter without scaling VRAM."
 
 The PrismTex federation engine has shipped piecemeal across v5.5.36 → v5.5.74 (export, merge_fp16_avg, apply, subject overlays, ATEX deployment). v5.5.75 closes the audit loop: a single harness that validates the full substrate end-to-end against the live `bakes/qwen25_1_5b_instruct_gf17_v5_0_3` bake.
 
@@ -6063,7 +6061,7 @@ Audited every cached HF model and bake against current code references. Identifi
 | `~/.cache/huggingface/hub/models--TrevorJS--gemma-4-31B-it-uncensored/` | 31 MB (stale Gemma stub) |
 | **Total freed** | **71 GB** (713 → 643 GB used; 218 → 289 GB free) |
 
-Kept as regression anchors: `bakes/adam_a1_native_v1_0` and `v1_1` (latest two), `bakes/qwen25_0_5b_v5_0_3` (used by `v5_5_4_benchmark_suite.py`), the live `qwen25_1_5b_instruct_gf17_v5_0_3` substrate, and `downloaded_models/Qwen2.5-1.5B-Instruct` (current source model). Borderline (Qwen3.5-0.8B family + bakes ≈ 10 GB) left intact pending Anthony's call. Cargo target dirs across 9 Amni-* repos pending separate green-light.
+Kept as regression anchors: `bakes/adam_a1_native_v1_0` and `v1_1` (latest two), `bakes/qwen25_0_5b_v5_0_3` (used by `v5_5_4_benchmark_suite.py`), the live `qwen25_1_5b_instruct_gf17_v5_0_3` substrate, and `downloaded_models/Qwen2.5-1.5B-Instruct` (current source model). Borderline (Qwen3.5-0.8B family + bakes ≈ 10 GB) left intact pending maintainer's call. Cargo target dirs across 9 Amni-* repos pending separate green-light.
 
 ### Files
 
@@ -6076,7 +6074,7 @@ Kept as regression anchors: `bakes/adam_a1_native_v1_0` and `v1_1` (latest two),
 
 ## v5.5.74 — ATEX: local-only PTEX + MCP server so ANY AI client can query project context (2026-04-30)
 
-**Trigger:** universal-pain insight from Anthony — "every single person I've seen coding with AI has echoed the same sentiment: they're tired of having to explain the same thing over and over, or having it have to research the same directories/files/etc. Doesn't ATEX (local machine only — non-federated PTEX) solve this? Is there a way I can deploy this so anyone can use it with any model can benefit?"
+**Trigger:** universal-pain insight from maintainer directive — "every single person I've seen coding with AI has echoed the same sentiment: they're tired of having to explain the same thing over and over, or having it have to research the same directories/files/etc. Doesn't ATEX (local machine only — non-federated PTEX) solve this? Is there a way I can deploy this so anyone can use it with any model can benefit?"
 
 ATEX = local, single-project PTEX KB (no federation, no upload). Sits in `.atex/` at the project root, ingests source files into a byte-level lossless LUT, and exposes itself as **MCP tools** (Model Context Protocol — Anthropic's standard for plugging tools/context into AI clients). Once configured, Claude Code / Cursor / Cline / Continue / Zed / Claude Desktop can call `atex_search` / `atex_recall` / `atex_remember` / `atex_list_keys` / `atex_stats` mid-conversation. The "AI re-explains my codebase every session" problem dies.
 
@@ -6361,7 +6359,7 @@ PTEX KB:
 
 The user wants more than 51 docsets. The KB scales easily:
 - DevDocs has 794 docsets — `adam1 kb_build --slug $(curl -s https://devdocs.io/docs.json | jq -r '.[].slug')` would ingest all of them (~10 GB raw text → ~150 PTEX pages → still under 10 GB on disk).
-- Add custom sources via `kb.add(key, text)` — Anthony's local codebase, Stack Overflow exports, Wikipedia API, anything.
+- Add custom sources via `kb.add(key, text)` — the maintainer's local codebase, Stack Overflow exports, Wikipedia API, anything.
 - Federated KB merging is a future piece (`adam1_kb_federate` would merge multiple KBs page-by-page).
 
 ### Subcommand surface (now 15 commands)
@@ -9581,7 +9579,7 @@ The Adam-1 substrate is fully built, deployed (bake CLI, OpenAI server, HF publi
 
 ## v5.5.30 — Public deployment scaffolding (2026-04-30)
 
-**Trigger:** Anthony — *"how do we cleanly put Adam-1 on GH and HuggingFace and ArXiv? Let's make a whitepaper, a tool for users to load their own models and bootstrap to PTEX, and a method for interfacing with common tools like cursor/IDEs/etc."*
+**Trigger:** maintainer directive — *"how do we cleanly put Adam-1 on GH and HuggingFace and ArXiv? Let's make a whitepaper, a tool for users to load their own models and bootstrap to PTEX, and a method for interfacing with common tools like cursor/IDEs/etc."*
 
 Six new top-level deliverables to take Adam-1 from research codebase to deployable open-source project.
 
@@ -9728,7 +9726,7 @@ At n=8 deepeval, scores quantize to 1/40 = 2.5pp steps (8 questions × 5 subject
 
 ### Adam-1 architecture: complete and validated
 
-The full vision Anthony directed is shipped and producing measurable growth:
+The full vision the maintainer directed is shipped and producing measurable growth:
 
 | Layer | Component | Validated |
 |---|---|---|
@@ -9762,9 +9760,9 @@ The substrate is correct. Remaining algorithmic refinements:
 
 ## v5.5.28 — PTEX experience atlas + atlas-driven distillation (2026-04-30)
 
-**Trigger:** Anthony /loop continued — *"texture maps storing useful information for distillation into an ever-smarter Adam. PTEX federation is a requirement"*
+**Trigger:** the maintainer /loop continued — *"texture maps storing useful information for distillation into an ever-smarter Adam. PTEX federation is a requirement"*
 
-This iteration delivers the **texture-maps-as-distillation-source** layer Anthony specified.
+This iteration delivers the **texture-maps-as-distillation-source** layer the maintainer specified.
 
 ### Phase 12 — `amni/learning/experience_atlas.py`
 
@@ -9851,7 +9849,7 @@ The substrate produces real growth on the **global subject** with **mixed full-f
 
 ## v5.5.27 — Foundational tier system + subject-routed residuals (2026-04-30)
 
-**Trigger:** Anthony /loop — *"continuing building out Adam-1. Make sure to stick to the vision of texture maps storing useful information for distillation into an ever-smarter Adam. PTEX federation is a requirement, as is the foundational layered structure (asimov, commandments, ascension, etc.)"*
+**Trigger:** the maintainer /loop — *"continuing building out Adam-1. Make sure to stick to the vision of texture maps storing useful information for distillation into an ever-smarter Adam. PTEX federation is a requirement, as is the foundational layered structure (asimov, commandments, ascension, etc.)"*
 
 Four phases shipped this iteration: tier hierarchy, subject-tagged residual storage, subject-aware TensorRegistry overlay, and end-to-end subject-routed training test.
 
@@ -9959,7 +9957,7 @@ Multi-subject queries fall back to a 'global' subject (or hierarchical 'parent' 
 
 1. **SubjectClassifier**: keyword-based MVP first (math keywords, code keywords, etc.), then optionally Adam-self-classify. Wire into deepeval runner so each test question activates only its relevant subject.
 2. **Per-subject curriculum**: train on mixed-then-narrow rather than pure-subject, see if benchmarks lift.
-3. **PTEX experience atlases**: per-subject memory texture maps (RGBA-packed query/response/outcome records). Federate as `.prismtex` bundles. The "texture maps storing useful info for distillation" Anthony specified.
+3. **PTEX experience atlases**: per-subject memory texture maps (RGBA-packed query/response/outcome records). Federate as `.prismtex` bundles. The "texture maps storing useful info for distillation" the maintainer specified.
 4. **Hierarchical subject fallback**: `math.algebra` → `math` → `global` cascade so any query can find a relevant overlay.
 
 ---
@@ -10002,13 +10000,13 @@ effective = (base + merged) mod 17 = (target_A + target_B − base) mod 17
 
 When A and B move weights in different directions, summing produces noise, not consensus. Effective weights land at random fp16/bf16 values; model collapses to base-0.5B-equivalent random performance.
 
-### Architectural lesson (validates Anthony's vision)
+### Architectural lesson (validates the maintainer's vision)
 
 - **Single-cycle global residuals**: WORK (+5pp/+6.9pp real)
 - **Multi-cycle sequential**: REGRESS (cycle 2 fights cycle 1)
 - **Federated GF(17) global sum**: COLLAPSE (no algebraic mean)
 
-→ **Global residuals fundamentally cannot federate.** Subject-routed residuals avoid all three failure modes by keeping different topics' learnings in separate files. Anthony filed this design mid-test:
+→ **Global residuals fundamentally cannot federate.** Subject-routed residuals avoid all three failure modes by keeping different topics' learnings in separate files. the maintainer filed this design mid-test:
 
 > "keep the model and weights on vram but the learnings/errors/etc. all as streaming from SSD. Chain might go: Adam gets a question - identifies subject matter - it's about math - Adam sends information to CPU - CPU pulls all error/learning/ptex files related to math and stages them for Adam... 1 call, 1 response, 1 post-call write. After prompt/eval loop, adam trains on the new findings and the resident vram model gets smarter."
 
@@ -10053,7 +10051,7 @@ This is the structurally correct architecture. Next session builds it (filed as 
 
 ### What's queued for next session (task #77)
 
-Subject-routed streaming residuals — solves all three failure modes the federated test surfaced. Anthony's hot-path/cold-path design is the structurally correct architecture for indefinite growth without VRAM scaling.
+Subject-routed streaming residuals — solves all three failure modes the federated test surfaced. the maintainer's hot-path/cold-path design is the structurally correct architecture for indefinite growth without VRAM scaling.
 
 ---
 
@@ -10130,7 +10128,7 @@ The architecture finally does what it was designed to do.
 
 ## v5.5.24 — Adam-1 federation pipeline (Phases 1-4) (2026-04-30)
 
-**Trigger:** Anthony /loop: *"build the auto-learning and growing GF17 Adam-1 as we have envisioned it. Keep the asimov and foundational layers working and build the PrismTex federation. Test it end to end and validate Adam-1 growth against the global benchmarks to ensure it's getting properly smarter without scaling VRAM"*
+**Trigger:** the maintainer /loop: *"build the auto-learning and growing GF17 Adam-1 as we have envisioned it. Keep the asimov and foundational layers working and build the PrismTex federation. Test it end to end and validate Adam-1 growth against the global benchmarks to ensure it's getting properly smarter without scaling VRAM"*
 
 Honest scope: the *infrastructure* for auto-learning + federation + Asimov-protected residual updates is buildable in a session. The *algorithm* that makes Adam smarter on real benchmarks is the open research problem (gradient-derived residuals via backprop through the bake — not yet wired). Shipped what's buildable; documented what isn't.
 
@@ -10250,7 +10248,7 @@ The v0.5–v1.1 SFT cycle showed standard fine-tuning *degrades* an already-inst
 
 ## v5.5.23 — GF17 residual learning planes (Option B) (2026-04-30)
 
-**Trigger:** Anthony "go for B." Federated PRISM-shaped end state per `project_amni_ai_pyramid_unet_vision.md` ("federated d0 residuals").
+**Trigger:** the maintainer "go for B." Federated PRISM-shaped end state per `project_amni_ai_pyramid_unet_vision.md` ("federated d0 residuals").
 
 Per-tensor optional `l0..l3` digit planes. Effective digit during inference = `(d_base + l_residual) mod 17` (GF(17) modular addition — closed under the field). Properties:
 
@@ -10315,7 +10313,7 @@ For now consumers needing effective values can use `LearningWriter.read_effectiv
 
 ## v5.5.22 — GF17 LearningWriter (Option A, in-place weight update) (2026-04-30)
 
-**Trigger:** Anthony directive: *"now that the map is live, can't we store learnings straight to a map so they become part of Adam's working inference?"*
+**Trigger:** the maintainer directive: *"now that the map is live, can't we store learnings straight to a map so they become part of Adam's working inference?"*
 
 The 1:1 GF(17) digit-plane layout makes this trivial — a learning is just patching 4 bytes (one per digit plane) at a known offset in a tensor's `.gf17` file. Next inference cycle, when the tensor's TMU lookup table is built (or refreshed) from disk, it picks up the new weight automatically. No "memory file to consult", no separation between "trained" and "learned" — **the learning IS the model.**
 
@@ -10368,7 +10366,7 @@ The federated-PRISM end state per `project_amni_ai_pyramid_unet_vision.md` ("fed
 - **Bounded**: digits stay in [0,16] by construction
 - **Asimov-safe**: immutable tensors reject residual writes; hash check stays valid
 
-Anthony confirmed: "B is what we're targetting but we can start with A." → A shipped, B queued.
+the maintainer confirmed: "B is what we're targetting but we can start with A." → A shipped, B queued.
 
 ### Files
 
@@ -10380,7 +10378,7 @@ Anthony confirmed: "B is what we're targetting but we can start with A." → A s
 
 ## v5.5.21 — PTEX → GF17 digit-plane converter (2026-04-30)
 
-**Trigger:** Anthony directive: *"Next step is taking the Fp16 ptex files and saving/converting to GF17 so Adam has a 1:1 direct GF17 lossless map."*
+**Trigger:** the maintainer directive: *"Next step is taking the Fp16 ptex files and saving/converting to GF17 so Adam has a 1:1 direct GF17 lossless map."*
 
 The existing PTEX format already encodes GF(17) digits — each fp16 weight decomposes into 4 base-17 digits stored as RGBA channels (R=d0, G=d1, B=d2, A=d3, each ∈ [0,16]). But the layout was *interleaved* — to fetch digit `d2` of weight `i`, you'd have to seek to pixel `i` and read channel 2. For Adam's TMU lookup architecture, what's needed is **4 contiguous digit planes per tensor** so any single GF(17) digit is directly addressable as a flat array.
 
@@ -10447,7 +10445,7 @@ sha256(u16_reconstructed) == sha256(u16_source): True ← BIT-EXACT
 
 ## v5.0.3 (re-run) — Direct lossless bake of Qwen2.5-1.5B-Instruct → BREAKTHROUGH (2026-04-30)
 
-**Trigger:** Anthony's correction — "didn't we go through how to turn a model into atex/ptex files losslessly without running an inference distillation? pretty sure we did with archives."
+**Trigger:** the maintainer's correction — "didn't we go through how to turn a model into atex/ptex files losslessly without running an inference distillation? pretty sure we did with archives."
 
 He was 100% right. The Reffelt 4-tier RGBA encoding is bit-exact lossless; we have `scripts/v5_0_3_bake.py` that converts safetensors directly to PTEX in seconds. **All 11 prior versions of SFT distillation were unnecessary work** — they were fighting against the pre-trained instruction tuning of the source model, not improving it. 
 
@@ -10607,7 +10605,7 @@ Same procedural shape as v5.5.16 plus:
 
 ## v5.5.16/17 — Real-distribution corpus + v1.0 + first real-benchmark gain (2026-04-30)
 
-**Trigger:** v0.9 deepeval revealed mini-suite gains were illusory — Adam tied base on real MMLU/HS because it had only seen Anthony's hand-crafted MC corpus, never real benchmark distribution. Test the diagnosis: train on actual HellaSwag + ARC train splits, see if the architecture transfers when given the right data.
+**Trigger:** v0.9 deepeval revealed mini-suite gains were illusory — Adam tied base on real MMLU/HS because it had only seen the maintainer's hand-crafted MC corpus, never real benchmark distribution. Test the diagnosis: train on actual HellaSwag + ARC train splits, see if the architecture transfers when given the right data.
 
 ### v5.5.16 — Real-distribution corpus generator (`scripts/v5_5_16_corpus_real_dist.py`)
 
@@ -10767,8 +10765,8 @@ Output: `logs/training_cycles/deepeval_v0_9.json` + `.log`.
 
 ### v5.5.15 — UI demo (`scripts/v5_5_15_build_demo_ui.py` → `docs/demo/v0_9_demo.html`)
 
-Step 4 of Anthony's original 5-program directive. Single-file HTML (23 KB) with embedded JSON, opens offline in any browser. Sections:
-1. **Two scoreboards**: side-by-side cards comparing v0.9 vs Qwen base on the mini-suite (where v0.9 wins 71% vs 38%) and deepeval (where they tie 27.5% / 44.8% / 0%) — visualizes the gap that Anthony asked us to face.
+Step 4 of the maintainer's original 5-program directive. Single-file HTML (23 KB) with embedded JSON, opens offline in any browser. Sections:
+1. **Two scoreboards**: side-by-side cards comparing v0.9 vs Qwen base on the mini-suite (where v0.9 wins 71% vs 38%) and deepeval (where they tie 27.5% / 44.8% / 0%) — visualizes the gap that the maintainer asked us to face.
 2. **Honest reading**: callout explaining the mini-suite is overfit to the custom MC corpus, deepeval is the truth.
 3. **Browseable Q&A**: pick any benchmark + question and see Adam v0.9's response next to Qwen base's response, with PASS/FAIL annotations on each.
 
@@ -10912,7 +10910,7 @@ Same `scripts/v5_4_1_native_distill.py` pipeline as v0.6, 3 epochs, bf16, lr=5e-
 
 ## v5.5.5/6/7 — MC-format corpus + v0.6 distill + benchmark lift (2026-04-30)
 
-**Trigger:** Anthony's `/loop through 1,2,3 then also 4...`. From v0.5 results: A-bias on MMLU (7%) and HellaSwag (42%) was the worst category — both models default to A on multi-choice. **The fix:** add MC-format training entries that cover all 4 letters evenly.
+**Trigger:** the maintainer's `/loop through 1,2,3 then also 4...`. From v0.5 results: A-bias on MMLU (7%) and HellaSwag (42%) was the worst category — both models default to A on multi-choice. **The fix:** add MC-format training entries that cover all 4 letters evenly.
 
 ### v5.5.5 — MC corpus
 
@@ -10976,19 +10974,19 @@ Same `scripts/v5_4_1_native_distill.py` pipeline, 3 epochs on corpus v4. Loss: e
 
 ## v5.5.x — Codebase Mining + CoT + v0.5 Distill + 5-Benchmark Suite + Chart (2026-04-30)
 
-**Trigger:** Anthony's `/loop` — *"can we have it pull code from the existing ai folder we're operating in as training material? can we also send it up against the full suite of benchmarks here and compare it with charts against 2.5-0.5B? https://deepeval.com/docs/benchmarks-introduction. Lastly, can we introduce CoTs 'learning' as well as prompting, evaluation, and incycle completion?"*
+**Trigger:** the maintainer's `/loop` — *"can we have it pull code from the existing ai folder we're operating in as training material? can we also send it up against the full suite of benchmarks here and compare it with charts against 2.5-0.5B? https://deepeval.com/docs/benchmarks-introduction. Lastly, can we introduce CoTs 'learning' as well as prompting, evaluation, and incycle completion?"*
 
 ### v5.5.0 — Codebase mining (`scripts/v5_5_0_corpus_from_codebase.py`)
 
 Walks `C:\Users\antho\Documents\ai\` (skipping `.venv`, `archive`, `backups`, `downloaded_models`, `bakes`, `node_modules`, etc.). For each `.py` file: `ast.parse` → walk function definitions → filter (3-60 lines, non-dunder, non-test, non-generic name) → emit Q→A pair: `prompt = "Write a Python function that <docstring/name>. Use signature \`{sig}\`."`, `response = fenced source`.
 
-**Result:** 2000 entries written from 448 files / 3629 functions seen. Spans `gf17_engine`, `spatial_momentum_analyzer`, `btc_cipher_engine`, `triton_gdn_patch`, `sha256_correlation_scanner`, etc. — Anthony's actual codebase as training material.
+**Result:** 2000 entries written from 448 files / 3629 functions seen. Spans `gf17_engine`, `spatial_momentum_analyzer`, `btc_cipher_engine`, `triton_gdn_patch`, `sha256_correlation_scanner`, etc. — the maintainer's actual codebase as training material.
 
 ### v5.5.1 — CoT corpus (`scripts/v5_5_1_corpus_cot.py`)
 
 40 hand-curated entries with explicit `<think>...</think>` reasoning tags before final `Answer:` line. Mix of arithmetic word problems, geometry, project facts, and short coding tasks — each demonstrating the *think → conclude* pattern. System prompt: *"first think step by step in <think>...</think> tags, then give the final concise answer on its own line as 'Answer: <answer>'."*
 
-This addresses Anthony's directive: **CoT learning** (training data with reasoning chains), **CoT prompting** (the system prompt encouraging the format), **CoT evaluation** (substring match on `Answer:` line works at scoring time), **in-cycle completion** (the model produces the chain inline before answering).
+This addresses the maintainer's directive: **CoT learning** (training data with reasoning chains), **CoT prompting** (the system prompt encouraging the format), **CoT evaluation** (substring match on `Answer:` line works at scoring time), **in-cycle completion** (the model produces the chain inline before answering).
 
 ### v5.5.2 — Combined corpus v3
 
@@ -11050,7 +11048,7 @@ Same `scripts/v5_4_1_native_distill.py` pipeline. 169 Linears swapped to `Reffel
 
 ## v5.4.7/8 — Self-Bootstrap on Native Body: Adam Literally Growing (2026-04-30)
 
-**Trigger:** Anthony's `/loop keep it up, you're doing great! Let's get Adam growing.`
+**Trigger:** the maintainer's `/loop keep it up, you're doing great! Let's get Adam growing.`
 
 The closed-loop self-bootstrap learner from v5.4.0 (which scored 0/20 success on baseline 0.8B-Instruct due to format-following gaps) re-run on the native distilled body to test whether stronger code-trained body unlocks the loop.
 
@@ -11104,7 +11102,7 @@ The closed-loop self-bootstrap learner from v5.4.0 (which scored 0/20 success on
 
 ## v5.4.5/6 — Five-item program: Scale + Asimov + Full-Stack + UI + Benchmarks (2026-04-30)
 
-**Trigger:** Anthony's `/loop through 1,2,3 then also 4: generate a UI that shows this working (like the demo UI) and 5: find industry standard benchmarks to test it against after proper distilation.`
+**Trigger:** the maintainer's `/loop through 1,2,3 then also 4: generate a UI that shows this working (like the demo UI) and 5: find industry standard benchmarks to test it against after proper distilation.`
 
 ### Item 1 — Scale corpus + retrain native distill (v5.4.2)
 
@@ -11162,7 +11160,7 @@ The closed-loop self-bootstrap learner from v5.4.0 (which scored 0/20 success on
 
 ## v5.4.1 — Phase 4 v0.2: Native Adam-A1 Distill + Direct PTEX Bake (2026-04-29)
 
-**Trigger:** Anthony's *"so what's next? go for it"* → picked Phase 4 v0.2 (the architectural commitment v0.1 was scaffolding toward).
+**Trigger:** the maintainer's *"so what's next? go for it"* → picked Phase 4 v0.2 (the architectural commitment v0.1 was scaffolding toward).
 
 ### Goal
 
@@ -11197,7 +11195,7 @@ StreamingChatService loads it, no new loader, no conversion step
 generates coherent text (Paris, 56)
 ```
 
-The path Anthony asked for — *"distill 7B coder into Adam-A1 as well as a lightweight instruct, then wire it up with this learning method"* — has its first complete closure here at small scale. Scaling to 7B-Coder teacher + larger corpus is mechanical from this foundation.
+The path the maintainer asked for — *"distill 7B coder into Adam-A1 as well as a lightweight instruct, then wire it up with this learning method"* — has its first complete closure here at small scale. Scaling to 7B-Coder teacher + larger corpus is mechanical from this foundation.
 
 ### Files
 
@@ -11211,9 +11209,9 @@ The path Anthony asked for — *"distill 7B coder into Adam-A1 as well as a ligh
 
 ## v5.4.0 — Self-Bootstrap Closed-Loop Learner v0.1 (2026-04-29)
 
-**Trigger:** Anthony's directive — *"61 prompts seems small. We need prompts that can self expand themselves and 'force' creativity and problem solving... test its own responses and identify where failure points are - logging failed assumptions as well as learnings so it doesn't do the same mistake twice."*
+**Trigger:** the maintainer's directive — *"61 prompts seems small. We need prompts that can self expand themselves and 'force' creativity and problem solving... test its own responses and identify where failure points are - logging failed assumptions as well as learnings so it doesn't do the same mistake twice."*
 
-`scripts/v5_4_0_self_bootstrap_loop.py` — closed-loop self-bootstrap learner with all four properties Anthony specified:
+`scripts/v5_4_0_self_bootstrap_loop.py` — closed-loop self-bootstrap learner with all four properties the maintainer specified:
 1. **Self-generated prompts** (10 domain templates × easy/medium difficulty; model writes new challenge each iter)
 2. **Executable verification** (code runs in subprocess sandbox with timeout; pass/fail = ground truth, not self-judgment)
 3. **Failure introspection** (second model call asks *"what did the solution assume that was wrong?"* — captures the assumption as a retrievable `why` field)
@@ -11226,7 +11224,7 @@ The path Anthony asked for — *"distill 7B coder into Adam-A1 as well as a ligh
 
 **The body limitation IS the finding** — the self-bootstrap loop demands strong structured-output instruction-following, which 0.8B-Instruct lacks. This validates Phase 4's priority: a Phase-4-trained native Adam-A1 body would be the right partner for this loop. The architecture is body-agnostic; revisit when a stronger body lands.
 
-**Federated angle:** Anthony's 1000-Adam vision is structurally enabled by this two-atlas architecture — each instance's failure becomes a different instance's avoidance signal via shared retrieval. Cross-instance validation = multi-process scaling of this loop.
+**Federated angle:** the maintainer's 1000-Adam vision is structurally enabled by this two-atlas architecture — each instance's failure becomes a different instance's avoidance signal via shared retrieval. Cross-instance validation = multi-process scaling of this loop.
 
 ### Files
 
@@ -11238,11 +11236,11 @@ The path Anthony asked for — *"distill 7B coder into Adam-A1 as well as a ligh
 
 ## v5.3.0 — Distillation Pipeline (Phases 1-3) + Phase 4 v0.1 GF(17) Native Trainer Started (2026-04-29)
 
-**Trigger:** Anthony's directive — *"Help me train with real, important methods. I want to distill the 7B coder into Adam-A1 as well as a lightweight instruct"* + *"until phase 4 has started"*
+**Trigger:** the maintainer's directive — *"Help me train with real, important methods. I want to distill the 7B coder into Adam-A1 as well as a lightweight instruct"* + *"until phase 4 has started"*
 
 ### Phase 1 — Distillation pipeline established
 
-Originally planned: 7B-Coder fp16 → 0.5B student. Anthony's mid-pivot: *"write the prompts since you'll be SIGNIFICANTLY faster than the 7B model"* — switched teacher to Claude (this session) writing high-quality (prompt, response) JSONL directly. Faster, higher quality, frees GPU.
+Originally planned: 7B-Coder fp16 → 0.5B student. the maintainer's mid-pivot: *"write the prompts since you'll be SIGNIFICANTLY faster than the 7B model"* — switched teacher to Claude (this session) writing high-quality (prompt, response) JSONL directly. Faster, higher quality, frees GPU.
 
 - **Phase 1a:** Claude-as-teacher corpus written: 61 entries (15 code + 16 project + 30 general) at `data/distill_corpus_v0.jsonl`. No GPU teacher needed.
 - **Phase 1b:** SFT trainer at `scripts/v5_3_0_distill_train.py`. First fp16 attempt hit NaN loss; fixed by switching to bf16. Final: loss 3.17 → 2.45 over 3 epochs in **15.3s wall**. Checkpoint at `models/qwen25_0_5b_distilled_v0/`.
@@ -11253,7 +11251,7 @@ Originally planned: 7B-Coder fp16 → 0.5B student. Anthony's mid-pivot: *"write
 
 ### Phase 3 — Cycle eval on distilled student (pipeline-green, quality-bounded)
 
-c10 substrate config (subs+misses-dedup+retrieval-dedup+age-decay+TF-IDF) on the distilled student, 100 iters. Result: **49.4% fresh / 42.1% recall** (vs 0.8B-Instruct baseline 64.6%/100%). Quality dip is expected: base 0.5B + 61-example SFT can't match Instruct-tuned 0.8B. **But the pipeline ran end-to-end without crash** — Claude → SFT → bake → PTEX stream → cycle eval, all five steps green. Per Anthony's contract, *"good signs = pipeline works"* → Phase 4 unblocked.
+c10 substrate config (subs+misses-dedup+retrieval-dedup+age-decay+TF-IDF) on the distilled student, 100 iters. Result: **49.4% fresh / 42.1% recall** (vs 0.8B-Instruct baseline 64.6%/100%). Quality dip is expected: base 0.5B + 61-example SFT can't match Instruct-tuned 0.8B. **But the pipeline ran end-to-end without crash** — Claude → SFT → bake → PTEX stream → cycle eval, all five steps green. Per the maintainer's contract, *"good signs = pipeline works"* → Phase 4 unblocked.
 
 ### Phase 4 v0.1 — GF(17) native trainer scaffolding
 
@@ -11271,7 +11269,7 @@ Design doc at `docs/phase4_adam_a1_native_distill_design.md` — three trainer a
 
 ### Federated PTEX vision logged
 
-Anthony's long-term north star, captured for future work:
+the maintainer's long-term north star, captured for future work:
 - 1000+ Adam instances each running locally
 - Each posts learnings/corrections to PTEX atlases via shared substrate
 - Streaming makes shared atlases accessible to all instances
@@ -11294,7 +11292,7 @@ Anthony's long-term north star, captured for future work:
 
 ## v5.2.5 — Cycles 15-20: Pre-warm + CoT + Gen-Verify + **Comparative-Critic Reframe** (2026-04-29)
 
-**Trigger:** Anthony's directive — *"go through the next 5 cycles see if we can grow faster"* + mid-run reframe — *"the answer might be to, instead of questioning validity, test the response logically and question if there was a better approach than the one taken."*
+**Trigger:** the maintainer's directive — *"go through the next 5 cycles see if we can grow faster"* + mid-run reframe — *"the answer might be to, instead of questioning validity, test the response logically and question if there was a better approach than the one taken."*
 
 `scripts/v5_2_5_self_learn_v2.py` extended with `--feat-prewarm`, `--feat-cot`, `--feat-genverify N`, `--triumvirate-mode {classic,comparative}`. `amni/inference/triumvirate_verify.py` extended with `mode='comparative'` — Critic forced to commit to a specific grounded counter-answer ("BETTER: <alt>") or defer to Proposer with "OK".
 
@@ -11305,9 +11303,9 @@ Anthony's long-term north star, captured for future work:
 | c17 | gen-verify n=3 | 64.6% (no change), 3x cost | wash |
 | c18 | all three | 94.7% (regresses from c15's 100%) | features don't always stack constructively |
 | c19 | all three at 500 iters | 97.5% / 85.7% (vs c10's 97.9%/100%) | extra features no help at long-run scale |
-| **c20** | **comparative Triumvirate** | **20 distinct recoveries, no catastrophic destruction** vs c14's -80 pp recall collapse | **Anthony's reframe FIXES c14** |
+| **c20** | **comparative Triumvirate** | **20 distinct recoveries, no catastrophic destruction** vs c14's -80 pp recall collapse | **the maintainer's reframe FIXES c14** |
 
-**c20 — Anthony's reframe validated:** classic Triumvirate Critic asks "find errors" → triggers fault-hallucination at 0.8B → Reviser destroys correct answers. Comparative Critic asks "is there a fact-grounded better alternative?" → Critic only escalates when it has a specific counter-answer to commit to → defaults to "OK" when no clear better answer exists → Proposer's correct answers preserved. **Same body, just better prompt engineering.** This re-opens same-body Triumvirate as a viable layer-1f path.
+**c20 — the maintainer's reframe validated:** classic Triumvirate Critic asks "find errors" → triggers fault-hallucination at 0.8B → Reviser destroys correct answers. Comparative Critic asks "is there a fact-grounded better alternative?" → Critic only escalates when it has a specific counter-answer to commit to → defaults to "OK" when no clear better answer exists → Proposer's correct answers preserved. **Same body, just better prompt engineering.** This re-opens same-body Triumvirate as a viable layer-1f path.
 
 **Updated layer ladder:**
 - 1 (RAG) — c10 substrate: 97.9% fresh / 100% recall / 0 misses_alive on closed 80-Q corpus
@@ -11330,7 +11328,7 @@ Anthony's long-term north star, captured for future work:
 
 ## v5.2.4 — Cycles 10-14: Long-Run Stress + Triumvirate Failure Mode Confirmed (2026-04-29)
 
-**Trigger:** Anthony's directive — *"go through the next 5 cycles see if we can grow faster"* (continuation)
+**Trigger:** the maintainer's directive — *"go through the next 5 cycles see if we can grow faster"* (continuation)
 
 `scripts/v5_2_5_self_learn_v2.py` (added `--feat-triumvirate`) + `scripts/_run_cycles_10_to_14.sh`. c10 = pre-registered phase-4 mitigation test at 1000 iters (matches cycle 4 unbounded scale). c11/c12 isolate TF-IDF and age-decay. c13/c14 add Triumvirate.
 
@@ -11382,7 +11380,7 @@ Anthony's long-term north star, captured for future work:
 
 ## v5.2.3 — Cycles 5-9: Progressive Feature Stacking (2026-04-29)
 
-**Trigger:** Anthony's directive — *"go through the next 5 cycles see if we can grow faster"*
+**Trigger:** the maintainer's directive — *"go through the next 5 cycles see if we can grow faster"*
 
 `scripts/v5_2_5_self_learn_v2.py` (feature-flagged self-learn) + `scripts/_run_cycles_5_to_9.sh` (sequential chain). Each cycle adds one feature to the prior; 80 iters / recall_every=5 / fresh corpus per cycle.
 
@@ -11396,7 +11394,7 @@ Anthony's long-term north star, captured for future work:
 
 **Two real wins:**
 1. **Misses-dedup**: recall recovery rate jumped **83% → 100%** vs cycle 4. The cycle 4 stuck-at-32 plateau was *partly* a metric artifact; the load logic was counting recovered misses as still-alive. Real recall recovery is much higher than cycle 4 implied.
-2. **Retrieval-dedup**: **+4.6 pp fresh rate** over c5 with smaller corpus (105 vs 111) and lower wall (46s vs 54s). Same end-state with less waste — literally "grew faster" in Anthony's sense.
+2. **Retrieval-dedup**: **+4.6 pp fresh rate** over c5 with smaller corpus (105 vs 111) and lower wall (46s vs 54s). Same end-state with less waste — literally "grew faster" in the maintainer's sense.
 
 **Three no-ops at 80-iter scale** (not invalidated, just below their activation threshold):
 - Age-decay needs ~1000+ iter corpus to express; at 80 iters every fact is ≤80 iters old, no spread to weigh
@@ -11418,7 +11416,7 @@ Anthony's long-term north star, captured for future work:
 
 ## v5.2.2 — Cycle 4: Indefinite Self-Learn Loop (2026-04-29)
 
-**Trigger:** Anthony's directive — *"give it a prompt that will force it to cycle nearly indefinitely, learning as it goes through trial and error."*
+**Trigger:** the maintainer's directive — *"give it a prompt that will force it to cycle nearly indefinitely, learning as it goes through trial and error."*
 
 `scripts/v5_2_4_adam_self_learn.py` — externally-truth-grounded self-learning driver. 80-Q corpus across 8 domains, retrieval-augmented attempts, corrective paraphrase writes on miss, periodic recall-tests on prior misses. PTEX-persistent state (`corpus.ptex`, `misses.ptex`, `state.json`) survives crash + restart.
 
@@ -11462,7 +11460,7 @@ Anthony's long-term north star, captured for future work:
 
 ## v5.2.1 — Training Cycles 1–3 + 7B-Coder Bake + GF(3)/GF(17) Hybrid Design (2026-04-29)
 
-**Trigger:** Anthony's directive — *"run through some training cycles on Adam... feed it some knowledge, see how it does, give it some teaching, see if it gets better"* + *"7B makes sense to start as the bake for the GF-17 model"* + *"consider if there's a way to use GF3 to optimize the native GF17 as well."*
+**Trigger:** the maintainer's directive — *"run through some training cycles on Adam... feed it some knowledge, see how it does, give it some teaching, see if it gets better"* + *"7B makes sense to start as the bake for the GF-17 model"* + *"consider if there's a way to use GF3 to optimize the native GF17 as well."*
 
 ### Three training cycles measured on the 0.8B body — RAG ceiling characterized
 
@@ -11484,7 +11482,7 @@ Anthony's long-term north star, captured for future work:
 
 ### GF(3)/GF(17) hybrid design — composition pattern #3 at the importance level
 
-`docs/gf3_gf17_hybrid_design.md` — full design for trit overlay as **importance/sparsity router** atop the GF(17)⁴ Reffelt pyramid. Key insight: 0.2-byte/weight trit map (5 trits/byte via existing `pack_ternary5`) classifies weights as `{tiny, normal, huge}`; streaming policy uses trit to gate which Reffelt d-tiers are loaded. The existing `TERNARY_GF17 = [16, 0, 1]` mapping (16 ≡ −1 mod 17) confirms trits embed naturally as the coarsest GF(17) digit-set — same field, narrower alphabet. Implements composition pattern #3 (mip residual chain) at the *importance* level above the digit pyramid. Symmetric to Anthony's 3-tier ATEX vocab vision (function/line/word) — same compositional pattern at compute and output ends.
+`docs/gf3_gf17_hybrid_design.md` — full design for trit overlay as **importance/sparsity router** atop the GF(17)⁴ Reffelt pyramid. Key insight: 0.2-byte/weight trit map (5 trits/byte via existing `pack_ternary5`) classifies weights as `{tiny, normal, huge}`; streaming policy uses trit to gate which Reffelt d-tiers are loaded. The existing `TERNARY_GF17 = [16, 0, 1]` mapping (16 ≡ −1 mod 17) confirms trits embed naturally as the coarsest GF(17) digit-set — same field, narrower alphabet. Implements composition pattern #3 (mip residual chain) at the *importance* level above the digit pyramid. Symmetric to the maintainer's 3-tier ATEX vocab vision (function/line/word) — same compositional pattern at compute and output ends.
 
 Phasing for v5.3.x: trit bake co-product → per-tile trit eval in StreamingLinear → trit-routed prefetch chain. Each phase has a logit-compare gate via existing `STREAM_FORCE_FULL=1` opt-out path. Lossless property preserved; *streaming efficiency* improved.
 
@@ -11503,7 +11501,7 @@ Phasing for v5.3.x: trit bake co-product → per-tile trit eval in StreamingLine
 
 ## v5.2.0 — Debugger Harness Substrate, Phase 1 (scripted-operator smoke) (2026-04-29)
 
-**Trigger:** Mufeez's post-trained Qwen3-Coder result + Anthony's directive — *"Adam is eventually supposed to become a native GF17 trained model anyway. Take a look at the structure, the ATEX/PTEX vision, and the current state, pick the best path, and execute trials."*
+**Trigger:** Mufeez's post-trained Qwen3-Coder result + the maintainer's directive — *"Adam is eventually supposed to become a native GF17 trained model anyway. Take a look at the structure, the ATEX/PTEX vision, and the current state, pick the best path, and execute trials."*
 
 **Frame:** harness-first, model-second. The debugger harness is **training-data infrastructure**; trajectories accrete in `PtexMemoryAtlas` for the eventual GF(17)-native trainer to consume.
 
@@ -11537,7 +11535,7 @@ Phasing for v5.3.x: trit bake co-product → per-tile trit eval in StreamingLine
 
 ### Phase 2 — LLM smoke, **staged not run**
 
-`scripts/v5_2_0_debugger_loop_smoke.py` is ready. Boots `StreamingChatService` on existing `bakes/qwen35_0_8b_instruct_v5_0_3`, drives `DebuggerLoop` on bug_001 with `max_turns=10`, `wall_budget=240s`, `budget_mb=600`. Sets `HIP_VISIBLE_DEVICES=1` per existing v5.0.3b lessons-learned. Awaits Anthony's sign-off before running (GPU touched).
+`scripts/v5_2_0_debugger_loop_smoke.py` is ready. Boots `StreamingChatService` on existing `bakes/qwen35_0_8b_instruct_v5_0_3`, drives `DebuggerLoop` on bug_001 with `max_turns=10`, `wall_budget=240s`, `budget_mb=600`. Sets `HIP_VISIBLE_DEVICES=1` per existing v5.0.3b lessons-learned. Awaits the maintainer's sign-off before running (GPU touched).
 
 ### Phase 3 deferred to v5.2.1
 
@@ -11545,7 +11543,7 @@ Download + bake Qwen2.5-Coder-1.5B safetensors via existing `scripts/v5_0_3_bake
 
 ### Phase 4 deferred to v5.2.2
 
-Anthony's bug set, n ≥ 30, both conditions, bootstrap CIs. Honest replication of Mufeez's "base + debugger access alone is *worse*" finding on a different model class.
+the maintainer's bug set, n ≥ 30, both conditions, bootstrap CIs. Honest replication of Mufeez's "base + debugger access alone is *worse*" finding on a different model class.
 
 ### Files
 
@@ -11561,7 +11559,7 @@ Anthony's bug set, n ≥ 30, both conditions, bootstrap CIs. Honest replication 
 
 ## v5.0.0 — Pivot to Texture-Native Composition Era (2026-04-27)
 
-**Trigger:** Anthony's directive — *"You're still thinking too much in math and not enough in textures and geometry. We have 256⁴ states per pixel which can serve as either nonces or values as well as x-y planes to expand to the size/shape for what we need... I really need your help thinking outside the box on how we can get to 1-bit OR full-res but super small texture map."*
+**Trigger:** the maintainer's directive — *"You're still thinking too much in math and not enough in textures and geometry. We have 256⁴ states per pixel which can serve as either nonces or values as well as x-y planes to expand to the size/shape for what we need... I really need your help thinking outside the box on how we can get to 1-bit OR full-res but super small texture map."*
 
 **The category error being corrected:** R-tier was treated as a 1-bit inference codec (Bonsai 8B Q1_0_g128 spec). It was always meant to be a **streaming routing map** into Full-tier GF(17)⁴ pages on SSD. Treating R as a standalone inference path produced gibberish at 0.5B (5-method codec sweep: bonsai_mean, bonsai_dual, bonsai_2mode, bpp_q2, bpp_q4 — all 0/3 coherent) and unverified quality at 27B (codec was bit-exact at scale, but real generation blocked by ROCm DeltaNet kernel gap).
 
@@ -11638,7 +11636,7 @@ Only graceful warning: `triton_sdpa_patch` (archived) unavailable — handled by
 - Backups: complete
 - New arch_map + changelog: complete
 - Keeper imports: 39/39 PASS
-- v5.0.x first experiment (factor-pair on one MLP gate_proj): **staged, awaiting Anthony's go**
+- v5.0.x first experiment (factor-pair on one MLP gate_proj): **staged, awaiting the maintainer's go**
 
 ---
 
@@ -11705,13 +11703,13 @@ Spectrum dump only (`torch.linalg.svdvals`, no full U/Vh) — ~70% faster than f
 
 ## v5.0.3a — Fresh PTEX bake of Qwen2.5-0.5B, lossless verified (2026-04-27)
 
-**Reframe context:** Anthony directed v5.0.1/v5.0.2 framing was wrong. Storage substrate is the experiment, not compute substitute. Process identical to safetensors/gguf; pixel maps replace safetensors as the storage medium; ≤ 1/16 model fp16 baseline lives in VRAM, rest streams from SSD lossless. Three-phase plan: (a) fresh bake + lossless verify, (b) streaming Linear + model hook, (c) GDN Triton fix. Council 5/5 APPROVE.
+**Reframe context:** the maintainer directed v5.0.1/v5.0.2 framing was wrong. Storage substrate is the experiment, not compute substitute. Process identical to safetensors/gguf; pixel maps replace safetensors as the storage medium; ≤ 1/16 model fp16 baseline lives in VRAM, rest streams from SSD lossless. Three-phase plan: (a) fresh bake + lossless verify, (b) streaming Linear + model hook, (c) GDN Triton fix. Council 5/5 APPROVE.
 
-**Result (v5.0.3a v0, npz wrapper):** 290/290 tensors lossless on Qwen2.5-0.5B. fp16 baseline 942.3 MB → PTEX npz_compressed 851.1 MB → 1.107× lossless storage ratio. Bake wall time 199 s. **Issue:** npz/zlib wrapper loses mem-mappability — the entire point of pixel-map storage. Anthony flagged.
+**Result (v5.0.3a v0, npz wrapper):** 290/290 tensors lossless on Qwen2.5-0.5B. fp16 baseline 942.3 MB → PTEX npz_compressed 851.1 MB → 1.107× lossless storage ratio. Bake wall time 199 s. **Issue:** npz/zlib wrapper loses mem-mappability — the entire point of pixel-map storage. the maintainer flagged.
 
 **v5.0.3a.1 re-bake (raw .ptex):** flipped output format from `np.savez_compressed(...)` to raw RGBA8 bytes (`.ptex` extension), no compression wrapper. Each 2D weight `(M, N)` packs as PTEX page `(M, N, 4)` — page row = weight row, direct mem-map by byte offset. fp16 baseline 942.3 MB → PTEX raw 1884.6 MB (exactly 2× fp16, predictable: 4 bytes/weight Reffelt RGBA8). Bake wall time **12.8 s** (15× faster, no zlib pass). 290/290 still lossless. Mem-map row probe: 6 random rows from 519 MB embedding, all bit-exact, **21 KB total paged from disk**. Random access works.
 
-**Trade-off rationale:** disk grows 2×, VRAM gains random row access for free. Per Anthony's earlier directive: VRAM resident ≤ 1/16, stream from larger-entropy SSD. The high 3 bits per RGBA channel (currently zero) are headroom for v5.1 pixel duality (role tags, mip pointers) without growing the file later.
+**Trade-off rationale:** disk grows 2×, VRAM gains random row access for free. Per the maintainer's earlier directive: VRAM resident ≤ 1/16, stream from larger-entropy SSD. The high 3 bits per RGBA channel (currently zero) are headroom for v5.1 pixel duality (role tags, mip pointers) without growing the file later.
 
 **Bake artifacts:**
 - `scripts/v5_0_3_bake.py` (fresh, no archived script reuse, raw .ptex output)
@@ -11797,7 +11795,7 @@ Downloaded Qwen3.5-0.8B-Base (multimodal, 873 M params, 24 layers with 18 linear
 
 Root cause not yet localized. Drift is deterministic, independent of the knobs we control, and only appears end-to-end through 24 assembled layers. Documented as known limitation; substrate is operationally correct (coherent generation, lossless storage) for the v5.0.3d validation goal.
 
-**Read against Anthony's "bit exact + logical + exact" bar:**
+**Read against the maintainer's "bit exact + logical + exact" bar:**
 - Storage bit-exact: ✓
 - Coherent/logical output: ✓
 - Strict logit bit-exactness: ✗ (~3 ULP drift, cosine 0.9998)
@@ -11905,7 +11903,7 @@ Transfer is **modest** — at 0.8B the model retrieves but doesn't always reason
 
 ## v5.1.0 — PTEX-native memory: chat + facts on pixel maps (2026-04-28)
 
-**Trigger:** Anthony's directive — *"context, memory, learnings, and errors should be stored as ptex files. They can basically be referenced on the fly for infinite expansion."*
+**Trigger:** the maintainer's directive — *"context, memory, learnings, and errors should be stored as ptex files. They can basically be referenced on the fly for infinite expansion."*
 
 Closes the gap with CLAUDE.md paradigm pillar #5 ("Pixel maps ARE the memory system"). Until now, weights were PTEX but memory/learnings were JSON sidecars. Now both share the substrate.
 
@@ -11920,7 +11918,7 @@ Closes the gap with CLAUDE.md paradigm pillar #5 ("Pixel maps ARE the memory sys
 **On-disk verification (from a 2-chat + 1-teach session):**
 - `chat_history.ptex` 344 B body + `.idx.json` 292 B (2 turn entries)
 - `memory.ptex` 380 B body + `.idx.json` 1101 B (1 explicit teach + 2 interaction logs)
-- RAG retrieval via `PtexDeltaWriter.search_words` correctly pulled taught fact "Adam is built on the streaming PTEX substrate by Anthony" on the follow-up chat
+- RAG retrieval via `PtexDeltaWriter.search_words` correctly pulled taught fact "Adam is built on the streaming PTEX substrate by the maintainer" on the follow-up chat
 
 **What this unlocks:**
 - Memory and chat are now mem-mappable, append-only, "infinite expansion" per paradigm directive
