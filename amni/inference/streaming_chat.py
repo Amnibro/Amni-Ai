@@ -187,7 +187,7 @@ class StreamingChatService:
         sys_text='\n'.join(sys_parts) if sys_parts else None
         msgs=[]
         if sys_text:msgs.append({'role':'system','content':sys_text})
-        for u,a in (history or [])[-4:]:
+        for u,a in (history or [])[-12:]:
             msgs.append({'role':'user','content':u})
             msgs.append({'role':'assistant','content':a})
         msgs.append({'role':'user','content':user_msg})

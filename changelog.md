@@ -2,6 +2,87 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.5.0 — Conversation memory + PTEX context atlas + rock-solid federation boundary (2026-05-18)
+
+**Trigger:** Anthony reported Adam losing the user's name across turns. Screenshot: turn 1 "my name is cohen" → "Cohen. Nice to meet you." turn 2 "whats my name?" → "I don't know your name." Anthony's directive: context should be **automatic and truly infinite to storage limits**, not turn-based. Use Reffelt context noncing + PTEX. Federate everything non-erroneous and non-personal so all Adams advance. Personal info stays local-retrievable but never federates.
+
+**Three nested root causes:**
+1. `amni/serve/agent.py` gated history behind a brittle `_CONTEXT_DEP_RE` regex — dropped context whenever it didn't match.
+2. When context *was* included, it got stuffed into the **system prompt as a plaintext block** instead of using `_build_prompt`'s native multi-turn `history` parameter (`amni/inference/streaming_chat.py:181-194`). Gemma-E2B treats system-block prose as soft instruction, not grounding.
+3. `chat_persona` cache key (`amni/adam.py:90`) was `PERSONA::system[:80]::message` — collapsed across sessions/histories. Once "whats my name?" was ever answered "I don't know", that wrong answer permanently pinned.
+
+**Architecture (the real fix, per Anthony's correction):**
+
+```
+turn (user, reply)
+   ├─► Conversation JSONL          (local-only, per-session, 1000-turn cap, is_personal flag at append)
+   ├─► ConversationAtlas           (NEW) — per-session + __global__ SemanticPTEXLUT
+   │     encode → PCA-8D → grid-cell coord → THAT cell IS the LUT slot IS the nonce IS the address
+   │     recall = grid-radius scan of adjacent cells (NOT cosine-over-bank)
+   │     personal turns: session slot only; non-personal: session + __global__
+   └─► Adam.sem_lut                (existing federated lesson bank, unchanged)
+
+agent.chat retrieves: history_pairs(12) + atlas.recall(query, k=3) + extracted user_facts
+                     → chat_persona(..., history=..., facts=..., is_private=...)
+
+federation: publish_from_atlas(adam, atlas) drains only __global__ atlas entries through is_publishable + scrub_pii → ./codex
+```
+
+**Privacy boundary (two-stage, defense-in-depth):**
+- `is_private=True` short-circuits BOTH cache reads and writebacks in `chat_persona` — federable LUT never sees personal content.
+- `ConversationAtlas` records personal turns to session slot only, never to `__global__`. `federation_pull()` reads `__global__` only. `is_publishable()` blocks `_CHAT_PERSONAL_PATTERNS` and `ATLAS::` keys as third defense.
+
+**Why cell-address LUT, not cosine-top-K:** Anthony caught a wrong-paradigm draft mid-build. Retrieval in Adam follows "the nonce IS the address IS the meaning" — `SemanticPTEXLUT._cells` keyed by grid coordinate; adjacent-cell tolerance handles paraphrases. Cosine sort over the whole bank is the failure mode CLAUDE.md warns against.
+
+**Files changed:**
+- `amni/serve/conversation_atlas.py` (NEW, ~80 lines) — cell-address atlas with grid-radius `recall` + `federation_pull`.
+- `amni/serve/conversation.py` — `detect_personal()` PII regex pair; `is_personal` flag at append; `history_pairs(n, exclude_last_user)`; `has_personal(n)`.
+- `amni/serve/agent.py` — drop `_CONTEXT_DEP_RE` gate; build `history_pairs + atlas.recall + user_facts + is_private` every turn; pass through to `chat_persona`; record reply to atlas.
+- `amni/adam.py` — `chat_persona`/`chat_persona_stream` accept `history`/`facts`/`is_private`; new `_persona_cache_key()` includes blake2b history fingerprint; LUT writeback gated on `not is_private`; tier becomes `tier_persona_hist` when history flows.
+- `amni/inference/streaming_chat.py` — `_build_prompt` history window `[-4:]` → `[-12:]`.
+- `amni/serve/federated.py` — `is_publishable` reordered (personal check before length) + new `_CHAT_PERSONAL_PATTERNS`; new `filter_atlas` + `publish_from_atlas(adam, atlas, ...)`.
+- `pyproject.toml` — 6.4.3 → 6.5.0.
+
+**Verification gate (pre-push, per Anthony's "lock it down" directive):**
+
+Two test files, **21 tests total, all PASS**, plus 18-case adversarial fuzz + 11-case benign fuzz:
+
+`tests/test_conversation_atlas_v6_5_0.py` — 6 smokes:
+1. `pii_detect` — name / email / "I am called" / favorite-color patterns caught.
+2. `history_pairs` — correct (u,a) tuples, trailing user-only turn excluded.
+3. `is_publishable_blocks_chat_personal` — `_CHAT_PERSONAL_PATTERNS` short-circuit.
+4. `persona_cache_key_changes_with_history` — different history → different key (no more ghost-answer pinning).
+5. `chat_persona_no_lut_writeback_when_private` — privacy boundary holds at the LUT-write site.
+6. `atlas_record_recall_offline_safe` — personal turn stays out of `__global__`; `federation_pull` yields zero personal entries; "Cohen" name does not leak.
+
+`tests/test_pii_leak_paranoid_v6_5_0.py` — 15 paranoid leak tests:
+1. `intake_pii_detection_corpus` — 30-case PII detector corpus (emails+/-/dot variants, NANP phones, SSN, credit cards, Stripe/GitHub/AWS/Google/Slack keys, "named X", "this is X speaking", titles, all-caps names)
+2. `is_publishable_blocks_full_corpus` — full 30 corpus blocked from publishing in both q and a positions
+3. `scrub_pii_strips_hard_patterns` — email/phone/SSN/CC/homedir all redacted with flags
+4. `atlas_storage_separation_in_memory` — global slot has zero entries after 30 personal records
+5. `atlas_storage_separation_on_disk` — `atlas___global__.json` literally does not contain any personal-corpus string
+6. `atlas_federation_pull_zero_personal` — across mixed personal+benign loads, `federation_pull` yields zero personal
+7. `publish_from_atlas_dry_run_zero_personal` — full publish dry-run yields zero personal previews
+8. `cross_contamination_personal_then_benign` — personal turn N doesn't taint benign turn N+1's global record
+9. `disk_roundtrip_preserves_is_personal` — `is_personal` flag survives `del + reload`
+10. `chat_persona_zero_writeback_when_private` — zero reads + zero writes to federable LUT when `is_private=True`
+11. `chat_persona_cache_key_changes_with_history` — 4 different histories → 4 different keys
+12. `streaming_chat_prompt_uses_history_messages` — `_build_prompt` produces proper system+user+assistant message structure (not stuffed-string)
+13. `conversation_append_flags_personal_at_intake` — Conversation.append() flags every personal turn at write time
+14. `recall_does_not_cross_session_for_personal` — bob's session recall never surfaces alice's personal info
+15. `lut_writeback_includes_is_private_false_metadata` — meta tag on non-private writeback explicitly records `is_private=False` for audit
+
+**Regex strengthening during paranoid-suite build:** `_PII_HARD` extended with Stripe-style keys (`sk_live_`/`pk_test_`), AWS keys (`AKIA…`), Google keys (`AIza…`), Slack keys (`xox[bopa]-…`), bare 10-digit NANP phones (3-3-4 format), bare 16-digit credit-card numbers. New `_PII_NAME` regex (case-sensitive name with case-insensitive title via `(?i:)` inline flag) catches "named Jordan", "this is Cohen speaking", "Mr./Dr./MR. Smith". `is_publishable()` now also calls `detect_personal()` as a defense-in-depth check before string-pattern matching, catching raw email/phone/key strings even without "my X" framing.
+
+**Backups:** `backups/{agent.py, adam.py, conversation.py, streaming_chat.py, federated.py, pyproject.toml}.v6.4.4.bak` (tag preserved from initial scoping before it grew).
+
+**Deferred:**
+- v6.5.1 — Reffelt 4-tier encode on the embedding fp16 bytes themselves.
+- v6.5.2 — LRU/decay when atlas page hits storage budget.
+- v6.6.0 — Cross-Adam atlas cell-page merge over PRISM (each Adam contributes cells, not just Q/A).
+
+**Verification still needed (Anthony):** restart `scripts/amni_serve.py` and rerun the screenshot scenario — turn 2 should now answer "Cohen". Tier badge should show `tier_persona_hist`.
+
 ## v6.8.iter40-hotfix2 — install pointer + strict bake detection (post-install `serve` without `--home` now finds the right bake) (2026-05-18)
 
 **Trigger:** Bug report from a user who installed via `install.py --home <X>` (custom external drive) and later ran `python -m amni.cli serve --port 8002` *without* re-passing `--home <X>`. They got `[Adam streaming chat unavailable] Repo id must use alphanumeric chars: '<some absolute filesystem path>'`. Two compounding bugs: the server resolved an orphan/partial bake at the *default* `~/.amni-ai/bakes/gemma4_e2b_it_gf17` (leftover from an earlier installer run) instead of their real bake at `<X>/bakes/gemma4_e2b_it_gf17`, and `--model` then fell through to a magic fallback `CONFIG_DIR/models/gemma-4-E2B-it` that doesn't exist on disk and gets re-interpreted as an HF repo_id by transformers v5.8's stricter parser.

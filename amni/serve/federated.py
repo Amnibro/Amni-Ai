@@ -26,16 +26,22 @@ def scrub_pii(text:str)->Tuple[str,List[str]]:
     for m in _PII_NAME_HINTS.finditer(out):
         flags.append('name_hint');out=out.replace(m.group(0),f'{m.group(0).split()[0]} <NAME>')
     return (out,flags)
-def is_publishable(q:str,a:str,confidence:float=1.0,min_confidence:float=0.8)->Tuple[bool,str]:
-    if confidence<min_confidence:return (False,f'confidence {confidence:.2f} < {min_confidence}')
+_CHAT_PERSONAL_PATTERNS=('my name','my email','my phone','my address','my birthday','my favorite','my password','my company','my employer','my salary','my wife','my husband','my kid','my son','my daughter','my partner','i live at','i work at','call me','i am called','i am named',"whats my","what's my",'whos my',"who's my",'contact:','reach me at','email me at','phone:','ssn','social security')
+def is_publishable(q:str,a:str,confidence:float=1.0,min_confidence:float=0.8,is_personal:bool=False)->Tuple[bool,str]:
+    if is_personal:return (False,'flagged is_personal at intake')
     if not q or not a:return (False,'empty q or a')
+    try:from amni.serve.conversation import detect_personal as _dp
+    except Exception:_dp=None
+    if _dp is not None and (_dp(q) or _dp(a)):return (False,'detect_personal positive (raw PII in q or a)')
+    ql=q.lower();al=a.lower()
+    if any(k in ql or k in al for k in _CHAT_PERSONAL_PATTERNS):return (False,'conversation-style personal pattern')
+    if q.startswith('PERSONA::') or q.startswith('ATLAS::'):return (False,'cache/atlas key')
+    if confidence<min_confidence:return (False,f'confidence {confidence:.2f} < {min_confidence}')
     if len(q)<_MIN_LEN or len(a)<_MIN_LEN:return (False,f'too short (q={len(q)} a={len(a)})')
     if len(q)>_MAX_LEN or len(a)>_MAX_LEN:return (False,f'too long (q={len(q)} a={len(a)})')
     if _SCRIPT_TAG.search(q+' '+a):return (False,'contains script/iframe tag')
-    if any(k in q.lower() for k in ('persona','_persona','my name is','my favorite','my password')):return (False,'personal/persona content')
-    if q.startswith('PERSONA::'):return (False,'persona-cache key')
     if q.startswith('What does ') and ' say about ' in q:return (False,'scan-synthetic key (low quality for sharing)')
-    if 'mock' in q.lower() or 'mock' in a.lower():return (False,'mock content')
+    if 'mock' in ql or 'mock' in al:return (False,'mock content')
     return (True,'ok')
 _DOMAIN_KEYWORDS={'math':['math','algebra','geometry','calculus','arithmetic','equation','theorem','sqrt','sin','cos','tan','log','exp','derivative','integral'],'physics':['physics','force','velocity','acceleration','mass','energy','quantum','electron','photon','wavelength','newton','joule','watt','momentum'],'chemistry':['chemistry','molecule','atom','ion','bond','reaction','element','periodic','solution','acid','base','catalyst','enzyme','protein'],'biology':['biology','cell','dna','rna','gene','organism','species','evolution','ecosystem','photosynthesis','mitosis','genome'],'history':['history','war','battle','empire','dynasty','revolution','treaty','century','BC','AD','medieval','renaissance','ancient'],'geography':['capital','country','continent','ocean','river','mountain','city','population','geography'],'literature':['novel','poem','poet','author','wrote','book','character','protagonist','shakespeare','dickens','tolstoy'],'computer_science':['python','javascript','algorithm','data structure','function','class','code','programming','recursion','complexity','sort'],'general':[]}
 def _detect_domain(q:str,a:str)->str:
@@ -59,6 +65,38 @@ def filter_lessons(adam,min_confidence:float=0.8,domain:Optional[str]=None,limit
         out.append({'q':scrubbed_q,'a':scrubbed_a,'domain':d,'pii_flags':fq+fa,'original_len':(len(q),len(a))})
         if len(out)>=limit:break
     return out
+def filter_atlas(atlas,min_confidence:float=0.8,domain:Optional[str]=None,limit:int=200)->List[Dict[str,Any]]:
+    if atlas is None or not hasattr(atlas,'federation_pull'):return []
+    out=[]
+    for entry in atlas.federation_pull(min_confidence=min_confidence,limit=limit*3):
+        q=entry.get('q','');a=entry.get('a','')
+        ok,reason=is_publishable(q,a,confidence=entry.get('conf',1.0),min_confidence=min_confidence,is_personal=False)
+        if not ok:continue
+        sq,fq=scrub_pii(q);sa,fa=scrub_pii(a)
+        if not sq.strip() or not sa.strip():continue
+        if fq or fa:continue
+        d=_detect_domain(sq,sa)
+        if domain and d!=domain:continue
+        out.append({'q':sq,'a':sa,'domain':d,'pii_flags':[],'source':'atlas','original_len':(len(q),len(a))})
+        if len(out)>=limit:break
+    return out
+def publish_from_atlas(adam,atlas,codex_dir:str='./codex',contributor_id:str='amni-ai-anonymous',min_confidence:float=0.8,domain:Optional[str]=None,limit:int=100,dry_run:bool=False)->Dict[str,Any]:
+    lessons=filter_atlas(atlas,min_confidence=min_confidence,domain=domain,limit=limit)
+    if dry_run:return {'dry_run':True,'eligible':len(lessons),'source':'atlas','preview':lessons[:3],'pii_summary':_pii_summary(lessons)}
+    try:from prism.contribute import contribute_text
+    except ImportError:return {'error':'amni-prism not installed. pip install amni-prism','eligible':len(lessons),'source':'atlas'}
+    Path(codex_dir).mkdir(parents=True,exist_ok=True)
+    added=0;duplicates=0;errors=[]
+    for L in lessons:
+        try:
+            payload=f'Q: {L["q"]}\nA: {L["a"]}'
+            r=contribute_text(codex_dir,payload,domain=L['domain'],contributor_id=contributor_id,source='amni-ai/v6.5-atlas',confidence=1.0,verified=True)
+            st=r.get('status')
+            if st=='added':added+=1
+            elif st=='duplicate':duplicates+=1
+            else:errors.append(r)
+        except Exception as e:errors.append({'error':str(e)})
+    return {'codex_dir':codex_dir,'eligible':len(lessons),'added':added,'duplicates':duplicates,'errors':errors[:5],'source':'atlas','next_step':'Run `prism push` or sync codex_dir to your HF repo manually.'}
 def publish_lessons(adam,codex_dir:str='./codex',contributor_id:str='amni-ai-anonymous',min_confidence:float=0.8,domain:Optional[str]=None,limit:int=100,dry_run:bool=False)->Dict[str,Any]:
     lessons=filter_lessons(adam,min_confidence=min_confidence,domain=domain,limit=limit)
     if dry_run:

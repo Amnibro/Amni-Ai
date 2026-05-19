@@ -6,9 +6,9 @@ Usage:
   print(result['answer'], result['tier'], result['tokens'])
 Wraps AdamLoop with sensible defaults, persistent SemanticPTEXLUT, all tiers enabled.
 """
-import os,json,time
+import os,json,time,hashlib
 from pathlib import Path
-from typing import Optional,Dict,Any
+from typing import Optional,Dict,Any,List,Tuple
 class Adam:
     def __init__(self,bake:str,model:str,lessons_path:str='experiences/adam_lessons.npz',lut_root:str='experiences/adam_lut',budget_mb:int=8000,seed_lessons:Optional[list]=None,enable_crawler:bool=True):
         self.bake=bake;self.model=model;self.lessons_path=Path(lessons_path);self.lut_root=lut_root
@@ -71,8 +71,14 @@ class Adam:
         self.sem_lut.fit()
         self.save_lessons()
         return {'lessons_n':len(self.sem_lut._raw)}
-    def chat_persona_stream(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True):
-        cached=self.adam.lut.lookup(f'PERSONA::{system[:80]}::{message}') if hasattr(self.adam,'lut') else None
+    def _persona_cache_key(self,system:str,message:str,history:Optional[List[Tuple[str,str]]],facts:Optional[List[str]])->str:
+        h=hashlib.blake2b(digest_size=8)
+        for u,a in (history or []):h.update(u.encode('utf-8','ignore'));h.update(b'\x1f');h.update(a.encode('utf-8','ignore'));h.update(b'\x1e')
+        for f in (facts or []):h.update(f.encode('utf-8','ignore'));h.update(b'\x1d')
+        return f'PERSONA::{system[:80]}::{h.hexdigest()}::{message}'
+    def chat_persona_stream(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True,history:Optional[List[Tuple[str,str]]]=None,facts:Optional[List[str]]=None,is_private:bool=False):
+        ckey=self._persona_cache_key(system,message,history,facts)
+        cached=self.adam.lut.lookup(ckey) if (hasattr(self.adam,'lut') and not is_private) else None
         if cached is not None:
             ans=cached.get('a','')
             for chunk in [ans[i:i+24] for i in range(0,len(ans),24)]:yield chunk
@@ -83,20 +89,22 @@ class Adam:
             for chunk in [msg[i:i+48] for i in range(0,len(msg),48)]:yield chunk
             return
         try:
-            for chunk in self.svc.chat_stream(message,system=system,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0):yield chunk
+            for chunk in self.svc.chat_stream(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0):yield chunk
         except Exception as e:yield f'[stream error: {e}]'
-    def chat_persona(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True)->Dict[str,Any]:
+    def chat_persona(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True,history:Optional[List[Tuple[str,str]]]=None,facts:Optional[List[str]]=None,is_private:bool=False)->Dict[str,Any]:
         t0=time.time()
-        cached=self.adam.lut.lookup(f'PERSONA::{system[:80]}::{message}') if hasattr(self.adam,'lut') else None
+        ckey=self._persona_cache_key(system,message,history,facts)
+        cached=self.adam.lut.lookup(ckey) if (hasattr(self.adam,'lut') and not is_private) else None
         if cached is not None:return {'answer':cached.get('a'),'tier':'tier1_persona_lut','tokens':0,'wall_s':round(time.time()-t0,3)}
         if self.svc is None:return {'answer':None,'error':f'runtime not installed: {self.runtime_error}','tier':'runtime_missing','tokens':0,'wall_s':round(time.time()-t0,3)}
-        try:resp,n=self.svc.chat(message,system=system,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0)
+        try:resp,n=self.svc.chat(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0)
         except Exception as e:return {'answer':None,'error':str(e),'tier':'persona_error','tokens':0,'wall_s':round(time.time()-t0,3)}
         ans=(resp or '').strip()
         try:
-            if hasattr(self.adam,'lut') and ans:self.adam.lut.store(f'PERSONA::{system[:80]}::{message}',ans,subject=None,source='persona',meta={'tokens':n,'system_len':len(system)})
+            if hasattr(self.adam,'lut') and ans and not is_private:self.adam.lut.store(ckey,ans,subject=None,source='persona',meta={'tokens':n,'system_len':len(system),'history_n':len(history or []),'is_private':False})
         except Exception:pass
-        return {'answer':ans,'tier':'tier_persona','tokens':n,'wall_s':round(time.time()-t0,3)}
+        tier='tier_persona_hist' if history else 'tier_persona'
+        return {'answer':ans,'tier':tier,'tokens':n,'wall_s':round(time.time()-t0,3),'is_private':is_private}
 SEED_LESSONS=[
     ('What is 2 + 2?','4'),('What is 5 + 3?','8'),('What is 10 - 7?','3'),('What is 6 * 7?','42'),
     ('What is 9 * 8?','72'),('What is 100 / 4?','25'),('What is the square root of 81?','9'),

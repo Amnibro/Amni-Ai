@@ -4,7 +4,8 @@ Backend stays multifunctional; frontend just sees `{answer, tier, tokens, skill_
 import re,time,json,ast
 from typing import Optional,Dict,Any,List,Tuple
 from amni.serve.skills import SkillRegistry,default_registry
-from amni.serve.conversation import ConversationStore,Conversation
+from amni.serve.conversation import ConversationStore,Conversation,detect_personal
+from amni.serve.conversation_atlas import ConversationAtlas
 from amni.serve.persona import PersonaStore,Persona,PRESETS as _PERSONA_PRESETS
 from amni.serve import tone_atlas
 _CALC_PREFIX_RE=re.compile(r'(?:^|\b)(?:compute|calculate|calc|solve)\b',re.IGNORECASE)
@@ -19,7 +20,7 @@ _SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?([^`\n]+)`?',re.
 _CODE_RE=re.compile(r'\b(?:edit|patch|replace|change)\s+.*\bin\b\s+[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _SCAN_RE=re.compile(r'\b(?:scan|ingest|study|learn\s+from|index|absorb)\s+(?:(?:the|a|this|that|file|files|directory|directories|folder|folders|dir|path|contents?\s+of)\s+)*[\'"`]?([\w\-./:\\*?]+)[\'"`]?',re.IGNORECASE)
 _EXPR_EXTRACT=re.compile(r'([\d.]+(?:\s*(?:[+\-*/^x×]|times|plus|minus|over|divided\s+by)\s*[\d.]+)+)',re.IGNORECASE)
-_CONTEXT_DEP_RE=re.compile(r"\b(?:my\b|i\s+(?:said|told|asked|mentioned|am|was|do|did|have|like|love|prefer)|you\s+(?:said|told|mentioned|asked|answered|just)|we\s+(?:discussed|said|talked)|again\b|earlier\b|previously\b|before\s+(?:that|we)|just\s+(?:said|asked|answered|told)|that\s+one\b|the\s+last\s+(?:one|thing|question|answer)|(?:what|who|which|where)\s+(?:was|were|did)\s+(?:that|i|my|the\s+last)|remember\b)",re.IGNORECASE)
+_USER_FACT_RE=re.compile(r"\b(?:my\s+name\s+is|i\s+am\s+(?:called|named)|call\s+me)\s+([A-Z][a-zA-Z'\-]{1,30})|my\s+favorite\s+([a-z ]{3,30})\s+is\s+([A-Za-z0-9 '\-]{1,40})|i\s+(?:like|love|prefer)\s+([A-Za-z0-9 '\-]{2,40})",re.IGNORECASE)
 _INTROSPECT_RE=re.compile(r'\b(?:what\s+can\s+(?:you|adam)\s+do|what\s+are\s+(?:your|adam\'?s?)\s+(?:capabilities|abilities|skills|features)|who\s+are\s+you|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+(?:yourself|adam)|what\s+is\s+adam|how\s+do\s+you\s+(?:work|remember|learn)|list\s+(?:your\s+)?(?:skills|capabilities|tools)|help\b)',re.IGNORECASE)
 _COT_SKIP_CATEGORIES={'greeting','creative','calc_result','time_result','file_result','scan_result','introspect','personal'}
 _COT_GENERIC=('Solve this with hyper-effective problem solving. Show your work concisely:\n'
@@ -221,12 +222,26 @@ def _perturb_retry(adam,skills,persona_sys:str,code:str,err:str,user_msg:str,max
         return {'success':True,'magnitude':mag,'code':new_code,'stdout':so,'stderr':se,'history':history,'tests_passed':bool(asserts)}
     return {'success':False,'history':history,'code':cur_code,'stderr':cur_err}
 class AmniAgent:
-    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True):
+    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas'):
         self.adam=adam
         self.skills=skills or default_registry(workdir=workdir)
         self.store=store or ConversationStore()
         self.personas=personas or PersonaStore(adam=adam)
         self.use_persona=use_persona
+        try:self.atlas=atlas or ConversationAtlas(root=atlas_root,encoder=getattr(getattr(adam,'sem_lut',None),'encoder',None))
+        except Exception as e:print(f'[AmniAgent] ConversationAtlas init failed (recall disabled): {e}',flush=True);self.atlas=None
+    def _extract_user_facts(self,conv:Conversation,limit:int=8)->List[str]:
+        facts:List[str]=[]
+        for t in conv.turns:
+            if t.get('role')!='user':continue
+            c=t.get('content') or ''
+            for m in _USER_FACT_RE.finditer(c):
+                name=m.group(1);fav_thing=m.group(2);fav_val=m.group(3);like=m.group(4)
+                if name:facts.append(f"user's name is {name.strip()}")
+                elif fav_thing and fav_val:facts.append(f"user's favorite {fav_thing.strip()} is {fav_val.strip()}")
+                elif like:facts.append(f"user likes/prefers {like.strip()}")
+        seen=set();dedup=[f for f in facts if not (f in seen or seen.add(f))]
+        return dedup[-limit:]
     def _detect_skill(self,msg:str)->Optional[Tuple[str,Dict[str,Any]]]:
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
@@ -294,18 +309,24 @@ class AmniAgent:
             wrapped=tone_atlas.wrap(ans,'introspect',persona,seed=message)
             conv.append('assistant',wrapped,{'tier':'tier0_introspect','skill_calls':skill_calls,'tokens':0,'persona':persona.name,'category':'introspect'})
             return {'answer':wrapped,'tier':'tier0_introspect','tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'introspect'}
-        needs_history=bool(_CONTEXT_DEP_RE.search(message)) and len(conv.turns)>2
-        recent=conv.transcript(n=6) if needs_history else ''
+        history_pairs=conv.history_pairs(n=12) if len(conv.turns)>1 else []
+        atlas_recall=self.atlas.recall(message,session_id=conv.session_id,k=3,include_global=True) if self.atlas is not None else []
+        for r in atlas_recall:
+            pair=(r['user'],r['assistant'])
+            if pair not in history_pairs:history_pairs=[pair]+history_pairs
+        history_pairs=history_pairs[-12:]
+        user_facts=self._extract_user_facts(conv)
+        is_private=detect_personal(message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
         category=tone_atlas.classify_intent(message)
         raw_ans='';tier='?';tokens=0
         sl=getattr(self.adam,'sem_lut',None)
-        if sl is not None and not needs_history:
+        if sl is not None and not history_pairs:
             try:
                 eff_margin=sl.auto_margin() if hasattr(sl,'auto_margin') else 0.08
                 hit=sl.lookup_soft(message,margin=eff_margin) if hasattr(sl,'lookup_soft') else None
                 if hit:raw_ans=hit;tier='tier1_5_semantic_lesson';tokens=0
             except Exception:pass
-        if not raw_ans:
+        if not raw_ans and not history_pairs and not is_private:
             lut=getattr(getattr(self.adam,'adam',None),'lut',None)
             if lut is not None and hasattr(lut,'lookup'):
                 try:
@@ -320,10 +341,9 @@ class AmniAgent:
             cot_tag='code' if 'Code task' in first_line else ('math' if 'Math problem' in first_line else ('debug' if 'Debugging' in first_line else ('design' if 'System design' in first_line else ('reasoning' if 'Reasoning question' in first_line else 'generic'))))
         if not raw_ans and persona.name!='Adam' and self.use_persona and hasattr(self.adam,'chat_persona'):
             sys_p=persona.system_prompt(message)
-            if recent:sys_p=f'{sys_p}\n\nRecent conversation context (do not repeat, just use for grounding):\n{recent}'
             if apply_cot:sys_p=f'{sys_p}\n\n{cot_scaffold}'
             cot_extra=700 if (apply_cot and cot_tag=='code') else (450 if apply_cot else 0)
-            r=self.adam.chat_persona(message,system=sys_p,max_new_tokens=int(80+200*persona.length)+cot_extra,do_sample=True)
+            r=self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=int(80+200*persona.length)+cot_extra,do_sample=True)
             raw_ans=r.get('answer') or '';tier=r.get('tier','tier_persona')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=r.get('tokens',0)
             if apply_cot and cot_tag=='code' and raw_ans:
                 blocks=_extract_python_blocks(raw_ans)
@@ -400,15 +420,21 @@ class AmniAgent:
                                 raw_ans+=f'\n\n_(auto-run skipped: {run_r.output["error"][:120]})_'
                         except Exception as e:raw_ans+=f'\n\n_(auto-run failed: {e})_'
         if not raw_ans:
-            framed=f'[Conversation history for context — answer the New Question only]\n{recent}\n\n[New Question]\n{message}' if needs_history and recent.strip() else message
+            hist_block='\n'.join(f'USER: {u}\nASSISTANT: {a}' for u,a in history_pairs)
+            facts_block='\n'.join(f'- {f}' for f in user_facts)
+            preface=(f'[User facts]\n{facts_block}\n\n' if facts_block else '')+(f'[Prior turns]\n{hist_block}\n\n' if hist_block else '')
+            framed=f'{preface}[New Question]\n{message}' if preface else message
             if apply_cot:framed=f'{cot_scaffold}\nQuery: {framed}'
-            effective_writeback=writeback and not needs_history
+            effective_writeback=writeback and not is_private and not history_pairs
             fb=self.adam.ask(framed,writeback=effective_writeback)
             raw_ans=fb.get('answer') or '';tier=fb.get('tier','?')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=fb.get('tokens',0)
         wrapped=tone_atlas.wrap(raw_ans,category,persona,seed=message)
         if skill_answer and skill_answer.startswith('(skill'):wrapped=f'{skill_answer}\n{wrapped}'
-        conv.append('assistant',wrapped,{'tier':tier,'tokens':tokens,'skill_calls':skill_calls,'persona':persona.name,'category':category})
-        return {'answer':wrapped,'tier':tier,'tokens':tokens,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':category}
+        conv.append('assistant',wrapped,{'tier':tier,'tokens':tokens,'skill_calls':skill_calls,'persona':persona.name,'category':category,'is_private':is_private})
+        if self.atlas is not None and raw_ans:
+            try:self.atlas.record(conv.session_id,message,wrapped,is_personal=is_private)
+            except Exception as e:print(f'[AmniAgent] atlas record failed: {e}',flush=True)
+        return {'answer':wrapped,'tier':tier,'tokens':tokens,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':category,'is_private':is_private}
     def _format_skill_output(self,name:str,out:Any)->str:
         if name=='time':return f'It is currently {out.get("iso")} local.'
         if name=='calc':return f'{out.get("value")}' if out.get('value') is not None else f'(calc error: {out.get("error")})'
