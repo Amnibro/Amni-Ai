@@ -4,7 +4,17 @@ import os,json,sys,platform
 from pathlib import Path
 from typing import Dict,Any,Optional
 HOME=Path.home()
-CONFIG_DIR=Path(os.environ.get('AMNI_HOME',str(HOME/'.amni-ai')))
+INSTALL_POINTER=HOME/'.amni-ai'/'last_install_home.txt'
+def _resolve_amni_home()->str:
+    e=os.environ.get('AMNI_HOME')
+    if e:return e
+    if INSTALL_POINTER.exists():
+        try:
+            p=INSTALL_POINTER.read_text(encoding='utf-8').strip()
+            if p and Path(p).exists():return p
+        except Exception:pass
+    return str(HOME/'.amni-ai')
+CONFIG_DIR=Path(_resolve_amni_home())
 CONFIG_FILE=CONFIG_DIR/'config.json'
 DEFAULT_HF_REPO='amnibro/gemma-4-E2B-it-gf17'
 DEFAULT_BASE_REPO='google/gemma-2-2b-it'
@@ -15,11 +25,11 @@ def _candidate_model_paths():
     return [Path('E:/Amni-Ai-Models/gemma-4-E2B-it'),CONFIG_DIR/'models'/'gemma-4-E2B-it',Path('./models/gemma-4-E2B-it'),Path.home()/'amni-models'/'gemma-4-E2B-it']
 def detect_bake()->Optional[Path]:
     for p in _candidate_bake_paths():
-        if p.exists() and (p/'manifest.json').exists():return p
+        if p.exists() and (p/'manifest.json').exists() and (p/'config.json').exists() and (p/'tokenizer.json').exists():return p
     return None
 def detect_model()->Optional[Path]:
     for p in _candidate_model_paths():
-        if p.exists() and (p/'config.json').exists():return p
+        if p.exists() and (p/'config.json').exists() and (p/'tokenizer.json').exists():return p
     return None
 def bake_has_runtime_metadata(bake_dir)->bool:
     p=Path(bake_dir) if bake_dir else None
@@ -53,6 +63,12 @@ def load_config()->Dict[str,Any]:
 def save_config(cfg:Dict[str,Any]):
     CONFIG_DIR.mkdir(parents=True,exist_ok=True)
     CONFIG_FILE.write_text(json.dumps(cfg,indent=2),encoding='utf-8')
+    default_home=HOME/'.amni-ai'
+    if CONFIG_DIR.resolve()!=default_home.resolve():
+        try:
+            default_home.mkdir(parents=True,exist_ok=True)
+            INSTALL_POINTER.write_text(str(CONFIG_DIR),encoding='utf-8')
+        except Exception as _e:print(f'[bootstrap] could not write install pointer {INSTALL_POINTER}: {_e}',flush=True)
 def ensure_dirs(cfg:Dict[str,Any]):
     for k in ('lessons','lut_root','conv_root','persona_bank','audit_log'):
         v=cfg.get(k)
