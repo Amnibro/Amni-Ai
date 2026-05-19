@@ -4,7 +4,7 @@
 
 ## v6.8.iter40-hotfix2 — install pointer + strict bake detection (post-install `serve` without `--home` now finds the right bake) (2026-05-18)
 
-**Trigger:** Discord user MutantRabbit767, after pulling iter40-hotfix and pulling the new HF sidecar files to `Z:\Amni-Ai\models\bakes\gemma4_e2b_it_gf17`, ran `python -m amni.cli serve --port 8002` without `--home Z:\Amni-Ai\models` and got `[Adam streaming chat unavailable] Repo id must use alphanumeric chars: 'C:\Users\cohen\.amni-ai\models\gemma-4-E2B-it'`. The bake the server resolved was `C:\Users\cohen\.amni-ai\bakes\gemma4_e2b_it_gf17` — an orphan from an earlier installer run — and `--model` fell through to the magic fallback `CONFIG_DIR/models/gemma-4-E2B-it`, which doesn't exist on their disk and gets re-interpreted as an HF repo_id by transformers v5.8's stricter parser.
+**Trigger:** Bug report from a user who installed via `install.py --home <X>` (custom external drive) and later ran `python -m amni.cli serve --port 8002` *without* re-passing `--home <X>`. They got `[Adam streaming chat unavailable] Repo id must use alphanumeric chars: '<some absolute filesystem path>'`. Two compounding bugs: the server resolved an orphan/partial bake at the *default* `~/.amni-ai/bakes/gemma4_e2b_it_gf17` (leftover from an earlier installer run) instead of their real bake at `<X>/bakes/gemma4_e2b_it_gf17`, and `--model` then fell through to a magic fallback `CONFIG_DIR/models/gemma-4-E2B-it` that doesn't exist on disk and gets re-interpreted as an HF repo_id by transformers v5.8's stricter parser.
 
 **Three compounding causes, three fixes:**
 
@@ -12,40 +12,40 @@
 
 2. **`amni/bootstrap.py:detect_bake` was too lax** — it only required `manifest.json`. An orphan partial bake at the candidate path (e.g. from an interrupted install) won the auction over the real complete bake on a different drive. **Fix:** `detect_bake` now requires `manifest.json` AND `config.json` AND `tokenizer.json` to consider a path a valid bake. `detect_model` similarly tightened to require both `config.json` AND `tokenizer.json` (the latter was missing).
 
-3. **No way to recover `AMNI_HOME` across invocations.** When `install.py --home Z:\X` runs, AMNI_HOME=Z:\X gets baked into that subprocess. When the user later runs `python -m amni.cli serve` (no `--home`), AMNI_HOME isn't set in their shell, so `CONFIG_DIR` reverts to `~/.amni-ai/` and the install at Z:\X is invisible. **Fix:** added `~/.amni-ai/last_install_home.txt`, a tiny pointer file written by `save_config()` whenever `CONFIG_DIR` is non-default. `_resolve_amni_home()` (the new function backing `CONFIG_DIR` at module load) reads it when `AMNI_HOME` isn't set in env. So once the user runs `install.py --home <X>` once, every subsequent `serve` / `amni init` / etc. *without* `--home` auto-rediscovers `<X>` without needing the user to remember.
+3. **No way to recover `AMNI_HOME` across invocations.** When `install.py --home <X>` runs, `AMNI_HOME=<X>` gets baked into that subprocess only. When the user later runs `python -m amni.cli serve` (no `--home`), `AMNI_HOME` isn't set in their shell, so `CONFIG_DIR` reverts to `~/.amni-ai/` and the install at `<X>` is invisible. **Fix:** added `~/.amni-ai/last_install_home.txt`, a tiny pointer file written by `save_config()` whenever `CONFIG_DIR` is non-default. `_resolve_amni_home()` (the new function backing `CONFIG_DIR` at module load) reads it when `AMNI_HOME` isn't set in env. So once a user runs `install.py --home <X>` once, every subsequent `serve` / `amni init` / etc. *without* `--home` auto-rediscovers `<X>` without needing the user to remember.
 
-**Workaround for the current Discord user (until they pull iter40-hotfix2):** PowerShell one-liner that pins `AMNI_HOME` for the session:
+**Workaround for users on iter40-hotfix or earlier** (until they pull iter40-hotfix2): pin `AMNI_HOME` for the session. PowerShell one-liner:
 ```powershell
-$env:AMNI_HOME='Z:\Amni-Ai\models'; python -m amni.cli serve --port 8002
+$env:AMNI_HOME='<install-home>'; python -m amni.cli serve --port 8002
 ```
 
-**After pulling iter40-hotfix2** they should `git pull && python install.py --home Z:\Amni-Ai\models --no-launch` once to lay down the pointer file (the bake re-download will skip since manifest exists and is now also strictly verified), then `python -m amni.cli serve --port 8002` works without any flags.
+**After pulling iter40-hotfix2:** `git pull && python install.py --home <install-home> --no-launch` once to lay down the pointer file (bake re-download is a no-op since `manifest.json` is verified locally first), then `python -m amni.cli serve --port 8002` works without any flags.
 
 **Files modified:** `amni/bootstrap.py` (new `_resolve_amni_home`, strict `detect_bake`/`detect_model`, save-config writes install pointer), `amni/cli.py` (magic fallback dropped from `_add_common_adam`), `changelog.md`.
 
 ## v6.8.iter40-hotfix — chat_template.jinja was missing from the bake; streaming chat now reads the sidecar (2026-05-18)
 
-**Trigger:** Discord user successfully pulled iter40, got Adam running, then every chat returned `[stream error: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed!]`. The error fires from `tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)` in `amni/inference/streaming_chat.py:187`.
+**Trigger:** Bug report — after pulling iter40, Adam booted but every chat returned `[stream error: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed!]`. The error fires from `tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)` in `amni/inference/streaming_chat.py:187`.
 
 **Root cause:** `scripts/adam1_bake.py:_copy_tokenizer_files` shipped a hardcoded list of files to copy from the upstream model dir into the bake — but the list pre-dated the Gemma 3+ convention where the chat template is a sidecar file (`chat_template.jinja`) instead of an embedded key inside `tokenizer_config.json`. Gemma 4 E2B IT uses the sidecar pattern. The bake had `tokenizer.json` + `tokenizer_config.json` + `config.json` + `generation_config.json` but NOT `chat_template.jinja` or `processor_config.json`, so `AutoTokenizer.from_pretrained(bake_dir)` loaded the tokenizer cleanly but with `tok.chat_template == None`.
 
 **Fix (two-layer):**
-1. **`scripts/adam1_bake.py`:** added `chat_template.jinja`, `processor_config.json`, and `preprocessor_config.json` to the file-copy whitelist. Future bakes will include them automatically.
+1. **`scripts/adam1_bake.py`:** added `chat_template.jinja`, `processor_config.json`, and `preprocessor_config.json` to the file-copy whitelist. Future bakes include them automatically.
 2. **`amni/inference/streaming_chat.py`:** defense in depth — after `AutoTokenizer.from_pretrained()`, if `self.tok.chat_template` is None/missing, the service now looks for `chat_template.jinja` next to the tokenizer on disk and loads it manually into `self.tok.chat_template`. Logs whether it found one. If even the sidecar is absent, warns clearly with the exact `snapshot_download` recovery command instead of blowing up later inside `apply_chat_template`.
 
-**Bake repo updated locally** at `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` — both files copied from `E:/Amni-Ai-Models/gemma-4-E2B-it/`. **Still needs HF push** to `amnibro/gemma-4-E2B-it-gf17` so existing downstream users can `snapshot_download(... allow_patterns=['chat_template.jinja','processor_config.json'])` to repair their bake without re-downloading the full 20 GB.
+**HF bake repo `amnibro/gemma-4-E2B-it-gf17` updated:** both `chat_template.jinja` and `processor_config.json` uploaded so existing installs can `snapshot_download(allow_patterns=['chat_template.jinja','processor_config.json'])` to repair their local bake without re-downloading the full 20 GB.
 
-**Existing local installs (the Discord user):** the inference-side sidecar load means once they `git pull && pip install -e .` (or just `git pull` if the venv is editable-installed), restart `amni serve`, chat will fire — *if* their bake dir has `chat_template.jinja`. If their bake is from before the HF re-upload, the file is missing and the warning will tell them to pull it. After the HF re-upload, the recovery is:
+**Existing local installs:** the inference-side sidecar load means once a user does `git pull` and restarts `amni serve`, chat works if their bake dir has `chat_template.jinja`. If their bake is from before the HF re-upload, the file is missing and the warning text in the new code points them at the exact `snapshot_download` recovery command:
 ```python
 from huggingface_hub import snapshot_download
-snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\models\bakes\gemma4_e2b_it_gf17', allow_patterns=['chat_template.jinja','processor_config.json'])
+snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir='<bake-dir>', allow_patterns=['chat_template.jinja','processor_config.json'])
 ```
 
 **Files modified:** `scripts/adam1_bake.py`, `amni/inference/streaming_chat.py`, `changelog.md`. Plus the actual `chat_template.jinja` + `processor_config.json` files in the HF bake repo (uploaded out-of-band).
 
 ## v6.8.iter40 — GUI installer with user-chosen install path + auto-saved log + one-click "email log to support" (2026-05-18)
 
-**Trigger:** the maintainer — "The install path should be determined by users at install. Maybe we need a GUI with debug log posting." The 20 GB bake is a lot to drop on whatever drive `~/.amni-ai/` happens to resolve to (usually a small system SSD on Windows). And the iter39 Discord user had to copy-paste a 620-line PowerShell transcript to share the diagnostic — high friction for both sides.
+**Trigger:** Two related friction points surfaced by the iter39 bug report. (1) The 20 GB bake gets dropped on whatever drive `~/.amni-ai/` happens to resolve to (usually a small system SSD on Windows), with no install-time way for the user to redirect it short of remembering `--home <path>`. (2) The reporter had to copy-paste a 600+-line PowerShell transcript by hand to share the diagnostic — high friction for both sides. Directive: install path should be picked at install time; debug log capture should be one-click.
 
 **New entry point: `installer.py`** (pywebview-based GUI, sits in front of `install.py`):
 - Auto-installs `pywebview>=5` to system Python if missing (~5 MB, one-time). Falls back to printing instructions to use `python install.py` if pywebview install fails (corporate firewall / no pip / etc.).
@@ -71,11 +71,11 @@ snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\
 - Trade-off accepted: pywebview must be available before the install venv exists (chicken/egg solved by pip-installing to system Python in `ensure_pywebview()`). For users behind corporate firewalls who can't pip from system Python, the headless `install.py` is still the no-deps fallback.
 
 **Why mailto: instead of a backend POST relay:**
-- the maintainer specified "collect to a file and email to the maintainer (via GitHub)." example.com is a static GitHub Pages site (no backend) so a POST endpoint would need new infrastructure (Cloudflare Worker / Formspree / etc.) with separate auth and rate-limiting.
+- Directive: "collect to a file and email to the configured support address." example.com is a static GitHub Pages site (no backend) so a POST endpoint would need new infrastructure (Cloudflare Worker / Formspree / etc.) with separate auth and rate-limiting.
 - mailto: is zero-infra and gives the user editorial control over what gets sent — they see the body before hitting send.
 - Trade-off: mailto: URL size limits (~2-8 KB depending on mail client) mean only the last 30 lines of log fit inline. The full log goes via manual attach, which the body explicitly asks for. Acceptable for a low-volume support channel.
 
-**Two-stage install design honored the maintainer's spec:**
+**Two-stage install design:**
 - Stage 1 = GUI: option collection only, no actual install work.
 - Stage 2 = `install.py`: all the heavy lifting (venv, torch, kernels build, bake download, server launch) — unchanged from iter39 except for being invoked with explicit `--home` from stage 1.
 - Side benefit: stage 2 is still independently runnable via `python install.py` for headless / scripted installs.
@@ -86,20 +86,20 @@ snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\
 
 ## v6.8.iter39 — Adam ships as self-contained GF(17) bake; no upstream Gemma 4 download for public installs (2026-05-18)
 
-**Trigger:** New-user install failure: `install.py` succeeded on the prebuilt bake `amnibro/gemma-4-E2B-it-gf17` (5 GB, public), then immediately tried to also pull `google/gemma-2-2b-it` and got `401 Cannot access gated repo`. the maintainer's reaction cut to the architectural question: "Shouldn't Adam ship only the baked GF17 version that was pre-built on top of gemma 4 e2b it?" — yes. Public users should never touch upstream Gemma weights.
+**Trigger:** Bug report — `install.py` succeeded on the prebuilt bake `amnibro/gemma-4-E2B-it-gf17` (20 GB, public), then immediately tried to also pull `google/gemma-2-2b-it` and got `401 Cannot access gated repo`. The architectural question raised: should Adam ship only the baked GF(17) artifact that was pre-built on top of Gemma 4 E2B IT, with no upstream weight access required at all? Answer: yes. Public users should never touch upstream Gemma weights.
 
-**Correction to prior changelog draft:** the bake is genuinely re-encoded from Google **Gemma 4 E2B IT** (architecture: `Gemma4ForConditionalGeneration`, model_types `gemma4` / `gemma4_text` / `gemma4_audio` / `gemma4_vision` — multimodal). `DEFAULT_BASE_REPO='google/gemma-2-2b-it'` in `bootstrap.py` is a stale leftover from the Gemma 2 era and was wrong; the public install path now never invokes it, so the stale string is effectively dead.
+**Correction to prior changelog draft:** the bake is genuinely re-encoded from Google **Gemma 4 E2B IT** (architecture: `Gemma4ForConditionalGeneration`, model_types `gemma4` / `gemma4_text` / `gemma4_audio` / `gemma4_vision` — multimodal). `DEFAULT_BASE_REPO='google/gemma-2-2b-it'` in `bootstrap.py` was a stale leftover from the Gemma 2 era and was wrong; the public install path now never invokes it, so the stale string is effectively dead.
 
 **Root cause (two bugs stacked):**
 1. `cmd_init` downloaded the base model unconditionally whenever `cfg['model']` was unset — but the prebuilt bake already ships `config.json` + `tokenizer.json` + `generation_config.json` + `chat_template.jinja` + `processor_config.json`, which is *everything* the streaming runtime needs from a "model dir". The base-model download was a leftover from the early dev path where rebaking from upstream was the primary delivery channel.
-2. `_add_common_adam` fell back to hardcoded `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17` / `E:/Amni-Ai-Models/gemma-4-E2B-it` — the maintainer's external-drive paths. On a new user's machine those don't exist, so `AutoTokenizer.from_pretrained('E:/Amni-Ai-Models/gemma-4-E2B-it')` saw a non-existent path, treated it as a repo_id, and threw `Repo id must be in the form 'repo_name' or 'namespace/repo_name'` (the second error in the bug report).
+2. `_add_common_adam` fell back to hardcoded absolute external-drive paths from the dev machine where the bake was originally built. On any other machine those paths don't exist, so `AutoTokenizer.from_pretrained(<that path>)` saw a non-existent directory, treated it as a repo_id, and threw `Repo id must be in the form 'repo_name' or 'namespace/repo_name'` (the second error in the bug report).
 
 **Fix (architectural pivot — Adam is now a single self-contained artifact):**
 - `bootstrap.py`:
   - new helper `bake_has_runtime_metadata(bake_dir)` (checks `config.json` + `tokenizer.json` in the bake).
   - `download_bake` no longer falls back to `generate_bake_local` (which required gated upstream access). On HF bake failure it prints a clean error pointing to the issue tracker.
-  - `download_base_model` and `generate_bake_local` kept as importable for the maintainer's dev rebake workflow but docstrings now flag them DEV-ONLY; the public CLI path never calls them.
-- `cli.py`: `_add_common_adam` defaults derive from `cfg.get('bake')` → `CONFIG_DIR/bakes/...` instead of the maintainer's E: paths. `cmd_init` collapsed: pulls bake only, then sets `cfg['model']=cfg['bake']` so the streaming runtime reads tokenizer + config straight from the bake. No second download, no y/n prompt for base weights.
+  - `download_base_model` and `generate_bake_local` kept as importable for the dev rebake workflow but docstrings now flag them DEV-ONLY; the public CLI path never calls them.
+- `cli.py`: `_add_common_adam` defaults derive from `cfg.get('bake')` → `CONFIG_DIR/bakes/...` instead of any hardcoded absolute path. `cmd_init` collapsed: pulls bake only, then sets `cfg['model']=cfg['bake']` so the streaming runtime reads tokenizer + config straight from the bake. No second download, no y/n prompt for base weights.
 
 **Effect for a fresh `git clone → python install.py`:**
 - One HF download: `amnibro/gemma-4-E2B-it-gf17` (5 GB).
@@ -110,7 +110,7 @@ snapshot_download(repo_id='amnibro/gemma-4-E2B-it-gf17', local_dir=r'Z:\Amni-Ai\
 
 **Additional cleanups in the same iter39 pass:**
 
-*Bake size: ~5 GB → ~20 GB.* The on-disk size of the published bake is actually 20 GB (verified via `du -sh E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/`). The "~5 GB" string was a stale estimate from before the audio/vision towers were included. Fixed in `install.py` (docstring + `--skip-model` help text), `amni/bootstrap.py:download_bake` log line, `amni/cli.py:cmd_init` y/n prompt, `docs/INSTALL.md`.
+*Bake size: ~5 GB → ~20 GB.* The on-disk size of the published bake is actually 20 GB (verified via `du -sh <local-bake-dir>`). The "~5 GB" string was a stale estimate from before the audio/vision towers were included. Fixed in `install.py` (docstring + `--skip-model` help text), `amni/bootstrap.py:download_bake` log line, `amni/cli.py:cmd_init` y/n prompt, `docs/INSTALL.md`.
 
 *Deprecated HF arg.* Removed `local_dir_use_symlinks=False` from both `snapshot_download` calls in `amni/bootstrap.py` — huggingface_hub now warns the arg is deprecated and ignored.
 
@@ -124,18 +124,16 @@ python install.py
 
 *Site port: 8001 → 8002.* The site card claimed `localhost:8001` but `install.py` defaults to port 8002.
 
-*Bake-side Apache 2.0 § 4 compliance.* The HF bake repo `amnibro/gemma-4-E2B-it-gf17` only shipped a README.md alongside the weights — when pulled standalone via `snapshot_download`, downstream recipients got the weights without a copy of the Apache 2.0 License (§ 4(a)) or a NOTICE file with the modification disclosure (§ 4(b) + § 4(d)). Closed the gap locally in `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/`:
-  - `LICENSE` — full Apache 2.0 text (copied from `Amni-Ai/LICENSES/apache-2.0.txt`).
+*Bake-side Apache 2.0 § 4 compliance.* The HF bake repo `amnibro/gemma-4-E2B-it-gf17` only shipped a README.md alongside the weights — when pulled standalone via `snapshot_download`, downstream recipients got the weights without a copy of the Apache 2.0 License (§ 4(a)) or a NOTICE file with the modification disclosure (§ 4(b) + § 4(d)). Closed the gap by adding three files to the HF bake repo:
+  - `LICENSE` — full Apache 2.0 text.
   - `NOTICE` — structured per § 4(b)/4(c)/4(d): upstream source + license, lossless re-encoding modification disclosure (cos=1.0, no fine-tuning, no distillation, no lossy compression — pure storage-format conversion), trademark notice, and explicit separation of the bake's Apache 2.0 weights from the surrounding Adam orchestration code's CC BY-NC 4.0 license.
   - `README.md` — corrected stale `base_model: google/gemma-2-2b-it` → `google/gemma-4-e2b-it`, dropped the broken `pip install -r requirements.txt` step, added an explicit Apache 2.0 § 4 compliance section.
-
-**Action item the maintainer needs to do manually:** push the updated `LICENSE`, `NOTICE`, and `README.md` from `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` up to `amnibro/gemma-4-E2B-it-gf17` on HuggingFace (`huggingface-cli upload amnibro/gemma-4-E2B-it-gf17 ./LICENSE ./NOTICE ./README.md` from that dir, or via the HF web UI). Until that push, the published HF bake is missing the compliance files.
 
 **Files touched (cleanups):** `install.py`, `amni/bootstrap.py`, `amni/cli.py`, `docs/INSTALL.md`, `amni-scient-site/amni-ai.html`, plus three files in the local bake dir (`LICENSE`, `NOTICE`, `README.md`). Site backup at `backups/amni-scient-amni-ai.html.v6.8.iter38.bak`.
 
 ## v6.8.iter38 — Fully automated install (auto-build amni_kernels, auto-install Rust) (2026-05-18)
 
-**Trigger:** the maintainer — "all of the install should be fully automated." Post-iter37 the install correctly *reported* when amni_kernels couldn't load on a non-cp313 Python, but the fix was still manual (`cd amni_kernels && pip install maturin && maturin develop --release`). For a "git clone → python install.py → working chat" UX, the installer needs to do that build itself, and install Rust first if the user doesn't have it.
+**Trigger:** maintainer directive — "all of the install should be fully automated." Post-iter37 the install correctly *reported* when amni_kernels couldn't load on a non-cp313 Python, but the fix was still manual (`cd amni_kernels && pip install maturin && maturin develop --release`). For a "git clone → python install.py → working chat" UX, the installer needs to do that build itself, and install Rust first if the user doesn't have it.
 
 **What iter38 adds to install.py:**
 - New helper `cargo_path()` — searches `PATH` and `~/.cargo/bin` for `cargo`.
@@ -157,7 +155,7 @@ python install.py
 **Step count grew from 5 to 6:**
 1/6 venv → 2/6 GPU + torch → **3/6 Adam install** → **4/6 amni_kernels native build (if needed)** → 5/6 init → 6/6 launch.
 
-**Smoke (the maintainer's box, Python 3.12.10 + RX 7800 XT):**
+**Smoke (the dev box, Python 3.12.10 + RX 7800 XT):**
 - `cargo_path()` returns `C:\Users\antho\.cargo\bin\cargo.EXE` (Rust already present from prior dev work).
 - `amni_kernels_imports(env)` returns `False` — confirms iter37's friendly ImportError fires on cp313-only .pyd vs running Python 3.12. Detection is correct.
 - Full maturin build path not executed during smoke (5–15 min cold compile); design verified via the helpers.
@@ -180,13 +178,13 @@ python install.py
 
 ## v6.8.iter37 — Kill the iter21 "encrypted-blob" stub path that was blocking real users (2026-05-18)
 
-**Trigger:** Discord user MutantRabbit767 successfully ran install.py, downloaded the model, started the server, tried to chat, hit a server-side error pointing them at `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"`, ran that command, and got `NotImplementedError: Runtime fetcher pipeline not yet wired. Build steps (the maintainer to do): ...`. Three call sites in the codebase still suggested the iter21 encrypted-blob `fetch()` workflow, but iter29 made the full Reffelt source public under CC BY-NC 4.0 — there is no blob to fetch. The runtime.py stub was never updated to reflect the iter29 reality, leaving users with a broken command at the end of a long install.
+**Trigger:** a user a user successfully ran install.py, downloaded the model, started the server, tried to chat, hit a server-side error pointing them at `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"`, ran that command, and got `NotImplementedError: Runtime fetcher pipeline not yet wired. Build steps (the maintainer to do): ...`. Three call sites in the codebase still suggested the iter21 encrypted-blob `fetch()` workflow, but iter29 made the full Reffelt source public under CC BY-NC 4.0 — there is no blob to fetch. The runtime.py stub was never updated to reflect the iter29 reality, leaving users with a broken command at the end of a long install.
 
 **Root cause analysis (the chain):**
 1. Server boot called `StreamingChatService(bake_dir, model_path)` which can fail for several reasons (incomplete bake, model architecture mismatch, prebuilt `amni_kernels` .pyd compiled for the wrong Python ABI — currently cp313 only).
 2. Adam caught the exception, set `self.svc = None`, stored the real failure in `self.runtime_error`, but the user-facing chat error message at `amni/adam.py:81` ignored `runtime_error` and instead suggested `from amni.runtime import fetch; fetch(...)`.
 3. `amni/inference/streaming_chat.py:23` raised `_RuntimeBlobMissing` with the same misleading fetch-it message whenever `streaming_linear` failed to import.
-4. `amni/runtime.py:fetch()` raised `NotImplementedError` with a TO:DO comment addressed to the maintainer — visible end of the road for the user.
+4. `amni/runtime.py:fetch()` raised `NotImplementedError` with a TO:DO comment addressed to maintainer directive — visible end of the road for the user.
 
 **Fixes:**
 - `amni/runtime.py` — full rewrite for iter29 public-source mode.
@@ -197,8 +195,8 @@ python install.py
 - `amni/inference/streaming_chat.py:6-23` — captures the actual `ImportError` into `_IMPORT_ERROR`, surfaces it in the `_RuntimeBlobMissing` message along with the running Python version and the maturin rebuild instructions. No more "fetch the blob" misdirection.
 - `amni_kernels/__init__.py` — wrap the `from .amni_kernels import *` line in try/except. On ABI mismatch, raise a custom `ImportError` that reports the running Python version and explains how to rebuild from source via maturin. The original "ModuleNotFoundError: No module named 'amni_kernels.amni_kernels'" was technically true but useless to users.
 
-**Smoke (on the maintainer's box, Python 3.12.10):**
-- `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"` — MutantRabbit's exact command — now prints:
+**Smoke (on the dev box, Python 3.12.10):**
+- `python -c "from amni.runtime import fetch; fetch(license_key='free-noncommercial')"` — the user's exact command — now prints:
   ```
   [runtime] Adam runtime is ready (iter29 public-source mode — no fetch needed).
   [runtime] python=3.12.10  expected_version=v6.8
@@ -243,7 +241,7 @@ python install.py
 - New CLI flags: `--gpu auto|nvidia|amd|cpu`, `--cuda <tag>` (default `cu124`), `--rocm <tag>` (default `rocm6.2`).
 - Step count grew from 4 to 5: 1/5 venv → 2/5 GPU detect + vendor torch → 3/5 Adam → 4/5 init → 5/5 launch.
 
-**Smoke (on the maintainer's box, RX 7800 XT + Windows 11):**
+**Smoke (on the dev box, RX 7800 XT + Windows 11):**
 - `detect_gpu("auto")` → `amd` (correct).
 - `torch_index("amd", "cu124", "rocm6.2")` on Windows → `None` (correct, triggers CPU fallback with TheRock warning).
 - `torch_index("nvidia", "cu124", "rocm6.2")` → `https://download.pytorch.org/whl/cu124` (correct).
@@ -266,7 +264,7 @@ python install.py
 
 ## v6.10 — Asimov Merkle binding (Layer 1 of 3 Asimov hardening) (2026-05-17)
 
-**Trigger:** the maintainer — "how do we 'bake' the layers into Adam so people can't just bypass them?" Threat model: sophisticated researchers/hackers running abliteration-style attacks like the jailbroken HF models. v6.10 = Layer 1 (file-edit defense, Merkle GF(17) hash binding). v6.11 (abliteration defense — load-bearing in TMU) and v6.12 (AES-256 encryption) specced and queued; this milestone ships Layer 1 only.
+**Trigger:** maintainer directive — "how do we 'bake' the layers into Adam so people can't just bypass them?" Threat model: sophisticated researchers/hackers running abliteration-style attacks like the jailbroken HF models. v6.10 = Layer 1 (file-edit defense, Merkle GF(17) hash binding). v6.11 (abliteration defense — load-bearing in TMU) and v6.12 (AES-256 encryption) specced and queued; this milestone ships Layer 1 only.
 
 Pre-v6.10 AsimovLayer had a single SHA-256 self-check at init: `assert hashlib.sha256(repr(_AXIOMS)) == _AXIOM_INTEGRITY`. Both sides of the equality live in `amni/a1/asimov.py` — an attacker who edits the file once edits BOTH the data and the expected hash. No tamper evidence.
 
@@ -315,11 +313,11 @@ v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file
 - ❌ Does NOT defend against: an attacker who edits the laws AND runs `scripts/v6_10_compute_asimov_root.py` to regenerate root. Defense for this is v6.12 (encrypted beacon with off-machine key).
 - ❌ Does NOT defend against: abliteration of the downstream Adam model. The gate text-patterns are abliteration-resistant by design (discrete GF(17), no continuous refusal direction), but the LLM behind the gate is vulnerable to PCA refusal-direction surgery if it's a normal transformer. Defense for this is v6.11 (Asimov hash routed into downstream TMU lookups so abliteration produces gibberish, not jailbreak).
 
-**Awaiting the maintainer confirmation** before marking v6.10 fully shipped: (a) `AsimovLayer()` instantiates clean; (b) Adam still answers normal queries; (c) Adam still refuses harm prompts; (d) tamper resistance demonstrable. **Next:** v6.11 (load-bearing TMU routing — the abliteration defense) is specced and queued.
+**Awaiting maintainer confirmation** before marking v6.10 fully shipped: (a) `AsimovLayer()` instantiates clean; (b) Adam still answers normal queries; (c) Adam still refuses harm prompts; (d) tamper resistance demonstrable. **Next:** v6.11 (load-bearing TMU routing — the abliteration defense) is specced and queued.
 
 ## v6.9.0 — KB write-path perf fix + Phase 3 completion: 421k lossless records (2026-05-16)
 
-**Trigger:** the maintainer — "let's finish the rest." v6.8.30 left Phase 3 partial because bulk HF ingest collapsed at ~0.75 rec/sec past ~30k entries. v6.8.30 blamed `_save_index` autosave; that was wrong.
+**Trigger:** maintainer directive — "let's finish the rest." v6.8.30 left Phase 3 partial because bulk HF ingest collapsed at ~0.75 rec/sec past ~30k entries. v6.8.30 blamed `_save_index` autosave; that was wrong.
 
 **1. Root cause diagnosis (probes in `tests/test_v6_9_0_kb_perf_profile.py`):**
 - Synthetic-record stress on a fresh KB: 8k → 232 rec/sec flat, 40k → 252→197, 70k → 252→160. **No cliff** at any record count on a fresh KB.
@@ -350,7 +348,7 @@ v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file
 - `glaiveai/glaive-code-assistant` — completed to 50,000 glaive_code entries (was ~10k partial).
 - Mid-run housekeeping: pruned 32,000 dirty `alpaca_code::18000..49999` orphans (artifact of first Magicoder run using the wrong template — fixed by adding the `magicoder` template and re-prefixing).
 
-**5. Final knowledge layer (E:\Amni-Ai-KB and `experiences/sibling_code`):**
+**5. Final knowledge layer (<kb-root> and `experiences/sibling_code`):**
 | KB / Atlas | Records | Size | Util | Notes |
 |---|---|---|---|---|
 | `canonical` | **196,009** | 607.4 MB | 90.5% | DevDocs 51 slugs (v6.8.30) |
@@ -375,21 +373,21 @@ v6.10 fixes this by binding integrity to data that lives OUTSIDE the source file
 | Phase 3a (the_stack swap) | ≥20k records | 75,000 (magicoder) | ✅ PASS |
 | Phase 3b (evol completion) | ≥80k total evol_code | 78,258 | ⚠ Slightly under (template skips records lacking both fields) |
 | Phase 3c (glaive completion) | ≥40k total glaive_code | 50,000 | ✅ PASS |
-| Regression: `examples/quickstart.py` | passes | not yet rerun | ⏸ pending the maintainer |
+| Regression: `examples/quickstart.py` | passes | not yet rerun | ⏸ pending maintainer |
 
-**Awaiting the maintainer confirmation:** (a) attach both KBs and ask a pathlib or magicoder-style question — should retrieve from new KBs; (b) `examples/quickstart.py` still green; (c) no AsimovLayer regression.
+**Awaiting maintainer confirmation:** (a) attach both KBs and ask a pathlib or magicoder-style question — should retrieve from new KBs; (b) `examples/quickstart.py` still green; (c) no AsimovLayer regression.
 
 ## v6.8.30 — Knowledge Preload: 265k lossless code-knowledge records (2026-05-16)
 
-**Trigger:** the maintainer — "can you figure out a way to grant amni-ai (Adam) huge banks of good coding practices from sources available online at huggingface, github, and others? I want Adam to be able to assist me with all these /ai projects I have in the folder above this one."
+**Trigger:** maintainer directive — "can you figure out a way to grant amni-ai (Adam) huge banks of good coding practices from sources available online at huggingface, github, and others? I want Adam to be able to assist me with all these /ai projects I have in the folder above this one."
 
-Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on external NVMe (E:\Amni-Ai-KB), plus a behavior-corpus atlas of the maintainer's own sibling projects. KB-first, paradigm-pure: every record is TMU-addressable via `kb.lookup(key)`. Council ruling 5-0 in `docs/guardian_councils/guardian_council_v6_8_0_knowledge_preload.md`; checklist in `docs/checklists/checklist_v6_8_0_knowledge_preload_v1.md`. (Artifact files retain the `v6_8_0` naming used during build; version label is v6.8.30 to slot after iter20.)
+Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on external NVMe (<kb-root>), plus a behavior-corpus atlas of the maintainer's own sibling projects. KB-first, paradigm-pure: every record is TMU-addressable via `kb.lookup(key)`. Council ruling 5-0 in `docs/guardian_councils/guardian_council_v6_8_0_knowledge_preload.md`; checklist in `docs/checklists/checklist_v6_8_0_knowledge_preload_v1.md`. (Artifact files retain the `v6_8_0` naming used during build; version label is v6.8.30 to slot after iter20.)
 
 **1. New orchestrator + extended ingester:**
 - `scripts/v6_8_0_knowledge_preload.py` — phase-sequenced launcher (`--phase 1|2|3 [--all] [--dataset N] [--dry-run] [--verify-only]`). Wraps existing `adam1_kb_build.py`, `adam1_ingest_codebase.py`, `adam1_ingest_hf_to_kb.py`. Logs each phase to `logs/v6_8_0_preload_phase_<n>.log`.
 - `scripts/adam1_ingest_hf_to_kb.py` — extended `_TEMPLATES` dict with four code-aware templates: `stack_code` (tolerant of both `content` and `code` fields), `code_alpaca`, `evol_instruct`, `glaive_code`. Backup at `backups/v6_8_0_pre_preload/`.
 
-**2. Phase 1 — DevDocs canonical-50 → `E:\Amni-Ai-KB\canonical` (LOSSLESS):**
+**2. Phase 1 — DevDocs canonical-50 → `<kb-root>\canonical` (LOSSLESS):**
 - 51/51 slugs complete (Python 3.12, JS, TS, Rust, Go, C/C++, Kotlin, Ruby, PHP, Lua, Perl, Dart, Elixir, Haskell, OCaml, Clojure, Bash, HTML, CSS, DOM, React, Vue 3, Angular, Svelte, Next.js, Tailwind, Node, Express, Django, Flask, FastAPI, Rails, NumPy, Pandas, PyTorch, TF, Matplotlib, Docker, K8s, nginx, Redis, Postgres 17, SQLite, Ansible, Terraform, Git, CMake, requests, jq, Markdown).
 - **196,009 entries, 607.4 MB across 10 PTEX pages, util 90.5%.** Beat ≥150k pass-gate by 31%.
 - Spot-check: `kb.lookup_prefix('python~3.12::library/pathlib')` returns 3 hits with real docs text. ✓
@@ -399,7 +397,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 - **3,878 ExperienceAtlas records** under `subject='sibling_code'`, category `codebase-<sibling>`. PTEX-encoded, one 64 MB page. Eligible for `adam1_grow` distill into Wisdom residuals (deferred to v6.9.0 Phase 4).
 - Below my checklist's 5,000 heuristic but is the real post-exclusion file count and substantial signal for residual SFT.
 
-**4. Phase 3 — HF code datasets → `E:\Amni-Ai-KB\code_hf` (PARTIAL):**
+**4. Phase 3 — HF code datasets → `<kb-root>\code_hf` (PARTIAL):**
 - `HuggingFaceH4/CodeAlpaca_20K` — **18,013 / 25,000 records** (dataset fully exhausted, healthy 209s wall).
 - `nickrosh/Evol-Instruct-Code-80k-v1` — **37,500 / 85,000 records** (killed at autosave-thrash).
 - `glaiveai/glaive-code-assistant` — **~10,000 / 50,000 records** (killed at autosave-thrash even with `AMNI_KB_AUTOSAVE_EVERY=5000`).
@@ -413,7 +411,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 **6. Net knowledge landed in v6.8.30:**
 - **265,677 lossless records** Adam can recall by key — 196,009 API/function pages + 65,790 code Q+A pairs + 3,878 personal-codebase files.
-- All TMU-addressable via PTEX RGBA pages on E:\Amni-Ai-KB. Attach at inference via existing `adam1_serve_multikb.py --multikb E:/Amni-Ai-KB/canonical E:/Amni-Ai-KB/code_hf`.
+- All TMU-addressable via PTEX RGBA pages on <kb-root>. Attach at inference via existing `adam1_serve_multikb.py --multikb <kb-root>/canonical <kb-root>/code_hf`.
 - AsimovLayer untouched. KB origin metadata recorded per-entry (kind/lang/repo). SSD-streaming paradigm preserved (KBs live outside repo).
 
 **Files changed:**
@@ -421,7 +419,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 - NEW: `docs/checklists/checklist_v6_8_0_knowledge_preload_v1.md`
 - NEW: `docs/guardian_councils/guardian_council_v6_8_0_knowledge_preload.md`
 - MOD: `scripts/adam1_ingest_hf_to_kb.py` (added 4 templates; backup `backups/v6_8_0_pre_preload/adam1_ingest_hf_to_kb.v6.7.0.bak`)
-- DATA: `E:\Amni-Ai-KB\canonical\` (196k entries), `E:\Amni-Ai-KB\code_hf\` (65,790 entries), `experiences/sibling_code/` (3,878 records)
+- DATA: `<kb-root>\canonical\` (196k entries), `<kb-root>\code_hf\` (65,790 entries), `experiences/sibling_code/` (3,878 records)
 - LOGS: `logs/v6_8_0_preload_phase_{1,2,3}.log`
 
 **Pass-gate scoreboard:**
@@ -430,13 +428,13 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 | 1 | ≥48/51 slugs, ≥150k entries | 51/51, 196,009 | ✅ PASS |
 | 2 | >5,000 atlas records | 3,878 | ⚠ Below heuristic but real post-exclusion count |
 | 3 | each dataset ≥10k records | 18k/37.5k/10k/0 | ⚠ 3 of 4 datasets hit gate |
-| Regression | `examples/quickstart.py` passes | not yet rerun | ⏸ pending the maintainer |
+| Regression | `examples/quickstart.py` passes | not yet rerun | ⏸ pending maintainer |
 
-**Awaiting the maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
+**Awaiting maintainer confirmation** that (a) Adam answers a pathlib-style question from the new KB via multikb attach, (b) phase-2 sibling corpus shows up in a teach-cot run, (c) no AsimovLayer regression in inference.
 
 ## v6.8.iter34 — End-to-end install verify + crawler standalone (2026-05-17)
 
-**Trigger:** the maintainer — "yes verify everything. Also make sure the webcrawler works on its own"
+**Trigger:** maintainer directive — "yes verify everything. Also make sure the webcrawler works on its own"
 
 **A. WebCrawler standalone test** (`tests/_v6_8_crawler_standalone.py`):
 - Instantiated WebCrawler directly (no Adam, no GF(17) runtime)
@@ -483,7 +481,7 @@ Three-phase preload of lossless coding knowledge into PTEX KnowledgeBases on ext
 
 ## v6.8.iter32 — Fresh-clone install test (the 3 methods on example.com) (2026-05-17)
 
-**Trigger:** the maintainer — "test the install methods listed on my site"
+**Trigger:** maintainer directive — "test the install methods listed on my site"
 
 Cloned `Amnibro/Amni-Ai` into `C:\Users\antho\install_test_amni\` with a fresh venv. Ran the 3 methods from example.com/amni-ai's landing page exactly as published.
 
@@ -515,7 +513,7 @@ Cloned `Amnibro/Amni-Ai` into `C:\Users\antho\install_test_amni\` with a fresh v
 
 ## v6.8.iter31 — Upload Gemma-4 GF17 bake to HF amnibro/gemma-4-E2B-it-gf17 (2026-05-17)
 
-**Trigger:** the maintainer — "please do the hugging face one too"
+**Trigger:** maintainer directive — "please do the hugging face one too"
 
 After iter30 wired local-bake generation as fallback, also uploaded the prebuilt 20GB bake to HF so users skip the 5-min re-encode step on first install.
 
@@ -538,7 +536,7 @@ After iter30 wired local-bake generation as fallback, also uploaded the prebuilt
 
 ## v6.8.iter30 — Local bake generation (no HF dependency for the bake) (2026-05-17)
 
-**Trigger:** the maintainer — "the [HF bake] repo doesn't even exist". After iter29 made the source deployable, the install path still failed because `bootstrap.download_bake` called `snapshot_download('Amnibro/gemma-4-E2B-it-gf17')` → 404. the maintainer hadn't uploaded a bake to HF. His response: *"I don't really care - we can even host the bake on my website"*.
+**Trigger:** maintainer directive — "the [HF bake] repo doesn't even exist". After iter29 made the source deployable, the install path still failed because `bootstrap.download_bake` called `snapshot_download('Amnibro/gemma-4-E2B-it-gf17')` → 404. the maintainer hadn't uploaded a bake to HF. His response: *"I don't really care - we can even host the bake on my website"*.
 
 Picked: **local re-encode**. Zero hosting, zero ongoing maintenance, zero external dependency. The base Gemma weights are public on HF (Apache 2.0); the GF(17) re-encoder code is now public (iter29). So users can generate their own bake on first launch.
 
@@ -580,9 +578,9 @@ adam1-bake: convert HF transformer to GF(17) Adam-1 bake
 
 ## v6.8.iter29 — Deployable: reverse iter21 protection, ship complete working source (2026-05-17)
 
-**Trigger:** the maintainer — "we need to get it actually deployable. Just put everything together so they can download and run it now"
+**Trigger:** maintainer directive — "we need to get it actually deployable. Just put everything together so they can download and run it now"
 
-After a real user (MutantRabbit767) tried to install Adam and hit ModuleNotFoundError on missing Reffelt internals, the iter21 "encrypted blob ships separately" plan stopped being viable. Users want to clone + run. The iter22-iter28-hotfix2 graceful-degradation patches kept the server BOOTING but chat returned `runtime not installed`. That's a useless product.
+After a real user tried to install Adam and hit ModuleNotFoundError on missing Reffelt internals, the iter21 "encrypted blob ships separately" plan stopped being viable. Users want to clone + run. The iter22-iter28-hotfix2 graceful-degradation patches kept the server BOOTING but chat returned `runtime not installed`. That's a useless product.
 
 This iter reverses iter21. CC BY-NC 4.0 license is now the only protection layer — code is fully open, commercial use is legally forbidden.
 
@@ -639,7 +637,7 @@ ALL CRITICAL IMPORTS PASS — public clone now has complete working source
 
 ## v6.8.iter28-hotfix2 — Fix broken public install (real user report) (2026-05-17)
 
-**Trigger:** Real user (MutantRabbit767) tried to install Adam from `git clone github.com/Amnibro/Amni-Ai`, hit:
+**Trigger:** A real user tried to install Adam from `git clone github.com/Amnibro/Amni-Ai`, hit:
 ```
 ModuleNotFoundError: No module named 'amni.inference.tiered'
 ```
@@ -893,7 +891,7 @@ When iter17's self-tests fail, iter20's perturb retry currently sees raw `Assert
 
 ## v6.8.iter22-hotfix — Scrub jailbreak playbook + Gemma Apache 2.0 NOTICE + soften security claims (2026-05-17)
 
-**Trigger:** the maintainer — "yeah you should do the fixes but I think we have other points of concern too, like the jailbreak expressions you listed as examples and the fact it only blocks 81%."
+**Trigger:** maintainer directive — "yeah you should do the fixes but I think we have other points of concern too, like the jailbreak expressions you listed as examples and the fact it only blocks 81%."
 
 Two problems I shipped in iter22 + iter16, both fixed in one commit.
 
@@ -928,7 +926,7 @@ Two problems I shipped in iter22 + iter16, both fixed in one commit.
 
 ## v6.8.iter22 — Landing page + install + tutorial + architecture SVG (2026-05-16)
 
-**Trigger:** the maintainer — "onwards and upwards. how do people install into say ollama or use it standalone. make a nice landing, install page, tutorial, etc. to give people an easy start. Give a basic structure map that shows people what makes Adam different as well (very nice visual)"
+**Trigger:** maintainer directive — "onwards and upwards. how do people install into say ollama or use it standalone. make a nice landing, install page, tutorial, etc. to give people an easy start. Give a basic structure map that shows people what makes Adam different as well (very nice visual)"
 
 **1. `docs/architecture.svg`** — 980×640 side-by-side comparison: Traditional LLM (left, gray) vs Adam (right, amber). 7 architectural layers compared (weights, compression, memory, compute, safety, code output, cross-query memory). Embedded in README via relative path and in landing page via raw.githubusercontent.com URL.
 
@@ -965,7 +963,7 @@ Hardware minimums table, verification curl steps, troubleshooting (OOM, port con
 
 ## v6.8.iter21 — Public GitHub launch (Amnibro/Amni-Ai, CC BY-NC 4.0) (2026-05-16)
 
-**Trigger:** the maintainer — "let's set adam up on my github and my example.com site pages, open sourced but protected from commercial use. Let's wire up the ptex federation and automate it. for each iterative improvement loop, make sure to push the changes to git"
+**Trigger:** maintainer directive — "let's set adam up on my github and my example.com site pages, open sourced but protected from commercial use. Let's wire up the ptex federation and automate it. for each iterative improvement loop, make sure to push the changes to git"
 
 **Live at https://github.com/Amnibro/Amni-Ai** — public, source-available, CC BY-NC 4.0.
 
@@ -1170,7 +1168,7 @@ Added a third stacked safety layer alongside the existing regex + hash-pattern l
 
 ## v6.7.0 — GPU encoder + 340-lesson corpus expansion (2026-05-16)
 
-**Trigger:** the maintainer — "not enough yet. also is it primarily CPU right now instead of GPU? took ages to make a haiku."
+**Trigger:** maintainer directive — "not enough yet. also is it primarily CPU right now instead of GPU? took ages to make a haiku."
 
 Two real bugs: (1) MiniLM embedding encoder was CPU-only despite Adam's main model being on the 7800 XT via ROCm 7.2, and (2) the v6.6 corpus (141 lessons) wasn't big enough to cover everyday queries like "haiku about AI" — those fell to slow Gemma generation.
 
@@ -1225,7 +1223,7 @@ Two real bugs: (1) MiniLM embedding encoder was CPU-only despite Adam's main mod
 
 ## v6.6.0 — CoT teaching corpus + coding PTEX bank + tier1.5-first dispatch + UI scroll fixes (2026-05-16)
 
-**Trigger:** the maintainer — "adam knows basically nothing plus the scroll window doesn't exist, and if you click learnings it overflows. i need you to help give it serious COT teaching and capability, like you have, and ptex learnings that will make it a highly advanced coder like we previously discussed."
+**Trigger:** maintainer directive — "adam knows basically nothing plus the scroll window doesn't exist, and if you click learnings it overflows. i need you to help give it serious COT teaching and capability, like you have, and ptex learnings that will make it a highly advanced coder like we previously discussed."
 
 Three workstreams: fix the UI bugs, write a serious chain-of-thought corpus, and build a coding-specific PTEX bank that makes Adam talk like a senior engineer.
 
@@ -1309,7 +1307,7 @@ Three workstreams: fix the UI bugs, write a serious chain-of-thought corpus, and
 
 ## v6.5.0 — Zero-friction install + first-run wizard + sidebar UI + amni code mode (2026-05-15)
 
-**Trigger:** the maintainer — "we need it to automate most of this so someone can literally one-click install, and run without having to use these special commands to get it learning. It needs a tutorial, a clean interface, capability to act like a CLI agentically for programming, and click buttons to allow it to explore/learn/etc. from the environment it's in."
+**Trigger:** maintainer directive — "we need it to automate most of this so someone can literally one-click install, and run without having to use these special commands to get it learning. It needs a tutorial, a clean interface, capability to act like a CLI agentically for programming, and click buttons to allow it to explore/learn/etc. from the environment it's in."
 
 Five major additions: cross-platform installers, auto-config bootstrap, polished sidebar UI with quick-action buttons, in-browser onboarding tutorial, and project-aware code mode.
 
@@ -1321,7 +1319,7 @@ Five major additions: cross-platform installers, auto-config bootstrap, polished
 
 **2. New module `amni/bootstrap.py` — config + auto-detect + model download:**
 - `CONFIG_DIR = ~/.amni-ai/` (deliberately distinct from `~/.amni/` which collides with the maintainer's existing desktop app)
-- `load_config()` returns merged defaults + saved + auto-detected paths. Auto-detects bake at `E:/Amni-Ai-Bakes/...`, `~/.amni-ai/bakes/...`, `./bakes/...`, `~/amni-bakes/...`. Falls back to None if missing. Validates that saved paths actually exist on disk; otherwise re-detects.
+- `load_config()` returns merged defaults + saved + auto-detected paths. Auto-detects bake at `<bake-root>/...`, `~/.amni-ai/bakes/...`, `./bakes/...`, `~/amni-bakes/...`. Falls back to None if missing. Validates that saved paths actually exist on disk; otherwise re-detects.
 - **Local-first lesson paths:** `lessons`, `lut_root`, `conv_root`, `persona_bank`, `audit_log` prefer `./experiences/...` (project dir) when present, else `~/.amni-ai/experiences/...` (global). Preserves the maintainer's existing 207-lesson bank automatically.
 - `download_bake(cfg)` — pulls Gemma-4 E2B GF(17) bake from HF (`Amnibro/gemma-4-E2B-it-gf17`, ~5 GB) using `snapshot_download`. Same for `download_base_model`.
 - `is_first_run()` / `mark_first_run_done()` flag.
@@ -1401,7 +1399,7 @@ amni code ~/my-app    # project-aware mode in specified dir
 
 ## v6.4.0 — Pip-installable + ReAct agentic loop + PII-filtered federated learning + self-reflection (2026-05-15)
 
-**Trigger:** the maintainer — "what's left to make Adam a deployable AI assistant that can be utilized agentically, chat-wise, cross-platform, etc? How do we get Adam to be easily installed anywhere? How do we get Adam learning from others and itself (no PII)? I still have the huggingface repo for PTEX - maybe we use that."
+**Trigger:** maintainer directive — "what's left to make Adam a deployable AI assistant that can be utilized agentically, chat-wise, cross-platform, etc? How do we get Adam to be easily installed anywhere? How do we get Adam learning from others and itself (no PII)? I still have the huggingface repo for PTEX - maybe we use that."
 
 Four major additions: cross-platform packaging, federated knowledge sharing, agentic goal pursuit, and continuous self-improvement.
 
@@ -1498,7 +1496,7 @@ amni reflect --once                        # one self-reflection cycle
 
 ## v6.3.0 — Persona system + categorical PTEX tone atlas + MCP server + voice UI (2026-05-15)
 
-**Trigger:** the maintainer — "still seems too robotic. What happened to our categorical ptex sort, dimensional approach (for organic responses)? Allow a user to suggest whatever persona they want. Adam needs to be able to search the web for personas if not in the trained model. Also deploy the rest of the upgrades (ptex/deployment infra)."
+**Trigger:** maintainer directive — "still seems too robotic. What happened to our categorical ptex sort, dimensional approach (for organic responses)? Allow a user to suggest whatever persona they want. Adam needs to be able to search the web for personas if not in the trained model. Also deploy the rest of the upgrades (ptex/deployment infra)."
 
 The v6.2 chat path used `_vanilla_letter`'s system prompt (`"Be concise and direct. Provide the answer in one short sentence or phrase."`) — explicitly asks for robotic output. Meanwhile `dual_mind.py` had a Rikku persona prompt that was never wired into v6 serve. Column-parallel (the dimensional approach) and PTEX atlas infrastructure existed but didn't reach the chat surface. v6.3.0 fixes all of that.
 
@@ -1592,7 +1590,7 @@ The v6.2 chat path used `_vanilla_letter`'s system prompt (`"Be concise and dire
 
 ## v6.2.0 — Capability fixes from brutal probe (2026-05-15)
 
-**Trigger:** the maintainer — "go through and figure out what else Adam is missing functionality wise that would really make it standout. Probe it strongly. Figure out if it learns in real practice." 25-prompt brutal probe found 5 real bugs across the live deploy.
+**Trigger:** maintainer directive — "go through and figure out what else Adam is missing functionality wise that would really make it standout. Probe it strongly. Figure out if it learns in real practice." 25-prompt brutal probe found 5 real bugs across the live deploy.
 
 **Bugs found and fixed:**
 
@@ -1635,7 +1633,7 @@ The v6.2 chat path used `_vanilla_letter`'s system prompt (`"Be concise and dire
 
 ## v6.1.0 — Computer-wide file access + scan-to-learn (2026-05-15)
 
-**Trigger:** the maintainer — "we need the skills to include access to computer files and the ability to scan to learn."
+**Trigger:** maintainer directive — "we need the skills to include access to computer files and the ability to scan to learn."
 
 Two additions: (a) file skills can now reach beyond the workdir via multi-root or unrestricted modes; (b) new `scan` skill walks a directory, chunks each text file, and bulk-teaches each chunk to Adam's lesson bank.
 
@@ -1674,7 +1672,7 @@ Two additions: (a) file skills can now reach beyond the workdir via multi-root o
 ```
 .venv/Scripts/python.exe scripts/amni_serve.py --seed --cors --unrestricted-files
 # Or with explicit roots:
-.venv/Scripts/python.exe scripts/amni_serve.py --seed --cors --root D:/data --root E:/Amni-Ai-Bakes
+.venv/Scripts/python.exe scripts/amni_serve.py --seed --cors --root D:/data --root <bake-root>
 ```
 
 In the chat UI: `scan the directory <path>` works as a natural-language command.
@@ -2332,7 +2330,7 @@ After three OOM/lock crashes baking Gemma-4 (huge embedding tensor, intermediate
 | fp16 baseline | 9,771.7 MB |
 | GF(17) on disk | 19,543.4 MB (2.0x ratio expected) |
 | Model classes captured | language_model (text), vision_tower, audio_tower |
-| Bake at | `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` |
+| Bake at | `<bake-root>/gemma4_e2b_it_gf17/` |
 
 ### What this enables
 
@@ -2343,7 +2341,7 @@ Next: smoke-test inference on the bake, baseline MMLU vs the upstream HF referen
 ### Files
 
 - `scripts/v5_0_3_bake.py` — direct-page-write chunking patch
-- `E:/Amni-Ai-Bakes/gemma4_e2b_it_gf17/` — 20GB lossless bake
+- `<bake-root>/gemma4_e2b_it_gf17/` — 20GB lossless bake
 
 ---
 
@@ -2478,7 +2476,7 @@ Per the maintainer's design: each function = one addressable unit; later iterati
 
 - 1411 source files scanned across 8+ projects
 - 7079 unique code units stored
-- 5.0 MB PTEX KB at `E:/Amni-Ai-KB/personal_functions/`
+- 5.0 MB PTEX KB at `<kb-root>/personal_functions/`
 - Significant deduplication observed (initial run: 5107 unique / 8684 total = 41% dedupe rate; many repeated boilerplate patterns concentrated)
 
 ### What this enables
@@ -3567,13 +3565,13 @@ Cosmopedia stays in the KB roster as an alternate; not the primary route.
 - `scripts/adam1_ingest_hf_to_kb.py` — patched `_raw_template` for None-fallback
 - `logs/training_cycles/cosmopedia_ingest.log`
 - `logs/training_cycles/v5_5_114_cosmopedia.json`
-- `E:/Amni-Ai-KB/cosmopedia_100k/` — 399MB, 100K entries
+- `<kb-root>/cosmopedia_100k/` — 399MB, 100K entries
 
 ---
 
 ## v5.5.113 — Wiki-full (100K English Wikipedia articles) doubles the substrate lift to +1.3pp MMLU (was +0.6pp with simple-wiki); per-subject changes match prediction — biology/chemistry/genetics each +6.2pp from richer technical content (2026-05-01)
 
-Hypothesis from v5.5.112: the remaining medical_genetics, college_chemistry, machine_learning losses come from `wikipedia_simple` (Simple English Wikipedia, dumbed-down summaries) lacking the technical depth needed for MMLU's MCQ format. Test: ingest 100K full English Wikipedia articles to E:/Amni-Ai-KB/wikipedia_full and re-run the same 320q bench with the new KB routed for science/language/history/global subjects.
+Hypothesis from v5.5.112: the remaining medical_genetics, college_chemistry, machine_learning losses come from `wikipedia_simple` (Simple English Wikipedia, dumbed-down summaries) lacking the technical depth needed for MMLU's MCQ format. Test: ingest 100K full English Wikipedia articles to <kb-root>/wikipedia_full and re-run the same 320q bench with the new KB routed for science/language/history/global subjects.
 
 ### Ingest
 
@@ -3623,7 +3621,7 @@ ML questions are conceptual/algorithmic (gradient descent hyperparameters, gener
 - `scripts/adam1_ingest_hf_to_kb.py` — patched line 85 ASCII-safe print
 - `logs/training_cycles/wiki_full_ingest.log` — ingest run log
 - `logs/training_cycles/v5_5_113_wiki_full.json` — bench result
-- `E:/Amni-Ai-KB/wikipedia_full/` — new KB (149MB, 99989 entries)
+- `<kb-root>/wikipedia_full/` — new KB (149MB, 99989 entries)
 
 ---
 
@@ -4022,7 +4020,7 @@ Streamed `qwedsacf/competition_math` (Hendrycks MATH competition corpus) via `ad
 
 ```
 adam1 ingest_hf_to_kb --dataset qwedsacf/competition_math --template math \\
-  --kb-root E:/Amni-Ai-KB/competition_math --max-records 5000
+  --kb-root <kb-root>/competition_math --max-records 5000
 ```
 
 Result: **5,000 problems with worked solutions in 477s wall, 0 skipped, 3.9 MB on disk.** Each entry is `Q: <problem>\n\nA: <solution>` keyed as `math::<idx>`.
@@ -4034,8 +4032,8 @@ Result: **5,000 problems with worked solutions in 477s wall, 0 skipped, 3.9 MB o
 | Subject | KB | Entries |
 |---|---|---|
 | `code` | `experiences/kb_canonical/` (C:) | 196,009 |
-| `science`, `language`, `history`, `global` | `E:/Amni-Ai-KB/wikipedia_simple/` | 50,000 |
-| `math`, `reasoning` | `E:/Amni-Ai-KB/competition_math/` | 5,000 |
+| `science`, `language`, `history`, `global` | `<kb-root>/wikipedia_simple/` | 50,000 |
+| `math`, `reasoning` | `<kb-root>/competition_math/` | 5,000 |
 
 The SubjectClassifier (v5.5.85) auto-routes per query — math queries get math KB, factual queries get Wikipedia, code queries get canonical-51 docs. Adam-1 now has **a unified factual interface across 4 specialized KB pools** routable per query.
 
@@ -4080,7 +4078,7 @@ Plus the +54.7pp avg lift across 15 niche slugs (v5.5.101) is independent eviden
 
 - `scripts/adam1_serve_multikb.py` (new)
 - `scripts/adam1.py` (umbrella + help text)
-- `E:/Amni-Ai-KB/competition_math/` (5K math problems, 3.9 MB)
+- `<kb-root>/competition_math/` (5K math problems, 3.9 MB)
 - `logs/training_cycles/ask_loop_math_smoke.json` (the 300 fix)
 
 ### Next iteration priorities
@@ -4102,7 +4100,7 @@ Used `adam1_ingest_hf_to_kb` (the v5.5.97 pipeline) to stream `wikimedia/wikiped
 
 ```
 adam1 ingest_hf_to_kb --dataset wikimedia/wikipedia --config 20231101.simple \
-  --split train --template wikipedia --kb-root E:/Amni-Ai-KB/wikipedia_simple \
+  --split train --template wikipedia --kb-root <kb-root>/wikipedia_simple \
   --max-records 50000
 ```
 
@@ -4113,9 +4111,9 @@ Result: **50,000 articles ingested in 368s wall, 0 skipped.** Each article keyed
 | Source | Location | Entries | Use case |
 |---|---|---|---|
 | canonical-51 (DevDocs original) | `experiences/kb_canonical/` (C:) | 196,009 | Code/library docs (51 popular) |
-| canonical-extended (waves 1+2 DevDocs) | `E:/Amni-Ai-KB/canonical-extended/` + per-slug split | 107,774 | Code/library docs (17 niche) |
-| arc_agi training tasks | `E:/Amni-Ai-KB/arc_agi/` | 400 | ARC-AGI grid challenges |
-| **wikipedia_simple (NEW)** | `E:/Amni-Ai-KB/wikipedia_simple/` | **50,000** | **Broad factual/MMLU/TruthfulQA-shape** |
+| canonical-extended (waves 1+2 DevDocs) | `<kb-root>/canonical-extended/` + per-slug split | 107,774 | Code/library docs (17 niche) |
+| arc_agi training tasks | `<kb-root>/arc_agi/` | 400 | ARC-AGI grid challenges |
+| **wikipedia_simple (NEW)** | `<kb-root>/wikipedia_simple/` | **50,000** | **Broad factual/MMLU/TruthfulQA-shape** |
 | **TOTAL** | | **~354,183 entries** | |
 
 ### Smoke test result on v5.5.79 TruthfulQA failure
@@ -4148,7 +4146,7 @@ This is also a v5.5.104 issue carrying forward — the identifier-bonus in the c
 
 - `scripts/adam1_ingest_hf_to_kb.py` (no change — re-used)
 - `scripts/adam1_ask_with_loop.py` (added `_IDENT_BLOCKLIST` + filter in `_extract_idents`)
-- `E:/Amni-Ai-KB/wikipedia_simple/` (new, 50K articles, ~200 MB)
+- `<kb-root>/wikipedia_simple/` (new, 50K articles, ~200 MB)
 - `logs/training_cycles/ask_loop_wiki_smoke.json` (the bats success on iter 1)
 
 ### Next iteration priorities
@@ -4439,7 +4437,7 @@ The pattern that makes it work (per v5.5.100):
 - Boots StreamingChatService once
 - For each slug: clear `_kb`, run baseline (no KB, generic prompt) → attach per-slug KB → run KB-attached (grounded prompt)
 - Per-slug + aggregate JSON report
-- Path bug fixed: `--per-slug-kb-root` defaults to `E:/Amni-Ai-KB/...` (Windows path, not bash `/e/...` which Python sees as relative `\e\`)
+- Path bug fixed: `--per-slug-kb-root` defaults to `<kb-root>/...` (Windows path, not bash `/e/...` which Python sees as relative `\e\`)
 
 ### What's next (v5.5.102+)
 
@@ -4472,8 +4470,8 @@ This is the FIRST significant lift demonstrating Adam-1's substrate genuinely ou
 ### The 3 compounding fixes
 
 **1. Per-slug KB split of canonical-extended (E: drive)**
-- Ran v5.5.82 split script targeting `E:/Amni-Ai-KB/canonical-extended/` → produced `E:/Amni-Ai-KB/canonical-extended-per-slug/<slug>/` for each of 17 slugs
-- nim now has its own KB at `E:/Amni-Ai-KB/canonical-extended-per-slug/nim/` (12,212 entries / 1 page)
+- Ran v5.5.82 split script targeting `<kb-root>/canonical-extended/` → produced `<kb-root>/canonical-extended-per-slug/<slug>/` for each of 17 slugs
+- nim now has its own KB at `<kb-root>/canonical-extended-per-slug/nim/` (12,212 entries / 1 page)
 - Eliminates cross-slug noise — retrieval can't accidentally match `cmdline*` entries from crystal/d when asked about Nim's cmdlinehelper
 
 **2. KBRetriever `slug=` filter**
@@ -4545,7 +4543,7 @@ For HF leaderboard targeting (TruthfulQA, HellaSwag, MMLU): Adam-1 with grounded
 
 - `logs/training_cycles/hard_kb_nim_v5_5_99_grounded.json` (the breakthrough run)
 - `logs/hard_kb_nim_v5_5_99_grounded.log`
-- `E:/Amni-Ai-KB/canonical-extended-per-slug/{nim,qt_6_8,godot_4_2,crystal,d,erlang_26}/` (split-out per-slug KBs in flight)
+- `<kb-root>/canonical-extended-per-slug/{nim,qt_6_8,godot_4_2,crystal,d,erlang_26}/` (split-out per-slug KBs in flight)
 
 ---
 
@@ -4558,8 +4556,8 @@ Wave 1 (v5.5.96, niche languages) + Wave 2 (vision/gaming + ARC) all ingested to
 | Source | Location | Entries | Disk |
 |---|---|---|---|
 | canonical-51 (the original) | `experiences/kb_canonical/` (C:) | 196,009 | 672 MB |
-| canonical-extended (waves 1+2 DevDocs) | `E:/Amni-Ai-KB/canonical-extended/` | ~107,000 | ~370 MB |
-| ARC v1 training tasks | `E:/Amni-Ai-KB/arc_agi/` | 400 | ~1 MB |
+| canonical-extended (waves 1+2 DevDocs) | `<kb-root>/canonical-extended/` | ~107,000 | ~370 MB |
+| ARC v1 training tasks | `<kb-root>/arc_agi/` | 400 | ~1 MB |
 | **TOTAL** | | **~303,400 entries** | **~1.04 GB** |
 
 ### Wave 1 + Wave 2 per-slug breakdown
@@ -4778,7 +4776,7 @@ These were filtered from a 233-candidate pool of "non-canonical-51 DevDocs slugs
 
 ### Storage
 
-`E:/Amni-Ai-KB/canonical-extended/` — separate KB directory on E: drive (slower but ~3x more capacity than C:). Coexists with `experiences/kb_canonical/` (canonical-51 stays on C: for hot retrieval).
+`<kb-root>/canonical-extended/` — separate KB directory on E: drive (slower but ~3x more capacity than C:). Coexists with `experiences/kb_canonical/` (canonical-51 stays on C: for hot retrieval).
 
 ### What this enables
 
@@ -4797,7 +4795,7 @@ Background ingest started: `nohup adam1 kb_build --slug crystal d duckdb erlang~
 
 - `data/devdocs_canonical_extended.json` (233-candidate pool)
 - `data/devdocs_v5_5_96_extension.json` (curated 11)
-- `E:/Amni-Ai-KB/canonical-extended/` (KB output, in flight)
+- `<kb-root>/canonical-extended/` (KB output, in flight)
 - `logs/kb_build_extended_v5_5_96.log` (ingest log)
 
 ### Followup
@@ -5974,7 +5972,7 @@ The score-delta question (does Adam-1 actually answer better with KB attached?) 
 ### Followup
 
 - **v5.5.77+**: hardened single-question bench harness with subprocess+timeout — only when the canonical-51 KB build completes and inference perf is acceptable enough to make benching tractable. Not a blocker for the current substrate.
-- **Borderline cleanup pending the maintainer's call**: Qwen3.5-0.8B family + bakes (~10 GB), and cargo target dirs across 9 Amni-* repos.
+- **Borderline cleanup pending maintainer's call**: Qwen3.5-0.8B family + bakes (~10 GB), and cargo target dirs across 9 Amni-* repos.
 
 ---
 
@@ -6063,7 +6061,7 @@ Audited every cached HF model and bake against current code references. Identifi
 | `~/.cache/huggingface/hub/models--TrevorJS--gemma-4-31B-it-uncensored/` | 31 MB (stale Gemma stub) |
 | **Total freed** | **71 GB** (713 → 643 GB used; 218 → 289 GB free) |
 
-Kept as regression anchors: `bakes/adam_a1_native_v1_0` and `v1_1` (latest two), `bakes/qwen25_0_5b_v5_0_3` (used by `v5_5_4_benchmark_suite.py`), the live `qwen25_1_5b_instruct_gf17_v5_0_3` substrate, and `downloaded_models/Qwen2.5-1.5B-Instruct` (current source model). Borderline (Qwen3.5-0.8B family + bakes ≈ 10 GB) left intact pending the maintainer's call. Cargo target dirs across 9 Amni-* repos pending separate green-light.
+Kept as regression anchors: `bakes/adam_a1_native_v1_0` and `v1_1` (latest two), `bakes/qwen25_0_5b_v5_0_3` (used by `v5_5_4_benchmark_suite.py`), the live `qwen25_1_5b_instruct_gf17_v5_0_3` substrate, and `downloaded_models/Qwen2.5-1.5B-Instruct` (current source model). Borderline (Qwen3.5-0.8B family + bakes ≈ 10 GB) left intact pending maintainer's call. Cargo target dirs across 9 Amni-* repos pending separate green-light.
 
 ### Files
 
@@ -6076,7 +6074,7 @@ Kept as regression anchors: `bakes/adam_a1_native_v1_0` and `v1_1` (latest two),
 
 ## v5.5.74 — ATEX: local-only PTEX + MCP server so ANY AI client can query project context (2026-04-30)
 
-**Trigger:** universal-pain insight from the maintainer — "every single person I've seen coding with AI has echoed the same sentiment: they're tired of having to explain the same thing over and over, or having it have to research the same directories/files/etc. Doesn't ATEX (local machine only — non-federated PTEX) solve this? Is there a way I can deploy this so anyone can use it with any model can benefit?"
+**Trigger:** universal-pain insight from maintainer directive — "every single person I've seen coding with AI has echoed the same sentiment: they're tired of having to explain the same thing over and over, or having it have to research the same directories/files/etc. Doesn't ATEX (local machine only — non-federated PTEX) solve this? Is there a way I can deploy this so anyone can use it with any model can benefit?"
 
 ATEX = local, single-project PTEX KB (no federation, no upload). Sits in `.atex/` at the project root, ingests source files into a byte-level lossless LUT, and exposes itself as **MCP tools** (Model Context Protocol — Anthropic's standard for plugging tools/context into AI clients). Once configured, Claude Code / Cursor / Cline / Continue / Zed / Claude Desktop can call `atex_search` / `atex_recall` / `atex_remember` / `atex_list_keys` / `atex_stats` mid-conversation. The "AI re-explains my codebase every session" problem dies.
 
@@ -9581,7 +9579,7 @@ The Adam-1 substrate is fully built, deployed (bake CLI, OpenAI server, HF publi
 
 ## v5.5.30 — Public deployment scaffolding (2026-04-30)
 
-**Trigger:** the maintainer — *"how do we cleanly put Adam-1 on GH and HuggingFace and ArXiv? Let's make a whitepaper, a tool for users to load their own models and bootstrap to PTEX, and a method for interfacing with common tools like cursor/IDEs/etc."*
+**Trigger:** maintainer directive — *"how do we cleanly put Adam-1 on GH and HuggingFace and ArXiv? Let's make a whitepaper, a tool for users to load their own models and bootstrap to PTEX, and a method for interfacing with common tools like cursor/IDEs/etc."*
 
 Six new top-level deliverables to take Adam-1 from research codebase to deployable open-source project.
 
