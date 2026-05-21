@@ -180,6 +180,7 @@ def main():
     ap.add_argument('--workdir',default=None,help='Primary skill workdir (defaults to cwd). Use --root for additional roots.')
     ap.add_argument('--root',action='append',default=[],help='Additional allowed root for file_*/code_edit/scan/shell. Repeatable.')
     ap.add_argument('--unrestricted-files',action='store_true',help='Drop workdir gating and allow file ops on ANY drive. Use with care.')
+    ap.add_argument('--web-unrestricted',action='store_true',default=bool(os.environ.get('AMNI_WEB_UNRESTRICTED')),help='Allow web crawler to fetch ANY DDG result, not just the trusted-domain allowlist. Still blocks known malware/adult patterns. Off by default.')
     ap.add_argument('--seed',action='store_true',help='seed lessons with default bank if file missing')
     ap.add_argument('--cors',action='store_true',help='enable permissive CORS for dev')
     ap.add_argument('--persona-bank',default='experiences/personas.json',help='Persona store path (learned personas + per-session map)')
@@ -206,7 +207,7 @@ def main():
     from amni.serve.skills import default_registry
     from amni.serve import ollama_compat,web,mcp
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
-    adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None)
+    adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=args.web_unrestricted)
     print(f'[amni_serve] Adam ready: {adam.stats()}',flush=True)
     try:
         from amni.serve import intent_classifier as _ic

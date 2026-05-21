@@ -13,8 +13,9 @@ import os,json,time,hashlib
 from pathlib import Path
 from typing import Optional,Dict,Any,List,Tuple
 class Adam:
-    def __init__(self,bake:str,model:str,lessons_path:str='experiences/adam_lessons.npz',lut_root:str='experiences/adam_lut',budget_mb:int=8000,seed_lessons:Optional[list]=None,enable_crawler:bool=True):
+    def __init__(self,bake:str,model:str,lessons_path:str='experiences/adam_lessons.npz',lut_root:str='experiences/adam_lut',budget_mb:int=8000,seed_lessons:Optional[list]=None,enable_crawler:bool=True,web_unrestricted:bool=False):
         self.bake=bake;self.model=model;self.lessons_path=Path(lessons_path);self.lut_root=lut_root
+        self.web_unrestricted=web_unrestricted or bool(os.environ.get('AMNI_WEB_UNRESTRICTED'))
         os.environ.setdefault('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL','1')
         from amni.inference.streaming_chat import StreamingChatService
         from amni.inference.adam_loop import AdamLoop
@@ -32,8 +33,9 @@ class Adam:
         if enable_crawler:
             try:
                 from amni.inference.web_crawler import CrawlerPlugin
-                self.crawler_plugin=CrawlerPlugin(distiller_svc=self.svc,max_pages=2,distill_max_tokens=180)
-                print(f'[Adam] crawler plugin enabled (CrawlerPlugin with {len(self.crawler_plugin.crawler.allow)} allowed domains)',flush=True)
+                self.crawler_plugin=CrawlerPlugin(distiller_svc=self.svc,max_pages=2,distill_max_tokens=180,unrestricted=self.web_unrestricted)
+                _mode='UNRESTRICTED (any domain)' if self.web_unrestricted else f'{len(self.crawler_plugin.crawler.allow)} trusted domains'
+                print(f'[Adam] crawler plugin enabled ({_mode})',flush=True)
             except Exception as e:print(f'[Adam] crawler init failed (web-learn will fallback): {e}',flush=True)
         if self.lessons_path.exists():
             try:self.sem_lut=SemanticPTEXLUT.load(str(self.lessons_path).removesuffix('.npz'))
