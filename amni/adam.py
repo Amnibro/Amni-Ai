@@ -13,9 +13,9 @@ import os,json,time,hashlib
 from pathlib import Path
 from typing import Optional,Dict,Any,List,Tuple
 class Adam:
-    def __init__(self,bake:str,model:str,lessons_path:str='experiences/adam_lessons.npz',lut_root:str='experiences/adam_lut',budget_mb:int=8000,seed_lessons:Optional[list]=None,enable_crawler:bool=True,web_unrestricted:bool=False):
+    def __init__(self,bake:str,model:str,lessons_path:str='experiences/adam_lessons.npz',lut_root:str='experiences/adam_lut',budget_mb:int=8000,seed_lessons:Optional[list]=None,enable_crawler:bool=True,web_unrestricted:bool=True):
         self.bake=bake;self.model=model;self.lessons_path=Path(lessons_path);self.lut_root=lut_root
-        self.web_unrestricted=web_unrestricted or bool(os.environ.get('AMNI_WEB_UNRESTRICTED'))
+        self.web_unrestricted=web_unrestricted and not bool(os.environ.get('AMNI_WEB_RESTRICTED'))
         os.environ.setdefault('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL','1')
         from amni.inference.streaming_chat import StreamingChatService
         from amni.inference.adam_loop import AdamLoop
