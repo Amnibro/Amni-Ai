@@ -701,7 +701,7 @@ function playB64(b64){
 async function speakText(text){
   if(!text||!text.trim())return;
   try{
-    const args={text};const v=document.getElementById('voice-pick').value;if(v)args.voice=v;
+    const args={text,session_id:session};const v=document.getElementById('voice-pick').value;if(v)args.voice=v;
     const r=await fetch(`${API}/skills/tts`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args})});
     const d=await r.json();
     if(d.output?.audio_base64){lastReplyAudio=d.output.audio_base64;playB64(d.output.audio_base64);}
@@ -712,7 +712,7 @@ document.getElementById('voice-rec').onclick=()=>recordAndSend(5);
 document.getElementById('voice-rec-long').onclick=()=>recordAndSend(10);
 document.getElementById('voice-replay').onclick=()=>{if(lastReplyAudio)playB64(lastReplyAudio);else toast('no reply yet','err');};
 document.getElementById('voice-test').onclick=async()=>{
-  const args={text:`Hello, this is your ${document.getElementById('voice-pick').value||'default'} voice.`};
+  const args={text:`Hello, this is your ${document.getElementById('voice-pick').value||curVoice||'default'} voice.`,session_id:session};
   const v=document.getElementById('voice-pick').value;if(v)args.voice=v;
   const r=await fetch(`${API}/skills/tts`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args})});
   const d=await r.json();if(d.output?.audio_base64)playB64(d.output.audio_base64);
