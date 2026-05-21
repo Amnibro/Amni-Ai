@@ -7,7 +7,7 @@ from typing import List,Tuple,Optional
 from collections import defaultdict
 _DEFAULT_ALLOW=('wikipedia.org','simple.wikipedia.org','wiktionary.org','wikibooks.org','wikiversity.org','stackexchange.com','stackoverflow.com','superuser.com','serverfault.com','askubuntu.com','arxiv.org','pubmed.ncbi.nlm.nih.gov','ncbi.nlm.nih.gov','nih.gov','cdc.gov','who.int','plato.stanford.edu','iep.utm.edu','britannica.com','khanacademy.org','wolframalpha.com','mathworld.wolfram.com','byjus.com','sparknotes.com','encyclopedia.com','reference.com','dictionary.com','merriam-webster.com','docs.python.org','python.org','developer.mozilla.org','docs.djangoproject.com','flask.palletsprojects.com','fastapi.tiangolo.com','pytorch.org','huggingface.co','tensorflow.org','keras.io','scikit-learn.org','numpy.org','scipy.org','pandas.pydata.org','matplotlib.org','seaborn.pydata.org','plotly.com','jupyter.org','anaconda.com','realpython.com','github.com','gitlab.com','bitbucket.org','readthedocs.io','readthedocs.org','medlineplus.gov','mayoclinic.org','healthline.com','webmd.com','medicinenet.com','nasa.gov','noaa.gov','usgs.gov','nature.com','sciencedirect.com','science.org','pnas.org','ieee.org','acm.org','smithsonianmag.com','natgeo.com','nationalgeographic.com','history.com','bbc.com','reuters.com','npr.org','pbs.org','metmuseum.org','loc.gov','archives.gov','data.gov','w3schools.com','geeksforgeeks.org','programiz.com','tutorialspoint.com','learnpython.org','baeldung.com','digitalocean.com','linode.com','vercel.com','netlify.com','cloudflare.com','aws.amazon.com','docs.aws.amazon.com','cloud.google.com','learn.microsoft.com','docs.microsoft.com','dotnet.microsoft.com','rust-lang.org','doc.rust-lang.org','go.dev','golang.org','php.net','ruby-lang.org','rubygems.org','kotlinlang.org','scala-lang.org','swift.org','dart.dev','flutter.dev','reactjs.org','react.dev','vuejs.org','angular.io','svelte.dev','nodejs.org','nodejs.dev','npmjs.com','typescriptlang.org','docs.docker.com','kubernetes.io','helm.sh','nginx.org','nginx.com','redis.io','postgresql.org','mysql.com','mongodb.com','sqlite.org','sqlalchemy.org','mariadb.org','apache.org','perl.org','haskell.org','clojure.org','elixir-lang.org','erlang.org','ocaml.org','julialang.org','rstudio.com','r-project.org','cran.r-project.org','octave.org','sagemath.org','wolfram.com','intel.com','amd.com','nvidia.com','developer.nvidia.com','developer.intel.com','arxiv-vanity.com','distill.pub','paperswithcode.com','openai.com','anthropic.com','deepmind.google','blog.google','research.google','ai.google','jmlr.org','journals.aps.org','aps.org','acs.org','rsc.org','springer.com','wiley.com','elsevier.com','academic.oup.com','frontiersin.org','plos.org','biorxiv.org','medrxiv.org','semanticscholar.org','arxiv-sanity.com','ietf.org','tools.ietf.org','rfc-editor.org','w3.org','whatwg.org','ecma-international.org','iso.org','unicode.org','tc39.es','spec.commonmark.org','cmake.org','gnu.org','gcc.gnu.org','llvm.org','clang.llvm.org','boost.org','cppreference.com','cplusplus.com','isocpp.org','en.cppreference.com','docs.oracle.com','openjdk.org','adoptium.net','spring.io','gradle.org','maven.apache.org','jetbrains.com','eclipse.org','vscode.dev','code.visualstudio.com','vim.org','neovim.io','emacswiki.org','gnu.org','git-scm.com','about.gitlab.com','laravel.com','symfony.com','wordpress.org','wordpress.com','drupal.org','joomla.org','jekyllrb.com','hugo.io','gohugo.io','11ty.dev','nextjs.org','nuxt.com','sveltekit.dev','remix.run','tailwindcss.com','bulma.io','getbootstrap.com','sass-lang.com','less.css.org','postcss.org','webpack.js.org','vitejs.dev','rollupjs.org','parceljs.org','esbuild.github.io','babeljs.io','swc.rs','eslint.org','prettier.io','jestjs.io','vitest.dev','mochajs.org','cypress.io','playwright.dev','selenium.dev','puppeteer.dev','pytest.org','docs.pytest.org','unittest.readthedocs.io','poetry-python.org','pipenv.pypa.io','pip.pypa.io','pypi.org','conda.io','bioconda.github.io','.edu','.gov','.ac.uk')
 class WebCrawler:
-    def __init__(self,allow_list=_DEFAULT_ALLOW,rate_limit_sec=1.0,respect_robots=True,timeout=8,max_chars_per_page=4000,unrestricted=False):
+    def __init__(self,allow_list=None,rate_limit_sec=1.0,respect_robots=True,timeout=8,max_chars_per_page=4000,unrestricted=True):
         self.unrestricted=bool(unrestricted) or allow_list is None or allow_list==()
         self.allow=set(allow_list) if not self.unrestricted and allow_list is not None else set()
         self.rate=rate_limit_sec;self.respect_robots=respect_robots
@@ -16,11 +16,9 @@ class WebCrawler:
     def _domain(self,url:str)->str:
         try:return urllib.parse.urlparse(url).netloc.lower()
         except Exception:return ''
-    _BLOCK_PATTERNS=('malware','phishing','pornhub','xvideos','redtube','xnxx','xhamster','clickfunnels')
     def _is_allowed(self,url:str)->bool:
         d=self._domain(url)
         if not d:return False
-        if any(b in d for b in self._BLOCK_PATTERNS):return False
         if self.unrestricted:return True
         for a in self.allow:
             if a.startswith('.') and (d.endswith(a) or d==a[1:]):return True
@@ -74,7 +72,7 @@ class WebCrawler:
             if text:out.append((u,text))
         return out
 class CrawlerPlugin:
-    def __init__(self,distiller_svc,topic_extractor_svc=None,allow_list=_DEFAULT_ALLOW,max_pages=3,distill_max_tokens=200,unrestricted=False):
+    def __init__(self,distiller_svc,topic_extractor_svc=None,allow_list=None,max_pages=3,distill_max_tokens=200,unrestricted=True):
         self.crawler=WebCrawler(allow_list=allow_list,unrestricted=unrestricted)
         self.distiller=distiller_svc
         self.topic_extractor=topic_extractor_svc or distiller_svc
