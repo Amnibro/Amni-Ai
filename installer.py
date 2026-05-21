@@ -1,6 +1,8 @@
 import os,sys,subprocess,threading,json,platform,webbrowser,shutil,urllib.parse
 from pathlib import Path
 from datetime import datetime
+try:from amni.bootstrap import DEFAULT_PORT
+except Exception:DEFAULT_PORT=7700
 ROOT=Path(__file__).resolve().parent
 PY=sys.executable
 SUPPORT='the maintainer (via GitHub)'
@@ -157,7 +159,7 @@ document.getElementById('drive')?.addEventListener('change',updateHint);
 if(window.pywebview){init();}else{window.addEventListener('pywebviewready',init);}
 </script></body></html>'''
 class API:
-    def __init__(self):self.window=None;self.log_path=None;self.log_lines=[];self.proc=None;self.port=7700
+    def __init__(self):self.window=None;self.log_path=None;self.log_lines=[];self.proc=None;self.port=DEFAULT_PORT
     def init(self):return {'drives':list_drives(),'gpu':detect_gpu(),'persona':'rikku'}
     def open_browse(self,start):
         if not self.window:return None

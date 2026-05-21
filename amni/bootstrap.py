@@ -18,7 +18,9 @@ CONFIG_DIR=Path(_resolve_amni_home())
 CONFIG_FILE=CONFIG_DIR/'config.json'
 DEFAULT_HF_REPO='amnibro/gemma-4-E2B-it-gf17'
 DEFAULT_BASE_REPO='google/gemma-2-2b-it'
-_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'workdir':None,'default_persona':'rikku','port':7700,'host':'127.0.0.1','unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
+DEFAULT_PORT=7700
+DEFAULT_HOST='127.0.0.1'
+_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
 def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
