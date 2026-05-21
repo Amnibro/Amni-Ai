@@ -1,0 +1,8 @@
+EXPORTS
+wmma_gemm_init
+wmma_gemm_alloc
+wmma_gemm_free
+wmma_gemm_h2d
+wmma_gemm_d2h
+wmma_gemm_sync
+wmma_gemm_run

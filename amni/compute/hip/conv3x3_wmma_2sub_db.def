@@ -1,0 +1,4 @@
+EXPORTS
+conv3x3_wmma_2sub_db_init
+conv3x3_wmma_2sub_db_sync
+conv3x3_wmma_2sub_db_run

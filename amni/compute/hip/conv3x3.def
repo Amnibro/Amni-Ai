@@ -1,0 +1,8 @@
+EXPORTS
+conv3x3_init
+conv3x3_alloc
+conv3x3_free
+conv3x3_h2d
+conv3x3_d2h
+conv3x3_sync
+conv3x3_run
