@@ -47,7 +47,7 @@ def mount(app,agent):
         except Exception:return JSONResponse(status_code=400,content={'jsonrpc':'2.0','error':{'code':-32700,'message':'parse error'},'id':None})
         method=body.get('method');rpc_id=body.get('id');params=body.get('params') or {}
         if method=='initialize':
-            return {'jsonrpc':'2.0','id':rpc_id,'result':{'protocolVersion':'2025-06-18','serverInfo':{'name':'amni-ai-adam','version':'6.3.0'},'capabilities':{'tools':{'listChanged':False},'resources':{'subscribe':False,'listChanged':False},'prompts':{'listChanged':False}}}}
+            return {'jsonrpc':'2.0','id':rpc_id,'result':{'protocolVersion':'2025-06-18','serverInfo':{'name':'amni-ai-adam','version':'6.9.3'},'capabilities':{'tools':{'listChanged':False},'resources':{'subscribe':False,'listChanged':False},'prompts':{'listChanged':False}}}}
         if method=='tools/list':return {'jsonrpc':'2.0','id':rpc_id,'result':{'tools':_tool_defs(agent)}}
         if method=='tools/call':
             name=params.get('name','');args=params.get('arguments',{})
@@ -60,4 +60,4 @@ def mount(app,agent):
         if method=='ping':return {'jsonrpc':'2.0','id':rpc_id,'result':{}}
         return {'jsonrpc':'2.0','id':rpc_id,'error':{'code':-32601,'message':f'method not found: {method}'}}
     @app.get('/mcp')
-    def mcp_info():return {'name':'amni-ai-adam','version':'6.3.0','transport':'http-jsonrpc','endpoint':'/mcp','client_config_example':{'mcpServers':{'amni-ai':{'url':f'http://localhost:8002/mcp','transport':'http'}}}}
+    def mcp_info():return {'name':'amni-ai-adam','version':'6.9.3','transport':'http-jsonrpc','endpoint':'/mcp','client_config_example':{'mcpServers':{'amni-ai':{'url':'http://localhost:11434/mcp','transport':'http'}}}}

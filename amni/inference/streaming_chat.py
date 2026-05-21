@@ -118,7 +118,7 @@ class StreamingChatService:
         from threading import Thread
         enc=self.tok(prompt,return_tensors='pt').to(self.device)
         streamer=TextIteratorStreamer(self.tok,skip_prompt=True,skip_special_tokens=True,timeout=300.0)
-        gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,streamer=streamer)
+        gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,eos_token_id=self.tok.eos_token_id,streamer=streamer)
         t=Thread(target=self._safe_generate,args=(gen_kw,))
         t.daemon=True;t.start()
         for chunk in streamer:

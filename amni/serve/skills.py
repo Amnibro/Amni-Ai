@@ -152,7 +152,18 @@ def _skill_web(args,ctx,reg):
     except Exception as e:return {'error':str(e)}
 def _skill_file_read(args,ctx,reg):
     p=args['path'];max_bytes=int(args.get('max_bytes',65536))
-    data=Path(p).read_text(encoding='utf-8',errors='replace')[:max_bytes]
+    _offset=int(args.get('offset',0));_limit=int(args.get('limit',0));_line_offset=int(args.get('line_offset',0));_line_limit=int(args.get('line_limit',0))
+    raw=Path(p).read_text(encoding='utf-8',errors='replace')
+    if _line_offset or _line_limit:
+        lines=raw.splitlines(keepends=True)
+        sliced=lines[_line_offset:_line_offset+_line_limit] if _line_limit else lines[_line_offset:]
+        data=''.join(sliced)[:max_bytes]
+        return {'path':str(p),'content':data,'bytes':len(data),'total_lines':len(lines),'returned_lines':len(sliced),'line_offset':_line_offset}
+    if _offset or _limit:
+        end=_offset+_limit if _limit else _offset+max_bytes
+        data=raw[_offset:end][:max_bytes]
+        return {'path':str(p),'content':data,'bytes':len(data),'total_bytes':len(raw),'offset':_offset}
+    data=raw[:max_bytes]
     return {'path':p,'content':data,'bytes':len(data)}
 def _skill_file_write(args,ctx,reg):
     p=Path(args['path']);content=args.get('content','')
@@ -173,6 +184,368 @@ def _skill_shell(args,ctx,reg):
     cmd=args['cmd'];timeout=int(args.get('timeout',15))
     r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
     return {'cmd':cmd,'returncode':r.returncode,'stdout':r.stdout[:8000],'stderr':r.stderr[:4000]}
+_GIT_SAFE_CMDS={'status','log','diff','branch','blame','show','ls-files','remote','config','rev-parse','describe','tag','shortlog','reflog'}
+def _skill_git(args,ctx,reg):
+    cmd=(args.get('cmd') or '').strip()
+    if not cmd:return {'error':'missing cmd. Allowed: '+','.join(sorted(_GIT_SAFE_CMDS))}
+    head=cmd.split()[0].lower()
+    if head not in _GIT_SAFE_CMDS:return {'error':f'cmd {head!r} not in safe allowlist (read-only git ops only). Allowed: '+','.join(sorted(_GIT_SAFE_CMDS))}
+    parts=['git']+cmd.split()
+    if args.get('file'):parts.append(str(args['file']))
+    if args.get('n') and head in ('log','shortlog','reflog'):parts[2:2]=['-n',str(int(args['n']))]
+    try:
+        r=subprocess.run(parts,capture_output=True,text=True,timeout=20,cwd=str(reg.workdir))
+        return {'cmd':' '.join(parts),'returncode':r.returncode,'stdout':r.stdout[:6000],'stderr':r.stderr[:1500]}
+    except FileNotFoundError:return {'error':'git not installed or not in PATH'}
+    except subprocess.TimeoutExpired:return {'error':'git command exceeded 20s timeout'}
+    except Exception as e:return {'error':f'{type(e).__name__}: {e}'}
+def _apply_unified_diff(content:str,diff_text:str):
+    lines=content.splitlines(keepends=True);out=lines[:];hunks=[]
+    cur=None
+    for ln in diff_text.splitlines():
+        if ln.startswith('@@'):
+            m=re.match(r'@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@',ln)
+            if not m:continue
+            cur={'old_start':int(m.group(1)),'old_count':int(m.group(2) or 1),'new_start':int(m.group(3)),'new_count':int(m.group(4) or 1),'lines':[]}
+            hunks.append(cur)
+        elif cur is not None and (ln.startswith(' ') or ln.startswith('+') or ln.startswith('-')):cur['lines'].append(ln)
+    if not hunks:return None,'no @@ hunks found in diff'
+    offset=0
+    for h in hunks:
+        old_lines=[(l[1:]+'\n' if not l[1:].endswith('\n') else l[1:]) for l in h['lines'] if l.startswith((' ','-'))]
+        new_lines=[(l[1:]+'\n' if not l[1:].endswith('\n') else l[1:]) for l in h['lines'] if l.startswith((' ','+'))]
+        start=h['old_start']-1+offset
+        actual=out[start:start+len(old_lines)]
+        if ''.join(actual).rstrip()!=''.join(old_lines).rstrip():return None,f"hunk at line {h['old_start']} doesn't match — file content drifted"
+        out[start:start+len(old_lines)]=new_lines
+        offset+=len(new_lines)-len(old_lines)
+    return ''.join(out),None
+_FORMATTERS={'.py':[('ruff format','ruff'),('black','black')],'.rs':[('rustfmt','rustfmt')],'.js':[('prettier --write','prettier')],'.jsx':[('prettier --write','prettier')],'.ts':[('prettier --write','prettier')],'.tsx':[('prettier --write','prettier')],'.go':[('gofmt -w','gofmt')],'.json':[('prettier --write','prettier')],'.html':[('prettier --write','prettier')],'.css':[('prettier --write','prettier')]}
+_CODE_EXTS=('.py','.rs','.js','.jsx','.ts','.tsx','.mjs','.go','.cpp','.cc','.c','.h','.hpp','.java','.kt','.rb','.php','.swift','.cs','.scala')
+def _skill_rename_symbol(args,ctx,reg):
+    old=(args.get('old') or '').strip();new=(args.get('new') or '').strip()
+    if not old or not new:return {'error':'missing old/new'}
+    if not re.match(r'^[A-Za-z_]\w*$',old):return {'error':f'old name {old!r} not a valid identifier'}
+    if not re.match(r'^[A-Za-z_]\w*$',new):return {'error':f'new name {new!r} not a valid identifier'}
+    root=Path(reg.workdir);glob=args.get('glob');dry_run=bool(args.get('dry_run'))
+    if glob:targets=[p for p in root.glob(glob) if p.is_file()]
+    else:
+        exts=set(args.get('exts') or _CODE_EXTS)
+        targets=[p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in exts and '.venv' not in p.parts and 'node_modules' not in p.parts and '.git' not in p.parts and '__pycache__' not in p.parts]
+    if len(targets)>1000:return {'error':f'too many files to scan ({len(targets)}); pass glob= or exts= to narrow'}
+    pat=re.compile(r'\b'+re.escape(old)+r'\b')
+    files_changed=[];total_replacements=0
+    for fp in targets:
+        try:src=fp.read_text(encoding='utf-8',errors='replace')
+        except Exception:continue
+        if old not in src:continue
+        new_src,n=pat.subn(new,src)
+        if n>0:
+            files_changed.append({'path':str(fp.relative_to(root)),'replacements':n})
+            total_replacements+=n
+            if not dry_run:
+                try:fp.write_text(new_src,encoding='utf-8')
+                except Exception as e:files_changed[-1]['write_error']=str(e)[:200]
+    return {'old':old,'new':new,'files_scanned':len(targets),'files_changed':len(files_changed),'total_replacements':total_replacements,'changes':files_changed[:30],'dry_run':dry_run}
+def _skill_prune_sessions(args,ctx,reg):
+    older_than_days=int(args.get('older_than_days',30));keep_n=int(args.get('keep_n',50));dry_run=bool(args.get('dry_run',False))
+    conv_root=Path(reg.workdir)/'experiences'/'conversations'
+    if not conv_root.exists():
+        for cand in (Path.cwd()/'experiences'/'conversations',Path('experiences/conversations')):
+            if cand.exists():conv_root=cand;break
+    if not conv_root.exists():return {'error':'no conversations directory found'}
+    files=sorted(conv_root.glob('*.jsonl'),key=lambda p:p.stat().st_mtime,reverse=True)
+    cutoff=time.time()-(older_than_days*86400)
+    keep=set(str(p) for p in files[:keep_n])
+    candidates=[p for p in files[keep_n:] if p.stat().st_mtime<cutoff and str(p) not in keep]
+    freed=sum(p.stat().st_size for p in candidates);deleted=[]
+    if not dry_run:
+        for p in candidates:
+            try:p.unlink();deleted.append(p.name)
+            except Exception:pass
+    return {'total_sessions':len(files),'kept_recent':min(keep_n,len(files)),'candidates_for_prune':len(candidates),'deleted':len(deleted),'freed_bytes':freed,'freed_mb':round(freed/(1024*1024),2),'dry_run':dry_run,'older_than_days':older_than_days,'keep_n':keep_n,'samples':[p.name for p in candidates[:5]]}
+def _skill_export_session(args,ctx,reg):
+    """Dump a conversation session as markdown. Args: {session_id, out_path?, format?}"""
+    import json as _j
+    sid=args.get('session_id')
+    if not sid:return {'error':'missing session_id'}
+    fmt=(args.get('format') or 'markdown').lower()
+    conv_root=Path(reg.workdir)/'experiences'/'conversations'
+    if not conv_root.exists():
+        for cand in (Path.cwd()/'experiences'/'conversations',Path('experiences/conversations')):
+            if cand.exists():conv_root=cand;break
+    fp=conv_root/f'{sid}.jsonl'
+    if not fp.exists():return {'error':f'session {sid!r} not found at {fp}'}
+    try:lines=fp.read_text(encoding='utf-8').strip().splitlines()
+    except Exception as e:return {'error':f'read failed: {e}'}
+    turns=[]
+    for ln in lines:
+        try:turns.append(_j.loads(ln))
+        except Exception:continue
+    if fmt=='json':
+        out_text=_j.dumps(turns,indent=2,ensure_ascii=False)
+    elif fmt=='text':
+        out_text='\n\n'.join(f"[{t.get('role','?')}] {t.get('content','')}" for t in turns)
+    else:
+        lines_md=[f"# Conversation `{sid}`",f"_{len(turns)} turns from {fp.name}_\n"]
+        for t in turns:
+            role=t.get('role','?');content=(t.get('content') or '').strip()
+            meta_bits=[f"tier={t['tier']}"] if t.get('tier') else []
+            if t.get('persona'):meta_bits.append(f"persona={t['persona']}")
+            if t.get('is_private'):meta_bits.append('private')
+            if t.get('blocked'):meta_bits.append('blocked')
+            meta=(' · '.join(meta_bits))
+            if role=='user':lines_md.append(f"\n## 👤 user");lines_md.append(content)
+            elif role=='assistant':lines_md.append(f"\n## 🤖 {t.get('persona','assistant')}"+(f" · *{meta}*" if meta else ''));lines_md.append(content)
+            else:lines_md.append(f"\n## {role}\n{content}")
+        out_text='\n'.join(lines_md)
+    out_path=args.get('out_path')
+    if out_path:
+        gate_res=_gate_path({'path':out_path},ctx,reg)
+        if gate_res and gate_res.get('error'):return gate_res
+        Path(out_path).write_text(out_text,encoding='utf-8')
+        return {'session_id':sid,'turns':len(turns),'format':fmt,'path':out_path,'bytes':len(out_text)}
+    return {'session_id':sid,'turns':len(turns),'format':fmt,'content':out_text[:8000],'truncated':len(out_text)>8000}
+def _skill_parse_error(args,ctx,reg):
+    """Parse a compiler/runtime error message and identify the root cause + likely fix."""
+    txt=args.get('text') or args.get('error','')
+    if not txt:return {'error':'missing text/error'}
+    result={'language':None,'kind':None,'file':None,'line':None,'message':None,'likely_cause':None,'suggested_fix':None}
+    pat_py=re.search(r'File "([^"]+)", line (\d+)(?:, in (\w+))?\s*\n[^\n]*\n\s*(\w+(?:Error|Exception|Warning))\s*:\s*(.+?)(?:\n|$)',txt,re.DOTALL)
+    if pat_py:
+        result.update({'language':'Python','file':pat_py.group(1),'line':int(pat_py.group(2)),'function':pat_py.group(3),'kind':pat_py.group(4),'message':pat_py.group(5).strip()})
+    else:
+        m=re.search(r'(\w+(?:Error|Exception))\s*:\s*(.+?)(?:\n|$)',txt)
+        if m:result.update({'language':'Python','kind':m.group(1),'message':m.group(2).strip()})
+    if not result['language']:
+        m=re.search(r'error\[(E\d+)\]:\s*(.+?)\n.*?-->\s*([^\s:]+):(\d+):(\d+)',txt,re.DOTALL)
+        if m:result.update({'language':'Rust','kind':m.group(1),'message':m.group(2).strip(),'file':m.group(3),'line':int(m.group(4)),'col':int(m.group(5))})
+    if not result['language']:
+        m=re.search(r'(\w+(?:Error)?):\s*(.+?)\n\s*at\s+[^\s]+\s+\(([^:)]+):(\d+):(\d+)\)',txt)
+        if m:result.update({'language':'JavaScript','kind':m.group(1),'message':m.group(2).strip(),'file':m.group(3),'line':int(m.group(4)),'col':int(m.group(5))})
+    if not result['language']:
+        m=re.search(r'([^:]+\.go):(\d+):(\d+):\s*(.+?)(?:\n|$)',txt)
+        if m:result.update({'language':'Go','file':m.group(1),'line':int(m.group(2)),'col':int(m.group(3)),'message':m.group(4).strip()})
+    _CAUSE_PATTERNS={
+        r'NameError.*not defined':('undefined name','add an import or check spelling'),
+        r'AttributeError.*has no attribute':('wrong attribute or wrong object type','check the object type or the attribute name'),
+        r'TypeError.*missing.*required.*argument':('missing function argument','add the missing argument to the call'),
+        r'TypeError.*takes.*positional argument':('argument count mismatch','check the function signature'),
+        r'ImportError|ModuleNotFoundError':('missing module','pip install the package or fix the import path'),
+        r'IndentationError|TabError':('Python indentation','fix indentation (4 spaces, no tabs)'),
+        r'SyntaxError.*invalid syntax':('Python syntax error','check for unmatched brackets, missing colons, or stray characters'),
+        r'IndexError.*out of range':('list/array index out of bounds','add a length check before indexing'),
+        r'KeyError':('dict key missing','use .get(key, default) or check membership first'),
+        r'ZeroDivisionError':('division by zero','add a check that the divisor is non-zero'),
+        r'RecursionError':('infinite recursion','add a base case or increase sys.setrecursionlimit'),
+        r'cannot find function|cannot find type|cannot find macro|unresolved import':('Rust missing import','add use statement for the missing symbol'),
+        r'mismatched types':('Rust type mismatch','check the function signature or add an explicit conversion'),
+        r'borrow.*cannot be|borrowed.*moved':('Rust borrow checker','clone the value or restructure to avoid concurrent borrows'),
+        r'cannot move out of':('Rust ownership move','use a reference, clone, or restructure to avoid move-after-borrow'),
+        r'TS\d{4}':('TypeScript type error','check types and interface declarations'),
+        r'cannot read propert(?:y|ies) of (?:null|undefined)':('JS null/undefined access','add a null check before accessing the property'),
+        r'undefined: ':('Go undefined symbol','import the package or check spelling'),
+    }
+    for pat,(cause,fix) in _CAUSE_PATTERNS.items():
+        if re.search(pat,txt,re.IGNORECASE):result['likely_cause']=cause;result['suggested_fix']=fix;break
+    return {k:v for k,v in result.items() if v is not None}
+def _skill_auto_import(args,ctx,reg):
+    path=args.get('path')
+    if not path:return {'error':'missing path'}
+    p=Path(path)
+    if not p.exists():return {'error':f'file not found: {path}'}
+    if p.suffix.lower()!='.py':return {'error':'only .py supported currently'}
+    src=p.read_text(encoding='utf-8')
+    try:tree=ast.parse(src)
+    except SyntaxError as e:return {'error':f'parse error at line {e.lineno}: {e.msg}'}
+    existing_imports=set()
+    for node in ast.walk(tree):
+        if isinstance(node,ast.Import):
+            for n in node.names:existing_imports.add(n.asname or n.name)
+        elif isinstance(node,ast.ImportFrom):
+            for n in node.names:existing_imports.add(n.asname or n.name)
+    referenced_names=set()
+    for node in ast.walk(tree):
+        if isinstance(node,ast.Name) and isinstance(node.ctx,ast.Load):referenced_names.add(node.id)
+        elif isinstance(node,ast.Attribute):
+            base=node
+            while isinstance(base,ast.Attribute):base=base.value
+            if isinstance(base,ast.Name):referenced_names.add(base.id)
+    _BUILTINS={'print','len','range','str','int','float','bool','list','dict','tuple','set','frozenset','type','isinstance','issubclass','object','None','True','False','self','cls','enumerate','zip','map','filter','sorted','reversed','min','max','sum','abs','round','pow','open','input','iter','next','any','all','hash','id','repr','format','vars','dir','getattr','setattr','hasattr','delattr','globals','locals','super','property','staticmethod','classmethod','Exception','ValueError','TypeError','KeyError','IndexError','RuntimeError','OSError','FileNotFoundError','ImportError','AttributeError','NotImplementedError','StopIteration','ZeroDivisionError','NameError','Warning','DeprecationWarning'}
+    _STDLIB_HINTS={'os':'os','sys':'sys','re':'re','json':'json','time':'time','math':'math','random':'random','datetime':'datetime','Path':'from pathlib import Path','defaultdict':'from collections import defaultdict','Counter':'from collections import Counter','OrderedDict':'from collections import OrderedDict','deque':'from collections import deque','dataclass':'from dataclasses import dataclass','field':'from dataclasses import field','asdict':'from dataclasses import asdict','partial':'from functools import partial','wraps':'from functools import wraps','lru_cache':'from functools import lru_cache','cache':'from functools import cache','reduce':'from functools import reduce','chain':'from itertools import chain','combinations':'from itertools import combinations','permutations':'from itertools import permutations','product':'from itertools import product','islice':'from itertools import islice','Optional':'from typing import Optional','List':'from typing import List','Dict':'from typing import Dict','Tuple':'from typing import Tuple','Any':'from typing import Any','Union':'from typing import Union','Callable':'from typing import Callable','Iterator':'from typing import Iterator','Sequence':'from typing import Sequence','Mapping':'from typing import Mapping'}
+    undefined=referenced_names-existing_imports-_BUILTINS
+    suggestions=[]
+    for name in sorted(undefined):
+        if name in _STDLIB_HINTS:suggestions.append({'name':name,'import':_STDLIB_HINTS[name]})
+    return {'path':str(p),'undefined_references':sorted(undefined),'suggested_imports':suggestions,'note':'Apply manually via file_write or code_edit. AST-based detection only catches stdlib hints currently.'}
+def _skill_format_code(args,ctx,reg):
+    import shutil as _sh
+    path=args.get('path')
+    if not path:return {'error':'missing path'}
+    p=Path(path)
+    if not p.exists():return {'error':f'file does not exist: {path}'}
+    ext=p.suffix.lower()
+    if ext not in _FORMATTERS:return {'skipped':True,'reason':f'no formatter for {ext}'}
+    for tool_cmd,binary in _FORMATTERS[ext]:
+        if _sh.which(binary):
+            try:
+                r=subprocess.run(tool_cmd.split()+[str(p)],capture_output=True,text=True,timeout=15,cwd=str(reg.workdir))
+                return {'path':str(p),'formatter':binary,'returncode':r.returncode,'stdout':r.stdout[:500],'stderr':r.stderr[:500]}
+            except Exception as e:return {'error':f'{type(e).__name__}: {e}','formatter':binary}
+    return {'skipped':True,'reason':f'no formatter installed for {ext} (tried: {[b for _,b in _FORMATTERS[ext]]})'}
+def _skill_tts(args,ctx,reg):
+    try:from amni.voice import speak,tts_backend,list_voices
+    except Exception as e:return {'error':f'voice module import failed: {e}'}
+    text=args.get('text','')
+    if args.get('list_voices'):return {'backend':tts_backend(),'voices':list_voices()[:30]}
+    if not text:return {'error':'missing text'}
+    audio=speak(text,backend=args.get('backend'),voice=args.get('voice'))
+    if not audio:return {'error':'TTS produced no audio','backend':tts_backend()}
+    out_path=args.get('out_path')
+    if out_path:
+        gate_res=_gate_path({'path':out_path},ctx,reg)
+        if gate_res and gate_res.get('error'):return gate_res
+        Path(out_path).write_bytes(audio)
+        return {'path':out_path,'bytes':len(audio),'backend':tts_backend()}
+    import base64
+    return {'audio_base64':base64.b64encode(audio).decode('ascii'),'bytes':len(audio),'backend':tts_backend(),'mime':'audio/wav'}
+def _skill_stt(args,ctx,reg):
+    try:from amni.voice import transcribe,stt_backend
+    except Exception as e:return {'error':f'voice module import failed: {e}'}
+    audio=None
+    if args.get('path'):
+        gate_res=_gate_path({'path':args['path']},ctx,reg)
+        if gate_res and gate_res.get('error'):return gate_res
+        try:audio=Path(args['path']).read_bytes()
+        except Exception as e:return {'error':f'read failed: {e}'}
+    elif args.get('audio_base64'):
+        import base64
+        try:audio=base64.b64decode(args['audio_base64'])
+        except Exception as e:return {'error':f'base64 decode failed: {e}'}
+    if not audio:return {'error':'missing path or audio_base64','backend':stt_backend()}
+    return transcribe(audio,backend=args.get('backend'),model_size=args.get('model_size','base'))
+def _skill_symbols(args,ctx,reg):
+    path=args.get('path')
+    if not path:return {'error':'missing path'}
+    p=Path(path)
+    if not p.exists():return {'error':f'file does not exist: {path}'}
+    src=p.read_text(encoding='utf-8',errors='replace')
+    ext=p.suffix.lower();out={'path':str(p),'lang':None,'functions':[],'classes':[],'imports':[]}
+    if ext=='.py':
+        out['lang']='Python'
+        try:
+            tree=ast.parse(src)
+            for node in ast.walk(tree):
+                if isinstance(node,ast.FunctionDef) or isinstance(node,ast.AsyncFunctionDef):
+                    out['functions'].append({'name':node.name,'line':node.lineno,'args':[a.arg for a in node.args.args]})
+                elif isinstance(node,ast.ClassDef):
+                    methods=[n.name for n in node.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]
+                    out['classes'].append({'name':node.name,'line':node.lineno,'methods':methods[:20]})
+                elif isinstance(node,ast.Import):
+                    out['imports'].extend(n.name for n in node.names)
+                elif isinstance(node,ast.ImportFrom):
+                    out['imports'].append(f"{node.module}.{','.join(n.name for n in node.names)}")
+        except SyntaxError as e:return {'error':f'parse error at line {e.lineno}: {e.msg}'}
+    elif ext=='.rs':
+        out['lang']='Rust'
+        for m in re.finditer(r'^\s*(?:pub\s+)?fn\s+(\w+)\s*[<(]',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['functions'].append({'name':m.group(1),'line':ln})
+        for m in re.finditer(r'^\s*(?:pub\s+)?struct\s+(\w+)',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['classes'].append({'name':m.group(1),'line':ln,'kind':'struct'})
+        for m in re.finditer(r'^\s*(?:pub\s+)?enum\s+(\w+)',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['classes'].append({'name':m.group(1),'line':ln,'kind':'enum'})
+        for m in re.finditer(r'^\s*(?:pub\s+)?trait\s+(\w+)',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['classes'].append({'name':m.group(1),'line':ln,'kind':'trait'})
+        for m in re.finditer(r'^\s*use\s+([\w:{}*,\s]+);',src,re.MULTILINE):
+            out['imports'].append(m.group(1).strip())
+    elif ext in ('.js','.ts','.jsx','.tsx','.mjs'):
+        out['lang']='JavaScript/TypeScript'
+        for m in re.finditer(r'^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['functions'].append({'name':m.group(1),'line':ln})
+        for m in re.finditer(r'^\s*(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['functions'].append({'name':m.group(1),'line':ln,'kind':'arrow'})
+        for m in re.finditer(r'^\s*(?:export\s+)?class\s+(\w+)',src,re.MULTILINE):
+            ln=src[:m.start()].count('\n')+1
+            out['classes'].append({'name':m.group(1),'line':ln})
+        for m in re.finditer(r"^\s*import\s+(.+?)\s+from\s+['\"](.+?)['\"]",src,re.MULTILINE):
+            out['imports'].append(f"{m.group(1).strip()} from {m.group(2)}")
+    else:return {'lang':None,'note':f'no symbol extractor for {ext} — use file_read instead'}
+    return out
+def _skill_project_info(args,ctx,reg):
+    p=Path(reg.workdir);info={'workdir':str(p),'top_files':[],'dependencies':{},'languages':set(),'git':{}}
+    try:
+        for f in sorted(p.iterdir()):
+            if f.is_file() and not f.name.startswith('.') and len(info['top_files'])<25:info['top_files'].append(f.name)
+    except Exception:pass
+    _LANG_EXT={'.py':'Python','.rs':'Rust','.js':'JavaScript','.ts':'TypeScript','.tsx':'TypeScript','.jsx':'JavaScript','.go':'Go','.cpp':'C++','.cc':'C++','.c':'C','.h':'C/C++','.hpp':'C++','.java':'Java','.kt':'Kotlin','.rb':'Ruby','.php':'PHP','.swift':'Swift','.cs':'C#','.scala':'Scala','.sh':'Shell','.html':'HTML','.css':'CSS','.sql':'SQL'}
+    for f in p.rglob('*'):
+        if f.is_file():
+            s=f.suffix.lower()
+            if s in _LANG_EXT:info['languages'].add(_LANG_EXT[s])
+        if len(info['languages'])>=8:break
+    info['languages']=sorted(info['languages'])
+    for dep_file,key in (('Cargo.toml','cargo'),('package.json','npm'),('pyproject.toml','python'),('requirements.txt','pip'),('go.mod','go'),('Gemfile','ruby'),('pom.xml','maven'),('build.gradle','gradle'),('CMakeLists.txt','cmake'),('Makefile','make')):
+        if (p/dep_file).exists():
+            try:info['dependencies'][key]=(p/dep_file).read_text(encoding='utf-8',errors='replace')[:1500]
+            except Exception:pass
+    try:
+        r=subprocess.run(['git','rev-parse','--abbrev-ref','HEAD'],capture_output=True,text=True,timeout=4,cwd=str(p))
+        if r.returncode==0:info['git']['branch']=r.stdout.strip()
+        r2=subprocess.run(['git','status','--porcelain'],capture_output=True,text=True,timeout=4,cwd=str(p))
+        if r2.returncode==0:
+            ch=r2.stdout.strip().splitlines();info['git']['dirty_files']=len(ch);info['git']['changes_preview']=ch[:10]
+    except Exception:pass
+    return info
+def _gate_diff(args,ctx,reg):return _gate_path(args,ctx,reg)
+def _skill_code_diff(args,ctx,reg):
+    path=args.get('path');diff=args.get('diff') or args.get('patch')
+    if not path:return {'error':'missing path'}
+    if not diff:return {'error':'missing diff/patch (unified diff format with @@ hunks)'}
+    p=Path(path)
+    if not p.exists():return {'error':f'file does not exist: {path}'}
+    try:src=p.read_text(encoding='utf-8')
+    except Exception as e:return {'error':f'read failed: {e}'}
+    new,err=_apply_unified_diff(src,diff)
+    if err:return {'error':err,'path':str(p)}
+    if args.get('dry_run'):return {'path':str(p),'dry_run':True,'preview_first_200':new[:200],'old_bytes':len(src),'new_bytes':len(new)}
+    p.write_text(new,encoding='utf-8')
+    return {'path':str(p),'old_bytes':len(src),'new_bytes':len(new),'applied':True}
+def _detect_test_runner(workdir):
+    p=Path(workdir)
+    if (p/'Cargo.toml').exists():return ('cargo test --quiet','rust')
+    if (p/'package.json').exists():
+        try:
+            import json as _j
+            d=_j.loads((p/'package.json').read_text(encoding='utf-8'))
+            if 'scripts' in d and 'test' in d['scripts']:return ('npm test --silent','js')
+        except Exception:pass
+    if (p/'pyproject.toml').exists() or (p/'pytest.ini').exists() or (p/'tox.ini').exists() or any(p.glob('test_*.py')) or any(p.glob('tests')):return ('pytest -x --tb=short -q','python')
+    if (p/'go.mod').exists():return ('go test ./...','go')
+    if (p/'Makefile').exists():
+        try:
+            mk=(p/'Makefile').read_text(encoding='utf-8',errors='replace')
+            if re.search(r'^test\s*:',mk,re.MULTILINE):return ('make test','make')
+        except Exception:pass
+    return (None,None)
+def _skill_test_run(args,ctx,reg):
+    explicit=args.get('cmd');timeout=int(args.get('timeout',60))
+    if explicit:cmd=explicit;flavor='custom'
+    else:
+        cmd,flavor=_detect_test_runner(reg.workdir)
+        if not cmd:return {'error':'no test runner detected. Pass cmd= explicitly. Tried: Cargo.toml/package.json/pyproject.toml/go.mod/Makefile'}
+    try:
+        r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
+        passed=r.returncode==0
+        out=(r.stdout or '')[-3000:];err=(r.stderr or '')[-1500:]
+        return {'cmd':cmd,'flavor':flavor,'passed':passed,'returncode':r.returncode,'stdout':out,'stderr':err}
+    except subprocess.TimeoutExpired:return {'error':f'tests exceeded {timeout}s timeout','cmd':cmd,'flavor':flavor,'passed':False}
+    except Exception as e:return {'error':f'{type(e).__name__}: {e}','cmd':cmd,'flavor':flavor,'passed':False}
 _DANGEROUS_PYTHON=re.compile(r'\b(?:os\.system|subprocess\.|os\.remove|os\.unlink|os\.rmdir|shutil\.rmtree|__import__\([\'"]os|exec\s*\(|eval\s*\(|open\s*\([^)]*[\'"]w|requests\.|urllib\.|socket\.|os\.environ\[|os\.setuid|os\.fork)\b')
 def _skill_run_python(args,ctx,reg):
     code=args.get('code') or args.get('expr','')
@@ -270,6 +643,19 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})
+    reg.register('git',_skill_git,desc=f'Read-only git in {scope}. Args: {{cmd, file?, n?}}. cmd one of: status, log, diff, branch, blame, show, ls-files, remote, config, rev-parse, describe, tag, shortlog, reflog. Mutation ops (add/commit/push/etc) refused.',schema={'cmd':'str','file':'str?','n':'int?'})
+    reg.register('test_run',_skill_test_run,desc=f'Auto-detect + run project tests in {scope}. Detects cargo/pytest/npm/go/make. Args: {{cmd?, timeout?}}. Returns passed:bool + stdout/stderr.',schema={'cmd':'str?','timeout':'int?'})
+    reg.register('code_diff',_skill_code_diff,gate=_gate_diff,desc=f'Apply a unified diff (@@ hunks) to a file in {scope}. Safer than full-file rewrite. Args: {{path, diff, dry_run?}}.',schema={'path':'str','diff':'str','dry_run':'bool?'})
+    reg.register('project_info',_skill_project_info,desc=f'Summarize the current workspace ({scope}): top files, detected languages, dependency manifests, git branch + dirty status. No args.',schema={})
+    reg.register('format_code',_skill_format_code,gate=_gate_path,desc=f'Run the canonical formatter for a file in {scope} (.py:ruff/black, .rs:rustfmt, .js/.ts/.jsx/.tsx/.json/.html/.css:prettier, .go:gofmt). Args: {{path}}.',schema={'path':'str'})
+    reg.register('symbols',_skill_symbols,gate=_gate_path,desc=f'Extract functions/classes/imports from a code file in {scope}. AST-based for Python; regex for Rust/JS/TS. Args: {{path}}.',schema={'path':'str'})
+    reg.register('rename_symbol',_skill_rename_symbol,desc=f'Rename a symbol across all code files in {scope} (word-boundary regex). Args: {{old, new, glob?, exts?, dry_run?}}. Use dry_run first to preview.',schema={'old':'str','new':'str','glob':'str?','exts':'list?','dry_run':'bool?'})
+    reg.register('auto_import',_skill_auto_import,gate=_gate_path,desc=f'Detect undefined names in a Python file and suggest stdlib imports. Args: {{path}}.',schema={'path':'str'})
+    reg.register('parse_error',_skill_parse_error,desc='Parse a Python/Rust/JS/TS/Go compiler or runtime error/stack-trace. Returns {language, kind, file, line, message, likely_cause, suggested_fix}. Args: {text}.',schema={'text':'str'})
+    reg.register('export_session',_skill_export_session,desc='Dump a session as markdown/text/json. Args: {session_id, out_path?, format?}. format = markdown (default) | text | json.',schema={'session_id':'str','out_path':'str?','format':'str?'})
+    reg.register('prune_sessions',_skill_prune_sessions,desc='Delete old session jsonl files. Keeps N most-recent; only deletes >older_than_days old. Args: {older_than_days?=30, keep_n?=50, dry_run?=false}.',schema={'older_than_days':'int?','keep_n':'int?','dry_run':'bool?'})
+    reg.register('tts',_skill_tts,desc='Text-to-speech. Returns WAV audio (base64) or writes to out_path. Backends auto-detect: piper > pyttsx3 (Windows SAPI / espeak). Args: {text, out_path?, backend?, voice?, list_voices?}.',schema={'text':'str','out_path':'str?','backend':'str?','voice':'str?','list_voices':'bool?'})
+    reg.register('stt',_skill_stt,desc='Speech-to-text. Accepts path (workdir-scoped WAV) or audio_base64. Backends: faster-whisper (recommended) > vosk. Args: {path? | audio_base64?, model_size?, backend?}.',schema={'path':'str?','audio_base64':'str?','model_size':'str?','backend':'str?'})
     reg.register('run_python',_skill_run_python,desc='Execute a Python snippet in a sandboxed subprocess (workdir-confined, timeout-bounded). Rejects dangerous ops (network, fs-mutation, subprocess, exec/eval). Returns stdout/stderr/returncode. Args: {code, timeout?}',schema={'code':'str','timeout':'int?'})
     reg.register('scan',_skill_scan,gate=_gate_path,desc=f'Walk path (file or dir + glob), chunk text, teach each chunk to Adam. Args: {{path, glob?, max_files?, max_chars_per_file?, distill?, only_text?}}',schema={'path':'str','glob':'str?','max_files':'int?','max_chars_per_file':'int?','distill':'bool?','only_text':'bool?'})
     if with_agentic:
