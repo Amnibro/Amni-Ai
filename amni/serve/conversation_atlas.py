@@ -7,6 +7,7 @@ from amni.inference.semantic_ptex_lut import SemanticPTEXLUT
 from amni.serve.conversation import detect_personal
 _REFIT_EVERY=5
 _GLOBAL_KEY='__global__'
+_LOCAL_USER_KEY='__local_user__'
 class _AtlasSlot:
     __slots__=('lut','meta','refit_due','lock')
     def __init__(self,lut:SemanticPTEXLUT,meta:Dict[Tuple[str,str],Dict[str,Any]]):
@@ -53,7 +54,7 @@ class ConversationAtlas:
         if not user_msg or not assistant_reply:return {'recorded':False,'reason':'empty'}
         is_personal=detect_personal(user_msg) or detect_personal(assistant_reply) if is_personal is None else bool(is_personal)
         ts=time.time();added=[]
-        for key in (session_id,) if is_personal else (session_id,_GLOBAL_KEY):
+        for key in (session_id,_LOCAL_USER_KEY) if is_personal else (session_id,_GLOBAL_KEY):
             slot=self._ensure(key)
             with slot.lock:
                 slot.lut.add(user_msg,assistant_reply)
@@ -62,10 +63,10 @@ class ConversationAtlas:
             self._refit_if_due(slot)
             self._save_slot(key);added.append(key)
         return {'recorded':True,'is_personal':is_personal,'slots':added}
-    def recall(self,query:str,session_id:str,k:int=3,include_global:bool=True,max_radius:int=3)->List[Dict[str,Any]]:
+    def recall(self,query:str,session_id:str,k:int=3,include_global:bool=True,include_local:bool=True,max_radius:int=3)->List[Dict[str,Any]]:
         if not query:return []
         results:List[Dict[str,Any]]=[];seen:set=set()
-        scopes=[session_id]+([_GLOBAL_KEY] if include_global else [])
+        scopes=[session_id]+([_LOCAL_USER_KEY] if include_local else [])+([_GLOBAL_KEY] if include_global else [])
         for key in scopes:
             slot=self._slots.get(key)
             if slot is None or len(slot.lut._raw)==0 or slot.lut._stored_embs is None or slot.lut._pca_Vt is None:continue

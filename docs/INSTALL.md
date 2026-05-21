@@ -77,7 +77,7 @@ cd Amni-Ai
 python install.py               # auto-downloads Gemma-4 E2B GF(17) bake from HuggingFace (~20 GB, one-time)
 ```
 
-`install.py` handles **everything**: venv creation, vendor-correct PyTorch (CUDA / ROCm / CPU auto-detect), pip install of dependencies, optional Rust toolchain + amni_kernels native build, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:8002/`. You do **not** need to manually create a venv or `pip install -r requirements.txt` first.
+`install.py` handles **everything**: venv creation, vendor-correct PyTorch (CUDA / ROCm / CPU auto-detect), pip install of dependencies, optional Rust toolchain + amni_kernels native build, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:11434/`. You do **not** need to manually create a venv or `pip install -r requirements.txt` first.
 
 Headless install location can be picked with `--home <path>` (e.g. `--home D:/Adam`). Without it, the bake goes to `~/.amni-ai/` (your user-profile drive, usually C: on Windows — fine if you have >25 GB free there, but if you're on a small system SSD, the GUI installer is the easier way to put the bake elsewhere).
 

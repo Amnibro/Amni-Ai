@@ -25,7 +25,7 @@ def _get_kernels():
             d6=tl.load(px_ptr+base+6,mask=mask,other=0).to(tl.uint32)
             d7=tl.load(px_ptr+base+7,mask=mask,other=0).to(tl.uint32)
             v=d0+d1*17+d2*289+d3*4913+d4*83521+d5*1419857+d6*24137569+d7*410338673
-            tl.store(out_ptr+off,v.to(tl.float32),mask=mask)
+            tl.store(out_ptr+off,v.to(tl.float32,bitcast=True),mask=mask)
         @triton.jit
         def _encode_kernel(inp_ptr,px_ptr,n,BLOCK:tl.constexpr):
             pid=tl.program_id(0);off=pid*BLOCK+tl.arange(0,BLOCK);mask=off<n

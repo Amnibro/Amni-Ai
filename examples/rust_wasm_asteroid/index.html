@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Asteroid (Rust/WASM)</title>
+  <style>
+    body { background:#111; color:#fff; font-family:monospace; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    canvas { border:1px solid #333; background:#000; }
+    .help { margin-top:8px; opacity:0.6; font-size:14px; }
+  </style>
+</head>
+<body>
+  <h2>ASTEROID — Rust + WebAssembly</h2>
+  <canvas id="canvas"></canvas>
+  <div class="help">← → rotate · ↑ thrust · SPACE fire</div>
+  <script type="module">
+    import init from "./pkg/asteroid_wasm.js";
+    init();
+  </script>
+</body>
+</html>

@@ -2,25 +2,28 @@
 Flow: receive user msg → detect skill intent (regex first, Adam classifier fallback) → run skill if matched → synthesize via Adam → persist turn.
 Backend stays multifunctional; frontend just sees `{answer, tier, tokens, skill_calls, session_id}`."""
 import re,time,json,ast
+from pathlib import Path
 from typing import Optional,Dict,Any,List,Tuple
 from amni.serve.skills import SkillRegistry,default_registry
 from amni.serve.conversation import ConversationStore,Conversation,detect_personal
 from amni.serve.conversation_atlas import ConversationAtlas
+from amni.storage.local_profile import LocalProfile
+from amni.storage.conversation_notes import ConversationNotes
 from amni.serve.persona import PersonaStore,Persona,PRESETS as _PERSONA_PRESETS
 from amni.serve import tone_atlas
 _CALC_PREFIX_RE=re.compile(r'(?:^|\b)(?:compute|calculate|calc|solve)\b',re.IGNORECASE)
 _CALC_EXPR_RE=re.compile(r'[\d.]+\s*[+\-*/^]\s*[\d.]+|\bwhat\s+is\s+[\d.]+\s*[+\-*/^x×]\s*[\d.]+|\bwhat\s+is\s+[\d.]+\s+(?:times|plus|minus|over|divided\s+by)\s+[\d.]+',re.IGNORECASE)
 _CALC_RE=re.compile(f'(?:{_CALC_PREFIX_RE.pattern})|(?:{_CALC_EXPR_RE.pattern})',re.IGNORECASE)
-_TIME_RE=re.compile(r"\b(?:what(?:'s| is)?\s+(?:the\s+)?(?:time|date|day)(?:\s+(?:is\s+it|today|now))?|current\s+time|right\s+now|today's\s+date|tell\s+me\s+the\s+time)\b",re.IGNORECASE)
-_WEB_RE=re.compile(r'\b(?:google|find\s+online|news|latest|search\s+(?:online|the\s+web|google)|look\s+up)\b',re.IGNORECASE)
-_MEM_RE=re.compile(r'\b(?:search\s+(?:my\s+)?(?:memory|lessons|knowledge|bank)|recall|what\s+do\s+(?:you|adam)\s+know\s+about|find\s+(?:in\s+)?(?:memory|lessons|bank|notes)|remember\s+about|lookup\s+in\s+(?:memory|bank))\s*[:?]?\s*(.*)?$',re.IGNORECASE)
+_TIME_RE=re.compile(r"\b(?:what(?:'s| is)?\s+(?:the\s+)?(?:time|date|day(?:\s+(?:is\s+it|of\s+the\s+week))?)(?:\s+(?:is\s+it|today|now))?|what\s+time\s+is\s+it|current\s+(?:time|date|day\s+(?:of\s+the\s+week)?)|today'?s\s+date|tell\s+me\s+(?:the\s+)?(?:time|date|day(?:\s+of\s+the\s+week)?))\b",re.IGNORECASE)
+_WEB_RE=re.compile(r"\b(?:google|find\s+online|news|latest|search\s+(?:online|the\s+web|google)|look\s+up|on\s+the\s+web|what'?s\s+(?:on|new\s+in)\s+the\s+web|what'?s\s+(?:new|happening)\s+(?:in|on|with|around)|current\s+events|find\s+(?:me\s+)?(?:something|info|articles?)|tell\s+me\s+about\s+\w+\s+(?:news|today|currently))\b",re.IGNORECASE)
+_MEM_RE=re.compile(r'\b(?:search\s+(?:my\s+|your\s+|adam\'?s?\s+|the\s+)?(?:memory|lessons|knowledge|bank|lesson\s+bank)|recall|what\s+do\s+(?:you|adam)\s+know\s+about|find\s+(?:in\s+)?(?:my\s+|your\s+|the\s+)?(?:memory|lessons|bank|notes|knowledge)|remember\s+about|look(?:up|\s+up)\s+(?:in\s+)?(?:my\s+|your\s+|the\s+)?(?:memory|bank|lessons|knowledge)|check\s+(?:your\s+|my\s+|adam\'?s?\s+)?(?:memory|lessons|notes|bank|knowledge))\s*(?:for|about)?\s*[:?]?\s*(.*)?$',re.IGNORECASE)
 _FILE_READ_RE=re.compile(r'\b(?:read|open|show|cat|display)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _FILE_WRITE_RE=re.compile(r'\b(?:write|save|create)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?([^`\n]+)`?',re.IGNORECASE)
 _CODE_RE=re.compile(r'\b(?:edit|patch|replace|change)\s+.*\bin\b\s+[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
-_SCAN_RE=re.compile(r'\b(?:scan|ingest|study|learn\s+from|index|absorb)\s+(?:(?:the|a|this|that|file|files|directory|directories|folder|folders|dir|path|contents?\s+of)\s+)*[\'"`]?([\w\-./:\\*?]+)[\'"`]?',re.IGNORECASE)
+_SCAN_RE=re.compile(r'\b(?:use\s+)?(?:scan|ingest|study|learn\s+from|index|absorb)(?:\s+skill)?[\s:]+(?:(?:the|a|this|that|file|files|directory|directories|folder|folders|dir|path|contents?\s+of)\s+)*[\'"`]?([\w\-./:\\\\*?]+)[\'"`]?',re.IGNORECASE)
 _EXPR_EXTRACT=re.compile(r'([\d.]+(?:\s*(?:[+\-*/^x×]|times|plus|minus|over|divided\s+by)\s*[\d.]+)+)',re.IGNORECASE)
-_USER_FACT_RE=re.compile(r"\b(?:my\s+name\s+is|i\s+am\s+(?:called|named)|call\s+me)\s+([A-Z][a-zA-Z'\-]{1,30})|my\s+favorite\s+([a-z ]{3,30})\s+is\s+([A-Za-z0-9 '\-]{1,40})|i\s+(?:like|love|prefer)\s+([A-Za-z0-9 '\-]{2,40})",re.IGNORECASE)
+_USER_FACT_RE=re.compile(r"\b(?:my\s+name\s+is|i\s+am\s+(?:called|named)|call\s+me)\s+([A-Z][a-zA-Z'\-]{1,30})|my\s+favorite\s+([a-z ]{3,30})\s+is\s+([A-Za-z0-9 '\-]{1,40})|i\s+(?:like|love|prefer)\s+([A-Za-z0-9 '\-]{2,40})|i\s+(?:live|am\s+based|reside|am\s+located)\s+(?:in|at|near|around)\s+([A-Z][A-Za-z0-9 ',\-]{2,80})|i'?m\s+(?:from|in)\s+([A-Z][A-Za-z0-9 ',\-]{2,80})|i\s+(?:work|am\s+working|am)\s+(?:at|for|on)\s+([A-Za-z0-9 '&,\-]{2,80})|i'?m\s+a\s+([a-z][a-zA-Z '\-]{2,60})|my\s+(?:job|role|title|occupation)\s+is\s+([A-Za-z0-9 '\-]{2,60})",re.IGNORECASE)
 _INTROSPECT_RE=re.compile(r'\b(?:what\s+can\s+(?:you|adam)\s+do|what\s+are\s+(?:your|adam\'?s?)\s+(?:capabilities|abilities|skills|features)|who\s+are\s+you|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+(?:yourself|adam)|what\s+is\s+adam|how\s+do\s+you\s+(?:work|remember|learn)|list\s+(?:your\s+)?(?:skills|capabilities|tools)|help\b)',re.IGNORECASE)
 _COT_SKIP_CATEGORIES={'greeting','creative','calc_result','time_result','file_result','scan_result','introspect','personal'}
 _COT_GENERIC=('Solve this with hyper-effective problem solving. Show your work concisely:\n'
@@ -31,19 +34,36 @@ _COT_GENERIC=('Solve this with hyper-effective problem solving. Show your work c
               '5. REFINE with variable-weight perturbations: SMALL (tweak), MEDIUM (alt sub-approach), or LARGE (re-frame).\n'
               '6. FINAL: present the best version. If still uncertain, say so + suggest next experiment.\n'
               'Be terse. Skip steps that add no value for this query.\n')
-_COT_CODE=('Code task — keep explanation TERSE, spend tokens on the CODE.\n'
-           '1. CLARIFY (one line): inputs/outputs/edge cases.\n'
-           '2. APPROACH (one line): algorithm name + key insight.\n'
-           '3. CODE: complete, working Python in a single ```python``` block. Use realistic names + type hints. Include all imports. End the code block properly.\n'
-           '4. TESTS (3-4 ADVERSARIAL asserts, picking from these case types — vary distinct INPUTS and EXPECTED outputs):\n'
-           '   - BOUNDARY: 0, 1, empty string/list, single element\n'
-           '   - NEGATIVE/INVALID: negative number, None, wrong type (where applicable)\n'
-           '   - LARGE: 10^4 or 10^6 input to stress complexity\n'
-           '   - HAPPY PATH: typical realistic input\n'
-           '   Each assert must use a DIFFERENT input value. Avoid `assert f(x)==expected` and `assert f(x)==expected` twice with same x.\n'
-           '5. COMPLEXITY: one line — time + space.\n'
-           '6. CRITIQUE + FIX (only if real issue): name the bug, paste corrected ```python``` block.\n'
-           'Goal: working code that passes ADVERSARIAL tests, not just the happy path. Skip prose that does not earn its tokens.\n')
+_CODE_LANG_RE=re.compile(r"\b(rust|wasm|webassembly|cargo|javascript|js\b|node(?:\.js)?|typescript|ts\b|python|py\b|go(?:lang)?|c\+\+|cpp|c#|csharp|java\b|kotlin|swift|ruby|rb\b|php|bash|shell|sh\b|html|css|sql|r\b|lua|haskell|elixir|scala|clojure|dart|zig|nim)\b",re.IGNORECASE)
+def _detect_code_lang(msg:str)->str:
+    m=msg.lower()
+    if 'rust' in m or 'cargo' in m or 'wasm' in m or 'webassembly' in m:return 'Rust'
+    if any(k in m for k in ('javascript',' js ','node.js','nodejs')):return 'JavaScript'
+    if any(k in m for k in ('typescript',' ts ')):return 'TypeScript'
+    if 'go ' in m+' ' or 'golang' in m:return 'Go'
+    if 'c++' in m or 'cpp' in m:return 'C++'
+    if 'c#' in m or 'csharp' in m:return 'C#'
+    if any(k in m for k in ('java ','java,','java.','jvm','kotlin')):return 'Kotlin' if 'kotlin' in m else 'Java'
+    if 'swift' in m:return 'Swift'
+    if 'ruby' in m or ' rb ' in m+' ':return 'Ruby'
+    if 'php' in m:return 'PHP'
+    if any(k in m for k in (' bash ','shell ','sh ',' .sh')):return 'Bash'
+    if 'sql' in m:return 'SQL'
+    if 'haskell' in m:return 'Haskell'
+    if 'elixir' in m:return 'Elixir'
+    if 'zig' in m:return 'Zig'
+    return 'Python'
+def _make_code_cot(lang:str)->str:
+    lang_lower=lang.lower().replace('+','p').replace('#','sharp')
+    return ('Code task — keep explanation TERSE, spend tokens on the CODE.\n'
+            'CRITICAL: The user has requested code in {LANG}. Output {LANG} code in a ```{LL}``` block. Do NOT substitute Python or any other language. If the user later corrects you, accept the correction without arguing.\n'
+            '1. CLARIFY (one line): inputs/outputs/edge cases.\n'
+            '2. APPROACH (one line): algorithm name + key insight.\n'
+            '3. CODE: complete, working {LANG} in a single ```{LL}``` block. Use realistic names. Include necessary imports/uses/crates. End the code block properly.\n'
+            '4. TESTS or USAGE example: provide a brief test, assertion, or example call appropriate to {LANG}.\n'
+            '5. NOTES (one line): complexity if relevant + any build/run command the user will need (e.g., `cargo build --target wasm32-unknown-unknown` for Rust/WASM).\n'
+            'Goal: working {LANG} code the user can copy-paste and run. Never refuse a language the user asked for.\n').replace('{LANG}',lang).replace('{LL}',lang_lower)
+_COT_CODE=_make_code_cot('Python')
 _COT_MATH=('Math problem — use this structure:\n'
            '1. RESTATE: what is given, what is asked, in what units?\n'
            '2. RELEVANT: which formulas, theorems, or identities apply? Cite the principle.\n'
@@ -75,7 +95,7 @@ _COT_REASONING=('Reasoning question — use this structure:\n'
 def _pick_cot(category:str,message:str)->str:
     m=message.lower()
     if any(k in m for k in (' debug','debugging','bug','why is my','why does my','why won','not working','broken','error','crash','hang','leak','slow','flak')):return _COT_DEBUG
-    if category=='code' or any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function')):return _COT_CODE
+    if category=='code' or any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function','make me code','give me code','generate code','create code','make code')):return _make_code_cot(_detect_code_lang(message))
     if any(k in m for k in ('design a','design the','architect','how would you build','how to build a','scale to','system to handle','rate limit','queue','pipeline architecture')):return _COT_DESIGN
     if any(k in m for k in ('solve for','calculate','compute the','equation','derivative','integral','probability','optimize','minimize','maximize','prove that','theorem','formula for')):return _COT_MATH
     if category=='reasoning':return _COT_REASONING
@@ -222,7 +242,7 @@ def _perturb_retry(adam,skills,persona_sys:str,code:str,err:str,user_msg:str,max
         return {'success':True,'magnitude':mag,'code':new_code,'stdout':so,'stderr':se,'history':history,'tests_passed':bool(asserts)}
     return {'success':False,'history':history,'code':cur_code,'stderr':cur_err}
 class AmniAgent:
-    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas'):
+    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas',profile_path:str='experiences/user_profile.json'):
         self.adam=adam
         self.skills=skills or default_registry(workdir=workdir)
         self.store=store or ConversationStore()
@@ -230,11 +250,48 @@ class AmniAgent:
         self.use_persona=use_persona
         try:self.atlas=atlas or ConversationAtlas(root=atlas_root,encoder=getattr(getattr(adam,'sem_lut',None),'encoder',None))
         except Exception as e:print(f'[AmniAgent] ConversationAtlas init failed (recall disabled): {e}',flush=True);self.atlas=None
-    def _extract_user_facts(self,conv:Conversation,limit:int=8)->List[str]:
-        facts:List[str]=[]
-        for t in conv.turns:
-            if t.get('role')!='user':continue
-            c=t.get('content') or ''
+        try:self.profile=LocalProfile(profile_path,fact_re=_USER_FACT_RE)
+        except Exception as e:print(f'[AmniAgent] LocalProfile init failed: {e}',flush=True);self.profile=None
+        try:self.notes=ConversationNotes(str(Path(profile_path).parent/'conversation_notes.json'))
+        except Exception as e:print(f'[AmniAgent] ConversationNotes init failed: {e}',flush=True);self.notes=None
+    def _previous_session_summary(self,current_session_id,max_chars=240):
+        try:
+            root=getattr(getattr(self,'store',None),'root',None)
+            if root is None:return None
+            files=sorted(Path(root).glob('*.jsonl'),key=lambda p:p.stat().st_mtime,reverse=True)
+            for fp in files[:6]:
+                if fp.stem==current_session_id:continue
+                try:lines=fp.read_text(encoding='utf-8').strip().splitlines()
+                except Exception:continue
+                if not lines:continue
+                _last_user='';_last_asst=''
+                for ln in reversed(lines):
+                    try:obj=json.loads(ln)
+                    except Exception:continue
+                    role=obj.get('role');content=(obj.get('content') or '').strip()
+                    if obj.get('is_private') or obj.get('blocked'):break
+                    if role=='assistant' and not _last_asst:_last_asst=content
+                    elif role=='user' and not _last_user:_last_user=content
+                    if _last_user and _last_asst:break
+                if _last_user and _last_asst:
+                    _u=_last_user[:100];_a=_last_asst[:150]
+                    return f"In our last conversation, you asked: \"{_u}\" — I (Adam/Rikku) answered: \"{_a}\". This is real, established context from your prior session — treat it as known."[:max_chars]
+                elif _last_asst:return f"In our last conversation, I last said: \"{_last_asst[:200]}\". This is real, established context — treat it as known."[:max_chars]
+        except Exception:pass
+        return None
+    def _extract_user_facts(self,conv:Conversation,limit:int=8,extra_user_msgs:Optional[List[str]]=None,profile_only:bool=False)->List[str]:
+        facts:List[str]=list(self.profile.to_facts_list()) if self.profile is not None else []
+        if profile_only:return facts[:limit]
+        if self.notes is not None:facts.extend(self.notes.to_facts_list())
+        _n_assistant=sum(1 for t in conv.turns if t.get('role')=='assistant')
+        if _n_assistant<2:
+            try:
+                _prev=self._previous_session_summary(conv.session_id)
+                if _prev:facts.append(f"context from previous session: {_prev}")
+            except Exception:pass
+        msgs=[t.get('content') or '' for t in conv.turns if t.get('role')=='user']
+        if extra_user_msgs:msgs=list(extra_user_msgs)+msgs
+        for c in msgs:
             for m in _USER_FACT_RE.finditer(c):
                 name=m.group(1);fav_thing=m.group(2);fav_val=m.group(3);like=m.group(4)
                 if name:facts.append(f"user's name is {name.strip()}")
@@ -266,9 +323,17 @@ class AmniAgent:
             return ('scan',args)
         m=_SHELL_RE.search(msg)
         if m and self.skills.has('shell'):return ('shell',{'cmd':m.group(1).strip()})
+        try:
+            from amni.serve import intent_classifier as _ic_mod
+            _ic=_ic_mod._GLOBAL
+            if _ic is not None:
+                _lbl,_conf=_ic.classify(msg)
+                if _lbl=='profile_about_me' and _conf>=0.6:return None
+        except Exception:pass
         m=_MEM_RE.search(msg)
         if m and self.skills.has('mem'):
             q=(m.group(1) or '').strip(' :?.')
+            if q.lower() in ('me','myself','i'):return None
             return ('mem',{'query':q if q else msg})
         m=_WEB_RE.search(msg)
         if m and self.skills.has('web'):return ('web',{'query':msg})
@@ -277,6 +342,9 @@ class AmniAgent:
         t0=time.time()
         conv=self.store.get(session_id)
         conv.append('user',message)
+        if self.profile is not None:
+            try:self.profile.update_from_message(message)
+            except Exception as _pe:print(f'[AmniAgent] profile update failed: {_pe}',flush=True)
         try:
             from amni.a1.semantic_intent import screen as _sem_screen
             blk,cat,cos,msg_refusal=_sem_screen(message)
@@ -315,7 +383,7 @@ class AmniAgent:
             pair=(r['user'],r['assistant'])
             if pair not in history_pairs:history_pairs=[pair]+history_pairs
         history_pairs=history_pairs[-12:]
-        user_facts=self._extract_user_facts(conv)
+        user_facts=self._extract_user_facts(conv,extra_user_msgs=[r.get('user','') for r in atlas_recall])
         is_private=detect_personal(message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
         category=tone_atlas.classify_intent(message)
         raw_ans='';tier='?';tokens=0
@@ -436,7 +504,7 @@ class AmniAgent:
             except Exception as e:print(f'[AmniAgent] atlas record failed: {e}',flush=True)
         return {'answer':wrapped,'tier':tier,'tokens':tokens,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':category,'is_private':is_private}
     def _format_skill_output(self,name:str,out:Any)->str:
-        if name=='time':return f'It is currently {out.get("iso")} local.'
+        if name=='time':return f'currently {out.get("iso")} local time'
         if name=='calc':return f'{out.get("value")}' if out.get('value') is not None else f'(calc error: {out.get("error")})'
         if name=='mem':
             hits=out.get('hits',[]);real=[h for h in hits if 'a' in h or 'answer' in h]
