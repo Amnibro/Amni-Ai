@@ -2,7 +2,7 @@
 Mirrors Amni-Prism's CLI shape so installing both packages gives a coherent toolset."""
 import argparse,sys,os,json,time,webbrowser,threading
 from pathlib import Path
-from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done
+from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST
 def _add_common_adam(p):
     cfg=load_config()
     default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17')
@@ -204,7 +204,7 @@ def main():
     init.set_defaults(func=cmd_init)
     s=sub.add_parser('serve',help='Run HTTP server (browser UI, /chat, MCP, Ollama compat)')
     _add_common_adam(s)
-    s.add_argument('--port',type=int,default=7700);s.add_argument('--host',default='127.0.0.1')
+    s.add_argument('--port',type=int,default=DEFAULT_PORT);s.add_argument('--host',default=DEFAULT_HOST)
     s.add_argument('--conv-root',default='experiences/conversations');s.add_argument('--audit-log',default='logs/agent_skill_calls.jsonl')
     s.add_argument('--persona-bank',default='experiences/personas.json');s.add_argument('--workdir',default=None)
     s.add_argument('--root',action='append',default=[]);s.add_argument('--unrestricted-files',action='store_true')
@@ -215,7 +215,7 @@ def main():
     co=sub.add_parser('code',help='Project-aware coding mode: workdir=cwd, mentor persona, file-tree UI, browser auto-opens')
     _add_common_adam(co)
     co.add_argument('path',nargs='?',default=None,help='Project root (defaults to current dir)')
-    co.add_argument('--port',type=int,default=7700);co.add_argument('--host',default='127.0.0.1')
+    co.add_argument('--port',type=int,default=DEFAULT_PORT);co.add_argument('--host',default=DEFAULT_HOST)
     co.add_argument('--conv-root',default='experiences/conversations');co.add_argument('--audit-log',default='logs/agent_skill_calls.jsonl')
     co.add_argument('--persona-bank',default='experiences/personas.json')
     co.add_argument('--root',action='append',default=[]);co.add_argument('--persona',default=None)

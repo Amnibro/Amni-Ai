@@ -17,6 +17,8 @@ Usage:
 """
 import os,sys,subprocess,argparse,platform,shutil
 from pathlib import Path
+try:from amni.bootstrap import DEFAULT_PORT
+except Exception:DEFAULT_PORT=7700
 ROOT=Path(__file__).resolve().parent
 VENV=ROOT/'.venv'
 TORCH_PKGS=['torch','torchvision','torchaudio']
@@ -166,7 +168,7 @@ def main():
     ap.add_argument('--skip-model',action='store_true',help='Skip model download (~20 GB Gemma-4 bake)')
     ap.add_argument('--bake-dir',default=None,help='Custom path for the bake (default: <home>/bakes/gemma4_e2b_it_gf17)')
     ap.add_argument('--home',default=None,help='Custom config home for EVERYTHING — bakes, lessons, conversations (default: ~/.amni-ai)')
-    ap.add_argument('--port',type=int,default=7700)
+    ap.add_argument('--port',type=int,default=DEFAULT_PORT)
     ap.add_argument('--persona',default='rikku')
     ap.add_argument('--gpu',choices=['auto','nvidia','amd','cpu'],default='auto',help='GPU vendor for PyTorch (default: auto-detect)')
     ap.add_argument('--cuda',default='cu124',help='CUDA tag for NVIDIA torch (default: cu124)')

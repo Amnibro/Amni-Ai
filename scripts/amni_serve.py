@@ -71,7 +71,7 @@ def _gpu_bootstrap():
     if non_target and total>1:os.environ.setdefault('HIP_VISIBLE_DEVICES',str(chosen_idx))
     print(f'[amni_serve] GPU bootstrap: idx={chosen_idx} arch={arch} name={best.get("name")} vram={best.get("mem",0)//(1024**3)}GB override={ver or "auto"}',flush=True)
 _gpu_bootstrap()
-from amni.bootstrap import load_config
+from amni.bootstrap import load_config,DEFAULT_PORT,DEFAULT_HOST
 from amni.storage.conversation_notes import ConversationNotes
 from amni.serve.agentic import run_goal_stream,is_build_request
 from amni.serve import tone_atlas
@@ -172,8 +172,8 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--bake',default=_CFG.get('bake'))
     ap.add_argument('--model',default=_CFG.get('model') or _CFG.get('bake'))
-    ap.add_argument('--port',type=int,default=int(_CFG.get('port') or 7700))
-    ap.add_argument('--host',default=_CFG.get('host') or '127.0.0.1')
+    ap.add_argument('--port',type=int,default=int(_CFG.get('port') or DEFAULT_PORT))
+    ap.add_argument('--host',default=_CFG.get('host') or DEFAULT_HOST)
     ap.add_argument('--force-port-kill',action='store_true',help='Kill ANY process holding the port (default: only kill python/uvicorn processes)')
     ap.add_argument('--lessons',default='experiences/adam_lessons.npz')
     ap.add_argument('--lut-root',default='experiences/adam_lut')
