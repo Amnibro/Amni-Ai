@@ -157,7 +157,7 @@ document.getElementById('drive')?.addEventListener('change',updateHint);
 if(window.pywebview){init();}else{window.addEventListener('pywebviewready',init);}
 </script></body></html>'''
 class API:
-    def __init__(self):self.window=None;self.log_path=None;self.log_lines=[];self.proc=None;self.port=8002
+    def __init__(self):self.window=None;self.log_path=None;self.log_lines=[];self.proc=None;self.port=7700
     def init(self):return {'drives':list_drives(),'gpu':detect_gpu(),'persona':'rikku'}
     def open_browse(self,start):
         if not self.window:return None
