@@ -709,7 +709,7 @@ def main():
     def list_skills():return {'skills':skills.list_skills()}
     @app.post('/skills/{name}')
     def call_skill(name:str,req:SkillRequest):
-        r=skills.call(name,req.args,ctx={'adam':adam})
+        r=skills.call(name,req.args,ctx={'adam':adam,'agent':agent,'personas':personas,'store':store})
         if not r.ok:raise HTTPException(status_code=400,detail=r.to_dict())
         return r.to_dict()
     @app.get('/sessions')
