@@ -2,6 +2,38 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.4 — Amni-Code ↔ Adam full integration: OpenAI tool-calling protocol + CodeAtlas autonomy memory (2026-05-21)
+
+Adam becomes a drop-in OpenAI tool-calling backend. Amni-Code (and Continue.dev / Cline / Aider / anything OpenAI-compat) can now drive Adam as its autonomous coding brain. Cross-session tool-sequence memory via cell-address PTEX LUT.
+
+### New surface — OpenAI /v1 compat
+- `GET /v1/models` — exposes `adam:e2b-gf17` plus aliases (gpt-4o-mini, claude-3-sonnet, llama3.1, qwen2.5, …) so hardcoded clients resolve.
+- `POST /v1/chat/completions` — full OpenAI shape: `messages[]`, `tools[]`, `tool_choice`, `stream`. Returns `choices[0].message.tool_calls[]` with `{id, type:"function", function:{name, arguments}}`.
+- Streaming variant emits `data: {...}\n\n` SSE chunks ending in `[DONE]`, with `finish_reason="tool_calls"` when Adam emits any tool call.
+- `role:"tool"` results flatten into Adam's history as `OBSERVATION` blocks.
+
+### New files
+- `amni/serve/openai_compat.py` — mount(app, adam, agent, code_atlas). Zero changes to `agent.py`, `adam.py`, `ollama_compat.py`.
+- `amni/serve/tool_protocol.py` — strict ```tool_call fenced-JSON grammar. Multi-call tolerant, malformed-JSON resilient. `flatten_history()` turns OpenAI tool-call sequences into (pairs, last_user, system) for Adam.
+- `amni/serve/code_atlas.py` — `CodeAtlas` stores (intent → tool_sequence → outcome) in cell-address PTEX LUT. **L1 grid scan, never cosine-top-K.** Federation gate: only non-personal cells flow to `__global__`. `hint_for_prompt()` injects prior successful sequences into Adam's system prompt next time a similar task appears.
+
+### Wire integration
+- `scripts/amni_serve.py`: default port aligned 8001→7700 (matches Amni-Code default). Mounts `openai_compat` after `ollama_compat`. Instantiates `CodeAtlas` at `experiences/code_atlas/`.
+- Banner now advertises `/v1/chat/completions` alongside Ollama + MCP endpoints.
+
+### Privacy guards (no regression)
+- All 15 v6.5.0 paranoid PII tests still pass; all 6 v6.5.0 ConversationAtlas tests still pass.
+- `CodeAtlas` runs `detect_personal()` on the intent AND every tool-argument string before deciding `__global__` vs session-local.
+
+### Tests added
+- `tests/test_tool_protocol_v6_6_0.py` — 13/13 PASS.
+- `tests/test_code_atlas_v6_6_0.py` — 10/10 PASS.
+- `tests/test_openai_compat_v6_6_0.py` — 8/8 PASS (FastAPI TestClient + mocked Adam; tool_call shape, tool-result back-feed, streaming SSE).
+
+### Companion fixes
+- `C:/Users/antho/.amni-ai/config.json` port 8002→7700.
+- Amni-Code `amni_base_url()` auto-remaps `:8001`/`:8002`/`:8787` → `:7700`.
+
 ## v6.9.3 — Async warmup + smoke test + HumanEval 91.9% + Tier-B skills + voice loop + HUD + benchmarks (2026-05-20)
 
 This is the consolidated entry for the v6.9.x cycle, covering everything shipped after the v6.9.0 Tier A coder foundation.

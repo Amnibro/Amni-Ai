@@ -172,7 +172,7 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--bake',default=_CFG.get('bake'))
     ap.add_argument('--model',default=_CFG.get('model') or _CFG.get('bake'))
-    ap.add_argument('--port',type=int,default=int(_CFG.get('port') or 8001))
+    ap.add_argument('--port',type=int,default=int(_CFG.get('port') or 7700))
     ap.add_argument('--host',default=_CFG.get('host') or '127.0.0.1')
     ap.add_argument('--force-port-kill',action='store_true',help='Kill ANY process holding the port (default: only kill python/uvicorn processes)')
     ap.add_argument('--lessons',default='experiences/adam_lessons.npz')
@@ -207,7 +207,8 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp
+    from amni.serve import ollama_compat,web,mcp,openai_compat
+    from amni.serve.code_atlas import CodeAtlas
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=not args.web_restricted)
     print(f'[amni_serve] Adam ready: {adam.stats()}',flush=True)
@@ -836,13 +837,17 @@ def main():
         try:adam.save_lessons()
         except Exception:pass
         return {'deleted':{'q':removed[0][:200],'a':removed[1][:200]},'lessons_n':len(sl._raw)}
+    try:_code_atlas=CodeAtlas(root=str(Path('experiences')/'code_atlas'),encoder=getattr(getattr(adam,'sem_lut',None),'encoder',None))
+    except Exception as _ce:print(f'[amni_serve] CodeAtlas init failed (autonomy memory disabled): {_ce}',flush=True);_code_atlas=None
     ollama_compat.mount(app,agent)
+    openai_compat.mount(app,adam,agent,code_atlas=_code_atlas)
     mcp.mount(app,agent)
     web.mount(app)
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
     print(f'[amni_serve]   Ollama compat: http://{args.host}:{args.port}/api/tags',flush=True)
     print(f'[amni_serve]   MCP server:    http://{args.host}:{args.port}/mcp',flush=True)
+    print(f'[amni_serve]   OpenAI compat: http://{args.host}:{args.port}/v1/chat/completions  (Amni-Code, Continue.dev, Cline, Aider)',flush=True)
     print(f'[amni_serve]   Personas:      http://{args.host}:{args.port}/personas',flush=True)
     uvicorn.run(app,host=args.host,port=args.port,log_level='info')
 if __name__=='__main__':main()
