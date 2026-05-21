@@ -85,16 +85,18 @@ def _strip_tool_announce(text):
         if not m or m.end()==0:break
         cleaned=cleaned[m.end():].lstrip()
         tries+=1
-    cleaned=re.sub(r'\s*\[Looked it.*$','',cleaned,flags=re.DOTALL)
+    cleaned=re.sub(r'\s*\[Looked\b.*$','',cleaned,flags=re.IGNORECASE|re.DOTALL)
     cleaned=re.sub(r'\s*\[Search\s+(?:performed|completed|done|results?)?.*$','',cleaned,flags=re.IGNORECASE|re.DOTALL)
     cleaned=re.sub(r'\s*\[(?:Presenting|Current weather|Result of|Outputting|Searching).*$','',cleaned,flags=re.IGNORECASE|re.DOTALL)
     return cleaned.strip() if cleaned.strip() else text
 _VAGUE_WEB_RE=re.compile(r"\b(?:on\s+the\s+web|online|out\s+there|what'?s\s+new|news|latest|current\s+events|anything\s+(?:exciting|new|interesting|happening))\b",re.IGNORECASE)
 _PROPER_NOUN_RE=re.compile(r"\b([A-Z][a-zA-Z]+(?:[\s\-][A-Z][a-zA-Z]+)*(?:\s+(?:NY|CA|TX|FL|UK|USA|US))?)\b")
+_LOCAL_INTENT_RE=re.compile(r"\b(?:near\s+me|nearby|around\s+(?:here|me)|local|in\s+my\s+area|in\s+the\s+area|events?|things\s+to\s+do|restaurants?|stores?|shops?|attractions?|family[- ]friendly|kid[- ]friendly|child[- ]friendly|weather|forecast)\b",re.IGNORECASE)
 def _enrich_web_query(user_msg,conv,profile):
     q=(user_msg or '').strip()
     if not q:return q
-    needs_context=len(q.split())<6 or bool(_VAGUE_WEB_RE.search(q))
+    q=re.sub(r'^(?:use\s+|please\s+)?(?:web|search|google)(?:\s+skill)?\s*[:]\s*','',q,flags=re.IGNORECASE)
+    needs_context=len(q.split())<6 or bool(_VAGUE_WEB_RE.search(q)) or bool(_LOCAL_INTENT_RE.search(q))
     if not needs_context:return q[:200]
     extras=[]
     try:
@@ -396,7 +398,7 @@ def main():
             max_new=int(80+200*(persona.length if persona else 0.5))+(700 if (apply_cot and category=="code") else (450 if apply_cot else 0))
             full=[];_bump('cot_generations') if apply_cot else None
             in_final=not expects_final;buf='';seen_final=False;_buf_start=time.time();_last_ping=time.time();_drift_stop=False;_final_buf=''
-            _DRIFT_MARKERS=('Thinking Process','thought\n','\nThinking','**Self-','*(Self-','**Analyze Request','1. RESTATE:','1.  RESTATE:','1. **Analyze','**Recall Persona','**Determine Strategy','Self-Correction','\n[Looked','[Looked it','[Search performed','[Search completed','[Search done','[Search results','[Presenting','[Current weather data','[Result of search','[The system returns','(Outputting the result','(Search returns','(Result of search','(Waiting for search','(Assuming the search')
+            _DRIFT_MARKERS=('Thinking Process','thought\n','\nThinking','**Self-','*(Self-','**Analyze Request','1. RESTATE:','1.  RESTATE:','1. **Analyze','**Recall Persona','**Determine Strategy','Self-Correction','\n[Looked','[Looked','[Search performed','[Search completed','[Search done','[Search results','[Presenting','[Current weather data','[Result of search','[The system returns','(Outputting the result','(Search returns','(Result of search','(Waiting for search','(Assuming the search')
             try:
                 for chunk in adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True):
                     full.append(chunk)
