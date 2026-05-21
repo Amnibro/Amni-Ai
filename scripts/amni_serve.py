@@ -632,7 +632,10 @@ def main():
                 _spk=_spk.strip()
                 if not _spk or len(_spk)<5:_spk=_raw.strip()[:600]
                 result['spoken_text']=_spk[:800]
-                audio=speak(_spk[:800],voice=(req.voice or _persona_voice))
+                _persona_key=None
+                try:_persona_key=(_cur_persona.name or '').lower() if _cur_persona else None
+                except Exception:pass
+                audio=speak(_spk[:800],voice=(req.voice or _persona_voice),persona=_persona_key)
                 result['voice_used']=(req.voice or _persona_voice)
                 if audio:result['audio_base64']=_b64.b64encode(audio).decode('ascii');result['audio_bytes']=len(audio)
                 else:result['tts_error']='no audio produced'
