@@ -1,0 +1,4 @@
+EXPORTS
+conv3x3_wmma4t_init
+conv3x3_wmma4t_sync
+conv3x3_wmma4t_run

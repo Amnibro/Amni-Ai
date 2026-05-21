@@ -111,7 +111,7 @@ class CrawlerPlugin:
             prompt=f'Sources:\n{sources_text}\n\nQuestion:\n{question}\n\nAnswer (single letter):'
             mx=4
         else:
-            sys_p='Use the provided sources to answer the question precisely. Cite source numbers in [brackets].'
+            sys_p='You are summarizing real web sources fetched by a search tool. NEVER say "I do not have the capability to search the web" or "I cannot access the internet" — the sources below are REAL search results already retrieved for you. Summarize them factually, citing source numbers in [brackets]. If sources do not contain the answer, say "the provided sources do not cover this" and cite what they DO cover.'
             prompt=f'Sources:\n{sources_text}\n\nQuestion:\n{question}\n\nAnswer:'
             mx=self.distill_max
         try:ans,n=self.distiller.chat(prompt,system=sys_p,max_new_tokens=mx,do_sample=False,kb_top_k=0)

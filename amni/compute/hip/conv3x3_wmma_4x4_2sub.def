@@ -1,0 +1,4 @@
+EXPORTS
+conv3x3_wmma_2sub_init
+conv3x3_wmma_2sub_sync
+conv3x3_wmma_2sub_run

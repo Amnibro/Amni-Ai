@@ -1,0 +1,4 @@
+EXPORTS
+conv3x3_wmma_lds_init
+conv3x3_wmma_lds_sync
+conv3x3_wmma_lds_run

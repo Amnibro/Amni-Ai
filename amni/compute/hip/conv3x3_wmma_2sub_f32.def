@@ -1,0 +1,4 @@
+EXPORTS
+conv3x3_wmma_2sub_f32_init
+conv3x3_wmma_2sub_f32_sync
+conv3x3_wmma_2sub_f32_run
