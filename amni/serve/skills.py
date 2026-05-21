@@ -400,15 +400,18 @@ def _skill_tts(args,ctx,reg):
     if args.get('list_voices'):return {'backend':tts_backend(),'voices':list_voices()[:30]}
     if not text:return {'error':'missing text'}
     _voice=args.get('voice');_persona_key=None
-    _agent=ctx.get('agent') or ctx.get('adam')
+    _ps=ctx.get('personas') or (getattr(ctx.get('agent'),'personas',None)) or (getattr(ctx.get('adam'),'personas',None))
     try:
-        if _agent is not None and hasattr(_agent,'personas'):
-            _ps=_agent.personas;_sid=args.get('session_id') or args.get('sid')
-            _cur=_ps.get(_ps.session_persona(_sid)) if _sid and hasattr(_ps,'session_persona') else _ps.get(_ps._default if hasattr(_ps,'_default') else 'rikku')
+        if _ps is not None:
+            _sid=args.get('session_id') or args.get('sid')
+            _name=None
+            if _sid and hasattr(_ps,'session_persona'):_name=_ps.session_persona(_sid)
+            if not _name and hasattr(_ps,'_default'):_name=_ps._default
+            _cur=_ps.get(_name) if _name else None
             if _cur:
                 _persona_key=(_cur.name or '').lower()
                 if not _voice and hasattr(_cur,'tts_voice'):_voice=_cur.tts_voice
-    except Exception:pass
+    except Exception as _pe:print(f'[tts] persona lookup: {_pe}',flush=True)
     audio=speak(text,backend=args.get('backend'),voice=_voice,persona=_persona_key)
     if not audio:return {'error':'TTS produced no audio','backend':tts_backend()}
     out_path=args.get('out_path')
