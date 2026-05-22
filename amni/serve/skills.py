@@ -671,6 +671,25 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     reg.register('stt',_skill_stt,desc='Speech-to-text. Accepts path (workdir-scoped WAV) or audio_base64. Backends: faster-whisper (recommended) > vosk. Args: {path? | audio_base64?, model_size?, backend?}.',schema={'path':'str?','audio_base64':'str?','model_size':'str?','backend':'str?'})
     reg.register('run_python',_skill_run_python,desc='Execute a Python snippet in a sandboxed subprocess (workdir-confined, timeout-bounded). Rejects dangerous ops (network, fs-mutation, subprocess, exec/eval). Returns stdout/stderr/returncode. Args: {code, timeout?}',schema={'code':'str','timeout':'int?'})
     reg.register('scan',_skill_scan,gate=_gate_path,desc=f'Walk path (file or dir + glob), chunk text, teach each chunk to Adam. Args: {{path, glob?, max_files?, max_chars_per_file?, distill?, only_text?}}',schema={'path':'str','glob':'str?','max_files':'int?','max_chars_per_file':'int?','distill':'bool?','only_text':'bool?'})
+    try:
+        from amni.serve import widgets as _w
+        def _skill_weather(args,ctx,reg_):
+            d=_w.fetch_weather(location=args.get('location',''),lat=args.get('lat'),lon=args.get('lon'))
+            if d.get('_error'):return {'error':d['_error']}
+            d['widget']=_w.make_widget_envelope('weather',d,title=f"Weather — {d.get('location','?')}",icon='🌤')
+            return d
+        def _skill_system_stats(args,ctx,reg_):
+            d=_w.fetch_system_stats()
+            d['widget']=_w.make_widget_envelope('system',d,title='System',icon='⚙')
+            return d
+        def _skill_time_card(args,ctx,reg_):
+            d=_w.fetch_time_card(tz_name=args.get('tz'))
+            d['widget']=_w.make_widget_envelope('time',d,title='Time',icon='🕐')
+            return d
+        reg.register('weather',_skill_weather,desc='Current weather + forecast for a location via Open-Meteo (no API key). Emits a weather widget. Args: {location?:str, lat?:float, lon?:float}',schema={'location':'str?','lat':'float?','lon':'float?'})
+        reg.register('system_stats',_skill_system_stats,desc='CPU/memory/disk/GPU snapshot via psutil + torch. Emits a system widget.',schema={})
+        reg.register('time_card',_skill_time_card,desc='Time + timezone + weekday as a time widget. Args: {tz?:str like America/New_York}',schema={'tz':'str?'})
+    except Exception as _we:print(f'[skills] widget skills register failed: {_we}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)

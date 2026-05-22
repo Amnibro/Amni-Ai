@@ -2,6 +2,36 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.6 — INCREDIBLE Adam iter 1: widget protocol + Jarvis-style inline data cards (2026-05-21)
+
+First iteration of the multi-iter push to make Adam absolutely incredible (autonomous coding ✓ from v6.9.4, schemaless personal memory ✓ from v6.9.5, **inline widgets now**). Inspired by Suryansh Chourasia's Jarvis-CV.
+
+### New surface — widget protocol
+- `amni/serve/widget_protocol.py` — Adam emits structured data as fenced ```widget JSON blocks (same grammar pattern as tool_protocol). Multi-widget tolerant, malformed-JSON resilient. 18 widget types supported (weather/system/time/news/stock/code/file/image/map/table/chart/progress/calendar/task/error/info/warning/success).
+- `amni/serve/widgets.py` — pure data fetchers:
+  - `fetch_weather(location)` — Open-Meteo geocoding + forecast, NO API key, returns temp/humidity/wind/desc/hi/lo
+  - `fetch_system_stats()` — psutil CPU/mem/disk + torch CUDA/HIP GPU detection
+  - `fetch_time_card(tz?)` — ISO + weekday + human-readable date/time + timezone
+
+### Three new skills registered
+- `weather` — wraps `fetch_weather`, emits weather widget. Args: location (string) OR lat/lon.
+- `system_stats` — instant snapshot, emits system widget.
+- `time_card` — Args: tz? (e.g. America/New_York). Emits time widget.
+
+### Wired into /v1/chat/completions
+- Response now includes `choices[0].message.amni_widgets[]` AND top-level `amni_widgets[]` when Adam emits any widget fence.
+- `strip_widgets()` removes fences from visible content so the UI gets clean text + structured widget data side by side.
+- System prompt extended with widget grammar block so Adam knows when/how to emit (only for live/current data queries).
+- New `amni_tier: "tier_widget"` when widgets emitted without tool calls.
+
+### Tests
+- `tests/test_widget_protocol_v6_9_6.py` — 14/14 PASS (parse, strip, system prompt addendum, render text, fetcher correctness, skill registration, widget envelope on skill output).
+- 8/8 v6.6.0 openai_compat regression green.
+- Pre-push lint: caught my own unstaged `widget_protocol.py` + `widgets.py` BEFORE letting the push through, auto-fixed via `--fix`.
+
+### Roadmap committed
+- `docs/incredible_adam_roadmap.md` tracks the multi-iteration push. Future /loop wakeups continue from there. Already noted: Jarvis-style web UI (iter 2), coaching mode (iter 3), Adam-driven scheduling (iter 4), content ingestion automation (iter 5), gesture input via MediaPipe (iter 6), polish (iter 7+).
+
 ## v6.9.5 — PersonalAtlas: organic per-user fact memory, schemaless, programmed at each new fact (2026-05-21)
 
 The flat `LocalProfile` regex extractor (6 fixed fields) is now augmented — and ultimately superseded — by a **PersonalAtlas** PTEX cell-address LUT. No schema, no fixed field list. Every personal fact the user reveals gets programmed in at the cell its MiniLM embedding projects to. Categories emerge from the embedding space itself: family-talk clusters next to family-talk, hobby cells next to hobby cells, anything the user invents lands at its own address with zero code change.

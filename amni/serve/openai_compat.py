@@ -7,6 +7,7 @@ Persistent autonomy: every completion records (intent → tool sequence) into th
 import time,json,uuid,asyncio
 from typing import List,Dict,Any,Optional,AsyncIterator
 from amni.serve.tool_protocol import parse_tool_calls,strip_tool_calls,build_system_prompt,flatten_history,tools_digest,build_openai_tool_calls,openai_finish_reason,now_unix
+from amni.serve.widget_protocol import parse_widgets,strip_widgets,build_system_prompt_addendum as _widget_sys_addendum
 _MODEL_NAME='adam:e2b-gf17'
 _MODEL_ALIASES=['adam','adam:latest','adam-e2b-gf17','amni-a1','amni-ai','adam-gf17','gpt-3.5-turbo','gpt-4','gpt-4o-mini','claude-3-sonnet','llama3.1','qwen2.5','gemma2']
 def _model_card(name:str)->Dict[str,Any]:return {'id':name,'object':'model','created':1715000000,'owned_by':'amnibro','permission':[],'root':_MODEL_NAME,'parent':None}
@@ -31,11 +32,14 @@ def _call_adam(adam,agent,system:str,pairs:List,user_msg:str,tools:Optional[List
         except Exception:pass
     if is_stream:return adam.chat_persona_stream(user_msg,system=system,history=pairs,facts=facts,is_private=is_private,max_new_tokens=max_tokens,do_sample=do_sample)
     return adam.chat_persona(user_msg,system=system,history=pairs,facts=facts,is_private=is_private,max_new_tokens=max_tokens,do_sample=do_sample)
-def _make_completion_response(comp_id:str,model:str,full_text:str,tool_calls_oa:List[Dict[str,Any]],tokens:int,wall_s:float)->Dict[str,Any]:
-    visible=strip_tool_calls(full_text) if tool_calls_oa else (full_text or '')
+def _make_completion_response(comp_id:str,model:str,full_text:str,tool_calls_oa:List[Dict[str,Any]],tokens:int,wall_s:float,widgets:Optional[List[Dict[str,Any]]]=None)->Dict[str,Any]:
+    visible=strip_widgets(strip_tool_calls(full_text)) if (tool_calls_oa or widgets) else (full_text or '')
     msg={'role':'assistant','content':visible if visible else None}
     if tool_calls_oa:msg['tool_calls']=tool_calls_oa
-    return {'id':comp_id,'object':'chat.completion','created':now_unix(),'model':model,'choices':[{'index':0,'message':msg,'finish_reason':openai_finish_reason(tool_calls_oa)}],'usage':{'prompt_tokens':0,'completion_tokens':int(tokens or 0),'total_tokens':int(tokens or 0)},'amni_wall_s':round(wall_s,3),'amni_tier':'tier_tool_agent' if tool_calls_oa else 'tier_persona'}
+    if widgets:msg['amni_widgets']=widgets
+    out={'id':comp_id,'object':'chat.completion','created':now_unix(),'model':model,'choices':[{'index':0,'message':msg,'finish_reason':openai_finish_reason(tool_calls_oa)}],'usage':{'prompt_tokens':0,'completion_tokens':int(tokens or 0),'total_tokens':int(tokens or 0)},'amni_wall_s':round(wall_s,3),'amni_tier':'tier_tool_agent' if tool_calls_oa else ('tier_widget' if widgets else 'tier_persona')}
+    if widgets:out['amni_widgets']=widgets
+    return out
 def _sse(data:Any)->str:return f'data: {json.dumps(data)}\n\n'
 def _stream_chunks(comp_id:str,model:str,gen_iter,session_id:str,code_atlas,intent:str)->AsyncIterator[str]:
     async def _agen():
@@ -91,7 +95,9 @@ def mount(app,adam,agent,code_atlas=None):
                 p=agent.personas.for_session(session_id);persona_sys=p.system_prompt(user_msg) if p else None
         except Exception:persona_sys=None
         base_persona=(client_system+('\n\n'+persona_sys if persona_sys else '')).strip() if client_system or persona_sys else None
+        widget_addendum=_widget_sys_addendum(['weather','system','time','news','code','file','error','info'])
         system=build_system_prompt(tools,cwd=None,custom=None,base_persona=base_persona)
+        if widget_addendum:system=(system+'\n\n'+widget_addendum).strip() if system else widget_addendum
         comp_id=_completion_id();t0=time.time()
         if is_stream:
             gen=_call_adam(adam,agent,system,pairs,user_msg,tools,True,max_tokens,do_sample,code_atlas,session_id)
@@ -100,10 +106,11 @@ def mount(app,adam,agent,code_atlas=None):
         full=(r.get('answer') or '') if isinstance(r,dict) else ''
         tokens=(r.get('tokens') or 0) if isinstance(r,dict) else 0
         parsed=parse_tool_calls(full)
+        widgets=parse_widgets(full)
         tcs=build_openai_tool_calls(parsed)
         if code_atlas is not None and user_msg:
-            try:code_atlas.record(session_id,user_msg,parsed,outcome=strip_tool_calls(full)[:600] if not parsed else '')
+            try:code_atlas.record(session_id,user_msg,parsed,outcome=strip_widgets(strip_tool_calls(full))[:600] if not parsed else '')
             except Exception:pass
-        return _make_completion_response(comp_id,model,full,tcs,tokens,time.time()-t0)
+        return _make_completion_response(comp_id,model,full,tcs,tokens,time.time()-t0,widgets=widgets)
     @app.get('/v1/healthz')
     def v1_health():return {'ok':True,'model':_MODEL_NAME,'tools':'openai_v1_chat_completions'}
