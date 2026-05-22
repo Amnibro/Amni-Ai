@@ -2,6 +2,54 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.10 — INCREDIBLE Adam iter 5: Automated content ingestion + curriculum builder (2026-05-22)
+
+Fifth iteration. Adam can now learn from URLs, PDFs, and YouTube transcripts automatically — and a single `build_curriculum` call chains web search → top-N source ingest → coach session start in one shot.
+
+### New file
+- `amni/serve/ingest.py` — chunking + dedupe + teach-loop pipeline. All ingest skills return uniform shape: `{source_kind, chunks_extracted, chunks_taught, lessons_total_after, chunks_preview, error?}`.
+
+### Four new skills (33 total now)
+- **`ingest_url`** — fetches via stdlib `urllib`, distills via `trafilatura` (already in `[crawl]` extras) with HTML-strip fallback, paragraph-chunks at 900 chars w/ 120 overlap, dedupes via blake2b, caps at 24 chunks. Args: `{url, max_chunks?, chunk_max?, timeout?, dry_run?}`.
+- **`ingest_pdf`** — reads local PDF via `pypdf` (or `PyPDF2`) with clear error if neither installed. Page-cap 60, chunk + dedupe + teach. Args: `{path, max_pages?, max_chunks?, chunk_max?, dry_run?}`.
+- **`ingest_youtube`** — pulls transcript via `youtube-transcript-api` (conditional). Extracts video id from any URL form (watch, shorts, youtu.be). Args: `{url|video, max_chunks?, chunk_max?, dry_run?}`.
+- **`build_curriculum`** — orchestrator. Topic → `web` skill search (existing crawler) → `ingest_url` on top N sources → `coach` skill `start` → returns `{topic, sources, ingest_outcomes, chunks_taught_total, coach_session, next_step}`. One POST and oui have a ready-to-use tutoring session backed by fresh ingested material. Args: `{topic, query?, max_sources?=3, chunks_per_source?=8, difficulty?=2, skip_coach?=false}`.
+
+### Pipeline details
+- Chunking: paragraph split, ≥80 chars min, ≤900 chars max, overlap 120 on oversized paragraphs. Long single paragraphs get sliding-window split.
+- Dedupe: blake2b 8-byte fingerprint per chunk; identical content across sources teaches only once.
+- Teach: each chunk becomes `(question="From <label> (chunk i/n)", answer=<chunk>)` in Adam's sem_lut. Lessons persist via the existing PTEX lesson bank.
+- Dry run: extract + report + skip teach (handy for previewing before committing).
+
+### Tests
+- `tests/test_ingest_v6_9_10.py` — 14/14 PASS:
+  - chunk splits long paragraphs + drops too-short
+  - dedupe removes exact duplicates
+  - HTML strip fallback removes `<script>`/`<style>`/entities
+  - teach_chunks accounting
+  - ingest_url full pipe with mocked fetch
+  - dry_run skips teach
+  - fetch error handling
+  - missing-url error
+  - ingest_pdf: missing path / missing file errors
+  - build_curriculum: needs topic + coach_atlas
+  - build_curriculum: chains web → ingest → coach with mocked Adam
+  - build_curriculum: skip_coach flag works
+
+### Example
+```bash
+curl -X POST http://127.0.0.1:7700/skills/build_curriculum \
+  -H 'Content-Type: application/json' \
+  -d '{"args":{"topic":"reinforcement learning","max_sources":3,"difficulty":3}}'
+# returns: { topic, sources[3], ingest_outcomes[3], chunks_taught_total: ~24,
+#           coach_session: {session_id, question, mastery, widget}, next_step }
+```
+
+Schedule it via `schedule_loop` from iter 4 for autonomous daily learning:
+```bash
+schedule_loop add kind=skill payload={"name":"build_curriculum","args":{"topic":"todays-ai-papers"}} cadence_s=86400
+```
+
 ## v6.9.9 — INCREDIBLE Adam iter 4: Adam-driven recurring jobs (2026-05-21)
 
 Fourth iteration. Adam can now schedule its own recurring tasks — daily summaries, periodic web polls, weekly retros, scheduled skill calls. Lightweight background thread, persistent JSONL, survives restarts.

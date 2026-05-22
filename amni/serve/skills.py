@@ -698,6 +698,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         from amni.serve.scheduler import schedule_loop_skill as _sched_skill
         reg.register('schedule_loop',_sched_skill,desc='Adam-driven recurring jobs. Actions: add (kind, payload, cadence_s, label?, start_in_s?) | list | get <id> | cancel <id> | enable <id> | disable <id> | runs <id> | run_now <id> | stats. Kinds: skill (payload={name,args}), prompt (payload={text,system?}), webpoll (payload={url|query}). Args: {action, kind?, payload?, cadence_s?, id?, label?, start_in_s?}',schema={'action':'str','kind':'str?','payload':'dict?','cadence_s':'int?','id':'str?','label':'str?','start_in_s':'int?'})
     except Exception as _se:print(f'[skills] schedule_loop skill register failed: {_se}',flush=True)
+    try:
+        from amni.serve import ingest as _ingest
+        _ingest.register(reg)
+    except Exception as _ie:print(f'[skills] ingest skills register failed: {_ie}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)
