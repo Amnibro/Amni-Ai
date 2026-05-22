@@ -690,6 +690,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         reg.register('system_stats',_skill_system_stats,desc='CPU/memory/disk/GPU snapshot via psutil + torch. Emits a system widget.',schema={})
         reg.register('time_card',_skill_time_card,desc='Time + timezone + weekday as a time widget. Args: {tz?:str like America/New_York}',schema={'tz':'str?'})
     except Exception as _we:print(f'[skills] widget skills register failed: {_we}',flush=True)
+    try:
+        from amni.serve.coach import coach_skill as _coach_skill
+        reg.register('coach',_coach_skill,desc='Socratic coaching/tutor mode. Actions: start <topic> | ask | answer <text> | hint | skip | summary | status. Tracks per-topic mastery in coach_atlas. Args: {action, topic?, session_id?, answer?, difficulty?}',schema={'action':'str','topic':'str?','session_id':'str?','answer':'str?','difficulty':'int?'})
+    except Exception as _ce:print(f'[skills] coach skill register failed: {_ce}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)
