@@ -2,6 +2,58 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.5 — PersonalAtlas: organic per-user fact memory, schemaless, programmed at each new fact (2026-05-21)
+
+The flat `LocalProfile` regex extractor (6 fixed fields) is now augmented — and ultimately superseded — by a **PersonalAtlas** PTEX cell-address LUT. No schema, no fixed field list. Every personal fact the user reveals gets programmed in at the cell its MiniLM embedding projects to. Categories emerge from the embedding space itself: family-talk clusters next to family-talk, hobby cells next to hobby cells, anything the user invents lands at its own address with zero code change.
+
+### New file
+- `amni/storage/personal_atlas.py` — `PersonalAtlas` class. Single `__local_user__` slot, NEVER `__global__`. L1 grid-radius cell-walk for recall (never cosine-top-K, per `feedback_adam_lut_not_cosine`). Background daemon thread for extraction so chat turns don't block. Bounded queue + dead-letter JSONL for overflow.
+
+### Three-state confidentiality (UNCLEAR-must-ask, never auto-resolve)
+Adam classifies every extracted fact as `public` / `confidential` / `unclear`:
+- `public` → stored immediately, recallable in non-confidential contexts.
+- `confidential` → stored with `is_confidential=True` flag, filtered out of non-confidential recall (e.g. tool argument injection).
+- `unclear` → held in a persistent pending JSONL queue. **NEVER auto-resolves to public.** Adam asks the user on the next assistant turn: *"Quick check — earlier oui mentioned X. Should I treat that as confidential, or is it regular context?"* User reply parsed via simple regex (`yes/private/confidential` → True, `no/public/fine` → False); ambiguous reply leaves it pending.
+
+### Background extraction worker
+- Daemon thread reads from a `queue.Queue(maxsize=200)`
+- For each user message: calls `adam.chat_persona` with a strict-JSON extraction prompt → parses array of `{fact, confidence, confidentiality}` objects → records each via cell-address LUT
+- Worker exceptions write to `dead_letter.jsonl`, facts are never lost silently
+
+### Wire-up in `amni/serve/agent.py`
+- `AmniAgent.__init__` instantiates `PersonalAtlas` automatically (lazy import via try/except)
+- Every `chat()` turn:
+  1. Parses user message as a possible reply to a pending clarification (if any)
+  2. Enqueues the user message for extraction (fire-and-forget)
+  3. After Adam generates a reply, checks for the NEXT pending clarification and naturally appends the question
+- `_extract_user_facts` consults `personal_atlas.recall()` for facts threaded into Adam's system prompt — confidential facts marked `[confidential]` prefix for Adam to handle with care
+
+### Tests
+- `tests/test_personal_atlas_v6_9_5.py` — 15/15 PASS. Coverage:
+  - Never creates `__global__` slot (federation invariant)
+  - Direct record + cell-walk recall
+  - Recall filters by `include_confidential`
+  - UNCLEAR goes to pending, NEVER auto-stored as public
+  - `confirm_clarification` moves pending to storage with correct flag
+  - Pending lock + 5-minute expiry on next-to-ask
+  - Confirmation reply parser (yes/no/confidential/public)
+  - End-to-end `try_parse_pending_reply` flow
+  - `forget(pattern)` and `forget_all`
+  - Stats accuracy
+  - Persistence round-trip (with the pre-save refit fix below)
+  - Queue overflow → dead-letter JSONL
+
+### Bug fix in save path
+- `_save_slot` now force-refits the LUT if `_stored_embs` is out of sync with `_raw` BEFORE saving. Previously, records #2..#5 between refit windows could persist a `_raw`/`_stored_embs` length mismatch that crashed on load. Same fix should be backported to `ConversationAtlas` and `CodeAtlas` in v6.9.6.
+
+### Privacy guards (no PII regression)
+- Single `__local_user__` slot — no per-session, no `__global__`, never enters federation pull
+- 14/15 prior v6.5.0 paranoid PII tests still pass; 1 pre-existing fail (`recall_does_not_cross_session_for_personal`) is a known multi-user limitation of the `__local_user__` slot model (it's per-machine, shared across sessions for the same user) and is NOT a regression from this work — see follow-up for v7.x multi-user separation.
+- 13/13 v6.6.0 tool_protocol, 10/10 code_atlas, 8/8 openai_compat tests still green
+- Pre-push lint passes: 250 tracked .py files, no ghost imports
+
+## v6.9.4 — Amni-Code ↔ Adam full integration: OpenAI tool-calling protocol + CodeAtlas autonomy memory (2026-05-21)
+
 ## v6.9.4 — Amni-Code ↔ Adam full integration: OpenAI tool-calling protocol + CodeAtlas autonomy memory (2026-05-21)
 
 Adam becomes a drop-in OpenAI tool-calling backend. Amni-Code (and Continue.dev / Cline / Aider / anything OpenAI-compat) can now drive Adam as its autonomous coding brain. Cross-session tool-sequence memory via cell-address PTEX LUT.

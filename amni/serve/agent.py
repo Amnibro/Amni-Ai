@@ -242,7 +242,7 @@ def _perturb_retry(adam,skills,persona_sys:str,code:str,err:str,user_msg:str,max
         return {'success':True,'magnitude':mag,'code':new_code,'stdout':so,'stderr':se,'history':history,'tests_passed':bool(asserts)}
     return {'success':False,'history':history,'code':cur_code,'stderr':cur_err}
 class AmniAgent:
-    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas',profile_path:str='experiences/user_profile.json'):
+    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas',profile_path:str='experiences/user_profile.json',personal_atlas=None,personal_atlas_root:str='experiences/personal_atlas'):
         self.adam=adam
         self.skills=skills or default_registry(workdir=workdir)
         self.store=store or ConversationStore()
@@ -254,6 +254,12 @@ class AmniAgent:
         except Exception as e:print(f'[AmniAgent] LocalProfile init failed: {e}',flush=True);self.profile=None
         try:self.notes=ConversationNotes(str(Path(profile_path).parent/'conversation_notes.json'))
         except Exception as e:print(f'[AmniAgent] ConversationNotes init failed: {e}',flush=True);self.notes=None
+        try:
+            if personal_atlas is not None:self.personal_atlas=personal_atlas
+            else:
+                from amni.storage.personal_atlas import PersonalAtlas
+                self.personal_atlas=PersonalAtlas(root=personal_atlas_root,encoder=getattr(getattr(adam,'sem_lut',None),'encoder',None),adam=adam)
+        except Exception as e:print(f'[AmniAgent] PersonalAtlas init failed (organic profile disabled): {e}',flush=True);self.personal_atlas=None
     def _previous_session_summary(self,current_session_id,max_chars=240):
         try:
             root=getattr(getattr(self,'store',None),'root',None)
@@ -281,6 +287,14 @@ class AmniAgent:
         return None
     def _extract_user_facts(self,conv:Conversation,limit:int=8,extra_user_msgs:Optional[List[str]]=None,profile_only:bool=False)->List[str]:
         facts:List[str]=list(self.profile.to_facts_list()) if self.profile is not None else []
+        if self.personal_atlas is not None:
+            try:
+                latest_user=next((t.get('content','') for t in reversed(conv.turns) if t.get('role')=='user'),'')
+                if latest_user:
+                    for h in self.personal_atlas.recall(latest_user,k=5,include_confidential=True):
+                        prefix='[confidential] ' if h.get('is_confidential') else ''
+                        facts.append(f"{prefix}{h['fact']}")
+            except Exception as _pae:print(f'[AmniAgent] personal_atlas recall failed: {_pae}',flush=True)
         if profile_only:return facts[:limit]
         if self.notes is not None:facts.extend(self.notes.to_facts_list())
         _n_assistant=sum(1 for t in conv.turns if t.get('role')=='assistant')
@@ -342,6 +356,12 @@ class AmniAgent:
         t0=time.time()
         conv=self.store.get(session_id)
         conv.append('user',message)
+        confirmed_clarification=None
+        if self.personal_atlas is not None:
+            try:confirmed_clarification=self.personal_atlas.try_parse_pending_reply(message)
+            except Exception as _ce:print(f'[AmniAgent] personal_atlas try_parse_pending_reply failed: {_ce}',flush=True)
+            try:self.personal_atlas.enqueue(message,session_id=conv.session_id)
+            except Exception as _qe:print(f'[AmniAgent] personal_atlas enqueue failed: {_qe}',flush=True)
         if self.profile is not None:
             try:self.profile.update_from_message(message)
             except Exception as _pe:print(f'[AmniAgent] profile update failed: {_pe}',flush=True)
@@ -498,6 +518,14 @@ class AmniAgent:
             raw_ans=fb.get('answer') or '';tier=fb.get('tier','?')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=fb.get('tokens',0)
         wrapped=tone_atlas.wrap(raw_ans,category,persona,seed=message)
         if skill_answer and skill_answer.startswith('(skill'):wrapped=f'{skill_answer}\n{wrapped}'
+        if confirmed_clarification and confirmed_clarification.get('confirmed'):
+            _cc='confidential' if confirmed_clarification.get('is_confidential') else 'public'
+            wrapped=f"Got it — marking that {_cc}. {wrapped}"
+        if self.personal_atlas is not None:
+            try:
+                pending=self.personal_atlas.next_clarification_to_ask()
+                if pending:wrapped=f"{wrapped}\n\n{self.personal_atlas.build_clarification_question(pending)}"
+            except Exception as _qe:print(f'[AmniAgent] personal_atlas next_clarification failed: {_qe}',flush=True)
         conv.append('assistant',wrapped,{'tier':tier,'tokens':tokens,'skill_calls':skill_calls,'persona':persona.name,'category':category,'is_private':is_private})
         if self.atlas is not None and raw_ans:
             try:self.atlas.record(conv.session_id,message,wrapped,is_personal=is_private)
