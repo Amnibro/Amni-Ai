@@ -2,6 +2,59 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.8 — INCREDIBLE Adam iter 3: Socratic coach mode + per-topic mastery (2026-05-21)
+
+Third iteration. Adam can now run ask-answer-ask coaching sessions on any topic. Adam generates each question via JSON-mode `chat_persona`, grades the user's answer 0-100, escalates difficulty on a 2-correct streak, drops on a 2-wrong streak, and persists rolling mastery per topic.
+
+### New files
+- `amni/storage/coach_atlas.py` — `CoachAtlas` class. One JSONL per topic (slugified). Rolling weighted mastery over last N=10 answers (weighted by difficulty). In-memory session state for current pending question + streaks. Cross-session persistence via the per-topic files.
+- `amni/serve/coach.py` — `coach` skill. Actions:
+  - `start <topic>` — fresh session, generate first question
+  - `ask` — next question at current difficulty
+  - `answer <text>` — grade, update mastery, return next question
+  - `hint` — non-revealing nudge for the pending question
+  - `skip` — advance without scoring
+  - `summary` — end session, return stats
+  - `status` — current state
+
+### Adam-side calls
+- Question generation prompt forces strict JSON `{question, model_answer, hint}` + avoids recent paraphrases via the topic's recent-question list.
+- Grading prompt forces strict JSON `{score, feedback, correct_facts, missing_facts}` with clear band semantics (90-100 complete, 70-89 minor omissions, 50-69 vague, 30-49 mostly wrong, 0-29 blank/irrelevant).
+- All extraction calls fall back gracefully on malformed JSON (regex JSON-object extractor + single-quote rescue + 50 default).
+
+### Skill registry
+- Registered as `coach`, schema `{action, topic?, session_id?, answer?, difficulty?}`. 28 skills total now.
+
+### Agent wire-up
+- `AmniAgent.__init__` instantiates `CoachAtlas` (lazy import, optional override) and passes it via skill ctx alongside `personal_atlas`. No regex auto-routing yet — invoke via direct skill call (`POST /skills/coach`).
+
+### Widget output
+- Each coach skill response includes a `widget` envelope (type: info, title: `Coach · <topic>`, icon: 🎓) carrying topic/difficulty/streaks/mastery for inline render in the Jarvis UI.
+
+### Tests
+- `tests/test_coach_v6_9_8.py` — 14/14 PASS:
+  - slug normalization
+  - JSON extraction tolerance
+  - start session returns first question
+  - answer grading updates mastery
+  - difficulty escalates after 2-correct streak
+  - difficulty drops after 2-wrong streak
+  - hint returns pending hint
+  - skip advances without penalty
+  - summary ends session with stats
+  - unknown action errors clearly
+  - status reports current state
+  - topic persistence across atlas instances
+  - grader fallback when Adam returns garbage
+  - empty user answer scores zero
+
+### Try it
+```python
+import requests
+r=requests.post('http://127.0.0.1:7700/skills/coach',json={'args':{'action':'start','topic':'linear algebra'}})
+print(r.json())  # → {session_id, topic, difficulty, question, mastery, widget}
+```
+
 ## v6.9.7 — INCREDIBLE Adam iter 2: Jarvis UI shell at /jarvis (2026-05-21)
 
 Second iteration of the multi-iter push. Adam now has a neon-glow Jarvis-style web UI alongside the standard `/` page. Live data renders as glowing inline cards via the v6.9.6 widget protocol.

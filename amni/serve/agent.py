@@ -242,7 +242,7 @@ def _perturb_retry(adam,skills,persona_sys:str,code:str,err:str,user_msg:str,max
         return {'success':True,'magnitude':mag,'code':new_code,'stdout':so,'stderr':se,'history':history,'tests_passed':bool(asserts)}
     return {'success':False,'history':history,'code':cur_code,'stderr':cur_err}
 class AmniAgent:
-    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas',profile_path:str='experiences/user_profile.json',personal_atlas=None,personal_atlas_root:str='experiences/personal_atlas'):
+    def __init__(self,adam,skills:Optional[SkillRegistry]=None,store:Optional[ConversationStore]=None,workdir:Optional[str]=None,personas:Optional[PersonaStore]=None,use_persona:bool=True,atlas:Optional[ConversationAtlas]=None,atlas_root:str='experiences/conversation_atlas',profile_path:str='experiences/user_profile.json',personal_atlas=None,personal_atlas_root:str='experiences/personal_atlas',coach_atlas=None,coach_atlas_root:str='experiences/coach_atlas'):
         self.adam=adam
         self.skills=skills or default_registry(workdir=workdir)
         self.store=store or ConversationStore()
@@ -260,6 +260,12 @@ class AmniAgent:
                 from amni.storage.personal_atlas import PersonalAtlas
                 self.personal_atlas=PersonalAtlas(root=personal_atlas_root,encoder=getattr(getattr(adam,'sem_lut',None),'encoder',None),adam=adam)
         except Exception as e:print(f'[AmniAgent] PersonalAtlas init failed (organic profile disabled): {e}',flush=True);self.personal_atlas=None
+        try:
+            if coach_atlas is not None:self.coach_atlas=coach_atlas
+            else:
+                from amni.storage.coach_atlas import CoachAtlas
+                self.coach_atlas=CoachAtlas(root=coach_atlas_root)
+        except Exception as e:print(f'[AmniAgent] CoachAtlas init failed (coaching disabled): {e}',flush=True);self.coach_atlas=None
     def _previous_session_summary(self,current_session_id,max_chars=240):
         try:
             root=getattr(getattr(self,'store',None),'root',None)
@@ -379,7 +385,7 @@ class AmniAgent:
             det=self._detect_skill(message)
             if det is not None:
                 name,args=det
-                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv})
+                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas})
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)
