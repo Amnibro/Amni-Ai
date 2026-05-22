@@ -694,6 +694,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         from amni.serve.coach import coach_skill as _coach_skill
         reg.register('coach',_coach_skill,desc='Socratic coaching/tutor mode. Actions: start <topic> | ask | answer <text> | hint | skip | summary | status. Tracks per-topic mastery in coach_atlas. Args: {action, topic?, session_id?, answer?, difficulty?}',schema={'action':'str','topic':'str?','session_id':'str?','answer':'str?','difficulty':'int?'})
     except Exception as _ce:print(f'[skills] coach skill register failed: {_ce}',flush=True)
+    try:
+        from amni.serve.scheduler import schedule_loop_skill as _sched_skill
+        reg.register('schedule_loop',_sched_skill,desc='Adam-driven recurring jobs. Actions: add (kind, payload, cadence_s, label?, start_in_s?) | list | get <id> | cancel <id> | enable <id> | disable <id> | runs <id> | run_now <id> | stats. Kinds: skill (payload={name,args}), prompt (payload={text,system?}), webpoll (payload={url|query}). Args: {action, kind?, payload?, cadence_s?, id?, label?, start_in_s?}',schema={'action':'str','kind':'str?','payload':'dict?','cadence_s':'int?','id':'str?','label':'str?','start_in_s':'int?'})
+    except Exception as _se:print(f'[skills] schedule_loop skill register failed: {_se}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)
