@@ -2,6 +2,67 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.9 — INCREDIBLE Adam iter 4: Adam-driven recurring jobs (2026-05-21)
+
+Fourth iteration. Adam can now schedule its own recurring tasks — daily summaries, periodic web polls, weekly retros, scheduled skill calls. Lightweight background thread, persistent JSONL, survives restarts.
+
+### New files
+- `amni/storage/schedule_atlas.py` — `ScheduleAtlas`. One `jobs.jsonl` (full rewrite on change) + one `outcomes.jsonl` (append-only, capped to 5 per job in memory). Thread-safe via single lock.
+- `amni/serve/scheduler.py` — `AdamScheduler` background thread polls every 5s, fires due jobs via skill registry or `adam.chat_persona`. `tick()` exposed for synchronous tests. `run_now(job_id)` bypasses schedule for ad-hoc fires.
+
+### Job kinds
+- `skill` — `payload={'name':'<skill>', 'args':{...}}` → invokes `reg.call(name, args, ctx={adam, scheduler})`
+- `prompt` — `payload={'text':'...', 'system':'... optional'}` → `adam.chat_persona(text, system, ...)` deterministic JSON output
+- `webpoll` — `payload={'url'|'query':...}` → uses existing `web` skill (DDG search + Adam crawler distill)
+
+### `schedule_loop` skill actions
+- `add` — create new job (kind, payload, cadence_s ≥ 10, label?, start_in_s?)
+- `list` — all jobs + stats
+- `get <id>` — full job record
+- `cancel <id>` — delete
+- `enable <id>` / `disable <id>` — toggle without deletion
+- `runs <id>` — last 5 outcomes
+- `run_now <id>` — fire immediately (advances next_fire_at)
+- `stats` — counts by kind + total runs
+
+### AmniAgent wire-up
+- `__init__` instantiates `AdamScheduler` with `skill_registry=self.skills, adam=self.adam, start_thread=True`. Daemon thread.
+- Skill ctx now includes `scheduler` alongside `adam`, `conv`, `coach_atlas`, `personal_atlas`.
+
+### Use cases this unlocks
+- "Every morning at 7am, summarize the weather + my coach mastery progress"
+- "Every 6h, poll the latest python releases via web and distill"
+- "Every hour, run reflection on one uncertain lesson"
+- "Daily, dump my conversation atlas stats to a file"
+
+### Tests
+- `tests/test_scheduler_v6_9_9.py` — 16/16 PASS:
+  - add/list, reject invalid kinds + cadence_s < 10
+  - due_jobs filters by next_fire_at
+  - record_fire advances next_fire_at by cadence_s
+  - outcomes capped to 5 per job (oldest dropped)
+  - cancel/enable/disable
+  - persistence round-trip (jobs + outcomes survive instantiation)
+  - tick fires skill job → registry called with correct args
+  - tick fires prompt job → Adam.chat_persona called, output stored
+  - run_now bypasses schedule
+  - schedule_loop skill: add, list, cancel, error when no scheduler in ctx, unknown action
+  - stats reports kinds correctly
+
+### Try it
+```python
+import requests
+# schedule a daily weather summary at 7am-ish (24h cadence starting in 60s)
+r=requests.post('http://127.0.0.1:7700/skills/schedule_loop',json={'args':{
+  'action':'add',
+  'kind':'skill',
+  'payload':{'name':'weather','args':{'location':'Boston'}},
+  'cadence_s':86400,
+  'label':'daily Boston weather',
+  'start_in_s':60
+}})
+```
+
 ## v6.9.8 — INCREDIBLE Adam iter 3: Socratic coach mode + per-topic mastery (2026-05-21)
 
 Third iteration. Adam can now run ask-answer-ask coaching sessions on any topic. Adam generates each question via JSON-mode `chat_persona`, grades the user's answer 0-100, escalates difficulty on a 2-correct streak, drops on a 2-wrong streak, and persists rolling mastery per topic.

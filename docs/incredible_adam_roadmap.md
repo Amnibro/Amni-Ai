@@ -75,6 +75,7 @@ Each iteration:
 - iter 1 (2026-05-21): widget protocol + weather + system_stats + time_card → v6.9.6
 - iter 2 (2026-05-21): Jarvis UI shell at /jarvis route — neural-net canvas bg, neon-glow CSS, inline widget cards (weather/system/time), voice in+out, calls /v1/chat/completions → v6.9.7
 - iter 3 (2026-05-21): Socratic coach mode — CoachAtlas (per-topic mastery + rolling weighted avg) + coach skill (start/ask/answer/hint/skip/summary/status) with mocked-Adam tested grading loop, difficulty escalation on 2-streak → v6.9.8
+- iter 4 (2026-05-21): Adam-driven scheduling — ScheduleAtlas (persistent jobs.jsonl + outcomes capped to 5/job) + AdamScheduler thread (poll every 5s, fire due skill/prompt/webpoll jobs) + schedule_loop skill (add/list/get/cancel/enable/disable/runs/run_now/stats). 29 skills total. → v6.9.9
 
 ## Open future ideas
 

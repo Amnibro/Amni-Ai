@@ -266,6 +266,10 @@ class AmniAgent:
                 from amni.storage.coach_atlas import CoachAtlas
                 self.coach_atlas=CoachAtlas(root=coach_atlas_root)
         except Exception as e:print(f'[AmniAgent] CoachAtlas init failed (coaching disabled): {e}',flush=True);self.coach_atlas=None
+        try:
+            from amni.serve.scheduler import AdamScheduler
+            self.scheduler=AdamScheduler(skill_registry=self.skills,adam=self.adam,start_thread=True)
+        except Exception as e:print(f'[AmniAgent] AdamScheduler init failed (autonomous jobs disabled): {e}',flush=True);self.scheduler=None
     def _previous_session_summary(self,current_session_id,max_chars=240):
         try:
             root=getattr(getattr(self,'store',None),'root',None)
@@ -385,7 +389,7 @@ class AmniAgent:
             det=self._detect_skill(message)
             if det is not None:
                 name,args=det
-                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas})
+                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None)})
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)
