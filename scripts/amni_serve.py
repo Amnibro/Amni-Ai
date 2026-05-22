@@ -207,7 +207,7 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp,openai_compat
+    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web
     from amni.serve.code_atlas import CodeAtlas
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=not args.web_restricted)
@@ -843,8 +843,10 @@ def main():
     openai_compat.mount(app,adam,agent,code_atlas=_code_atlas)
     mcp.mount(app,agent)
     web.mount(app)
+    jarvis_web.mount(app)
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
+    print(f'[amni_serve]   Jarvis UI:     http://{args.host}:{args.port}/jarvis  (neon + widgets + voice)',flush=True)
     print(f'[amni_serve]   Ollama compat: http://{args.host}:{args.port}/api/tags',flush=True)
     print(f'[amni_serve]   MCP server:    http://{args.host}:{args.port}/mcp',flush=True)
     print(f'[amni_serve]   OpenAI compat: http://{args.host}:{args.port}/v1/chat/completions  (Amni-Code, Continue.dev, Cline, Aider)',flush=True)

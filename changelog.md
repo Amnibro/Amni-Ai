@@ -2,6 +2,46 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.7 — INCREDIBLE Adam iter 2: Jarvis UI shell at /jarvis (2026-05-21)
+
+Second iteration of the multi-iter push. Adam now has a neon-glow Jarvis-style web UI alongside the standard `/` page. Live data renders as glowing inline cards via the v6.9.6 widget protocol.
+
+### New file
+- `amni/serve/jarvis_web.py` — single embedded HTML page, mount(app) adds `GET /jarvis`. 21.6 KB self-contained: CSS + JS + HTML in one module, zero external assets.
+
+### Visual layer
+- Animated neural-net particle canvas background (60 nodes, distance-based connections, cyan glow, GPU-friendly requestAnimationFrame loop)
+- Tactical-overlay frame: corner brackets, scanline animation, glow borders, nebula gradient
+- Neon palette: `--cyan #00e5ff`, `--magenta #ff2bd6`, `--gold`, `--ok`, `--err`
+- Glassmorphism chat panel (backdrop blur + glow inset)
+- Pulsing status pills (GF(17) online, lessons count, persona)
+
+### Widget card renderers (inline next to chat bubbles)
+- **Weather card**: 36px temp display, HI/LO/humid/wind grid, capitalized description, neon location
+- **System card**: CPU/MEM/DISK gauges with animated bar fills + GPU panel
+- **Time card**: large 32px clock + weekday + timezone
+
+### Interaction
+- POSTs to `/v1/chat/completions` (already widget-aware from v6.9.6)
+- Voice in (Web Speech API, pulse-animated mic button)
+- Voice out (speechSynthesis, toggleable)
+- Persistent session id in localStorage
+- Welcome screen with 6 example prompts (3 widget-driven, 3 standard)
+
+### Wire-up
+- `scripts/amni_serve.py`: imports + mounts `jarvis_web`. Boot banner now advertises `/jarvis`.
+
+### Tests
+- `tests/test_jarvis_web_v6_9_7.py` — 9/9 PASS (route serves 200, HTML content-type, canvas bg present, widget renderer present, points at /v1/chat/completions, voice buttons + Web Speech, neon CSS vars, example prompts match widget skills, ADAM JARVIS title present).
+- 14/14 v6.9.6 widget tests still green.
+- Pre-push hook validates 253 .py files clean.
+
+### Try it
+```
+python -m amni.cli serve --port 7700
+# open http://127.0.0.1:7700/jarvis
+```
+
 ## v6.9.6 — INCREDIBLE Adam iter 1: widget protocol + Jarvis-style inline data cards (2026-05-21)
 
 First iteration of the multi-iter push to make Adam absolutely incredible (autonomous coding ✓ from v6.9.4, schemaless personal memory ✓ from v6.9.5, **inline widgets now**). Inspired by Suryansh Chourasia's Jarvis-CV.
