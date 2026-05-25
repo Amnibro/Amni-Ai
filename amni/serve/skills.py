@@ -710,6 +710,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         from amni.serve.kg_query import kg_query_skill as _kg_skill
         reg.register('kg_query',_kg_skill,desc='Query Adam\'s knowledge graph (SPO triples). Actions: stats | neighbors <subject> | out <subject> | in <subject> | predicate <p> | path <from> <to> [max_hops] | search <q> | add s,p,o | forget [s|p|o]. Args: {action, subject?, q?, predicate?, p?, a?, b?, from?, to?, max_hops?, s?, o?, object?, source?, confidence?, limit?, direction?}',schema={'action':'str','subject':'str?','q':'str?','predicate':'str?','p':'str?','s':'str?','o':'str?','a':'str?','b':'str?','from':'str?','to':'str?','max_hops':'int?','limit':'int?','direction':'str?','source':'str?','confidence':'float?'})
     except Exception as _kge:print(f'[skills] kg_query skill register failed: {_kge}',flush=True)
+    try:
+        from amni.serve.vision import describe_image_skill as _vis_skill
+        reg.register('describe_image',_vis_skill,desc='Describe an image via BLIP. Provide image_base64 OR path. Optional question for VQA mode ("what color is the dog?"). Args: {image_base64?, path?, question?}',schema={'image_base64':'str?','path':'str?','question':'str?'})
+    except Exception as _ve:print(f'[skills] describe_image skill register failed: {_ve}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)
