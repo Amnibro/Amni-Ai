@@ -71,6 +71,40 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.system .sys-card .val{font-size:18px;color:var(--cyan);text-shadow:0 0 6px var(--cyan);margin-top:4px}
 .widget.system .sys-card .bar{height:3px;background:rgba(0,229,255,.1);border-radius:2px;margin-top:6px;overflow:hidden}
 .widget.system .sys-card .bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));box-shadow:0 0 8px var(--cyan);transition:width .3s}
+.widget.news .w-body{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
+.widget.news .news-item{padding:6px 8px;border:1px solid rgba(0,229,255,.08);border-radius:3px;background:rgba(0,229,255,.02);text-decoration:none;color:var(--fg);display:block;transition:all .15s}
+.widget.news .news-item:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.05);box-shadow:0 0 8px rgba(0,229,255,.15)}
+.widget.news .news-item .title{font-size:12px;line-height:1.3}
+.widget.news .news-item .src{font-size:9px;color:var(--cyan);letter-spacing:.15em;text-transform:uppercase;margin-top:3px}
+.widget.stock .quotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.widget.stock .quote{padding:10px;border:1px solid rgba(0,229,255,.15);border-radius:3px;background:rgba(0,229,255,.02)}
+.widget.stock .quote .sym{font-size:14px;color:var(--cyan);text-shadow:0 0 6px var(--cyan);letter-spacing:.1em;font-weight:600}
+.widget.stock .quote .name{font-size:9px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.widget.stock .quote .price{font-size:22px;color:var(--fg);text-shadow:0 0 4px rgba(0,229,255,.4)}
+.widget.stock .quote .chg{font-size:11px;margin-top:3px}
+.widget.stock .quote .chg.up{color:var(--ok);text-shadow:0 0 4px var(--ok)}
+.widget.stock .quote .chg.down{color:var(--err);text-shadow:0 0 4px var(--err)}
+.widget.stock .quote .meta{font-size:9px;color:var(--mute);margin-top:6px;border-top:1px solid rgba(0,229,255,.08);padding-top:4px}
+.widget.file .file-meta{display:flex;gap:12px;font-size:9px;color:var(--mute);letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.widget.file .file-meta .v{color:var(--cyan);margin-left:4px}
+.widget.file pre{background:rgba(0,0,0,.6);padding:10px;border-radius:2px;font-size:10px;color:var(--cyan);max-height:300px;overflow:auto;line-height:1.4}
+.widget.disk .partitions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.widget.disk .part{padding:8px 10px;border:1px solid rgba(0,229,255,.12);border-radius:3px;background:rgba(0,229,255,.02)}
+.widget.disk .part .mount{font-size:11px;color:var(--cyan);text-shadow:0 0 4px var(--cyan);letter-spacing:.1em;font-family:Consolas,monospace}
+.widget.disk .part .stat{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--mute);margin-top:4px}
+.widget.disk .part .stat .v{color:var(--fg);margin-left:4px}
+.widget.disk .part .bar{height:3px;background:rgba(0,229,255,.1);border-radius:2px;margin-top:6px;overflow:hidden}
+.widget.disk .part .bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));box-shadow:0 0 4px var(--cyan)}
+.widget.git .git-branch{font-size:14px;color:var(--cyan);text-shadow:0 0 6px var(--cyan);letter-spacing:.1em}
+.widget.git .git-stats{display:flex;gap:14px;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--mute);margin:6px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(0,229,255,.08)}
+.widget.git .git-stats .v{color:var(--cyan);margin-left:4px}
+.widget.git .git-stats .v.dirty{color:var(--gold)}
+.widget.git .commits{font-size:10px;color:var(--fg);font-family:Consolas,monospace;line-height:1.5}
+.widget.git .commits .row{padding:2px 0;border-bottom:1px solid rgba(0,229,255,.05)}
+.widget.git .commits .row:last-child{border-bottom:none}
+.widget.git .commits .row .sha{color:var(--cyan);margin-right:8px}
+.widget.git .dirty-files{margin-top:8px;font-size:10px;color:var(--gold);font-family:Consolas,monospace}
+.widget.git .dirty-files .lbl{color:var(--mute);font-size:9px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:3px}
 .widget.time .w-clock{font-size:32px;color:var(--cyan);text-shadow:0 0 12px var(--cyan);letter-spacing:.1em;font-weight:300}
 .widget.time .w-date{font-size:11px;color:var(--mute);letter-spacing:.15em;text-transform:uppercase;margin-top:4px}
 .widget.time .w-tz{font-size:9px;color:var(--mute);margin-top:2px}
@@ -259,6 +293,23 @@ function renderWidget(w){
     body=cards.join('');
   }else if(t==='time'){
     body=`<div class="w-clock">${esc(d.time_human||d.iso||'?')}</div><div class="w-date">${esc(d.weekday||'')} · ${esc(d.date_human||'')}</div><div class="w-tz">${esc(d.tz||'local')}</div>`;
+  }else if(t==='news'){
+    const items=(d.items||[]).map(it=>`<a class="news-item" href="${esc(it.url||'#')}" target="_blank" rel="noopener"><div class="title">${esc(it.title||'(no title)')}</div><div class="src">${esc(it.source||'')}</div></a>`).join('');
+    body=`<div class="w-body">${items||'<div style="color:var(--mute);font-size:11px">no items</div>'}</div>`;
+  }else if(t==='stock'){
+    const cards=(d.quotes||[]).map(q=>{const chg=q.change||0;const pct=q.change_pct||0;const cls=chg>=0?'up':'down';const arrow=chg>=0?'▲':'▼';const cur=q.currency||'USD';return `<div class="quote"><div class="sym">${esc(q.symbol||'?')}</div><div class="name">${esc(q.name||'')}</div><div class="price">${(q.price!=null?Number(q.price).toFixed(2):'?')} <span class="meta" style="display:inline;padding:0;border:none;margin-left:4px">${esc(cur)}</span></div><div class="chg ${cls}">${arrow} ${(Math.abs(chg)).toFixed(2)} (${pct>=0?'+':''}${pct.toFixed(2)}%)</div><div class="meta">H ${q.day_high!=null?Number(q.day_high).toFixed(2):'?'} · L ${q.day_low!=null?Number(q.day_low).toFixed(2):'?'} · ${esc(q.market_state||'?')}</div></div>`}).join('');
+    body=`<div class="quotes">${cards||'<div style="color:var(--mute);font-size:11px">no quotes</div>'}</div>`;
+  }else if(t==='file'){
+    body=`<div class="file-meta"><div>PATH<span class="v">${esc((d.path||'').split('/').pop().split('\\\\').pop())}</span></div><div>LINES<span class="v">${d.lines_shown||'?'}</span></div><div>SIZE<span class="v">${d.size_bytes!=null?Math.round(d.size_bytes/1024)+' kb':'?'}</span></div>${d.ext?`<div>EXT<span class="v">${esc(d.ext)}</span></div>`:''}</div><pre>${esc(d.preview||'')}</pre>`;
+  }else if(t==='disk'){
+    const parts=(d.partitions||[]).map(p=>`<div class="part"><div class="mount">${esc(p.mount||'?')}</div><div class="stat">USED<span class="v">${p.used_gb||'?'} / ${p.total_gb||'?'} GB · ${p.used_pct||0}%</span></div><div class="stat">FREE<span class="v">${p.free_gb||'?'} GB</span></div><div class="bar"><div class="bar-fill" style="width:${p.used_pct||0}%"></div></div></div>`).join('');
+    body=`<div class="partitions">${parts||'<div style="color:var(--mute);font-size:11px">no partitions</div>'}</div>`;
+  }else if(t==='git'){
+    const branch=esc(d.branch||'?');
+    const dcls=d.dirty_n>0?' dirty':'';
+    const commits=(d.recent_commits||[]).map(c=>{const sha=esc((c||'').slice(0,7));const msg=esc((c||'').slice(8));return `<div class="row"><span class="sha">${sha}</span>${msg}</div>`}).join('');
+    const dirtyHtml=d.dirty_n>0&&d.dirty_sample?`<div class="dirty-files"><div class="lbl">UNSTAGED · ${d.dirty_n}</div>${(d.dirty_sample||[]).map(s=>esc(s)).join('<br>')}</div>`:'';
+    body=`<div class="git-branch">⎇ ${branch}</div><div class="git-stats"><div>DIRTY<span class="v${dcls}">${d.dirty_n||0}</span></div><div>AHEAD<span class="v">${d.ahead||0}</span></div><div>BEHIND<span class="v">${d.behind||0}</span></div></div><div class="commits">${commits||'<div style="color:var(--mute)">no commits</div>'}</div>${dirtyHtml}`;
   }else if(t==='code'){
     body=`<pre><code>${esc(d.code||'')}</code></pre>`;
   }else if(t==='error'||t==='info'){

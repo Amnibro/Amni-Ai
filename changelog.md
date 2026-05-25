@@ -2,6 +2,52 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.5 — INCREDIBLE Adam iter 12: 5 new Jarvis-style inline widgets (2026-05-25)
+
+Fills out the Jarvis surface across more domains. Five new widget skills, each with a tailored neon-themed `/jarvis` renderer.
+
+### New skills (5)
+- **`news`** — DDG news scrape (no API key). Args: `{query?, n?=6}`. Returns scrollable list of titles + sources, each clickable.
+- **`stock`** — Yahoo Finance quote JSON (no key). Args: `{symbols:"AAPL,MSFT,GOOG"}`. Returns per-symbol card with price, ▲/▼ change + %, day H/L, market state, currency.
+- **`file_preview`** — head N lines of a file as a `file` widget. Args: `{path, max_lines?=40, max_chars?=2400}`. Workdir-gated like file_read.
+- **`disk_widget`** — per-partition disk usage via psutil. Mount/fs/used/free/used% with gradient progress bars per partition.
+- **`git_status`** — branch + dirty count + ahead/behind + recent 5 commits + unstaged files sample. Args: `{workdir?}`. Walks up to find `.git` if not at cwd.
+
+**41 skills total now.**
+
+### Widget protocol additions
+- `_SUPPORTED_TYPES` extended with `disk`, `git`. Other 4 types already supported (`news`, `stock`, `file` were defined in v6.9.6).
+
+### `/jarvis` UI: 5 new renderers (~5.7 KB CSS+JS)
+- **News card** — flex column of clickable `.news-item` rows. Each row: title (12 px) + source pill (cyan caps). Hover glow. Max 280 px scroll.
+- **Stock card** — auto-fit grid of `.quote` cards. Symbol (cyan glow), name (mute), big 22 px price + currency, ▲/▼ change colored green/red with text-shadow, day H/L + market state below.
+- **File card** — top meta row (PATH/LINES/SIZE/EXT cyan-tagged), then mono `<pre>` with cyan code (max 300 px scroll).
+- **Disk card** — auto-fit grid of partitions. Mount in mono. USED bar (gradient cyan→magenta) + numeric stats.
+- **Git card** — big `⎇ branch` header, 3-stat row (DIRTY/AHEAD/BEHIND) with dirty count gold-tinted, then mono recent-commits list with cyan SHA, plus optional unstaged-files block.
+
+### Tests
+`tests/test_widgets_v6_10_5.py` — **16/16 PASS**:
+- `_SUPPORTED_TYPES` covers all 5 new types
+- `fetch_disk` runs locally + partition shape sanity
+- `fetch_file_preview` works + missing-file error + directory rejection
+- `fetch_git_status` works in this repo + clean error outside a repo
+- `news` skill dispatches (network may 404 in CI, doesn't crash)
+- All 5 skills return proper widget envelopes
+- Jarvis renderer needles for all 5 types present
+- No regression to v6.10.4 vision/task tray/mem panel/gestures
+- Skill count ≥41
+
+### Compose
+The new widgets compose with everything from earlier iters:
+```python
+# Daily morning digest: weather + news + stock + disk + git
+schedule_loop add kind=skill payload={"name":"news","args":{"query":"AI"}} cadence_s=86400
+schedule_loop add kind=skill payload={"name":"stock","args":{"symbols":"NVDA,AMD,GOOG"}} cadence_s=3600
+schedule_loop add kind=skill payload={"name":"git_status","args":{"workdir":"/path/repo"}} cadence_s=900
+```
+
+Each fires autonomously via the LearningDaemon's sister scheduler from iter 4, surfaces as a widget in `/jarvis`, and shows up in the floating task tray from iter 10 while running.
+
 ## v6.10.4 — INCREDIBLE Adam iter 11: multi-modal vision (2026-05-25)
 
 Adam handles image input now. Paste an image into `/jarvis`, drag-and-drop a screenshot, or POST to `/vision/describe` — Adam captions it. Ask "what color is the dog?" and Adam routes to VQA mode.

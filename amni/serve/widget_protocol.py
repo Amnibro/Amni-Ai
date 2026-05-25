@@ -7,7 +7,7 @@ import re,json,uuid
 from typing import List,Dict,Any,Optional
 _WIDGET_FENCE_RE=re.compile(r"```widget\s*\n(.*?)\n```",re.DOTALL|re.IGNORECASE)
 _LOOSE_WIDGET_RE=re.compile(r"```(?:json|widget)?\s*\n?(\{[^`]*?\"type\"\s*:[^`]*?\})\s*\n?```",re.DOTALL|re.IGNORECASE)
-_SUPPORTED_TYPES={'weather','system','time','news','stock','code','file','image','map','table','chart','progress','calendar','task','error','info','warning','success'}
+_SUPPORTED_TYPES={'weather','system','time','news','stock','code','file','image','map','table','chart','progress','calendar','task','error','info','warning','success','disk','git'}
 def _safe_json(s:str)->Optional[Dict[str,Any]]:
     try:return json.loads(s)
     except Exception:pass
