@@ -2,6 +2,60 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.1 — INCREDIBLE Adam iter 8: knowledge-graph synthesis + deferred privacy backports (2026-05-25)
+
+Adam now reasons RELATIONALLY. Beyond cell-LUT lookup (which answers "what is X?"), Adam can now traverse a per-machine knowledge graph to answer **"what connects X to Y?"** via BFS path-finding. Also: two long-deferred privacy/correctness fixes finally landed.
+
+### New: KnowledgeGraph SPO triple store
+- `amni/storage/knowledge_graph.py` — `KnowledgeGraph` class. Triples = `(subject, predicate, object, confidence, sources[], ts, kind)`. Persistence via `triples.jsonl` (full-rewrite on save). Three indices in-memory: `by_subject`, `by_object`, `by_predicate` — O(1) neighbor lookup, BFS-ready.
+- Consensus on duplicate add: confidence bumps +0.15 per new source, ≥0.85 → verified.
+- All subjects + objects normalized via `_TOKEN_RE` (lowercase, alphanumeric + underscore), predicates slug-cased.
+
+### `amni/serve/kg_extractor.py`
+- Given a `(question, answer)` pair, calls Adam JSON-mode with a strict prompt → 1-3 atomic SPO triples per fact. Concrete relation predicates (`is_a`, `has_part`, `occurs_in`, `defined_by`, `located_in`, `depends_on`, `causes`, `opposite_of`, `member_of`). Subjective opinions filtered out.
+- `extract_and_store(adam, kg, q, a, source)` is the one-shot ingest path. Wires into the LearningDaemon ingest pipeline natively.
+
+### `amni/serve/kg_query.py` — new `kg_query` skill
+| Action | Args | Returns |
+|---|---|---|
+| `neighbors <subject>` | direction=both\|out\|in, limit | edges with `s/p/o/direction/conf/consensus` |
+| `out <subject>` | | outgoing edges only |
+| `in <subject>` | | inbound edges only |
+| `predicate <p>` | limit | all triples with that predicate |
+| `path <a> <b>` | max_hops=3 | BFS shortest path edges, or null |
+| `search <q>` | limit | fuzzy subject match |
+| `add s,p,o` | source, confidence | manual insert |
+| `forget` | subject\|predicate\|object | bulk delete |
+| `stats` | | triples/subjects/objects/predicates/avg_conf/top_predicates |
+
+Every action returns a `widget` envelope (type `info`, icon 🧠) ready for inline render in `/jarvis`.
+
+### Wire-up
+- `AmniAgent.__init__` instantiates `KnowledgeGraph()` alongside the other atlases. Skill ctx now carries `knowledge_graph`.
+- 35 skills total.
+
+### Deferred backport #1: pre-save force-refit
+Applied the v6.9.5 PersonalAtlas fix to both `ConversationAtlas._save_slot` and `CodeAtlas._save_slot`. Was a real correctness bug: if `_stored_embs` got out of sync with `_raw` between refit windows (records 2..5 hit save without re-fitting), persisted state was corrupt and reload silently dropped cells. Now every save force-refits if the lengths don't match.
+
+### Deferred backport #2: ConvAtlas multi-user privacy default
+`ConversationAtlas.recall(...)` parameter `include_local` defaults to **False** now (was True). Was the v6.5.0 paranoid-PII test that's been failing for three iterations: bob's session was recalling alice's personal facts via the shared `__local_user__` slot. Multi-user separation is now the secure default. Single-user-across-sessions callers explicitly opt in via `include_local=True`.
+
+### Tests
+`tests/test_kg_v6_10_1.py` — **24/24 PASS**:
+- KG: normalize/slug, add+neighbors, in-direction, consensus on repeat, path_between, unreachable=None, by_predicate, persistence round-trip, forget by subject, fuzzy search, top predicates by count
+- Extractor: parses triples, filters too-short, end-to-end writes to KG
+- Skill: neighbors, path, predicate, add, unknown-action, missing-context error
+- Backports: ConvAtlas save-refit keeps `_stored_embs` synced; recall default excludes local (cohen not leaked to bob); explicit `include_local=True` still works
+
+### Try it
+```bash
+curl -X POST http://127.0.0.1:7700/skills/kg_query \
+  -H 'Content-Type: application/json' \
+  -d '{"args":{"action":"path","a":"photosynthesis","b":"chlorophyll","max_hops":4}}'
+# After the learning daemon has run a few cycles, oui'll get something like:
+# {"hops":2,"path":[{"s":"photosynthesis","p":"occurs_in","o":"plants"},{"s":"plants","p":"contain","o":"chlorophyll"}]}
+```
+
 ## v6.10.0 — INCREDIBLE Adam iter 7: 24/7 self-improvement substrate (2026-05-25)
 
 Major. Adam now learns continuously in the background — autonomously picks knowledge gaps, ingests them in parallel, extracts atomic Q-A pairs at 5× the density of raw-chunk teaching, tracks source consensus to flag verified vs debated facts, consolidates clusters during sleep cycles, and spaces-out re-verification of stale cells. Yields cleanly when the user is chatting.

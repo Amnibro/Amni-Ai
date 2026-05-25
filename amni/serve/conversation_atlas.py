@@ -39,7 +39,11 @@ class ConversationAtlas:
         slot=self._slots[key]
         with slot.lock:
             try:
-                if len(slot.lut._raw)>0 and slot.lut._stored_embs is not None:slot.lut.save(str(self._slot_path(key)))
+                _embs=slot.lut._stored_embs;_n_raw=len(slot.lut._raw)
+                if _n_raw>0 and (_embs is None or len(_embs)!=_n_raw):
+                    try:slot.lut.fit()
+                    except Exception as fe:print(f'[ConversationAtlas] pre-save refit {key} failed: {fe}',flush=True)
+                if _n_raw>0 and slot.lut._stored_embs is not None:slot.lut.save(str(self._slot_path(key)))
             except Exception as e:print(f'[ConversationAtlas] save lut {key} failed: {e}',flush=True)
             try:self._meta_path(key).write_text(json.dumps({'::'.join(k):v for k,v in slot.meta.items()},default=str),encoding='utf-8')
             except Exception as e:print(f'[ConversationAtlas] save meta {key} failed: {e}',flush=True)
@@ -63,7 +67,7 @@ class ConversationAtlas:
             self._refit_if_due(slot)
             self._save_slot(key);added.append(key)
         return {'recorded':True,'is_personal':is_personal,'slots':added}
-    def recall(self,query:str,session_id:str,k:int=3,include_global:bool=True,include_local:bool=True,max_radius:int=3)->List[Dict[str,Any]]:
+    def recall(self,query:str,session_id:str,k:int=3,include_global:bool=True,include_local:bool=False,max_radius:int=3)->List[Dict[str,Any]]:
         if not query:return []
         results:List[Dict[str,Any]]=[];seen:set=set()
         scopes=[session_id]+([_LOCAL_USER_KEY] if include_local else [])+([_GLOBAL_KEY] if include_global else [])
