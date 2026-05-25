@@ -95,6 +95,21 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
 .sidehint{position:fixed;bottom:16px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:6}
+#task-tray{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(120%);width:min(560px,92vw);z-index:8;border:1px solid rgba(0,229,255,.3);border-radius:4px;background:rgba(8,14,28,.92);box-shadow:0 0 24px rgba(0,229,255,.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:36vh;overflow-y:auto}
+#task-tray.show{transform:translateX(-50%) translateY(0)}
+#task-tray .tray-head{padding:6px 12px;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);border-bottom:1px solid rgba(0,229,255,.15);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:rgba(8,14,28,.95)}
+#task-tray .tray-head .dot{width:5px;height:5px;border-radius:50%;background:var(--ok);box-shadow:0 0 5px var(--ok);animation:pulse 1.6s ease-in-out infinite}
+#task-tray .tray-head .ct{margin-left:auto;color:var(--mute);font-size:9px}
+.task-row{padding:6px 12px;border-bottom:1px solid rgba(0,229,255,.06);display:grid;grid-template-columns:1fr auto;gap:8px;font-size:10px;align-items:center}
+.task-row:last-child{border-bottom:none}
+.task-row .label{color:var(--fg);letter-spacing:.05em;line-height:1.3}
+.task-row .label .kind{color:var(--mute);font-size:8px;letter-spacing:.2em;text-transform:uppercase;margin-right:6px}
+.task-row .label .msg{color:var(--mute);font-size:9px;margin-top:1px}
+.task-row .pbar{height:3px;background:rgba(0,229,255,.1);border-radius:2px;overflow:hidden;margin-top:4px}
+.task-row .pbar .fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));box-shadow:0 0 4px var(--cyan);transition:width .3s}
+.task-row .cancel{background:transparent;border:1px solid rgba(255,85,119,.4);color:var(--err);font-family:inherit;font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;letter-spacing:.15em}
+.task-row .cancel:hover{background:rgba(255,85,119,.1)}
+.task-row.cancelling .cancel{opacity:.4;cursor:wait}
 #mem-panel{position:fixed;top:60px;right:-440px;width:420px;height:calc(100vh - 140px);z-index:9;border:1px solid rgba(0,229,255,.35);border-radius:4px;background:rgba(8,14,28,.92);box-shadow:0 0 28px rgba(0,229,255,.2);overflow-y:auto;transition:right .25s ease-out;backdrop-filter:blur(8px)}
 #mem-panel.show{right:24px}
 #mem-panel::-webkit-scrollbar{width:5px}
@@ -173,6 +188,10 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
+</div>
+<div id="task-tray">
+  <div class="tray-head"><span class="dot"></span><span>RUNNING TASKS</span><span class="ct" id="tray-ct">0 active</span></div>
+  <div id="tray-rows"></div>
 </div>
 <div id="mem-panel">
   <div class="mem-head"><span>◆ MEMORY INSPECTOR</span><span class="close" onclick="toggleMem()">CLOSE</span></div>
@@ -451,6 +470,25 @@ async function refreshMemory(){
     document.getElementById('mem-daemon').innerHTML=`<div class="mem-stat"><div class="stat"><div class="lbl">Curiosity</div><div class="v">${c.curiosity_ticks||0}</div></div><div class="stat"><div class="lbl">Sleep passes</div><div class="v">${c.sleep_passes||0}</div></div><div class="stat"><div class="lbl">New facts</div><div class="v">${c.qa_pairs_new||0}</div></div><div class="stat"><div class="lbl">Queue</div><div class="v">${d.queue_depth||0}</div></div></div><div class="mem-row" style="margin-top:6px"><div class="body"><span class="lbl">${d.user_active_recently?'yielding to you':'running freely'}</span>Adam's 24/7 learning loop. Use the curiosity_tick / sleep_pass / pause skills to control it.</div></div>`;
   }catch(e){document.getElementById('mem-daemon').innerHTML=`<div class="empty">daemon failed: ${esc(e.message)}</div>`}
 }
+const _trayEl=document.getElementById('task-tray'),_trayRows=document.getElementById('tray-rows'),_trayCt=document.getElementById('tray-ct');
+let _taskPollOn=false,_taskPollIdleAt=0;
+async function pollTasks(){
+  try{
+    const j=await(await fetch('/tasks')).json();
+    const active=j.active||[];
+    _trayCt.textContent=`${active.length} active`;
+    if(active.length===0){
+      if(_taskPollIdleAt===0)_taskPollIdleAt=Date.now();
+      if(Date.now()-_taskPollIdleAt>3500){_trayEl.classList.remove('show');_trayRows.innerHTML=''}
+    }else{
+      _taskPollIdleAt=0;_trayEl.classList.add('show');
+      _trayRows.innerHTML=active.map(t=>`<div class="task-row${t.cancel_requested?' cancelling':''}" data-tid="${esc(t.id)}"><div><div class="label"><span class="kind">${esc(t.kind)}</span>${esc(t.label||'')}${t.progress_msg?'<div class="msg">'+esc(t.progress_msg)+'</div>':''}</div><div class="pbar"><div class="fill" style="width:${t.progress_pct||0}%"></div></div></div><button class="cancel" onclick="cancelTask('${esc(t.id)}')">${t.cancel_requested?'…':'×'}</button></div>`).join('');
+    }
+  }catch(e){}
+}
+async function cancelTask(tid){try{await fetch('/tasks/'+encodeURIComponent(tid)+'/cancel',{method:'POST'})}catch{}}
+function startTaskPolling(){if(_taskPollOn)return;_taskPollOn=true;pollTasks();setInterval(pollTasks,2000)}
+startTaskPolling();
 async function memConfirmFact(id,isConf){
   try{await fetch('/memory/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,is_confidential:isConf})});refreshMemory()}
   catch(e){console.warn('confirm fail',e)}

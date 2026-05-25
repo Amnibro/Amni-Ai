@@ -207,7 +207,7 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints
+    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints
     from amni.serve.code_atlas import CodeAtlas
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=not args.web_restricted)
@@ -845,6 +845,7 @@ def main():
     web.mount(app)
     jarvis_web.mount(app)
     memory_endpoints.mount(app,agent)
+    task_endpoints.mount(app,agent)
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
     print(f'[amni_serve]   Jarvis UI:     http://{args.host}:{args.port}/jarvis  (neon + widgets + voice)',flush=True)

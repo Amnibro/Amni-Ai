@@ -2,6 +2,37 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.3 — INCREDIBLE Adam iter 10: long-running task UI (2026-05-25)
+
+`build_curriculum` can chain web → 3 source fetches → Q-A extraction → consensus merge → coach session in 30s+. Until now that was opaque: oui kicked it off, oui waited. v6.10.3 adds visibility + control: a floating task tray in `/jarvis` shows every active background operation with a progress bar and an × cancel button. Cancel is graceful — workers poll a flag and exit at the next safe boundary.
+
+### New files
+- `amni/storage/task_registry.py` — `TaskRegistry` class. In-memory only (correct: stale active tasks shouldn't survive a crash; persistent jobs live in the scheduler/daemon). Thread-safe single lock. Active dict + ring-buffer recent (default keep=20). Each task: `{id, kind, label, status, progress_pct, progress_msg, started_at, finished_at, total, done, outcome, error, cancel_requested, meta}`.
+- `amni/serve/task_endpoints.py` — `GET /tasks` (active + recent + stats), `GET /tasks/<id>` (detail), `POST /tasks/<id>/cancel` (set flag).
+
+### Progress hooks
+- `_build_curriculum` now registers a task, calls `_prog(done, msg)` between web-search → per-source ingest → coach start, and checks `_cancelled()` between sources. If cancelled mid-run, returns `{cancelled:True, partial_sources, ingest_outcomes}` and the registry records as `cancelled`.
+
+### Wire-up
+- `AmniAgent.__init__` instantiates `TaskRegistry()`. Skill ctx now carries `task_registry`.
+- `scripts/amni_serve.py` mounts `task_endpoints.mount(app, agent)` after the memory endpoints.
+
+### Jarvis floating tray UI (additive, ~3 KB)
+- Bottom-centered, slides up when ≥1 active task. Auto-dismisses 3.5s after the last task clears.
+- Per-task row: KIND tag + label + progress message + gradient progress bar + × cancel button.
+- Cancel button shows `…` while the worker is mid-cycle, becomes `×` again only if cancel actually completes (worker may finish naturally first).
+- Polls `/tasks` every 2s. No-op when no active tasks.
+
+### Tests
+`tests/test_task_registry_v6_10_3.py` — **16/16 PASS**:
+- Registry: register, progress from done/total, explicit pct, complete/fail/cancel lifecycle, ring buffer cap, stats counters
+- HTTP: list, get-by-id (404), cancel sets flag, no-registry graceful empty
+- build_curriculum: progress reported (recent_done count rises); cancel honored mid-loop (cancelled status recorded, partial result returned)
+- Jarvis UI: tray HTML present, no regression to v6.10.2 features (mem panel, gestures, neural canvas)
+
+### Why this matters
+Adam's autonomy is great until it's running something oui didn't want. The tray closes that loop — oui can SEE the curriculum chain, the daemon ingest, the sleep consolidation, and pull the plug on any of it with one click. Trust + control on the same surface.
+
 ## v6.10.2 — INCREDIBLE Adam iter 9: Memory Inspector — trust through transparency (2026-05-25)
 
 Adam now shows oui everything it knows about oui, in real time, with one-click forget. Slide-in side panel in `/jarvis` surfaces all 9 atlases. Click MEMORY in the composer; Adam opens up its mind.
