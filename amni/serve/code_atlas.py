@@ -53,7 +53,11 @@ class CodeAtlas:
         slot=self._slots[key]
         with slot.lock:
             try:
-                if len(slot.lut._raw)>0 and slot.lut._stored_embs is not None:slot.lut.save(str(self._slot_path(key)))
+                _embs=slot.lut._stored_embs;_n_raw=len(slot.lut._raw)
+                if _n_raw>0 and (_embs is None or len(_embs)!=_n_raw):
+                    try:slot.lut.fit()
+                    except Exception as fe:print(f'[CodeAtlas] pre-save refit {key} failed: {fe}',flush=True)
+                if _n_raw>0 and slot.lut._stored_embs is not None:slot.lut.save(str(self._slot_path(key)))
             except Exception as e:print(f'[CodeAtlas] save lut {key} failed: {e}',flush=True)
             try:self._meta_path(key).write_text(json.dumps({'::'.join(k):v for k,v in slot.meta.items()},default=str),encoding='utf-8')
             except Exception as e:print(f'[CodeAtlas] save meta {key} failed: {e}',flush=True)
