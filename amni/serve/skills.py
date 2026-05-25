@@ -689,6 +689,36 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         reg.register('weather',_skill_weather,desc='Current weather + forecast for a location via Open-Meteo (no API key). Emits a weather widget. Args: {location?:str, lat?:float, lon?:float}',schema={'location':'str?','lat':'float?','lon':'float?'})
         reg.register('system_stats',_skill_system_stats,desc='CPU/memory/disk/GPU snapshot via psutil + torch. Emits a system widget.',schema={})
         reg.register('time_card',_skill_time_card,desc='Time + timezone + weekday as a time widget. Args: {tz?:str like America/New_York}',schema={'tz':'str?'})
+        def _skill_news(args,ctx,reg_):
+            d=_w.fetch_news(query=args.get('query',''),n=int(args.get('n',6)))
+            if d.get('_error'):return {'error':d['_error']}
+            d['widget']=_w.make_widget_envelope('news',d,title=f"News — {d.get('query','top')}",icon='📰')
+            return d
+        def _skill_stock(args,ctx,reg_):
+            d=_w.fetch_stock(symbols=args.get('symbols','') or args.get('symbol',''))
+            if d.get('_error'):return {'error':d['_error']}
+            d['widget']=_w.make_widget_envelope('stock',d,title=f"Stock — {d.get('symbols','?')}",icon='📈')
+            return d
+        def _skill_file_preview(args,ctx,reg_):
+            d=_w.fetch_file_preview(args.get('path',''),max_lines=int(args.get('max_lines',40)),max_chars=int(args.get('max_chars',2400)))
+            if d.get('_error'):return {'error':d['_error']}
+            d['widget']=_w.make_widget_envelope('file',d,title=f"File — {(d.get('path') or '').split('/')[-1].split(chr(92))[-1]}",icon='📄')
+            return d
+        def _skill_disk(args,ctx,reg_):
+            d=_w.fetch_disk()
+            if d.get('_error'):return {'error':d['_error']}
+            d['widget']=_w.make_widget_envelope('disk',d,title='Disk usage',icon='💾')
+            return d
+        def _skill_git_status(args,ctx,reg_):
+            d=_w.fetch_git_status(workdir=args.get('workdir'))
+            if d.get('_error'):return {'error':d['_error']}
+            d['widget']=_w.make_widget_envelope('git',d,title=f"Git — {d.get('branch','?')}",icon='⎇')
+            return d
+        reg.register('news',_skill_news,desc='Top news headlines for a topic via DuckDuckGo news. Emits a news widget. Args: {query?:str, n?:int=6}',schema={'query':'str?','n':'int?'})
+        reg.register('stock',_skill_stock,desc='Stock quote(s) via Yahoo Finance. Emits a stock widget. Args: {symbols:str e.g. "AAPL,MSFT,GOOG"}',schema={'symbols':'str','symbol':'str?'})
+        reg.register('file_preview',_skill_file_preview,gate=_gate_path,desc=f'Read first N lines of a text file in {scope} and render as a file widget. Args: {{path, max_lines?=40, max_chars?=2400}}',schema={'path':'str','max_lines':'int?','max_chars':'int?'})
+        reg.register('disk_widget',_skill_disk,desc='Per-partition disk usage via psutil. Emits a disk widget.',schema={})
+        reg.register('git_status',_skill_git_status,desc='git branch + dirty count + recent commits + remote + ahead/behind. Emits a git widget. Args: {workdir?:str}',schema={'workdir':'str?'})
     except Exception as _we:print(f'[skills] widget skills register failed: {_we}',flush=True)
     try:
         from amni.serve.coach import coach_skill as _coach_skill
