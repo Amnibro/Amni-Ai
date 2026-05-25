@@ -270,6 +270,12 @@ class AmniAgent:
             from amni.serve.scheduler import AdamScheduler
             self.scheduler=AdamScheduler(skill_registry=self.skills,adam=self.adam,start_thread=True)
         except Exception as e:print(f'[AmniAgent] AdamScheduler init failed (autonomous jobs disabled): {e}',flush=True);self.scheduler=None
+        try:
+            from amni.serve.learning_daemon import LearningDaemon
+            import os as _os_env
+            _ld_disabled=bool(_os_env.environ.get('AMNI_NO_LEARNING_DAEMON'))
+            self.learning_daemon=LearningDaemon(adam=self.adam,skill_registry=self.skills,coach_atlas=self.coach_atlas,start_thread=not _ld_disabled,config={'enabled':not _ld_disabled})
+        except Exception as e:print(f'[AmniAgent] LearningDaemon init failed (24/7 learning disabled): {e}',flush=True);self.learning_daemon=None
     def _previous_session_summary(self,current_session_id,max_chars=240):
         try:
             root=getattr(getattr(self,'store',None),'root',None)
@@ -366,6 +372,9 @@ class AmniAgent:
         t0=time.time()
         conv=self.store.get(session_id)
         conv.append('user',message)
+        if getattr(self,'learning_daemon',None) is not None:
+            try:self.learning_daemon.signal_user_activity()
+            except Exception:pass
         confirmed_clarification=None
         if self.personal_atlas is not None:
             try:confirmed_clarification=self.personal_atlas.try_parse_pending_reply(message)
@@ -389,7 +398,7 @@ class AmniAgent:
             det=self._detect_skill(message)
             if det is not None:
                 name,args=det
-                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None)})
+                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None)})
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)

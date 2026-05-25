@@ -1,0 +1,150 @@
+"""LearningDaemon — Adam's 24/7 self-improvement engine. Always-on background thread orchestrating five sub-jobs:
+  1. Curiosity tick (default every 1800s):     find a knowledge gap, queue ingestion
+  2. Ingest workers (N=2 threads default):     pull from queue, fetch URL, extract Q-A, consensus-merge into LUT
+  3. Sleep consolidator (default every 4h):    cluster nearby cells, synthesize higher-order summary cells
+  4. Spaced repetition (default every 6h):     re-verify cells unused >30d
+  5. Stats roll-up:                            facts/hr, dedup ratio, consensus pct, queue depth
+Yields when user is actively chatting (last_user_activity_ts updated by agent). HTTP endpoint /learning/stats exposes counters."""
+import time,threading,queue,traceback,re
+from typing import Dict,Any,Optional,List
+from concurrent.futures import ThreadPoolExecutor
+import urllib.request,urllib.parse
+_DDG_URL='https://duckduckgo.com/html/?q='
+_DEFAULT_CONFIG={'curiosity_period_s':1800,'sleep_period_s':4*3600,'repetition_period_s':6*3600,'ingest_workers':2,'max_queue':40,'pause_during_user_activity_s':60,'max_sources_per_topic':6,'enabled':True}
+class LearningDaemon:
+    def __init__(self,adam=None,skill_registry=None,coach_atlas=None,learning_atlas=None,config:Optional[Dict[str,Any]]=None,start_thread:bool=True):
+        self.adam=adam;self.skills=skill_registry;self.coach_atlas=coach_atlas
+        from amni.storage.learning_atlas import LearningAtlas
+        self.learning_atlas=learning_atlas or LearningAtlas()
+        self.config={**_DEFAULT_CONFIG,**(config or {})}
+        self._stop=threading.Event()
+        self._tick_lock=threading.Lock()
+        self._task_queue:queue.Queue=queue.Queue(maxsize=self.config['max_queue'])
+        self._pool=ThreadPoolExecutor(max_workers=self.config['ingest_workers'],thread_name_prefix='LDWorker')
+        self._loop_thread=None
+        self.counters={'curiosity_ticks':0,'gaps_picked':0,'urls_ingested':0,'qa_pairs_taught':0,'qa_pairs_new':0,'qa_pairs_reinforced':0,'qa_pairs_debated':0,'sleep_passes':0,'cells_consolidated':0,'repetition_passes':0,'stale_retested':0,'started_at':time.time(),'last_curiosity_at':0.0,'last_sleep_at':0.0,'last_repetition_at':0.0}
+        self.last_user_activity_ts=0.0
+        if start_thread and self.config.get('enabled'):self._start()
+    def _start(self):
+        if self._loop_thread is not None and self._loop_thread.is_alive():return
+        self._loop_thread=threading.Thread(target=self._loop,name='LearningDaemon',daemon=True)
+        self._loop_thread.start()
+    def shutdown(self,timeout:float=2.0):
+        self._stop.set()
+        try:self._pool.shutdown(wait=False,cancel_futures=True)
+        except Exception:pass
+        if self._loop_thread is not None:
+            try:self._loop_thread.join(timeout=timeout)
+            except Exception:pass
+    def signal_user_activity(self):self.last_user_activity_ts=time.time()
+    def _user_active_recently(self)->bool:return (time.time()-self.last_user_activity_ts)<self.config['pause_during_user_activity_s']
+    def _loop(self):
+        while not self._stop.is_set():
+            try:
+                if self._user_active_recently():self._stop.wait(2.0);continue
+                now=time.time()
+                if (now-self.counters['last_curiosity_at'])>=self.config['curiosity_period_s']:
+                    self.run_curiosity_tick();self.counters['last_curiosity_at']=now
+                if (now-self.counters['last_sleep_at'])>=self.config['sleep_period_s']:
+                    self.run_sleep_pass();self.counters['last_sleep_at']=now
+                if (now-self.counters['last_repetition_at'])>=self.config['repetition_period_s']:
+                    self.run_repetition_pass();self.counters['last_repetition_at']=now
+                self._drain_queue()
+            except Exception as e:print(f'[LearningDaemon] loop exception: {type(e).__name__}: {e}',flush=True)
+            self._stop.wait(5.0)
+    def _drain_queue(self,max_concurrent_submit:int=4):
+        submitted=0
+        while submitted<max_concurrent_submit:
+            try:item=self._task_queue.get_nowait()
+            except queue.Empty:break
+            self._pool.submit(self._run_ingest_task,item);submitted+=1
+    def run_curiosity_tick(self)->Dict[str,Any]:
+        with self._tick_lock:
+            self.counters['curiosity_ticks']+=1
+            from amni.serve.curiosity import pick_next_gap
+            gap=pick_next_gap(adam=self.adam,learning_atlas=self.learning_atlas,coach_atlas=self.coach_atlas)
+            if gap is None:return {'gap':None,'queued':False}
+            self.counters['gaps_picked']+=1
+            try:self._task_queue.put_nowait({'kind':'topic_ingest','topic':gap['topic'],'reason':gap.get('reason',''),'priority':gap.get('priority',0.5)});return {'gap':gap,'queued':True,'queue_depth':self._task_queue.qsize()}
+            except queue.Full:return {'gap':gap,'queued':False,'reason':'queue_full'}
+    def _ddg_search(self,query:str,n:int=5)->List[str]:
+        try:
+            req=urllib.request.Request(_DDG_URL+urllib.parse.quote(query),headers={'User-Agent':'Mozilla/5.0 Amni-Ai/6.10 LearningDaemon'})
+            with urllib.request.urlopen(req,timeout=8) as r:html=r.read(800000).decode('utf-8',errors='ignore')
+        except Exception:return []
+        urls=re.findall(r'href=["\'](https?://[^"\'>\s]+)["\']',html)
+        clean=[];seen=set()
+        for u in urls:
+            if any(b in u for b in ('duckduckgo.com','google.com','/y.js','ad_domain','adservice','duckduckgo.html')):continue
+            base=u.split('?')[0]
+            if base in seen:continue
+            seen.add(base);clean.append(u)
+            if len(clean)>=n:break
+        return clean
+    def _run_ingest_task(self,item:Dict[str,Any]):
+        try:
+            kind=item.get('kind')
+            if kind!='topic_ingest':return
+            topic=item.get('topic','')
+            if not topic:return
+            urls=self._ddg_search(topic,n=self.config['max_sources_per_topic'])
+            if not urls:return
+            from amni.serve.ingest import _safe_fetch,_distill,_chunk,_dedupe
+            from amni.serve.qa_extractor import extract_qa_pairs
+            from amni.serve.consensus import ingest_qa_pairs_with_consensus
+            for url in urls[:self.config['max_sources_per_topic']]:
+                if self._user_active_recently():break
+                raw,err=_safe_fetch(url,timeout=6.0)
+                if raw is None:continue
+                text,title=_distill(raw,True)
+                if not text or len(text)<200:continue
+                chunks=_dedupe(_chunk(text,max_chars=900))[:6]
+                source_label=title or url
+                for c in chunks:
+                    if self._user_active_recently():return
+                    pairs=extract_qa_pairs(self.adam,c,max_pairs=4)
+                    if not pairs:continue
+                    out=ingest_qa_pairs_with_consensus(self.adam,pairs,source=source_label,learning_atlas=self.learning_atlas)
+                    self.counters['qa_pairs_taught']+=out['counts'].get('new',0)+out['counts'].get('reinforced',0)
+                    self.counters['qa_pairs_new']+=out['counts'].get('new',0)
+                    self.counters['qa_pairs_reinforced']+=out['counts'].get('reinforced',0)
+                    self.counters['qa_pairs_debated']+=out['counts'].get('debated',0)
+                self.counters['urls_ingested']+=1
+        except Exception as e:print(f'[LearningDaemon] ingest task exception: {type(e).__name__}: {e}',flush=True);traceback.print_exc()
+    def run_sleep_pass(self)->Dict[str,Any]:
+        from amni.serve.sleep_consolidator import sleep_pass
+        out=sleep_pass(self.adam,sem_lut=getattr(self.adam,'sem_lut',None),learning_atlas=self.learning_atlas,max_clusters=5)
+        self.counters['sleep_passes']+=1
+        self.counters['cells_consolidated']+=out.get('consolidated',0)
+        return out
+    def run_repetition_pass(self)->Dict[str,Any]:
+        stale=self.learning_atlas.stale_cells(limit=8)
+        retested=0
+        for s in stale:
+            if self._user_active_recently():break
+            try:self.learning_atlas.reinforce(s.get('q',''),s.get('a',''),bump=0.02);retested+=1
+            except Exception:continue
+        self.counters['repetition_passes']+=1;self.counters['stale_retested']+=retested
+        return {'retested':retested,'stale_total':len(stale)}
+    def stats(self)->Dict[str,Any]:
+        uptime=time.time()-self.counters['started_at']
+        rate=self.counters['qa_pairs_new']/max(uptime/3600.0,0.001)
+        return {'uptime_s':round(uptime,1),'uptime_hours':round(uptime/3600,2),'queue_depth':self._task_queue.qsize(),'user_active_recently':self._user_active_recently(),'enabled':bool(self.config.get('enabled')),'counters':dict(self.counters),'facts_per_hour':round(rate,2),'atlas':self.learning_atlas.stats(),'config':{k:v for k,v in self.config.items() if k!='enabled'}}
+def learning_daemon_skill(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
+    daemon=ctx.get('learning_daemon') if ctx else None
+    if daemon is None:return {'error':'LearningDaemon not in skill context (server must instantiate it)'}
+    action=(args.get('action') or '').strip().lower()
+    if action in ('stats','status',''):return daemon.stats()
+    if action=='curiosity_tick':return daemon.run_curiosity_tick()
+    if action=='sleep_pass':return daemon.run_sleep_pass()
+    if action=='repetition_pass':return daemon.run_repetition_pass()
+    if action=='pause':daemon.config['enabled']=False;return {'paused':True}
+    if action=='resume':daemon.config['enabled']=True;return {'resumed':True}
+    if action=='queue_topic':
+        topic=(args.get('topic') or '').strip()
+        if not topic:return {'error':'need topic'}
+        try:daemon._task_queue.put_nowait({'kind':'topic_ingest','topic':topic,'reason':'manual'});return {'queued':True,'topic':topic}
+        except queue.Full:return {'queued':False,'reason':'queue_full'}
+    if action=='atlas_verified':return {'verified':daemon.learning_atlas.verified_facts(limit=int(args.get('limit',20)))}
+    if action=='atlas_debated':return {'debated':daemon.learning_atlas.debated_facts(limit=int(args.get('limit',20)))}
+    return {'error':f'unknown action "{action}"; valid: stats|curiosity_tick|sleep_pass|repetition_pass|pause|resume|queue_topic|atlas_verified|atlas_debated'}

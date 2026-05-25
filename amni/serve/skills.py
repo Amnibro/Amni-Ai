@@ -702,6 +702,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         from amni.serve import ingest as _ingest
         _ingest.register(reg)
     except Exception as _ie:print(f'[skills] ingest skills register failed: {_ie}',flush=True)
+    try:
+        from amni.serve.learning_daemon import learning_daemon_skill as _ld_skill
+        reg.register('learning_daemon',_ld_skill,desc='Inspect/control Adam\'s 24/7 self-improvement daemon. Actions: stats | curiosity_tick | sleep_pass | repetition_pass | pause | resume | queue_topic <topic> | atlas_verified | atlas_debated. Args: {action, topic?, limit?}',schema={'action':'str','topic':'str?','limit':'int?'})
+    except Exception as _le:print(f'[skills] learning_daemon skill register failed: {_le}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)
