@@ -150,6 +150,10 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #cam-panel.idle .gesture-readout{color:var(--mute);text-shadow:none}
 #gesture-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #gesture-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,43,214,.08);box-shadow:0 0 12px rgba(255,43,214,.3)}
+.msg .img-attach{max-width:280px;max-height:200px;border:1px solid rgba(0,229,255,.4);border-radius:3px;margin-top:6px;box-shadow:0 0 10px rgba(0,229,255,.18)}
+.drop-overlay{position:fixed;inset:0;background:rgba(0,229,255,.08);border:2px dashed var(--cyan);box-shadow:inset 0 0 60px rgba(0,229,255,.2);z-index:50;display:none;align-items:center;justify-content:center;pointer-events:none}
+.drop-overlay.show{display:flex}
+.drop-overlay .label{font-size:24px;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 16px var(--cyan)}
 .gesture-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;letter-spacing:.3em;color:var(--magenta);text-shadow:0 0 24px var(--magenta);pointer-events:none;z-index:9;opacity:0;transition:opacity .3s}
 .gesture-flash.show{opacity:1}
 @media(max-width:760px){.status .pill{display:none}.title{font-size:16px}#app{padding:18px 16px}#cam-panel{width:140px;top:50px;right:14px}}
@@ -209,6 +213,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   </div>
   <div class="gesture-readout" id="gesture-readout">—</div>
 </div>
+<div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
 <script>
@@ -489,6 +494,77 @@ async function pollTasks(){
 async function cancelTask(tid){try{await fetch('/tasks/'+encodeURIComponent(tid)+'/cancel',{method:'POST'})}catch{}}
 function startTaskPolling(){if(_taskPollOn)return;_taskPollOn=true;pollTasks();setInterval(pollTasks,2000)}
 startTaskPolling();
+let _lastImage=null;
+function _readAsDataURL(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob)})}
+async function handleImageBlob(blob){
+  const w=document.querySelector('.welcome');if(w)w.remove();
+  const dataUrl=await _readAsDataURL(blob).catch(()=>null);
+  if(!dataUrl)return;
+  _lastImage={dataUrl,blob};
+  const uMsg=document.createElement('div');uMsg.className='msg user';
+  const uB=document.createElement('div');uB.className='bubble';uB.innerHTML='[image]<br><img class="img-attach" src="'+esc(dataUrl)+'" alt="attached"/>';
+  uMsg.appendChild(uB);log.appendChild(uMsg);log.scrollTop=log.scrollHeight;
+  const botMsg=document.createElement('div');botMsg.className='msg bot';
+  const botB=document.createElement('div');botB.className='bubble thinking';botB.textContent='describing image…';botMsg.appendChild(botB);
+  log.appendChild(botMsg);log.scrollTop=log.scrollHeight;
+  try{
+    const b64=dataUrl.split(',',2)[1];
+    const r=await fetch('/vision/describe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:b64})});
+    const j=await r.json();
+    botB.classList.remove('thinking');
+    if(j.error){botB.innerHTML='Vision unavailable: '+esc(j.error)}
+    else{const cap=j.caption||'(no caption)';botB.innerHTML=md('**Image:** '+cap+'\n\n_'+j.width+'×'+j.height+' · '+(j.wall_s||'?')+'s_\n\nAsk me about it — I\'ll route follow-ups through /vision/ask.')}
+    const metaEl=document.createElement('div');metaEl.className='meta';metaEl.innerHTML='<span class="badge">vision</span>'+(j.caption?'<span class="badge">'+esc(j.caption.slice(0,40))+'</span>':'');botMsg.appendChild(metaEl);
+  }catch(e){botB.classList.remove('thinking');botB.textContent='Vision request failed: '+e.message}
+  log.scrollTop=log.scrollHeight;
+}
+async function askAboutLastImage(question){
+  if(!_lastImage)return false;
+  const botMsg=document.createElement('div');botMsg.className='msg bot';
+  const botB=document.createElement('div');botB.className='bubble thinking';botB.textContent='answering about the image…';botMsg.appendChild(botB);
+  log.appendChild(botMsg);log.scrollTop=log.scrollHeight;
+  try{
+    const b64=_lastImage.dataUrl.split(',',2)[1];
+    const r=await fetch('/vision/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:b64,question:question})});
+    const j=await r.json();
+    botB.classList.remove('thinking');
+    botB.innerHTML=j.error?'Error: '+esc(j.error):md('**Answer:** '+(j.answer||'(no answer)'));
+    const metaEl=document.createElement('div');metaEl.className='meta';metaEl.innerHTML='<span class="badge">vqa</span>';botMsg.appendChild(metaEl);
+  }catch(e){botB.classList.remove('thinking');botB.textContent='vqa failed: '+e.message}
+  log.scrollTop=log.scrollHeight;return true;
+}
+const _origSend=send;
+window.send=async function(){
+  const t=input.value.trim();
+  if(_lastImage && t && /\b(this|that|the image|the picture|in it|show |describe |what is|what's|color|shape)/i.test(t)){
+    input.value='';input.style.height='auto';
+    const uMsg=document.createElement('div');uMsg.className='msg user';
+    const uB=document.createElement('div');uB.className='bubble';uB.textContent=t;uMsg.appendChild(uB);
+    log.appendChild(uMsg);log.scrollTop=log.scrollHeight;
+    await askAboutLastImage(t);return;
+  }
+  return _origSend.apply(this,arguments);
+};
+document.addEventListener('paste',async e=>{
+  if(!e.clipboardData)return;
+  for(const item of e.clipboardData.items){
+    if(item.type&&item.type.startsWith('image/')){
+      const blob=item.getAsFile();if(blob){e.preventDefault();await handleImageBlob(blob);return}
+    }
+  }
+});
+const _dropOverlay=document.getElementById('drop-overlay');
+let _dragDepth=0;
+document.addEventListener('dragenter',e=>{if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files')){e.preventDefault();_dragDepth++;_dropOverlay.classList.add('show')}});
+document.addEventListener('dragover',e=>{if(_dropOverlay.classList.contains('show'))e.preventDefault()});
+document.addEventListener('dragleave',()=>{_dragDepth=Math.max(0,_dragDepth-1);if(_dragDepth===0)_dropOverlay.classList.remove('show')});
+document.addEventListener('drop',async e=>{
+  _dragDepth=0;_dropOverlay.classList.remove('show');
+  if(!e.dataTransfer)return;
+  for(const f of e.dataTransfer.files||[]){
+    if(f.type&&f.type.startsWith('image/')){e.preventDefault();await handleImageBlob(f);return}
+  }
+});
 async function memConfirmFact(id,isConf){
   try{await fetch('/memory/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,is_confidential:isConf})});refreshMemory()}
   catch(e){console.warn('confirm fail',e)}

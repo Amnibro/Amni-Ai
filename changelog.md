@@ -2,6 +2,45 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.4 — INCREDIBLE Adam iter 11: multi-modal vision (2026-05-25)
+
+Adam handles image input now. Paste an image into `/jarvis`, drag-and-drop a screenshot, or POST to `/vision/describe` — Adam captions it. Ask "what color is the dog?" and Adam routes to VQA mode.
+
+### Architecture
+Adam itself is GF(17) text-native (Gemma-4 2B); vision is a bolt-on. `VisionService` lazy-loads BLIP-base (Salesforce/blip-image-captioning-base, ~470MB) on first use. Q&A uses BLIP-VQA-base. Both optional — if `transformers`/`Pillow` aren't installed, every method returns `{'error': '...'}` instead of crashing. Adam-core stays light.
+
+### New files
+- `amni/serve/vision.py` — `VisionService` class with `is_available()`, `describe(image_bytes)`, `caption_with_question(image_bytes, question)`. Thread-safe lazy init for both models. CUDA if available, else CPU. `describe_image_skill` wraps both for the skill registry.
+- `amni/serve/vision_endpoints.py` — `POST /vision/describe`, `POST /vision/ask`, `GET /vision/status`, and `POST /vision/upload` (only mounted if `python-multipart` installed). All wrap inference in a TaskRegistry entry so the request shows up in the `/jarvis` task tray with a cancellable progress bar.
+
+### New skill: `describe_image`
+- Args: `image_base64` OR `path`, plus optional `question`. Returns either `{caption, width, height, widget}` or `{answer, question, width, height, widget}`. Widget envelope routes to inline `/jarvis` info-card render.
+- 36 skills total.
+
+### Jarvis paste/drag UI (additive ~3 KB)
+- **Paste handler** on `document`: any `image/*` in clipboard data triggers `handleImageBlob` — image goes inline in user bubble as thumbnail (max 280×200 px, neon-cyan border), POSTs base64 to `/vision/describe`, caption returns as bot bubble.
+- **Drag/drop handler**: file dragged over the window → full-screen neon overlay `◆ DROP IMAGE FOR ADAM` → on drop, same flow.
+- **Follow-up Q routing**: after an image is attached, the next chat input is keyword-heuristic-checked (`/\b(this|that|the image|the picture|in it|show|describe|what is|what's|color|shape)/i`); matching messages auto-route to `/vision/ask` with the last image, the user-facing chat bubble is shown but the response uses VQA mode instead of normal text chat.
+- `_lastImage` retained in localStorage for the session — works across multiple Qs without re-attaching.
+
+### Wire-up
+- `AmniAgent.__init__` instantiates `VisionService()`. Skill ctx now carries `vision`. Lazy load: actual model download deferred until first describe/ask call. Boot stays fast.
+- `scripts/amni_serve.py` mounts `vision_endpoints` after `task_endpoints`.
+
+### Tests
+`tests/test_vision_v6_10_4.py` — **19/19 PASS**:
+- VisionService graceful when deps missing
+- describe_image skill: needs image, no-vision-in-ctx, describe path, question (VQA) path, bad base64 (strict validate), data-URL prefix stripping, path-based file read, missing file, init_error propagation
+- Endpoints: status with/without vision, describe needs b64, describe success + records TaskRegistry, ask + needs question, no-vision returns 503
+- Jarvis UI: all 9 image hooks present (paste/drop/handler/VQA route)
+- No v6.10.3 regression
+
+### Try it
+1. `python -m amni.cli serve --port 7700`  (first describe will download BLIP, ~30s one-time)
+2. Open `/jarvis`
+3. Paste an image (Ctrl+V) or drag-drop a file
+4. Caption appears inline. Then type "what color is the [thing]?" → auto-routes to VQA.
+
 ## v6.10.3 — INCREDIBLE Adam iter 10: long-running task UI (2026-05-25)
 
 `build_curriculum` can chain web → 3 source fetches → Q-A extraction → consensus merge → coach session in 30s+. Until now that was opaque: oui kicked it off, oui waited. v6.10.3 adds visibility + control: a floating task tray in `/jarvis` shows every active background operation with a progress bar and an × cancel button. Cancel is graceful — workers poll a flag and exit at the next safe boundary.
