@@ -2,6 +2,57 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.9.11 — INCREDIBLE Adam iter 6: MediaPipe hand-gesture control in /jarvis (2026-05-25)
+
+Sixth iteration — closes the Jarvis-CV reference from the original loop input. The `/jarvis` UI now picks up webcam input, runs **MediaPipe Hands** (21-point landmark tracking) in-browser at ~60fps, classifies 6 gestures via geometric distance heuristics, and maps each to a concrete Adam action. Live landmark overlay renders into a corner cam panel with FPS counter.
+
+### Extended file
+- `amni/serve/jarvis_web.py` (21.6 KB → 30.4 KB) — additive only. Existing widget rendering, voice in/out, neural canvas bg all intact (9/9 v6.9.7 regression green).
+
+### Gestures recognized + their actions
+| Gesture     | Heuristic                                        | Action                        |
+|-------------|--------------------------------------------------|-------------------------------|
+| `pinch`     | thumb↔index distance < 0.05, others curled        | toggle voice-out              |
+| `fist`      | all 4 fingers curled                              | clear chat                    |
+| `open_palm` | all 4 fingers extended                            | trigger system_stats widget   |
+| `peace`     | index + middle extended, ring + pinky curled      | cycle theme palette (4 themes)|
+| `point`     | only index extended                               | quick "tell me more"          |
+| `thumb_up`  | only thumb extended                               | submit current input          |
+
+### UX details
+- **900ms cooldown** per recognized gesture — prevents jitter / double-fire while transitioning.
+- **On-screen flash** of the recognized gesture name (24px neon magenta, fades in 300ms).
+- **Cam panel** (top-right, 200px): live mirrored webcam + 21-landmark overlay with cyan glow (matches global neon theme) + `gesture-readout` showing current classification + `cam-fps` counter.
+- **Toggle button** in composer — `GESTURE`. State persists via `localStorage`. Auto-resumes on next visit.
+- **Graceful failures**: CDN load failure → friendly chat bubble. Webcam permission denied → clear message. Errors don't break the rest of the UI.
+
+### Architecture
+- MediaPipe Hands + camera_utils loaded lazy from `jsdelivr` CDN (no npm/bundler needed).
+- `model_complexity:0` for speed; `maxNumHands:1` for clarity; conf thresholds 0.6/0.5.
+- Pure browser pipeline — no backend changes, no Python deps. Adam-side never sees the camera; gestures are translated to chat input or skill calls client-side.
+- Theme cycling done by setting CSS custom properties `--cyan` / `--magenta` (4-palette wheel).
+
+### Tests
+- `tests/test_jarvis_gesture_v6_9_11.py` — 12/12 PASS:
+  - route still 200
+  - all v6.9.7 features intact (no regression)
+  - MediaPipe loader present (CDN URL + `window.Hands` + `locateFile`)
+  - gesture toggle button + handler
+  - cam panel elements (video / landmarks / readout / fps / flash)
+  - all 6 gestures wired in classifier
+  - GESTURE_ACTIONS + applyGestureAction with each action target
+  - cooldown constant present
+  - neon-color landmark render + `multiHandLandmarks` consumer
+  - localStorage persistence key
+  - getUserMedia + facingMode
+  - graceful error messages for both CDN and webcam failures
+
+### Try it
+1. `python -m amni.cli serve --port 7700` (or whatever oui'r on)
+2. open `http://127.0.0.1:7700/jarvis`
+3. click `GESTURE`, allow webcam
+4. raise a fist → chat clears. peace sign → theme rotates. pinch → voice toggles.
+
 ## v6.9.10 — INCREDIBLE Adam iter 5: Automated content ingestion + curriculum builder (2026-05-22)
 
 Fifth iteration. Adam can now learn from URLs, PDFs, and YouTube transcripts automatically — and a single `build_curriculum` call chains web search → top-N source ingest → coach session start in one shot.

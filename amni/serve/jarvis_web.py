@@ -95,7 +95,20 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
 .sidehint{position:fixed;bottom:16px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:6}
-@media(max-width:760px){.status .pill{display:none}.title{font-size:16px}#app{padding:18px 16px}}
+#cam-panel{position:fixed;top:60px;right:24px;width:200px;z-index:8;display:none;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.85);box-shadow:0 0 18px rgba(0,229,255,.18);overflow:hidden}
+#cam-panel.show{display:block}
+#cam-panel .cam-head{padding:5px 10px;background:rgba(0,229,255,.08);font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;align-items:center;justify-content:space-between}
+#cam-panel .cam-head .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);animation:pulse 1.6s ease-in-out infinite}
+#cam-stage{position:relative;width:100%;aspect-ratio:4/3;background:#000}
+#cam-video,#cam-landmarks{position:absolute;inset:0;width:100%;height:100%}
+#cam-video{transform:scaleX(-1);object-fit:cover}
+#cam-panel .gesture-readout{padding:6px 10px;border-top:1px solid rgba(0,229,255,.18);font-size:10px;letter-spacing:.15em;color:var(--cyan);text-shadow:0 0 4px var(--cyan);text-align:center;min-height:22px}
+#cam-panel.idle .gesture-readout{color:var(--mute);text-shadow:none}
+#gesture-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
+#gesture-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,43,214,.08);box-shadow:0 0 12px rgba(255,43,214,.3)}
+.gesture-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;letter-spacing:.3em;color:var(--magenta);text-shadow:0 0 24px var(--magenta);pointer-events:none;z-index:9;opacity:0;transition:opacity .3s}
+.gesture-flash.show{opacity:1}
+@media(max-width:760px){.status .pill{display:none}.title{font-size:16px}#app{padding:18px 16px}#cam-panel{width:140px;top:50px;right:14px}}
 </style></head><body>
 <div id="nebula"></div>
 <canvas id="netcanvas"></canvas>
@@ -127,9 +140,19 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
     <div id="input-shell"><textarea id="input" placeholder="Speak or type..." autofocus></textarea></div>
     <button id="voiceout-toggle" type="button" onclick="toggleVoiceOut()" title="Speak responses">VOICE</button>
+    <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
 </div>
+<div id="cam-panel">
+  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span id="cam-fps">— fps</span></div>
+  <div id="cam-stage">
+    <video id="cam-video" autoplay playsinline muted></video>
+    <canvas id="cam-landmarks"></canvas>
+  </div>
+  <div class="gesture-readout" id="gesture-readout">—</div>
+</div>
+<div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
 <script>
 const SKEY='amni_jarvis_session',VKEY='amni_jarvis_voiceout';
@@ -261,6 +284,95 @@ function tick(){
   requestAnimationFrame(tick);
 }
 window.addEventListener('resize',resize);resize();tick();
+let gestureOn=false,hands=null,camStream=null,lastGesture='',lastGestureAt=0,frameTimes=[],camRAF=null;
+const GKEY='amni_jarvis_gesture';
+const GESTURE_COOLDOWN_MS=900;
+const _flash=document.getElementById('gesture-flash'),_readout=document.getElementById('gesture-readout'),_camPanel=document.getElementById('cam-panel'),_camVideo=document.getElementById('cam-video'),_camLm=document.getElementById('cam-landmarks'),_gToggle=document.getElementById('gesture-toggle');
+function _dist(a,b){const dx=a.x-b.x,dy=a.y-b.y,dz=(a.z||0)-(b.z||0);return Math.sqrt(dx*dx+dy*dy+dz*dz)}
+function _fingerExtended(lm,tipIdx,pipIdx,mcpIdx){return _dist(lm[tipIdx],lm[0])>_dist(lm[pipIdx],lm[0])&&_dist(lm[tipIdx],lm[mcpIdx])>0.06}
+function classifyGesture(lm){
+  if(!lm||lm.length<21)return 'unknown';
+  const t=lm[4],i=lm[8],m=lm[12],r=lm[16],p=lm[20];
+  const iPip=lm[6],mPip=lm[10],rPip=lm[14],pPip=lm[18];
+  const iMcp=lm[5],mMcp=lm[9],rMcp=lm[13],pMcp=lm[17];
+  const ext={t:_dist(t,lm[0])>_dist(lm[2],lm[0]),i:_fingerExtended(lm,8,6,5),m:_fingerExtended(lm,12,10,9),r:_fingerExtended(lm,16,14,13),p:_fingerExtended(lm,20,18,17)};
+  const pinch=_dist(t,i);
+  if(pinch<0.05&&!ext.m&&!ext.r&&!ext.p)return 'pinch';
+  if(!ext.i&&!ext.m&&!ext.r&&!ext.p)return 'fist';
+  if(ext.i&&ext.m&&ext.r&&ext.p)return 'open_palm';
+  if(ext.i&&ext.m&&!ext.r&&!ext.p)return 'peace';
+  if(ext.i&&!ext.m&&!ext.r&&!ext.p)return 'point';
+  if(ext.t&&!ext.i&&!ext.m&&!ext.r&&!ext.p)return 'thumb_up';
+  return 'unknown';
+}
+const GESTURE_ACTIONS={pinch:'toggle voice',fist:'clear chat',open_palm:'system check',peace:'cycle theme',point:'next question',thumb_up:'submit input'};
+function _flashGesture(name){
+  _flash.textContent=name.replace('_',' ').toUpperCase();_flash.classList.add('show');
+  setTimeout(()=>_flash.classList.remove('show'),650);
+}
+const _THEMES=[{cyan:'#00e5ff',magenta:'#ff2bd6'},{cyan:'#ffd770',magenta:'#ff5577'},{cyan:'#00ff9d',magenta:'#7fd6c5'},{cyan:'#c5a3ff',magenta:'#00e5ff'}];
+let _themeIdx=0;
+function _cycleTheme(){
+  _themeIdx=(_themeIdx+1)%_THEMES.length;const t=_THEMES[_themeIdx];
+  document.documentElement.style.setProperty('--cyan',t.cyan);document.documentElement.style.setProperty('--magenta',t.magenta);
+}
+function applyGestureAction(g){
+  if(g==='pinch')toggleVoiceOut();
+  else if(g==='fist'){log.innerHTML='';bubble('bot','(chat cleared by gesture)')}
+  else if(g==='open_palm')quick('Show me current system stats');
+  else if(g==='peace')_cycleTheme();
+  else if(g==='point'){const last=log.querySelectorAll('.msg.bot .meta .badge');if(last.length)quick('Tell me more about that')}
+  else if(g==='thumb_up'){const t=input.value.trim();if(t)send()}
+}
+function _onHandsResults(res){
+  const ctx=_camLm.getContext('2d');_camLm.width=_camLm.clientWidth*window.devicePixelRatio;_camLm.height=_camLm.clientHeight*window.devicePixelRatio;
+  ctx.clearRect(0,0,_camLm.width,_camLm.height);
+  const lms=(res.multiHandLandmarks||[])[0];
+  if(!lms){_readout.textContent='—';_camPanel.classList.add('idle');return}
+  _camPanel.classList.remove('idle');
+  ctx.fillStyle='rgba(0,229,255,.95)';ctx.shadowBlur=6;ctx.shadowColor='rgba(0,229,255,.7)';
+  for(const lm of lms){const x=(1-lm.x)*_camLm.width,y=lm.y*_camLm.height;ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill()}
+  ctx.shadowBlur=0;ctx.strokeStyle='rgba(0,229,255,.45)';ctx.lineWidth=1.4;
+  const conns=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  for(const [a,b] of conns){ctx.beginPath();ctx.moveTo((1-lms[a].x)*_camLm.width,lms[a].y*_camLm.height);ctx.lineTo((1-lms[b].x)*_camLm.width,lms[b].y*_camLm.height);ctx.stroke()}
+  const g=classifyGesture(lms);_readout.textContent=g==='unknown'?'—':g.replace('_',' ').toUpperCase();
+  const now=performance.now();frameTimes.push(now);if(frameTimes.length>30)frameTimes.shift();
+  if(frameTimes.length>=2){const fps=Math.round(1000*(frameTimes.length-1)/(frameTimes[frameTimes.length-1]-frameTimes[0]));document.getElementById('cam-fps').textContent=fps+' fps'}
+  if(g!=='unknown'&&g!==lastGesture&&(now-lastGestureAt)>GESTURE_COOLDOWN_MS){
+    lastGesture=g;lastGestureAt=now;_flashGesture(g);applyGestureAction(g);
+  }else if(g==='unknown'){lastGesture=''}
+}
+async function _loadMediaPipe(){
+  if(window.Hands)return true;
+  for(const src of ['https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js','https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js']){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.crossOrigin='anonymous';s.onload=res;s.onerror=rej;document.head.appendChild(s)}).catch(e=>console.warn('mediapipe load fail',src,e));
+  }
+  return !!window.Hands;
+}
+async function startGesture(){
+  const ok=await _loadMediaPipe();
+  if(!ok){bubble('bot','Could not load MediaPipe Hands from CDN. Check your network or a content blocker.','<span class="badge err">gesture</span>');gestureOn=false;_gToggle.classList.remove('on');return}
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'},audio:false})}
+  catch(e){bubble('bot','Webcam permission denied or unavailable: '+e.message,'<span class="badge err">gesture</span>');gestureOn=false;_gToggle.classList.remove('on');return}
+  _camVideo.srcObject=camStream;await _camVideo.play().catch(()=>{});
+  hands=new window.Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`});
+  hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.6,minTrackingConfidence:.5});
+  hands.onResults(_onHandsResults);
+  const loop=async()=>{if(!gestureOn)return;if(_camVideo.readyState>=2){try{await hands.send({image:_camVideo})}catch{}};camRAF=requestAnimationFrame(loop)};
+  camRAF=requestAnimationFrame(loop);
+  _camPanel.classList.add('show');
+}
+function stopGesture(){
+  if(camRAF){cancelAnimationFrame(camRAF);camRAF=null}
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}
+  _camPanel.classList.remove('show');_readout.textContent='—';frameTimes=[];
+  if(hands){try{hands.close()}catch{};hands=null}
+}
+function toggleGesture(){
+  gestureOn=!gestureOn;localStorage.setItem(GKEY,gestureOn?'1':'0');_gToggle.classList.toggle('on',gestureOn);
+  if(gestureOn)startGesture();else stopGesture();
+}
+if(localStorage.getItem(GKEY)==='1'){setTimeout(()=>{gestureOn=true;_gToggle.classList.add('on');startGesture()},800)}
 </script></body></html>"""
 def mount(app):
     from fastapi.responses import HTMLResponse

@@ -77,6 +77,7 @@ Each iteration:
 - iter 3 (2026-05-21): Socratic coach mode — CoachAtlas (per-topic mastery + rolling weighted avg) + coach skill (start/ask/answer/hint/skip/summary/status) with mocked-Adam tested grading loop, difficulty escalation on 2-streak → v6.9.8
 - iter 4 (2026-05-21): Adam-driven scheduling — ScheduleAtlas (persistent jobs.jsonl + outcomes capped to 5/job) + AdamScheduler thread (poll every 5s, fire due skill/prompt/webpoll jobs) + schedule_loop skill (add/list/get/cancel/enable/disable/runs/run_now/stats). 29 skills total. → v6.9.9
 - iter 5 (2026-05-22): Content ingestion automation — ingest_url (trafilatura + HTML-strip fallback), ingest_pdf (pypdf conditional), ingest_youtube (yt-transcript-api conditional), build_curriculum (web search → ingest top-N → start coach session). 33 skills total. → v6.9.10
+- iter 6 (2026-05-25): MediaPipe Hands gesture input in /jarvis — webcam capture, 21-point hand tracking via MediaPipe Hands (CDN), distance-based 6-gesture classifier (pinch/fist/open_palm/peace/point/thumb_up), 900ms cooldown, on-screen flash, mapped actions (toggle voice / clear chat / system check / cycle theme / next question / submit). Live landmark overlay in corner cam panel with FPS counter. Closes the Jarvis-CV reference from the original loop input. → v6.9.11
 
 ## Open future ideas
 
