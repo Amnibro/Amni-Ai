@@ -150,24 +150,44 @@ def _build_curriculum(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     if reg is None:return {'error':'skill registry not available'}
     coach_atlas=ctx.get('coach_atlas') if ctx else None
     if coach_atlas is None:return {'error':'CoachAtlas not in context'}
+    task_reg=ctx.get('task_registry') if ctx else None
     max_sources=int(args.get('max_sources',3))
     web_query=str(args.get('query') or f'{topic} introduction tutorial')
+    tid=task_reg.register('build_curriculum',label=f'Curriculum: {topic}',total=max_sources+2) if task_reg else None
+    def _prog(done,msg=''):
+        if task_reg and tid:task_reg.update(tid,done=done,message=msg)
+    def _cancelled():return bool(task_reg and tid and task_reg.cancel_requested(tid))
     sources=[];ingest_outcomes=[]
-    if reg.has('web'):
-        try:
-            r=reg.call('web',{'query':web_query},ctx=ctx)
-            if r.ok and r.output:sources=(r.output.get('sources') or [])[:max_sources]
-        except Exception as e:return {'error':f'web search failed: {e}'}
-    for src in sources:
-        if not isinstance(src,str) or not src.startswith('http'):continue
-        try:ingest_outcomes.append(_ingest_url({'url':src,'max_chunks':int(args.get('chunks_per_source',8))},ctx,reg))
-        except Exception as e:ingest_outcomes.append({'url':src,'error':str(e)[:200]})
-    coach_start={}
-    if not args.get('skip_coach'):
-        from amni.serve.coach import coach_skill as _coach_skill
-        coach_start=_coach_skill({'action':'start','topic':topic,'difficulty':int(args.get('difficulty',2))},ctx,reg)
-    total_taught=sum(o.get('chunks_taught',0) for o in ingest_outcomes if isinstance(o,dict))
-    return {'topic':topic,'query':web_query,'n_sources':len(sources),'sources':sources,'ingest_outcomes':ingest_outcomes,'chunks_taught_total':total_taught,'coach_session':coach_start,'next_step':f'POST /skills/coach action=ask session_id={coach_start.get("session_id","?")}'}
+    try:
+        _prog(0,'searching the web for sources')
+        if reg.has('web'):
+            try:
+                r=reg.call('web',{'query':web_query},ctx=ctx)
+                if r.ok and r.output:sources=(r.output.get('sources') or [])[:max_sources]
+            except Exception as e:
+                if task_reg and tid:task_reg.fail(tid,f'web search: {e}')
+                return {'error':f'web search failed: {e}'}
+        _prog(1,f'{len(sources)} sources found, ingesting')
+        for i,src in enumerate(sources):
+            if _cancelled():
+                if task_reg and tid:task_reg.mark_cancelled(tid)
+                return {'cancelled':True,'topic':topic,'partial_sources':i,'ingest_outcomes':ingest_outcomes}
+            if not isinstance(src,str) or not src.startswith('http'):continue
+            try:ingest_outcomes.append(_ingest_url({'url':src,'max_chunks':int(args.get('chunks_per_source',8))},ctx,reg))
+            except Exception as e:ingest_outcomes.append({'url':src,'error':str(e)[:200]})
+            _prog(1+i+1,f'ingested {i+1}/{len(sources)}')
+        coach_start={}
+        if not args.get('skip_coach'):
+            _prog(1+len(sources),'starting coach session')
+            from amni.serve.coach import coach_skill as _coach_skill
+            coach_start=_coach_skill({'action':'start','topic':topic,'difficulty':int(args.get('difficulty',2))},ctx,reg)
+        total_taught=sum(o.get('chunks_taught',0) for o in ingest_outcomes if isinstance(o,dict))
+        result={'topic':topic,'query':web_query,'n_sources':len(sources),'sources':sources,'ingest_outcomes':ingest_outcomes,'chunks_taught_total':total_taught,'coach_session':coach_start,'next_step':f'POST /skills/coach action=ask session_id={coach_start.get("session_id","?")}'}
+        if task_reg and tid:task_reg.complete(tid,outcome={'taught':total_taught,'sources':len(sources)})
+        return result
+    except Exception as e:
+        if task_reg and tid:task_reg.fail(tid,str(e)[:200])
+        raise
 def register(reg):
     reg.register('ingest_url',_ingest_url,desc='Fetch a webpage, distill via trafilatura (fallback to HTML strip), chunk, and teach Adam. Args: {url, max_chunks?=24, chunk_max?=900, timeout?=8, dry_run?=false}',schema={'url':'str','max_chunks':'int?','chunk_max':'int?','timeout':'float?','dry_run':'bool?'})
     reg.register('ingest_pdf',_ingest_pdf,desc='Read a local PDF (pypdf required), extract text per page, chunk, teach Adam. Args: {path, max_pages?=60, max_chunks?=24, chunk_max?=900, dry_run?=false}',schema={'path':'str','max_pages':'int?','max_chunks':'int?','chunk_max':'int?','dry_run':'bool?'})
