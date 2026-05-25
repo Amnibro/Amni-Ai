@@ -2,6 +2,83 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.0 — INCREDIBLE Adam iter 7: 24/7 self-improvement substrate (2026-05-25)
+
+Major. Adam now learns continuously in the background — autonomously picks knowledge gaps, ingests them in parallel, extracts atomic Q-A pairs at 5× the density of raw-chunk teaching, tracks source consensus to flag verified vs debated facts, consolidates clusters during sleep cycles, and spaces-out re-verification of stale cells. Yields cleanly when the user is chatting.
+
+**This is the single biggest learning-rate jump in the project.** Mainstream models are frozen at deploy. Adam's lesson bank grows every minute it's online.
+
+### Six integrated modules
+
+- `amni/storage/learning_atlas.py` — `LearningAtlas` per-cell metadata overlay on sem_lut. Each fact-cell tracks `{sources[], consensus_count, confidence, last_reinforced_at, verified, debated, kind, retest_count}`. Persistence via `meta.jsonl` keyed by blake2b(question+answer). Confidence rises +0.15 per new source; ≥0.85 → `verified=true`. Conflicting answer from new source → `debated=true`, confidence -0.2.
+
+- `amni/serve/qa_extractor.py` — turns raw chunks into atomic `(question, answer)` pairs via Adam JSON-mode. Strict prompt: self-contained Qs, concrete 1-2 sentence As, 3-5 pairs per chunk. **~5× facts/byte** vs raw teaching. Malformed-JSON tolerant.
+
+- `amni/serve/curiosity.py` — gap detector. Three signals: (a) sparse cells in PTEX embedding-grid neighborhoods (Adam has thin coverage there), (b) debated/low-confidence cells in LearningAtlas, (c) low-mastery topics in CoachAtlas. Returns ranked gap topics. `pick_next_gap()` chooses with 70/30 best/explore tradeoff.
+
+- `amni/serve/consensus.py` — multi-source verification. On each Q-A pair: jaccard-match against existing cells; if match found and answers agree → `reinforced` (consensus++); if match but answers differ → `debated`; else `new`. Lets Adam **trust its own memory** with provenance traceable per cell.
+
+- `amni/serve/sleep_consolidator.py` — clusters neighboring cells (L1 ≤2 radius) in PTEX grid, sends 2-6 facts per cluster to Adam, gets back a synthesized summary cell with topic_tag. Writes summary back to sem_lut + LearningAtlas marked as `kind:consolidation, confidence:0.7`. Compresses redundancy, builds higher-order abstractions.
+
+- `amni/serve/learning_daemon.py` — **the 24/7 orchestrator**. Daemon thread + ThreadPoolExecutor (2 workers default). Cycles:
+  - **Curiosity tick** (every 1800s default): pick gap, DDG-search, queue ingest task
+  - **Ingest workers**: fetch URL → distill → chunk → extract Q-A → consensus-merge into LUT
+  - **Sleep pass** (every 4h default): consolidate clusters
+  - **Spaced repetition** (every 6h default): find cells stale >30d, reinforce via re-test
+  - **Stats**: facts/hr, queue depth, atlas counts, uptime
+  - **User-yield**: signals user activity from `agent.chat()`; pauses workers for 60s after any chat turn so Adam stays responsive
+
+### Wire-up
+- `AmniAgent.__init__` instantiates `LearningDaemon(adam, skill_registry, coach_atlas)` with `start_thread=True` by default. Disable with `$AMNI_NO_LEARNING_DAEMON=1`.
+- `agent.chat()` calls `learning_daemon.signal_user_activity()` on every user message → daemon yields.
+- Skill ctx now carries `learning_daemon` alongside `adam`/`scheduler`/`coach_atlas`/`personal_atlas`.
+
+### New skill: `learning_daemon`
+- `stats` — full daemon snapshot (counters, atlas stats, queue depth, facts/hour, config)
+- `curiosity_tick` — fire a tick now
+- `sleep_pass` — fire consolidation now
+- `repetition_pass` — fire stale re-test now
+- `pause` / `resume` — toggle without restarting server
+- `queue_topic <topic>` — manually inject a learning target
+- `atlas_verified` / `atlas_debated` — inspect the metadata layer
+
+**34 skills total now.**
+
+### Tests
+`tests/test_learning_v6_10_0.py` — **26/26 PASS** across all six modules:
+- LearningAtlas: record_new, consensus_promotion (verified after 4 sources), mark_debated, stale_finder, persistence round-trip
+- qa_extractor: JSON-array parse, prose-wrapping strip, too-short reject, end-to-end with mocked Adam, teach_qa_pairs writes to atlas
+- curiosity: topic candidate extraction, low-mastery from CoachAtlas, pick_next_gap returns top
+- consensus: jaccard, find_match, ingest new path, ingest reinforce path (counter increments), ingest debated path (mark_debated triggers)
+- sleep_consolidator: cluster neighbors, consolidate_cluster via mocked Adam, sleep_pass writes to atlas + adam.teach
+- LearningDaemon: signal_user_activity pauses, curiosity_tick queues gap, stats include facts_per_hour, skill dispatch (stats/pause/queue_topic/unknown-action/no-context), repetition reinforces stale cells
+
+### Performance posture
+- All Adam-side calls are `do_sample=False` deterministic JSON-mode (no creativity, just structured extraction).
+- User chat preempts learning workers (60s yield window after each turn).
+- ThreadPool capped at 2 workers — avoids GPU contention with chat inference.
+- Queue capped at 40 tasks — back-pressure protection.
+- All persistence is incremental JSONL (no full rewrites on hot path except metadata layer).
+
+### Try it
+```bash
+python -m amni.cli serve --port 7700
+# In another shell:
+curl -X POST http://127.0.0.1:7700/skills/learning_daemon -H 'Content-Type: application/json' \
+  -d '{"args":{"action":"stats"}}'
+# See: uptime, queue, atlas.total, atlas.verified, facts_per_hour, …
+
+# Force-fire a learning cycle right now:
+curl -X POST http://127.0.0.1:7700/skills/learning_daemon -H 'Content-Type: application/json' \
+  -d '{"args":{"action":"curiosity_tick"}}'
+
+# Manually queue a topic:
+curl -X POST http://127.0.0.1:7700/skills/learning_daemon -H 'Content-Type: application/json' \
+  -d '{"args":{"action":"queue_topic","topic":"transformer attention mechanism"}}'
+```
+
+Leave Adam running. Tomorrow oui'l have a few hundred new verified facts in oui'r lesson bank. The day after, a few thousand. The substrate compounds.
+
 ## v6.9.11 — INCREDIBLE Adam iter 6: MediaPipe hand-gesture control in /jarvis (2026-05-25)
 
 Sixth iteration — closes the Jarvis-CV reference from the original loop input. The `/jarvis` UI now picks up webcam input, runs **MediaPipe Hands** (21-point landmark tracking) in-browser at ~60fps, classifies 6 gestures via geometric distance heuristics, and maps each to a concrete Adam action. Live landmark overlay renders into a corner cam panel with FPS counter.
