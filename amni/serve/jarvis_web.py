@@ -105,6 +105,16 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.git .commits .row .sha{color:var(--cyan);margin-right:8px}
 .widget.git .dirty-files{margin-top:8px;font-size:10px;color:var(--gold);font-family:Consolas,monospace}
 .widget.git .dirty-files .lbl{color:var(--mute);font-size:9px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:3px}
+.widget.watch .watch-head{font-size:11px;color:var(--cyan);letter-spacing:.1em;font-family:Consolas,monospace;margin-bottom:8px;border-bottom:1px solid rgba(0,229,255,.1);padding-bottom:6px;display:flex;justify-content:space-between}
+.widget.watch .watch-head .id{color:var(--mute);font-size:9px;letter-spacing:.2em}
+.widget.watch .events{display:flex;flex-direction:column;gap:3px;font-family:Consolas,monospace;font-size:10px;max-height:260px;overflow-y:auto}
+.widget.watch .event{padding:3px 6px;border-radius:2px;background:rgba(0,229,255,.02);display:grid;grid-template-columns:60px 1fr auto;gap:8px;align-items:center}
+.widget.watch .event .kind{font-size:8px;letter-spacing:.2em;text-transform:uppercase;text-align:right}
+.widget.watch .event.created .kind{color:var(--ok);text-shadow:0 0 4px var(--ok)}
+.widget.watch .event.modified .kind{color:var(--cyan);text-shadow:0 0 4px var(--cyan)}
+.widget.watch .event.deleted .kind{color:var(--err);text-shadow:0 0 4px var(--err)}
+.widget.watch .event .path{color:var(--fg);word-break:break-all;line-height:1.3}
+.widget.watch .event .size{color:var(--mute);font-size:9px}
 .widget.time .w-clock{font-size:32px;color:var(--cyan);text-shadow:0 0 12px var(--cyan);letter-spacing:.1em;font-weight:300}
 .widget.time .w-date{font-size:11px;color:var(--mute);letter-spacing:.15em;text-transform:uppercase;margin-top:4px}
 .widget.time .w-tz{font-size:9px;color:var(--mute);margin-top:2px}
@@ -304,6 +314,15 @@ function renderWidget(w){
   }else if(t==='disk'){
     const parts=(d.partitions||[]).map(p=>`<div class="part"><div class="mount">${esc(p.mount||'?')}</div><div class="stat">USED<span class="v">${p.used_gb||'?'} / ${p.total_gb||'?'} GB · ${p.used_pct||0}%</span></div><div class="stat">FREE<span class="v">${p.free_gb||'?'} GB</span></div><div class="bar"><div class="bar-fill" style="width:${p.used_pct||0}%"></div></div></div>`).join('');
     body=`<div class="partitions">${parts||'<div style="color:var(--mute);font-size:11px">no partitions</div>'}</div>`;
+  }else if(t==='watch'){
+    if(d.events && d.events.length){
+      const rows=(d.events||[]).slice().reverse().map(ev=>{const k=esc(ev.kind||'?');const sz=ev.size!=null?(ev.size<1024?ev.size+'b':Math.round(ev.size/1024)+'k'):'';return `<div class="event ${k}"><div class="kind">${k}</div><div class="path">${esc(ev.path||'')}</div><div class="size">${sz}</div></div>`}).join('');
+      body=`<div class="watch-head"><span>EVENTS</span><span class="id">${esc(d.watch_id||'').slice(-8)}</span></div><div class="events">${rows}</div>`;
+    }else if(d.n_watches!=null){
+      body=`<div class="watch-head"><span>WATCHERS</span><span class="id">${d.n_watches} active</span></div><div style="font-size:10px;color:var(--mute);letter-spacing:.15em;padding:4px">${d.enabled||0} enabled · ${d.total_recent_events||0} recent events · ${d.auto_fires||0} on_change fires</div>`;
+    }else{
+      body=`<div style="font-size:10px;color:var(--mute);text-align:center;padding:8px">no events yet</div>`;
+    }
   }else if(t==='git'){
     const branch=esc(d.branch||'?');
     const dcls=d.dirty_n>0?' dirty':'';
