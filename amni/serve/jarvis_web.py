@@ -95,6 +95,35 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
 .sidehint{position:fixed;bottom:16px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:6}
+#mem-panel{position:fixed;top:60px;right:-440px;width:420px;height:calc(100vh - 140px);z-index:9;border:1px solid rgba(0,229,255,.35);border-radius:4px;background:rgba(8,14,28,.92);box-shadow:0 0 28px rgba(0,229,255,.2);overflow-y:auto;transition:right .25s ease-out;backdrop-filter:blur(8px)}
+#mem-panel.show{right:24px}
+#mem-panel::-webkit-scrollbar{width:5px}
+#mem-panel::-webkit-scrollbar-thumb{background:rgba(0,229,255,.3);border-radius:3px}
+#mem-panel .mem-head{padding:10px 14px;border-bottom:1px solid rgba(0,229,255,.2);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 6px var(--cyan);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(8,14,28,.95);z-index:2}
+#mem-panel .mem-head .close{cursor:pointer;color:var(--mute);padding:2px 8px;border:1px solid rgba(0,229,255,.2);border-radius:3px;font-size:11px}
+#mem-panel .mem-head .close:hover{color:var(--err);border-color:var(--err)}
+#mem-panel .mem-section{padding:12px 14px;border-bottom:1px solid rgba(0,229,255,.08)}
+#mem-panel .mem-section h3{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+#mem-panel .mem-section h3 .count{margin-left:auto;color:var(--mute);font-size:9px;letter-spacing:.1em}
+#mem-panel .mem-row{padding:6px 8px;font-size:11px;border:1px solid rgba(0,229,255,.08);border-radius:3px;margin-bottom:5px;background:rgba(0,229,255,.02);display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#mem-panel .mem-row:hover{border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.05)}
+#mem-panel .mem-row .body{flex:1;line-height:1.4;word-break:break-word}
+#mem-panel .mem-row .lbl{font-size:8px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;margin-bottom:3px}
+#mem-panel .mem-row .confid{color:var(--magenta)}
+#mem-panel .mem-row .actions{display:flex;flex-direction:column;gap:3px}
+#mem-panel .mem-row button{background:transparent;border:1px solid rgba(255,85,119,.4);color:var(--err);font-family:inherit;font-size:9px;padding:2px 6px;border-radius:2px;cursor:pointer;letter-spacing:.1em}
+#mem-panel .mem-row button:hover{background:rgba(255,85,119,.1)}
+#mem-panel .mem-row button.cyan{border-color:rgba(0,229,255,.4);color:var(--cyan)}
+#mem-panel .mem-row button.cyan:hover{background:rgba(0,229,255,.1)}
+#mem-panel .mem-stat{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:6px}
+#mem-panel .mem-stat .stat{padding:6px 8px;border:1px solid rgba(0,229,255,.12);border-radius:3px;background:rgba(0,229,255,.02)}
+#mem-panel .mem-stat .stat .v{font-size:18px;color:var(--cyan);text-shadow:0 0 6px var(--cyan)}
+#mem-panel .mem-stat .stat .lbl{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+#mem-panel .mastery-bar{height:4px;background:rgba(0,229,255,.1);border-radius:2px;overflow:hidden;margin-top:4px}
+#mem-panel .mastery-bar .fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));box-shadow:0 0 6px var(--cyan)}
+#mem-panel .empty{color:var(--mute);font-style:italic;text-align:center;padding:14px;font-size:10px}
+#mem-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
+#mem-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 12px rgba(0,229,255,.3)}
 #cam-panel{position:fixed;top:60px;right:24px;width:200px;z-index:8;display:none;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.85);box-shadow:0 0 18px rgba(0,229,255,.18);overflow:hidden}
 #cam-panel.show{display:block}
 #cam-panel .cam-head{padding:5px 10px;background:rgba(0,229,255,.08);font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;align-items:center;justify-content:space-between}
@@ -141,8 +170,17 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <div id="input-shell"><textarea id="input" placeholder="Speak or type..." autofocus></textarea></div>
     <button id="voiceout-toggle" type="button" onclick="toggleVoiceOut()" title="Speak responses">VOICE</button>
     <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
+    <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
+</div>
+<div id="mem-panel">
+  <div class="mem-head"><span>◆ MEMORY INSPECTOR</span><span class="close" onclick="toggleMem()">CLOSE</span></div>
+  <div class="mem-section" id="mem-stats"><h3>SUBSTRATE OVERVIEW <span class="count" id="mem-uptime">—</span></h3><div id="mem-stat-grid">loading...</div></div>
+  <div class="mem-section" id="mem-profile-sec"><h3>WHAT I KNOW ABOUT YOU <span class="count" id="mem-profile-n">—</span></h3><div id="mem-pending"></div><div id="mem-profile">loading...</div></div>
+  <div class="mem-section" id="mem-kg-sec"><h3>KNOWLEDGE GRAPH <span class="count" id="mem-kg-n">—</span></h3><div id="mem-kg">loading...</div></div>
+  <div class="mem-section" id="mem-coach-sec"><h3>COACH MASTERY <span class="count" id="mem-coach-n">—</span></h3><div id="mem-coach">loading...</div></div>
+  <div class="mem-section" id="mem-daemon-sec"><h3>LEARNING DAEMON <span class="count" id="mem-daemon-status">—</span></h3><div id="mem-daemon">loading...</div></div>
 </div>
 <div id="cam-panel">
   <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span id="cam-fps">— fps</span></div>
@@ -373,6 +411,58 @@ function toggleGesture(){
   if(gestureOn)startGesture();else stopGesture();
 }
 if(localStorage.getItem(GKEY)==='1'){setTimeout(()=>{gestureOn=true;_gToggle.classList.add('on');startGesture()},800)}
+let memOpen=false;
+const _MEM_PANEL=document.getElementById('mem-panel'),_MEM_TOG=document.getElementById('mem-toggle');
+function toggleMem(){memOpen=!memOpen;_MEM_PANEL.classList.toggle('show',memOpen);_MEM_TOG.classList.toggle('on',memOpen);if(memOpen)refreshMemory()}
+async function refreshMemory(){
+  try{
+    const snap=await(await fetch('/memory/snapshot')).json();
+    const lessons=(snap.lesson_bank&&snap.lesson_bank.n)||0;
+    const pa=snap.personal_atlas||{};const la=snap.learning_daemon||{};const kg=snap.knowledge_graph||{};
+    document.getElementById('mem-stat-grid').innerHTML=`<div class="mem-stat"><div class="stat"><div class="lbl">Lessons</div><div class="v">${lessons}</div></div><div class="stat"><div class="lbl">Triples</div><div class="v">${kg.triples||0}</div></div><div class="stat"><div class="lbl">Verified</div><div class="v">${(la.atlas&&la.atlas.verified)||0}</div></div><div class="stat"><div class="lbl">Facts/hr</div><div class="v">${la.facts_per_hour||0}</div></div></div>`;
+    document.getElementById('mem-uptime').textContent=la.uptime_hours?`${la.uptime_hours}h up`:'';
+  }catch(e){document.getElementById('mem-stat-grid').innerHTML=`<div class="empty">snapshot failed: ${esc(e.message)}</div>`}
+  try{
+    const pr=await(await fetch('/memory/profile?limit=50')).json();
+    const facts=pr.facts||[];const pending=pr.pending||[];
+    document.getElementById('mem-profile-n').textContent=`${facts.length} facts · ${(pr.stats&&pr.stats.confidential)||0} confid`;
+    const pendingHtml=pending.map(p=>`<div class="mem-row"><div class="body"><div class="lbl">awaiting your call</div>${esc(p.fact||'')}</div><div class="actions"><button class="cyan" onclick="memConfirmFact('${esc(p.id)}',true)">CONFID</button><button class="cyan" onclick="memConfirmFact('${esc(p.id)}',false)">PUBLIC</button></div></div>`).join('');
+    document.getElementById('mem-pending').innerHTML=pending.length?`<div class="lbl" style="margin-bottom:6px">PENDING CLARIFICATIONS</div>${pendingHtml}<div style="height:8px"></div>`:'';
+    document.getElementById('mem-profile').innerHTML=facts.length?facts.map(f=>`<div class="mem-row"><div class="body">${f.is_confidential?'<span class="confid lbl">CONFIDENTIAL</span>':'<span class="lbl">public</span>'}${esc(f.fact)}</div><div class="actions"><button onclick="memForgetProfile('${esc(f.fact).replace(/'/g,"\\\\'")}')">FORGET</button></div></div>`).join(''):'<div class="empty">no profile facts yet</div>';
+  }catch(e){document.getElementById('mem-profile').innerHTML=`<div class="empty">profile failed: ${esc(e.message)}</div>`}
+  try{
+    const kg=await(await fetch('/memory/kg?limit=10')).json();
+    document.getElementById('mem-kg-n').textContent=`${(kg.stats&&kg.stats.triples)||0} triples`;
+    const subs=(kg.top_subjects||[]).slice(0,8);const preds=(kg.top_predicates||[]).slice(0,6);
+    const subHtml=subs.length?subs.map(s=>`<div class="mem-row"><div class="body"><span class="lbl">${s.edges_out} edges</span>${esc(s.subject)}</div><div class="actions"><button class="cyan" onclick="quick('show me what you know about ${esc(s.subject).replace(/'/g,"\\\\'")}')">EXPLORE</button></div></div>`).join(''):'<div class="empty">graph empty</div>';
+    const predHtml=preds.length?`<div class="lbl" style="margin-top:6px">TOP PREDICATES</div>`+preds.map(p=>`<div class="mem-row"><div class="body">${esc(p.predicate)}<span class="lbl" style="margin-left:8px">${p.count}</span></div></div>`).join(''):'';
+    document.getElementById('mem-kg').innerHTML=subHtml+predHtml;
+  }catch(e){document.getElementById('mem-kg').innerHTML=`<div class="empty">kg failed: ${esc(e.message)}</div>`}
+  try{
+    const co=await(await fetch('/memory/coach')).json();
+    const topics=co.topics||[];
+    document.getElementById('mem-coach-n').textContent=`${topics.length} topics`;
+    document.getElementById('mem-coach').innerHTML=topics.length?topics.map(t=>`<div class="mem-row"><div class="body">${esc(t.topic)}<div class="lbl">${t.n_questions} asked · ${t.mastery_pct}%</div><div class="mastery-bar"><div class="fill" style="width:${t.mastery_pct}%"></div></div></div><div class="actions"><button class="cyan" onclick="quick('coach me on ${esc(t.topic).replace(/'/g,"\\\\'")}')">RESUME</button></div></div>`).join(''):'<div class="empty">no coach sessions yet</div>';
+  }catch(e){document.getElementById('mem-coach').innerHTML=`<div class="empty">coach failed: ${esc(e.message)}</div>`}
+  try{
+    const d=await(await fetch('/memory/daemon')).json();
+    document.getElementById('mem-daemon-status').textContent=d.enabled?'ACTIVE':'paused';
+    const c=d.counters||{};
+    document.getElementById('mem-daemon').innerHTML=`<div class="mem-stat"><div class="stat"><div class="lbl">Curiosity</div><div class="v">${c.curiosity_ticks||0}</div></div><div class="stat"><div class="lbl">Sleep passes</div><div class="v">${c.sleep_passes||0}</div></div><div class="stat"><div class="lbl">New facts</div><div class="v">${c.qa_pairs_new||0}</div></div><div class="stat"><div class="lbl">Queue</div><div class="v">${d.queue_depth||0}</div></div></div><div class="mem-row" style="margin-top:6px"><div class="body"><span class="lbl">${d.user_active_recently?'yielding to you':'running freely'}</span>Adam's 24/7 learning loop. Use the curiosity_tick / sleep_pass / pause skills to control it.</div></div>`;
+  }catch(e){document.getElementById('mem-daemon').innerHTML=`<div class="empty">daemon failed: ${esc(e.message)}</div>`}
+}
+async function memConfirmFact(id,isConf){
+  try{await fetch('/memory/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,is_confidential:isConf})});refreshMemory()}
+  catch(e){console.warn('confirm fail',e)}
+}
+async function memForgetProfile(factSnippet){
+  if(!confirm('Forget facts matching: '+factSnippet.slice(0,80)+'?'))return;
+  try{
+    const pat=factSnippet.replace(/[.*+?^${}()|[\]\\]/g,'\\\\$&').slice(0,60);
+    await fetch('/memory/forget',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({atlas:'personal',pattern:pat,confirm:true})});
+    refreshMemory();
+  }catch(e){console.warn('forget fail',e)}
+}
 </script></body></html>"""
 def mount(app):
     from fastapi.responses import HTMLResponse

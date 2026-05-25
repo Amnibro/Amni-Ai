@@ -2,6 +2,55 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.2 — INCREDIBLE Adam iter 9: Memory Inspector — trust through transparency (2026-05-25)
+
+Adam now shows oui everything it knows about oui, in real time, with one-click forget. Slide-in side panel in `/jarvis` surfaces all 9 atlases. Click MEMORY in the composer; Adam opens up its mind.
+
+### New file
+- `amni/serve/memory_endpoints.py` — five GETs + two POSTs:
+  - `GET /memory/snapshot` — top-level stats across lesson_bank + personal_atlas + coach_atlas + knowledge_graph + learning_daemon + conversation_atlas + scheduler
+  - `GET /memory/profile` — PersonalAtlas facts (filterable by `include_confidential`) + pending clarifications + stats
+  - `GET /memory/kg` — KG stats + top subjects by edge count + top predicates by use
+  - `GET /memory/coach` — all topics with mastery %, question count
+  - `GET /memory/daemon` — full LearningDaemon stats (counters, queue, facts/hour, atlas counts)
+  - `POST /memory/forget` — atlas-scoped destructive op (requires `confirm:true`). Routes to PersonalAtlas.forget / KnowledgeGraph.forget / CoachAtlas.forget / ConversationAtlas.forget_session.
+  - `POST /memory/confirm` — finalize a pending clarification (confidential vs public)
+
+### New API
+- `PersonalAtlas.list_facts(include_confidential=True, limit=200)` — flat list of all stored facts with metadata (confidence, source, ts, confidential flag). Lets the inspector show the lot rather than just embedding-recall-filtered slices.
+
+### Jarvis UI: slide-in Memory panel (additive, ~10 KB)
+- **Composer button**: `MEMORY` (next to GESTURE/VOICE/TRANSMIT). Cyan glow when open.
+- **Panel** slides in from the right edge, 420 px wide, full chat-height, glassmorphic with neon border. Scrollable.
+- **Section 1 — Substrate overview**: 4-stat grid (Lessons, Triples, Verified, Facts/hr) + uptime chip.
+- **Section 2 — What I know about oui**: pending clarifications at the top (each with `CONFID`/`PUBLIC` buttons), then all stored profile facts with `confidential` / `public` labels and per-row `FORGET` button. Forget routes through `/memory/forget` with regex-escaped pattern.
+- **Section 3 — Knowledge Graph**: top 8 subjects by out-degree with edge counts and `EXPLORE` button (sends `show me what you know about <subject>` to chat); top 6 predicates by use.
+- **Section 4 — Coach Mastery**: per-topic row with question count, mastery %, gradient mastery bar, `RESUME` button (sends `coach me on <topic>` to chat).
+- **Section 5 — Learning Daemon**: 4-stat grid (curiosity ticks, sleep passes, new facts, queue) + status pill (`ACTIVE` / `paused` / `yielding to oui`).
+
+### Wire-up
+- `scripts/amni_serve.py` imports + mounts `memory_endpoints.mount(app, agent)` after `jarvis_web.mount`.
+- Panel state in `localStorage`; refresh on open + manual reload anytime.
+
+### Tests
+`tests/test_memory_inspector_v6_10_2.py` — **15/15 PASS**:
+- snapshot empty / with-lessons
+- profile endpoint empty / with PersonalAtlas / `include_confidential=false` filter
+- `PersonalAtlas.list_facts` flat-listing
+- kg endpoint top subjects + top predicates
+- coach endpoint topics
+- forget personal by pattern
+- forget requires `confirm` flag (400 otherwise)
+- unknown atlas → 400
+- forget kg by subject
+- confirm clarification
+- Jarvis panel HTML present (all 13 needles)
+- Jarvis CSS + button present
+- No regression to v6.9.11 features (canvas, widgets, gestures, /v1/chat/completions)
+
+### Why this matters
+Mainstream models can't tell oui what they "remember" because there's nothing to point at — facts live in opaque weights. Adam's atlases are first-class data. The inspector closes the trust loop: oui can SEE every confidential flag, every fact's provenance, every gap the daemon is filling, and oui can FORGET anything with one click.
+
 ## v6.10.1 — INCREDIBLE Adam iter 8: knowledge-graph synthesis + deferred privacy backports (2026-05-25)
 
 Adam now reasons RELATIONALLY. Beyond cell-LUT lookup (which answers "what is X?"), Adam can now traverse a per-machine knowledge graph to answer **"what connects X to Y?"** via BFS path-finding. Also: two long-deferred privacy/correctness fixes finally landed.

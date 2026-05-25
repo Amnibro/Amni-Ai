@@ -156,6 +156,13 @@ class PersonalAtlas:
             try:self._slot.lut.fit();self._slot.refit_due=_REFIT_EVERY
             except Exception as e:print(f'[PersonalAtlas] fit failed: {e}',flush=True)
         self._save_slot()
+    def list_facts(self,include_confidential:bool=True,limit:int=200)->List[Dict[str,Any]]:
+        out=[]
+        for (q,a),m in self._slot.meta.items():
+            if m.get('is_confidential') and not include_confidential:continue
+            out.append({'fact':q,'is_confidential':bool(m.get('is_confidential',True)),'conf':float(m.get('conf',1.0)),'source':m.get('source','')[:200],'ts':m.get('ts',0.0)})
+        out.sort(key=lambda x:-x.get('ts',0))
+        return out[:limit]
     def record_direct(self,fact:str,source_excerpt:str='',is_confidential:bool=True,confidence:float=1.0)->Dict[str,Any]:
         if not fact or not fact.strip():return {'recorded':False,'reason':'empty'}
         self._record(fact.strip(),source_excerpt,bool(is_confidential),float(confidence))

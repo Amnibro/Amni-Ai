@@ -1,0 +1,69 @@
+"""Memory inspector HTTP endpoints — surface what Adam knows across all atlases for the /jarvis memory panel.
+Read-only by default; explicit POST /memory/forget for destructive ops with strict scoping.
+mount(app, agent) wires:
+  GET  /memory/snapshot        — top-level stats across all atlases
+  GET  /memory/profile         — PersonalAtlas facts + pending clarifications
+  GET  /memory/kg              — KG top subjects/predicates + stats
+  GET  /memory/coach           — coach topics + mastery
+  GET  /memory/daemon          — LearningDaemon stats
+  POST /memory/forget          — atlas-scoped delete {atlas, pattern?, fact?, id?, topic?, confirm:true}
+  POST /memory/confirm         — pending clarification confirm {id, is_confidential}"""
+def mount(app,agent):
+    from fastapi import Request,HTTPException
+    from fastapi.responses import JSONResponse
+    @app.get('/memory/snapshot')
+    def snapshot():
+        sl=getattr(agent.adam,'sem_lut',None)
+        lessons_n=len(getattr(sl,'_raw',[]) or []) if sl is not None else 0
+        return {'lesson_bank':{'n':lessons_n},'personal_atlas':agent.personal_atlas.stats() if getattr(agent,'personal_atlas',None) is not None else None,'coach_atlas':{'topics':agent.coach_atlas.list_topics() if getattr(agent,'coach_atlas',None) is not None else []},'knowledge_graph':agent.knowledge_graph.stats() if getattr(agent,'knowledge_graph',None) is not None else None,'learning_daemon':agent.learning_daemon.stats() if getattr(agent,'learning_daemon',None) is not None else None,'conversation_atlas':agent.atlas.stats() if getattr(agent,'atlas',None) is not None else None,'scheduler':agent.scheduler.atlas.stats() if getattr(agent,'scheduler',None) is not None else None}
+    @app.get('/memory/profile')
+    def profile(limit:int=100,include_confidential:bool=True):
+        if getattr(agent,'personal_atlas',None) is None:return {'facts':[],'pending':[],'stats':{}}
+        return {'facts':agent.personal_atlas.list_facts(include_confidential=include_confidential,limit=limit),'pending':agent.personal_atlas.pending_clarifications(limit=10),'stats':agent.personal_atlas.stats()}
+    @app.get('/memory/kg')
+    def kg(limit:int=20):
+        if getattr(agent,'knowledge_graph',None) is None:return {'stats':{},'top_subjects':[]}
+        kg=agent.knowledge_graph
+        with kg._lock:
+            by_deg=sorted(((s,len(ks)) for s,ks in kg._by_subject.items()),key=lambda x:-x[1])[:limit]
+            top_preds=sorted(((p,len(ks)) for p,ks in kg._by_predicate.items()),key=lambda x:-x[1])[:limit]
+        return {'stats':kg.stats(),'top_subjects':[{'subject':s,'edges_out':n} for s,n in by_deg],'top_predicates':[{'predicate':p,'count':n} for p,n in top_preds]}
+    @app.get('/memory/coach')
+    def coach(limit:int=50):
+        if getattr(agent,'coach_atlas',None) is None:return {'topics':[]}
+        return {'topics':agent.coach_atlas.list_topics()[:limit]}
+    @app.get('/memory/daemon')
+    def daemon():
+        if getattr(agent,'learning_daemon',None) is None:return {'enabled':False,'reason':'no daemon'}
+        return agent.learning_daemon.stats()
+    @app.post('/memory/forget')
+    async def forget(req:Request):
+        body=await req.json()
+        atlas=(body.get('atlas') or '').strip().lower()
+        if not body.get('confirm'):return JSONResponse(status_code=400,content={'error':'must include confirm:true to delete'})
+        if atlas=='personal':
+            if getattr(agent,'personal_atlas',None) is None:raise HTTPException(404,'PersonalAtlas not initialized')
+            if body.get('forget_all'):return agent.personal_atlas.forget(forget_all=True)
+            return agent.personal_atlas.forget(fact_pattern=body.get('pattern'))
+        if atlas=='kg':
+            if getattr(agent,'knowledge_graph',None) is None:raise HTTPException(404,'KnowledgeGraph not initialized')
+            n=agent.knowledge_graph.forget(subject=body.get('subject'),predicate=body.get('predicate'),object_=body.get('object'))
+            return {'atlas':'kg','forgot':n}
+        if atlas=='coach':
+            if getattr(agent,'coach_atlas',None) is None:raise HTTPException(404,'CoachAtlas not initialized')
+            ok=agent.coach_atlas.forget(body.get('topic',''))
+            return {'atlas':'coach','forgot':bool(ok)}
+        if atlas=='conversation':
+            if getattr(agent,'atlas',None) is None:raise HTTPException(404,'ConversationAtlas not initialized')
+            sid=body.get('session_id','')
+            if not sid:raise HTTPException(400,'need session_id')
+            return {'atlas':'conversation','forgot':agent.atlas.forget_session(sid)}
+        raise HTTPException(400,f'unknown atlas {atlas}; valid: personal|kg|coach|conversation')
+    @app.post('/memory/confirm')
+    async def confirm(req:Request):
+        body=await req.json()
+        if getattr(agent,'personal_atlas',None) is None:raise HTTPException(404,'PersonalAtlas not initialized')
+        fid=(body.get('id') or '').strip()
+        is_conf=bool(body.get('is_confidential'))
+        if not fid:raise HTTPException(400,'need id')
+        return agent.personal_atlas.confirm_clarification(fid,is_conf)
