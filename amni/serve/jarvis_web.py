@@ -351,19 +351,85 @@ async function send(){
   }catch(err){bot.bubble.classList.remove('thinking');bot.bubble.textContent='Error: '+err.message}
   send_btn.disabled=false;input.focus();log.scrollTop=log.scrollHeight;
 }
+let _voiceBackends={tts:false,stt:false,tts_backend:'',stt_backend:''};
+async function probeVoiceBackends(){
+  try{const j=await(await fetch('/voice/status')).json();
+    _voiceBackends.tts=!!(j.tts&&j.tts.available);
+    _voiceBackends.stt=!!(j.stt&&j.stt.available);
+    _voiceBackends.tts_backend=(j.tts&&j.tts.backend)||'';
+    _voiceBackends.stt_backend=(j.stt&&j.stt.backend)||'';
+  }catch{}
+}
+probeVoiceBackends();
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
-function speak(text){if(!voiceOut||!('speechSynthesis' in window))return;try{const u=new SpeechSynthesisUtterance(text.replace(/```[\s\S]*?```/g,'(code)').replace(/[*_`#<>]/g,'').slice(0,800));u.rate=1;u.pitch=1;speechSynthesis.cancel();speechSynthesis.speak(u)}catch{}}
-function toggleMic(){
-  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('Voice input needs Chrome/Edge.');return}
+let _audioEl=null;
+async function speak(text){
+  if(!voiceOut)return;
+  const clean=text.replace(/```[\s\S]*?```/g,'(code)').replace(/[*_`#<>]/g,'').slice(0,800);
+  if(_voiceBackends.tts){
+    try{
+      const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:clean})});
+      if(r.ok){
+        const j=await r.json();
+        if(j.audio_base64){
+          if(_audioEl){try{_audioEl.pause()}catch{}}
+          _audioEl=new Audio('data:'+(j.content_type||'audio/wav')+';base64,'+j.audio_base64);
+          _audioEl.play().catch(()=>_speakBrowser(clean));
+          return;
+        }
+      }
+    }catch{}
+  }
+  _speakBrowser(clean);
+}
+function _speakBrowser(clean){if(!('speechSynthesis' in window))return;try{const u=new SpeechSynthesisUtterance(clean);u.rate=1;u.pitch=1;speechSynthesis.cancel();speechSynthesis.speak(u)}catch{}}
+let _mediaRec=null,_mediaChunks=[],_recAbort=null;
+async function _startServerSTT(){
+  const m=document.getElementById('mic-shell');
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    _mediaChunks=[];
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
+    _mediaRec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+    _mediaRec.ondataavailable=e=>{if(e.data.size>0)_mediaChunks.push(e.data)};
+    _mediaRec.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      m.classList.remove('listening');recoOn=false;
+      if(_recAbort){_recAbort=null;return}
+      if(_mediaChunks.length===0)return;
+      const blob=new Blob(_mediaChunks,{type:_mediaRec.mimeType||'audio/webm'});
+      const dataUrl=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob)});
+      const b64=dataUrl.split(',',2)[1];
+      input.placeholder='transcribing…';
+      try{
+        const r=await fetch('/voice/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio_base64:b64})});
+        const j=await r.json();
+        if(r.ok&&j.text){input.value=(input.value+' '+j.text).trim();send()}
+        else{console.warn('stt fail',j);_startBrowserSTT()}
+      }catch(e){console.warn('stt error',e);_startBrowserSTT()}
+      finally{input.placeholder='Speak or type...'}
+    };
+    _mediaRec.start();recoOn=true;m.classList.add('listening');
+  }catch(e){console.warn('getUserMedia for STT failed',e);_startBrowserSTT()}
+}
+function _startBrowserSTT(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('Voice input needs Chrome/Edge or a server STT backend.');return}
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const m=document.getElementById('mic-shell');
-  if(recoOn&&recog){recog.stop();return}
   recog=new SR();recog.lang='en-US';recog.interimResults=false;recog.continuous=false;
   recoOn=true;m.classList.add('listening');
   recog.onresult=e=>{input.value=e.results[0][0].transcript;send()};
   recog.onerror=()=>{recoOn=false;m.classList.remove('listening')};
   recog.onend=()=>{recoOn=false;m.classList.remove('listening')};
   recog.start();
+}
+function toggleMic(){
+  if(recoOn){
+    if(_mediaRec&&_mediaRec.state==='recording'){_mediaRec.stop();return}
+    if(recog){_recAbort=true;try{recog.stop()}catch{};recoOn=false;document.getElementById('mic-shell').classList.remove('listening');return}
+  }
+  if(_voiceBackends.stt && typeof MediaRecorder!=='undefined' && navigator.mediaDevices)_startServerSTT();
+  else _startBrowserSTT();
 }
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px'});

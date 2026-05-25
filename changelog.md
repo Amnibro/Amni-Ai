@@ -2,6 +2,52 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.6 — INCREDIBLE Adam iter 13: local voice upgrade (Piper TTS + Whisper STT) (2026-05-25)
+
+`/jarvis` now prefers Adam's local voice stack — Piper for TTS, faster-whisper for STT — over browser Web Speech. Better quality, works offline, no Chrome/Edge requirement. Browser stays as automatic fallback if either local backend errors.
+
+### New file
+- `amni/serve/voice_endpoints.py` — three endpoints wrapping the existing `tts` + `stt` skills with TaskRegistry integration:
+  - `GET /voice/status` — probes both backends, returns availability + which backend would be used + voices list
+  - `POST /voice/speak {text, voice?, backend?}` → `{audio_base64, content_type, backend, voice, bytes}`
+  - `POST /voice/transcribe {audio_base64, model_size?, backend?}` → `{text, language, backend}`
+
+### /jarvis UI upgrade
+- **`probeVoiceBackends()`** runs on page load; stores `_voiceBackends.{tts, stt, tts_backend, stt_backend}` for the lifetime of the page.
+- **`speak(text)`** now tries `/voice/speak` first when `_voiceBackends.tts` is true: fetches the WAV base64, creates an `HTMLAudioElement`, plays it. Falls back to `speechSynthesis` on any failure path.
+- **`toggleMic()`** now routes to `_startServerSTT()` when `_voiceBackends.stt` is true AND MediaRecorder is supported. Records to a `webm/opus` blob, base64-encodes, POSTs to `/voice/transcribe`, drops the transcribed text into the input + auto-submits. Falls back to browser `webkitSpeechRecognition` if MediaRecorder unsupported or transcribe fails.
+- Cleanly cancels existing audio playback before starting a new speak. Stop-recording aborts in-flight transcription via `_recAbort`.
+
+### TaskRegistry integration
+- `/voice/speak` registers a `voice_speak` task (label = `TTS (N chars)`), completes on success or fails with error. Shows in the floating task tray from iter 10.
+- `/voice/transcribe` registers a `voice_stt` task with kB-of-audio label. Whisper transcription on long clips appears in the tray with a progress chip and × cancel.
+
+### Wire-up
+- `scripts/amni_serve.py` imports + mounts `voice_endpoints.mount(app, agent)` after `vision_endpoints`.
+
+### Tests
+`tests/test_voice_v6_10_6.py` — **17/17 PASS**:
+- /voice/status with both backends, neither available
+- speak returns audio_base64, needs text, 503 when no TTS skill, passes voice + backend args through, 500 when output lacks audio_base64 (out_path mode)
+- transcribe returns text, needs audio, strict base64 validation, data-URL prefix handling, 503 when no STT skill
+- speak + transcribe both register + complete TaskRegistry entries
+- Jarvis hooks present (9 needles)
+- speak() function tries `/voice/speak` before falling back
+- No regression to v6.10.5 widgets
+
+### Why this matters
+Web Speech is Chrome/Edge-only, ships per-browser-vendor models, and goes over Google's servers for STT. Adam's voice stack runs locally (Piper voices ship as ~50MB .onnx models, faster-whisper transcribes on CPU/GPU). The /jarvis upgrade is **graceful**: oui keep Web Speech as fallback so the UI still works if oui haven't installed Piper or faster-whisper yet.
+
+### Try it
+```bash
+# Install voice backends (optional but recommended):
+pip install piper-tts faster-whisper
+
+python -m amni.cli serve --port 7700
+# Open /jarvis, toggle VOICE on, ask something → Piper voice plays back
+# Click mic → MediaRecorder captures → Whisper transcribes → input filled + auto-sent
+```
+
 ## v6.10.5 — INCREDIBLE Adam iter 12: 5 new Jarvis-style inline widgets (2026-05-25)
 
 Fills out the Jarvis surface across more domains. Five new widget skills, each with a tailored neon-themed `/jarvis` renderer.
