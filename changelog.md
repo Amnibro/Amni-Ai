@@ -2,6 +2,67 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.7 — INCREDIBLE Adam iter 14: file/folder watcher widget (2026-05-25)
+
+Adam watches files now. Point it at a path, optionally tie a skill to the change event, and Adam reacts the moment something hits disk. Stdlib-only (no watchdog dep), single daemon thread, on_change_skill closure for "when X changes run Y" workflows.
+
+### New file
+- `amni/storage/file_watcher.py` — `FileWatcher` class:
+  - **Polling-based**: stdlib `os.stat` + `glob`, no inotify/watchdog/etc. Cross-platform, no install required.
+  - **Single daemon thread** polls all registered watches every `poll_s` seconds (default 5).
+  - **Per-watch snapshot**: `{relpath: (mtime, size)}` rebuilt each poll, diffed against the prior version → emits `created` / `modified` / `deleted` events.
+  - **Ring buffer**: each watch keeps last 50 events.
+  - **Recursive + glob filters**: `recursive=True` walks subdirs, `glob='*.py'` filters extensions.
+  - **`on_change_skill`**: optional. When events fire, calls the named skill with `args + {watch_id, events_n, first_change}` merged in. Lets users wire "log changed → run pytest" or "new file in inbox → ingest" without writing code.
+  - **Coalesce**: `coalesce_s` (default 2.0) prevents rapid refire — useful when an editor saves 5 times in a second.
+  - **Safety cap**: max 2000 files per watch to keep poll bounded.
+
+### `watch` skill (42 total now)
+- Actions: `add` / `list` / `get` / `cancel` / `enable` / `disable` / `events` / `tick` / `stats`
+- `events` action returns a `watch` widget envelope ready for inline `/jarvis` render
+
+### Wire-up
+- `AmniAgent.__init__` creates `FileWatcher` with `skill_registry` ref so `on_change_skill` actually fires. Daemon starts by default; disable via `$AMNI_NO_FILE_WATCHER=1`.
+- Skill ctx now carries `file_watcher` alongside everything else.
+
+### Jarvis 'watch' widget renderer
+- Mono-font event list, color-coded kind tags: `created` green-glow, `modified` cyan-glow, `deleted` red-glow.
+- Per-row: path + size (b/k). Newest events at top. Max-height 260 px scroll.
+- Stats mode renders watcher count + enabled + recent-events + auto-fire counters.
+
+### Tests
+`tests/test_file_watcher_v6_10_7.py` — **17/17 PASS**:
+- add returns id / rejects missing path
+- detects created/modified/deleted (mtime+size diff)
+- glob filter excludes non-matching files
+- recursive traversal of subdirs
+- disabled watch skipped
+- cancel removes
+- on_change_skill fires with merged args
+- coalesce_s prevents rapid refire (3 file creates → 1 skill fire)
+- skill action dispatch (add/list/cancel/events with widget envelope)
+- no-file-watcher-in-ctx error
+- unknown action error
+- Jarvis renderer needles present
+- no v6.10.6 regression
+
+### Try it
+```python
+import requests
+# Watch a directory + auto-run pytest when any .py changes:
+r=requests.post('http://127.0.0.1:7700/skills/watch',json={'args':{
+  'action':'add',
+  'path':'./src',
+  'glob':'*.py',
+  'recursive':True,
+  'on_change_skill':'test_run',
+  'on_change_args':{},
+  'coalesce_s':5.0
+}})
+```
+
+Compose with iter 4 scheduler for "every hour check if any file changed in the last hour and summarize" or iter 7 learning daemon for "when ./papers fills with new PDFs, auto-ingest them."
+
 ## v6.10.6 — INCREDIBLE Adam iter 13: local voice upgrade (Piper TTS + Whisper STT) (2026-05-25)
 
 `/jarvis` now prefers Adam's local voice stack — Piper for TTS, faster-whisper for STT — over browser Web Speech. Better quality, works offline, no Chrome/Edge requirement. Browser stays as automatic fallback if either local backend errors.

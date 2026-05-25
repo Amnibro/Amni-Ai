@@ -744,6 +744,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         from amni.serve.vision import describe_image_skill as _vis_skill
         reg.register('describe_image',_vis_skill,desc='Describe an image via BLIP. Provide image_base64 OR path. Optional question for VQA mode ("what color is the dog?"). Args: {image_base64?, path?, question?}',schema={'image_base64':'str?','path':'str?','question':'str?'})
     except Exception as _ve:print(f'[skills] describe_image skill register failed: {_ve}',flush=True)
+    try:
+        from amni.storage.file_watcher import watch_skill as _watch_skill
+        reg.register('watch',_watch_skill,desc='File/folder change watcher. Actions: add (path, glob?, recursive?=true, label?, on_change_skill?, on_change_args?, coalesce_s?=2.0) | list | get <id> | cancel <id> | enable <id> | disable <id> | events <id> | tick | stats. Args: {action, path?, glob?, recursive?, label?, on_change_skill?, on_change_args?, coalesce_s?, id?, limit?}',schema={'action':'str','path':'str?','glob':'str?','recursive':'bool?','label':'str?','on_change_skill':'str?','on_change_args':'dict?','coalesce_s':'float?','id':'str?','limit':'int?'})
+    except Exception as _we:print(f'[skills] watch skill register failed: {_we}',flush=True)
     if with_agentic:
         try:from amni.serve.agentic import register as _reg_agentic;_reg_agentic(reg)
         except Exception as e:print(f'[skills] agentic register failed: {e}',flush=True)

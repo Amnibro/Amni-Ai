@@ -288,6 +288,12 @@ class AmniAgent:
             from amni.serve.vision import VisionService
             self.vision=VisionService()
         except Exception as e:print(f'[AmniAgent] VisionService init failed (image input disabled): {e}',flush=True);self.vision=None
+        try:
+            from amni.storage.file_watcher import FileWatcher
+            import os as _os_env
+            _fw_disabled=bool(_os_env.environ.get('AMNI_NO_FILE_WATCHER'))
+            self.file_watcher=FileWatcher(skill_registry=self.skills,adam=self.adam,start_thread=not _fw_disabled)
+        except Exception as e:print(f'[AmniAgent] FileWatcher init failed (file watching disabled): {e}',flush=True);self.file_watcher=None
     def _previous_session_summary(self,current_session_id,max_chars=240):
         try:
             root=getattr(getattr(self,'store',None),'root',None)
@@ -410,7 +416,7 @@ class AmniAgent:
             det=self._detect_skill(message)
             if det is not None:
                 name,args=det
-                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None)})
+                r=self.skills.call(name,args,ctx={'adam':self.adam,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None),'file_watcher':getattr(self,'file_watcher',None)})
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)
