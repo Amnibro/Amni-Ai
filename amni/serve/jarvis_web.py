@@ -11,10 +11,10 @@ html,body{height:100%;background:var(--bg);color:var(--fg);overflow:hidden}
 #nebula{position:fixed;inset:0;z-index:-2;background:radial-gradient(ellipse at 20% 30%,rgba(0,229,255,.12),transparent 50%),radial-gradient(ellipse at 80% 70%,rgba(255,43,214,.08),transparent 50%),var(--bg)}
 #netcanvas{position:fixed;inset:0;z-index:-1;width:100vw;height:100vh}
 #frame{position:fixed;inset:12px;border:1px solid rgba(0,229,255,.18);border-radius:6px;pointer-events:none;z-index:5;box-shadow:inset 0 0 30px rgba(0,229,255,.05)}
-#frame::before,#frame::after{content:'';position:absolute;width:24px;height:24px;border:2px solid var(--cyan);box-shadow:0 0 12px var(--cyan)}
+#frame::before,#frame::after{content:'';position:absolute;width:14px;height:14px;border:1.5px solid var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.5)}
 #frame::before{top:-2px;left:-2px;border-right:none;border-bottom:none}
 #frame::after{bottom:-2px;right:-2px;border-left:none;border-top:none}
-#corner-tr,#corner-bl{position:fixed;width:24px;height:24px;border:2px solid var(--cyan);box-shadow:0 0 12px var(--cyan);pointer-events:none;z-index:5}
+#corner-tr,#corner-bl{position:fixed;width:14px;height:14px;border:1.5px solid var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.5);pointer-events:none;z-index:5}
 #corner-tr{top:10px;right:10px;border-left:none;border-bottom:none}
 #corner-bl{bottom:10px;left:10px;border-right:none;border-top:none}
 #scanline{position:fixed;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);box-shadow:0 0 12px var(--cyan);pointer-events:none;animation:scan 6s linear infinite;opacity:.4;z-index:4}
@@ -139,7 +139,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
 .sidehint{position:fixed;bottom:16px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:6}
-#task-tray{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(120%);width:min(560px,92vw);z-index:8;border:1px solid rgba(0,229,255,.3);border-radius:4px;background:rgba(8,14,28,.92);box-shadow:0 0 24px rgba(0,229,255,.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:36vh;overflow-y:auto}
+#task-tray{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(140%);width:min(560px,92vw);z-index:8;border:1px solid rgba(0,229,255,.3);border-radius:4px;background:rgba(8,14,28,.95);box-shadow:0 0 24px rgba(0,229,255,.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:30vh;overflow-y:auto}
 #task-tray.show{transform:translateX(-50%) translateY(0)}
 #task-tray .tray-head{padding:6px 12px;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);border-bottom:1px solid rgba(0,229,255,.15);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:rgba(8,14,28,.95)}
 #task-tray .tray-head .dot{width:5px;height:5px;border-radius:50%;background:var(--ok);box-shadow:0 0 5px var(--ok);animation:pulse 1.6s ease-in-out infinite}
@@ -738,9 +738,9 @@ window.send=async function(){
     log.appendChild(uMsg);log.scrollTop=log.scrollHeight;
     await askAboutLastImage(t);return;
   }
-  if(voiceOut && _voiceBackends.tts && !convoOn){
+  if(!convoOn){
     input.value='';input.style.height='auto';send_btn.disabled=true;
-    try{await _streamReplyWithTTS(t,{createBubbles:true})}
+    try{await _streamReplyWithTTS(t,{createBubbles:true,tts:voiceOut && _voiceBackends.tts})}
     finally{send_btn.disabled=false;input.focus()}
     return;
   }
@@ -750,7 +750,35 @@ const CONVO_KEY='amni_jarvis_convo';
 const VAD_KEY='amni_jarvis_vad';
 const CONVO_MAX_UTTERANCE_MS=10000;
 const CONVO_MAX_FAILS=3;
-const _vadDefaults={silence_ms:600,min_speech_ms:150,vad_threshold:18,barge_threshold:26};
+const _vadDefaults={silence_ms:600,min_speech_ms:300,vad_threshold:26,barge_threshold:38};
+const _WHISPER_HALLUCINATIONS=new Set(['you','thank you','thanks','thanks for watching','thanks for watching!','bye','bye.','okay','ok','.','...','...thank you','sub','please subscribe','subscribe','♪','[music]','[silence]','[blank_audio]','um','uh','huh','hmm','yeah','yep','um.','uh.','mm-hmm']);
+function _jaccardWords(a,b){const sa=new Set(a.split(/\s+/).filter(Boolean));const sb=new Set(b.split(/\s+/).filter(Boolean));if(sa.size===0||sb.size===0)return 0;let inter=0;for(const x of sa)if(sb.has(x))inter++;return inter/(sa.size+sb.size-inter)}
+function _isWhisperHallucination(text){
+  const t=(text||'').trim().toLowerCase();
+  if(t.length===0||t.length<3)return true;
+  if(_WHISPER_HALLUCINATIONS.has(t))return true;
+  if(/^[.\s!?,]+$/.test(t))return true;
+  const parts=t.split(/[.!?]+/).map(s=>s.replace(/[,\s]+/g,' ').trim()).filter(s=>s.length>=2);
+  if(parts.length>=2){
+    let dupePairs=0;
+    for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++){
+      if(parts[i]===parts[j] || _jaccardWords(parts[i],parts[j])>=0.65){dupePairs++;break}
+    }
+    if(dupePairs>=Math.max(1,Math.ceil(parts.length*0.4)))return true;
+  }
+  const words=t.split(/\s+/).filter(Boolean);
+  if(words.length>=3){
+    for(let n=1;n<=Math.min(4,Math.floor(words.length/3));n++){
+      for(let i=0;i+n*3<=words.length;i++){
+        const a=words.slice(i,i+n).join(' ');
+        const b=words.slice(i+n,i+n*2).join(' ');
+        const c=words.slice(i+n*2,i+n*3).join(' ');
+        if(a===b && b===c)return true;
+      }
+    }
+  }
+  return false;
+}
 let _vadConfig={..._vadDefaults};
 try{const saved=JSON.parse(localStorage.getItem(VAD_KEY)||'null');if(saved&&typeof saved==='object')_vadConfig={..._vadDefaults,...saved}}catch{}
 function _saveVadConfig(){try{localStorage.setItem(VAD_KEY,JSON.stringify(_vadConfig))}catch{}}
@@ -862,9 +890,10 @@ async function _convoFinishRecording(){
     const r=await fetch('/voice/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio_base64:b64})});
     const j=await r.json();
     if(!r.ok||!(j.text||'').trim()){convoFailCount++;if(convoFailCount>=CONVO_MAX_FAILS){_convoFail('too many empty transcriptions');return};_setConvoState('listening');return}
+    const text=j.text.trim();
+    if(_isWhisperHallucination(text)){console.debug('convo: dropped Whisper hallucination:',JSON.stringify(text));_setConvoState('listening');return}
     convoFailCount=0;
     _setConvoState('thinking');
-    const text=j.text.trim();
     input.value='';
     await _convoStreamSend(text);
   }catch(e){console.warn('convo transcribe failed',e);convoFailCount++;if(convoFailCount>=CONVO_MAX_FAILS){_convoFail('transcribe error')}else _setConvoState('listening')}
@@ -893,6 +922,7 @@ async function _streamReplyWithTTS(text,opts){
   opts=opts||{};
   const createBubbles=opts.createBubbles!==false;
   const onDoneState=opts.onDone||null;
+  const useTTS=opts.tts!==false && voiceOut;
   if(createBubbles)bubble('user',text);
   const bot=opts.bot||bubble('bot','...');
   if(!opts.bot)bot.bubble.classList.add('thinking');
@@ -900,6 +930,7 @@ async function _streamReplyWithTTS(text,opts){
   const _SENT_RE=/([.!?…][\s"')\]\}]*)/;
   async function _flushTTS(chunk){
     if(!chunk||!chunk.trim())return;
+    if(!useTTS)return;
     if(!_voiceBackends.tts){_speakBrowser(chunk);return}
     try{
       const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:chunk})});

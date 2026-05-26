@@ -348,6 +348,15 @@ class AmniAgent:
         seen=set();dedup=[f for f in facts if not (f in seen or seen.add(f))]
         return dedup[-limit:]
     def _detect_skill(self,msg:str)->Optional[Tuple[str,Dict[str,Any]]]:
+        _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
+        if _m and self.skills.has('weather'):return ('weather',{'location':_m.group(1).strip(' ?.,!')})
+        if re.search(r"\bsystem\s+stats?\b|\b(?:cpu|ram|memory|disk)\s+(?:usage|stats?|status)\b|\bhow'?s\s+my\s+(?:system|computer|machine)\b",msg,re.IGNORECASE) and self.skills.has('system_stats'):return ('system_stats',{})
+        _m=re.search(r"\b(?:top\s+)?news(?:\s+about|\s+on|\s+regarding)?\s+([\w\s\-]{2,60})\??$|\bwhat'?s\s+(?:happening|new)\s+(?:in|with|about)\s+([\w\s\-]{2,60})\??$",msg,re.IGNORECASE)
+        if _m and self.skills.has('news'):return ('news',{'query':(_m.group(1) or _m.group(2) or '').strip(' ?.,!')})
+        _m=re.search(r"\b(?:stock|share|quote)\s+(?:price\s+)?(?:for|of)?\s*\$?([A-Z]{1,5}(?:[,\s]+[A-Z]{1,5}){0,5})\b",msg,re.IGNORECASE)
+        if _m and self.skills.has('stock'):return ('stock',{'symbols':re.sub(r'\s+',',',_m.group(1).upper())})
+        if re.search(r"\b(?:disk|drive)\s+(?:usage|space|free)\b|\bhow\s+much\s+(?:disk|drive|storage)\s+(?:space|free)\b",msg,re.IGNORECASE) and self.skills.has('disk_widget'):return ('disk_widget',{})
+        if re.search(r"\bgit\s+status\b|\b(?:current\s+)?(?:git\s+)?branch\b|\bunstaged\s+(?:files|changes)\b",msg,re.IGNORECASE) and self.skills.has('git_status'):return ('git_status',{})
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
         m=_CALC_RE.search(msg)
@@ -467,8 +476,10 @@ class AmniAgent:
         if not raw_ans and persona.name!='Adam' and self.use_persona and hasattr(self.adam,'chat_persona'):
             sys_p=persona.system_prompt(message)
             if apply_cot:sys_p=f'{sys_p}\n\n{cot_scaffold}'
-            cot_extra=700 if (apply_cot and cot_tag=='code') else (450 if apply_cot else 0)
-            r=self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=int(80+200*persona.length)+cot_extra,do_sample=True)
+            cot_extra=1400 if (apply_cot and cot_tag=='code') else (700 if apply_cot else 0)
+            _is_code=bool(_CODE_LANG_RE.search(message) or any(k in message.lower() for k in ('write','implement','function','how do i','example','code','setup','config','server')))
+            _code_extra=600 if _is_code and not apply_cot else 0
+            r=self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=int(160+300*persona.length)+cot_extra+_code_extra,do_sample=True)
             raw_ans=r.get('answer') or '';tier=r.get('tier','tier_persona')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=r.get('tokens',0)
             if apply_cot and cot_tag=='code' and raw_ans:
                 blocks=_extract_python_blocks(raw_ans)
