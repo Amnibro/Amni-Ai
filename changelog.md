@@ -2,6 +2,34 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.20 — Coach mode goes voice-native (Jarvis-style tutoring) (2026-05-26)
+
+v6.10.18 shipped the coach UI; v6.10.20 makes it voice-first. Toggle VOICE ON in the coach panel and Adam narrates the entire tutoring session — first question on session start, every follow-up question after answer, hints when revealed, "Skipped. Next question: …" after skip. Combine with wake-word convo mode (v6.10.13) and you have hands-free Socratic tutoring.
+
+### New buttons in coach panel
+- **VOICE OFF / VOICE ON** toggle (turns gold-bordered when on, mirroring the topbar voice-out style)
+- **↻ REPLAY** — re-speak the current question (useful when you missed it or got distracted)
+
+### Auto-speak hooks
+- `_coachStart` → speaks the first question after the session boots
+- `_coachAsk` → speaks each NEXT question
+- `_coachSkip` → "Skipped. Next question: …"
+- `_coachAnswer` → speaks `feedback + " Next question: " + next_question` as one phrase (smooth narration)
+- `_coachHint` → speaks "Hint: …"
+
+All gated on `_voiceBackends.tts` (Piper) so it only fires when local TTS is actually available; falls back silently to text-only if not.
+
+### Persistence + side-effect
+`COACH_VOICE_KEY` in localStorage (`amni_jarvis_coach_voice`). Toggling voice ON also flips the global `voiceOut` flag so subsequent calls to `speak()` actually play — no need to also click the topbar VOICE button.
+
+### Tracking last question
+New `_coachLastQuestion` cache so REPLAY always has something to speak even after grades arrive. Updated on every successful response that returns a question or next_question.
+
+### Tests
+18/18 PASS (`tests/test_coach_voice_v6_10_20.py`): both buttons present, localStorage round-trip, all five speak hooks (start/ask/skip/answer/hint), replay calls speak() directly, voice toggle forces voiceOut on, button on-state styled, panel-open syncs button label, default-off preserves legacy, v6.10.19 regression intact. Recent chain (v6.10.16 → .19): 64/64 still PASS.
+
+---
+
 ## v6.10.19 — Auto-run sibling pytest on .py edits (closes the verification loop) (2026-05-26)
 
 v6.10.16 detected `test_<stem>.py` sibling files and recommended running them — but Adam never actually ran them. v6.10.19 spawns pytest automatically on every successful .py verification, captures the result, and surfaces pass/fail counts on the widget. The verification chain is now end-to-end functional, not just static.
