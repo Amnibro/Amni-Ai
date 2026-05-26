@@ -776,8 +776,9 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   <div class="pp-section">
     <h3>PERSONA</h3>
     <div id="pp-list"><div class="pp-empty">loading…</div></div>
-    <div class="pp-input-row" style="margin-top:8px"><input type="text" id="pp-new" placeholder="learn new (e.g. Sherlock, Tony Stark)"><button class="act" onclick="_personaLearnNew()">LEARN</button></div>
+    <div class="pp-input-row" style="margin-top:8px"><input type="text" id="pp-new" placeholder="learn new (e.g. Sherlock, Tony Stark)"><button class="act" onclick="_personaLearnNew()">LEARN</button><button class="act" onclick="_personaImportFile()" title="Import a persona from .json file">IMPORT</button></div>
     <div style="font-size:9px;color:var(--mute);margin-top:4px;letter-spacing:.05em">Unknown personas trigger a web-learn flow.</div>
+    <input type="file" id="pp-import-file" accept="application/json,.json" style="display:none" onchange="_personaImportPicked(event)">
   </div>
   <div class="pp-section">
     <h3>EDIT CURRENT</h3>
@@ -1280,7 +1281,48 @@ function _renderPersonaEdit(){
   const dims=[['warmth',p.warmth],['formality',p.formality],['excitement',p.excitement],['length',p.length]];
   const rows=dims.map(([k,v])=>{const val=(v==null?.5:Number(v));return `<div class="pe-row"><label for="pe-${k}">${k}</label><input type="range" min="0" max="1" step="0.05" id="pe-${k}" value="${val}" oninput="document.getElementById('pe-${k}-v').textContent=Number(this.value).toFixed(2)"><span class="pe-val" id="pe-${k}-v">${val.toFixed(2)}</span></div>`}).join('');
   const hints=(p.voice_hints||[]).join('\n');
-  slot.innerHTML=`<div class="pe-source">${esc(p.name)} · source: ${esc(src)}</div><div class="pe-desc" id="pe-desc" contenteditable="true" spellcheck="true">${esc(p.description||'')}</div>${rows}<div class="pe-row"><label for="pe-hints">hints</label></div><textarea class="pe-hints" id="pe-hints" rows="3" placeholder="one voice hint per line">${esc(hints)}</textarea><div class="pe-actions"><button class="pe-btn" onclick="_personaEditSave()">SAVE EDITS</button><button class="pe-btn danger" onclick="_personaEditReset()">RESET</button></div>`;
+  const canDelete=src!=='preset';
+  slot.innerHTML=`<div class="pe-source">${esc(p.name)} · source: ${esc(src)}</div><div class="pe-desc" id="pe-desc" contenteditable="true" spellcheck="true">${esc(p.description||'')}</div>${rows}<div class="pe-row"><label for="pe-hints">hints</label></div><textarea class="pe-hints" id="pe-hints" rows="3" placeholder="one voice hint per line">${esc(hints)}</textarea><div class="pe-actions"><button class="pe-btn" onclick="_personaEditSave()">SAVE</button><button class="pe-btn" onclick="_personaExport()" title="Download as .json">EXPORT</button><button class="pe-btn" onclick="_personaEditReset()">RESET</button>${canDelete?'<button class="pe-btn danger" onclick="_personaDelete()" title="Remove this edited/imported override (presets cannot be deleted)">DELETE</button>':''}</div>`;
+}
+async function _personaExport(){
+  const cur=_selectedPersona||personaName||'';if(!cur)return;
+  try{
+    const r=await fetch('/persona/'+encodeURIComponent(cur)+'/export');
+    if(!r.ok){bubble('bot','Export failed: HTTP '+r.status,'<span class="badge err">persona</span>');return}
+    const j=await r.json();const blob=new Blob([JSON.stringify(j,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=cur.toLowerCase().replace(/[^a-z0-9_-]/g,'_')+'.persona.json';document.body.appendChild(a);a.click();setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},400);
+    bubble('bot','Exported **'+esc(cur)+'** to '+esc(a.download),'<span class="badge persona">'+esc(cur)+'</span>');
+  }catch(e){bubble('bot','Export failed: '+esc(String(e)),'<span class="badge err">persona</span>')}
+}
+async function _personaDelete(){
+  const cur=_selectedPersona||personaName||'';if(!cur)return;
+  if(!confirm('Delete persona "'+cur+'"?\n\nOnly learned/edited/imported overrides are removed — presets are restored.'))return;
+  try{
+    const r=await fetch('/persona/'+encodeURIComponent(cur),{method:'DELETE'});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){bubble('bot','Delete failed: '+esc(j.detail||r.status),'<span class="badge err">persona</span>');return}
+    bubble('bot','Removed **'+esc(cur)+'** override.','<span class="badge persona">'+esc(cur)+'</span>');
+    _selectedPersona=null;await _loadPersonas();_renderPersonaPanel();
+  }catch(e){bubble('bot','Delete failed: '+esc(String(e)),'<span class="badge err">persona</span>')}
+}
+function _personaImportFile(){const inp=document.getElementById('pp-import-file');if(inp){inp.value='';inp.click()}}
+async function _personaImportPicked(ev){
+  const f=(ev.target.files||[])[0];if(!f)return;
+  try{
+    const text=await f.text();const data=JSON.parse(text);
+    const r=await fetch('/persona/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const j=await r.json();
+    if(r.status===409){
+      if(!confirm('Persona already exists. Overwrite?'))return;
+      const data2={...data,overwrite:true};
+      const r2=await fetch('/persona/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data2)});
+      const j2=await r2.json();
+      if(!r2.ok){bubble('bot','Import failed: '+esc(j2.detail||r2.status),'<span class="badge err">persona</span>');return}
+      bubble('bot','Imported (replaced) **'+esc((j2.persona||{}).name||'?')+'**','<span class="badge persona">import</span>');
+    }else if(!r.ok){bubble('bot','Import failed: '+esc(j.detail||r.status),'<span class="badge err">persona</span>');return}
+    else{bubble('bot','Imported **'+esc((j.persona||{}).name||'?')+'**','<span class="badge persona">import</span>')}
+    await _loadPersonas();_renderPersonaPanel();
+  }catch(e){bubble('bot','Import failed: '+esc(String(e)),'<span class="badge err">persona</span>')}
 }
 async function _personaEditSave(){
   const cur=_selectedPersona||personaName||'';if(!cur)return;

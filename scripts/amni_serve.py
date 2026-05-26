@@ -838,6 +838,30 @@ def main():
             p=personas.learn(name)
             return {'persona':p.to_dict(),'learned_now':True}
         return {'persona':personas.get(name).to_dict(),'learned_now':False}
+    @app.get('/persona/{name}/export')
+    def export_persona_route(name:str):
+        if not personas.has(name):raise HTTPException(status_code=404,detail=f'unknown persona {name!r}')
+        import time as _t
+        return {'_amni_persona_format':'v1','exported_at':_t.time(),'persona':personas.get(name).to_dict()}
+    @app.post('/persona/import')
+    async def import_persona_route(req:Request):
+        try:body=await req.json()
+        except Exception:body={}
+        if not isinstance(body,dict):raise HTTPException(status_code=400,detail='body must be JSON object')
+        data=body.get('persona') if isinstance(body.get('persona'),dict) else body
+        if not isinstance(data,dict):raise HTTPException(status_code=400,detail='no persona object found')
+        p=personas.import_persona(data,new_name=body.get('rename'),overwrite=bool(body.get('overwrite',False)))
+        if p is None:
+            existing=body.get('rename') or data.get('name','')
+            if not body.get('overwrite') and existing and personas.has(existing):raise HTTPException(status_code=409,detail=f'persona {existing!r} already exists — pass overwrite=true to replace')
+            raise HTTPException(status_code=400,detail='invalid persona data (missing description, bad name, or unparseable dims)')
+        return {'persona':p.to_dict(),'imported':True}
+    @app.delete('/persona/{name}')
+    def delete_persona_route(name:str):
+        if not personas.has(name):raise HTTPException(status_code=404,detail=f'unknown persona {name!r}')
+        ok=personas.delete_persona(name)
+        if not ok:raise HTTPException(status_code=400,detail=f'{name!r} is a preset — only learned/edited/imported overrides can be deleted')
+        return {'deleted':name,'default':personas._default}
     @app.patch('/persona/{name}')
     async def edit_persona(name:str,req:Request):
         try:body=await req.json()
