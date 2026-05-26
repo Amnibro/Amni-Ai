@@ -2,6 +2,37 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.40 — Per-skill latency stats: Adam knows how fast his skills run (2026-05-26)
+
+`SkillRegistry.call()` already wrote every invocation to `logs/agent_skill_calls.jsonl` with `elapsed_ms` and `ok`, but those numbers never rolled up anywhere. v6.10.40 adds a tiny aggregator + endpoint + threads the result into the existing v6.10.37 briefing as a SKILLS section.
+
+### New module `amni/serve/skill_stats.py`
+- `aggregate(log_path=None, hours=24, limit_per_skill=2000)` — walks the existing audit log, no new storage
+- Per-skill output: `{n_calls, ok, errors, ok_rate, avg_ms, p50_ms, p90_ms, p99_ms, max_ms, last_ts, last_ago_s}`
+- Top-level totals + overall_ok_rate
+- Skills returned sorted descending by call count (most-used first)
+- Time-window filter: `hours=24` keeps last 24h; `hours=None` or `<=0` means all-time
+- Per-skill ring-buffer cap (2000 by default) so a hot skill can't blow memory on a giant log
+
+### New endpoint `GET /memory/skill-stats?hours=24&limit_per_skill=2000`
+Direct access to the aggregator. Returns `{skills, totals, window_hours, log_exists}`.
+
+### SKILLS section in briefing
+The ◈ BRIEFING chip (v6.10.37) now shows a 5th section between EDITS and COACH:
+```
+SKILLS    47 calls · avg 234ms
+          [weather 12× · 280ms] [git_status 8× · 65ms] [system_stats 6× · 410ms] ...
+```
+Top-4 most-used skills render as inline tag chips with call count + average latency. Title-hover shows full `{N} calls · {ok%} ok` breakdown. Empty state: *"no skill calls yet"*.
+
+### Why it matters
+After 40 iterations of skill plumbing, the user had no way to see which skills are actually doing the work — or which are quietly slow. This surfaces it in one tap. Combined with v6.10.22 shell audit log + v6.10.16 verification log + v6.10.37 briefing, Adam is now fully introspectable: every state-mutating action AND every skill invocation is timed, counted, and visible.
+
+### Tests
+16/16 PASS (`tests/test_skill_stats_v6_10_40.py`): module API, missing-log handling, per-skill grouping with ok/err counts + ok_rate, percentile correctness (p50/p90 over a 10-row monotonic series), time-window filter, sort-by-call-count, totals math, last_ago_s computation, endpoint shape, hours=None means all-time, briefing has SKILLS section + tag chips + summary line + empty state, /memory/digest now returns `skills` field, v6.10.39 regression intact. Recent chain (v6.10.36 → .39): 70/70 still PASS. Total: 86/86.
+
+---
+
 ## v6.10.39 — Coach session export to flashcard decks (2026-05-26)
 
 After all the practice (v6.10.18+20+21+32), the coach skill's per-topic question history was trapped in `topic_*.jsonl` files. v6.10.39 makes it portable — every topic exports as a markdown deck, Anki-import txt, or raw JSON. One click per topic card.
