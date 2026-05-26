@@ -445,6 +445,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .msg-retry{position:absolute;top:8px;right:8px;background:rgba(255,77,200,.06);border:1px solid rgba(255,77,200,.18);color:var(--magenta);font-family:JetBrains Mono,monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;padding:3px 8px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .15s,background .15s,box-shadow .15s}
 .msg.bot:hover .msg-retry{opacity:.6}
 .msg-retry:hover{opacity:1!important;background:rgba(255,77,200,.18);box-shadow:0 0 8px rgba(255,77,200,.25)}
+.msg-star{position:absolute;top:8px;right:72px;background:rgba(255,224,102,.06);border:1px solid rgba(255,224,102,.22);color:#ffe066;font-family:inherit;font-size:13px;line-height:1;padding:2px 7px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .15s,background .15s,box-shadow .15s,color .15s}
+.msg.bot:hover .msg-star{opacity:.6}
+.msg-star:hover{opacity:1!important;background:rgba(255,224,102,.18);box-shadow:0 0 8px rgba(255,224,102,.3)}
+.msg-star.starred{opacity:1;color:#ffd770;background:rgba(255,215,112,.18);border-color:#ffd770;text-shadow:0 0 6px rgba(255,215,112,.7)}
 .msg.restored .bubble::before{content:'';display:none}
 .tok-meter{font-size:9px;letter-spacing:.18em;color:var(--mute);font-family:JetBrains Mono,monospace;margin-top:4px;padding:2px 7px;border:1px solid rgba(0,229,255,.18);background:rgba(0,229,255,.04);border-radius:2px;display:inline-block;text-transform:uppercase;transition:opacity .8s, color .25s}
 .tok-meter.done{color:var(--cyan);border-color:rgba(0,229,255,.35);background:rgba(0,229,255,.08);text-shadow:0 0 3px rgba(0,229,255,.4)}
@@ -1129,9 +1133,37 @@ function bubble(role,text,meta){
   if(role==='bot'){
     const retry=document.createElement('button');retry.className='msg-retry';retry.textContent='↻ retry';retry.title='Discard this reply and edit the prompt';retry.onclick=ev=>{ev.stopPropagation();_retryBubble(m)};
     m.appendChild(retry);
+    const star=document.createElement('button');star.className='msg-star';star.textContent='☆';star.title='Bookmark this reply';star.onclick=ev=>{ev.stopPropagation();_bookmarkBubble(m,star)};
+    m.appendChild(star);
   }
   log.appendChild(m);log.scrollTop=log.scrollHeight;
   return {msg:m,bubble:b};
+}
+async function _bookmarkBubble(msg,btn){
+  if(!msg)return;
+  const botText=(msg.querySelector('.bubble')||{}).textContent||'';
+  let prev=msg.previousElementSibling;while(prev&&!prev.classList.contains('msg'))prev=prev.previousElementSibling;
+  const userText=(prev&&prev.classList.contains('user'))?((prev.querySelector('.bubble')||{}).textContent||''):'';
+  const tierBadge=(msg.querySelector('.meta .badge')||{}).textContent||'';
+  const personaBadge=(msg.querySelector('.meta .badge.persona')||{}).textContent||'';
+  const note=prompt('Optional note for this bookmark (Cancel to skip):','');
+  if(note===null)return;
+  try{
+    const r=await fetch('/memory/bookmarks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid||'',user_msg:userText,bot_msg:botText,note:note,tier:tierBadge,persona:personaBadge})});
+    if(!r.ok){bubble('bot','Bookmark failed: HTTP '+r.status,'<span class="badge err">bookmark</span>');return}
+    if(btn){btn.textContent='★';btn.classList.add('starred');btn.title='Bookmarked'}
+    bubble('bot','Bookmarked. List them anytime with `/bookmarks`.','<span class="badge">bookmark</span>');
+  }catch(e){bubble('bot','Bookmark failed: '+esc(String(e)),'<span class="badge err">bookmark</span>')}
+}
+async function _bookmarksShow(){
+  try{
+    const r=await fetch('/memory/bookmarks?limit=10');if(!r.ok){bubble('bot','Bookmarks endpoint unreachable.','<span class="badge err">bookmark</span>');return}
+    const j=await r.json();const items=j.bookmarks||[];const stats=j.stats||{};
+    if(items.length===0){bubble('bot','No bookmarks yet. Click the ☆ on any bot reply to save it.','<span class="badge">bookmark</span>');return}
+    const rows=items.map(bm=>{const ts=esc(bm.iso||'?');const u=esc((bm.user_msg||'').slice(0,80));const a=esc((bm.bot_msg||'').slice(0,200));const note=bm.note?`<div style="font-size:10px;color:#ffd770;margin-top:3px">note: ${esc(bm.note)}</div>`:'';return `<div style="margin:6px 0;padding:7px 9px;background:rgba(0,229,255,.04);border-left:2px solid rgba(0,229,255,.35);border-radius:0 3px 3px 0;font-size:10.5px;line-height:1.5"><div style="color:var(--mute);font-size:9px;letter-spacing:.15em;margin-bottom:3px">★ ${ts}</div><div style="color:var(--mute);font-style:italic">"${u}"</div><div style="color:var(--fg);margin-top:3px">${a}</div>${note}</div>`}).join('');
+    const head=`<div style="font-size:9.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin-bottom:6px">◆ BOOKMARKS · ${stats.total||0} TOTAL</div>`;
+    bubble('bot',head+rows,'<span class="badge">bookmark</span>');
+  }catch(e){bubble('bot','Bookmarks fetch failed: '+esc(String(e)),'<span class="badge err">bookmark</span>')}
 }
 function _retryBubble(botMsg){
   if(!botMsg)return;
@@ -1467,6 +1499,7 @@ const _SLASH_COMMANDS=[
   {cmd:'jarvis',hint:'engage/disengage Jarvis mode'},
   {cmd:'find',hint:'find <query> in workdir'},
   {cmd:'pace',hint:'set stream cps (10-2000)'},
+  {cmd:'bookmarks',hint:'list recent starred replies'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
 function _slashAcRender(){
@@ -1518,6 +1551,7 @@ function _handleSlashCommand(text){
   if(cmd==='jarvis'){toggleJarvisMode();return true}
   if(cmd==='find'){if(!arg){bubble('bot','Usage: `/find <query>` — searches your workdir.','<span class="badge">cmd</span>');return true}input.value='find "'+arg.replace(/"/g,'\\"')+'"';return false}
   if(cmd==='pace'){const n=parseInt(arg,10);if(isFinite(n)){_paceSliderChange(n);bubble('bot','Stream pace set to **'+n+' cps**.','<span class="badge">cmd</span>')}else{bubble('bot','Usage: `/pace <cps>` (10-2000). Current: **'+_typeSpeedCps()+' cps**.','<span class="badge">cmd</span>')}return true}
+  if(cmd==='bookmarks'){_bookmarksShow();return true}
   return false;
 }
 async function send(){
