@@ -6,6 +6,9 @@ _HTML=r"""<!doctype html>
 <title>Adam — Jarvis Mode</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" onload="window._katexReady=true"></script>
+<script type="module">
+  try{const m=await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');m.default.initialize({startOnLoad:false,theme:'dark',themeVariables:{primaryColor:'#00e5ff',primaryTextColor:'#dff6ff',primaryBorderColor:'#00e5ff',lineColor:'#00b8d4',secondaryColor:'#ff2bd6',tertiaryColor:'#0a1224',background:'#040711',mainBkg:'#0a1224',nodeBorder:'#00e5ff',edgeLabelBackground:'#040711',clusterBkg:'#0a1224',clusterBorder:'#00e5ff',titleColor:'#00e5ff',fontFamily:'JetBrains Mono, monospace'},securityLevel:'loose'});window._mermaid=m.default;window._mermaidReady=true}catch(e){console.debug('mermaid load failed:',e)}
+</script>
 <style>
 :root{--bg:#040711;--bg2:#0a1224;--glass:rgba(10,18,36,.55);--cyan:#00e5ff;--cyan2:#00b8d4;--magenta:#ff2bd6;--gold:#ffd770;--ok:#00ff9d;--err:#ff5577;--fg:#dff6ff;--mute:#5e7a99;font-family:"JetBrains Mono","SF Mono",Consolas,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -324,6 +327,11 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .math-pending{font-family:JetBrains Mono,monospace;color:var(--mute);font-style:italic}
 .math-pending.math-display{display:block;padding:6px 10px;margin:6px 0;background:rgba(0,229,255,.03);border-left:2px solid rgba(0,229,255,.2)}
 .math-fail{color:var(--err);font-family:JetBrains Mono,monospace;text-decoration:underline dotted}
+.mermaid-pending{margin:10px 0;padding:10px 14px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.2);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--mute);white-space:pre-wrap;overflow:auto;max-width:100%}
+.mermaid-pending.mermaid-rendered{padding:14px;background:rgba(0,229,255,.05);border-color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.18)}
+.mermaid-pending.mermaid-rendered svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.mermaid-pending.mermaid-ok::before{content:'';display:none}
+.mermaid-fail{color:var(--err);font-family:JetBrains Mono,monospace;font-size:10px;padding:4px 0;border-bottom:1px dotted rgba(255,85,119,.4);margin-bottom:6px}
 #gesture-tour{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,92vw);z-index:16;background:rgba(8,14,28,.97);border:1px solid var(--cyan);border-radius:6px;padding:22px;box-shadow:0 0 48px rgba(0,229,255,.4);display:none;font-family:inherit;max-height:88vh;overflow-y:auto}
 #gesture-tour.show{display:block}
 #gesture-tour h3{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 6px var(--cyan);margin:0 0 14px;text-align:center}
@@ -828,7 +836,10 @@ function md(src){
   src=src.replace(/\$\$([^$\n][^$]*?)\$\$/g,(_,l)=>_stashMath(l.trim(),true));
   src=src.replace(/\$([^$\n][^$\n]*?)\$/g,(_,l)=>{const t=l.trim();if(/^\s*$/.test(t)||!/[a-zA-Z\\^_{}\d]/.test(t))return '$'+l+'$';return _stashMath(t,false)});
   src=esc(src);
-  src=src.replace(/```([\w-]*)\n([\s\S]*?)```/g,(_,l,c)=>`<pre><code>${c.replace(/\n$/,'')}</code></pre>`);
+  src=src.replace(/```([\w-]*)\n([\s\S]*?)```/g,(_,l,c)=>{
+    if((l||'').toLowerCase()==='mermaid'){const id='mm_'+Math.random().toString(36).slice(2,10);return `<div class="mermaid-pending" id="${id}" data-src="${c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}">${c.replace(/\n$/,'')}</div>`}
+    return `<pre><code>${c.replace(/\n$/,'')}</code></pre>`;
+  });
   src=src.replace(/`([^`\n]+)`/g,'<code>$1</code>');
   src=src.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
   src=src.replace(/^###\s+(.+)$/gm,'<strong>$1</strong>').replace(/^##\s+(.+)$/gm,'<strong>$1</strong>');
@@ -848,6 +859,23 @@ function _rerenderPendingMath(){
   const wait=setInterval(()=>{if(window._katexReady&&window.katex){clearInterval(wait);_rerenderPendingMath()}},120);
   setTimeout(()=>clearInterval(wait),15000);
 })();
+async function _rerenderPendingMermaid(){
+  if(!(window._mermaidReady&&window._mermaid))return;
+  const nodes=document.querySelectorAll('.mermaid-pending:not(.mermaid-rendered)');
+  for(const el of nodes){
+    el.classList.add('mermaid-rendered');
+    const src=(el.getAttribute('data-src')||'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+    const id='svg-'+Math.random().toString(36).slice(2,10);
+    try{const {svg}=await window._mermaid.render(id,src);el.innerHTML=svg;el.classList.add('mermaid-ok')}
+    catch(err){el.innerHTML=`<div class="mermaid-fail">⚠ mermaid render error: ${esc(err.message||err)}</div><pre><code>${esc(src)}</code></pre>`}
+  }
+}
+(function(){
+  const wait=setInterval(()=>{if(window._mermaidReady&&window._mermaid){clearInterval(wait);_rerenderPendingMermaid()}},150);
+  setTimeout(()=>clearInterval(wait),18000);
+})();
+const _origBubble=bubble;
+window.bubble=function(role,text,meta){const r=_origBubble(role,text,meta);if(role==='bot')setTimeout(_rerenderPendingMermaid,50);return r};
 function bubble(role,text,meta){
   const w=document.querySelector('.welcome');if(w)w.remove();
   const m=document.createElement('div');m.className='msg '+role;
