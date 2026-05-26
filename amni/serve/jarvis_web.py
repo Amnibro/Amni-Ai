@@ -1471,7 +1471,8 @@ function _handleSlashCommand(text){
 async function send(){
   if(send_btn&&send_btn.dataset.streaming==='1'){stopStream();return}
   const text=input.value.trim();if(!text)return;
-  if(text.startsWith('/')&&_handleSlashCommand(text)){input.value='';input.style.height='auto';input.focus();return}
+  if(text.startsWith('/')&&_handleSlashCommand(text)){pushInputHistory(text);input.value='';input.style.height='auto';input.focus();return}
+  pushInputHistory(text);
   input.value='';input.style.height='auto';
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
@@ -2485,7 +2486,41 @@ function toggleMic(){
   if(_voiceBackends.stt && typeof MediaRecorder!=='undefined' && navigator.mediaDevices)_startServerSTT();
   else _startBrowserSTT();
 }
-input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+const _INPUT_HISTORY_KEY='amni_jarvis_input_history';const _INPUT_HISTORY_MAX=20;
+let _inputHistory=(()=>{try{const j=JSON.parse(localStorage.getItem(_INPUT_HISTORY_KEY)||'[]');return Array.isArray(j)?j.slice(-_INPUT_HISTORY_MAX):[]}catch{return[]}})();
+let _historyIdx=-1;let _draftBeforeRecall='';
+function pushInputHistory(text){
+  if(!text||typeof text!=='string')return;
+  const t=text.trim();if(!t)return;
+  if(_inputHistory.length&&_inputHistory[_inputHistory.length-1]===t)return;
+  _inputHistory.push(t);if(_inputHistory.length>_INPUT_HISTORY_MAX)_inputHistory.shift();
+  try{localStorage.setItem(_INPUT_HISTORY_KEY,JSON.stringify(_inputHistory))}catch{}
+  _historyIdx=-1;_draftBeforeRecall='';
+}
+function _inputCursorAtStart(){try{return input.selectionStart===0&&input.selectionEnd===0}catch{return true}}
+function _inputCursorAtEnd(){try{return input.selectionStart===(input.value||'').length}catch{return true}}
+input.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();return}
+  if(e.key==='ArrowUp'&&_inputHistory.length>0&&_inputCursorAtStart()){
+    if(_historyIdx===-1)_draftBeforeRecall=input.value;
+    if(_historyIdx===-1)_historyIdx=_inputHistory.length-1;
+    else if(_historyIdx>0)_historyIdx--;
+    else return;
+    e.preventDefault();input.value=_inputHistory[_historyIdx];
+    input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px';
+    try{input.setSelectionRange(input.value.length,input.value.length)}catch{}
+    return;
+  }
+  if(e.key==='ArrowDown'&&_historyIdx!==-1&&_inputCursorAtEnd()){
+    e.preventDefault();
+    if(_historyIdx<_inputHistory.length-1){_historyIdx++;input.value=_inputHistory[_historyIdx]}
+    else{_historyIdx=-1;input.value=_draftBeforeRecall;_draftBeforeRecall=''}
+    input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px';
+    try{input.setSelectionRange(input.value.length,input.value.length)}catch{}
+    return;
+  }
+  if(_historyIdx!==-1&&e.key!=='ArrowUp'&&e.key!=='ArrowDown'&&e.key!=='Shift'&&e.key!=='Meta'&&e.key!=='Control'&&e.key!=='Alt'){_historyIdx=-1;_draftBeforeRecall=''}
+});
 const _KBD_SHORTCUTS=[
   {k:'Ctrl+/',d:'Focus input'},
   {k:'Ctrl+K',d:'Search chat'},
