@@ -375,7 +375,13 @@ if(!localStorage.getItem(WKEY))setTimeout(showWizard,800);
 </script></body></html>"""
 def mount(app):
     from fastapi.responses import HTMLResponse,Response
+    from pathlib import Path as _P
     @app.get('/',response_class=HTMLResponse)
     def index():return HTMLResponse(content=_HTML)
     @app.get('/favicon.ico')
     def favicon():return Response(status_code=204)
+    _HUD_PATH=_P(__file__).resolve().parents[2]/'docs'/'hud'/'index.html'
+    @app.get('/hud',response_class=HTMLResponse)
+    def hud():
+        try:return HTMLResponse(content=_HUD_PATH.read_text(encoding='utf-8'))
+        except Exception as e:return HTMLResponse(content=f'<h1>HUD unavailable</h1><p>Could not load {_HUD_PATH}: {e}</p><p>The HUD is shipped in <code>docs/hud/index.html</code>. Either run from the repo root or re-clone.</p>',status_code=503)
