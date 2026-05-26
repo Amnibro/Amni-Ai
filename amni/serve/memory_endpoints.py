@@ -33,6 +33,22 @@ def mount(app,agent):
         if getattr(agent,'coach_atlas',None) is None:return {'topics':[],'streak':{}}
         atlas=agent.coach_atlas
         return {'topics':atlas.list_topics()[:limit],'streak':atlas.streak_stats() if hasattr(atlas,'streak_stats') else {}}
+    @app.get('/memory/self-improvement')
+    def self_improvement_list(status:str='',category:str='',limit:int=50,include_history:bool=False):
+        from amni.serve.self_improvement import list_proposals,stats
+        return {'proposals':list_proposals(status=status or None,category=category or None,limit=limit,include_history=include_history),'stats':stats()}
+    @app.post('/memory/self-improvement')
+    async def self_improvement_propose(req:Request):
+        from amni.serve.self_improvement import propose
+        body=await req.json()
+        return propose(title=body.get('title',''),rationale=body.get('rationale',''),planned_change=body.get('planned_change',''),files_touched=body.get('files_touched',[]),category=body.get('category','enhancement'),author=body.get('author','user'))
+    @app.post('/memory/self-improvement/{pid}/status')
+    async def self_improvement_status(pid:str,req:Request):
+        from amni.serve.self_improvement import transition
+        body=await req.json()
+        new_status=(body.get('status') or '').strip().lower()
+        if not new_status:raise HTTPException(400,'need status')
+        return transition(pid,new_status,notes=body.get('notes',''),author=body.get('author','user'))
     @app.get('/memory/coach/reviews')
     def coach_reviews(topic:str='',limit:int=20):
         if getattr(agent,'coach_atlas',None) is None:return {'reviews':[]}
