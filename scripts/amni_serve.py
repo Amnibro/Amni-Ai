@@ -682,7 +682,7 @@ def main():
         except Exception:
             if not getattr(skills,'unrestricted',False):raise HTTPException(403,'path escapes workdir scope')
         if not base.exists():raise HTTPException(404,f'path not found: {base}')
-        _IGNORE={'.git','.venv','venv','__pycache__','node_modules','.pytest_cache','.mypy_cache','.idea','.vscode','dist','build','.next','.nuxt'}
+        _IGNORE={'.git','.venv','venv','__pycache__','node_modules','.pytest_cache','.mypy_cache','.idea','.vscode','dist','build','.next','.nuxt','.adam-venvs'}
         entries=[];count=[0]
         def _walk(p,depth):
             if count[0]>=max_files or depth>max_depth:return
