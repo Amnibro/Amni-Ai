@@ -4,6 +4,8 @@ Mount: jarvis_web.mount(app) — adds GET /jarvis."""
 _HTML=r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Adam — Jarvis Mode</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" onload="window._katexReady=true"></script>
 <style>
 :root{--bg:#040711;--bg2:#0a1224;--glass:rgba(10,18,36,.55);--cyan:#00e5ff;--cyan2:#00b8d4;--magenta:#ff2bd6;--gold:#ffd770;--ok:#00ff9d;--err:#ff5577;--fg:#dff6ff;--mute:#5e7a99;font-family:"JetBrains Mono","SF Mono",Consolas,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -317,6 +319,11 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .briefing .b-tags{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
 .briefing .b-tag{display:inline-block;padding:1px 6px;font-size:9px;background:rgba(0,229,255,.08);color:var(--cyan);border:1px solid rgba(0,229,255,.18);border-radius:2px;letter-spacing:.05em;text-transform:capitalize}
 .briefing .b-mute{color:var(--mute);font-style:italic;font-size:10px}
+.bubble .katex{color:var(--cyan);text-shadow:0 0 4px rgba(0,229,255,.3)}
+.bubble .katex-display{margin:8px 0;padding:6px 12px;background:rgba(0,229,255,.04);border-left:2px solid rgba(0,229,255,.3);border-radius:0 3px 3px 0;overflow-x:auto}
+.math-pending{font-family:JetBrains Mono,monospace;color:var(--mute);font-style:italic}
+.math-pending.math-display{display:block;padding:6px 10px;margin:6px 0;background:rgba(0,229,255,.03);border-left:2px solid rgba(0,229,255,.2)}
+.math-fail{color:var(--err);font-family:JetBrains Mono,monospace;text-decoration:underline dotted}
 #adam-core{position:fixed;top:18px;right:24px;width:60px;height:60px;z-index:8;cursor:pointer;opacity:.85;transition:opacity .25s, transform .25s}
 #adam-core:hover{opacity:1;transform:scale(1.08)}
 #adam-core.hidden{display:none}
@@ -770,15 +777,45 @@ let voiceOut=localStorage.getItem(VKEY)==='1';
 let recog=null,recoOn=false;
 const log=document.getElementById('log'),input=document.getElementById('input'),send_btn=document.getElementById('send'),lessonPill=document.getElementById('lesson-pill'),personaPill=document.getElementById('persona-pill');
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+const _MATH_PLACEHOLDERS=[];
+function _stashMath(latex,display){
+  const idx=_MATH_PLACEHOLDERS.length;_MATH_PLACEHOLDERS.push({latex,display});
+  return `MATH${idx}`;
+}
+function _restoreMath(html){
+  return html.replace(/MATH(\d+)/g,(_,i)=>{
+    const e=_MATH_PLACEHOLDERS[+i];if(!e)return '';
+    if(window._katexReady&&window.katex){
+      try{return window.katex.renderToString(e.latex,{displayMode:e.display,throwOnError:false,output:'html'})}catch(err){return `<span class="math-fail" title="KaTeX: ${esc(err.message||'render error')}">$${esc(e.latex)}$</span>`}
+    }
+    const cls=e.display?'math-pending math-display':'math-pending';
+    return `<span class="${cls}" data-latex="${esc(e.latex)}" data-display="${e.display?'1':'0'}">${e.display?'$$':'$'}${esc(e.latex)}${e.display?'$$':'$'}</span>`;
+  });
+}
 function md(src){
+  src=src.replace(/\$\$([^$\n][^$]*?)\$\$/g,(_,l)=>_stashMath(l.trim(),true));
+  src=src.replace(/\$([^$\n][^$\n]*?)\$/g,(_,l)=>{const t=l.trim();if(/^\s*$/.test(t)||!/[a-zA-Z\\^_{}\d]/.test(t))return '$'+l+'$';return _stashMath(t,false)});
   src=esc(src);
   src=src.replace(/```([\w-]*)\n([\s\S]*?)```/g,(_,l,c)=>`<pre><code>${c.replace(/\n$/,'')}</code></pre>`);
   src=src.replace(/`([^`\n]+)`/g,'<code>$1</code>');
   src=src.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
   src=src.replace(/^###\s+(.+)$/gm,'<strong>$1</strong>').replace(/^##\s+(.+)$/gm,'<strong>$1</strong>');
   src=src.replace(/\n\n+/g,'<br><br>').replace(/\n/g,'<br>');
+  src=_restoreMath(src);
   return src;
 }
+function _rerenderPendingMath(){
+  if(!(window._katexReady&&window.katex))return;
+  const nodes=document.querySelectorAll('.math-pending');
+  nodes.forEach(el=>{
+    const latex=el.getAttribute('data-latex')||'';const display=el.getAttribute('data-display')==='1';
+    try{el.outerHTML=window.katex.renderToString(latex,{displayMode:display,throwOnError:false,output:'html'})}catch(err){el.outerHTML=`<span class="math-fail">${display?'$$':'$'}${esc(latex)}${display?'$$':'$'}</span>`}
+  });
+}
+(function(){
+  const wait=setInterval(()=>{if(window._katexReady&&window.katex){clearInterval(wait);_rerenderPendingMath()}},120);
+  setTimeout(()=>clearInterval(wait),15000);
+})();
 function bubble(role,text,meta){
   const w=document.querySelector('.welcome');if(w)w.remove();
   const m=document.createElement('div');m.className='msg '+role;
