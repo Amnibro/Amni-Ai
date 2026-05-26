@@ -179,6 +179,51 @@ def _skill_web(args,ctx,reg):
         ans,sources,n=adam.adam.crawler.crawl_and_distill(q,subject=None,letter_only=False)
         return {'answer':ans,'sources':sources[:5],'tokens':n,'query_used':q,'pii_scrubbed':q!=q_raw}
     except Exception as e:return {'error':str(e),'query_used':q}
+def _skill_find(args,ctx,reg):
+    """Fast substring/regex search across the workdir. Returns top N hits as file:line + snippet."""
+    import re as _re,fnmatch
+    query=str(args.get('query') or '').strip()
+    if not query:return {'error':'missing query'}
+    use_regex=bool(args.get('regex',False))
+    case_sensitive=bool(args.get('case_sensitive',False))
+    glob_pat=str(args.get('glob') or '').strip()
+    max_hits=int(args.get('max_hits',30) or 30)
+    max_chars=int(args.get('max_chars',180) or 180)
+    workdir=getattr(reg,'workdir',None) or '.'
+    root=Path(workdir).resolve()
+    if not root.exists():return {'error':f'workdir does not exist: {root}'}
+    try:
+        if use_regex:pat=_re.compile(query,0 if case_sensitive else _re.IGNORECASE)
+        else:pat=_re.compile(_re.escape(query),0 if case_sensitive else _re.IGNORECASE)
+    except _re.error as e:return {'error':f'bad regex: {e}'}
+    _IGNORE_DIRS={'.git','.venv','venv','__pycache__','node_modules','.pytest_cache','.mypy_cache','.idea','.vscode','dist','build','.next','.nuxt','.adam-venvs','bakes','models','downloaded_models','hf_cache','ptex_hf','textures','checkpoints','eval_reports','full_lexicon_atlas','archive','environment_files'}
+    _BINARY_EXTS={'.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.zip','.tar','.gz','.7z','.exe','.dll','.so','.dylib','.bin','.npz','.safetensors','.onnx','.pt','.pth','.pyc','.pyo','.mp4','.mp3','.wav','.ogg','.woff','.woff2','.ttf','.eot'}
+    hits=[];files_scanned=0;total_matches=0
+    for p in root.rglob('*'):
+        if not p.is_file():continue
+        if any(part in _IGNORE_DIRS for part in p.relative_to(root).parts[:-1]):continue
+        if p.suffix.lower() in _BINARY_EXTS:continue
+        try:rel=str(p.relative_to(root)).replace('\\','/')
+        except Exception:continue
+        if glob_pat and not fnmatch.fnmatch(rel,glob_pat):continue
+        try:size=p.stat().st_size
+        except Exception:continue
+        if size>500_000:continue
+        try:text=p.read_text(encoding='utf-8',errors='ignore')
+        except Exception:continue
+        files_scanned+=1
+        for ln,line in enumerate(text.splitlines(),1):
+            if pat.search(line):
+                snippet=line.strip()
+                if len(snippet)>max_chars:
+                    m=pat.search(snippet);mid=m.start() if m else 0
+                    start=max(0,mid-max_chars//2);end=min(len(snippet),start+max_chars)
+                    snippet=('…' if start>0 else '')+snippet[start:end]+('…' if end<len(snippet) else '')
+                hits.append({'path':rel,'line':ln,'snippet':snippet})
+                total_matches+=1
+                if len(hits)>=max_hits:break
+        if len(hits)>=max_hits:break
+    return {'query':query,'regex':use_regex,'case_sensitive':case_sensitive,'glob':glob_pat or None,'hits':hits,'n_hits':len(hits),'files_scanned':files_scanned,'truncated':len(hits)>=max_hits and total_matches>=max_hits}
 def _skill_file_read(args,ctx,reg):
     p=args['path'];max_bytes=int(args.get('max_bytes',65536))
     _offset=int(args.get('offset',0));_limit=int(args.get('limit',0));_line_offset=int(args.get('line_offset',0));_line_limit=int(args.get('line_limit',0))
@@ -701,6 +746,7 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     reg.register('mem',_skill_mem,desc="Query Adam's lesson bank. Args: {query}",schema={'query':'str'})
     reg.register('web',_skill_web,desc="DDG search + distill via Adam's crawler. Args: {query}",schema={'query':'str'})
     reg.register('file_read',_skill_file_read,gate=_gate_path,desc=f'Read a UTF-8 text file within {scope}. Args: {{path, max_bytes?}}',schema={'path':'str','max_bytes':'int?'})
+    reg.register('find',_skill_find,desc=f'Fast substring/regex search across workdir text files. Skips binary + noise dirs (.git/.venv/__pycache__/etc). Args: {{query, regex?, case_sensitive?, glob?, max_hits?, max_chars?}}',schema={'query':'str','regex':'bool?','case_sensitive':'bool?','glob':'str?','max_hits':'int?','max_chars':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})
