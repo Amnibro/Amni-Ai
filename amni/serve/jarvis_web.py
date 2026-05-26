@@ -1299,9 +1299,26 @@ async function _fcMarkTested(path){
 let _streamAbort=null;
 const TYPE_SPEED_KEY='amni_jarvis_type_speed';
 let _typePending='';let _typeShown=0;let _typeRAF=null;let _typeBot=null;let _typeOnDone=null;
+function _personaTypeCps(){
+  const cur=(_selectedPersona||personaName||'').toLowerCase();
+  if(!cur||!_knownPersonas||_knownPersonas.length===0)return null;
+  const p=_knownPersonas.find(x=>typeof x==='object'&&(x.name||'').toLowerCase()===cur);
+  if(!p||typeof p!=='object')return null;
+  if(cur==='haiku')return 42;
+  if(cur==='yoda')return 60;
+  const ex=Number(p.excitement||0),fo=Number(p.formality||0),le=Number(p.length||0);
+  let cps=85;
+  cps+=Math.round((ex-0.4)*60);
+  cps-=Math.round(Math.max(0,fo-0.5)*40);
+  cps-=Math.round(Math.max(0,le-0.5)*25);
+  return Math.max(45,Math.min(140,cps));
+}
 function _typeSpeedCps(){
-  const v=parseInt(localStorage.getItem(TYPE_SPEED_KEY)||'85',10);
-  return Math.max(10,Math.min(2000,isFinite(v)?v:85));
+  const raw=localStorage.getItem(TYPE_SPEED_KEY);
+  if(raw){const v=parseInt(raw,10);if(isFinite(v))return Math.max(10,Math.min(2000,v))}
+  const pc=_personaTypeCps();
+  if(pc!=null)return pc;
+  return 85;
 }
 function _typeStart(botRef,onDone){
   _typeBot=botRef;_typePending='';_typeShown=0;_typeOnDone=onDone||null;
