@@ -1738,6 +1738,9 @@ async function _applyWelcomeForPersona(){
   try{const r=await fetch('/personas');if(!r.ok)return;const j=await r.json();const name=(j.default||'').toLowerCase();
     const w=_PERSONA_WELCOME[name]||_PERSONA_WELCOME.neutral;
     wh.textContent=w.h;wt.textContent=w.t;if(ws)ws.textContent='◆ '+(name||'neutral').toUpperCase()+' MODE';
+    const tint=(typeof _personaToastTint==='function')?_personaToastTint():null;
+    if(tint){wh.style.color=tint.hex;wh.style.textShadow=`0 0 8px ${tint.hex}`;if(ws)ws.style.color=tint.hex}
+    else{wh.style.color='';wh.style.textShadow='';if(ws)ws.style.color=''}
   }catch{}
 }
 setTimeout(_applyWelcomeForPersona,250);
@@ -2163,7 +2166,7 @@ async function _personaCycle(step){
   try{
     const r=await fetch('/persona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:next,session_id:sid,learn_via_web:false})});
     const j=await r.json();
-    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_renderPersonaPanel()}
+    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_renderPersonaPanel();if(typeof _applyWelcomeForPersona==='function')try{_applyWelcomeForPersona()}catch(_){}}
   }catch(_){}
 }
 let _personaFlashTimer=null;
