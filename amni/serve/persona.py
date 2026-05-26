@@ -66,11 +66,11 @@ class PersonaStore:
         out=list(PRESETS.values())+[p for p in self._learned.values() if p.name.lower() not in PRESETS]
         return out
     def get(self,name:Optional[str])->Persona:
-        if not name:return PRESETS[self._default]
+        if not name:return self._learned.get(self._default) or PRESETS.get(self._default) or PRESETS['neutral']
         key=name.lower().strip()
-        if key in PRESETS:return PRESETS[key]
         if key in self._learned:return self._learned[key]
-        return PRESETS[self._default]
+        if key in PRESETS:return PRESETS[key]
+        return self._learned.get(self._default) or PRESETS.get(self._default) or PRESETS['neutral']
     def has(self,name:str)->bool:
         key=name.lower().strip()
         return key in PRESETS or key in self._learned
@@ -86,6 +86,28 @@ class PersonaStore:
         self._session_persona[session_id]=name.lower().strip()
         self._save()
         return self.get(name)
+    def update_persona(self,name:str,fields:Dict[str,Any])->Optional[Persona]:
+        """Apply an in-place edit to a persona. Presets are forked into the learned bank so global state stays clean.
+        Allowed fields: description (str), voice_hints (list), warmth/formality/excitement/length (0..1 floats), tts_voice (str)."""
+        if not self.has(name):return None
+        key=name.lower().strip()
+        base=self._learned.get(key) or PRESETS.get(key)
+        if base is None:return None
+        d=base.to_dict()
+        for k in ('description','voice_hints','warmth','formality','excitement','length','tts_voice'):
+            if k not in fields:continue
+            v=fields[k]
+            if k in ('warmth','formality','excitement','length'):
+                try:fv=float(v)
+                except Exception:continue
+                d[k]=max(0.0,min(1.0,fv))
+            elif k=='voice_hints':
+                if isinstance(v,list):d[k]=[str(x).strip()[:160] for x in v if str(x).strip()][:12]
+            elif k=='description':d[k]=str(v).strip()[:1200]
+            elif k=='tts_voice':d[k]=str(v).strip()[:32] or 'ryan'
+        d['source']='edited' if d.get('source')=='preset' else (d.get('source') or 'edited')
+        d['learned_at']=time.time()
+        p=Persona(**d);self._learned[key]=p;self._save();return p
     def learn(self,name:str,user_description:Optional[str]=None,timeout:float=60.0)->Persona:
         key=name.lower().strip()
         if key in PRESETS:return PRESETS[key]

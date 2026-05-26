@@ -838,6 +838,14 @@ def main():
             p=personas.learn(name)
             return {'persona':p.to_dict(),'learned_now':True}
         return {'persona':personas.get(name).to_dict(),'learned_now':False}
+    @app.patch('/persona/{name}')
+    async def edit_persona(name:str,req:Request):
+        try:body=await req.json()
+        except Exception:body={}
+        if not personas.has(name):raise HTTPException(status_code=404,detail=f'unknown persona {name!r}')
+        p=personas.update_persona(name,body or {})
+        if p is None:raise HTTPException(status_code=400,detail='no editable fields supplied or update failed')
+        return {'persona':p.to_dict(),'updated':True}
     @app.post('/persona')
     def set_persona(req:PersonaReq):
         _pname=req.name or req.persona
