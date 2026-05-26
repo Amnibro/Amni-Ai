@@ -256,6 +256,18 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #shell-panel .sh-item pre{margin:6px 0 0 0;font-size:9.5px;background:rgba(0,0,0,.4);padding:6px 8px;border-radius:2px;max-height:160px;overflow:auto;color:var(--fg);line-height:1.35;display:none;white-space:pre-wrap;word-break:break-all}
 #shell-panel .sh-item pre.show{display:block}
 #shell-panel .sh-empty{padding:24px;text-align:center;color:var(--mute);font-size:10px;font-style:italic}
+#chat-search{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);width:min(560px,90vw);z-index:13;background:rgba(8,14,28,.97);border:1px solid rgba(0,229,255,.5);border-radius:4px;padding:10px 14px;box-shadow:0 0 28px rgba(0,229,255,.28);backdrop-filter:blur(8px);display:none;opacity:0;transition:opacity .2s, transform .2s}
+#chat-search.show{display:block;opacity:1;transform:translateX(-50%) translateY(0)}
+#chat-search .cs-row{display:flex;gap:8px;align-items:center}
+#chat-search input{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.25);color:var(--fg);padding:7px 11px;border-radius:3px;font-family:inherit;font-size:13px;letter-spacing:.02em}
+#chat-search input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.4)}
+#chat-search .cs-count{font-size:10px;color:var(--cyan);letter-spacing:.15em;min-width:60px;text-align:right}
+#chat-search .cs-btn{padding:4px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.06);color:var(--cyan);font-family:inherit;font-size:11px;cursor:pointer;border-radius:3px}
+#chat-search .cs-btn:hover{background:rgba(0,229,255,.16)}
+#chat-search .cs-help{font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.1em;text-transform:uppercase;font-family:JetBrains Mono,monospace}
+.msg.cs-hidden{display:none}
+mark.cs-hit{background:rgba(255,224,102,.32);color:var(--fg);padding:0 2px;border-radius:2px;box-shadow:0 0 6px rgba(255,224,102,.4)}
+mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,156,.6);color:#fff}
 .restore-banner{display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px dashed rgba(0,229,255,.25);background:rgba(0,229,255,.04);border-radius:3px;font-size:9px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;margin:4px 0 12px;font-family:JetBrains Mono,monospace}
 .restore-banner .rb-close{margin-left:auto;cursor:pointer;color:var(--cyan);padding:1px 6px;border:1px solid rgba(0,229,255,.3);border-radius:2px;font-size:8px}
 .restore-banner .rb-close:hover{background:rgba(0,229,255,.12)}
@@ -624,6 +636,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   </div>
   <div class="gesture-readout" id="gesture-readout">—</div>
 </div>
+<div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <div id="toast-stack"></div>
 <div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
@@ -1016,6 +1029,53 @@ async function _restoreSession(){
   }catch(e){console.debug('session restore skipped:',e)}
 }
 setTimeout(_restoreSession,200);
+let _csOpen=false,_csHits=[],_csIdx=-1;
+function openChatSearch(){_csOpen=true;const el=document.getElementById('chat-search');el.classList.add('show');const inp=document.getElementById('cs-input');inp.value='';_csHits=[];_csIdx=-1;_csClearHighlights();_csUpdateCount(0,0);setTimeout(()=>inp.focus(),60)}
+function closeChatSearch(){_csOpen=false;const el=document.getElementById('chat-search');el.classList.remove('show');_csClearHighlights();document.querySelectorAll('.msg.cs-hidden').forEach(m=>m.classList.remove('cs-hidden'))}
+function _csClearHighlights(){document.querySelectorAll('mark.cs-hit').forEach(m=>{const p=m.parentNode;if(!p)return;p.replaceChild(document.createTextNode(m.textContent),m);p.normalize()})}
+function _csEscapeRe(s){return (s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function _csHighlightNode(node,re){
+  if(node.nodeType===3){
+    const t=node.nodeValue;if(!t)return 0;
+    const matches=[...t.matchAll(re)];if(!matches.length)return 0;
+    const frag=document.createDocumentFragment();let last=0;
+    for(const m of matches){if(m.index>last)frag.appendChild(document.createTextNode(t.slice(last,m.index)));const mk=document.createElement('mark');mk.className='cs-hit';mk.textContent=m[0];frag.appendChild(mk);last=m.index+m[0].length}
+    if(last<t.length)frag.appendChild(document.createTextNode(t.slice(last)));
+    node.parentNode.replaceChild(frag,node);return matches.length;
+  }
+  if(node.nodeType===1 && !['SCRIPT','STYLE','MARK','INPUT','TEXTAREA','BUTTON'].includes(node.nodeName)){
+    let total=0;const kids=Array.from(node.childNodes);for(const c of kids)total+=_csHighlightNode(c,re);return total;
+  }
+  return 0;
+}
+function _csRunSearch(){
+  if(!_csOpen)return;
+  const q=(document.getElementById('cs-input').value||'').trim();
+  _csClearHighlights();
+  const msgs=document.querySelectorAll('#log .msg');
+  if(!q){msgs.forEach(m=>m.classList.remove('cs-hidden'));_csHits=[];_csIdx=-1;_csUpdateCount(0,0);return}
+  const re=new RegExp(_csEscapeRe(q),'gi');let totalHits=0;let msgHits=0;
+  msgs.forEach(m=>{
+    const txt=(m.textContent||'').toLowerCase();
+    if(txt.indexOf(q.toLowerCase())===-1){m.classList.add('cs-hidden');return}
+    m.classList.remove('cs-hidden');msgHits++;totalHits+=_csHighlightNode(m,re);
+  });
+  _csHits=Array.from(document.querySelectorAll('mark.cs-hit'));_csIdx=_csHits.length?0:-1;
+  _csUpdateCount(_csIdx+1,_csHits.length);_csMarkCurrent();_csScrollToCurrent();
+}
+function _csUpdateCount(cur,total){const el=document.getElementById('cs-count');if(el)el.textContent=total?cur+'/'+total:'0/0'}
+function _csMarkCurrent(){_csHits.forEach((m,i)=>m.classList.toggle('current',i===_csIdx))}
+function _csScrollToCurrent(){if(_csIdx<0||!_csHits[_csIdx])return;_csHits[_csIdx].scrollIntoView({block:'center',behavior:'smooth'})}
+function _csNext(){if(!_csHits.length)return;_csIdx=(_csIdx+1)%_csHits.length;_csUpdateCount(_csIdx+1,_csHits.length);_csMarkCurrent();_csScrollToCurrent()}
+function _csPrev(){if(!_csHits.length)return;_csIdx=(_csIdx-1+_csHits.length)%_csHits.length;_csUpdateCount(_csIdx+1,_csHits.length);_csMarkCurrent();_csScrollToCurrent()}
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();_csOpen?closeChatSearch():openChatSearch();return}
+  if(_csOpen){
+    if(e.key==='Escape'){e.preventDefault();closeChatSearch();return}
+    if(e.key==='Enter'){e.preventDefault();e.shiftKey?_csPrev():_csNext();return}
+  }
+});
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='cs-input')_csRunSearch()});
 const COACH_SID_KEY='amni_jarvis_coach_sid',COACH_VOICE_KEY='amni_jarvis_coach_voice';
 let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false,_coachVoiceOn=localStorage.getItem(COACH_VOICE_KEY)==='1',_coachLastQuestion='';
 function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(COACH_VOICE_KEY,_coachVoiceOn?'1':'0');_coachUpdateVoiceBtn();if(_coachVoiceOn){voiceOut=true;localStorage.setItem(VKEY,'1');const vb=document.getElementById('voiceout-toggle');if(vb)vb.classList.add('on');if(_coachLastQuestion)speak(_coachLastQuestion)}}

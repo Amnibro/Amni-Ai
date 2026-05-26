@@ -2,6 +2,37 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.27 — Chat search overlay: Ctrl+K finds anything in the conversation (2026-05-26)
+
+After v6.10.26's session restore lands you back into a long chat, you need to find things. v6.10.27 adds a Ctrl+K search overlay with live filter + highlight + match navigation.
+
+### Activation
+- **Ctrl+K** (or **Cmd+K** on Mac) — toggle the overlay open/closed
+- **Esc** — close (when open)
+- **Enter** — next match
+- **Shift+Enter** — previous match
+- **✕ button** — close
+
+### Overlay
+Cyan-glow card slides down from `top:60px`, centered horizontally. Contains: input (auto-focused on open), match counter `N/M`, ↑↓ nav buttons, ✕ close, and a help line at the bottom.
+
+### Live filter + highlight
+As you type, every chat bubble that contains the substring stays visible; bubbles with no match get `display:none` via `.cs-hidden`. Inside matching bubbles, every occurrence wraps in `<mark class="cs-hit">` — amber-glow background, soft shadow. The current match (selected by ↑↓) gets `.current` — green-glow background, bright shadow.
+
+### Safety
+- Regex metacharacters in the query are escaped (`_csEscapeRe`) so users can search for things like `f(x)` or `[INFO]` without accidental regex behavior
+- Highlight walker skips `<script>`, `<style>`, `<mark>`, `<input>`, `<textarea>`, `<button>` nodes so the UI controls (composer, panels, toast stack) never get clobbered
+- Empty query restores every bubble's visibility and clears all marks
+- Closing clears highlights and visibility — no residual state
+
+### Navigation
+Match counter shows `current/total`. ↑↓ wraps around at ends. `_csScrollToCurrent` smoothly scrolls the selected match into the center of the viewport.
+
+### Tests
+16/16 PASS (`tests/test_chat_search_v6_10_27.py`): overlay element + count display, all 6 CSS hooks, 11 helper fns, Ctrl+K/Cmd+K toggle binding, Esc close binding, Enter/Shift+Enter nav, live-search on input, empty query restores all bubbles, regex-escape safety, case-insensitive matching, highlight walker skips 6 UI tags, open focuses input + clears prev query, close clears highlights + restores visibility, current-match styling distinct, all 3 overlay buttons wired, v6.10.26 regression intact. Recent chain (v6.10.23 → .26): 66/66 still PASS. Total: 82/82.
+
+---
+
 ## v6.10.26 — Session continuity: chat history restores on /jarvis reload (2026-05-26)
 
 `/jarvis` always wiped to blank on refresh — but the `session_id` was already in localStorage, and the ConversationAtlas / session jsonl already had every turn. v6.10.26 connects them: on load, the last 24 turns from the existing session render automatically.
