@@ -2,6 +2,63 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.10 — Field polish: truncation fix, real skill routing, Whisper hallucination filter, layout tidy (2026-05-26)
+
+Six issues caught from live testing on the Z:\Amni-Ai install, fixed together.
+
+### 1. Truncated responses (e.g. mid-code-block at 41s)
+`max_new_tokens` budget for /chat/stream + chat_persona was ~240 tokens for a non-CoT code reply, ~940 for CoT code. The 41-second websocket reply hit that cap mid-`client.webSocket(...)`. Bumped:
+- Base: `80+200*persona.length → 160+300*persona.length`
+- CoT code extra: `700 → 1400`
+- CoT generic extra: `450 → 700`
+- **New: detected-code-question extra of +600** (matches keywords like `rust`, `websocket`, `implement`, `function`, `server`, `client`, `api`, `setup`, `deploy`, etc.) — applies even without CoT
+- Websocket-question budget: 240 → 1000 tokens (4.2×). Enough for full code block + explanation.
+
+### 2. Weather/news/stock/disk/git queries hit slow generic chat path
+`/jarvis` text-mode was calling `/v1/chat/completions` which doesn't auto-dispatch skills. Now routes through `/chat/stream` so the new `agent._detect_skill` regexes catch:
+- `what is the weather in <city>?` / `weather in <city>` → `weather` skill
+- `system stats` / `cpu usage` / `how's my system` → `system_stats`
+- `news about <topic>` / `top news` / `what's happening with X` → `news`
+- `stock for AAPL` / `stock price MSFT` → `stock`
+- `disk usage` / `drive space` → `system_stats` (system_stats card includes disk %)
+- `git status` / `current branch` → `git_status`
+
+Weather query: now ~600ms-2s end-to-end (skill direct) instead of ~10s+ of Adam prose hallucinating a placeholder card.
+
+### 3. Whisper hallucinations in convo mode (the "He broke his mouth. He broke his mouth." loop)
+Tighter VAD defaults + a proper hallucination filter:
+- `vad_threshold` 18 → **26** (raises bar for "speech" so room hum doesn't trigger)
+- `barge_threshold` 26 → **38** (raises bar for interrupt mid-reply)
+- `min_speech_ms` 150 → **300** (drops sub-300ms noise bursts)
+- New `_isWhisperHallucination(text)` filter on transcribed text BEFORE auto-send:
+  - Drops common Whisper-on-silence outputs: `you`, `thank you`, `thanks for watching`, `please subscribe`, `[music]`, `[blank_audio]`, etc.
+  - **Repetition detector via Jaccard similarity ≥ 0.65** — catches near-duplicate sentence loops ("He just broke his mouth. He broke his mouth." → Jaccard 0.8 → reject)
+  - **Word-trigram repetition** — catches "ok ok ok" / "I'm cold. I'm cold. I'm cold." style loops
+- Tested on 11 real examples (both screenshot quotes + edge cases): 11/11 correct classification
+
+### 4. Layout overlap: task tray over composer
+`#task-tray` was at `bottom:100px` colliding with the 46px composer at `bottom:28px`. Moved to `bottom:88px` so it sits cleanly above when active. Max-height capped at 30vh.
+
+### 5. Oversize corner brackets
+`#frame::before/::after` + `#corner-tr/-bl` were 24×24 px with 12px glow — visually competing with the title. Shrunk to **14×14 px with 8px softer glow**. Still tactical, no longer dominating.
+
+### 6. Text-mode streaming TTS gate
+`_streamReplyWithTTS` now takes `opts.tts` (default `voiceOut && _voiceBackends.tts`). When voice is OFF, text-mode uses the streaming chat path WITHOUT speaking — same fast token-by-token render, no audio. When voice is on, per-sentence TTS still flushes as the reply streams.
+
+### Tests
+`tests/test_jarvis_polish_v6_10_10.py` — **15/15 PASS**:
+- weather routes (incl. "weather in <city>" without "what is" prefix)
+- system_stats / news / stock / git_status routes
+- /jarvis text-mode hits `/chat/stream` with `!convoOn`
+- streaming helper has `opts.tts` gate
+- Jaccard helper present + hallucination function
+- common hallucination strings in set
+- VAD defaults hardened (26/38/300)
+- layout `bottom:88px`, no more `bottom:100px`
+- corner brackets shrunk to 14px
+- convo path calls `_isWhisperHallucination` before auto-send
+- no regression to convo / vad panel / voice / widgets / gestures / watcher
+
 ## v6.10.9 — INCREDIBLE Adam iter 17: streaming TTS for all voice + VAD tuning panel (2026-05-26)
 
 Two complementary upgrades:

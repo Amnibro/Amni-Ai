@@ -396,7 +396,8 @@ def main():
             else:sys_p='You are a helpful assistant.'
             expects_final=apply_cot and isinstance(scaffold,str) and 'FINAL:' in scaffold
             yield f'event: meta\ndata: {_json.dumps({"cot":apply_cot,"category":category,"history_n":len(history_pairs),"facts_n":len(user_facts),"is_private":is_private,"buffering":expects_final})}\n\n'
-            max_new=int(80+200*(persona.length if persona else 0.5))+(700 if (apply_cot and category=="code") else (450 if apply_cot else 0))
+            _msg_l=req.message.lower();_is_code_q=bool(re.search(r"\b(?:rust|wasm|cargo|javascript|node\.?js|typescript|python|go(?:lang)?|c\+\+|cpp|c#|csharp|java|kotlin|swift|ruby|php|bash|sql|haskell|elixir|zig|ktor|websocket|server|client|implement|function|class|interface|struct|trait|module|library|framework|api|endpoint|sdk|build|setup|configure|deploy)\b",_msg_l))
+            max_new=int(160+300*(persona.length if persona else 0.5))+(1400 if (apply_cot and category=="code") else (700 if apply_cot else 0))+(600 if (_is_code_q and not apply_cot) else 0)
             full=[];_bump('cot_generations') if apply_cot else None
             in_final=not expects_final;buf='';seen_final=False;_buf_start=time.time();_last_ping=time.time();_drift_stop=False;_final_buf=''
             _DRIFT_MARKERS=('Thinking Process','thought\n','\nThinking','**Self-','*(Self-','**Analyze Request','1. RESTATE:','1.  RESTATE:','1. **Analyze','**Recall Persona','**Determine Strategy','Self-Correction','\n[Looked','[Looked','[Search performed','[Search completed','[Search done','[Search results','[Presenting','[Current weather data','[Result of search','[The system returns','(Outputting the result','(Search returns','(Result of search','(Waiting for search','(Assuming the search')
