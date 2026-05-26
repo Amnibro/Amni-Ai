@@ -610,6 +610,12 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #convo-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px;position:relative}
 #convo-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 12px rgba(0,229,255,.3)}
 #wake-toggle.on{color:#ffe066;border-color:#ffe066;background:rgba(255,224,102,.08);box-shadow:0 0 10px rgba(255,224,102,.28)}
+#wake-toggle{position:relative}
+#wake-toggle.fired{animation:wakeFiredPulse .9s ease-out}
+#wake-toggle.fired::after{content:'';position:absolute;inset:-6px;border-radius:6px;border:2px solid #ffe066;pointer-events:none;animation:wakeFiredRing .9s ease-out forwards;opacity:0;box-sizing:border-box}
+.wake-ambient.ok{border-color:#9cffb7;color:#9cffb7;text-shadow:0 0 4px rgba(0,255,156,.55)}
+@keyframes wakeFiredPulse{0%{box-shadow:0 0 6px rgba(255,224,102,.4)}50%{box-shadow:0 0 22px rgba(255,224,102,.85),inset 0 0 12px rgba(255,224,102,.3)}100%{box-shadow:0 0 10px rgba(255,224,102,.28)}}
+@keyframes wakeFiredRing{0%{opacity:1;transform:scale(.9)}80%{opacity:.4;transform:scale(1.5)}100%{opacity:0;transform:scale(1.7)}}
 .wake-ambient{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(8,14,28,.85);border:1px solid rgba(255,224,102,.35);color:#ffe066;font-size:10px;letter-spacing:.18em;padding:6px 14px;border-radius:3px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;text-transform:uppercase;font-family:inherit;text-shadow:0 0 4px rgba(255,224,102,.6)}
 .wake-ambient.show{opacity:.85}
 #convo-toggle .convo-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mute);transition:all .2s}
@@ -718,7 +724,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <button id="coach-toggle" type="button" onclick="toggleCoachPanel()" title="Ask-answer-ask coaching session — Adam tutors you on any topic">COACH</button>
     <button id="export-btn" type="button" onclick="_exportChatMd()" title="Download this conversation as a Markdown file">EXPORT</button>
     <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
-    <button id="wake-toggle" type="button" onclick="toggleWake()" title='When on, only respond in convo mode if you say "Adam, ..." or "Hey Adam, ..." (Jarvis-style wake word)'>WAKE</button>
+    <button id="wake-toggle" type="button" onclick="toggleWake()" oncontextmenu="event.preventDefault();_wakeConfigPrompt();return false" title='Wake word gate. Click to toggle. Right-click to add custom wake words (e.g. jarvis, computer). Default words: adam/atom/adams/adan.'>WAKE</button>
     <button id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
@@ -2305,22 +2311,67 @@ function _isWhisperHallucination(text){
   return false;
 }
 const WAKE_KEY='amni_jarvis_wake';
+const WAKE_EXTRA_KEY='amni_jarvis_wake_extra';
+const WAKE_CHIRP_KEY='amni_jarvis_wake_chirp';
 let wakeOn=localStorage.getItem(WAKE_KEY)==='1';
-const _WAKE_PREFIX='(?:hey[,\\s]+|ok(?:ay)?[,\\s]+|yo[,\\s]+|hi[,\\s]+|hello[,\\s]+)?(?:adam|atom|adams|adan)';
-const _WAKE_PATTERN_PUNCT=new RegExp('^\\s*'+_WAKE_PREFIX+'[,:;!?]+\\s*(.+)','i');
-const _WAKE_PATTERN_SPACE=new RegExp('^\\s*'+_WAKE_PREFIX+'\\s+(.+)','i');
-const _WAKE_PATTERN=_WAKE_PATTERN_SPACE;
+let wakeChirp=localStorage.getItem(WAKE_CHIRP_KEY)!=='0';
+const _DEFAULT_WAKE_WORDS=['adam','atom','adams','adan'];
+function _loadWakeExtras(){
+  try{const raw=localStorage.getItem(WAKE_EXTRA_KEY)||'';return raw.split(',').map(s=>s.trim().toLowerCase()).filter(s=>/^[a-z]{2,16}$/.test(s))}
+  catch{return []}
+}
+function _saveWakeExtras(arr){try{localStorage.setItem(WAKE_EXTRA_KEY,(arr||[]).join(','))}catch{}}
+let _wakePatternPunct,_wakePatternSpace;
+function _buildWakePatterns(){
+  const extras=_loadWakeExtras();
+  const all=[..._DEFAULT_WAKE_WORDS,...extras].map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  const wordGroup='(?:'+all.join('|')+')';
+  const prefix='(?:hey[,\\s]+|ok(?:ay)?[,\\s]+|yo[,\\s]+|hi[,\\s]+|hello[,\\s]+)?'+wordGroup;
+  _wakePatternPunct=new RegExp('^\\s*'+prefix+'[,:;!?]+\\s*(.+)','i');
+  _wakePatternSpace=new RegExp('^\\s*'+prefix+'\\s+(.+)','i');
+}
+_buildWakePatterns();
 const _WAKE_DECLARATIVE=/^(?:is|isn't|was|wasn't|were|weren't|has|hasn't|have|haven't|had|hadn't|seems|seemed|looks|looked|appears|appeared|sounds|sounded|seems\s+to|got|gets)\b/i;
 function _wakeWordGate(text){
   if(!wakeOn)return text;
   const t=text||'';
-  const mp=t.match(_WAKE_PATTERN_PUNCT);
-  if(mp){const s=(mp[1]||'').trim();return s.length>=2?s:null}
-  const ms=t.match(_WAKE_PATTERN_SPACE);
+  const mp=t.match(_wakePatternPunct);
+  if(mp){const s=(mp[1]||'').trim();if(s.length>=2){_wakeFired();return s}return null}
+  const ms=t.match(_wakePatternSpace);
   if(!ms)return null;
   const s=(ms[1]||'').trim();
   if(_WAKE_DECLARATIVE.test(s))return null;
-  return s.length>=2?s:null;
+  if(s.length>=2){_wakeFired();return s}
+  return null;
+}
+function _wakeFired(){
+  const b=document.getElementById('wake-toggle');
+  if(b){b.classList.remove('fired');void b.offsetWidth;b.classList.add('fired');setTimeout(()=>b.classList.remove('fired'),1100)}
+  if(wakeChirp)_playWakeChirp();
+}
+let _wakeAudioCtx=null;
+function _playWakeChirp(){
+  try{
+    if(!_wakeAudioCtx)_wakeAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=_wakeAudioCtx;const now=ctx.currentTime;
+    const o=ctx.createOscillator();const g=ctx.createGain();
+    o.type='sine';o.frequency.setValueAtTime(880,now);o.frequency.exponentialRampToValueAtTime(1320,now+.09);
+    g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(.12,now+.015);g.gain.exponentialRampToValueAtTime(.0001,now+.18);
+    o.connect(g);g.connect(ctx.destination);o.start(now);o.stop(now+.2);
+  }catch(_){}
+}
+function _wakeConfigPrompt(){
+  const cur=_loadWakeExtras().join(', ');
+  const v=prompt('Extra wake words (comma-separated, letters only, 2-16 chars each).\n\nDefaults always active: '+_DEFAULT_WAKE_WORDS.join(', ')+'\n\nExamples: jarvis, computer, luna',cur);
+  if(v===null)return;
+  const arr=v.split(',').map(s=>s.trim().toLowerCase()).filter(s=>/^[a-z]{2,16}$/.test(s));
+  _saveWakeExtras(arr);_buildWakePatterns();
+  const final=[..._DEFAULT_WAKE_WORDS,...arr];
+  bubble('bot','Wake words updated: **'+final.join(', ')+'** (right-click WAKE again to edit).','<span class="badge">wake</span>');
+}
+function _wakeChirpToggle(){
+  wakeChirp=!wakeChirp;try{localStorage.setItem(WAKE_CHIRP_KEY,wakeChirp?'1':'0')}catch{}
+  bubble('bot','Wake chirp **'+(wakeChirp?'on':'off')+'**.','<span class="badge">wake</span>');
 }
 let _ambientFlashTimer=null;
 function _flashAmbient(text){
