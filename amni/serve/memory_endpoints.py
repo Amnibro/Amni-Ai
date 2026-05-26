@@ -47,6 +47,11 @@ def mount(app,agent):
         body=await req.json();sub=(body.get('path_substring') or '').strip()
         if not sub:raise HTTPException(400,'need path_substring')
         n=mark_needs_testing_done(sub);return {'marked_done':n,'path_substring':sub}
+    @app.get('/memory/shell-history')
+    def shell_history(limit:int=50,errors_only:bool=False,kind:str=''):
+        from amni.serve.shell_audit import list_shell_history,shell_history_stats
+        items=list_shell_history(limit=limit,errors_only=errors_only,kind=kind or None)
+        return {'items':items,'count':len(items),'stats':shell_history_stats()}
     @app.post('/memory/forget')
     async def forget(req:Request):
         body=await req.json()
