@@ -2,6 +2,51 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.37 — 24-hour activity briefing — Adam reports on his own day (2026-05-26)
+
+The data was all there — daemon notifications, shell history, verification log, coach streak — but the user had to click through six panels to assemble a picture of what Adam had been doing. v6.10.37 aggregates it into one Jarvis-style briefing card on tap.
+
+### New endpoint `GET /memory/digest?hours=24`
+Server-side aggregator that walks the existing logs (no new storage) and returns:
+```
+{
+  hours, cutoff_ts, generated_at,
+  learning:  {facts_today, topics_today, current_topic, enabled},
+  shell:     {runs_today, errors_today, kinds:{shell,git,...}},
+  verifier:  {pass_today, fail_today, pending},
+  coach:     {streak_days, today_active, total_days_active, topics}
+}
+```
+- LearningDaemon stats sourced from the notifications queue (last 24h, source=='learning_daemon') so we get accurate per-topic fact counts
+- Shell runs from `data/shell_history.jsonl` (kind buckets, error count)
+- Verification pass/fail from `data/verification_log.jsonl` (last 24h only)
+- Pending review count from `data/needs_testing.jsonl` (status==pending, all-time)
+- Coach from CoachAtlas.streak_stats() + list_topics()
+- All sources optional — endpoint never crashes when logs absent; returns zeros
+
+### Briefing chip + inline card
+New ◈ **BRIEFING** chip in quick-bar (between SUMMARIZE and SESSIONS). One tap → renders a styled mono card inline as a bot bubble:
+```
+◆ 24-HOUR BRIEFING
+LEARNING   47 new facts · 3 topics
+           [quantum-entanglement] [krebs-cycle] [neural-nets]
+SHELL      12 runs · 1 error
+EDITS      8 verified · 2 failed · 5 pending review
+COACH      🔥 5 day streak · today ✓ · 14 topics practiced
+```
+- Streak emoji adapts to v6.10.32 tiers (⚡ ≥14d / 🔥 ≥3d / · otherwise)
+- Topic tags styled as small cyan chips, max 4 shown
+- Each section pad-aligned with dashed dividers
+- "today ✓" appears when user has practiced coach today
+
+### Zero-LLM-cost
+Briefing renders entirely from the digest JSON — no /chat call, no tokens consumed. Tap → 1 fetch → instant card. The whole point is glanceable, not chatty.
+
+### Tests
+16/16 PASS (`tests/test_briefing_v6_10_37.py`): endpoint registered + accepts hours param, all 4 section shapes (learning/shell/verifier/coach), real shell_history.jsonl round-trip count verification (3 rows in, 3 runs + 1 error out), chip present + helper fn + endpoint URL + all 4 sections in render, streak emoji thresholds (14/3), all 5 CSS hooks, briefing does NOT call /chat (zero-LLM-cost contract), chip ordering before SESSIONS, v6.10.36 regression intact. Recent chain (v6.10.33 → .36): 69/69 still PASS. Total: 85/85.
+
+---
+
 ## v6.10.36 — Theological + worldview neutrality across all personas (2026-05-26)
 
 the maintainer's follow-up flag right after v6.10.35: "what about the whole atheist and other folks prebaked?" The audit caught two more subtle issues:
