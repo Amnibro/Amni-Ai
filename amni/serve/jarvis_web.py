@@ -421,8 +421,10 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .msg.cs-hidden{display:none}
 mark.cs-hit{background:rgba(255,224,102,.32);color:var(--fg);padding:0 2px;border-radius:2px;box-shadow:0 0 6px rgba(255,224,102,.4)}
 mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,156,.6);color:#fff}
-.restore-banner{display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px dashed rgba(0,229,255,.25);background:rgba(0,229,255,.04);border-radius:3px;font-size:9px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;margin:4px 0 12px;font-family:JetBrains Mono,monospace}
-.restore-banner .rb-close{margin-left:auto;cursor:pointer;color:var(--cyan);padding:1px 6px;border:1px solid rgba(0,229,255,.3);border-radius:2px;font-size:8px}
+.restore-banner{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px dashed rgba(0,229,255,.22);background:rgba(0,229,255,.03);border-radius:99px;font-size:8.5px;color:var(--mute);letter-spacing:.16em;text-transform:uppercase;margin:4px 0 10px;font-family:JetBrains Mono,monospace;max-width:fit-content;opacity:1;transition:opacity .6s ease-out}
+.restore-banner.rb-fade{opacity:.35}
+.restore-banner.rb-fade:hover{opacity:1}
+.restore-banner .rb-close{margin-left:6px;cursor:pointer;color:var(--cyan);padding:1px 5px;border:1px solid rgba(0,229,255,.3);border-radius:2px;font-size:8px}
 .restore-banner .rb-close:hover{background:rgba(0,229,255,.12)}
 .msg.restored{opacity:.78}
 .msg.restored .bubble{border-left:2px solid rgba(255,255,255,.12)}
@@ -465,7 +467,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #kbd-overlay kbd{display:inline-block;padding:2px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.06);color:var(--cyan);border-radius:3px;font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.1em;min-width:90px;text-align:center}
 #kbd-overlay .kbd-foot{padding-top:10px;margin-top:12px;border-top:1px solid rgba(0,229,255,.12);font-size:9px;color:var(--mute);letter-spacing:.05em;text-align:center}
 #kbd-overlay .kbd-foot kbd{min-width:auto;padding:1px 5px;font-size:9px}
-#gesture-tour{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,92vw);z-index:16;background:rgba(8,14,28,.97);border:1px solid var(--cyan);border-radius:6px;padding:22px;box-shadow:0 0 48px rgba(0,229,255,.4);display:none;font-family:inherit;max-height:88vh;overflow-y:auto}
+#gesture-tour{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(440px,86vw);z-index:16;background:rgba(8,14,28,.97);border:1px solid var(--cyan);border-radius:6px;padding:16px;box-shadow:0 0 36px rgba(0,229,255,.32);display:none;font-family:inherit;max-height:78vh;overflow-y:auto}
 #gesture-tour.show{display:block}
 #gesture-tour h3{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 6px var(--cyan);margin:0 0 14px;text-align:center}
 #gesture-tour .tour-intro{font-size:11px;color:var(--mute);text-align:center;margin-bottom:18px;line-height:1.5}
@@ -1813,7 +1815,7 @@ async function _restoreSession(){
     const j=await r.json();const turns=j.turns||[];
     if(turns.length===0)return;
     const w=document.querySelector('.welcome');if(w)w.remove();
-    const banner=document.createElement('div');banner.className='restore-banner';banner.innerHTML=`<span>↻ RESTORED ${turns.length} TURN${turns.length===1?'':'S'} FROM SESSION ${esc(sid.slice(-8))}</span><span class="rb-close" onclick="this.parentElement.remove()">CLEAR</span>`;log.appendChild(banner);
+    const banner=document.createElement('div');banner.className='restore-banner';banner.innerHTML=`<span>↻ ${turns.length} TURN${turns.length===1?'':'S'} · ${esc(sid.slice(-8))}</span><span class="rb-close" onclick="this.parentElement.remove()">×</span>`;log.appendChild(banner);setTimeout(()=>{if(banner.parentElement)banner.classList.add('rb-fade')},8000);
     for(const t of turns){
       const role=t.role==='assistant'?'bot':(t.role==='user'?'user':null);if(!role)continue;
       const text=t.content||t.message||'';if(!text)continue;
