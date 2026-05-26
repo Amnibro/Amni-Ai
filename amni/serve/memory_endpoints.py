@@ -49,6 +49,21 @@ def mount(app,agent):
         new_status=(body.get('status') or '').strip().lower()
         if not new_status:raise HTTPException(400,'need status')
         return transition(pid,new_status,notes=body.get('notes',''),author=body.get('author','user'))
+    @app.get('/memory/self-reflection')
+    def self_reflection_status():
+        from amni.serve.self_reflection import status as _sr_status
+        return _sr_status()
+    @app.post('/memory/self-reflection/run')
+    async def self_reflection_run(req:Request):
+        from amni.serve.self_reflection import run_cycle
+        body={}
+        try:body=await req.json()
+        except Exception:pass
+        return run_cycle(force=bool(body.get('force',False)),dry_run=bool(body.get('dry_run',False)),notify=bool(body.get('notify',True)))
+    @app.post('/memory/self-reflection/toggle')
+    async def self_reflection_toggle(req:Request):
+        from amni.serve.self_reflection import set_enabled
+        body=await req.json();return set_enabled(bool(body.get('enabled',True)))
     @app.get('/memory/coach/reviews')
     def coach_reviews(topic:str='',limit:int=20):
         if getattr(agent,'coach_atlas',None) is None:return {'reviews':[]}
