@@ -652,7 +652,17 @@ class AmniAgent:
                 s=h.get('score');s_str=f' [cos={s:.2f}]' if isinstance(s,(int,float)) else ''
                 lines.append(f'\n{i+1}.{s_str} Q: {q[:120]}\n   A: {a[:300]}')
             return '\n'.join(lines)
-        if name=='web':return f'{out.get("answer","(no answer)")}\n\nSources: {", ".join(out.get("sources",[])[:3])}'
+        if name=='web':
+            ans=out.get('answer','(no answer)');srcs=out.get('sources',[])[:5]
+            def _host(u):
+                try:
+                    from urllib.parse import urlparse
+                    h=urlparse(u).hostname or u
+                    if h.startswith('www.'):h=h[4:]
+                    return h
+                except Exception:return u
+            cite_lines='\n'.join(f'  {i+1}. [{_host(s)}]({s})' for i,s in enumerate(srcs)) if srcs else ''
+            return f'{ans}\n\n**Sources:**\n{cite_lines}' if cite_lines else ans
         if name=='find':
             hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)
             if not hits:return f'No matches for `{q}` in workdir ({files_s} text file(s) scanned).'
