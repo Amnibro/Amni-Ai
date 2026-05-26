@@ -217,6 +217,44 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #tests-panel .tp-toolbar button{padding:4px 8px;border:1px solid rgba(255,181,71,.3);background:rgba(255,181,71,.04);color:#ffb547;font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
 #tests-panel .tp-toolbar button:hover{background:rgba(255,181,71,.12)}
 #tests-panel .tp-summary{font-size:10px;color:var(--mute);letter-spacing:.05em;margin-left:auto;align-self:center}
+#coach-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,77,200,.08);box-shadow:0 0 10px rgba(255,77,200,.3)}
+#coach-panel{position:fixed;top:60px;right:24px;width:440px;z-index:11;border:1px solid rgba(255,77,200,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(255,77,200,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
+#coach-panel.show{display:block}
+#coach-panel .cp-head{padding:10px 14px;border-bottom:1px solid rgba(255,77,200,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 4px var(--magenta);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
+#coach-panel .cp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(255,77,200,.22);border-radius:3px;font-size:10px}
+#coach-panel .cp-head .close:hover{color:var(--err);border-color:var(--err)}
+#coach-panel .cp-section{padding:12px 14px;border-bottom:1px solid rgba(255,77,200,.08)}
+#coach-panel .cp-section h3{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+#coach-panel .cp-topic-row{display:flex;gap:6px;align-items:center}
+#coach-panel input[type=text],#coach-panel textarea{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(255,77,200,.2);color:var(--fg);padding:6px 9px;border-radius:3px;font-family:inherit;font-size:12px;resize:vertical}
+#coach-panel input[type=text]:focus,#coach-panel textarea:focus{outline:none;border-color:var(--magenta);box-shadow:0 0 6px rgba(255,77,200,.3)}
+#coach-panel select{background:rgba(0,0,0,.4);border:1px solid rgba(255,77,200,.2);color:var(--fg);padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px}
+#coach-panel button.cp-act{padding:6px 12px;border:1px solid rgba(255,77,200,.4);background:rgba(255,77,200,.06);color:var(--magenta);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;transition:all .15s}
+#coach-panel button.cp-act:hover{background:rgba(255,77,200,.16);border-color:var(--magenta)}
+#coach-panel button.cp-act:disabled{opacity:.4;cursor:not-allowed}
+#coach-panel button.cp-act.danger{border-color:rgba(255,91,91,.4);color:#ff7b7b}
+#coach-panel button.cp-act.danger:hover{background:rgba(255,91,91,.12);border-color:#ff5b5b}
+#coach-panel .cp-q{font-size:14px;color:var(--fg);line-height:1.5;padding:14px;background:rgba(255,77,200,.05);border-left:3px solid var(--magenta);border-radius:0 4px 4px 0;text-shadow:0 0 2px rgba(255,255,255,.05);min-height:60px}
+#coach-panel .cp-q.empty{color:var(--mute);font-style:italic;border-left-color:rgba(255,77,200,.15)}
+#coach-panel .cp-meta{display:flex;gap:14px;font-size:9px;letter-spacing:.15em;color:var(--mute);margin-top:8px;text-transform:uppercase;flex-wrap:wrap}
+#coach-panel .cp-meta .v{color:var(--magenta);font-size:11px;margin-left:4px}
+#coach-panel .cp-mastery-bar{height:6px;background:rgba(255,77,200,.08);border-radius:3px;overflow:hidden;margin-top:8px;border:1px solid rgba(255,77,200,.15)}
+#coach-panel .cp-mastery-fill{height:100%;background:linear-gradient(90deg,#ff4dc8,#ffe066);box-shadow:0 0 6px var(--magenta);transition:width .4s ease-out}
+#coach-panel .cp-grade{padding:10px 12px;border-radius:3px;font-size:11px;margin-top:8px;line-height:1.5}
+#coach-panel .cp-grade.good{background:rgba(0,255,156,.06);border:1px solid rgba(0,255,156,.3);color:#a0ffd0}
+#coach-panel .cp-grade.ok{background:rgba(255,224,102,.06);border:1px solid rgba(255,224,102,.3);color:#ffe6a0}
+#coach-panel .cp-grade.bad{background:rgba(255,91,91,.06);border:1px solid rgba(255,91,91,.3);color:#ffb0b0}
+#coach-panel .cp-grade .score{font-size:20px;font-weight:bold;display:block;margin-bottom:4px}
+#coach-panel .cp-grade.good .score{color:#00ff9c}
+#coach-panel .cp-grade.ok .score{color:#ffe066}
+#coach-panel .cp-grade.bad .score{color:#ff7b7b}
+#coach-panel .cp-grade ul{margin:6px 0 0 14px;padding:0;font-size:10px;color:var(--mute)}
+#coach-panel .cp-grade li{margin:2px 0}
+#coach-panel .cp-streak{display:inline-block;padding:2px 6px;border-radius:2px;font-size:9px;letter-spacing:.15em;font-weight:bold;text-transform:uppercase}
+#coach-panel .cp-streak.correct{background:rgba(0,255,156,.12);color:#00ff9c;border:1px solid rgba(0,255,156,.25)}
+#coach-panel .cp-streak.wrong{background:rgba(255,91,91,.12);color:#ff7b7b;border:1px solid rgba(255,91,91,.25)}
+#coach-panel .cp-btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#coach-panel .cp-hint{font-size:11px;color:#ffe066;background:rgba(255,224,102,.05);border-left:2px solid #ffe066;padding:6px 10px;border-radius:0 3px 3px 0;margin-top:8px;font-style:italic}
 @keyframes ldPulse{0%,100%{opacity:1}50%{opacity:.45}}
 #learn-panel{position:fixed;top:60px;right:24px;width:340px;z-index:11;border:1px solid rgba(0,255,156,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,255,156,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
 #learn-panel.show{display:block}
@@ -384,6 +422,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <button id="voiceout-toggle" type="button" onclick="toggleVoiceOut()" title="Speak responses">VOICE</button>
     <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
     <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
+    <button id="coach-toggle" type="button" onclick="toggleCoachPanel()" title="Ask-answer-ask coaching session — Adam tutors you on any topic">COACH</button>
     <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
     <button id="wake-toggle" type="button" onclick="toggleWake()" title='When on, only respond in convo mode if you say "Adam, ..." or "Hey Adam, ..." (Jarvis-style wake word)'>WAKE</button>
     <button id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
@@ -459,6 +498,25 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   <div class="lp-section">
     <h3>RECENT TOPICS</h3>
     <div id="lp-recent"><div style="font-size:10px;color:var(--mute);text-align:center;padding:8px;font-style:italic">no completed topics yet</div></div>
+  </div>
+</div>
+<div id="coach-panel">
+  <div class="cp-head"><span>◆ COACH · ASK-ANSWER-ASK</span><span class="close" onclick="toggleCoachPanel()">CLOSE</span></div>
+  <div class="cp-section" id="cp-start-section">
+    <h3>NEW SESSION</h3>
+    <div class="cp-topic-row"><input type="text" id="cp-topic" placeholder="topic (e.g. python decorators, krebs cycle)"><select id="cp-diff"><option value="1">1 — intro</option><option value="2" selected>2 — basic</option><option value="3">3 — intermediate</option><option value="4">4 — advanced</option><option value="5">5 — expert</option></select><button class="cp-act" onclick="_coachStart()">START</button></div>
+    <div style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.05em">Adam will ask a question, grade your answer, then escalate or back off based on your streak.</div>
+  </div>
+  <div class="cp-section" id="cp-active-section" style="display:none">
+    <h3 id="cp-topic-head">TOPIC</h3>
+    <div id="cp-q" class="cp-q empty">— ask to begin —</div>
+    <div class="cp-meta"><div>DIFFICULTY<span class="v" id="cp-diff-v">—</span></div><div>ASKED<span class="v" id="cp-asked-v">0</span></div><div><span class="cp-streak correct" id="cp-streak-correct">0 ✓</span> <span class="cp-streak wrong" id="cp-streak-wrong">0 ✗</span></div></div>
+    <div style="font-size:9px;color:var(--mute);margin-top:8px;letter-spacing:.15em;text-transform:uppercase">MASTERY <span style="color:var(--magenta);font-size:11px;margin-left:4px" id="cp-mastery-pct">0%</span></div>
+    <div class="cp-mastery-bar"><div class="cp-mastery-fill" id="cp-mastery-fill" style="width:0%"></div></div>
+    <div id="cp-hint" class="cp-hint" style="display:none"></div>
+    <div id="cp-grade-slot"></div>
+    <textarea id="cp-answer" placeholder="type your answer (or use mic) — Ctrl+Enter to submit" rows="3" style="margin-top:8px;width:100%"></textarea>
+    <div class="cp-btn-row"><button class="cp-act" onclick="_coachAnswer()">SUBMIT</button><button class="cp-act" onclick="_coachHint()">HINT</button><button class="cp-act" onclick="_coachSkip()">SKIP</button><button class="cp-act" onclick="_coachAsk()">NEXT</button><button class="cp-act danger" onclick="_coachEnd()" style="margin-left:auto">END SESSION</button></div>
   </div>
 </div>
 <div id="tests-panel">
@@ -771,6 +829,66 @@ async function _tpMarkDone(path){
 }
 function _startTestsPolling(){if(_tpPollTimer)return;_pollTestsList();_tpPollTimer=setInterval(_pollTestsList,15000)}
 _startTestsPolling();
+const COACH_SID_KEY='amni_jarvis_coach_sid';
+let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false;
+function toggleCoachPanel(){_coachPanelOpen=!_coachPanelOpen;const p=document.getElementById('coach-panel');p.classList.toggle('show',_coachPanelOpen);document.getElementById('coach-toggle').classList.toggle('on',_coachPanelOpen);['persona-panel','learn-panel','tests-panel'].forEach(id=>{const el=document.getElementById(id);if(_coachPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_coachPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;if(_coachSid)_coachSyncStatus()}}
+function _coachShowActive(show){document.getElementById('cp-start-section').style.display=show?'none':'block';document.getElementById('cp-active-section').style.display=show?'block':'none'}
+function _coachRender(res){
+  if(!res)return;
+  const topic=res.topic||_coachTopic||'?';
+  document.getElementById('cp-topic-head').textContent='TOPIC · '+topic.toUpperCase();
+  const q=res.question||res.next_question||res.pending_question||'(no question)';
+  const qEl=document.getElementById('cp-q');qEl.textContent=q;qEl.className='cp-q'+(q.startsWith('(')?' empty':'');
+  document.getElementById('cp-diff-v').textContent=res.difficulty||'?';
+  const s=res._session||{};const m=res.mastery||{};
+  document.getElementById('cp-asked-v').textContent=(s.n_answered!=null?s.n_answered:m.n_answered||0);
+  document.getElementById('cp-streak-correct').textContent=(s.streak_correct||0)+' ✓';
+  document.getElementById('cp-streak-wrong').textContent=(s.streak_wrong||0)+' ✗';
+  const pct=Math.round((m.pct||0)*100)/100||0;
+  document.getElementById('cp-mastery-pct').textContent=pct.toFixed(0)+'%';
+  document.getElementById('cp-mastery-fill').style.width=pct+'%';
+  if(res.score!=null){
+    const cls=res.score>=70?'good':(res.score>=50?'ok':'bad');
+    const cf=Array.isArray(res.correct_facts)?res.correct_facts:[];const mf=Array.isArray(res.missing_facts)?res.missing_facts:[];
+    document.getElementById('cp-grade-slot').innerHTML=`<div class="cp-grade ${cls}"><span class="score">${res.score}/100</span>${esc(res.feedback||'')}${cf.length?'<div style="margin-top:6px;font-size:10px;color:#a0ffd0">✓ correct: '+cf.map(esc).join(', ')+'</div>':''}${mf.length?'<div style="font-size:10px;color:#ffb0b0">✗ missing: '+mf.map(esc).join(', ')+'</div>':''}</div>`;
+  }
+  const hintEl=document.getElementById('cp-hint');if(res.hint){hintEl.textContent='💡 '+res.hint;hintEl.style.display='block'}else hintEl.style.display='none';
+}
+async function _coachCall(args){
+  if(_coachBusy)return null;_coachBusy=true;
+  try{const r=await fetch('/skills/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args})});const j=await r.json();const out=j.output||j;return out}
+  catch(e){bubble('bot','Coach call failed: '+esc(e.message),'<span class="badge err">coach</span>');return null}
+  finally{_coachBusy=false}
+}
+async function _coachStart(){
+  const t=(document.getElementById('cp-topic').value||'').trim();if(!t){bubble('bot','Coach needs a topic. Try "python decorators" or "krebs cycle".','<span class="badge err">coach</span>');return}
+  const d=parseInt(document.getElementById('cp-diff').value||'2',10);
+  bubble('bot','Starting coaching session on **'+esc(t)+'** at difficulty '+d+'. Adam is composing your first question…','<span class="badge">coach</span>');
+  const res=await _coachCall({action:'start',topic:t,difficulty:d});
+  if(!res||res.error){bubble('bot','Could not start: '+esc(res&&res.error||'unknown'),'<span class="badge err">coach</span>');return}
+  _coachSid=res.session_id;_coachTopic=res.topic;localStorage.setItem(COACH_SID_KEY,_coachSid);
+  _coachShowActive(true);document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value='';
+  _coachRender(res);
+}
+async function _coachAnswer(){
+  if(!_coachSid){bubble('bot','No active coach session. Start one first.','<span class="badge err">coach</span>');return}
+  const a=(document.getElementById('cp-answer').value||'').trim();if(!a){bubble('bot','Type an answer first.','<span class="badge err">coach</span>');return}
+  const res=await _coachCall({action:'answer',session_id:_coachSid,answer:a});
+  if(!res||res.error){bubble('bot','Grade failed: '+esc(res&&res.error||'unknown'),'<span class="badge err">coach</span>');return}
+  _coachRender(res);document.getElementById('cp-answer').value='';
+  if(voiceOut&&res.feedback)speak(res.feedback);
+}
+async function _coachHint(){if(!_coachSid)return;const res=await _coachCall({action:'hint',session_id:_coachSid});if(res&&res.hint){const el=document.getElementById('cp-hint');el.textContent='💡 '+res.hint;el.style.display='block'}}
+async function _coachSkip(){if(!_coachSid)return;const res=await _coachCall({action:'skip',session_id:_coachSid});_coachRender(res||{});document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value=''}
+async function _coachAsk(){if(!_coachSid)return;const res=await _coachCall({action:'ask',session_id:_coachSid});_coachRender(res||{});document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value=''}
+async function _coachEnd(){
+  if(!_coachSid)return;const res=await _coachCall({action:'summary',session_id:_coachSid});
+  const top=res&&res.topic||_coachTopic||'?';const pct=res&&res.mastery&&res.mastery.pct!=null?Math.round(res.mastery.pct):0;
+  bubble('bot','**Coach session complete:** '+esc(top)+' · final mastery '+pct+'% · '+(res&&res.n_answered||0)+' answered.','<span class="badge">coach</span>');
+  localStorage.removeItem(COACH_SID_KEY);_coachSid='';_coachTopic='';_coachShowActive(false);
+}
+async function _coachSyncStatus(){if(!_coachSid)return;const res=await _coachCall({action:'status',session_id:_coachSid});if(res&&!res.error){_coachShowActive(true);_coachRender(res)}else{localStorage.removeItem(COACH_SID_KEY);_coachSid=''}}
+document.addEventListener('keydown',e=>{if(_coachPanelOpen&&e.ctrlKey&&e.key==='Enter'&&document.activeElement&&document.activeElement.id==='cp-answer'){e.preventDefault();_coachAnswer()}});
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
 let _audioEl=null;
 async function speak(text){

@@ -357,6 +357,15 @@ class AmniAgent:
         if _m and self.skills.has('stock'):return ('stock',{'symbols':re.sub(r'\s+',',',_m.group(1).upper())})
         if re.search(r"\b(?:disk|drive)\s+(?:usage|space|free)\b|\bhow\s+much\s+(?:disk|drive|storage)\s+(?:space|free)\b",msg,re.IGNORECASE) and self.skills.has('disk_widget'):return ('disk_widget',{})
         if re.search(r"\bgit\s+status\b|\b(?:current\s+)?(?:git\s+)?branch\b|\bunstaged\s+(?:files|changes)\b",msg,re.IGNORECASE) and self.skills.has('git_status'):return ('git_status',{})
+        if self.skills.has('coach'):
+            _m=re.search(r"^\s*(?:please\s+)?(?:coach|tutor|quiz|test|drill|practice|train|teach)\s+(?:me\s+)?(?:about|on|with|in|over|through)\s+([\w\s\-,'.()]{3,80})\??\s*$",msg,re.IGNORECASE)
+            if _m:
+                topic=_m.group(1).strip(' ?.,!').strip()
+                if topic and topic.lower() not in ('this','that','it','something'):return ('coach',{'action':'start','topic':topic})
+            _m=re.search(r"^\s*let'?s\s+(?:practice|drill|study|review)\s+([\w\s\-,'.()]{3,80})\??\s*$",msg,re.IGNORECASE)
+            if _m:
+                topic=_m.group(1).strip(' ?.,!').strip()
+                if topic:return ('coach',{'action':'start','topic':topic})
         if self.skills.has('learning_daemon'):
             if re.search(r"^\s*(?:please\s+)?(?:pause|stop|halt|silence)\s+(?:the\s+)?(?:learning(?:\s+daemon)?|daemon|autonomous\s+learning)\s*\.?$",msg,re.IGNORECASE):return ('learning_daemon',{'action':'pause'})
             if re.search(r"^\s*(?:please\s+)?(?:resume|start|restart|unpause|continue)\s+(?:the\s+)?(?:learning(?:\s+daemon)?|daemon|autonomous\s+learning)\s*\.?$",msg,re.IGNORECASE):return ('learning_daemon',{'action':'resume'})
@@ -629,6 +638,18 @@ class AmniAgent:
         if name=='scan':
             if out.get('error'):return f'(scan error: {out["error"]})'
             return f'Scanned {out.get("files_scanned",0)} file(s), added {out.get("lessons_added",0)} lesson(s) (total: {out.get("lessons_total",0)}). Distilled: {out.get("distilled")}.'
+        if name=='coach':
+            if out.get('error'):return f'(coach error: {out["error"]})'
+            if out.get('score') is not None:
+                fb=out.get('feedback','');nq=out.get('next_question','')
+                tail=f'\n\nNext: {nq}' if nq else ''
+                return f'Score: **{out.get("score")}/100** — {fb}{tail}'
+            if out.get('question'):
+                topic=out.get('topic','?');diff=out.get('difficulty','?')
+                return f'Starting coach session on **{topic}** at difficulty {diff}.\n\n**Q:** {out["question"]}\n\n(answer in /jarvis coach panel, or POST /skills/coach action=answer)'
+            if out.get('hint'):return f'**Hint:** {out["hint"]}'
+            if out.get('skipped'):return f'Skipped. Next: {out.get("next_question","(no next)")}'
+            return json.dumps(out,default=str)[:600]
         if name=='learning_daemon':
             if out.get('error'):return f'(daemon error: {out["error"]})'
             if out.get('paused'):return 'Learning daemon paused. I will stop autonomous topic ingestion until you resume me.'
