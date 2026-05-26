@@ -7,7 +7,7 @@ import re,json,uuid
 from typing import List,Dict,Any,Optional
 _WIDGET_FENCE_RE=re.compile(r"```widget\s*\n(.*?)\n```",re.DOTALL|re.IGNORECASE)
 _LOOSE_WIDGET_RE=re.compile(r"```(?:json|widget)?\s*\n?(\{[^`]*?\"type\"\s*:[^`]*?\})\s*\n?```",re.DOTALL|re.IGNORECASE)
-_SUPPORTED_TYPES={'weather','system','time','news','stock','code','file','image','map','table','chart','progress','calendar','task','error','info','warning','success','disk','git','watch'}
+_SUPPORTED_TYPES={'weather','system','time','news','stock','code','file','image','map','table','chart','progress','calendar','task','error','info','warning','success','disk','git','watch','file_change'}
 def _safe_json(s:str)->Optional[Dict[str,Any]]:
     try:return json.loads(s)
     except Exception:pass
@@ -51,6 +51,8 @@ def render_widget_text(w:Dict[str,Any])->str:
     if t=='news':items=d.get('items',[]);return f"[{title}] "+ ' | '.join(f"{i.get('title','?')} ({i.get('source','')})" for i in items[:5])
     if t=='code':return f"[{title}] {d.get('lang','?')} code:\n{d.get('code','')[:500]}"
     if t=='file':return f"[{title}] {d.get('path','?')} — {d.get('size','?')} bytes"
+    if t=='file_change':
+        op=d.get('op','edit');p=d.get('path','?');la=d.get('lines_added',0);lr=d.get('lines_removed',0);return f"[{title}] {op}: {p} (+{la}/-{lr})"
     if t=='error':return f"[{title}] ❌ {d.get('message','?')}"
     if t=='info':return f"[{title}] {d.get('message','?')}"
     return f"[{title}] {json.dumps(d,default=str)[:300]}"

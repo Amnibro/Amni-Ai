@@ -71,6 +71,23 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.system .sys-card .val{font-size:18px;color:var(--cyan);text-shadow:0 0 6px var(--cyan);margin-top:4px}
 .widget.system .sys-card .bar{height:3px;background:rgba(0,229,255,.1);border-radius:2px;margin-top:6px;overflow:hidden}
 .widget.system .sys-card .bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));box-shadow:0 0 8px var(--cyan);transition:width .3s}
+.widget.file_change .fc-head{display:flex;gap:8px;align-items:baseline;font-size:13px;flex-wrap:wrap}
+.widget.file_change .fc-op{font-size:9px;letter-spacing:.18em;padding:2px 6px;border-radius:2px;text-transform:uppercase;font-weight:bold}
+.widget.file_change .fc-op.op-create{background:rgba(0,255,156,.15);color:#00ff9c;border:1px solid rgba(0,255,156,.3)}
+.widget.file_change .fc-op.op-edit{background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.3)}
+.widget.file_change .fc-op.op-overwrite{background:rgba(255,181,71,.12);color:#ffb547;border:1px solid rgba(255,181,71,.3)}
+.widget.file_change .fc-bn{color:var(--fg);font-weight:600;font-family:JetBrains Mono,monospace}
+.widget.file_change .fc-ext{color:var(--mute);font-size:11px;font-family:JetBrains Mono,monospace}
+.widget.file_change .fc-folder{font-size:9px;color:var(--mute);letter-spacing:.1em;margin-top:4px;font-family:JetBrains Mono,monospace;word-break:break-all}
+.widget.file_change .fc-stats{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;letter-spacing:.1em;color:var(--mute);margin:8px 0;border-top:1px solid rgba(0,229,255,.08);padding-top:6px}
+.widget.file_change .fc-add{color:#00ff9c;font-weight:bold}
+.widget.file_change .fc-rem{color:#ff7b7b;font-weight:bold}
+.widget.file_change .fc-repl{color:var(--cyan)}
+.widget.file_change .fc-size{margin-left:auto;color:var(--mute)}
+.widget.file_change .fc-preview{font-size:10px;font-family:JetBrains Mono,monospace;background:rgba(0,0,0,.35);border:1px solid rgba(0,229,255,.1);border-radius:3px;padding:6px 8px;max-height:160px;overflow:auto;color:var(--fg);white-space:pre;line-height:1.4;margin:4px 0}
+.widget.file_change .fc-actions{display:flex;gap:6px;margin-top:6px}
+.widget.file_change .fc-btn{flex:0 0 auto;padding:4px 10px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.25);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
+.widget.file_change .fc-btn:hover{background:rgba(0,229,255,.14);border-color:var(--cyan)}
 .widget.news .w-body{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
 .widget.news .news-item{padding:6px 8px;border:1px solid rgba(0,229,255,.08);border-radius:3px;background:rgba(0,229,255,.02);text-decoration:none;color:var(--fg);display:block;transition:all .15s}
 .widget.news .news-item:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.05);box-shadow:0 0 8px rgba(0,229,255,.15)}
@@ -490,6 +507,11 @@ function renderWidget(w){
     body=`<div class="git-branch">⎇ ${branch}</div><div class="git-stats"><div>DIRTY<span class="v${dcls}">${d.dirty_n||0}</span></div><div>AHEAD<span class="v">${d.ahead||0}</span></div><div>BEHIND<span class="v">${d.behind||0}</span></div></div><div class="commits">${commits||'<div style="color:var(--mute)">no commits</div>'}</div>${dirtyHtml}`;
   }else if(t==='code'){
     body=`<pre><code>${esc(d.code||'')}</code></pre>`;
+  }else if(t==='file_change'){
+    const op=esc(d.op||'edit');const path=esc(d.path||'?');const ext=esc(d.ext||'');const la=d.lines_added||0;const lr=d.lines_removed||0;const repl=d.replacements;
+    const bn=path.split(/[\\/]/).pop();const folder=path.length>bn.length?path.slice(0,path.length-bn.length-1):'';
+    const opCls='op-'+op;
+    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${d.preview?`<pre class="fc-preview">${esc(d.preview)}</pre>`:''}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button></div>`;
   }else if(t==='error'||t==='info'){
     body=esc(d.message||'');
   }else{
@@ -505,6 +527,12 @@ function appendWidgets(msgEl,widgets){
   msgEl.appendChild(wrap);log.scrollTop=log.scrollHeight;
 }
 function quick(t){input.value=t;send()}
+async function _fcOpen(path){
+  if(!path)return;
+  try{const r=await fetch('/skills/file_read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{path}})});const j=await r.json();const c=(j.output&&j.output.content)||j.content||(typeof j==='string'?j:'(no content)');bubble('bot','```\n'+c.slice(0,4000)+(c.length>4000?'\n... ('+(c.length-4000)+' more chars)':'')+'\n```','<span class="badge">file</span>')}
+  catch(e){bubble('bot','Could not open file: '+esc(e.message),'<span class="badge err">err</span>')}
+}
+function _fcCopyPath(path){if(!path)return;try{navigator.clipboard.writeText(path);bubble('bot','Copied path to clipboard: `'+esc(path)+'`','<span class="badge">copy</span>')}catch{bubble('bot','Clipboard unavailable. Path: `'+esc(path)+'`','<span class="badge err">err</span>')}}
 async function send(){
   const text=input.value.trim();if(!text)return;
   input.value='';input.style.height='auto';send_btn.disabled=true;

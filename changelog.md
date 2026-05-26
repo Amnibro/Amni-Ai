@@ -2,6 +2,28 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.15 — File-change widget surfaces autonomous coding in /jarvis (2026-05-26)
+
+When Adam writes or edits a file via `file_write` / `code_edit`, the chat used to show only a one-liner ("Edited /path: 3 replacement(s)"). That's not Jarvis-grade for autonomous coding. v6.10.15 emits a styled `file_change` widget alongside the text — like the existing weather/system/git widgets, but for file edits.
+
+### What the widget shows
+- **Op badge** — CREATE (green), EDIT (cyan), OVERWRITE (amber) — color-coded
+- **Basename + extension** in monospace, full folder path below
+- **Stats row**: `+N` lines added (green), `-N` removed (red), `N replacement(s)` (for code_edit), final size (lines + bytes)
+- **Preview** — first ~10 lines of the resulting file in a scrollable mono block
+- **Actions** — OPEN button (fetches via `/skills/file_read` and dumps as a code bubble), COPY PATH (clipboard)
+
+### Skill-side changes
+`_skill_file_write` now reads `before` (if exists), tracks `created` vs overwrite, returns `{path, bytes_written, ext, created, change:{lines_before, lines_after, lines_added, lines_removed, bytes_before, bytes_after, preview}}`. Same diff stat shape for `_skill_code_edit`. New helper `_file_change_stats(before, after, max_preview_lines=10)`.
+
+### Format pipe
+`_format_skill_output('file_write', ...)` and `_format_skill_output('code_edit', ...)` now emit a ```widget JSON``` fence after the one-line summary. `widget_protocol.parse_widgets` already picks them up, so the widget flows through `/chat`, `/chat/stream`, `/v1/chat/completions`, and any client that renders `amni_widgets[]`.
+
+### Tests
+15/15 PASS (`tests/test_file_change_widget_v6_10_15.py`): supported_types includes `file_change`, widget protocol parses + renders, jarvis CSS for all three op variants + helpers, skill metadata population (create vs overwrite), formatter emits widget, error path skips widget, preview truncation, file_change_stats correctness, v6.10.14 regression intact.
+
+---
+
 ## v6.10.14 — Voice-friendly natural-language routing for the LearningDaemon (2026-05-26)
 
 Ties v6.10.12 (daemon visibility) and v6.10.13 (wake word) together: spoken or typed commands like "Adam, pause learning" / "Adam, what are you learning right now?" / "Adam, learn about black holes" now hit the daemon skill directly without any intermediate LLM call. Same path works from voice (post-wake-strip), text, and OpenAI/Ollama API clients.
