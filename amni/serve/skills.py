@@ -775,6 +775,18 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='disable':return _sr.set_enabled(False)
         return {'error':f'unknown action {action!r}; valid: status|run|enable|disable'}
     reg.register('self_reflect',_skill_self_reflect,desc='Adam\'s daily self-reflection cycle. Rotates through subsystems (amni/serve, amni/storage, amni/agent, amni/skills, amni/cli, scripts), scans for heuristic signals (TODOs, large files, missing tests, missing docstrings), drops up to 3 proposals/cycle into the self_improvement log. Actions: status | run (force?, dry_run?, notify?) | enable | disable. Cap: one cycle per ~20h unless force=True.',schema={'action':'str?','force':'bool?','dry_run':'bool?','notify':'bool?'})
+    def _skill_proposal_attempt(args,ctx,reg_):
+        """Auto-attempt a low-risk (category=documentation) self-improvement proposal via deterministic handler. NEVER deploys — human approval required."""
+        from amni.serve import proposal_attempter as _pa
+        action=(args.get('action') or 'attempt').strip().lower()
+        if action=='handlers':return {'handlers':_pa.list_handlers()}
+        if action=='attempt':
+            pid=(args.get('id') or '').strip()
+            if not pid:return {'error':'id required for action=attempt'}
+            return _pa.attempt(pid,dry_run=bool(args.get('dry_run',False)),notify=bool(args.get('notify',True)))
+        if action=='attempt_next':return _pa.attempt_next_eligible(max_attempts=int(args.get('max',1)),dry_run=bool(args.get('dry_run',False)))
+        return {'error':f'unknown action {action!r}; valid: handlers|attempt|attempt_next'}
+    reg.register('proposal_attempt',_skill_proposal_attempt,desc='Auto-attempt LOW-RISK (category=documentation) self-improvement proposals via deterministic handlers. Pipeline: backup -> apply -> ast.parse + sha256 readback + sibling pytest -> transition state. NEVER marks deployed (human approval required). Actions: handlers (list known) | attempt (id, dry_run?) | attempt_next (max?, dry_run?).',schema={'action':'str?','id':'str?','dry_run':'bool?','notify':'bool?','max':'int?'})
     try:
         from amni.serve import widgets as _w
         def _skill_weather(args,ctx,reg_):

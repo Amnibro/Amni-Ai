@@ -64,6 +64,24 @@ def mount(app,agent):
     async def self_reflection_toggle(req:Request):
         from amni.serve.self_reflection import set_enabled
         body=await req.json();return set_enabled(bool(body.get('enabled',True)))
+    @app.get('/memory/proposal-attempt/handlers')
+    def proposal_attempt_handlers():
+        from amni.serve.proposal_attempter import list_handlers
+        return {'handlers':list_handlers()}
+    @app.post('/memory/proposal-attempt/{pid}')
+    async def proposal_attempt_one(pid:str,req:Request):
+        from amni.serve.proposal_attempter import attempt
+        body={}
+        try:body=await req.json()
+        except Exception:pass
+        return attempt(pid,dry_run=bool(body.get('dry_run',False)),notify=bool(body.get('notify',True)))
+    @app.post('/memory/proposal-attempt/next')
+    async def proposal_attempt_next(req:Request):
+        from amni.serve.proposal_attempter import attempt_next_eligible
+        body={}
+        try:body=await req.json()
+        except Exception:pass
+        return attempt_next_eligible(max_attempts=int(body.get('max',1)),dry_run=bool(body.get('dry_run',False)))
     @app.get('/memory/coach/reviews')
     def coach_reviews(topic:str='',limit:int=20):
         if getattr(agent,'coach_atlas',None) is None:return {'reviews':[]}
