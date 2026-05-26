@@ -2,6 +2,42 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.24 — Natural-language chain routing (2026-05-26)
+
+v6.10.23 added the `chain` skill but you still had to invoke it explicitly. v6.10.24 teaches the natural-language router to detect chain-worthy phrasings and auto-compose them — no LLM call required, no explicit JSON.
+
+### Two new patterns in `agent._detect_skill`
+
+**Save-suffix** (most common Jarvis ask):
+- `"<query> and save it to <path>"` / `"… write it to …"` / `"… store the result in …"` / `"… dump that to …"`
+- Pronouns recognized: `it`, `that`, `this`, `the result`, `the output`, `the answer`, `the data`, `the response`
+- Detects the head as a normal single-skill query, then chains with `file_write` using `$prev_str` templating
+
+Examples that now route to a chain:
+- `"what is the weather in Boston and save it to weather.txt"` → weather + file_write
+- `"system stats and write the result to sys.txt"` → system_stats + file_write
+- `"git status and dump that to status.txt"` → git_status + file_write
+
+**Sequence-conjunction split**:
+- `" and then "`, `", then"`, `";then"` / `"; then"`, `" then also "` — splits into 2-3 parts
+- Each part must individually route to a skill — if any part is conversational (e.g. "explain why the sky is blue"), the whole thing falls back to single-skill / LLM path
+- Prevents false positives on "what's the difference between A and B"-style queries
+
+Examples:
+- `"what's the weather in Boston and then system stats"` → weather + system_stats
+- `"git status, then disk usage"` → git_status + disk_widget
+
+### Internal refactor
+`_detect_skill` now has a `_no_chain=True` recursion guard so `_detect_chain` can call `_detect_skill_single` per fragment without infinite-looping. Existing single-skill behavior preserved when no chain pattern matches.
+
+### Chain-aware formatter
+`_format_skill_output('chain', out)` emits a per-step bullet list with `✓ / ✗` markers, per-skill summary (weather → temp+location, file_write → bytes+path, calc → value, time → iso), and a head line `Chain completed (N steps):` or `Chain halted (N steps):`. So even API-only clients (Ollama/OpenAI) get human-readable multi-step output.
+
+### Tests
+15/15 PASS (`tests/test_chain_router_v6_10_24.py`): save-pattern routes, all 5 verb variants (save/write/store/put/dump/export), single-step still works, "and then" split, comma-then split, semi-then split, mixed-routing rejection (conversational tail fails the whole chain), pronoun coverage (8 pronouns), runaway-msg cap (>500 chars), short/empty rejection, formatter success/halted/error paths, v6.10.23 regression intact. Recent chain (v6.10.21 → .23): 45/45 still PASS. Total: 60/60.
+
+---
+
 ## v6.10.23 — Inter-skill chaining: Adam can now compose multi-step workflows (2026-05-26)
 
 Until now Adam ran exactly one skill per turn. Real assistants compose: "get the weather in Boston AND save it to weather.txt", or "calc 17*23 then write the result to result.txt". v6.10.23 adds a `chain` skill that runs a list of skills sequentially with output-of-previous-step templating.
