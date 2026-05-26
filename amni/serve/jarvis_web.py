@@ -607,8 +607,9 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </header>
   <div id="chat-wrap"><div id="log">
     <div class="welcome">
-      <h2>NEURAL INTERFACE READY</h2>
-      <div style="color:var(--mute);font-size:11px;letter-spacing:.1em">Ask anything. Live data renders inline as glowing cards.</div>
+      <h2 id="welcome-heading">NEURAL INTERFACE READY</h2>
+      <div id="welcome-tagline" style="color:var(--mute);font-size:11px;letter-spacing:.1em">Ask anything. Live data renders inline as glowing cards.</div>
+      <div id="welcome-persona-stamp" style="margin-top:8px;font-size:10px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-family:JetBrains Mono,monospace"></div>
       <div class="examples">
         <button class="ex" onclick="quick('What is the weather in Boston?')"><span class="lbl">live data</span>What is the weather in Boston?</button>
         <button class="ex" onclick="quick('Show me current system stats')"><span class="lbl">live data</span>Show me current system stats</button>
@@ -1127,7 +1128,29 @@ async function _personaLearnNew(){
 }
 function _pickVoice(v){_selectedVoice=v;localStorage.setItem(VOICE_KEY,v);_renderPersonaPanel();if(v)bubble('bot','TTS voice set to **'+esc(v)+'**','<span class="badge">voice</span>')}
 const _origProbeVoiceBackends=probeVoiceBackends;
-async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona}}
+const _PERSONA_WELCOME={
+  alfred:{h:'AT YOUR SERVICE',t:'Master the maintainer — Alfred Pennyworth at your service. How may I assist you this morning?'},
+  rikku:{h:'RAO! READY TO GO!',t:"Fryd's ib?! Rikku here — let's get scrappy and figure things out together!"},
+  jarvis:{h:'STANDING BY, SIR',t:"Of course, sir. All systems green. What's first on the agenda?"},
+  yoda:{h:'READY, I AM',t:'Help you, I shall. Begin where you wish, you may.'},
+  mentor:{h:'READY TO HELP',t:"Tell me what you're working on — I'll meet you wherever you are."},
+  pirate:{h:'AHOY, MATEY!',t:'Charts plotted, sails trimmed, captain. Where to next?'},
+  scientist:{h:'INSTRUMENTS ONLINE',t:'Ready when you are — what hypothesis are we testing today?'},
+  jobs:{h:'LET\'S MAKE SOMETHING GREAT',t:'What are we building? Strip it to the essence — start there.'},
+  haiku:{h:'STILL WATER WAITS',t:'Three lines I weave / from your single quiet thought / let us begin friend'},
+  sherlock:{h:'OBSERVATIONS PENDING',t:"You've a problem to share. Lay out the details — I'll handle the deduction."},
+  neutral:{h:'NEURAL INTERFACE READY',t:'Ask anything. Live data renders inline as glowing cards.'}
+};
+async function _applyWelcomeForPersona(){
+  const wh=document.getElementById('welcome-heading');const wt=document.getElementById('welcome-tagline');const ws=document.getElementById('welcome-persona-stamp');
+  if(!wh||!wt)return;
+  try{const r=await fetch('/personas');if(!r.ok)return;const j=await r.json();const name=(j.default||'').toLowerCase();
+    const w=_PERSONA_WELCOME[name]||_PERSONA_WELCOME.neutral;
+    wh.textContent=w.h;wt.textContent=w.t;if(ws)ws.textContent='◆ '+(name||'neutral').toUpperCase()+' MODE';
+  }catch{}
+}
+setTimeout(_applyWelcomeForPersona,250);
+async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_applyWelcomeForPersona()}}
 _initPersonaPill();
 let _ldStats=null,_ldPanelOpen=false,_ldPollTimer=null,_ldLastTopic=null,_ldErrCount=0;
 function _ldHumanDur(s){if(!s||s<60)return Math.round(s||0)+'s';if(s<3600)return Math.round(s/60)+'m';if(s<86400)return (s/3600).toFixed(1)+'h';return (s/86400).toFixed(1)+'d'}
