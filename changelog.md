@@ -2,6 +2,46 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.46 — Persona-flavored welcome screen (2026-05-26)
+
+The default `/jarvis` welcome said generic "NEURAL INTERFACE READY" regardless of persona. With v6.10.35 making Alfred the default for new users (and Anthony's local launcher pinning Rikku), the welcome should greet in the active persona's voice from the moment the page loads.
+
+### What changed
+New `_PERSONA_WELCOME` table with hand-written entries for all 11 prebaked personas:
+- **alfred** → "AT YOUR SERVICE" · "Master Anthony — Alfred Pennyworth at your service. How may I assist you this morning?"
+- **rikku** → "RAO! READY TO GO!" · "Fryd's ib?! Rikku here — let's get scrappy and figure things out together!"
+- **jarvis** → "STANDING BY, SIR" · "Of course, sir. All systems green. What's first on the agenda?"
+- **yoda** → "READY, I AM" · "Help you, I shall. Begin where you wish, you may."
+- **mentor** → "READY TO HELP" · "Tell me what you're working on — I'll meet you wherever you are."
+- **pirate** → "AHOY, MATEY!" · "Charts plotted, sails trimmed, captain. Where to next?"
+- **scientist** → "INSTRUMENTS ONLINE" · "Ready when you are — what hypothesis are we testing today?"
+- **jobs** → "LET'S MAKE SOMETHING GREAT" · "What are we building? Strip it to the essence — start there."
+- **haiku** → "STILL WATER WAITS" · "Three lines I weave / from your single quiet thought / let us begin friend" (actual 5-7-5)
+- **sherlock** → "OBSERVATIONS PENDING" · "You've a problem to share. Lay out the details — I'll handle the deduction."
+- **neutral** → "NEURAL INTERFACE READY" · "Ask anything. Live data renders inline as glowing cards."
+
+Each entry is theologically + politically neutral (per v6.10.36 baseline), with no behavioral cues that conflict with Adam's core laws. The flavor is voice + tone only — every greeting offers help without prescribing belief or pushing a worldview.
+
+### Implementation
+`_applyWelcomeForPersona()` fetches `GET /personas`, reads `j.default`, looks up the entry, sets:
+- `#welcome-heading` text → custom uppercase heading
+- `#welcome-tagline` text → in-voice greeting line
+- `#welcome-persona-stamp` → `◆ <PERSONA> MODE` in mono uppercase below the tagline
+
+Falls back to `neutral` entry if the persona name isn't in the table (covers user-learned personas).
+
+### Trigger points
+- 250ms after page load (gives time for /personas endpoint to be reachable)
+- Inside `_initPersonaPill()` so opening the persona-pill or changing persona refreshes the welcome until first user message
+
+### Why it matters
+First impression sets the tone. A user installing Adam fresh sees Alfred greet them by their position ("Master") and offer service — instantly establishes the assistant relationship. Anthony's local Rikku install greets with Al Bhed and the scrappy collaborative energy of FFX. The welcome IS the persona, not just a generic banner with a persona dropdown underneath.
+
+### Tests
+16/16 PASS (`tests/test_persona_welcome_v6_10_46.py`): heading + tagline + persona-stamp slots have IDs, `_PERSONA_WELCOME` table contains all 11 personas, Alfred says "Master Anthony" + "Pennyworth", Rikku uses "RAO" + "Fryd's ib", Yoda uses inverted syntax, Haiku entry has 3 slash-separated lines (5-7-5 form), `_applyWelcomeForPersona` fetches /personas + reads j.default + falls back to neutral, updates heading + tagline + stamp slots, fires 250ms after load, `_initPersonaPill` triggers re-render on persona change, stamp is uppercased with ◆ prefix, v6.10.45 regression intact. Recent chain (v6.10.42 → .45): 74/74 still PASS. Total: 90/90.
+
+---
+
 ## v6.10.45 — Mermaid diagram rendering (flowcharts, sequence, state, ER) (2026-05-26)
 
 Adam can now render Mermaid diagrams directly in chat bubbles. When the LLM (or skills) emit a ` ```mermaid ` fenced code block, it renders as an actual SVG diagram instead of plain text. Pattern mirrors v6.10.42 KaTeX integration.
