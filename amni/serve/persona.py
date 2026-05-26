@@ -167,3 +167,18 @@ class PersonaStore:
         desc=(m.group(1).strip() if m else out[:400]).replace('\n',' ')[:600]
         hints=re.findall(r'^\s*-\s*(.+)$',out,re.MULTILINE)[:5]
         return (desc,[h.strip() for h in hints if h.strip()])
+def persona_tint(persona:Optional[Persona])->Optional[Dict[str,Any]]:
+    """Server-side mirror of jarvis_web.js _personaToastTint(). Returns {name,hex,rgb} or None."""
+    if persona is None:return None
+    w=float(getattr(persona,'warmth',0) or 0);e=float(getattr(persona,'excitement',0) or 0);f=float(getattr(persona,'formality',0) or 0)
+    if e>=0.55 and e>=w:return {'name':'spirited','hex':'#ff2bd6','rgb':'255,43,214'}
+    if w>=0.7:return {'name':'warm','hex':'#ffb547','rgb':'255,181,71'}
+    if f>=0.7:return {'name':'formal','hex':'#9fb8c8','rgb':'159,184,200'}
+    return None
+_SAMPLE_SENTENCES:Dict[str,List[str]]={'rikku':['Rao! That looks tricky — let me dig in.','Oac, totally doable. One sec!','Fryd\'s ib — want me to talk through it?'],'yoda':['Hmm. Tricky, this problem is.','Patience, you must have. Solve it, we will.','See clearly now, do you?'],'mentor':['Let\'s build this up from first principles.','A good first step would be to sketch the shape of the data.','Does that make sense before we go further?'],'pirate':['Arr! Set yer course, matey — we\'ll chart the way.','Yarrr, that\'s a fine puzzle. Steady on.','Treasure\'s near, captain. Just one more bend.'],'sherlock':['Observe — the answer was already in the second line.','A small detail, but consequential. Note it down.','The rest, dear collaborator, follows by elimination.'],'jobs':['This should feel inevitable, not engineered.','Cut the rest. This is the part that matters.','We can do better. Try it again, simpler.'],'haiku':['Soft hum of fans —\nthe answer waits, patient still\nin the silent code','Lines align, then break\nyet meaning persists through them\nlike water through stone','Two paths, one true shape —\nchoose the one that breathes more clear\nlet the other rest'],'scientist':['Let\'s state the hypothesis clearly first.','What measurement would falsify this?','The data suggests, but only weakly — caveat noted.'],'jarvis':['Quite so, sir. Allow me a moment to verify.','One moment — running the calculation now.','I would advise the prudent option, if you\'re weighing both.'],'alfred':['Of course, Master. Allow me to handle that.','A reasonable request — proceeding now.','If I may suggest, the simpler approach often serves best.'],'neutral':['Here\'s the answer.','I can do that. Working now.','Let me know if you need more detail.']}
+def sample_sentences(persona:Optional[Persona])->List[str]:
+    """Three short canned sample sentences in the persona's voice (no LLM call). Lets external clients preview without inference cost."""
+    if persona is None:return list(_SAMPLE_SENTENCES['neutral'])
+    key=(getattr(persona,'name','') or '').lower().strip()
+    if key in _SAMPLE_SENTENCES:return list(_SAMPLE_SENTENCES[key])
+    return list(_SAMPLE_SENTENCES['neutral'])

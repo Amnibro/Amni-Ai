@@ -838,6 +838,15 @@ def main():
             p=personas.learn(name)
             return {'persona':p.to_dict(),'learned_now':True}
         return {'persona':personas.get(name).to_dict(),'learned_now':False}
+    @app.get('/persona/observe')
+    def observe_persona(session_id:str=''):
+        """Full render-state of the active persona. Lets external clients (Amni-Code side-panel, status bars) mirror /jarvis without polling N endpoints."""
+        from amni.serve.persona import persona_tint,sample_sentences,PRESETS
+        active=personas.for_session(session_id) if session_id else personas.get(personas._default)
+        tint=persona_tint(active)
+        try:sys_prompt=active.system_prompt('')[:420]
+        except Exception:sys_prompt=''
+        return {'active':active.to_dict(),'tint':tint,'default':personas._default,'known_count':len(personas.list_known()),'session':{'session_id':session_id or None,'session_persona':personas._session_persona.get(session_id) if session_id else None},'samples':sample_sentences(active),'system_prompt_preview':sys_prompt,'presets_count':len(PRESETS),'learned_count':len(personas._learned)}
     @app.get('/persona/{name}/export')
     def export_persona_route(name:str):
         if not personas.has(name):raise HTTPException(status_code=404,detail=f'unknown persona {name!r}')
