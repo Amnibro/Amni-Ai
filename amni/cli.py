@@ -180,6 +180,80 @@ def cmd_chat(args):
         sid=r.get('session_id') or sid
         print(f'\n{r.get("answer")}\n',flush=True)
         print(f'  [tier={r.get("tier")} persona={r.get("persona")} category={r.get("category")} tokens={r.get("tokens")} wall={r.get("wall_s")}s]\n',flush=True)
+def cmd_export_session(args):
+    from amni.serve.conversation import ConversationStore
+    store=ConversationStore(root=args.conv_root)
+    target=(args.session or '').strip()
+    sess=store.list_sessions();matches=[s for s in sess if s['session_id']==target or s['session_id'].startswith(target)] if target else (sess[:1] if sess else [])
+    if not matches:print(f'[export] no session matches {target!r}',flush=True);sys.exit(1)
+    sid=matches[0]['session_id'];conv=store.get(sid);turns=conv.turns
+    if args.strip_personal:turns=[t for t in turns if not t.get('is_personal')]
+    fmt=(args.format or 'md').lower()
+    if fmt=='md':content=_session_to_markdown(sid,turns)
+    elif fmt=='json':content=json.dumps({'session_id':sid,'exported_at':time.time(),'n_turns':len(turns),'turns':turns},indent=2,default=str)
+    elif fmt=='jsonl':content='\n'.join(json.dumps(t,default=str) for t in turns)
+    else:print(f'[export] unknown format {fmt!r}; use md|json|jsonl',flush=True);sys.exit(1)
+    out=Path(args.output) if args.output else Path(f'{sid}.{fmt}')
+    out.write_text(content,encoding='utf-8')
+    n_personal=sum(1 for t in conv.turns if t.get('is_personal'))
+    print(f'[export] wrote {len(turns)} turn(s) ({len(content)} bytes) to {out}',flush=True)
+    if args.strip_personal and n_personal:print(f'[export] stripped {n_personal} turn(s) flagged personal',flush=True)
+def _session_to_markdown(sid:str,turns:list)->str:
+    head=f'# Amni-Ai session {sid}\n\nExported: {time.strftime("%Y-%m-%d %H:%M:%S")}  \nTurns: {len(turns)}\n\n---\n'
+    lines=[head]
+    for t in turns:
+        role=t.get('role','?').upper();content=t.get('content','');ts=t.get('ts')
+        ts_s=time.strftime('%H:%M:%S',time.localtime(ts)) if ts else ''
+        marks=' (personal)' if t.get('is_personal') else ''
+        lines.append(f'\n## {role}{(" · "+ts_s) if ts_s else ""}{marks}\n\n{content}\n')
+    return '\n'.join(lines)
+def cmd_import_session(args):
+    from amni.serve.conversation import ConversationStore
+    src=Path(args.input)
+    if not src.exists():print(f'[import] file not found: {src}',flush=True);sys.exit(1)
+    raw=src.read_text(encoding='utf-8')
+    turns=_parse_session_file(raw,src.suffix.lstrip('.').lower())
+    if not turns:print('[import] no turns found in input file',flush=True);sys.exit(1)
+    store=ConversationStore(root=args.conv_root);conv=store.get(args.session_id or None)
+    for t in turns:
+        role=t.get('role','user') if isinstance(t,dict) else 'user'
+        content=t.get('content','') if isinstance(t,dict) else str(t)
+        meta={k:v for k,v in t.items() if k not in ('role','content','ts','is_personal')} if isinstance(t,dict) else None
+        conv.append(role,content,meta=meta or None)
+    print(f'[import] imported {len(turns)} turn(s) into session {conv.session_id}',flush=True)
+    print(f'[import] resume with: amni chat --session {conv.session_id}',flush=True)
+def _parse_session_file(raw:str,ext:str)->list:
+    raw=raw.strip()
+    if not raw:return []
+    if ext=='jsonl':
+        out=[]
+        for line in raw.splitlines():
+            line=line.strip()
+            if not line:continue
+            try:out.append(json.loads(line))
+            except Exception:pass
+        return out
+    if ext=='json':
+        try:obj=json.loads(raw)
+        except Exception:return []
+        if isinstance(obj,dict) and 'turns' in obj:return list(obj['turns'])
+        if isinstance(obj,list):return list(obj)
+        return []
+    if ext in ('md','markdown'):return _markdown_to_turns(raw)
+    try:obj=json.loads(raw)
+    except Exception:return _markdown_to_turns(raw)
+    if isinstance(obj,dict) and 'turns' in obj:return list(obj['turns'])
+    if isinstance(obj,list):return list(obj)
+    return []
+def _markdown_to_turns(md:str)->list:
+    import re
+    turns=[];parts=re.split(r'\n## +(USER|ASSISTANT|SYSTEM|BOT)\b[^\n]*\n',md)
+    if len(parts)<3:return []
+    for i in range(1,len(parts),2):
+        role=parts[i].lower();body=parts[i+1].strip() if i+1<len(parts) else ''
+        if role=='bot':role='assistant'
+        if body:turns.append({'role':role,'content':body})
+    return turns
 def cmd_ask(args):
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
@@ -285,6 +359,18 @@ def main():
     c.add_argument('--session',default=None,help='Resume a specific session id (or prefix)')
     c.add_argument('--list-sessions',action='store_true',help='List recent sessions and exit')
     c.set_defaults(func=cmd_chat)
+    es=sub.add_parser('export-session',help='Export a conversation session to Markdown/JSON/JSONL')
+    es.add_argument('session',nargs='?',default=None,help='Session id (or prefix); defaults to most recent')
+    es.add_argument('--conv-root',default='experiences/conversations')
+    es.add_argument('--format',choices=['md','json','jsonl'],default='md',help='Output format (default: md)')
+    es.add_argument('--output','-o',default=None,help='Output path (default: <sid>.<ext>)')
+    es.add_argument('--strip-personal',action='store_true',help='Drop turns flagged is_personal before export')
+    es.set_defaults(func=cmd_export_session)
+    iss=sub.add_parser('import-session',help='Import a session from Markdown/JSON/JSONL')
+    iss.add_argument('input',help='Path to .md / .json / .jsonl session file')
+    iss.add_argument('--conv-root',default='experiences/conversations')
+    iss.add_argument('--session-id',default=None,help='Target session id; defaults to a fresh one')
+    iss.set_defaults(func=cmd_import_session)
     a=sub.add_parser('ask',help='Single-shot question (no REPL)')
     _add_common_adam(a)
     a.add_argument('query',nargs='+');a.add_argument('--persona',default=None);a.add_argument('--workdir',default=None)
