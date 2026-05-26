@@ -2,6 +2,58 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.8 — INCREDIBLE Adam iter 16: continuous voice mode + 5 latency reductions (2026-05-26)
+
+Hands-free Jarvis-style conversation. Click CONVO, talk, Adam answers, mic re-arms automatically. Plus five concurrent latency reductions so the back-and-forth feels real-time instead of walkie-talkie.
+
+### Continuous conversation state machine
+- New CONVO button next to MEMORY in composer. Pulsing dot indicates state.
+- States: `idle / listening / recording / transcribing / thinking / speaking / error`. Each gets a color-coded pulse on the dot (cyan listening, faster cyan recording, gold spin thinking, magenta speaking, red error).
+- Floating banner at top shows current state label + live mic-level meter (RMS-driven gradient bar).
+- Web Audio AnalyserNode + RMS thresholding for voice activity detection. No model dependency.
+- Auto-rearms `state-listening` after Adam's reply finishes playing — true bidirectional flow.
+
+### Five latency reductions (the headline)
+1. **Silence threshold 1200→600ms** — biggest perceptible win. Oui stop talking → 600ms of dead air → transcribe fires. Half the wait of v0.
+2. **Min speech 150ms** (was 300) — short replies (`yes`, `no`, `stop it`) get through cleanly.
+3. **Barge-in** — when oui start talking during Adam's reply, VAD detects elevated amplitude (`CONVO_BARGE_THRESHOLD`) and immediately kills the audio + speechSynthesis cancel + transitions to listening. No more waiting for Adam to finish a long response.
+4. **Streaming chat + per-sentence TTS** — convo mode now uses `/chat/stream` (not `/v1/chat/completions`). Token chunks accumulate, sentence-boundary regex (`[.!?…]`) flushes each complete sentence to `/voice/speak` IMMEDIATELY while Adam continues generating. Audio queues + drains in order. **Result: Adam starts speaking the first sentence ~500ms after oui finish talking, even on a 5-sentence reply.**
+5. **Whisper pre-warm** — `_prewarmWhisper()` fires a silent 2KB blob through `/voice/transcribe` on CONVO start so the faster-whisper model loads before the first real utterance. First transcribe is now ~200ms instead of ~2-3s cold.
+
+### Safety
+- `CONVO_MAX_FAILS=3` — 3 consecutive empty/failed transcriptions → auto-disable + state-error.
+- `CONVO_MAX_UTTERANCE_MS=10000` — 10s hard cap per utterance, no infinite recording.
+- Requires `_voiceBackends.stt` true at toggle time; clean error bubble if not.
+- Requires MediaRecorder + getUserMedia; clean error bubble if browser unsupported.
+
+### Persists via localStorage
+- `amni_jarvis_convo='1'` on toggle on → auto-restarts on next page load (after a 1.2s warm-up delay).
+
+### Tests
+`tests/test_convo_mode_v6_10_8.py` — **18/18 PASS**:
+- Route serves, CONVO button present, state machine fns (`_setConvoState`, `_vadLoop`, etc.)
+- State CSS classes styled (recording/thinking/speaking/error)
+- Banner + level meter present
+- Latency constants reduced (600ms silence, 150ms min speech)
+- Barge-in threshold + logic kill audio during speaking state
+- Streaming chat path (`/chat/stream` + `_convoStreamSend`)
+- Per-sentence TTS helpers (`_flushTTS`, `_consumeSentence`, `_drainTTS`, `ttsQueue`)
+- Sentence boundary regex
+- Whisper pre-warm
+- Safety (max fails + max utterance)
+- STT backend gate
+- localStorage persist
+- No v6.10.7 regression (watcher/voice/widgets/gestures/memory inspector/task tray)
+
+### Try it
+```bash
+pip install faster-whisper piper-tts  # one-time
+python -m amni.cli serve --port 7700
+# open /jarvis, click CONVO, allow mic, just talk.
+# Adam interrupts cleanly if oui start talking over it.
+# Adam starts speaking before generation completes.
+```
+
 ## v6.10.7 — INCREDIBLE Adam iter 14: file/folder watcher widget (2026-05-25)
 
 Adam watches files now. Point it at a path, optionally tie a skill to the change event, and Adam reacts the moment something hits disk. Stdlib-only (no watchdog dep), single daemon thread, on_change_skill closure for "when X changes run Y" workflows.

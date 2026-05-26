@@ -192,6 +192,20 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #cam-video{transform:scaleX(-1);object-fit:cover}
 #cam-panel .gesture-readout{padding:6px 10px;border-top:1px solid rgba(0,229,255,.18);font-size:10px;letter-spacing:.15em;color:var(--cyan);text-shadow:0 0 4px var(--cyan);text-align:center;min-height:22px}
 #cam-panel.idle .gesture-readout{color:var(--mute);text-shadow:none}
+#convo-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px;position:relative}
+#convo-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 12px rgba(0,229,255,.3)}
+#convo-toggle .convo-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mute);transition:all .2s}
+#convo-toggle.on .convo-dot{background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:convoPulse 1.4s ease-in-out infinite}
+#convo-toggle.state-recording .convo-dot{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:convoPulse .8s ease-in-out infinite}
+#convo-toggle.state-thinking .convo-dot{background:var(--gold);box-shadow:0 0 10px var(--gold);animation:convoSpin 1s linear infinite}
+#convo-toggle.state-speaking .convo-dot{background:var(--magenta);box-shadow:0 0 10px var(--magenta);animation:convoPulse 1s ease-in-out infinite}
+#convo-toggle.state-error .convo-dot{background:var(--err);box-shadow:0 0 8px var(--err)}
+@keyframes convoPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+@keyframes convoSpin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+#convo-banner{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:7;padding:6px 18px;border:1px solid var(--cyan);background:rgba(0,229,255,.08);border-radius:99px;color:var(--cyan);font-size:10px;letter-spacing:.3em;text-transform:uppercase;text-shadow:0 0 6px var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.25);display:none;align-items:center;gap:8px}
+#convo-banner.show{display:flex}
+#convo-banner .level{height:14px;width:60px;background:rgba(0,229,255,.1);border-radius:2px;overflow:hidden;border:1px solid rgba(0,229,255,.2)}
+#convo-banner .level .bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));transition:width .08s}
 #gesture-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #gesture-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,43,214,.08);box-shadow:0 0 12px rgba(255,43,214,.3)}
 .msg .img-attach{max-width:280px;max-height:200px;border:1px solid rgba(0,229,255,.4);border-radius:3px;margin-top:6px;box-shadow:0 0 10px rgba(0,229,255,.18)}
@@ -234,6 +248,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <button id="voiceout-toggle" type="button" onclick="toggleVoiceOut()" title="Speak responses">VOICE</button>
     <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
     <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
+    <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
 </div>
@@ -249,6 +264,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   <div class="mem-section" id="mem-coach-sec"><h3>COACH MASTERY <span class="count" id="mem-coach-n">—</span></h3><div id="mem-coach">loading...</div></div>
   <div class="mem-section" id="mem-daemon-sec"><h3>LEARNING DAEMON <span class="count" id="mem-daemon-status">—</span></h3><div id="mem-daemon">loading...</div></div>
 </div>
+<div id="convo-banner"><span id="convo-state-label">LISTENING</span><span class="level"><span class="bar" id="convo-level-bar"></span></span></div>
 <div id="cam-panel">
   <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span id="cam-fps">— fps</span></div>
   <div id="cam-stage">
@@ -681,6 +697,185 @@ window.send=async function(){
   }
   return _origSend.apply(this,arguments);
 };
+const CONVO_KEY='amni_jarvis_convo';
+const CONVO_SILENCE_MS=600;
+const CONVO_MIN_SPEECH_MS=150;
+const CONVO_MAX_UTTERANCE_MS=10000;
+const CONVO_VAD_THRESHOLD=18;
+const CONVO_BARGE_THRESHOLD=26;
+const CONVO_MAX_FAILS=3;
+let convoOn=false,convoStream=null,convoCtx=null,convoAnalyser=null,convoRAF=null,convoState='idle',convoRecorder=null,convoChunks=[],convoFailCount=0,convoSilenceStart=0,convoSpeechStart=0,convoUtteranceStart=0,convoActive=false;
+const _convoToggle=document.getElementById('convo-toggle'),_convoBanner=document.getElementById('convo-banner'),_convoStateLabel=document.getElementById('convo-state-label'),_convoLevelBar=document.getElementById('convo-level-bar');
+function _setConvoState(s){
+  convoState=s;
+  for(const c of ['state-recording','state-thinking','state-speaking','state-error'])_convoToggle.classList.remove(c);
+  if(s==='recording')_convoToggle.classList.add('state-recording');
+  if(s==='transcribing'||s==='thinking')_convoToggle.classList.add('state-thinking');
+  if(s==='speaking')_convoToggle.classList.add('state-speaking');
+  if(s==='error')_convoToggle.classList.add('state-error');
+  _convoStateLabel.textContent=({listening:'LISTENING',recording:'RECORDING',transcribing:'TRANSCRIBING',thinking:'THINKING',speaking:'SPEAKING',error:'PAUSED',idle:'IDLE'})[s]||s.toUpperCase();
+}
+function _vadLoop(){
+  if(!convoOn||!convoAnalyser){convoRAF=null;return}
+  const buf=new Uint8Array(convoAnalyser.frequencyBinCount);
+  convoAnalyser.getByteFrequencyData(buf);
+  let sum=0;for(let i=0;i<buf.length;i++)sum+=buf[i];
+  const avg=sum/buf.length;
+  _convoLevelBar.style.width=Math.min(100,(avg/40)*100)+'%';
+  const now=performance.now();
+  if((convoState==='speaking'||convoState==='thinking') && avg>CONVO_BARGE_THRESHOLD){
+    if(_audioEl){try{_audioEl.pause();_audioEl.currentTime=0}catch{}}
+    try{window.speechSynthesis&&speechSynthesis.cancel()}catch{}
+    _setConvoState('listening');
+  }
+  if(convoState==='listening'){
+    if(avg>CONVO_VAD_THRESHOLD){
+      convoSpeechStart=now;_setConvoState('recording');convoUtteranceStart=now;convoChunks=[];convoSilenceStart=0;
+      try{
+        const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
+        convoRecorder=mime?new MediaRecorder(convoStream,{mimeType:mime}):new MediaRecorder(convoStream);
+        convoRecorder.ondataavailable=e=>{if(e.data.size>0)convoChunks.push(e.data)};
+        convoRecorder.onstop=_convoFinishRecording;
+        convoRecorder.start();
+      }catch(e){console.warn('convo recorder failed',e);_convoFail('recorder init')}
+    }
+  }else if(convoState==='recording'){
+    if(avg<CONVO_VAD_THRESHOLD){
+      if(convoSilenceStart===0)convoSilenceStart=now;
+      else if(now-convoSilenceStart>CONVO_SILENCE_MS && now-convoSpeechStart>CONVO_MIN_SPEECH_MS){
+        convoSilenceStart=0;try{convoRecorder&&convoRecorder.stop()}catch{}
+      }
+    }else convoSilenceStart=0;
+    if(now-convoUtteranceStart>CONVO_MAX_UTTERANCE_MS){
+      try{convoRecorder&&convoRecorder.stop()}catch{}
+    }
+  }
+  if(convoOn)convoRAF=requestAnimationFrame(_vadLoop);
+}
+async function _prewarmWhisper(){
+  try{
+    const buf=new ArrayBuffer(2048);const blob=new Blob([buf],{type:'audio/webm'});
+    const dataUrl=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob)});
+    const b64=dataUrl.split(',',2)[1];
+    fetch('/voice/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio_base64:b64,model_size:'tiny'})}).catch(()=>{});
+  }catch{}
+}
+async function _convoFinishRecording(){
+  if(!convoOn){return}
+  _setConvoState('transcribing');
+  if(convoChunks.length===0){_setConvoState('listening');return}
+  const blob=new Blob(convoChunks,{type:(convoRecorder&&convoRecorder.mimeType)||'audio/webm'});
+  if(blob.size<800){_setConvoState('listening');return}
+  try{
+    const dataUrl=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob)});
+    const b64=dataUrl.split(',',2)[1];
+    const r=await fetch('/voice/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio_base64:b64})});
+    const j=await r.json();
+    if(!r.ok||!(j.text||'').trim()){convoFailCount++;if(convoFailCount>=CONVO_MAX_FAILS){_convoFail('too many empty transcriptions');return};_setConvoState('listening');return}
+    convoFailCount=0;
+    _setConvoState('thinking');
+    const text=j.text.trim();
+    input.value='';
+    await _convoStreamSend(text);
+  }catch(e){console.warn('convo transcribe failed',e);convoFailCount++;if(convoFailCount>=CONVO_MAX_FAILS){_convoFail('transcribe error')}else _setConvoState('listening')}
+}
+function _convoFail(reason){
+  console.warn('convo disabling:',reason);
+  convoOn=false;localStorage.setItem(CONVO_KEY,'0');_convoToggle.classList.remove('on');_setConvoState('error');_convoBanner.classList.remove('show');
+  if(convoRecorder){try{convoRecorder.stop()}catch{}}
+  if(convoStream){convoStream.getTracks().forEach(t=>t.stop());convoStream=null}
+  if(convoCtx){try{convoCtx.close()}catch{};convoCtx=null}
+}
+async function _startConvo(){
+  try{convoStream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){bubble('bot','Webcam permission denied: '+e.message,'<span class="badge err">convo</span>');_convoFail('mic denied');return}
+  try{
+    convoCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=convoCtx.createMediaStreamSource(convoStream);
+    convoAnalyser=convoCtx.createAnalyser();convoAnalyser.fftSize=256;convoAnalyser.smoothingTimeConstant=0.5;
+    src.connect(convoAnalyser);
+  }catch(e){_convoFail('audio context: '+e.message);return}
+  convoFailCount=0;_setConvoState('listening');_convoBanner.classList.add('show');convoActive=false;
+  _prewarmWhisper();
+  _vadLoop();
+}
+async function _convoStreamSend(text){
+  bubble('user',text);
+  const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
+  let acc='',spoken='',ttsQueue=[],ttsPlaying=false;
+  const _SENT_RE=/([.!?…][\s"')\]\}]*)/;
+  async function _flushTTS(chunk){
+    if(!chunk||!chunk.trim())return;
+    if(!_voiceBackends.tts){_speakBrowser(chunk);return}
+    try{
+      const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:chunk})});
+      if(!r.ok){_speakBrowser(chunk);return}
+      const j=await r.json();if(!j.audio_base64){_speakBrowser(chunk);return}
+      ttsQueue.push('data:'+(j.content_type||'audio/wav')+';base64,'+j.audio_base64);
+      _drainTTS();
+    }catch{_speakBrowser(chunk)}
+  }
+  function _drainTTS(){
+    if(ttsPlaying||ttsQueue.length===0)return;
+    ttsPlaying=true;const url=ttsQueue.shift();
+    if(_audioEl){try{_audioEl.pause()}catch{}}
+    _audioEl=new Audio(url);
+    _audioEl.onended=()=>{ttsPlaying=false;_drainTTS();if(convoOn && ttsQueue.length===0)_setConvoState('listening')};
+    _audioEl.onerror=()=>{ttsPlaying=false;_drainTTS()};
+    _audioEl.play().catch(()=>{ttsPlaying=false;_drainTTS()});
+  }
+  function _consumeSentence(){
+    const m=acc.slice(spoken.length).match(_SENT_RE);
+    if(m){const idx=m.index+m[0].length;const piece=acc.slice(spoken.length,spoken.length+idx);spoken+=piece;_flushTTS(piece)}
+  }
+  try{
+    const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sid?{message:text,session_id:sid}:{message:text})});
+    const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';
+    while(true){
+      const {done,value}=await reader.read();if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const events=buf.split('\n\n');buf=events.pop()||'';
+      for(const evt of events){
+        const lines=evt.split('\n');let etype='message',edata='';
+        for(const ln of lines){if(ln.startsWith('event: '))etype=ln.slice(7);else if(ln.startsWith('data: '))edata+=ln.slice(6)}
+        if(!edata)continue;
+        try{
+          if(etype==='token'){const chunk=JSON.parse(edata);if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}acc+=chunk;bot.bubble.innerHTML=md(acc);_consumeSentence();log.scrollTop=log.scrollHeight}
+          else if(etype==='meta'){const m=JSON.parse(edata);if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}}
+          else if(etype==='done'){const tail=acc.slice(spoken.length);if(tail.trim()){spoken=acc;_flushTTS(tail)}}
+        }catch(p){}
+      }
+    }
+  }catch(e){bot.bubble.classList.remove('thinking');bot.bubble.textContent='stream error: '+e.message;_setConvoState('listening')}
+}
+function _stopConvo(){
+  if(convoRAF){cancelAnimationFrame(convoRAF);convoRAF=null}
+  if(convoRecorder&&convoRecorder.state==='recording'){try{convoRecorder.stop()}catch{}}
+  if(convoStream){convoStream.getTracks().forEach(t=>t.stop());convoStream=null}
+  if(convoCtx){try{convoCtx.close()}catch{};convoCtx=null}
+  convoAnalyser=null;_setConvoState('idle');_convoBanner.classList.remove('show');convoActive=false;
+}
+function toggleConvo(){
+  convoOn=!convoOn;localStorage.setItem(CONVO_KEY,convoOn?'1':'0');_convoToggle.classList.toggle('on',convoOn);
+  if(convoOn){
+    if(!_voiceBackends.stt){bubble('bot','Convo mode needs local STT (faster-whisper). Install: pip install faster-whisper','<span class="badge err">convo</span>');convoOn=false;_convoToggle.classList.remove('on');return}
+    if(typeof MediaRecorder==='undefined'||!navigator.mediaDevices){bubble('bot','Convo mode needs MediaRecorder + getUserMedia. Use a recent browser.','<span class="badge err">convo</span>');convoOn=false;_convoToggle.classList.remove('on');return}
+    voiceOut=true;localStorage.setItem(VKEY,'1');document.getElementById('voiceout-toggle').classList.add('on');
+    _startConvo();
+  }else _stopConvo();
+}
+const _origSpeak=speak;
+window.speak=async function(text){
+  if(convoOn)_setConvoState('speaking');
+  try{await _origSpeak.call(this,text)}catch{}
+  if(convoOn){
+    if(_audioEl){
+      const tick=()=>{if(_audioEl&&!_audioEl.paused&&!_audioEl.ended){requestAnimationFrame(tick);return}_setConvoState('listening')};
+      requestAnimationFrame(tick);
+    }else _setConvoState('listening');
+  }
+};
+if(localStorage.getItem(CONVO_KEY)==='1'){setTimeout(()=>{convoOn=true;_convoToggle.classList.add('on');voiceOut=true;localStorage.setItem(VKEY,'1');document.getElementById('voiceout-toggle').classList.add('on');_startConvo()},1200)}
 document.addEventListener('paste',async e=>{
   if(!e.clipboardData)return;
   for(const item of e.clipboardData.items){
