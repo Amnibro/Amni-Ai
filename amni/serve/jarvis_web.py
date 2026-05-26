@@ -317,6 +317,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .briefing .b-tags{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
 .briefing .b-tag{display:inline-block;padding:1px 6px;font-size:9px;background:rgba(0,229,255,.08);color:var(--cyan);border:1px solid rgba(0,229,255,.18);border-radius:2px;letter-spacing:.05em;text-transform:capitalize}
 .briefing .b-mute{color:var(--mute);font-style:italic;font-size:10px}
+#adam-core{position:fixed;top:18px;right:24px;width:60px;height:60px;z-index:8;cursor:pointer;opacity:.85;transition:opacity .25s, transform .25s}
+#adam-core:hover{opacity:1;transform:scale(1.08)}
+#adam-core.hidden{display:none}
+#adam-core.collapsed{transform:scale(0.5);opacity:.55}
 #toast-stack{position:fixed;bottom:140px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:14;max-width:340px;pointer-events:none}
 .toast{pointer-events:auto;padding:10px 12px;border:1px solid rgba(0,229,255,.35);background:rgba(8,14,28,.94);border-left:3px solid var(--cyan);border-radius:3px;font-size:11px;color:var(--fg);box-shadow:0 0 14px rgba(0,229,255,.18);backdrop-filter:blur(6px);transform:translateX(60px);opacity:0;transition:transform .25s ease-out, opacity .25s ease-out;cursor:pointer;font-family:inherit}
 .toast.show{transform:translateX(0);opacity:1}
@@ -711,6 +715,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   <div class="gesture-readout" id="gesture-readout">—</div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
+<canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
 <div id="toast-stack"></div>
 <div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE OR TEXT FILE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
@@ -1133,6 +1138,71 @@ function _dismissToast(id){
 function toggleNotifVoice(){_notifVoiceOn=!_notifVoiceOn;localStorage.setItem(NOTIF_VOICE_KEY,_notifVoiceOn?'1':'0');bubble('bot','Proactive notification voice **'+(_notifVoiceOn?'on':'off')+'**.','<span class="badge">notif</span>')}
 function _startNotifPolling(){if(_notifPollTimer)return;_pollNotifications();_notifPollTimer=setInterval(_pollNotifications,10000)}
 _startNotifPolling();
+const CORE_KEY='amni_jarvis_core_state';
+let _coreCollapsed=localStorage.getItem(CORE_KEY)==='collapsed';
+let _corePulses=[],_coreFrame=0,_coreLastToken=0;
+function _coreInit(){
+  const el=document.getElementById('adam-core');if(!el)return;
+  if(_coreCollapsed)el.classList.add('collapsed');
+  el.addEventListener('click',_coreToggle);
+  requestAnimationFrame(_coreDraw);
+}
+function _coreToggle(){_coreCollapsed=!_coreCollapsed;const el=document.getElementById('adam-core');el.classList.toggle('collapsed',_coreCollapsed);localStorage.setItem(CORE_KEY,_coreCollapsed?'collapsed':'normal')}
+function _coreColor(){
+  if(convoState==='speaking')return ['#ffd770','rgba(255,215,112,'];
+  if(convoState==='thinking'||convoState==='transcribing')return ['#ff4dc8','rgba(255,77,200,'];
+  if(convoState==='recording')return ['#00e5ff','rgba(0,229,255,'];
+  if(convoState==='error')return ['#ff5b5b','rgba(255,91,91,'];
+  if(convoOn)return ['#00e5ff','rgba(0,229,255,'];
+  return ['#7ad6ff','rgba(122,214,255,'];
+}
+function _corePulse(){_corePulses.push({t:performance.now(),life:900})}
+function _coreDraw(){
+  _coreFrame++;
+  const el=document.getElementById('adam-core');if(!el){requestAnimationFrame(_coreDraw);return}
+  const ctx=el.getContext('2d');const W=el.width,H=el.height,cx=W/2,cy=H/2;
+  ctx.clearRect(0,0,W,H);
+  const [stroke,rgba]=_coreColor();const now=performance.now();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate((_coreFrame*0.012)%(Math.PI*2));
+  ctx.strokeStyle=rgba+'0.55)';ctx.lineWidth=1.5;
+  for(let i=0;i<6;i++){
+    const a0=(i/6)*Math.PI*2;const a1=a0+0.55;
+    ctx.beginPath();ctx.arc(0,0,46,a0,a1);ctx.stroke();
+  }
+  ctx.restore();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(-(_coreFrame*0.022)%(Math.PI*2));
+  ctx.strokeStyle=rgba+'0.7)';ctx.lineWidth=1.2;
+  for(let i=0;i<4;i++){
+    const a0=(i/4)*Math.PI*2;const a1=a0+0.35;
+    ctx.beginPath();ctx.arc(0,0,33,a0,a1);ctx.stroke();
+  }
+  ctx.restore();
+  ctx.strokeStyle=rgba+'0.18)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,52,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,40,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,26,0,Math.PI*2);ctx.stroke();
+  _corePulses=_corePulses.filter(p=>now-p.t<p.life);
+  for(const p of _corePulses){
+    const k=(now-p.t)/p.life;const r=18+k*38;const a=Math.max(0,1-k);
+    ctx.strokeStyle=rgba+(a*0.5).toFixed(3)+')';ctx.lineWidth=1.8;
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  }
+  const breath=0.5+0.5*Math.sin(_coreFrame*0.04);
+  const dotR=8+breath*3;
+  ctx.fillStyle=stroke;ctx.shadowColor=stroke;ctx.shadowBlur=12+breath*8;
+  ctx.beginPath();ctx.arc(cx,cy,dotR,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  if(convoState==='recording'||convoState==='listening'){
+    ctx.fillStyle=rgba+'0.85)';
+    for(let i=0;i<3;i++){
+      const a=(_coreFrame*0.06+i*2.094)%(Math.PI*2);
+      const x=cx+Math.cos(a)*18,y=cy+Math.sin(a)*18;
+      ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fill();
+    }
+  }
+  requestAnimationFrame(_coreDraw);
+}
+_coreInit();
 const SESSION_RESTORE_LIMIT=24;
 async function _restoreSession(){
   if(!sid)return;
@@ -1910,7 +1980,7 @@ async function _streamReplyWithTTS(text,opts){
         for(const ln of lines){if(ln.startsWith('event: '))etype=ln.slice(7);else if(ln.startsWith('data: '))edata+=ln.slice(6)}
         if(!edata)continue;
         try{
-          if(etype==='token'){const chunk=JSON.parse(edata);if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}acc+=chunk;tokCount+=Math.max(1,Math.ceil(chunk.length/4));_updateTokMeter();bot.bubble.innerHTML=md(acc);_consumeSentence();log.scrollTop=log.scrollHeight}
+          if(etype==='token'){const chunk=JSON.parse(edata);if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}acc+=chunk;tokCount+=Math.max(1,Math.ceil(chunk.length/4));_updateTokMeter();bot.bubble.innerHTML=md(acc);_consumeSentence();log.scrollTop=log.scrollHeight;if(typeof _corePulse==='function'&&performance.now()-_coreLastToken>180){_coreLastToken=performance.now();_corePulse()}}
           else if(etype==='meta'){const m=JSON.parse(edata);if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}}
           else if(etype==='done'){const tail=acc.slice(spoken.length);if(tail.trim()){spoken=acc;_flushTTS(tail)};_updateTokMeter(true);tokMeter.classList.add('done');setTimeout(()=>{tokMeter.classList.add('fade')},2500);setTimeout(()=>{try{tokMeter.remove()}catch{}},3800)}
         }catch(p){}

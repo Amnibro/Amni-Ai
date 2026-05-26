@@ -2,6 +2,39 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.38 — Ambient Adam-core canvas (the Suryansh-Jarvis 3D HUD reference, in 2D) (2026-05-26)
+
+The Suryansh Jarvis-CV repo Anthony linked has a rotating 3D core — visual signature of "AI is alive". Three.js would be heavy for one iter, so v6.10.38 ships the same essence as a lightweight 2D canvas in the top-right corner. Always there, breathing, pulsing on token events, color-shifting with Adam's state.
+
+### `#adam-core` canvas (60×60 css, 120×120 native for crispness)
+Fixed at `top:18px right:24px`. Click toggles a `.collapsed` state that scales to 0.5× and dims to 0.55 opacity — persists in localStorage as `amni_jarvis_core_state`. Hover at full size scales 1.08× and pumps to full opacity.
+
+### What it renders (60fps via rAF)
+1. **Outer ring** — 6 arc segments rotating clockwise at 0.012 rad/frame
+2. **Inner ring** — 4 arc segments counter-rotating at 0.022 rad/frame
+3. **Three concentric track rings** at radii 26/40/52 (dim, ambient)
+4. **Center dot** — breathing radius (`8 + 3·sin(frame·0.04)`) with `shadowBlur` glow proportional to breath
+5. **Token-stream pulse** — every streaming token event triggers a `_corePulse()` (throttled to one per 180ms). Pulses are expanding rings (radius 18→56 over 900ms, alpha 1→0). Multiple pulses stack visually.
+6. **Listening orbital dots** — when convoState is `recording` or `listening`, 3 small dots orbit at radius 18, rotating with frame counter
+
+### State-driven color (`_coreColor()`)
+- speaking → gold (#ffd770)
+- thinking / transcribing → magenta (#ff4dc8)
+- recording → bright cyan (#00e5ff)
+- error → red (#ff5b5b)
+- convo-on but idle → bright cyan (#00e5ff)
+- not in convo → dim cyan (#7ad6ff)
+
+Color drives every stroke + the center dot + the rgba-tint background of the pulses, so the whole core color-shifts as a unit.
+
+### Why this matters
+Adam is always doing things in the background — daemon ingesting, sessions persisting, verifications running — but the UI was silent until the user invoked something. The ambient core makes Adam's *presence* visible. Combined with the v6.10.30 voice waveform + v6.10.31 token meter + v6.10.32 streak badge + v6.10.37 briefing, every Adam activity has a visual signature. Real Jarvis vibe.
+
+### Tests
+18/18 PASS (`tests/test_adam_core_v6_10_38.py`): canvas + dimensions present, positioned top-right, collapsed CSS, hover amplification, 5 helper fns, rAF self-driving, color branches for all 5 convoStates, localStorage persistence + key, click toggle, init loads collapsed from storage, outer ring (6 arcs rotating), inner ring (4 arcs counter-rotating), center dot breathing via Math.sin, pulse triggered on token event with 180ms throttle, pulse alpha+radius fade, recording/listening adds orbital dots, v6.10.37 regression intact. Recent chain (v6.10.34 → .37): 68/68 still PASS. Total: 86/86.
+
+---
+
 ## v6.10.37 — 24-hour activity briefing — Adam reports on his own day (2026-05-26)
 
 The data was all there — daemon notifications, shell history, verification log, coach streak — but the user had to click through six panels to assemble a picture of what Adam had been doing. v6.10.37 aggregates it into one Jarvis-style briefing card on tap.
