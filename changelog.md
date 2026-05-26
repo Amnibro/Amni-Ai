@@ -2,6 +2,47 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.49 — Coach review-now mode (closes the v6.10.47 SR loop) (2026-05-26)
+
+v6.10.47 surfaced due review cards in the coach panel, but clicking one only loaded the topic name into the input — the user had to wait for Adam to organically re-ask the question, which might never happen. v6.10.49 closes the loop: clicking a due card actually starts a coach session with that specific question as the first ask.
+
+### Coach skill extension
+`coach` skill's `start` action now accepts:
+- `seed_question` — exact question text to ask first (skips the LLM question-generation phase)
+- `seed_model_answer` (optional) — ground truth for grading; if omitted, a cheap LLM call (`_gen_model_answer`) generates one
+- `seed_hint` (optional) — hint to surface on demand
+
+When seeded, response includes `is_review: true` so the UI can label the bubble appropriately.
+
+### New helper `_gen_model_answer(adam, question)`
+Lightweight LLM call that just produces a model_answer + hint for a given question. Used when the review card has the question text but no ground-truth answer (CoachAtlas rows don't store model_answer historically). Saves a full question-generation roundtrip on the review path.
+
+### UI: review cards now actually re-ask
+`_coachStartReview(idx)` (new):
+1. Pulls the full review-card data from `window._coachReviewItems` (stashed during `_coachLoadReviews`)
+2. Bubbles: *"Re-asking due card from **TOPIC** (Xd since last attempt, Y× overdue)…"*
+3. Calls coach skill with `{action:start, topic, difficulty:last_difficulty, seed_question:question}` — preserves the original difficulty so the streak math doesn't reset
+4. Activates the coach panel, renders the question, kicks off voice-mode TTS if enabled, then refreshes the topics dashboard to update mastery
+
+Failure modes: card no longer in cache (panel was refreshed since render) → friendly bubble, no crash.
+
+### Tests
+16/16 PASS (`tests/test_coach_review_seed_v6_10_49.py`): `_gen_model_answer` helper present + returns model_answer + hint + bails on empty question, coach start with seed skips question generation, calls gen_model_answer for ground truth, pre-provided model_answer skips LLM entirely (zero token cost), no seed falls back to normal `_gen_question`, session persists seeded pending_model_answer + hint, skill schema documents the new args (so LLM tool-callers know about them), /jarvis review card calls `_coachStartReview`, stashes full review items in window, passes `seed_question` + last_difficulty, speaks via Piper if voice on, bails when card missing from cache, v6.10.48 regression intact. Recent chain (v6.10.45 → .48): 75/75 still PASS. Total: 91/91.
+
+### What this completes
+The coach feature set is now end-to-end-end:
+- v6.10.18 — interactive Socratic loop
+- v6.10.20 — voice-native (auto-speak Q+grade)
+- v6.10.21 — practiced-topics dashboard
+- v6.10.32 — streak gamification (🔥 / ⚡ tiers)
+- v6.10.39 — per-topic export (md/anki/json)
+- v6.10.47 — SM-2-lite due-review queue
+- **v6.10.49 — actual review-now (click → re-ask the exact card)**
+
+Practice → grade → track → space → review → export. Spaced-repetition loop closed.
+
+---
+
 ## v6.10.48 — Keyboard shortcuts + cheat-sheet overlay (2026-05-26)
 
 After 47 iters of features stacked into /jarvis, power-users need keyboard access. v6.10.48 wires 10 ctrl-modified shortcuts + `?` cheat-sheet overlay + `Esc` universal-close.

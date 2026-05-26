@@ -47,6 +47,18 @@ def _call_adam_json(adam,prompt:str,max_new_tokens:int=400)->Optional[Dict[str,A
     except Exception:return None
     ans=(r or {}).get('answer','') if isinstance(r,dict) else ''
     return _extract_json(ans)
+_GEN_MA_PROMPT=(
+    'You are reviewing a flashcard. Provide ONLY the correct answer to the question, in 1-3 concise sentences.\n'
+    'QUESTION: {Q}\n\n'
+    'Output ONLY this JSON object:\n'
+    '{"model_answer":"<concise correct answer>", "hint":"<a non-revealing nudge for the student>"}'
+)
+def _gen_model_answer(adam,question:str)->Dict[str,str]:
+    """Cheap LLM call: given a question (e.g. a v6.10.47 review-queue card), produce a model answer + hint so the grader has ground truth."""
+    if not question.strip():return {'model_answer':'','hint':''}
+    obj=_call_adam_json(adam,_GEN_MA_PROMPT.replace('{Q}',question),max_new_tokens=250)
+    if not obj:return {'model_answer':'','hint':''}
+    return {'model_answer':str(obj.get('model_answer','')).strip(),'hint':str(obj.get('hint','')).strip()}
 def _gen_question(adam,atlas:CoachAtlas,topic:str,difficulty:int)->Optional[Dict[str,Any]]:
     recent=atlas.recent_questions(topic,k=6)
     recent_str=json.dumps(recent[-6:]) if recent else '[]'
@@ -78,11 +90,18 @@ def coach_skill(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
         if not topic:return {'error':'need topic to start: coach start <topic>'}
         sid=atlas.start_session(topic,session_id=sid,initial_difficulty=int(args.get('difficulty',2)))
         s=atlas.get_session(sid)
-        q=_gen_question(adam,atlas,topic,s['difficulty'])
-        if not q:return {'error':'question generation failed (adam returned no valid JSON)','session_id':sid}
+        seed_q=(args.get('seed_question') or '').strip()
+        if seed_q:
+            seed_ma=(args.get('seed_model_answer') or '').strip()
+            seed_hint=(args.get('seed_hint') or '').strip()
+            if not seed_ma:gen=_gen_model_answer(adam,seed_q);seed_ma=gen['model_answer'];seed_hint=seed_hint or gen['hint']
+            q={'question':seed_q,'model_answer':seed_ma,'hint':seed_hint}
+        else:
+            q=_gen_question(adam,atlas,topic,s['difficulty'])
+            if not q:return {'error':'question generation failed (adam returned no valid JSON)','session_id':sid}
         atlas.update_session(sid,pending_question=q['question'],pending_model_answer=q['model_answer'],pending_hint=q['hint'])
         m=atlas.mastery(topic)
-        return {'session_id':sid,'topic':topic,'difficulty':s['difficulty'],'question':q['question'],'mastery':m,'widget':_widget_envelope(atlas.get_session(sid),m,q['question'])}
+        return {'session_id':sid,'topic':topic,'difficulty':s['difficulty'],'question':q['question'],'mastery':m,'is_review':bool(seed_q),'widget':_widget_envelope(atlas.get_session(sid),m,q['question'])}
     if not sid:return {'error':'no session_id; start one with action=start, topic=<topic>'}
     s=atlas.get_session(sid)
     if s is None:return {'error':f'unknown session_id {sid}; sessions are in-memory; start a new one'}
