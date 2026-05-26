@@ -787,6 +787,19 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='attempt_next':return _pa.attempt_next_eligible(max_attempts=int(args.get('max',1)),dry_run=bool(args.get('dry_run',False)))
         return {'error':f'unknown action {action!r}; valid: handlers|attempt|attempt_next'}
     reg.register('proposal_attempt',_skill_proposal_attempt,desc='Auto-attempt LOW-RISK (category=documentation) self-improvement proposals via deterministic handlers. Pipeline: backup -> apply -> ast.parse + sha256 readback + sibling pytest -> transition state. NEVER marks deployed (human approval required). Actions: handlers (list known) | attempt (id, dry_run?) | attempt_next (max?, dry_run?).',schema={'action':'str?','id':'str?','dry_run':'bool?','notify':'bool?','max':'int?'})
+    def _skill_metrics_snapshot(args,ctx,reg_):
+        """Adam's daily metrics snapshot for trend tracking. Actions: status | snapshot | history | trend | enable | disable."""
+        from amni.serve import metrics_snapshot as _ms
+        action=(args.get('action') or 'status').strip().lower()
+        if action=='status':return _ms.status()
+        if action=='snapshot':return _ms.snapshot(force=bool(args.get('force',False)),notify=bool(args.get('notify',False)))
+        if action=='collect':return {'snapshot':_ms.collect()}
+        if action=='history':return {'history':_ms.history(limit=int(args.get('limit',30)))}
+        if action=='trend':return _ms.trend(days=int(args.get('days',7)))
+        if action=='enable':return _ms.set_enabled(True)
+        if action=='disable':return _ms.set_enabled(False)
+        return {'error':f'unknown action {action!r}; valid: status|snapshot|collect|history|trend|enable|disable'}
+    reg.register('metrics_snapshot',_skill_metrics_snapshot,desc='Daily metric snapshots of Adam\'s own behavior (skill latency, daemon throughput, coach streak, verification pass rate, proposal mix, queue depth). One row/day to data/metrics_snapshots.jsonl. Actions: status | snapshot (force?, notify?) | collect (read-only sample) | history (limit?) | trend (days?) | enable | disable.',schema={'action':'str?','force':'bool?','notify':'bool?','days':'int?','limit':'int?'})
     try:
         from amni.serve import widgets as _w
         def _skill_weather(args,ctx,reg_):
