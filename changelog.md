@@ -2,6 +2,37 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.29 — Drag-drop text & code files into /jarvis (2026-05-26)
+
+Adam already accepted dropped images (BLIP caption + VQA). But dropping a `.py` / `.md` / `.json` / `.csv` file did nothing — the file was ignored. v6.10.29 fixes that: any text or code file dropped onto /jarvis gets ingested, wrapped in a language-tagged fence, and posted to Adam for analysis.
+
+### Recognized extensions (50+)
+`md`, `txt`, `csv`, `tsv`, `log` (text & data) · `py`, `js`, `mjs`, `ts`, `tsx`, `jsx`, `rs`, `go`, `c`, `cpp`, `h`, `hpp`, `cs`, `java`, `kt`, `swift`, `rb`, `php`, `dart`, `lua`, `pl`, `r`, `jl`, `m`, `f90`, `f95`, `asm` (code) · `sh`, `bash`, `zsh`, `ps1` (shell) · `yaml`, `yml`, `toml`, `json`, `xml`, `ini`, `cfg`, `conf`, `env`, `lock` (config) · `html`, `htm`, `css`, `scss`, `vue`, `svelte`, `astro` (web) · `sql`, `rst`, `tex`, `dockerfile`, `makefile`, `gitignore` (misc)
+
+Also accepts MIME-based detection (`text/*`, `application/json`, `application/x-yaml`, `application/xml`) when an extension is missing or unknown.
+
+### Flow
+1. File dropped → `_isTextDrop(f)` checks ext + MIME
+2. Read as text (truncated to 200 KB cap — caps memory + token budget)
+3. User bubble: `Dropped file **<name>** (<bytes> bytes[, truncated to 200000]). Asking Adam to analyze it…`
+4. Prompt assembled with language-tagged fence: ``` ```<ext>\n<content>\n``` ```
+5. `input.value = prompt; await send()` — routes through normal chat path, hits session log, gets verified, etc.
+
+### Priority order in drop handler
+1. Image (existing v6.10.x BLIP path) — wins
+2. Text/code (new) — fallback
+3. Anything else — drop silently
+
+Image priority preserved so pasting a screenshot still triggers vision, not text mode.
+
+### Tests
+15/15 PASS (`tests/test_text_drop_v6_10_29.py`): overlay label updated, `handleTextFileBlob` + `_isTextDrop` present, 15-ext spot check on the 50+ allowlist, 200 KB cap constant, drop handler routes text files, image priority preserved, large-file truncation, language-tagged code fence (raw-or-escaped form), `input.value`+`send()` flow, user bubble first, catch-block error handling, MIME-type fallback (text/json/yaml/xml), extension-less special files (dockerfile/makefile/gitignore), v6.10.28 regression intact. Recent chain (v6.10.25 → .28): 66/66 still PASS. Total: 81/81.
+
+### What this lights up
+Combined with the existing `chain` skill (v6.10.23) and natural-language router (v6.10.24), the user can now drag `error.log` onto /jarvis and say "analyze this and save the diagnosis to diagnosis.txt" — Adam reads, reasons, writes the conclusion, runs sibling pytest if applicable, surfaces the verification widget. End-to-end file workflow without leaving the chat.
+
+---
+
 ## v6.10.28 — Chat export to Markdown (download the conversation) (2026-05-26)
 
 v6.10.26 restored chat across reloads, v6.10.27 made it searchable, v6.10.28 lets you take it with you. New EXPORT button in /jarvis composer downloads the entire current conversation as a clean markdown file.
