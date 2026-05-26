@@ -86,6 +86,19 @@ def mount(app,agent):
     def skill_failures_list(limit:int=20,skill:str=''):
         from amni.serve.skill_failures import recent,stats
         return {'failures':recent(limit=limit,skill_filter=skill or None),'stats':stats()}
+    @app.get('/memory/bookmarks')
+    def bookmarks_list(limit:int=20,session_id:str='',search:str=''):
+        from amni.serve.bookmarks import list_recent,stats
+        return {'bookmarks':list_recent(limit=limit,session_id=session_id or None,search=search or ''),'stats':stats()}
+    @app.post('/memory/bookmarks')
+    async def bookmarks_add(req:Request):
+        from amni.serve.bookmarks import add
+        body=await req.json()
+        return add(session_id=body.get('session_id',''),user_msg=body.get('user_msg',''),bot_msg=body.get('bot_msg',''),note=body.get('note',''),tier=body.get('tier',''),persona=body.get('persona',''))
+    @app.delete('/memory/bookmarks/{bid}')
+    def bookmarks_delete(bid:str):
+        from amni.serve.bookmarks import delete
+        return delete(bid)
     @app.post('/memory/skill-failures/ack')
     def skill_failures_ack():
         from amni.serve.skill_failures import ack_all
