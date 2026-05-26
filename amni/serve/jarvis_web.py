@@ -202,6 +202,32 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #convo-toggle.state-error .convo-dot{background:var(--err);box-shadow:0 0 8px var(--err)}
 @keyframes convoPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
 @keyframes convoSpin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+#vad-panel{position:fixed;top:60px;left:24px;width:300px;z-index:10;border:1px solid rgba(0,229,255,.35);border-radius:4px;background:rgba(8,14,28,.94);box-shadow:0 0 24px rgba(0,229,255,.22);overflow:hidden;backdrop-filter:blur(8px);display:none}
+#vad-panel.show{display:block}
+#vad-panel .vp-head{padding:8px 12px;border-bottom:1px solid rgba(0,229,255,.2);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;align-items:center;justify-content:space-between;background:rgba(8,14,28,.98)}
+#vad-panel .vp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.2);border-radius:3px;font-size:10px}
+#vad-panel .vp-head .close:hover{color:var(--err);border-color:var(--err)}
+#vad-panel .vp-body{padding:10px 12px}
+#vad-panel .vp-row{margin-bottom:10px}
+#vad-panel .vp-row .vp-lbl{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);display:flex;justify-content:space-between;align-items:baseline}
+#vad-panel .vp-row .vp-lbl .v{color:var(--cyan);font-size:11px}
+#vad-panel input[type=range]{width:100%;-webkit-appearance:none;appearance:none;background:transparent;margin-top:5px;cursor:pointer}
+#vad-panel input[type=range]::-webkit-slider-runnable-track{height:3px;background:rgba(0,229,255,.15);border-radius:2px}
+#vad-panel input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);margin-top:-6px;cursor:grab}
+#vad-panel input[type=range]::-moz-range-track{height:3px;background:rgba(0,229,255,.15);border-radius:2px}
+#vad-panel input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);border:0;cursor:grab}
+#vad-panel .vp-meter{padding:8px 0;border-top:1px solid rgba(0,229,255,.08);margin-top:8px}
+#vad-panel .vp-meter .lbl{font-size:9px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;margin-bottom:4px}
+#vad-panel .vp-meter .bar-track{height:8px;background:rgba(0,229,255,.05);border-radius:2px;position:relative;border:1px solid rgba(0,229,255,.15)}
+#vad-panel .vp-meter .bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));transition:width .06s;border-radius:2px}
+#vad-panel .vp-meter .threshold-line{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--gold);box-shadow:0 0 4px var(--gold)}
+#vad-panel .vp-meter .barge-line{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--magenta);box-shadow:0 0 4px var(--magenta)}
+#vad-panel .vp-row.act{display:flex;gap:6px;margin-top:12px;border-top:1px solid rgba(0,229,255,.08);padding-top:10px}
+#vad-panel .vp-row.act button{flex:1;padding:5px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
+#vad-panel .vp-row.act button:hover{background:rgba(0,229,255,.1);border-color:var(--cyan)}
+#vad-panel .hint{font-size:9px;color:var(--mute);letter-spacing:.05em;margin-top:6px;font-style:italic}
+#vad-toggle{padding:0 10px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
+#vad-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.08)}
 #convo-banner{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:7;padding:6px 18px;border:1px solid var(--cyan);background:rgba(0,229,255,.08);border-radius:99px;color:var(--cyan);font-size:10px;letter-spacing:.3em;text-transform:uppercase;text-shadow:0 0 6px var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.25);display:none;align-items:center;gap:8px}
 #convo-banner.show{display:flex}
 #convo-banner .level{height:14px;width:60px;background:rgba(0,229,255,.1);border-radius:2px;overflow:hidden;border:1px solid rgba(0,229,255,.2)}
@@ -249,6 +275,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
     <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
     <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
+    <button id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
 </div>
@@ -263,6 +290,21 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   <div class="mem-section" id="mem-kg-sec"><h3>KNOWLEDGE GRAPH <span class="count" id="mem-kg-n">—</span></h3><div id="mem-kg">loading...</div></div>
   <div class="mem-section" id="mem-coach-sec"><h3>COACH MASTERY <span class="count" id="mem-coach-n">—</span></h3><div id="mem-coach">loading...</div></div>
   <div class="mem-section" id="mem-daemon-sec"><h3>LEARNING DAEMON <span class="count" id="mem-daemon-status">—</span></h3><div id="mem-daemon">loading...</div></div>
+</div>
+<div id="vad-panel">
+  <div class="vp-head"><span>◆ VAD TUNING</span><span class="close" onclick="toggleVadPanel()">CLOSE</span></div>
+  <div class="vp-body">
+    <div class="vp-row"><div class="vp-lbl"><span>Speech threshold</span><span class="v" id="vp-vt-v">18</span></div><input type="range" id="vp-vt" min="5" max="50" step="1" oninput="_onVadSlider('vad_threshold',this.value)"></div>
+    <div class="vp-row"><div class="vp-lbl"><span>Barge-in threshold</span><span class="v" id="vp-bt-v">26</span></div><input type="range" id="vp-bt" min="15" max="60" step="1" oninput="_onVadSlider('barge_threshold',this.value)"></div>
+    <div class="vp-row"><div class="vp-lbl"><span>Silence to send (ms)</span><span class="v" id="vp-sl-v">600</span></div><input type="range" id="vp-sl" min="200" max="2000" step="50" oninput="_onVadSlider('silence_ms',this.value)"></div>
+    <div class="vp-row"><div class="vp-lbl"><span>Min utterance (ms)</span><span class="v" id="vp-ms-v">150</span></div><input type="range" id="vp-ms" min="50" max="500" step="10" oninput="_onVadSlider('min_speech_ms',this.value)"></div>
+    <div class="vp-meter">
+      <div class="lbl">Live mic level (open CONVO to populate)</div>
+      <div class="bar-track"><div class="bar-fill" id="vp-meter-fill"></div><div class="threshold-line" id="vp-vt-line"></div><div class="barge-line" id="vp-bt-line"></div></div>
+      <div class="hint">Gold = speech threshold · Magenta = barge-in threshold. Talk normally and tune sliders so gold sits just below your speaking level and magenta above.</div>
+    </div>
+    <div class="vp-row act"><button onclick="_resetVad()">RESET</button><button onclick="toggleVadPanel()">DONE</button></div>
+  </div>
 </div>
 <div id="convo-banner"><span id="convo-state-label">LISTENING</span><span class="level"><span class="bar" id="convo-level-bar"></span></span></div>
 <div id="cam-panel">
@@ -688,22 +730,70 @@ async function askAboutLastImage(question){
 const _origSend=send;
 window.send=async function(){
   const t=input.value.trim();
-  if(_lastImage && t && /\b(this|that|the image|the picture|in it|show |describe |what is|what's|color|shape)/i.test(t)){
+  if(!t)return;
+  if(_lastImage && /\b(this|that|the image|the picture|in it|show |describe |what is|what's|color|shape)/i.test(t)){
     input.value='';input.style.height='auto';
     const uMsg=document.createElement('div');uMsg.className='msg user';
     const uB=document.createElement('div');uB.className='bubble';uB.textContent=t;uMsg.appendChild(uB);
     log.appendChild(uMsg);log.scrollTop=log.scrollHeight;
     await askAboutLastImage(t);return;
   }
+  if(voiceOut && _voiceBackends.tts && !convoOn){
+    input.value='';input.style.height='auto';send_btn.disabled=true;
+    try{await _streamReplyWithTTS(t,{createBubbles:true})}
+    finally{send_btn.disabled=false;input.focus()}
+    return;
+  }
   return _origSend.apply(this,arguments);
 };
 const CONVO_KEY='amni_jarvis_convo';
-const CONVO_SILENCE_MS=600;
-const CONVO_MIN_SPEECH_MS=150;
+const VAD_KEY='amni_jarvis_vad';
 const CONVO_MAX_UTTERANCE_MS=10000;
-const CONVO_VAD_THRESHOLD=18;
-const CONVO_BARGE_THRESHOLD=26;
 const CONVO_MAX_FAILS=3;
+const _vadDefaults={silence_ms:600,min_speech_ms:150,vad_threshold:18,barge_threshold:26};
+let _vadConfig={..._vadDefaults};
+try{const saved=JSON.parse(localStorage.getItem(VAD_KEY)||'null');if(saved&&typeof saved==='object')_vadConfig={..._vadDefaults,...saved}}catch{}
+function _saveVadConfig(){try{localStorage.setItem(VAD_KEY,JSON.stringify(_vadConfig))}catch{}}
+function _refreshVadPanelUI(){
+  for(const [key,el] of [['vad_threshold','vp-vt'],['barge_threshold','vp-bt'],['silence_ms','vp-sl'],['min_speech_ms','vp-ms']]){
+    const slider=document.getElementById(el);const valEl=document.getElementById(el+'-v');
+    if(slider){slider.value=_vadConfig[key];if(valEl)valEl.textContent=_vadConfig[key]}
+  }
+  const vtL=document.getElementById('vp-vt-line');if(vtL)vtL.style.left=Math.min(100,(_vadConfig.vad_threshold/60)*100)+'%';
+  const btL=document.getElementById('vp-bt-line');if(btL)btL.style.left=Math.min(100,(_vadConfig.barge_threshold/60)*100)+'%';
+}
+function _onVadSlider(key,val){_vadConfig[key]=Number(val);_saveVadConfig();_refreshVadPanelUI()}
+function _resetVad(){_vadConfig={..._vadDefaults};_saveVadConfig();_refreshVadPanelUI()}
+let _vadPanelOpen=false,_vadMicStream=null,_vadAnalyser=null,_vadCtx=null,_vadMeterRAF=null;
+async function toggleVadPanel(){
+  _vadPanelOpen=!_vadPanelOpen;
+  const p=document.getElementById('vad-panel');p.classList.toggle('show',_vadPanelOpen);
+  document.getElementById('vad-toggle').classList.toggle('on',_vadPanelOpen);
+  if(_vadPanelOpen){
+    _refreshVadPanelUI();
+    if(convoOn&&convoAnalyser){
+      const meterFill=document.getElementById('vp-meter-fill');
+      const loop=()=>{if(!_vadPanelOpen)return;const buf=new Uint8Array(convoAnalyser.frequencyBinCount);convoAnalyser.getByteFrequencyData(buf);let s=0;for(let i=0;i<buf.length;i++)s+=buf[i];const avg=s/buf.length;meterFill.style.width=Math.min(100,(avg/60)*100)+'%';_vadMeterRAF=requestAnimationFrame(loop)};
+      loop();
+    }else if(navigator.mediaDevices){
+      try{
+        _vadMicStream=await navigator.mediaDevices.getUserMedia({audio:true});
+        _vadCtx=new (window.AudioContext||window.webkitAudioContext)();
+        const src=_vadCtx.createMediaStreamSource(_vadMicStream);
+        _vadAnalyser=_vadCtx.createAnalyser();_vadAnalyser.fftSize=256;_vadAnalyser.smoothingTimeConstant=0.5;
+        src.connect(_vadAnalyser);
+        const meterFill=document.getElementById('vp-meter-fill');
+        const loop=()=>{if(!_vadPanelOpen)return;const buf=new Uint8Array(_vadAnalyser.frequencyBinCount);_vadAnalyser.getByteFrequencyData(buf);let s=0;for(let i=0;i<buf.length;i++)s+=buf[i];const avg=s/buf.length;meterFill.style.width=Math.min(100,(avg/60)*100)+'%';_vadMeterRAF=requestAnimationFrame(loop)};
+        loop();
+      }catch(e){console.warn('vad mic init failed',e)}
+    }
+  }else{
+    if(_vadMeterRAF){cancelAnimationFrame(_vadMeterRAF);_vadMeterRAF=null}
+    if(_vadMicStream){_vadMicStream.getTracks().forEach(t=>t.stop());_vadMicStream=null}
+    if(_vadCtx){try{_vadCtx.close()}catch{};_vadCtx=null}
+    _vadAnalyser=null;
+  }
+}
 let convoOn=false,convoStream=null,convoCtx=null,convoAnalyser=null,convoRAF=null,convoState='idle',convoRecorder=null,convoChunks=[],convoFailCount=0,convoSilenceStart=0,convoSpeechStart=0,convoUtteranceStart=0,convoActive=false;
 const _convoToggle=document.getElementById('convo-toggle'),_convoBanner=document.getElementById('convo-banner'),_convoStateLabel=document.getElementById('convo-state-label'),_convoLevelBar=document.getElementById('convo-level-bar');
 function _setConvoState(s){
@@ -723,13 +813,13 @@ function _vadLoop(){
   const avg=sum/buf.length;
   _convoLevelBar.style.width=Math.min(100,(avg/40)*100)+'%';
   const now=performance.now();
-  if((convoState==='speaking'||convoState==='thinking') && avg>CONVO_BARGE_THRESHOLD){
+  if((convoState==='speaking'||convoState==='thinking') && avg>_vadConfig.barge_threshold){
     if(_audioEl){try{_audioEl.pause();_audioEl.currentTime=0}catch{}}
     try{window.speechSynthesis&&speechSynthesis.cancel()}catch{}
     _setConvoState('listening');
   }
   if(convoState==='listening'){
-    if(avg>CONVO_VAD_THRESHOLD){
+    if(avg>_vadConfig.vad_threshold){
       convoSpeechStart=now;_setConvoState('recording');convoUtteranceStart=now;convoChunks=[];convoSilenceStart=0;
       try{
         const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
@@ -740,9 +830,9 @@ function _vadLoop(){
       }catch(e){console.warn('convo recorder failed',e);_convoFail('recorder init')}
     }
   }else if(convoState==='recording'){
-    if(avg<CONVO_VAD_THRESHOLD){
+    if(avg<_vadConfig.vad_threshold){
       if(convoSilenceStart===0)convoSilenceStart=now;
-      else if(now-convoSilenceStart>CONVO_SILENCE_MS && now-convoSpeechStart>CONVO_MIN_SPEECH_MS){
+      else if(now-convoSilenceStart>_vadConfig.silence_ms && now-convoSpeechStart>_vadConfig.min_speech_ms){
         convoSilenceStart=0;try{convoRecorder&&convoRecorder.stop()}catch{}
       }
     }else convoSilenceStart=0;
@@ -799,9 +889,13 @@ async function _startConvo(){
   _prewarmWhisper();
   _vadLoop();
 }
-async function _convoStreamSend(text){
-  bubble('user',text);
-  const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
+async function _streamReplyWithTTS(text,opts){
+  opts=opts||{};
+  const createBubbles=opts.createBubbles!==false;
+  const onDoneState=opts.onDone||null;
+  if(createBubbles)bubble('user',text);
+  const bot=opts.bot||bubble('bot','...');
+  if(!opts.bot)bot.bubble.classList.add('thinking');
   let acc='',spoken='',ttsQueue=[],ttsPlaying=false;
   const _SENT_RE=/([.!?…][\s"')\]\}]*)/;
   async function _flushTTS(chunk){
@@ -820,7 +914,7 @@ async function _convoStreamSend(text){
     ttsPlaying=true;const url=ttsQueue.shift();
     if(_audioEl){try{_audioEl.pause()}catch{}}
     _audioEl=new Audio(url);
-    _audioEl.onended=()=>{ttsPlaying=false;_drainTTS();if(convoOn && ttsQueue.length===0)_setConvoState('listening')};
+    _audioEl.onended=()=>{ttsPlaying=false;_drainTTS();if(ttsQueue.length===0){if(convoOn)_setConvoState('listening');if(onDoneState)onDoneState()}};
     _audioEl.onerror=()=>{ttsPlaying=false;_drainTTS()};
     _audioEl.play().catch(()=>{ttsPlaying=false;_drainTTS()});
   }
@@ -846,8 +940,9 @@ async function _convoStreamSend(text){
         }catch(p){}
       }
     }
-  }catch(e){bot.bubble.classList.remove('thinking');bot.bubble.textContent='stream error: '+e.message;_setConvoState('listening')}
+  }catch(e){bot.bubble.classList.remove('thinking');bot.bubble.textContent='stream error: '+e.message;if(convoOn)_setConvoState('listening')}
 }
+async function _convoStreamSend(text){return _streamReplyWithTTS(text,{createBubbles:true})}
 function _stopConvo(){
   if(convoRAF){cancelAnimationFrame(convoRAF);convoRAF=null}
   if(convoRecorder&&convoRecorder.state==='recording'){try{convoRecorder.stop()}catch{}}
