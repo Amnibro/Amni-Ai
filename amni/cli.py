@@ -312,9 +312,99 @@ def cmd_teach_cot(args):
     after=len(sl._raw)
     print(f'[teach-cot] DONE. lessons_n: {before} -> {after} (+{after-before})',flush=True)
 def cmd_stats(args):
+    if getattr(args,'watch',False):return _stats_watch_loop(args)
+    if getattr(args,'remote',False) or getattr(args,'url',None):return _stats_remote_snapshot(args)
     from amni.adam import Adam
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=None)
     print(json.dumps(adam.stats(),indent=2,default=str),flush=True)
+def _stats_remote_url(args)->str:
+    base=getattr(args,'url',None) or 'http://127.0.0.1:7700'
+    if not base.startswith('http'):base='http://'+base
+    return base.rstrip('/')
+def _fetch_json(url:str,timeout:float=1.8):
+    import urllib.request,urllib.error
+    try:
+        with urllib.request.urlopen(url,timeout=timeout) as r:return json.loads(r.read().decode('utf-8','ignore'))
+    except Exception:return None
+def _stats_remote_snapshot(args):
+    base=_stats_remote_url(args)
+    print(_render_dashboard(base,_collect_remote(base)),flush=True)
+def _collect_remote(base:str)->dict:
+    return {'learning':_fetch_json(base+'/learning/stats'),'skill_stats':_fetch_json(base+'/memory/skill-stats'),'coach':_fetch_json(base+'/memory/coach'),'metrics':_fetch_json(base+'/memory/metrics'),'reflection':_fetch_json(base+'/memory/self-reflection'),'proposals':_fetch_json(base+'/memory/self-improvement?limit=5')}
+def _stats_watch_loop(args):
+    base=_stats_remote_url(args);interval=max(1,int(getattr(args,'interval',3) or 3))
+    try:
+        while True:
+            data=_collect_remote(base)
+            sys.stdout.write('\x1b[2J\x1b[H');sys.stdout.write(_render_dashboard(base,data));sys.stdout.write(f'\n  (refresh every {interval}s — Ctrl+C to quit)\n');sys.stdout.flush()
+            time.sleep(interval)
+    except KeyboardInterrupt:print('\n(stopped)',flush=True)
+def _fmt_num(v,unit:str='')->str:
+    if v is None:return '?'
+    try:n=float(v)
+    except Exception:return str(v)
+    return f'{int(n)}{unit}' if n==int(n) else f'{n:.2f}{unit}'
+def _bar(pct:float,width:int=20)->str:
+    pct=max(0,min(1,pct or 0));filled=int(round(pct*width));return '█'*filled+'░'*(width-filled)
+def _render_dashboard(base:str,data:dict)->str:
+    lines=[];now=time.strftime('%H:%M:%S')
+    lines.append(f'  ╔══════════════════════════════════════════════════════════════════╗')
+    lines.append(f'  ║  Adam — live stats · {base:<32}{now:>11}  ║')
+    lines.append(f'  ╠══════════════════════════════════════════════════════════════════╣')
+    ld=data.get('learning') or {}
+    if ld:
+        new=ld.get('qa_pairs_new',0);rein=ld.get('qa_pairs_reinforced',0);urls=ld.get('urls_ingested',0);sleeps=ld.get('sleep_passes',0);active=ld.get('active',True);topic=(ld.get('current_topic') or '—')[:30]
+        status='active' if active else 'paused'
+        lines.append(f'  ║  LEARNING DAEMON ({status:<8})                                       ║')
+        lines.append(f'  ║    facts new+reinforced  {_fmt_num(new):>6} new / {_fmt_num(rein):>6} reinforced            ║')
+        lines.append(f'  ║    urls ingested         {_fmt_num(urls):>6} · sleep passes {_fmt_num(sleeps):>4}             ║')
+        lines.append(f'  ║    current topic         {topic:<38}║')
+    else:
+        lines.append(f'  ║  LEARNING DAEMON              (endpoint unreachable)             ║')
+    lines.append(f'  ╟──────────────────────────────────────────────────────────────────╢')
+    sk=data.get('skill_stats') or {}
+    if sk and sk.get('log_exists') is not False:
+        totals=sk.get('totals') or {}
+        n_calls=totals.get('n_calls',0);ok_rate=totals.get('overall_ok_rate');avg=totals.get('avg_ms',0)
+        ok_pct=f'{(ok_rate or 0)*100:.0f}%' if ok_rate is not None else '?'
+        lines.append(f'  ║  SKILLS                                                          ║')
+        lines.append(f'  ║    total calls {_fmt_num(n_calls):>7}  ok-rate {ok_pct:>5}  avg {_fmt_num(avg,"ms"):>7}              ║')
+        skills_map=sk.get('skills') or {}
+        if isinstance(skills_map,dict):
+            top_items=sorted(skills_map.items(),key=lambda kv:-int(kv[1].get('n_calls') or 0))[:3]
+            for name,r in top_items:
+                n=r.get('n_calls',0);ok=r.get('ok',0);rate=(ok/n) if n else 0
+                rate_s=f'{rate*100:.0f}%';p90=r.get('p90',0)
+                lines.append(f'  ║      {name[:14]:<14} {_fmt_num(n):>5}× · ok {rate_s:>4} · p90 {_fmt_num(p90,"ms"):>7}      ║')
+    else:
+        lines.append(f'  ║  SKILLS                       (endpoint unreachable or empty)    ║')
+    lines.append(f'  ╟──────────────────────────────────────────────────────────────────╢')
+    co=data.get('coach') or {};streak=co.get('streak') or {}
+    cur=streak.get('current',0);longest=streak.get('longest',0);today=streak.get('today_count',0)
+    n_topics=len(co.get('topics') or []) if isinstance(co.get('topics'),list) else 0
+    if cur or longest or n_topics:
+        flame='⚡' if cur>=14 else ('🔥' if cur>=3 else '·')
+        lines.append(f'  ║  COACH                                                           ║')
+        lines.append(f'  ║    {flame} streak {cur}d · longest {longest}d · today {today} · {n_topics} topic(s){"":<14}║')
+    re=data.get('reflection') or {}
+    if re:
+        cyc=re.get('cycle_count',0);last=re.get('last_subsystem') or '—';nxt=re.get('next_subsystem') or '—'
+        eta=int(re.get('seconds_until_eligible') or 0)
+        lines.append(f'  ║  SELF-REFLECTION                                                 ║')
+        lines.append(f'  ║    cycles {cyc} · last {last[:16]:<16} · next {nxt[:16]:<16}  ║')
+        if eta>0:lines.append(f'  ║    next cycle eligible in {eta//3600}h{(eta%3600)//60}m{"":<38}║')
+    mt=data.get('metrics') or {}
+    if mt and (mt.get('snapshot_count') or 0)>0:
+        lines.append(f'  ║  METRIC SNAPSHOTS                                                ║')
+        lines.append(f'  ║    {mt.get("snapshot_count",0)} snapshot(s) · last {(mt.get("last_run_iso") or "—"):<28}    ║')
+    pr=data.get('proposals') or {};pst=pr.get('stats') if isinstance(pr,dict) else None
+    if pst:
+        bs=pst.get('by_status') or {}
+        proposed=bs.get('proposed',0);attempted=bs.get('attempted',0);validated=bs.get('validated',0);deployed=bs.get('deployed',0)
+        lines.append(f'  ║  PROPOSALS                                                       ║')
+        lines.append(f'  ║    proposed {proposed:>3} · attempted {attempted:>3} · validated {validated:>3} · deployed {deployed:>3}      ║')
+    lines.append(f'  ╚══════════════════════════════════════════════════════════════════╝')
+    return '\n'.join(lines)
 def cmd_personas(args):
     from amni.adam import Adam
     from amni.serve import PersonaStore
@@ -404,8 +494,13 @@ def main():
     tc.add_argument('--bank',choices=['cot','coding','js','sql','devops','creative','facts','advanced','rust','concurrency','algo_adv','python_adv','go','frontend','mobile','data_eng','leetcode','ml','security_deep','distributed','performance','architecture','networking','gamedev','embedded','math_adv','facts_ext','python_libs','ai_rag','leetcode_hard','paraphrases','debug_adv','all'],default='all',help='Which seed bank to load')
     tc.add_argument('--dry-run',action='store_true')
     tc.set_defaults(func=cmd_teach_cot)
-    st=sub.add_parser('stats',help='Show Adam stats')
-    _add_common_adam(st);st.set_defaults(func=cmd_stats)
+    st=sub.add_parser('stats',help='Show Adam stats (local snapshot or live dashboard from a running server)')
+    _add_common_adam(st)
+    st.add_argument('--watch',action='store_true',help='Live-refresh terminal dashboard polling the running server')
+    st.add_argument('--remote',action='store_true',help='Hit the HTTP server for one snapshot instead of booting Adam')
+    st.add_argument('--url',default=None,help='Server URL (default http://127.0.0.1:7700)')
+    st.add_argument('--interval',type=int,default=3,help='Refresh interval for --watch (seconds, default 3)')
+    st.set_defaults(func=cmd_stats)
     pe=sub.add_parser('personas',help='List or learn personas')
     _add_common_adam(pe)
     pe.add_argument('--learn',default=None,help='Learn a new persona by name (web-search if unknown)')
