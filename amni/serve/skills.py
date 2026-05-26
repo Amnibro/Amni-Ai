@@ -752,6 +752,19 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='stats':return _si.stats()
         return {'error':f'unknown action {action!r}; valid: propose|list|get|transition|stats'}
     reg.register('self_improvement',_skill_self_improvement,desc='Record and query Adam\'s self-improvement proposals. Actions: propose (title, rationale, planned_change, files_touched?, category?) | list (status?, category?, limit?, include_history?) | get (id) | transition (id, status: proposed|attempted|validated|deployed|declined|reverted, notes?) | stats. Proposals are an append-only audit log.',schema={'action':'str','title':'str?','rationale':'str?','planned_change':'str?','files_touched':'list?','category':'str?','id':'str?','status':'str?','notes':'str?','limit':'int?','include_history':'bool?'})
+    def _skill_venv(args,ctx,reg_):
+        """Manage sandboxed Python virtual environments under <workdir>/.adam-venvs/. Actions: list | create | install | run | remove."""
+        from amni.serve import venv_manager as _vm
+        action=(args.get('action') or '').strip().lower()
+        wd=reg_.workdir
+        if action=='list':return {'venvs':_vm.list_venvs(wd)}
+        name=(args.get('name') or '').strip()
+        if action=='create':return _vm.create(wd,name)
+        if action=='install':return _vm.install(wd,name,args.get('packages') or [])
+        if action=='run':return _vm.run(wd,name,args.get('cmd') or '',timeout=int(args.get('timeout',300)))
+        if action=='remove':return _vm.remove(wd,name)
+        return {'error':f'unknown action {action!r}; valid: list|create|install|run|remove'}
+    reg.register('venv',_skill_venv,desc='Sandboxed Python venv management for Adam\'s experiments. Actions: list | create (name) | install (name, packages: list) | run (name, cmd, timeout?) | remove (name). All venvs live under <workdir>/.adam-venvs/; name must match [a-z0-9_-]{1,32}; cap of 8 concurrent venvs; pip install validates package specs; run refuses obviously-destructive cmds.',schema={'action':'str','name':'str?','packages':'list?','cmd':'str?','timeout':'int?'})
     try:
         from amni.serve import widgets as _w
         def _skill_weather(args,ctx,reg_):
