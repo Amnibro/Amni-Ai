@@ -6,6 +6,9 @@ _HTML=r"""<!doctype html>
 <title>Adam — Jarvis Mode</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" onload="window._katexReady=true"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js" onload="window._prismCoreReady=true"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js" onload="if(window.Prism&&window.Prism.plugins&&window.Prism.plugins.autoloader){window.Prism.plugins.autoloader.languages_path='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/';}window._prismReady=true"></script>
 <script type="module">
   try{const m=await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');m.default.initialize({startOnLoad:false,theme:'dark',themeVariables:{primaryColor:'#00e5ff',primaryTextColor:'#dff6ff',primaryBorderColor:'#00e5ff',lineColor:'#00b8d4',secondaryColor:'#ff2bd6',tertiaryColor:'#0a1224',background:'#040711',mainBkg:'#0a1224',nodeBorder:'#00e5ff',edgeLabelBackground:'#040711',clusterBkg:'#0a1224',clusterBorder:'#00e5ff',titleColor:'#00e5ff',fontFamily:'JetBrains Mono, monospace'},securityLevel:'loose'});window._mermaid=m.default;window._mermaidReady=true}catch(e){console.debug('mermaid load failed:',e)}
 </script>
@@ -51,6 +54,20 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .bubble code{background:rgba(0,0,0,.6);padding:1px 6px;border-radius:2px;font-size:11px;color:var(--cyan)}
 .bubble pre{background:rgba(0,0,0,.7);border:1px solid rgba(0,229,255,.15);padding:10px 12px;border-radius:3px;overflow-x:auto;font-size:11px;margin:6px 0;color:var(--cyan)}
 .bubble pre code{background:none;padding:0;color:inherit}
+.bubble pre[class*="language-"]{background:rgba(0,0,0,.78);border:1px solid rgba(0,229,255,.22);box-shadow:inset 0 0 12px rgba(0,229,255,.05)}
+.bubble pre[class*="language-"] code{font-family:JetBrains Mono,SF Mono,Consolas,monospace;font-size:11px;text-shadow:none}
+.bubble .token.comment,.bubble .token.prolog,.bubble .token.doctype,.bubble .token.cdata{color:#5e7a99}
+.bubble .token.punctuation{color:#7a98b8}
+.bubble .token.namespace{opacity:.7}
+.bubble .token.property,.bubble .token.tag,.bubble .token.boolean,.bubble .token.number,.bubble .token.constant,.bubble .token.symbol,.bubble .token.deleted{color:#ff2bd6}
+.bubble .token.selector,.bubble .token.attr-name,.bubble .token.string,.bubble .token.char,.bubble .token.builtin,.bubble .token.inserted{color:#00ff9d}
+.bubble .token.operator,.bubble .token.entity,.bubble .token.url,.bubble .language-css .token.string,.bubble .style .token.string{color:#ffd770}
+.bubble .token.atrule,.bubble .token.attr-value,.bubble .token.keyword{color:#00e5ff;text-shadow:0 0 4px rgba(0,229,255,.35)}
+.bubble .token.function,.bubble .token.class-name{color:#00b8d4}
+.bubble .token.regex,.bubble .token.important,.bubble .token.variable{color:#ff5577}
+.bubble .token.important,.bubble .token.bold{font-weight:700}
+.bubble .token.italic{font-style:italic}
+.bubble .token.entity{cursor:help}
 .bubble strong{color:var(--cyan);text-shadow:0 0 4px rgba(0,229,255,.5)}
 .meta{font-size:9px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;display:flex;gap:8px;align-items:center}
 .meta .badge{padding:2px 8px;border:1px solid rgba(0,229,255,.3);border-radius:99px;color:var(--cyan);background:rgba(0,229,255,.05)}
@@ -900,7 +917,9 @@ function md(src){
   src=esc(src);
   src=src.replace(/```([\w-]*)\n([\s\S]*?)```/g,(_,l,c)=>{
     if((l||'').toLowerCase()==='mermaid'){const id='mm_'+Math.random().toString(36).slice(2,10);return `<div class="mermaid-pending" id="${id}" data-src="${c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}">${c.replace(/\n$/,'')}</div>`}
-    return `<pre><code>${c.replace(/\n$/,'')}</code></pre>`;
+    const lang=(l||'').toLowerCase().trim();
+    const cls=lang?` class="language-${lang}"`:'';
+    return `<pre${cls}><code${cls}>${c.replace(/\n$/,'')}</code></pre>`;
   });
   src=src.replace(/`([^`\n]+)`/g,'<code>$1</code>');
   src=src.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
@@ -936,8 +955,17 @@ async function _rerenderPendingMermaid(){
   const wait=setInterval(()=>{if(window._mermaidReady&&window._mermaid){clearInterval(wait);_rerenderPendingMermaid()}},150);
   setTimeout(()=>clearInterval(wait),18000);
 })();
+function _rehighlightCode(root){
+  if(!(window._prismReady&&window.Prism))return;
+  try{const scope=root||document;const nodes=scope.querySelectorAll('pre code[class*="language-"]:not([data-prism-done])');nodes.forEach(el=>{try{window.Prism.highlightElement(el);el.setAttribute('data-prism-done','1')}catch(_){}})}
+  catch(_){}
+}
+(function(){
+  const wait=setInterval(()=>{if(window._prismReady&&window.Prism){clearInterval(wait);_rehighlightCode()}},150);
+  setTimeout(()=>clearInterval(wait),18000);
+})();
 const _origBubble=bubble;
-window.bubble=function(role,text,meta){const r=_origBubble(role,text,meta);if(role==='bot')setTimeout(_rerenderPendingMermaid,50);return r};
+window.bubble=function(role,text,meta){const r=_origBubble(role,text,meta);if(role==='bot'){setTimeout(_rerenderPendingMermaid,50);setTimeout(_rehighlightCode,50)}return r};
 function bubble(role,text,meta){
   const w=document.querySelector('.welcome');if(w)w.remove();
   const m=document.createElement('div');m.className='msg '+role;
