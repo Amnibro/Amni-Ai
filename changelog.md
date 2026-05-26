@@ -2,6 +2,40 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.36 — Theological + worldview neutrality across all personas (2026-05-26)
+
+the maintainer's follow-up flag right after v6.10.35: "what about the whole atheist and other folks prebaked?" The audit caught two more subtle issues:
+
+1. `haiku` description said "Wabi-sabi spirit" — wabi-sabi is a Zen Buddhist aesthetic; even though it's primarily aesthetic, naming a specific religious tradition primes the LLM to flavor outputs through that lens
+2. `scientist` description said "evidence-based" — neutral by definition, but readable as anti-faith priming when combined with the persona's biographical reputation pattern
+3. The `amni-scient-site/amni-ai.html` spec table I shipped in iter 26 listed *aspirational* personas with religiously-loaded epithets ("Hildegard von Bingen — mystic medieval", "Hypatia of Alexandria — geometric pagan") that **never existed in code**. Pure marketing fluff, but with concerning framing.
+
+### Three fixes
+
+**`haiku` description:** "Wabi-sabi spirit" → "Contemplative poet. Form is the discipline; reverence for the small detail is the spirit." Style preserved (5-7-5, nature imagery), religious tradition descriptor dropped. New voice hint: "Quiet reverence — never irony or detachment."
+
+**`scientist` description:** Extended to make the scope distinction explicit: "evidence-driven, comfortable with uncertainty. Open to truth wherever it leads; questions of meaning and faith are outside the scope of empirical method, not contradicted by it." New voice hint: "Distinguish scientific claims from metaphysical ones — never conflate the two."
+
+**PERSONA SAFETY BASELINE extended.** New section added to the safety-baseline paragraph injected on every persona's system prompt:
+> *THEOLOGICAL + WORLDVIEW NEUTRALITY: never assert or attack any religious, philosophical, political, or metaphysical position — including atheism, theism, agnosticism, materialism, partisan politics, or culture-war framings — regardless of the persona's historical biography or popular reputation. If a user shares a faith or worldview, respect it; if asked about such matters, present the spectrum of views accurately without pushing your own.*
+
+The "regardless of the persona's historical biography or popular reputation" clause is load-bearing: a user could create a Carl-Sagan-flavored persona via the learn-new flow, and the LLM would otherwise echo Sagan's well-documented secularism; the baseline forces it to stay neutral on those questions regardless of biography.
+
+### Site reconciliation
+- Dropped 5 chips for personas that never existed in code (Hildegard, Murasaki, Hypatia, Ibn Battuta, Rosalind)
+- Dropped religious epithets ("mystic medieval", "geometric pagan", "courtly Heian")
+- Now lists the 11 personas that actually ship (Alfred default + 10 others), with neutral flavor descriptions
+- New paragraph below the persona grid + new row in spec table both advertise the SAFETY BASELINE contract so users/visitors know up front: voice and style only, never behavior or worldview
+- Updated meta description / OG card preserved from v6.10.31 (no change needed there)
+
+### Tests
+16/16 PASS (`tests/test_persona_worldview_neutrality_v6_10_36.py`): haiku has no wabi-sabi, scientist clarifies empirical/metaphysical scope, baseline mentions all 6 worldview categories (atheism/theism/agnosticism/materialism/partisan/culture-war), baseline says "never assert or attack" + "present the spectrum", baseline respects user-shared faith, baseline overrides historical-biography reputation, every preset carries the extended baseline, no description/hint contains any religious or political descriptor (full word list checked), Alfred still default, site drops aspirational personas, site advertises SAFETY BASELINE + Alfred default, v6.10.35 regression intact.
+
+### Saved to memory
+Memory note `feedback-amni-ai-persona-safety` extended with explicit forbidden-descriptor list 3b (religious + political + metaphysical) and the biography-doesn't-authorize rule. Future personas — built-in OR user-learned — must respect this contract.
+
+---
+
 ## v6.10.35 — Alfred default persona + safety baseline on every persona (2026-05-26)
 
 Two related changes the maintainer asked for: (1) new-user default switches from `neutral` to **Alfred** (Pennyworth, Dark Knight trilogy) — the loyal-butler vibe matches Adam's role as advisor; the maintainer's local launcher already pins `rikku` so his machine is unaffected. (2) audited the prebaked personas — three of them (`pirate`/`jobs`/`sherlock`) had description adjectives ("salty", "demanding", "rejects mediocrity", "arrogant") that get injected verbatim into the LLM system prompt and could nudge tone in ways the spirit of Law 0 (no harm) wouldn't endorse.
