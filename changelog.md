@@ -2,6 +2,33 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.21 — Practiced-topics dashboard in coach panel (2026-05-26)
+
+The coach UI started sessions but lost them. The `CoachAtlas` tracks every question and grade per topic, but there was no way to see your history from /jarvis. v6.10.21 adds a "PRACTICED TOPICS" section below the New Session form — a sorted live list of every topic you've ever tutored on with its mastery percentage, color-coded by level.
+
+### Dashboard
+Polls `/memory/coach` (already existed via `memory_endpoints.coach`) on:
+- panel open
+- session start (so freshly-started topics appear)
+- session end (so the just-completed mastery updates)
+- explicit REFRESH button click
+
+Each row shows: topic name (capitalized), mini progress bar (magenta→gold gradient, master tier flips to green→gold), mastery % (color-coded), question count. Capped at top 20 by mastery (already sorted descending by CoachAtlas).
+
+### Mastery tier colors
+- **lvl-master** (≥85%) — green pct, green-gold bar
+- **lvl-good** (≥65%) — gold pct
+- **lvl-fair** (≥40%) — amber pct
+- **lvl-novice** (<40%) — red pct
+
+### Click to resume
+Clicking a topic card loads the topic name into the input field (focused) and bubbles a confirmation. User adjusts difficulty if they want, hits START — gets a fresh session on that topic with adapted difficulty based on their streak history.
+
+### Tests
+14/14 PASS (`tests/test_coach_topics_dashboard_v6_10_21.py`): section + helper fns present, polls correct endpoint, all 4 mastery-tier classes styled, mini progress bar styled, refreshes on open/start/end, resume-topic loads into input field, threshold logic verified at JS source level, REFRESH button wired, /memory/coach contract honored, 20-topic cap, v6.10.20 regression intact. Recent chain (v6.10.17 → .20): 65/65 still PASS.
+
+---
+
 ## v6.10.20 — Coach mode goes voice-native (Jarvis-style tutoring) (2026-05-26)
 
 v6.10.18 shipped the coach UI; v6.10.20 makes it voice-first. Toggle VOICE ON in the coach panel and Adam narrates the entire tutoring session — first question on session start, every follow-up question after answer, hints when revealed, "Skipped. Next question: …" after skip. Combine with wake-word convo mode (v6.10.13) and you have hands-free Socratic tutoring.

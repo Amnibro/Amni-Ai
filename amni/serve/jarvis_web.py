@@ -241,6 +241,18 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #coach-panel button.cp-act{padding:6px 12px;border:1px solid rgba(255,77,200,.4);background:rgba(255,77,200,.06);color:var(--magenta);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;transition:all .15s}
 #coach-panel button.cp-act:hover{background:rgba(255,77,200,.16);border-color:var(--magenta)}
 #coach-panel button.cp-act.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.1);box-shadow:0 0 8px rgba(255,215,112,.25)}
+#coach-panel .cp-topic-card{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(255,77,200,.15);border-radius:3px;background:rgba(255,77,200,.03);margin-bottom:4px;cursor:pointer;transition:all .15s}
+#coach-panel .cp-topic-card:hover{border-color:var(--magenta);background:rgba(255,77,200,.1)}
+#coach-panel .cp-topic-card .name{flex:1;font-size:11px;color:var(--fg);text-transform:capitalize}
+#coach-panel .cp-topic-card .n{font-size:9px;color:var(--mute);letter-spacing:.1em}
+#coach-panel .cp-topic-card .pct{font-size:11px;font-weight:bold;min-width:38px;text-align:right;font-family:JetBrains Mono,monospace}
+#coach-panel .cp-topic-card.lvl-master .pct{color:#00ff9c;text-shadow:0 0 4px #00ff9c}
+#coach-panel .cp-topic-card.lvl-good .pct{color:#ffe066;text-shadow:0 0 3px #ffe066}
+#coach-panel .cp-topic-card.lvl-fair .pct{color:#ffb547}
+#coach-panel .cp-topic-card.lvl-novice .pct{color:#ff7b7b}
+#coach-panel .cp-topic-card .mini-bar{flex:1;max-width:80px;height:4px;background:rgba(255,77,200,.08);border-radius:2px;overflow:hidden;border:1px solid rgba(255,77,200,.12)}
+#coach-panel .cp-topic-card .mini-bar-fill{height:100%;background:linear-gradient(90deg,#ff4dc8,#ffe066);transition:width .3s}
+#coach-panel .cp-topic-card.lvl-master .mini-bar-fill{background:linear-gradient(90deg,#00ff9c,#ffe066)}
 #coach-panel button.cp-act:disabled{opacity:.4;cursor:not-allowed}
 #coach-panel button.cp-act.danger{border-color:rgba(255,91,91,.4);color:#ff7b7b}
 #coach-panel button.cp-act.danger:hover{background:rgba(255,91,91,.12);border-color:#ff5b5b}
@@ -516,6 +528,10 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <h3>NEW SESSION</h3>
     <div class="cp-topic-row"><input type="text" id="cp-topic" placeholder="topic (e.g. python decorators, krebs cycle)"><select id="cp-diff"><option value="1">1 — intro</option><option value="2" selected>2 — basic</option><option value="3">3 — intermediate</option><option value="4">4 — advanced</option><option value="5">5 — expert</option></select><button class="cp-act" onclick="_coachStart()">START</button></div>
     <div style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.05em">Adam will ask a question, grade your answer, then escalate or back off based on your streak.</div>
+  </div>
+  <div class="cp-section" id="cp-topics-section">
+    <h3 style="display:flex;justify-content:space-between;align-items:center">PRACTICED TOPICS <button class="cp-act" onclick="_coachLoadTopics()" style="padding:3px 8px;font-size:8px">REFRESH</button></h3>
+    <div id="cp-topics-list"><div style="font-size:10px;color:var(--mute);font-style:italic;text-align:center;padding:6px">loading…</div></div>
   </div>
   <div class="cp-section" id="cp-active-section" style="display:none">
     <h3 id="cp-topic-head">TOPIC</h3>
@@ -854,7 +870,25 @@ function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(C
 function _coachUpdateVoiceBtn(){const b=document.getElementById('cp-voice-toggle');if(!b)return;b.textContent=_coachVoiceOn?'VOICE ON':'VOICE OFF';b.classList.toggle('on',_coachVoiceOn)}
 function _coachReplayQuestion(){if(_coachLastQuestion)speak(_coachLastQuestion);else bubble('bot','No active question to replay.','<span class="badge err">coach</span>')}
 function _coachSpeakIfOn(text){if(_coachVoiceOn&&text&&text.trim()&&_voiceBackends.tts)speak(text)}
-function toggleCoachPanel(){_coachPanelOpen=!_coachPanelOpen;const p=document.getElementById('coach-panel');p.classList.toggle('show',_coachPanelOpen);document.getElementById('coach-toggle').classList.toggle('on',_coachPanelOpen);['persona-panel','learn-panel','tests-panel'].forEach(id=>{const el=document.getElementById(id);if(_coachPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_coachPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_coachUpdateVoiceBtn();if(_coachSid)_coachSyncStatus()}}
+function toggleCoachPanel(){_coachPanelOpen=!_coachPanelOpen;const p=document.getElementById('coach-panel');p.classList.toggle('show',_coachPanelOpen);document.getElementById('coach-toggle').classList.toggle('on',_coachPanelOpen);['persona-panel','learn-panel','tests-panel'].forEach(id=>{const el=document.getElementById(id);if(_coachPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_coachPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_coachUpdateVoiceBtn();_coachLoadTopics();if(_coachSid)_coachSyncStatus()}}
+async function _coachLoadTopics(){
+  const list=document.getElementById('cp-topics-list');if(!list)return;
+  try{
+    const r=await fetch('/memory/coach');if(!r.ok){list.innerHTML='<div style="font-size:10px;color:var(--mute);font-style:italic;text-align:center;padding:6px">coach memory unavailable</div>';return}
+    const j=await r.json();const topics=j.topics||[];
+    if(!topics.length){list.innerHTML='<div style="font-size:10px;color:var(--mute);font-style:italic;text-align:center;padding:6px">no topics practiced yet · start a session above</div>';return}
+    list.innerHTML=topics.slice(0,20).map(t=>{
+      const pct=Math.round(t.mastery_pct||0);
+      const lvl=pct>=85?'master':(pct>=65?'good':(pct>=40?'fair':'novice'));
+      const name=esc(t.topic||'?');const safe=name.replace(/'/g,"\\\\'");
+      return `<div class="cp-topic-card lvl-${lvl}" onclick="_coachResumeTopic('${safe}')" title="Click to start a new session on this topic"><span class="name">${name}</span><span class="mini-bar"><span class="mini-bar-fill" style="width:${pct}%"></span></span><span class="pct">${pct}%</span><span class="n">${t.n_questions||0}q</span></div>`
+    }).join('');
+  }catch(e){list.innerHTML='<div style="font-size:10px;color:var(--err);font-style:italic;text-align:center;padding:6px">load error</div>'}
+}
+function _coachResumeTopic(topic){
+  const t=document.getElementById('cp-topic');if(t){t.value=topic;t.focus()}
+  bubble('bot','Topic loaded: **'+esc(topic)+'**. Click START to begin a new session on it.','<span class="badge">coach</span>');
+}
 function _coachShowActive(show){document.getElementById('cp-start-section').style.display=show?'none':'block';document.getElementById('cp-active-section').style.display=show?'block':'none'}
 function _coachRender(res){
   if(!res)return;
@@ -892,6 +926,7 @@ async function _coachStart(){
   _coachSid=res.session_id;_coachTopic=res.topic;localStorage.setItem(COACH_SID_KEY,_coachSid);
   _coachShowActive(true);document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value='';
   _coachRender(res);_coachLastQuestion=res.question||'';_coachSpeakIfOn(res.question);
+  setTimeout(_coachLoadTopics,300);
 }
 async function _coachAnswer(){
   if(!_coachSid){bubble('bot','No active coach session. Start one first.','<span class="badge err">coach</span>');return}
@@ -911,6 +946,7 @@ async function _coachEnd(){
   const top=res&&res.topic||_coachTopic||'?';const pct=res&&res.mastery&&res.mastery.pct!=null?Math.round(res.mastery.pct):0;
   bubble('bot','**Coach session complete:** '+esc(top)+' · final mastery '+pct+'% · '+(res&&res.n_answered||0)+' answered.','<span class="badge">coach</span>');
   localStorage.removeItem(COACH_SID_KEY);_coachSid='';_coachTopic='';_coachShowActive(false);
+  _coachLoadTopics();
 }
 async function _coachSyncStatus(){if(!_coachSid)return;const res=await _coachCall({action:'status',session_id:_coachSid});if(res&&!res.error){_coachShowActive(true);_coachRender(res)}else{localStorage.removeItem(COACH_SID_KEY);_coachSid=''}}
 document.addEventListener('keydown',e=>{if(_coachPanelOpen&&e.ctrlKey&&e.key==='Enter'&&document.activeElement&&document.activeElement.id==='cp-answer'){e.preventDefault();_coachAnswer()}});
