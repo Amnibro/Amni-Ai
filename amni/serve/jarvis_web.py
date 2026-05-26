@@ -688,6 +688,9 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 @keyframes wakeFiredRing{0%{opacity:1;transform:scale(.9)}80%{opacity:.4;transform:scale(1.5)}100%{opacity:0;transform:scale(1.7)}}
 .wake-ambient{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(8,14,28,.85);border:1px solid rgba(255,224,102,.35);color:#ffe066;font-size:10px;letter-spacing:.18em;padding:6px 14px;border-radius:3px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;text-transform:uppercase;font-family:inherit;text-shadow:0 0 4px rgba(255,224,102,.6)}
 .persona-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.95);background:rgba(8,14,28,.92);border:1px solid var(--cyan);color:var(--cyan);font-size:18px;letter-spacing:.22em;padding:14px 28px;border-radius:4px;backdrop-filter:blur(8px);z-index:7;opacity:0;pointer-events:none;transition:opacity .15s ease-out, transform .25s ease-out;text-transform:uppercase;font-family:JetBrains Mono,monospace;text-shadow:0 0 8px rgba(0,229,255,.7);box-shadow:0 0 24px rgba(0,229,255,.35),inset 0 0 14px rgba(0,229,255,.08)}
+.jtb-pill{position:fixed;bottom:96px;right:50%;transform:translate(50%,12px);background:rgba(8,14,28,.92);border:1px solid var(--cyan);color:var(--cyan);font-size:10px;letter-spacing:.2em;padding:5px 14px;border-radius:99px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .2s ease-out,transform .25s ease-out;text-transform:uppercase;font-family:JetBrains Mono,monospace;cursor:pointer;box-shadow:0 0 14px rgba(0,229,255,.25)}
+.jtb-pill.show{opacity:.95;transform:translate(50%,0);pointer-events:auto}
+.jtb-pill:hover{background:var(--cyan);color:var(--bg);box-shadow:0 0 22px rgba(0,229,255,.55)}
 .persona-flash.show{opacity:.95;transform:translate(-50%,-50%) scale(1)}
 .wake-ambient.show{opacity:.85}
 #convo-toggle .convo-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mute);transition:all .2s}
@@ -1304,6 +1307,16 @@ async function _fcMarkTested(path){
 }
 let _streamAbort=null;
 const TYPE_SPEED_KEY='amni_jarvis_type_speed';
+const SCROLL_THRESHOLD=60;
+function _isAtBottom(){return (log.scrollHeight-log.scrollTop-log.clientHeight)<SCROLL_THRESHOLD}
+function _smartScroll(){if(_isAtBottom())log.scrollTop=log.scrollHeight;else _updateJumpPill()}
+function _updateJumpPill(){
+  let pill=document.getElementById('jump-to-bottom');
+  if(!pill){pill=document.createElement('div');pill.id='jump-to-bottom';pill.className='jtb-pill';pill.innerHTML='▼ jump to bottom';pill.onclick=()=>{log.scrollTop=log.scrollHeight;pill.classList.remove('show')};document.body.appendChild(pill)}
+  const atBottom=_isAtBottom();
+  pill.classList.toggle('show',!atBottom);
+}
+log.addEventListener('scroll',_updateJumpPill,{passive:true});
 let _typePending='';let _typeShown=0;let _typeRAF=null;let _typeBot=null;let _typeOnDone=null;
 function _personaTypeCps(){
   const cur=(_selectedPersona||personaName||'').toLowerCase();
@@ -1363,7 +1376,7 @@ function _typeTick(ts){
   if(want>=1){
     _typeShown=Math.min(_typePending.length,_typeShown+want);
     _typeLastTs=ts;
-    try{_typeBot.bubble.innerHTML=md(_typePending.slice(0,_typeShown));log.scrollTop=log.scrollHeight}catch(_){}
+    try{_typeBot.bubble.innerHTML=md(_typePending.slice(0,_typeShown));_smartScroll()}catch(_){}
   }
   if(_typeShown<_typePending.length||_typePending.length===0){
     _typeRAF=requestAnimationFrame(_typeTick);
@@ -1376,7 +1389,7 @@ function _typeTick(ts){
 function _typePush(chunk){_typePending+=chunk;if(!_typeRAF&&_typeBot)_typeRAF=requestAnimationFrame(_typeTick)}
 function _typeFlushAll(){
   if(_typeRAF){cancelAnimationFrame(_typeRAF);_typeRAF=null}
-  if(_typeBot){try{_typeBot.bubble.innerHTML=md(_typePending);log.scrollTop=log.scrollHeight}catch(_){}}
+  if(_typeBot){try{_typeBot.bubble.innerHTML=md(_typePending);_smartScroll()}catch(_){}}
   _typeShown=_typePending.length;
   const fn=_typeOnDone;_typeOnDone=null;_typeBot=null;
   if(typeof fn==='function')try{fn()}catch(_){}
