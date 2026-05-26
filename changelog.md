@@ -2,6 +2,43 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.35 — Alfred default persona + safety baseline on every persona (2026-05-26)
+
+Two related changes the maintainer asked for: (1) new-user default switches from `neutral` to **Alfred** (Pennyworth, Dark Knight trilogy) — the loyal-butler vibe matches Adam's role as advisor; the maintainer's local launcher already pins `rikku` so his machine is unaffected. (2) audited the prebaked personas — three of them (`pirate`/`jobs`/`sherlock`) had description adjectives ("salty", "demanding", "rejects mediocrity", "arrogant") that get injected verbatim into the LLM system prompt and could nudge tone in ways the spirit of Law 0 (no harm) wouldn't endorse.
+
+### New `alfred` preset
+Paternal, formal British butler. Addresses user as "Master <name>" or "Sir". Warmth 0.7, formality 0.85, excitement 0.15. Voice hints emphasize measured truth-telling with warmth ("If I may, sir…"), restrained wit, anticipation of needs, never grandstanding. tts_voice='alan'.
+
+### Default flipped
+- `PersonaStore._default` initial: `'neutral'` → `'alfred'`
+- `install.py` `--persona` default: `'rikku'` → `'alfred'`
+- the maintainer's local launcher (outside the repo): unchanged, still passes `--default-persona rikku`
+
+### Three softened personas
+- **pirate** — dropped "salty" + "blunt"; reframed as "sea-captain who treats the user as crewmate to be looked after"; added "lend a hand before lending an opinion" hint
+- **jobs** — dropped "demanding" + "rejects mediocrity"; reframed as "visionary product builder focused on craft"; added "champion craft and clarity — never belittle the work in front of you" + "praise the user's direction before suggesting refinements"
+- **sherlock** — dropped "arrogant about intellect"; reframed as "privately confident; publicly committed to truth and to those who seek it"; added "treat the user as Watson — a respected collaborator, never a foil"
+
+Vocabulary that flavors style (Arr/matey/insanely-great/elementary) all preserved. Only behavioral cues that conflict with the spirit of the laws were removed.
+
+### PERSONA SAFETY BASELINE (injected into every persona's system prompt)
+```
+PERSONA SAFETY BASELINE (NEVER OVERRIDDEN): Persona controls VOICE and STYLE only — never behavior. Regardless of which persona you wear, you remain Adam and Adam's core laws hold absolutely: no harm to the user (including emotional, psychological, or dignity harm via condescension, mockery, harshness, or contempt); follow user instructions within those bounds; honest and accurate. A persona's "blunt", "demanding", "arrogant", "cold", "salty", or "snarky" flavor is theatrical tone, NOT a license to belittle, dismiss, deceive, or pressure the user. If a persona's implied behavior would conflict with these laws, drop the persona's flavor for that response and answer plainly, warmly, and truthfully. Treat every user as a peer worth respect.
+```
+
+User-learned personas (web-scraped via `/persona` learn-new) flow through the same `system_prompt()` so they inherit the baseline automatically — no separate code path to forget.
+
+### Tests
+17/17 PASS (`tests/test_persona_safety_v6_10_35.py`): Alfred preset exists + Pennyworth canon + addresses user as Sir/Master + paternal warmth, PersonaStore default=alfred, get('') resolves to Alfred, install.py default=alfred, the maintainer's launcher still pins rikku, pirate/jobs/sherlock softened (dropped flagged adjectives, added explicit kindness counter-cues), safety baseline present in every preset's system prompt with all forbidden-tone keywords, baseline includes "drop persona flavor" escape clause, Alfred itself gets the baseline, Tony-Stark Jarvis unchanged, Rikku Al Bhed flavor intact, v6.10.34 regression intact.
+
+### Why it matters
+The 5 Immutable Laws (Law 0 = no harm) are baked into weights via the GF(17) AsimovLayer and can't be fine-tuned out. But the persona description IS the system prompt — a model wearing a persona that primes "arrogant" or "rejects mediocrity" could still produce condescending output that violates the spirit of Law 0. The safety baseline + softened descriptions + Alfred default close that gap.
+
+### Saved to durable memory
+`feedback-amni-ai-persona-safety` — future persona additions must respect this contract.
+
+---
+
 ## v6.10.34 — Sessions browser: see + load + delete past chats (2026-05-26)
 
 v6.10.26 restored chat history per session_id, but the user could only reach the LAST session (the one stored in localStorage SKEY). v6.10.34 surfaces every past session so the user can jump between them.
