@@ -2,6 +2,30 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.23 — Inter-skill chaining: Adam can now compose multi-step workflows (2026-05-26)
+
+Until now Adam ran exactly one skill per turn. Real assistants compose: "get the weather in Boston AND save it to weather.txt", or "calc 17*23 then write the result to result.txt". v6.10.23 adds a `chain` skill that runs a list of skills sequentially with output-of-previous-step templating.
+
+### New `chain` skill
+- `POST /skills/chain {args:{steps:[{skill, args, continue_on_error?},...], max_steps?:8}}`
+- Each step is `{skill: "<name>", args: {...}}`. Steps run in order. First failure stops the chain (unless that step has `continue_on_error: true`).
+- **Templating**: in a later step's args, the literal string `$prev` is replaced with the previous step's output as JSON (truncated to 4000 chars). `$prev_str` substitutes the raw string form. So `chain([calc(expr=17*23), file_write(path=out.txt, content=$prev_str)])` writes the calc result to out.txt.
+- **Safety**: nested chain disallowed (`name=='chain'` short-circuits); `max_steps` capped (default 8, hard-rejected above the cap); empty/non-list steps rejected.
+
+### Return shape
+`{ok: bool, n_steps: N, results: [{step, skill, args, ok, output, error, elapsed_ms}, ...], final: <last step's output>}`
+
+### Why this matters
+- The LLM tool-call path (Gemma-4 / OpenAI / Ollama clients) can now emit ONE `chain` call instead of multiple sequential turns
+- Saves round-trips — multi-skill workflows execute in a single agent.chat() invocation
+- Each step still respects the existing safety gates (path scope, audit log, verification on file_write)
+- `$prev` templating gives compositional power without needing a full DSL
+
+### Tests
+13/13 PASS (`tests/test_chain_skill_v6_10_23.py`): chain registered, sequential execution, empty rejection, missing-skill-name rejection, nested-chain rejection, max_steps cap, stop-on-error default, continue_on_error opt-in, `$prev_str` templating (calc → file_write), `$prev` JSON templating, `final` field correct, non-list rejection, v6.10.22 regression intact. Recent chain (v6.10.19 → .22): 65/65 still PASS. Total: 78/78.
+
+---
+
 ## v6.10.22 — Shell audit log: every command Adam runs is now visible (2026-05-26)
 
 Adam can run shell + git commands via the `shell` and `git` skills, but until now there was no audit trail — commands executed silently with their results buried in chat history. v6.10.22 adds append-only logging of every invocation and surfaces it in /jarvis via a new SHELL pill.

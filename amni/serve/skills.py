@@ -683,6 +683,29 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     reg.register('stt',_skill_stt,desc='Speech-to-text. Accepts path (workdir-scoped WAV) or audio_base64. Backends: faster-whisper (recommended) > vosk. Args: {path? | audio_base64?, model_size?, backend?}.',schema={'path':'str?','audio_base64':'str?','model_size':'str?','backend':'str?'})
     reg.register('run_python',_skill_run_python,desc='Execute a Python snippet in a sandboxed subprocess (workdir-confined, timeout-bounded). Rejects dangerous ops (network, fs-mutation, subprocess, exec/eval). Returns stdout/stderr/returncode. Args: {code, timeout?}',schema={'code':'str','timeout':'int?'})
     reg.register('scan',_skill_scan,gate=_gate_path,desc=f'Walk path (file or dir + glob), chunk text, teach each chunk to Adam. Args: {{path, glob?, max_files?, max_chars_per_file?, distill?, only_text?}}',schema={'path':'str','glob':'str?','max_files':'int?','max_chars_per_file':'int?','distill':'bool?','only_text':'bool?'})
+    def _skill_chain(args,ctx,reg_):
+        steps=args.get('steps') or [];max_steps=int(args.get('max_steps',8))
+        if not isinstance(steps,list) or not steps:return {'error':'chain needs steps: list of {skill, args} dicts'}
+        if len(steps)>max_steps:return {'error':f'chain capped at {max_steps} steps (got {len(steps)})'}
+        results=[];prev=None;ok=True
+        for i,step in enumerate(steps):
+            if not isinstance(step,dict):results.append({'step':i,'error':'step must be a dict','ok':False});ok=False;break
+            name=(step.get('skill') or '').strip();sargs=step.get('args') or {}
+            if not name:results.append({'step':i,'error':'step missing "skill" name','ok':False});ok=False;break
+            if name=='chain':results.append({'step':i,'error':'nested chain not allowed (prevent recursion)','ok':False});ok=False;break
+            try:
+                if isinstance(sargs,dict) and prev is not None:
+                    sargs={k:(json.dumps(prev,default=str)[:4000] if v=='$prev' else (str(prev)[:4000] if v=='$prev_str' else v)) for k,v in sargs.items()}
+            except Exception:pass
+            r=reg_.call(name,sargs,ctx=ctx)
+            d=r.to_dict() if hasattr(r,'to_dict') else {'ok':bool(r and not getattr(r,'error',None)),'output':r}
+            results.append({'step':i,'skill':name,'args':sargs,**d})
+            if not d.get('ok',False):
+                if step.get('continue_on_error'):ok=False;continue
+                else:ok=False;break
+            prev=d.get('output')
+        return {'ok':ok,'n_steps':len(results),'results':results,'final':results[-1].get('output') if results else None}
+    reg.register('chain',_skill_chain,desc='Run a sequence of skills in order. Args: {steps:[{skill, args, continue_on_error?},...], max_steps?=8}. Use "$prev" / "$prev_str" in args to inject previous step output. Nested chain disallowed.',schema={'steps':'list','max_steps':'int?'})
     try:
         from amni.serve import widgets as _w
         def _skill_weather(args,ctx,reg_):
