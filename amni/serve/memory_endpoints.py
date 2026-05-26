@@ -86,6 +86,10 @@ def mount(app,agent):
     def skill_failures_list(limit:int=20,skill:str=''):
         from amni.serve.skill_failures import recent,stats
         return {'failures':recent(limit=limit,skill_filter=skill or None),'stats':stats()}
+    @app.post('/memory/skill-failures/ack')
+    def skill_failures_ack():
+        from amni.serve.skill_failures import ack_all
+        return ack_all()
     @app.get('/memory/metrics')
     def metrics_status():
         from amni.serve.metrics_snapshot import status as _s

@@ -30,9 +30,26 @@ def recent(limit:int=20,skill_filter:Optional[str]=None)->List[Dict[str,Any]]:
             out.append(rec)
     except Exception:return []
     return out[-int(max(1,limit)):]
+def _ack_path()->Path:return _log_path().parent/'skill_failures_ack.json'
+def _load_ack()->Dict[str,Any]:
+    p=_ack_path()
+    if not p.exists():return {'ack_count':0,'ack_iso':None}
+    try:return json.loads(p.read_text(encoding='utf-8'))
+    except Exception:return {'ack_count':0,'ack_iso':None}
+def _save_ack(d:Dict[str,Any])->None:
+    try:_ack_path().write_text(json.dumps(d,default=str,indent=2),encoding='utf-8')
+    except Exception as e:print(f'[skill_failures] ack save failed: {e}',flush=True)
+def ack_all()->Dict[str,Any]:
+    """Acknowledge the current failure count as cleared — future failures will count as new."""
+    s=stats();total=int(s.get('total') or 0)
+    d={'ack_count':total,'ack_iso':time.strftime('%Y-%m-%dT%H:%M:%S',time.localtime())}
+    _save_ack(d);return {'acked':total,'ack_iso':d['ack_iso']}
+def unacked_count()->int:
+    total=int((stats().get('total') or 0));ack=int((_load_ack().get('ack_count') or 0))
+    return max(0,total-ack)
 def stats()->Dict[str,Any]:
     p=_log_path()
-    if not p.exists():return {'total':0,'by_skill':{},'last_iso':None}
+    if not p.exists():return {'total':0,'by_skill':{},'last_iso':None,'ack_count':int((_load_ack().get('ack_count') or 0)),'unacked':0}
     counts:Dict[str,int]={};total=0;last_iso=None
     try:
         for line in p.read_text(encoding='utf-8').splitlines():
@@ -42,4 +59,5 @@ def stats()->Dict[str,Any]:
             except Exception:continue
             sk=rec.get('skill') or '?';counts[sk]=counts.get(sk,0)+1;total+=1;last_iso=rec.get('iso') or last_iso
     except Exception:pass
-    return {'total':total,'by_skill':dict(sorted(counts.items(),key=lambda kv:-kv[1])[:20]),'last_iso':last_iso}
+    ack=int((_load_ack().get('ack_count') or 0))
+    return {'total':total,'by_skill':dict(sorted(counts.items(),key=lambda kv:-kv[1])[:20]),'last_iso':last_iso,'ack_count':ack,'unacked':max(0,total-ack)}

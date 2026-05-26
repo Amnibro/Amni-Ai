@@ -2112,23 +2112,24 @@ function _refreshStatusPillBadge(){
   }
 }
 setInterval(_refreshStatusPillBadge,2500);_refreshStatusPillBadge();
-let _skillFailuresLastTotal=0;
+let _skillFailuresLastUnacked=0;
 async function _refreshSkillFailures(){
   try{
     const r=await fetch('/memory/skill-failures?limit=5');if(!r.ok)return;
     const j=await r.json();const recent=j.failures||[];const stats=j.stats||{};
-    const total=stats.total||0;
+    const total=stats.total||0;const unacked=stats.unacked||0;
     const txt=document.getElementById('sfl-text');const led=document.getElementById('sfl-led');
     if(led){
       let cls='ld-led idle';
-      if(recent.length>0){const newCount=total-_skillFailuresLastTotal;cls=newCount>0?'ld-led error':'ld-led paused'}
+      if(unacked>0){const newCount=unacked-_skillFailuresLastUnacked;cls=newCount>0?'ld-led error':'ld-led paused'}
       led.className=cls;
     }
     if(txt){
       if(total===0){txt.textContent='skill failures — none'}
-      else{const last=recent[recent.length-1]||{};const lastSkill=(last.skill||'?');txt.textContent=`skill failures · ${total} total · last: ${lastSkill}`}
+      else if(unacked===0){txt.textContent=`skill failures · ${total} total · all acked ✓`}
+      else{const last=recent[recent.length-1]||{};const lastSkill=(last.skill||'?');txt.textContent=`skill failures · ${unacked} new / ${total} total · last: ${lastSkill}`}
     }
-    _skillFailuresLastTotal=total;
+    _skillFailuresLastUnacked=unacked;
   }catch(_){}
 }
 async function _skillFailuresShow(){
@@ -2137,9 +2138,20 @@ async function _skillFailuresShow(){
     const j=await r.json();const recent=(j.failures||[]).slice().reverse();const stats=j.stats||{};
     if(recent.length===0){bubble('bot','No skill failures recorded. ✓','<span class="badge">diag</span>');return}
     const rows=recent.slice(0,8).map(f=>{const t=f.iso||'?';const sk=esc(f.skill||'?');const err=esc((f.error||'').slice(0,140));const msg=esc((f.message||'').slice(0,60));return `<div style="margin:6px 0;padding:6px 8px;background:rgba(255,91,91,.04);border-left:2px solid rgba(255,91,91,.4);border-radius:0 3px 3px 0;font-size:10.5px;line-height:1.5;font-family:JetBrains Mono,monospace"><div><span style="color:#ff7b7b;font-weight:600">${sk}</span> <span style="color:var(--mute)">· ${esc(t)}</span></div><div style="color:var(--mute);margin-top:2px">"${msg}"</div><div style="color:#ffb7b7;margin-top:3px">${err}</div></div>`}).join('');
-    const head=`<div style="font-size:9.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin-bottom:6px">◆ RECENT SKILL FAILURES · ${stats.total||0} TOTAL</div>`;
-    bubble('bot',head+rows,'<span class="badge err">diag</span>');
+    const unacked=stats.unacked||0;
+    const ackBtn=unacked>0?`<button class="se-btn" onclick="_skillFailuresAck()" style="margin-top:8px">✓ MARK ALL ACKED (${unacked} new)</button>`:'';
+    const head=`<div style="font-size:9.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin-bottom:6px">◆ RECENT SKILL FAILURES · ${stats.total||0} TOTAL · ${unacked} UNACKED</div>`;
+    bubble('bot',head+rows+ackBtn,'<span class="badge err">diag</span>');
   }catch(e){bubble('bot','Skill failures fetch failed: '+esc(String(e)),'<span class="badge err">diag</span>')}
+}
+async function _skillFailuresAck(){
+  try{
+    const r=await fetch('/memory/skill-failures/ack',{method:'POST'});
+    if(!r.ok){bubble('bot','Ack failed: HTTP '+r.status,'<span class="badge err">diag</span>');return}
+    const j=await r.json();
+    bubble('bot',`Acknowledged ${j.acked||0} skill failure(s). STATUS pill will clear shortly.`,'<span class="badge">diag</span>');
+    _refreshSkillFailures();
+  }catch(e){bubble('bot','Ack failed: '+esc(String(e)),'<span class="badge err">diag</span>')}
 }
 setInterval(_refreshSkillFailures,5000);_refreshSkillFailures();
 function _skillErrorRetry(originalMsg){
