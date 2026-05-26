@@ -256,6 +256,12 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #shell-panel .sh-item pre{margin:6px 0 0 0;font-size:9.5px;background:rgba(0,0,0,.4);padding:6px 8px;border-radius:2px;max-height:160px;overflow:auto;color:var(--fg);line-height:1.35;display:none;white-space:pre-wrap;word-break:break-all}
 #shell-panel .sh-item pre.show{display:block}
 #shell-panel .sh-empty{padding:24px;text-align:center;color:var(--mute);font-size:10px;font-style:italic}
+.restore-banner{display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px dashed rgba(0,229,255,.25);background:rgba(0,229,255,.04);border-radius:3px;font-size:9px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;margin:4px 0 12px;font-family:JetBrains Mono,monospace}
+.restore-banner .rb-close{margin-left:auto;cursor:pointer;color:var(--cyan);padding:1px 6px;border:1px solid rgba(0,229,255,.3);border-radius:2px;font-size:8px}
+.restore-banner .rb-close:hover{background:rgba(0,229,255,.12)}
+.msg.restored{opacity:.78}
+.msg.restored .bubble{border-left:2px solid rgba(255,255,255,.12)}
+.msg.restored .bubble::before{content:'';display:none}
 #toast-stack{position:fixed;bottom:140px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:14;max-width:340px;pointer-events:none}
 .toast{pointer-events:auto;padding:10px 12px;border:1px solid rgba(0,229,255,.35);background:rgba(8,14,28,.94);border-left:3px solid var(--cyan);border-radius:3px;font-size:11px;color:var(--fg);box-shadow:0 0 14px rgba(0,229,255,.18);backdrop-filter:blur(6px);transform:translateX(60px);opacity:0;transition:transform .25s ease-out, opacity .25s ease-out;cursor:pointer;font-family:inherit}
 .toast.show{transform:translateX(0);opacity:1}
@@ -984,6 +990,32 @@ function _dismissToast(id){
 function toggleNotifVoice(){_notifVoiceOn=!_notifVoiceOn;localStorage.setItem(NOTIF_VOICE_KEY,_notifVoiceOn?'1':'0');bubble('bot','Proactive notification voice **'+(_notifVoiceOn?'on':'off')+'**.','<span class="badge">notif</span>')}
 function _startNotifPolling(){if(_notifPollTimer)return;_pollNotifications();_notifPollTimer=setInterval(_pollNotifications,10000)}
 _startNotifPolling();
+const SESSION_RESTORE_LIMIT=24;
+async function _restoreSession(){
+  if(!sid)return;
+  try{
+    const r=await fetch('/sessions/'+encodeURIComponent(sid)+'?limit='+SESSION_RESTORE_LIMIT);
+    if(!r.ok)return;
+    const j=await r.json();const turns=j.turns||[];
+    if(turns.length===0)return;
+    const w=document.querySelector('.welcome');if(w)w.remove();
+    const banner=document.createElement('div');banner.className='restore-banner';banner.innerHTML=`<span>↻ RESTORED ${turns.length} TURN${turns.length===1?'':'S'} FROM SESSION ${esc(sid.slice(-8))}</span><span class="rb-close" onclick="this.parentElement.remove()">CLEAR</span>`;log.appendChild(banner);
+    for(const t of turns){
+      const role=t.role==='assistant'?'bot':(t.role==='user'?'user':null);if(!role)continue;
+      const text=t.content||t.message||'';if(!text)continue;
+      const meta=t.metadata||{};const tier=meta.tier||t.tier||'';const cat=meta.category||t.category||'';
+      let metaHtml='';if(tier||cat){const parts=[];if(tier)parts.push(`<span class="badge">${esc(tier)}</span>`);if(cat&&cat!=='general')parts.push(`<span class="badge">${esc(cat)}</span>`);metaHtml=parts.join(' ')}
+      const m=document.createElement('div');m.className='msg '+role+' restored';
+      const b=document.createElement('div');b.className='bubble';
+      if(role==='bot')b.innerHTML=md(text);else b.textContent=text;
+      m.appendChild(b);
+      if(metaHtml){const mt=document.createElement('div');mt.className='meta';mt.innerHTML=metaHtml;m.appendChild(mt)}
+      log.appendChild(m);
+    }
+    log.scrollTop=log.scrollHeight;
+  }catch(e){console.debug('session restore skipped:',e)}
+}
+setTimeout(_restoreSession,200);
 const COACH_SID_KEY='amni_jarvis_coach_sid',COACH_VOICE_KEY='amni_jarvis_coach_voice';
 let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false,_coachVoiceOn=localStorage.getItem(COACH_VOICE_KEY)==='1',_coachLastQuestion='';
 function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(COACH_VOICE_KEY,_coachVoiceOn?'1':'0');_coachUpdateVoiceBtn();if(_coachVoiceOn){voiceOut=true;localStorage.setItem(VKEY,'1');const vb=document.getElementById('voiceout-toggle');if(vb)vb.classList.add('on');if(_coachLastQuestion)speak(_coachLastQuestion)}}

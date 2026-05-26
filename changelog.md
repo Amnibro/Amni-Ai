@@ -2,6 +2,35 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.26 — Session continuity: chat history restores on /jarvis reload (2026-05-26)
+
+`/jarvis` always wiped to blank on refresh — but the `session_id` was already in localStorage, and the ConversationAtlas / session jsonl already had every turn. v6.10.26 connects them: on load, the last 24 turns from the existing session render automatically.
+
+### Restore flow
+1. On page load, JS checks `localStorage.getItem(SKEY)` (already stored as `amni_jarvis_session`)
+2. If present, fetch `GET /sessions/{sid}?limit=24` (endpoint already existed in scripts/amni_serve.py)
+3. If `turns.length>0`: remove the welcome screen, render each turn as a bubble (markdown for assistant, textContent for user), prepend a banner: `↻ RESTORED N TURNS FROM SESSION <last-8-chars>`
+4. Skip turns with unrecognized roles. Skip empty content. Carry over `tier` and `category` metadata as badges.
+
+### Visual treatment of restored turns
+- `.msg.restored` class on each — `opacity: 0.78` + faint left border so they read as historical context, not new
+- Banner has a CLEAR button to remove the divider if the user wants the chat to look fresh
+- New turns rendered after restore appear at full opacity, clearly distinct from history
+
+### Failure modes (all silent)
+- No session_id stored → bail (first-ever load, nothing to restore)
+- 404 (session deleted/expired) → bail
+- Empty `turns: []` → bail without showing the banner
+- Network failure → console.debug, leave welcome up
+
+### Tests
+16/16 PASS (`tests/test_session_restore_v6_10_26.py`): restore fn present, kicks off at load (200ms after DOMContentLoaded), 24-turn limit constant, uses existing SKEY/sid, bails on no-sid, removes welcome on success, renders banner with CLEAR button, banner+restored CSS styled, dimmed opacity, skips non-user/assistant roles, handles empty/404 responses cleanly, renders tier+category metadata as badges, markdown rendering for assistant only, v6.10.25 regression intact. Recent chain (v6.10.22 → .25): 68/68 still PASS. Total: 84/84.
+
+### What this unlocks
+Adam now feels like a real assistant across sessions — close the tab, come back tomorrow, your conversation is still there. Combined with v6.10.21 coach topics dashboard, v6.10.25 notification queue, and the ConversationAtlas (auto-recall of relevant past pairs in /chat handler), persistence is now end-to-end: the only thing Adam forgets is what you explicitly delete.
+
+---
+
 ## v6.10.25 — Proactive notification toasts (Adam speaks up on his own) (2026-05-26)
 
 Until now Adam only said anything when prompted. A real Jarvis is proactive — it surfaces relevant events on its own. v6.10.25 adds a notification queue that internal sources push to, and /jarvis slides toasts in at bottom-right.
