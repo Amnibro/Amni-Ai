@@ -41,24 +41,32 @@ def _open_browser_delayed(url:str,delay:float=2.5):
     threading.Thread(target=_go,daemon=True).start()
 def _print_serve_banner(host:str,port:int,workdir:str=''):
     base=f'http://{host}:{port}' if host not in ('0.0.0.0','::') else f'http://localhost:{port}'
+    enc=(getattr(sys.stdout,'encoding','') or '').lower()
+    uni=any(s in enc for s in ('utf','u8','u-8'))
+    tl,tr,bl,br,h,v,lm,rm='┌','┐','└','┘','─','│','├','┤' if uni else (None,)*8
+    if not uni:tl,tr,bl,br,h,v,lm,rm='+','+','+','+','-','|','+','+'
+    dash=h*59;dash_lm=h*59
     lines=[
         '',
-        '  ┌─────────────────────────────────────────────────────────┐',
-        '  │  Adam — local AI server                                 │',
-        '  ├─────────────────────────────────────────────────────────┤',
-        f'  │  chat ui      {base:<42} │',
-        f'  │  jarvis mode  {base+"/jarvis":<42} │',
-        f'  │  memory       {base+"/memory":<42} │',
-        f'  │  api docs     {base+"/docs":<42} │',
-        f'  │  health       {base+"/health":<42} │',
-        '  ├─────────────────────────────────────────────────────────┤',
-        f'  │  Ollama drop-in: OLLAMA_HOST={base:<28} │',
-        f'  │  OpenAI drop-in: OPENAI_BASE_URL={base+"/v1":<24} │',
+        f'  {tl}{dash}{tr}',
+        f'  {v}  Adam -- local AI server                                 {v}',
+        f'  {lm}{dash_lm}{rm}',
+        f'  {v}  chat ui      {base:<42} {v}',
+        f'  {v}  jarvis mode  {base+"/jarvis":<42} {v}',
+        f'  {v}  memory       {base+"/memory":<42} {v}',
+        f'  {v}  api docs     {base+"/docs":<42} {v}',
+        f'  {v}  health       {base+"/health":<42} {v}',
+        f'  {lm}{dash_lm}{rm}',
+        f'  {v}  Ollama drop-in: OLLAMA_HOST={base:<28} {v}',
+        f'  {v}  OpenAI drop-in: OPENAI_BASE_URL={base+"/v1":<24} {v}',
     ]
-    if workdir:lines.append(f'  │  workdir      {workdir[:42]:<42} │')
-    lines.append('  └─────────────────────────────────────────────────────────┘')
+    if workdir:lines.append(f'  {v}  workdir      {workdir[:42]:<42} {v}')
+    lines.append(f'  {bl}{dash}{br}')
     lines.append('')
-    print('\n'.join(lines),flush=True)
+    try:print('\n'.join(lines),flush=True)
+    except UnicodeEncodeError:
+        ascii_lines=['' if not l.strip() else l.encode('ascii','replace').decode('ascii') for l in lines]
+        print('\n'.join(ascii_lines),flush=True)
 def cmd_serve(args):
     cfg=load_config()
     if is_first_run() and not (Path(args.bake).exists() or Path(cfg.get('bake') or '').exists()):
