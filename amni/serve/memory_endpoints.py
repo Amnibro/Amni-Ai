@@ -33,6 +33,12 @@ def mount(app,agent):
         if getattr(agent,'coach_atlas',None) is None:return {'topics':[],'streak':{}}
         atlas=agent.coach_atlas
         return {'topics':atlas.list_topics()[:limit],'streak':atlas.streak_stats() if hasattr(atlas,'streak_stats') else {}}
+    @app.get('/memory/coach/reviews')
+    def coach_reviews(topic:str='',limit:int=20):
+        if getattr(agent,'coach_atlas',None) is None:return {'reviews':[]}
+        atlas=agent.coach_atlas
+        if not hasattr(atlas,'due_reviews'):return {'reviews':[]}
+        return {'reviews':atlas.due_reviews(topic=(topic or None),limit=limit)}
     @app.get('/memory/coach/topic/{topic}/export.{fmt}')
     def coach_export(topic:str,fmt:str):
         from fastapi.responses import PlainTextResponse

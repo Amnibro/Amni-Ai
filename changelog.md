@@ -2,6 +2,55 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.47 — Coach spaced-repetition review queue (SM-2-lite) (2026-05-26)
+
+Coach mode generated fresh questions per session but never resurfaced old questions for review. A real spaced-repetition tool brings cards back when they're due. v6.10.47 adds SM-2-lite scheduling + a "DUE FOR REVIEW" section in the coach panel.
+
+### `CoachAtlas.due_reviews(topic=None, limit=20)`
+Walks every topic's jsonl, dedupes by question (keeping latest answer), computes the next-review interval from the last score:
+- **<50** → 1 day
+- **50-69** → 3 days
+- **70-84** → 7 days
+- **85-94** → 14 days
+- **≥95** → 30 days
+
+A card is "due" when `(now - last_ts) >= interval_days`. Sort key is `overdue_ratio = age_days / interval_days` descending — most overdue surfaces first.
+
+Excluded from queue:
+- Skipped questions (no real answer)
+- Zero-score entries (unparseable grader output shouldn't haunt the user)
+- Cards still inside their interval
+
+Returns per card: `{topic, question, last_score, last_answer (200 char preview), last_difficulty, last_ts, age_days, interval_days, overdue_ratio}`.
+
+### New endpoint
+`GET /memory/coach/reviews?topic=&limit=20` — empty topic param means all topics.
+
+### UI: "DUE FOR REVIEW" section
+New section at top of coach panel (above PRACTICED TOPICS). Hidden when empty. Shows up to 10 most-overdue cards as magenta-left-border cards with:
+- Topic name (mono uppercase)
+- Question text (2-line clamp)
+- Footer: `last: 60/100 · 5.2d ago` + `2.4× overdue` (right-aligned)
+- **Urgent variant** (overdue_ratio ≥ 2): red left border + bold red overdue indicator
+
+Click a review card → loads the topic name into the input field via existing `_coachResumeTopic()`. User clicks START to begin a fresh session on that topic; the LLM will eventually re-ask the due question naturally as it generates new questions in-topic.
+
+### Tests
+20/20 PASS (`tests/test_coach_reviews_v6_10_47.py`): method exists, empty atlas returns empty, all 5 interval-band thresholds (1d/3d/7d/14d/30d), interval-band boundaries verified, skipped excluded, zero-score excluded, dedup keeps latest answer, sorted by overdue ratio desc, topic filter, all return fields present, limit applied, endpoint registered with due_reviews, /jarvis section + loader fn + URL + hide-when-empty + topics-loader-triggers-reviews + urgent CSS class threshold (≥2×) + all 5 review-card CSS hooks, v6.10.46 regression intact. Recent chain (v6.10.43 → .46): 70/70 still PASS. Total: 90/90.
+
+### What this completes
+Coach is now a full spaced-repetition app:
+- v6.10.18 — interactive Socratic loop
+- v6.10.20 — voice-native sessions
+- v6.10.21 — practiced-topics dashboard
+- v6.10.32 — streak gamification
+- v6.10.39 — per-topic export (md/anki/json)
+- **v6.10.47 — SM-2-lite review queue**
+
+Practice → grade → track → space → export. End-to-end flow.
+
+---
+
 ## v6.10.46 — Persona-flavored welcome screen (2026-05-26)
 
 The default `/jarvis` welcome said generic "NEURAL INTERFACE READY" regardless of persona. With v6.10.35 making Alfred the default for new users (and the maintainer's local launcher pinning Rikku), the welcome should greet in the active persona's voice from the moment the page loads.

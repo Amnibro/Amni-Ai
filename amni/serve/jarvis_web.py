@@ -401,6 +401,14 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #coach-panel .cp-topic-card .mini-bar{flex:1;max-width:80px;height:4px;background:rgba(255,77,200,.08);border-radius:2px;overflow:hidden;border:1px solid rgba(255,77,200,.12)}
 #coach-panel .cp-topic-card .mini-bar-fill{height:100%;background:linear-gradient(90deg,#ff4dc8,#ffe066);transition:width .3s}
 #coach-panel .cp-topic-card.lvl-master .mini-bar-fill{background:linear-gradient(90deg,#00ff9c,#ffe066)}
+#coach-panel .cp-review-card{padding:6px 10px;border-left:2px solid var(--magenta);background:rgba(255,77,200,.05);margin-bottom:4px;border-radius:0 3px 3px 0;cursor:pointer;font-size:11px;transition:all .15s}
+#coach-panel .cp-review-card:hover{background:rgba(255,77,200,.14);box-shadow:0 0 8px rgba(255,77,200,.18)}
+#coach-panel .cp-review-card .rv-topic{font-size:9px;letter-spacing:.18em;color:var(--magenta);text-transform:uppercase;font-family:JetBrains Mono,monospace}
+#coach-panel .cp-review-card .rv-q{color:var(--fg);margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
+#coach-panel .cp-review-card .rv-meta{display:flex;gap:8px;font-size:9px;color:var(--mute);margin-top:4px;letter-spacing:.05em;text-transform:uppercase}
+#coach-panel .cp-review-card .rv-overdue{margin-left:auto;color:#ff7b7b}
+#coach-panel .cp-review-card.urgent{border-left-color:#ff5b5b;background:rgba(255,91,91,.06)}
+#coach-panel .cp-review-card.urgent .rv-overdue{color:#ff5b5b;font-weight:bold}
 #coach-panel .cp-topic-card .tc-export{margin-left:6px;width:20px;height:20px;border-radius:3px;background:rgba(0,255,156,.06);border:1px solid rgba(0,255,156,.18);color:#00ff9c;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;opacity:0;transition:opacity .15s}
 #coach-panel .cp-topic-card:hover .tc-export{opacity:1}
 #coach-panel .cp-topic-card .tc-export:hover{background:rgba(0,255,156,.18);color:#fff}
@@ -730,6 +738,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <h3>NEW SESSION</h3>
     <div class="cp-topic-row"><input type="text" id="cp-topic" placeholder="topic (e.g. python decorators, krebs cycle)"><select id="cp-diff"><option value="1">1 — intro</option><option value="2" selected>2 — basic</option><option value="3">3 — intermediate</option><option value="4">4 — advanced</option><option value="5">5 — expert</option></select><button class="cp-act" onclick="_coachStart()">START</button></div>
     <div style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.05em">Adam will ask a question, grade your answer, then escalate or back off based on your streak.</div>
+  </div>
+  <div class="cp-section" id="cp-reviews-section" style="display:none">
+    <h3 style="display:flex;justify-content:space-between;align-items:center">DUE FOR REVIEW <span id="cp-reviews-count" style="font-size:9px;color:var(--magenta)"></span></h3>
+    <div id="cp-reviews-list"></div>
   </div>
   <div class="cp-section" id="cp-topics-section">
     <h3 style="display:flex;justify-content:space-between;align-items:center">PRACTICED TOPICS <button class="cp-act" onclick="_coachLoadTopics()" style="padding:3px 8px;font-size:8px">REFRESH</button></h3>
@@ -1461,8 +1473,21 @@ function _coachUpdateVoiceBtn(){const b=document.getElementById('cp-voice-toggle
 function _coachReplayQuestion(){if(_coachLastQuestion)speak(_coachLastQuestion);else bubble('bot','No active question to replay.','<span class="badge err">coach</span>')}
 function _coachSpeakIfOn(text){if(_coachVoiceOn&&text&&text.trim()&&_voiceBackends.tts)speak(text)}
 function toggleCoachPanel(){_coachPanelOpen=!_coachPanelOpen;const p=document.getElementById('coach-panel');p.classList.toggle('show',_coachPanelOpen);document.getElementById('coach-toggle').classList.toggle('on',_coachPanelOpen);['persona-panel','learn-panel','tests-panel'].forEach(id=>{const el=document.getElementById(id);if(_coachPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_coachPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_coachUpdateVoiceBtn();_coachLoadTopics();if(_coachSid)_coachSyncStatus()}}
+async function _coachLoadReviews(){
+  const sec=document.getElementById('cp-reviews-section');const list=document.getElementById('cp-reviews-list');const ct=document.getElementById('cp-reviews-count');if(!sec||!list)return;
+  try{
+    const r=await fetch('/memory/coach/reviews?limit=10');if(!r.ok){sec.style.display='none';return}
+    const j=await r.json();const reviews=j.reviews||[];
+    if(!reviews.length){sec.style.display='none';return}
+    sec.style.display='block';if(ct)ct.textContent=reviews.length+' due';
+    list.innerHTML=reviews.map(rv=>{const urgent=rv.overdue_ratio>=2?' urgent':'';const safe=esc(rv.topic||'').replace(/'/g,"\\\\'");
+      return `<div class="cp-review-card${urgent}" onclick="_coachResumeTopic('${safe}')" title="Click to resume topic"><div class="rv-topic">${esc(rv.topic)}</div><div class="rv-q">${esc(rv.question)}</div><div class="rv-meta"><span>last: ${rv.last_score}/100 · ${rv.age_days}d ago</span><span class="rv-overdue">${rv.overdue_ratio}× overdue</span></div></div>`
+    }).join('');
+  }catch{sec.style.display='none'}
+}
 async function _coachLoadTopics(){
   const list=document.getElementById('cp-topics-list');if(!list)return;
+  _coachLoadReviews();
   try{
     const r=await fetch('/memory/coach');if(!r.ok){list.innerHTML='<div style="font-size:10px;color:var(--mute);font-style:italic;text-align:center;padding:6px">coach memory unavailable</div>';return}
     const j=await r.json();const topics=j.topics||[];_coachUpdateStreakBadge(j.streak||{});

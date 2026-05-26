@@ -119,6 +119,32 @@ class CoachAtlas:
             if m['n_questions']>0:out.append({'topic':t,'mastery_pct':m['pct'],'n_questions':m['n_questions']})
         out.sort(key=lambda x:-x['mastery_pct'])
         return out
+    def due_reviews(self,topic:Optional[str]=None,limit:int=20,now:Optional[float]=None)->List[Dict[str,Any]]:
+        """SM-2-lite spaced-repetition queue. Each answered question has a score; the next-review interval grows with score:
+        <50→1d, 50-69→3d, 70-84→7d, 85→14d, 95+→30d. Returns cards where (now - last_ts) >= interval, sorted by overdue ratio descending.
+        Cards are deduped per (topic,question) — only the latest answer counts. Skipped + 0-score items don't enter the queue."""
+        now=now or time.time();out=[]
+        topics=[topic] if topic else [p.stem.removeprefix('topic_').replace('-',' ') for p in self.root.glob('topic_*.jsonl')]
+        for t in topics:
+            rows=self._load_topic(t)
+            if not rows:continue
+            latest:Dict[str,Dict[str,Any]]={}
+            for r in rows:
+                if r.get('skipped'):continue
+                if not (r.get('question') or '').strip():continue
+                q=r['question']
+                cur=latest.get(q)
+                if cur is None or float(r.get('ts') or 0)>float(cur.get('ts') or 0):latest[q]=r
+            for q,r in latest.items():
+                score=float(r.get('score') or 0);ts=float(r.get('ts') or 0)
+                if score<=0 or ts<=0:continue
+                interval_d=1 if score<50 else (3 if score<70 else (7 if score<85 else (30 if score>=95 else 14)))
+                age_d=(now-ts)/86400.0
+                if age_d<interval_d:continue
+                overdue_ratio=age_d/interval_d
+                out.append({'topic':t,'question':q,'last_score':score,'last_answer':r.get('user_answer','')[:200],'last_difficulty':int(r.get('difficulty',2)),'last_ts':ts,'age_days':round(age_d,2),'interval_days':interval_d,'overdue_ratio':round(overdue_ratio,2)})
+        out.sort(key=lambda x:-x['overdue_ratio'])
+        return out[:limit]
     def streak_stats(self,now:Optional[float]=None)->Dict[str,Any]:
         """Compute current consecutive-day-use streak across ALL topics.
         Returns {current_streak, best_streak, total_days_active, days_with_activity:[YYYY-MM-DD, ...], today_active, last_active_ts}."""
