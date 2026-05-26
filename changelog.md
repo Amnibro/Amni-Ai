@@ -2,6 +2,49 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.54 — Persona-flavored daily kickoff (greeting matches active voice) (2026-05-26)
+
+v6.10.46 made the welcome screen speak in the active persona's voice; v6.10.50 added the daily kickoff bubble but it stayed neutral. v6.10.54 threads the active persona into the kickoff so the whole arrival arc — welcome + kickoff briefing — stays in-character.
+
+### Per-persona kickoff phrase tables
+New `_PERSONA_KICKOFF_PHRASES` map covers all 11 presets, each with 4 templates: `intro` (with `{greet}` placeholder), `tail_review` (when due cards exist), `tail_pending` (when verification/shell errors), `tail_calm` (when nothing actionable). Hand-written to match each persona's tone established in the welcome screen and the safety baseline.
+
+**Alfred** (default) — *"{greet}, sir. Allow me to summarize what awaits you:" + "When you're ready, sir, the coach panel ({key}) clears that queue handily."* — restrained, paternal British butler.
+
+**Rikku** — *"Rao! {greet}! Look at this stack waiting for us:" + "Fryd's ib next? Your pick!"* — Al Bhed + scrappy collaborative energy.
+
+**Jarvis** — *"{greet}, sir. Current standing:" + "All systems nominal. Awaiting your direction."* — dry, anticipatory.
+
+**Yoda** — inverted syntax throughout (*"Waiting for you, these are." "Clear the queue, you must."*)
+
+**Pirate** — nautical metaphors (*"Charts show the following on the horizon" "Calm seas ahead, set yer own heading."*)
+
+**Haiku** — actual 5-7-5 haikus for the calm/review/pending tails
+
+**Scientist / Jobs / Sherlock / Mentor / Neutral** — each with hand-tuned phrasing matching their welcome voice
+
+### Behavior
+`_dailyKickoff` now:
+1. Parallel-fetches `/memory/digest`, `/memory/coach/reviews`, AND `/personas` (added)
+2. Reads `j.default` → looks up the phrase set (falls back to neutral if unknown)
+3. Substitutes `{greet}` (time-of-day) and `{key}` (Ctrl+G or ⌘+G) into the persona's intro + matching tail
+4. Bubble badge now reads `kickoff · alfred` (or whichever persona) for transparency
+
+Failure modes inherited from v6.10.50: persona fetch failure (`.catch(()=>null)`) falls back to neutral; no actionable items → silent (still records the date).
+
+### Tests
+18/18 PASS (`tests/test_persona_kickoff_v6_10_54.py`): table exists, all 11 personas covered, every entry has `intro + tail_review + tail_pending + tail_calm` (4 fields), Alfred addresses as sir, Rikku uses Rao + Fryd Al Bhed, Yoda uses inverted syntax, haiku entries have 3-line slash-separated form, pirate has captain/yer/charts, kickoff fetches /personas in parallel with digest+reviews, falls back to neutral on unknown, handles persona-fetch failure cleanly, substitutes both `{greet}` and `{key}`, badge includes persona name, picks correct tail variant per state, still gated by date (v6.10.50 contract), still silent when nothing actionable, v6.10.53 persistence still works. v6.10.50 regression test patched to accept the new persona-suffixed badge format. Recent chain (v6.10.50 → .53): 65/65 still PASS. Total: 83/83.
+
+### What this completes
+The arrival arc — first /jarvis open of the day — is now entirely persona-driven:
+- v6.10.46 — Welcome heading + tagline in persona voice
+- v6.10.50 — Proactive kickoff briefing if anything actionable
+- **v6.10.54 — Kickoff greeting also in persona voice**
+
+For the maintainer's Rikku-default machine: "Rao! Good morning! Look at this stack waiting for us..." For everyone else's Alfred-default install: "Good morning, sir. Allow me to summarize what awaits you..."
+
+---
+
 ## v6.10.53 — Coach active sessions persist across server restart (2026-05-26)
 
 The coach skill's in-flight sessions (`CoachAtlas._sessions`) lived in memory only. If the server restarted mid-session — even for a routine reload — the user's question + difficulty + streak state vanished, breaking the persistence loop that v6.10.18 → .49 built up.

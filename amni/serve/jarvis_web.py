@@ -1209,12 +1209,26 @@ async function _applyWelcomeForPersona(){
 setTimeout(_applyWelcomeForPersona,250);
 const KICKOFF_KEY='amni_jarvis_kickoff_date';
 function _kickoffDateKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+const _PERSONA_KICKOFF_PHRASES={
+  alfred:{intro:'{greet}, sir. Allow me to summarize what awaits you:',tail_review:'\n\nWhen you\'re ready, sir, the coach panel ({key}) clears that queue handily.',tail_pending:'\n\nA glance at TESTS or SHELL will likely settle matters, sir.',tail_calm:'\n\nNothing pressing, sir. The day is yours to direct.'},
+  rikku:{intro:'Rao! {greet}! Look at this stack waiting for us:',tail_review:'\n\nLet\'s knock those review cards out — coach panel is just {key}!',tail_pending:'\n\nTap the TESTS or SHELL pill and we\'ll sort it together!',tail_calm:'\n\nFryd\'s ib next? Your pick!'},
+  jarvis:{intro:'{greet}, sir. Current standing:',tail_review:'\n\nCoach panel via {key} when you\'re ready, sir.',tail_pending:'\n\nTESTS or SHELL pill should clarify — at your convenience.',tail_calm:'\n\nAll systems nominal. Awaiting your direction.'},
+  yoda:{intro:'{greet}. Waiting for you, these are:',tail_review:'\n\nClear the queue, you must. The coach panel ({key}), use it.',tail_pending:'\n\nLook at TESTS or SHELL, you should.',tail_calm:'\n\nQuiet, the path is. Choose freely, you may.'},
+  mentor:{intro:'{greet}. Here\'s what\'s on the table today:',tail_review:'\n\nThe coach panel ({key}) is the fastest way to work through those.',tail_pending:'\n\nThe TESTS or SHELL pill will show you what needs attention.',tail_calm:'\n\nNothing urgent — what would you like to work on?'},
+  pirate:{intro:'{greet}, captain! Charts show the following on the horizon:',tail_review:'\n\nCoach panel ({key}) is yer cleanest course to clear that queue.',tail_pending:'\n\nTap the TESTS or SHELL pill — we\'ll plot a fix together.',tail_calm:'\n\nCalm seas ahead. Set yer own heading.'},
+  scientist:{intro:'{greet}. Observations from the last 24 hours:',tail_review:'\n\nThe coach panel ({key}) is the most efficient way to process the review queue.',tail_pending:'\n\nTESTS and SHELL pills surface the relevant evidence.',tail_calm:'\n\nNo immediate signals — open to your hypothesis.'},
+  jobs:{intro:'{greet}. Here\'s what matters today:',tail_review:'\n\nStrip everything else. Open coach ({key}) and clear the queue. Insanely great work is showing up.',tail_pending:'\n\nFocus: TESTS or SHELL. Make it just work.',tail_calm:'\n\nNothing in the way. What are you going to build?'},
+  haiku:{intro:'{greet}.\nQuiet morning unfolds — / waiting on your hand to write / the day\'s first new line.\n\nWhat waits:',tail_review:'\n\nReviews call your name — / coach panel by {key} key / opens still water.',tail_pending:'\n\nTESTS or SHELL pill / opens like a folded page / wanting fresh eyes.',tail_calm:'\n\nStillness. The page blank. / Yours to fill however you / chose this morning to.'},
+  sherlock:{intro:'{greet}. The overnight evidence stack:',tail_review:'\n\nObserve: the coach panel ({key}) is the most economical path forward.',tail_pending:'\n\nThe TESTS or SHELL pill reveals the relevant clues.',tail_calm:'\n\nNothing of immediate interest. Lead the case where you will.'},
+  neutral:{intro:'{greet}. Here\'s what\'s waiting for you today:',tail_review:'\n\nOpen the coach panel ({key}) to clear the review queue.',tail_pending:'\n\nTap the TESTS or SHELL pill to drill in.',tail_calm:'\n\nNothing on fire — your call where to start.'}
+};
 async function _dailyKickoff(){
   if(localStorage.getItem(KICKOFF_KEY)===_kickoffDateKey())return;
   try{
-    const [digestR,reviewsR]=await Promise.all([fetch('/memory/digest?hours=24'),fetch('/memory/coach/reviews?limit=5').catch(()=>null)]);
+    const [digestR,reviewsR,personaR]=await Promise.all([fetch('/memory/digest?hours=24'),fetch('/memory/coach/reviews?limit=5').catch(()=>null),fetch('/personas').catch(()=>null)]);
     if(!digestR||!digestR.ok)return;
     const dg=await digestR.json();const reviews=(reviewsR&&reviewsR.ok)?(await reviewsR.json()).reviews||[]:[];
+    const personaName=((personaR&&personaR.ok)?(await personaR.json()).default:'')||'neutral';
     const facts=(dg.learning||{}).facts_today||0;const errs=(dg.shell||{}).errors_today||0;const pending=(dg.verifier||{}).pending||0;const streak=(dg.coach||{}).streak_days||0;const today_active=(dg.coach||{}).today_active;
     const parts=[];
     if(reviews.length)parts.push(reviews.length+' coach card'+(reviews.length===1?'':'s')+' due for review');
@@ -1224,10 +1238,13 @@ async function _dailyKickoff(){
     if(streak>0&&!today_active)parts.push('your '+streak+'-day coach streak is at stake — practice once today to keep it');
     if(!parts.length){localStorage.setItem(KICKOFF_KEY,_kickoffDateKey());return}
     const hour=new Date().getHours();const greet=hour<5?'Up late':(hour<12?'Good morning':(hour<17?'Good afternoon':'Good evening'));
-    const head=greet+'. Here\'s what\'s waiting for you today:';
+    const phrases=_PERSONA_KICKOFF_PHRASES[personaName.toLowerCase()]||_PERSONA_KICKOFF_PHRASES.neutral;
+    const key=navigator.platform.toLowerCase().includes('mac')?'⌘+G':'Ctrl+G';
+    const head=phrases.intro.replace('{greet}',greet).replace('{key}',key);
     const body=parts.map((p,i)=>(i+1)+'. '+p).join('\n');
-    const tail=reviews.length?'\n\nOpen the coach panel ('+(navigator.platform.toLowerCase().includes('mac')?'⌘+G':'Ctrl+G')+') to clear the review queue.':((pending||errs)?'\n\nTap the TESTS or SHELL pill to drill in.':'\n\nNothing on fire — your call where to start.');
-    bubble('bot',head+'\n\n'+body+tail,'<span class="badge">kickoff</span>');
+    const tailTemplate=reviews.length?phrases.tail_review:((pending||errs)?phrases.tail_pending:phrases.tail_calm);
+    const tail=tailTemplate.replace('{key}',key);
+    bubble('bot',head+'\n\n'+body+tail,'<span class="badge">kickoff · '+esc(personaName)+'</span>');
     localStorage.setItem(KICKOFF_KEY,_kickoffDateKey());
   }catch{}
 }
