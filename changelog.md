@@ -2,6 +2,25 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.13 — Jarvis wake-word gate ("Adam, …") in convo mode (2026-05-26)
+
+Convo mode currently sends every Whisper transcription to chat. That makes Adam respond to room chatter, half-finished sentences, and anything Whisper hallucinates that survives the v6.10.10 filter. v6.10.13 adds an explicit **wake word** gate — when on, Adam only responds in convo mode if you address him directly. This is the canonical Jarvis behavior.
+
+### The gate
+Default: **off** (legacy behavior preserved). Toggle via new `WAKE` button in composer between CONVO and VAD. Persists in `localStorage`.
+
+When **on**, transcripts pass the gate only if they match `^(hey/okay/yo/hi/hello )?adam[,:;!?]+ <text>` (vocative punctuation — direct address) OR `^(prefix? )?adam <text>` where `<text>` doesn't start with a declarative verb (`is/was/seems/looks/has/had/got/...`). The declarative reject prevents third-person narration like "Adam is sleeping" from triggering.
+
+Stripped command text goes to chat as if you typed it. Misses (no wake word) flash a small amber "heard: …" indicator near the bottom of the screen for ~2.2s so you know the mic is alive — then drop the transcription silently.
+
+### Recognized variations
+`Adam,` / `Adam:` / `Adam!` / `Adam?` / `Hey Adam,` / `Okay Adam` / `Yo Adam` / `Hi Adam` / `Hello Adam` — also tolerates Whisper near-misses `Atom`, `Adams`, `Adan`.
+
+### Tests
+15/15 PASS (`tests/test_wake_word_v6_10_13.py`): toggle button placement, localStorage persistence, pattern recognition across 11 vocative forms, declarative reject (sleeping/was/seems/etc), comma override (vocative comma beats declarative), passthrough when off, null on miss, handler integration, ambient flash, no v6.10.12 regression. 13/13 v6.10.12 also still PASS.
+
+---
+
 ## v6.10.12 — Live learning daemon visibility chip in /jarvis (2026-05-26)
 
 The 24/7 LearningDaemon was already running — but invisible to the user. v6.10.12 surfaces it as a live header pill + slide-in inspection panel, and fixes a latent bug where `/skills/{name}` HTTP calls couldn't reach the daemon/coach/scheduler/KG/etc. because those registries weren't in the skill ctx.
