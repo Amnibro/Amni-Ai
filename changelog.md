@@ -2,6 +2,49 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.16 — Adam self-verifies its own edits + user-testing checklist (2026-05-26)
+
+Per Anthony's directive: when Adam writes/edits a file, it must actually verify the change is functional. If it can't, leave a note for later. If user testing is the only way, queue it on a checklist.
+
+### New module `amni/serve/edit_verifier.py`
+Every `file_write` / `code_edit` now runs through `verify_edit(path, written_content, op)`:
+1. **Disk readback** — sha256 + byte-length check that what we wrote is what's actually on disk (catches IO corruption, encoding drift)
+2. **Per-extension semantic check**:
+   - `.py` → `ast.parse` + `compile()` (syntax + module-level execution shape)
+   - `.json` → `json.loads`
+   - `.yaml/.yml` → `yaml.safe_load` (skipped if PyYAML absent)
+   - `.toml` → `tomllib.loads` (3.11+) / `tomli` fallback
+   - `.js/.mjs/.ts/.tsx/.jsx/.html/.css/.rs/.go/.c/.cpp/.h/.hpp` → bracket balance (string/comment-aware)
+3. **Suggested tests** — for `.py`, detects `test_<stem>.py` siblings and `tests/test_<stem>.py`; suggests them to the user
+4. **User-testing queue** — when verification is `verified:None` (no auto-verifier) OR the extension is in `_NEEDS_USER_TEST_HINTS` (`.html`, `.css`, `.js`/etc need eyes regardless), appends a `pending` entry to `data/needs_testing.jsonl`
+5. **Verification log** — every edit appends one line to `data/verification_log.jsonl` for audit
+
+### New endpoints
+- `GET /memory/needs-testing?limit=N&include_done=false` — checklist of unverified edits
+- `POST /memory/needs-testing/done {"path_substring":"..."}` — mark items tested
+
+### Widget badge (`/jarvis`)
+Three-state verification badge in the `file_change` widget header:
+- **✓ VERIFIED** (green) — auto-checks all passed
+- **✗ FAILED** (red, shake animation) — syntax/parse/bracket/disk-readback issue. Shows the issue list inline.
+- **⚠ MANUAL** (amber) — auto-verifier can't help (unknown ext, or .html/.css/.js need visual eyes). Shows "recommended test:" if a sibling test file was detected. Includes a **MARK TESTED** button that POSTs to `/memory/needs-testing/done`.
+
+### Chat text mirror
+The bubble text now ends with one of:
+- ` Verification FAILED: <first 3 issues>. I would not trust this edit yet — please review.`
+- ` Auto-verification skipped (<reason>); I added a testing reminder.`
+- ` Sibling test file detected: <path>. Run it to confirm behavior.`
+
+So even API-only clients (no widget renderer) get a human-readable verification result.
+
+### Tests
+17/17 PASS (`tests/test_edit_verifier_v6_10_16.py`): all 5 verifier types, disk-mismatch detection, unknown-ext queuing, .html visual-test queuing, mark-done flow, skill-side integration, three formatter status branches, widget CSS for all three states, v6.10.15 regression. Full prior chain (v6.10.11 → .15): 73/73 still PASS. Total: 90/90.
+
+### Failure-mode philosophy
+Adam now refuses to claim "Edited /path: 3 replacements" as success when the file is syntactically broken. The bubble explicitly says verification failed. The widget shakes. The checklist tracks unresolved items. When the user invokes "what needs testing?" via `/memory/needs-testing`, they get the full list — nothing falls through the cracks.
+
+---
+
 ## v6.10.15 — File-change widget surfaces autonomous coding in /jarvis (2026-05-26)
 
 When Adam writes or edits a file via `file_write` / `code_edit`, the chat used to show only a one-liner ("Edited /path: 3 replacement(s)"). That's not Jarvis-grade for autonomous coding. v6.10.15 emits a styled `file_change` widget alongside the text — like the existing weather/system/git widgets, but for file edits.

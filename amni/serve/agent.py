@@ -605,14 +605,26 @@ class AmniAgent:
         if name=='web':return f'{out.get("answer","(no answer)")}\n\nSources: {", ".join(out.get("sources",[])[:3])}'
         if name=='file_read':return f'```\n{out.get("content","")}\n```\n({out.get("bytes")} bytes from {out.get("path")})'
         if name=='file_write':
-            ch=out.get('change') or {};op='create' if out.get('created') else 'overwrite'
-            widget=json.dumps({'type':'file_change','title':op.upper()+': '+(out.get('path') or '?').split('/')[-1].split('\\')[-1],'icon':'+' if op=='create' else '↻','data':{'op':op,'path':out.get('path'),'ext':out.get('ext','txt'),'lines_added':ch.get('lines_added',0),'lines_removed':ch.get('lines_removed',0),'lines_before':ch.get('lines_before',0),'lines_after':ch.get('lines_after',0),'bytes_after':ch.get('bytes_after',out.get('bytes_written',0)),'preview':ch.get('preview','')}})
-            return f'Wrote {out.get("bytes_written")} bytes to {out.get("path")}.\n\n```widget\n{widget}\n```'
+            ch=out.get('change') or {};v=out.get('verification') or {};op='create' if out.get('created') else 'overwrite'
+            verified=v.get('verified');issues=v.get('issues') or [];suggested=v.get('suggested_tests') or []
+            vstatus='pass' if verified is True else ('fail' if verified is False else 'manual')
+            widget=json.dumps({'type':'file_change','title':op.upper()+': '+(out.get('path') or '?').split('/')[-1].split('\\')[-1],'icon':'+' if op=='create' else '↻','data':{'op':op,'path':out.get('path'),'ext':out.get('ext','txt'),'lines_added':ch.get('lines_added',0),'lines_removed':ch.get('lines_removed',0),'lines_before':ch.get('lines_before',0),'lines_after':ch.get('lines_after',0),'bytes_after':ch.get('bytes_after',out.get('bytes_written',0)),'preview':ch.get('preview',''),'verification_status':vstatus,'verification_issues':issues,'verification_checks':v.get('checks',[]),'suggested_tests':suggested,'verification_reason':v.get('reason','')}})
+            note=''
+            if verified is False:note=f' Verification FAILED: {"; ".join(issues[:3])}. I would not trust this edit yet — please review.'
+            elif verified is None:note=f' Auto-verification skipped ({v.get("reason","unknown")}); I added a testing reminder.'
+            elif suggested:note=f' Sibling test file detected: {suggested[0]}. Run it to confirm behavior.'
+            return f'Wrote {out.get("bytes_written")} bytes to {out.get("path")}.{note}\n\n```widget\n{widget}\n```'
         if name=='code_edit':
             if out.get('error'):return f'(code_edit error: {out.get("error")})'
-            ch=out.get('change') or {}
-            widget=json.dumps({'type':'file_change','title':'EDIT: '+(out.get('path') or '?').split('/')[-1].split('\\')[-1],'icon':'✎','data':{'op':'edit','path':out.get('path'),'ext':out.get('ext','txt'),'replacements':out.get('replacements',0),'lines_added':ch.get('lines_added',0),'lines_removed':ch.get('lines_removed',0),'lines_before':ch.get('lines_before',0),'lines_after':ch.get('lines_after',0),'bytes_after':ch.get('bytes_after',0),'preview':ch.get('preview','')}})
-            return f'Edited {out.get("path")}: {out.get("replacements",0)} replacement(s).\n\n```widget\n{widget}\n```'
+            ch=out.get('change') or {};v=out.get('verification') or {}
+            verified=v.get('verified');issues=v.get('issues') or [];suggested=v.get('suggested_tests') or []
+            vstatus='pass' if verified is True else ('fail' if verified is False else 'manual')
+            widget=json.dumps({'type':'file_change','title':'EDIT: '+(out.get('path') or '?').split('/')[-1].split('\\')[-1],'icon':'✎','data':{'op':'edit','path':out.get('path'),'ext':out.get('ext','txt'),'replacements':out.get('replacements',0),'lines_added':ch.get('lines_added',0),'lines_removed':ch.get('lines_removed',0),'lines_before':ch.get('lines_before',0),'lines_after':ch.get('lines_after',0),'bytes_after':ch.get('bytes_after',0),'preview':ch.get('preview',''),'verification_status':vstatus,'verification_issues':issues,'verification_checks':v.get('checks',[]),'suggested_tests':suggested,'verification_reason':v.get('reason','')}})
+            note=''
+            if verified is False:note=f' Verification FAILED: {"; ".join(issues[:3])}.'
+            elif verified is None:note=f' Auto-verification skipped ({v.get("reason","unknown")}); testing reminder added.'
+            elif suggested:note=f' Sibling test file: {suggested[0]} — recommend running.'
+            return f'Edited {out.get("path")}: {out.get("replacements",0)} replacement(s).{note}\n\n```widget\n{widget}\n```'
         if name=='shell':return f'$ {out.get("cmd")}\n(exit={out.get("returncode")})\n{out.get("stdout","")}{out.get("stderr","")}'
         if name=='scan':
             if out.get('error'):return f'(scan error: {out["error"]})'
