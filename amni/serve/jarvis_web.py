@@ -187,6 +187,12 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
 .sidehint{position:fixed;bottom:14px;left:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:3;pointer-events:none;opacity:.6}
+#wd-pill{position:fixed;bottom:14px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-family:JetBrains Mono,monospace;z-index:5;padding:3px 9px;border:1px solid rgba(0,229,255,.18);background:rgba(8,14,28,.65);border-radius:99px;cursor:pointer;backdrop-filter:blur(6px);transition:all .15s;display:none}
+#wd-pill.show{display:inline-block}
+#wd-pill:hover{color:var(--cyan);border-color:rgba(0,229,255,.45);box-shadow:0 0 10px rgba(0,229,255,.2)}
+#wd-pill .wd-lbl{color:var(--cyan);margin-right:6px}
+#wd-pill.unrestricted{border-color:rgba(255,181,71,.35)}
+#wd-pill.unrestricted .wd-lbl{color:#ffb547}
 .status .pill.clickable{cursor:pointer}
 .status .pill.clickable:hover{border-color:var(--cyan);background:rgba(0,229,255,.12)}
 #persona-panel{position:fixed;top:60px;right:24px;width:300px;z-index:11;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,229,255,.22);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
@@ -840,6 +846,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 <div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE OR TEXT FILE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
+<span id="wd-pill" onclick="_wdCopy()" title="Click to copy full path"><span class="wd-lbl">WORKDIR</span><span id="wd-path">—</span></span>
 <script>
 const SKEY='amni_jarvis_session',VKEY='amni_jarvis_voiceout';
 let sid=localStorage.getItem(SKEY)||'';
@@ -1204,6 +1211,21 @@ async function _dailyKickoff(){
   }catch{}
 }
 setTimeout(_dailyKickoff,1400);
+let _wdFull='';
+function _wdTail(full,n=3){if(!full)return '';const parts=full.replace(/\\/g,'/').split('/').filter(Boolean);return (parts.length>n?'…/':'')+parts.slice(-n).join('/')}
+async function _loadWorkdir(){
+  try{const r=await fetch('/workdir');if(!r.ok)return;const j=await r.json();const wd=j.workdir||'';if(!wd)return;
+    _wdFull=wd;const pill=document.getElementById('wd-pill');const path=document.getElementById('wd-path');if(!pill||!path)return;
+    path.textContent=_wdTail(wd,3);pill.title='Workdir: '+wd+(j.unrestricted?' (UNRESTRICTED MODE)':'')+'\nClick to copy full path';
+    pill.classList.add('show');if(j.unrestricted)pill.classList.add('unrestricted');
+  }catch{}
+}
+function _wdCopy(){
+  if(!_wdFull)return;
+  try{navigator.clipboard.writeText(_wdFull);bubble('bot','Copied workdir to clipboard: `'+esc(_wdFull)+'`','<span class="badge">copy</span>')}
+  catch{bubble('bot','Workdir: `'+esc(_wdFull)+'` (clipboard unavailable)','<span class="badge err">copy</span>')}
+}
+_loadWorkdir();
 async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_applyWelcomeForPersona()}}
 _initPersonaPill();
 let _ldStats=null,_ldPanelOpen=false,_ldPollTimer=null,_ldLastTopic=null,_ldErrCount=0;

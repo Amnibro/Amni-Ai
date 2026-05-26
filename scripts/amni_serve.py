@@ -668,6 +668,11 @@ def main():
         return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p><p>Endpoints: <a href="/health" style="color:#00d4ff">/health</a> · <a href="/skills" style="color:#00d4ff">/skills</a> · <a href="/sessions" style="color:#00d4ff">/sessions</a></p></body></html>',status_code=200)
     @app.get('/healthz')
     def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':'6.9.3','warmup':_warmup_state}
+    @app.get('/workdir')
+    def workdir():
+        wd=str(skills.workdir) if hasattr(skills,'workdir') else ''
+        roots=[str(p) for p in (getattr(skills,'roots',[]) or [])]
+        return {'workdir':wd,'roots':roots,'unrestricted':bool(getattr(skills,'unrestricted',False))}
     @app.get('/warmup')
     def warmup_status():return {'warmup':_warmup_state}
     class IntentReq(BaseModel):

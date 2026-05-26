@@ -2,6 +2,32 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.51 — Workdir indicator pill (bottom-right) (2026-05-26)
+
+Adam can write files but the user could lose track of which directory he's scoped to — especially when multiple Adam instances run for different projects. v6.10.51 adds a small footer pill showing the current workdir, with click-to-copy + an amber warning variant for unrestricted mode.
+
+### New endpoint `GET /workdir`
+Returns `{workdir, roots, unrestricted}` — the active SkillRegistry workdir, configured roots, and whether file operations are scope-unrestricted.
+
+### UI: footer pill
+Small mono pill at fixed bottom-right (`bottom:14px right:36px`):
+- Cyan label `WORKDIR` + last 3 path segments (Windows backslashes normalized to forward slashes)
+- Truncates with `…/` prefix when the full path is deeper than 3 levels
+- Hidden by default; only renders after `/workdir` resolves successfully
+- Hover shows the full path + unrestricted warning in the tooltip
+- Click → copies full path to clipboard via `navigator.clipboard.writeText`, bubbles confirmation
+- **Unrestricted variant**: amber border + amber label + tooltip warning when scope is unrestricted (read/write across all drives)
+
+### Why it matters
+After 50+ features, the chat surface is dense. The user might have three Adam tabs open across three projects and not remember which is which. The workdir pill makes scope obvious without occupying header real estate (which is already busy with the 6 status pills from v6.10.12-22).
+
+Combined with v6.10.16 self-verification log + v6.10.22 shell audit, the user can trace every state-mutating action back to which workdir produced it.
+
+### Tests
+17/17 PASS (`tests/test_workdir_pill_v6_10_51.py`): pill element + path slot present, hidden by default, .show + .unrestricted CSS classes, loader fn polls `/workdir`, bails when empty, tail helper extracts last 3 segments + normalizes Windows separators + ellipsis-prefixes long paths, copy fn uses clipboard API with graceful fallback, click handler wired, tooltip shows full path + unrestricted warning, unrestricted class added when applicable, loader auto-fires at startup, endpoint registered in scripts/amni_serve.py with correct {workdir,roots,unrestricted} shape, v6.10.50 regression intact. Recent chain (v6.10.47 → .50): 73/73 still PASS. Total: 90/90.
+
+---
+
 ## v6.10.50 — Adam's daily kickoff briefing (proactive on first /jarvis open per day) (2026-05-26)
 
 After 50 iters, Adam has notification toasts, briefing chips, review queues, and verification pills — but on first /jarvis load each morning the user still has to think about which panel to open. v6.10.50 makes Adam open the conversation with a proactive contextual greeting: a single bubble summarizing anything actionable since they last visited.
