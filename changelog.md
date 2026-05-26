@@ -2,6 +2,32 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.55 — Bubble retry button (one-click discard + edit prompt) (2026-05-26)
+
+When Adam's reply misses the mark, the user had to retype the whole prompt by hand. v6.10.55 adds a hover-revealed `↻ retry` button on every bot bubble that yanks both the bot reply AND the preceding user prompt, then repopulates the input with the user's original text + focuses it for quick editing.
+
+### Mechanics
+`bubble()` now appends a `<button class="msg-retry">↻ retry</button>` to every `role==='bot'` message. Click handler:
+1. Walks `previousElementSibling` back to the immediately-prior `.msg` element (skips inserted widgets, restored banners, etc.)
+2. If that prior sibling is a `.user` bubble: extract its `.bubble` text → `input.value=text`, focus the input, resize the textarea to fit
+3. `prev.remove()` (user) + `botMsg.remove()` (bot)
+4. Guarded: if no preceding user bubble exists (orphan bot from kickoff/notification/restore), only the bot bubble is removed; input is left untouched
+
+### Visual
+- Top-right corner of the bubble (`position:absolute; top:8px; right:8px`)
+- Magenta-tinted background + border matching the existing magenta accents
+- `opacity: 0` by default — hovering the bubble bumps to 0.6, hovering the button itself bumps to 1.0 + soft magenta glow
+- Mono uppercase letter-spacing so it reads as a Jarvis-style tactical control
+- `event.stopPropagation()` on click — won't trigger any parent click handlers (chat search highlights, etc.)
+
+### Why it matters
+Adam's response is sometimes off (vague, wrong assumption, hallucinated detail). Without retry the user types the prompt again from scratch. With retry it's: hover → click → tweak → Enter. Combined with v6.10.27 chat search + v6.10.28 export, the chat is now a fully-editable artifact, not an append-only log.
+
+### Tests
+16/16 PASS (`tests/test_bubble_retry_v6_10_55.py`): `bubble()` appends retry button only on bot bubbles (not user), uses ↻ marker + descriptive title, `_retryBubble()` walks back skipping non-msg siblings, repopulates input from user bubble text, focuses input, resizes textarea, removes both bubbles, guards on missing user (orphan-bot safety), `event.stopPropagation()` on click, all 3 CSS hooks (position:absolute, opacity:0 default, hover-reveal), `.msg.bot{position:relative}` for the absolute overlay anchor, v6.10.54 regression intact. Recent chain (v6.10.51 → .54): 67/67 still PASS. Total: 83/83.
+
+---
+
 ## v6.10.54 — Persona-flavored daily kickoff (greeting matches active voice) (2026-05-26)
 
 v6.10.46 made the welcome screen speak in the active persona's voice; v6.10.50 added the daily kickoff bubble but it stayed neutral. v6.10.54 threads the active persona into the kickoff so the whole arrival arc — welcome + kickoff briefing — stays in-character.
