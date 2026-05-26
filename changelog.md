@@ -2,6 +2,52 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.50 — Adam's daily kickoff briefing (proactive on first /jarvis open per day) (2026-05-26)
+
+After 50 iters, Adam has notification toasts, briefing chips, review queues, and verification pills — but on first /jarvis load each morning the user still has to think about which panel to open. v6.10.50 makes Adam open the conversation with a proactive contextual greeting: a single bubble summarizing anything actionable since they last visited.
+
+### Trigger
+- Fires 1.4s after page load (gives v6.10.26 session restore + v6.10.46 persona welcome time to settle)
+- Gated by `localStorage.amni_jarvis_kickoff_date` set to today's `YYYY-MM-DD` — fires at most once per day per browser
+- Records the date even when nothing actionable, so we don't re-poll all day
+
+### What it aggregates
+Parallel fetch (`Promise.all`) of:
+- `/memory/digest?hours=24` (v6.10.37) — facts learned, shell errors, pending verifications, coach streak
+- `/memory/coach/reviews?limit=5` (v6.10.47) — due review cards
+
+If review fetch fails (older Adam install), kickoff still fires — handled via `.catch(()=>null)`.
+
+### What it surfaces (in priority order)
+- `N coach card(s) due for review`
+- `M edit(s) awaiting your review`
+- `K shell error(s) overnight`
+- `J new fact(s) learned via daemon`
+- *"Your N-day coach streak is at stake — practice once today to keep it"* (only when streak active AND today not yet logged)
+
+If none of these are non-zero, skips the bubble entirely (records the date and stays quiet — no Clippy energy).
+
+### Time-of-day greeting
+- `<5 AM` → "Up late"
+- `<12 PM` → "Good morning"
+- `<5 PM` → "Good afternoon"
+- `≥5 PM` → "Good evening"
+
+### Suggestion tail
+- Has review cards → *"Open the coach panel (Ctrl+G / ⌘+G) to clear the review queue."*
+- Has pending or errors → *"Tap the TESTS or SHELL pill to drill in."*
+- Otherwise → *"Nothing on fire — your call where to start."*
+
+Uses `navigator.platform` to pick `⌘` vs `Ctrl` for the keyboard hint.
+
+### Tests
+16/16 PASS (`tests/test_daily_kickoff_v6_10_50.py`): localStorage key constant + YYYY-MM-DD format, `_dailyKickoff` fn present + auto-fires at load + gated by today's date key, aggregates digest + reviews via Promise.all, review-fetch optional via .catch, all 5 actionable mentions wired (coach card / edit / shell error / fact / streak), streak-at-stake gating (only when streak>0 AND !today_active), no-action path still records the date, all 4 time-of-day greetings, Mac vs Ctrl modifier inference, kickoff badge present, localStorage set after firing, v6.10.49 regression intact. Recent chain (v6.10.46 → .49): 73/73 still PASS. Total: 89/89.
+
+### Why it matters
+The data was all there since v6.10.37, but the user still had to remember to check. Real Jarvis opens the curtains, brings coffee, reads the news. v6.10.50 puts Adam on duty the moment you open his face. Combined with v6.10.32 streak gamification, this is the missing nudge that turns "I should practice today" into "Adam reminded me I'm 5 days in, I'd better keep the streak."
+
+---
+
 ## v6.10.49 — Coach review-now mode (closes the v6.10.47 SR loop) (2026-05-26)
 
 v6.10.47 surfaced due review cards in the coach panel, but clicking one only loaded the topic name into the input — the user had to wait for Adam to organically re-ask the question, which might never happen. v6.10.49 closes the loop: clicking a due card actually starts a coach session with that specific question as the first ask.
