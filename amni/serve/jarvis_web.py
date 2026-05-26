@@ -1666,6 +1666,8 @@ function _coreColor(){
   if(convoState==='thinking'||convoState==='transcribing')return ['#ff4dc8','rgba(255,77,200,'];
   if(convoState==='recording')return ['#00e5ff','rgba(0,229,255,'];
   if(convoState==='error')return ['#ff5b5b','rgba(255,91,91,'];
+  const tint=(typeof _personaToastTint==='function')?_personaToastTint():null;
+  if(tint)return [tint.hex,`rgba(${tint.rgb},`];
   if(convoOn)return ['#00e5ff','rgba(0,229,255,'];
   return ['#7ad6ff','rgba(122,214,255,'];
 }
@@ -1798,6 +1800,7 @@ async function _personaCycle(step){
   if(!_knownPersonas||_knownPersonas.length<2){
     if(_knownPersonas.length===0){try{await _loadPersonas()}catch{}if(_knownPersonas.length===0)return}
   }
+  if(typeof _corePulse==='function')_corePulse();
   const names=_knownPersonas.map(p=>(typeof p==='string'?p:(p.name||''))).filter(Boolean);
   if(names.length<2)return;
   const cur=(_selectedPersona||personaName||names[0]).toLowerCase();
