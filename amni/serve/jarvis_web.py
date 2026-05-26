@@ -240,6 +240,9 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .qchip.qc-export:hover{background:rgba(0,255,156,.14);border-color:#00ff9c;color:#00ff9c;box-shadow:0 0 8px rgba(0,255,156,.25)}
 .qchip.qc-learn:hover{background:rgba(255,181,71,.12);border-color:#ffb547;color:#ffb547;box-shadow:0 0 8px rgba(255,181,71,.22)}
 .qchip-hint{font-size:9px;color:var(--mute);letter-spacing:.15em;margin-left:auto;opacity:.6;text-transform:uppercase}
+#quick-bar.qb-collapsed .qb-item{display:none}
+#quick-bar:not(.qb-collapsed) .qb-toggle{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.12)}
+.qb-toggle .ico{font-size:14px;letter-spacing:0}
 #mic-shell{position:relative;width:46px;height:46px;border:1px solid rgba(0,229,255,.4);border-radius:50%;background:rgba(0,229,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--cyan);transition:all .2s;flex-shrink:0}
 #mic-shell:hover{box-shadow:0 0 14px var(--cyan);border-color:var(--cyan)}
 #mic-shell.listening{background:rgba(255,43,214,.15);border-color:var(--magenta);color:var(--magenta);box-shadow:0 0 18px var(--magenta);animation:pulseMic 1.2s ease-in-out infinite}
@@ -760,18 +763,17 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
       </div>
     </div>
   </div></div>
-  <div id="quick-bar">
-    <button class="qchip" onclick="_qcAsk('What is the weather in Boston?')"><span class="ico">🌤</span>WEATHER</button>
-    <button class="qchip" onclick="_qcAsk('Show me current system stats')"><span class="ico">📊</span>SYSTEM</button>
-    <button class="qchip" onclick="_qcAsk('git status')"><span class="ico">⎇</span>GIT</button>
-    <button class="qchip qc-learn" onclick="_qcAsk('what are you learning right now?')"><span class="ico">🧠</span>DAEMON</button>
-    <button class="qchip qc-coach" onclick="toggleCoachPanel()"><span class="ico">🎯</span>COACH</button>
-    <button class="qchip qc-export" onclick="_exportChatMd()"><span class="ico">📥</span>EXPORT</button>
-    <button class="qchip" onclick="_qcAsk('summarize this conversation so far')"><span class="ico">📝</span>SUMMARIZE</button>
-    <button class="qchip" onclick="_qcBriefing()" title="Adam's last-24h activity briefing"><span class="ico">◈</span>BRIEFING</button>
-    <button class="qchip" onclick="toggleSessionsPanel()" title="Browse past chat sessions"><span class="ico">🗂</span>SESSIONS</button>
-    <button class="qchip" onclick="_qcAsk('what can you do?')"><span class="ico">?</span>HELP</button>
-    <span class="qchip-hint">drag a file · paste image · Ctrl+K to search</span>
+  <div id="quick-bar" class="qb-collapsed">
+    <button class="qchip qb-toggle" onclick="toggleQuickBar()" title="Show example prompts"><span class="ico">⋯</span><span id="qb-toggle-label">EXAMPLES</span></button>
+    <button class="qchip qb-item" onclick="_qcAsk('What is the weather in Boston?')"><span class="ico">🌤</span>WEATHER</button>
+    <button class="qchip qb-item" onclick="_qcAsk('Show me current system stats')"><span class="ico">📊</span>SYSTEM</button>
+    <button class="qchip qb-item" onclick="_qcAsk('git status')"><span class="ico">⎇</span>GIT</button>
+    <button class="qchip qb-item qc-learn" onclick="_qcAsk('what are you learning right now?')"><span class="ico">🧠</span>DAEMON</button>
+    <button class="qchip qb-item" onclick="_qcAsk('summarize this conversation so far')"><span class="ico">📝</span>SUMMARIZE</button>
+    <button class="qchip qb-item" onclick="_qcBriefing()" title="Adam's last-24h activity briefing"><span class="ico">◈</span>BRIEFING</button>
+    <button class="qchip qb-item" onclick="toggleSessionsPanel()" title="Browse past chat sessions"><span class="ico">🗂</span>SESSIONS</button>
+    <button class="qchip qb-item" onclick="_qcAsk('what can you do?')"><span class="ico">?</span>HELP</button>
+    <span class="qchip-hint qb-item">drag a file · paste image · Ctrl+K to search</span>
   </div>
   <div id="composer">
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
@@ -2047,6 +2049,15 @@ function toggleToolsDrawer(force){
   const el=document.getElementById('tools-drawer');if(el)el.classList.toggle('show',open);
   const btn=document.getElementById('tools-toggle');if(btn)btn.classList.toggle('on',open);
 }
+const QB_KEY='amni_jarvis_qb_expanded';
+let _qbExpanded=localStorage.getItem(QB_KEY)==='1';
+function toggleQuickBar(force){
+  const open=(typeof force==='boolean')?force:!_qbExpanded;
+  _qbExpanded=open;localStorage.setItem(QB_KEY,open?'1':'0');
+  const el=document.getElementById('quick-bar');if(el)el.classList.toggle('qb-collapsed',!open);
+  const lbl=document.getElementById('qb-toggle-label');if(lbl)lbl.textContent=open?'HIDE EXAMPLES':'EXAMPLES';
+}
+(function(){const el=document.getElementById('quick-bar');if(el&&_qbExpanded){el.classList.remove('qb-collapsed');const lbl=document.getElementById('qb-toggle-label');if(lbl)lbl.textContent='HIDE EXAMPLES'}})();
 let _statusPanelOpen=false;
 function toggleStatusPanel(force){
   const open=(typeof force==='boolean')?force:!_statusPanelOpen;
@@ -2085,6 +2096,13 @@ function _refreshStatusPillBadge(){
   }
 }
 setInterval(_refreshStatusPillBadge,2500);_refreshStatusPillBadge();
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const gt=document.getElementById('gesture-tour');
+  if(gt&&gt.classList.contains('show')){e.preventDefault();_gtClose();return}
+  if(_toolsDrawerOpen){e.preventDefault();toggleToolsDrawer(false);return}
+  if(_statusPanelOpen){e.preventDefault();toggleStatusPanel(false);return}
+});
 document.addEventListener('click',e=>{
   if(!_toolsDrawerOpen)return;
   const drawer=document.getElementById('tools-drawer'),trigger=document.getElementById('tools-toggle');
@@ -2343,8 +2361,9 @@ function _exportCustomGestures(){
   }catch(e){bubble('bot','Export failed: '+esc(e.message),'<span class="badge err">gesture</span>')}
 }
 const GESTURE_TOUR_KEY='amni_jarvis_gesture_tour_seen';
-function _gtOpen(){document.getElementById('gesture-tour').classList.add('show')}
-function _gtClose(){document.getElementById('gesture-tour').classList.remove('show');localStorage.setItem(GESTURE_TOUR_KEY,'1')}
+function _gtOpen(){const el=document.getElementById('gesture-tour');if(el){el.classList.add('show');setTimeout(()=>document.addEventListener('click',_gtOutsideClick,true),100)}}
+function _gtClose(){const el=document.getElementById('gesture-tour');if(el)el.classList.remove('show');localStorage.setItem(GESTURE_TOUR_KEY,'1');document.removeEventListener('click',_gtOutsideClick,true)}
+function _gtOutsideClick(ev){const el=document.getElementById('gesture-tour');if(!el||!el.classList.contains('show'))return;const inner=el.querySelector('.gt-card')||el.firstElementChild;if(inner&&inner.contains(ev.target))return;_gtClose()}
 function _gtTrainFromTour(){_gtClose();setTimeout(()=>_tmOpen(),250)}
 function _maybeShowGestureTour(){if(!localStorage.getItem(GESTURE_TOUR_KEY))setTimeout(_gtOpen,400)}
 async function _importCustomGestures(inputEl){
@@ -2388,13 +2407,24 @@ function _cycleTheme(){
   _themeIdx=(_themeIdx+1)%_THEMES.length;const t=_THEMES[_themeIdx];
   document.documentElement.style.setProperty('--cyan',t.cyan);document.documentElement.style.setProperty('--magenta',t.magenta);
 }
+let _gestureLastClearedHTML=null;
+let _gestureLastFiredTs=0;
+const _GESTURE_COOLDOWN_MS=1500;
 function applyGestureAction(g){
+  const now=Date.now();
+  if(now-_gestureLastFiredTs<_GESTURE_COOLDOWN_MS)return;
+  _gestureLastFiredTs=now;
   if(g==='pinch')toggleVoiceOut();
-  else if(g==='fist'){log.innerHTML='';bubble('bot','(chat cleared by gesture)')}
+  else if(g==='fist'){_gestureLastClearedHTML=log.innerHTML;log.innerHTML='';bubble('bot','Chat cleared by gesture. <a href="#" onclick="_gestureUndoClear();return false" style="color:var(--cyan);text-decoration:underline">↶ undo</a> (within 15s)','<span class="badge">gesture</span>');setTimeout(()=>{_gestureLastClearedHTML=null},15000)}
   else if(g==='open_palm')quick('Show me current system stats');
   else if(g==='peace')_cycleTheme();
   else if(g==='point'){const last=log.querySelectorAll('.msg.bot .meta .badge');if(last.length)quick('Tell me more about that')}
   else if(g==='thumb_up'){const t=input.value.trim();if(t)send()}
+}
+function _gestureUndoClear(){
+  if(!_gestureLastClearedHTML){bubble('bot','Undo window has expired — sorry, chat is gone.','<span class="badge err">gesture</span>');return}
+  log.innerHTML=_gestureLastClearedHTML;_gestureLastClearedHTML=null;
+  bubble('bot','Chat restored.','<span class="badge">gesture</span>');
 }
 function _onHandsResults(res){
   const ctx=_camLm.getContext('2d');_camLm.width=_camLm.clientWidth*window.devicePixelRatio;_camLm.height=_camLm.clientHeight*window.devicePixelRatio;
