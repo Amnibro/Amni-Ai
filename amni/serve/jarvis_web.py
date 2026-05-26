@@ -512,6 +512,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
     <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
     <button id="coach-toggle" type="button" onclick="toggleCoachPanel()" title="Ask-answer-ask coaching session — Adam tutors you on any topic">COACH</button>
+    <button id="export-btn" type="button" onclick="_exportChatMd()" title="Download this conversation as a Markdown file">EXPORT</button>
     <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
     <button id="wake-toggle" type="button" onclick="toggleWake()" title='When on, only respond in convo mode if you say "Adam, ..." or "Hey Adam, ..." (Jarvis-style wake word)'>WAKE</button>
     <button id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
@@ -1076,6 +1077,18 @@ document.addEventListener('keydown',e=>{
   }
 });
 document.addEventListener('input',e=>{if(e.target&&e.target.id==='cs-input')_csRunSearch()});
+async function _exportChatMd(){
+  if(!sid){bubble('bot','No active session to export yet — start a conversation first.','<span class="badge err">export</span>');return}
+  try{
+    const r=await fetch('/sessions/'+encodeURIComponent(sid)+'/export.md');
+    if(!r.ok){bubble('bot','Export failed: '+r.status+' '+r.statusText,'<span class="badge err">export</span>');return}
+    const md=await r.text();const blob=new Blob([md],{type:'text/markdown;charset=utf-8'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download='adam-chat-'+sid.slice(-8)+'.md';document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    const lines=md.split('\n').length;bubble('bot','Exported **'+lines+' lines** to `adam-chat-'+esc(sid.slice(-8))+'.md` (download started).','<span class="badge">export</span>');
+  }catch(e){bubble('bot','Export error: '+esc(e.message),'<span class="badge err">export</span>')}
+}
 const COACH_SID_KEY='amni_jarvis_coach_sid',COACH_VOICE_KEY='amni_jarvis_coach_voice';
 let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false,_coachVoiceOn=localStorage.getItem(COACH_VOICE_KEY)==='1',_coachLastQuestion='';
 function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(COACH_VOICE_KEY,_coachVoiceOn?'1':'0');_coachUpdateVoiceBtn();if(_coachVoiceOn){voiceOut=true;localStorage.setItem(VKEY,'1');const vb=document.getElementById('voiceout-toggle');if(vb)vb.classList.add('on');if(_coachLastQuestion)speak(_coachLastQuestion)}}
