@@ -11,6 +11,13 @@ def log_shell_run(kind:str,cmd:str,returncode:int,stdout:str='',stderr:str='',cw
         entry={'ts':time.time(),'kind':kind,'cmd':cmd,'returncode':returncode,'cwd':cwd,'stdout_tail':(stdout or '')[-1200:],'stderr_tail':(stderr or '')[-600:],'duration_s':duration_s}
         if extras:entry.update(extras)
         with open(_log_path(),'a',encoding='utf-8') as f:f.write(json.dumps(entry,default=str)+'\n')
+        if returncode!=0:
+            try:
+                from amni.serve.notifications import queue_notification
+                err_tail=(stderr or '').strip().splitlines()
+                err_msg=err_tail[-1][:200] if err_tail else 'no stderr'
+                queue_notification('warn',kind,f'{kind} command failed (rc {returncode})',f'$ {cmd[:80]}{"…" if len(cmd)>80 else ""}\n{err_msg}',ttl_s=300.0,cmd=cmd,returncode=returncode)
+            except Exception:pass
     except Exception:pass
 def list_shell_history(limit:int=50,errors_only:bool=False,kind:Optional[str]=None)->List[Dict[str,Any]]:
     p=_log_path()

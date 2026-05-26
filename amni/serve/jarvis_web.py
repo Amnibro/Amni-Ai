@@ -256,6 +256,24 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #shell-panel .sh-item pre{margin:6px 0 0 0;font-size:9.5px;background:rgba(0,0,0,.4);padding:6px 8px;border-radius:2px;max-height:160px;overflow:auto;color:var(--fg);line-height:1.35;display:none;white-space:pre-wrap;word-break:break-all}
 #shell-panel .sh-item pre.show{display:block}
 #shell-panel .sh-empty{padding:24px;text-align:center;color:var(--mute);font-size:10px;font-style:italic}
+#toast-stack{position:fixed;bottom:140px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:14;max-width:340px;pointer-events:none}
+.toast{pointer-events:auto;padding:10px 12px;border:1px solid rgba(0,229,255,.35);background:rgba(8,14,28,.94);border-left:3px solid var(--cyan);border-radius:3px;font-size:11px;color:var(--fg);box-shadow:0 0 14px rgba(0,229,255,.18);backdrop-filter:blur(6px);transform:translateX(60px);opacity:0;transition:transform .25s ease-out, opacity .25s ease-out;cursor:pointer;font-family:inherit}
+.toast.show{transform:translateX(0);opacity:1}
+.toast.dismiss{transform:translateX(60px);opacity:0;transition:transform .35s ease-in, opacity .35s ease-in}
+.toast.info{border-left-color:var(--cyan)}
+.toast.warn{border-left-color:#ffb547;border-color:rgba(255,181,71,.35);box-shadow:0 0 12px rgba(255,181,71,.18)}
+.toast.error{border-left-color:#ff5b5b;border-color:rgba(255,91,91,.35);box-shadow:0 0 12px rgba(255,91,91,.18)}
+.toast.success{border-left-color:#00ff9c;border-color:rgba(0,255,156,.35);box-shadow:0 0 12px rgba(0,255,156,.18)}
+.toast .t-head{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.toast .t-src{color:var(--cyan)}
+.toast.warn .t-src{color:#ffb547}
+.toast.error .t-src{color:#ff5b5b}
+.toast.success .t-src{color:#00ff9c}
+.toast .t-title{font-size:12px;color:var(--fg);font-weight:600;margin-top:3px;line-height:1.35}
+.toast .t-body{font-size:10px;color:var(--mute);margin-top:3px;line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:80px;overflow:hidden}
+.toast .t-age{margin-left:auto;font-size:9px;color:var(--mute)}
+.toast .t-close{font-size:9px;color:var(--mute);cursor:pointer;padding:0 4px}
+.toast .t-close:hover{color:var(--err)}
 #coach-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,77,200,.08);box-shadow:0 0 10px rgba(255,77,200,.3)}
 #coach-panel{position:fixed;top:60px;right:24px;width:440px;z-index:11;border:1px solid rgba(255,77,200,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(255,77,200,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
 #coach-panel.show{display:block}
@@ -600,6 +618,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   </div>
   <div class="gesture-readout" id="gesture-readout">—</div>
 </div>
+<div id="toast-stack"></div>
 <div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
@@ -938,6 +957,33 @@ function _renderShellPanel(){
 function _shToggleOut(i){const el=document.getElementById('sh-out-'+i);if(!el)return;el.classList.toggle('show');const tog=el.previousElementSibling;if(tog&&tog.classList.contains('toggle'))tog.textContent=el.classList.contains('show')?'HIDE OUTPUT':'SHOW OUTPUT'}
 function _startShellPolling(){if(_shPollTimer)return;_pollShellHistory();_shPollTimer=setInterval(_pollShellHistory,20000)}
 _startShellPolling();
+const NOTIF_VOICE_KEY='amni_jarvis_notif_voice';
+let _notifShown=new Set(),_notifPollTimer=null,_notifVoiceOn=localStorage.getItem(NOTIF_VOICE_KEY)==='1';
+function _notifHumanAge(s){if(!s||s<60)return Math.round(s||0)+'s';if(s<3600)return Math.round(s/60)+'m';return (s/3600).toFixed(1)+'h'}
+async function _pollNotifications(){
+  try{const r=await fetch('/notifications?limit=10');if(!r.ok)return;const j=await r.json();const items=j.items||[];
+    for(const n of items){if(_notifShown.has(n.id))continue;_notifShown.add(n.id);_showToast(n)}
+  }catch{}
+}
+function _showToast(n){
+  const stack=document.getElementById('toast-stack');if(!stack)return;
+  const el=document.createElement('div');el.className='toast '+(n.level||'info');el.dataset.id=n.id;
+  el.innerHTML=`<div class="t-head"><span class="t-src">${esc(n.source||'')}</span><span class="t-age">${_notifHumanAge(n.age_s||0)} ago</span><span class="t-close" onclick="event.stopPropagation();_dismissToast('${n.id}')">✕</span></div><div class="t-title">${esc(n.title||'')}</div>${n.body?`<div class="t-body">${esc(n.body)}</div>`:''}`;
+  el.onclick=()=>{_dismissToast(n.id);if(n.body)bubble('bot','**'+esc(n.source||'')+'** · '+esc(n.title||'')+'\n\n'+esc(n.body),'<span class="badge">notif</span>')};
+  stack.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  if(_notifVoiceOn&&_voiceBackends.tts&&n.level!=='warn'){const phrase=(n.title||'')+(n.body?'. '+n.body.slice(0,140):'');speak(phrase)}
+  setTimeout(()=>{if(el.parentElement)_dismissToast(n.id)},(n.level==='error'?14000:n.level==='warn'?10000:7000));
+}
+function _dismissToast(id){
+  const el=document.querySelector(`.toast[data-id="${id}"]`);if(!el)return;
+  el.classList.remove('show');el.classList.add('dismiss');
+  try{fetch(`/notifications/${id}/read`,{method:'POST'})}catch{}
+  setTimeout(()=>el.remove(),400);
+}
+function toggleNotifVoice(){_notifVoiceOn=!_notifVoiceOn;localStorage.setItem(NOTIF_VOICE_KEY,_notifVoiceOn?'1':'0');bubble('bot','Proactive notification voice **'+(_notifVoiceOn?'on':'off')+'**.','<span class="badge">notif</span>')}
+function _startNotifPolling(){if(_notifPollTimer)return;_pollNotifications();_notifPollTimer=setInterval(_pollNotifications,10000)}
+_startNotifPolling();
 const COACH_SID_KEY='amni_jarvis_coach_sid',COACH_VOICE_KEY='amni_jarvis_coach_voice';
 let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false,_coachVoiceOn=localStorage.getItem(COACH_VOICE_KEY)==='1',_coachLastQuestion='';
 function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(COACH_VOICE_KEY,_coachVoiceOn?'1':'0');_coachUpdateVoiceBtn();if(_coachVoiceOn){voiceOut=true;localStorage.setItem(VKEY,'1');const vb=document.getElementById('voiceout-toggle');if(vb)vb.classList.add('on');if(_coachLastQuestion)speak(_coachLastQuestion)}}
@@ -1659,3 +1705,15 @@ def mount(app):
     from fastapi.responses import HTMLResponse
     @app.get('/jarvis',response_class=HTMLResponse)
     def jarvis():return HTMLResponse(content=_HTML)
+    @app.get('/notifications')
+    def _notifs(limit:int=20,include_read:bool=False):
+        from amni.serve.notifications import list_active,stats
+        return {'items':list_active(limit=limit,include_read=include_read),'stats':stats()}
+    @app.post('/notifications/{nid}/read')
+    def _notifs_read(nid:str):
+        from amni.serve.notifications import mark_read
+        return {'marked':mark_read(nid),'id':nid}
+    @app.post('/notifications/read-all')
+    def _notifs_read_all():
+        from amni.serve.notifications import mark_all_read
+        return {'marked':mark_all_read()}

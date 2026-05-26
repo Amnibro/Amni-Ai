@@ -2,6 +2,43 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.25 — Proactive notification toasts (Adam speaks up on his own) (2026-05-26)
+
+Until now Adam only said anything when prompted. A real Jarvis is proactive — it surfaces relevant events on its own. v6.10.25 adds a notification queue that internal sources push to, and /jarvis slides toasts in at bottom-right.
+
+### New module `amni/serve/notifications.py`
+- `queue_notification(level, source, title, body, ttl_s=300, **extras)` — push to in-memory ring buffer (cap 50)
+- 60-second dedup window per (source, title) pair to prevent spam
+- `list_active(limit=20, include_read=False)` — newest first, age-stamped, TTL-filtered
+- `mark_read(id)`, `mark_all_read()`, `stats()`, `clear()`
+
+### Three sources wired
+1. **LearningDaemon** — on topic completion with `>0 new facts`: `"Learned about <topic>"` body `"+N new · M reinforced · Xs"`
+2. **edit_verifier** — on verification FAIL: `"Edit verification FAILED · <basename>"` body shows first 2 issues
+3. **shell_audit** — on non-zero return code: `"<kind> command failed (rc N)"` body shows truncated cmd + last stderr line
+
+### Endpoints (in jarvis_web.mount so they work with /jarvis-only test clients)
+- `GET /notifications?limit=N&include_read=false` → `{items, stats}`
+- `POST /notifications/{id}/read` → `{marked, id}`
+- `POST /notifications/read-all` → `{marked: N}`
+
+### Toast UI
+New `#toast-stack` element at fixed `bottom:140px right:20px`. JS polls `/notifications` every 10s. Each new toast slides in with `translateX` transition. Color-coded left border + box-shadow by level:
+- **info** (cyan) — daemon facts learned
+- **warn** (amber) — shell command failure
+- **error** (red) — verification failure
+- **success** (green) — reserved
+
+Auto-dismisses after **7s/10s/14s** depending on severity. Click toast → dismiss + open full body in chat bubble. Click ✕ → silent dismiss (also POSTs read).
+
+### Optional voice
+New `toggleNotifVoice()` (localStorage persistent) — when on, Piper speaks the title+body of each non-warn toast as it arrives. Combined with v6.10.13 wake-word convo: Adam genuinely speaks up unprompted when interesting things happen.
+
+### Tests
+22/22 PASS (`tests/test_notifications_v6_10_25.py`): module API surface, queue+list, 60s dedup within source/title (different sources allowed), mark_read excludes from active, mark_all_read, ring buffer cap enforcement, TTL expiry, stats by source+level, all 3 endpoints + JSON shape, toast stack CSS for all 4 levels, all 5 JS helpers present, polling endpoint + 10s interval, dedup via _notifShown Set, dismiss POSTs read, voice-toggle localStorage key, 3 source-emit smoke tests, v6.10.24 regression intact. Recent chain (v6.10.21 → .24): 60/60 still PASS. Total: 82/82.
+
+---
+
 ## v6.10.24 — Natural-language chain routing (2026-05-26)
 
 v6.10.23 added the `chain` skill but you still had to invoke it explicitly. v6.10.24 teaches the natural-language router to detect chain-worthy phrasings and auto-compose them — no LLM call required, no explicit JSON.

@@ -127,6 +127,11 @@ class LearningDaemon:
             if topic:
                 self.recent_topics.insert(0,{'topic':topic,'finished_at':time.time(),'duration_s':round(time.time()-self.current_topic_started_at,1) if self.current_topic_started_at else 0.0,'new':new_in_task,'reinforced':reinforced_in_task})
                 self.recent_topics=self.recent_topics[:8]
+                if new_in_task>0:
+                    try:
+                        from amni.serve.notifications import queue_notification
+                        queue_notification('info','learning_daemon',f'Learned about {topic}',f'+{new_in_task} new facts · {reinforced_in_task} reinforced · {round(time.time()-self.current_topic_started_at,1)}s',ttl_s=240.0,topic=topic,new=new_in_task)
+                    except Exception:pass
             self.current_topic=None;self.current_topic_phase=''
     def run_sleep_pass(self)->Dict[str,Any]:
         from amni.serve.sleep_consolidator import sleep_pass

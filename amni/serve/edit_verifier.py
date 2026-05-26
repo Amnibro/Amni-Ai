@@ -91,7 +91,14 @@ def verify_edit(path:str,written_content:str,op:str='edit')->Dict[str,Any]:
     if ext in _NEEDS_USER_TEST_HINTS:_queue_needs_testing(path,reason=f'{_NEEDS_USER_TEST_HINTS[ext]} needs human eyes',checks_done=semantic.get('checks',[]),op=op)
     elif suggested and not (result.get('test_run') or {}).get('ok'):
         _queue_needs_testing(path,reason='associated test file detected — please run',checks_done=semantic.get('checks',[])+[f'has_tests:{suggested}'],op=op)
-    _log_verification(path,result);return result
+    _log_verification(path,result)
+    if result.get('verified') is False:
+        try:
+            from amni.serve.notifications import queue_notification
+            iss=(result.get('issues') or [])[:2]
+            queue_notification('error','edit_verifier',f'Edit verification FAILED · {Path(path).name}','; '.join(iss) if iss else 'see verification log',ttl_s=480.0,path=path,issues=iss)
+        except Exception:pass
+    return result
 def list_needs_testing(limit:int=50,include_done:bool=False)->List[Dict[str,Any]]:
     p=_needs_testing_path()
     if not p.exists():return []
