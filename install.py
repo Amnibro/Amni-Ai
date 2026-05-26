@@ -169,7 +169,7 @@ def main():
     ap.add_argument('--bake-dir',default=None,help='Custom path for the bake (default: <home>/bakes/gemma4_e2b_it_gf17)')
     ap.add_argument('--home',default=None,help='Custom config home for EVERYTHING — bakes, lessons, conversations (default: ~/.amni-ai)')
     ap.add_argument('--port',type=int,default=DEFAULT_PORT)
-    ap.add_argument('--persona',default='rikku')
+    ap.add_argument('--persona',default='alfred',help='Default persona (alfred=loyal-butler default; override with rikku/yoda/mentor/etc)')
     ap.add_argument('--gpu',choices=['auto','nvidia','amd','cpu'],default='auto',help='GPU vendor for PyTorch (default: auto-detect)')
     ap.add_argument('--cuda',default='cu124',help='CUDA tag for NVIDIA torch (default: cu124)')
     ap.add_argument('--rocm',default='rocm6.2',help='ROCm tag for AMD-Linux torch (default: rocm6.2)')
