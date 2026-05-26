@@ -78,6 +78,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .meta{font-size:9px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;display:flex;gap:8px;align-items:center}
 .meta .badge{padding:2px 8px;border:1px solid rgba(0,229,255,.3);border-radius:99px;color:var(--cyan);background:rgba(0,229,255,.05)}
 .meta .badge.persona{border-color:rgba(255,43,214,.5);color:var(--magenta);background:rgba(255,43,214,.05)}
+.meta .badge.tok{border-color:rgba(122,214,255,.3);color:#7ad6ff;background:rgba(122,214,255,.04)}
 .thinking{color:var(--mute);font-style:italic;letter-spacing:.1em}
 .thinking::after{content:'\2589';animation:blink .8s steps(2) infinite;margin-left:4px;color:var(--cyan)}
 @keyframes blink{50%{opacity:0}}
@@ -1495,7 +1496,9 @@ async function send(){
     if(!acc)bot.bubble.textContent=aborted?'(stopped before any tokens arrived)':'(empty response)';
     if(widgets.length){appendWidgets(bot.msg,widgets)}
     const metaEl=document.createElement('div');metaEl.className='meta';
-    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}${aborted?'<span class="badge err">stopped</span>':''}`;
+    const approxTok=acc?Math.max(1,Math.round(acc.length/4)):0;
+    const tokLabel=approxTok>=1000?(approxTok/1000).toFixed(1)+'k':String(approxTok);
+    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${approxTok?`<span class="badge tok" title="~${approxTok} tokens (estimated 4 chars/token)">~${tokLabel} tok</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}${aborted?'<span class="badge err">stopped</span>':''}`;
     bot.msg.appendChild(metaEl);
     if(voiceOut&&acc&&!aborted)speak(acc);
   }catch(err){
