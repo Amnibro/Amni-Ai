@@ -86,6 +86,29 @@ class PersonaStore:
         self._session_persona[session_id]=name.lower().strip()
         self._save()
         return self.get(name)
+    def delete_persona(self,name:str)->bool:
+        """Remove a persona from the learned bank. Presets cannot be deleted — they ship with the install.
+        Returns True if a learned override was removed, False otherwise."""
+        if not name:return False
+        key=name.lower().strip()
+        if key not in self._learned:return False
+        del self._learned[key]
+        if self._default==key:self._default='neutral'
+        for sid,pname in list(self._session_persona.items()):
+            if pname==key:self._session_persona.pop(sid,None)
+        self._save();return True
+    def import_persona(self,data:Dict[str,Any],new_name:Optional[str]=None,overwrite:bool=False)->Optional[Persona]:
+        """Add a persona from a serialized dict. Validates fields. Returns the imported Persona or None on failure."""
+        if not isinstance(data,dict):return None
+        name=(new_name or data.get('name') or '').strip()
+        if not name or not name.replace('-','').replace('_','').replace(' ','').isalnum():return None
+        key=name.lower().strip()
+        if not overwrite and key in self._learned:return None
+        try:
+            d={'name':name[:60],'description':str(data.get('description') or '').strip()[:1200],'voice_hints':[str(x).strip()[:160] for x in (data.get('voice_hints') or []) if str(x).strip()][:12],'warmth':max(0.0,min(1.0,float(data.get('warmth',.5)))),'formality':max(0.0,min(1.0,float(data.get('formality',.5)))),'excitement':max(0.0,min(1.0,float(data.get('excitement',.4)))),'length':max(0.0,min(1.0,float(data.get('length',.4)))),'source':'imported','learned_at':time.time(),'tts_voice':str(data.get('tts_voice') or 'ryan').strip()[:32] or 'ryan'}
+            if not d['description']:return None
+            p=Persona(**d);self._learned[key]=p;self._save();return p
+        except (ValueError,TypeError):return None
     def update_persona(self,name:str,fields:Dict[str,Any])->Optional[Persona]:
         """Apply an in-place edit to a persona. Presets are forked into the learned bank so global state stays clean.
         Allowed fields: description (str), voice_hints (list), warmth/formality/excitement/length (0..1 floats), tts_voice (str)."""

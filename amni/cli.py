@@ -575,6 +575,72 @@ def _render_doctor_report(checks)->str:
     summary={'ok':'\x1b[32mAll systems nominal.\x1b[0m','warn':'\x1b[33mSome warnings -- Adam will run but check the items above.\x1b[0m','fail':f'\x1b[31mFailing checks present -- Adam may not start. Fix the {dot} items first.\x1b[0m'}.get(overall,'')
     lines.extend(['',f'  {summary}',''])
     return '\n'.join(lines)
+def cmd_persona(args):
+    from amni.serve.persona import PersonaStore
+    action=(getattr(args,'action',None) or 'list').strip().lower()
+    if action=='import' and getattr(args,'input',None) is None and getattr(args,'name',None):
+        args.input=args.name;args.name=None
+    ps=PersonaStore(adam=None,bank_path=args.persona_bank)
+    if action=='list':return _persona_list(ps,args)
+    if action=='show':return _persona_show(ps,args)
+    if action=='export':return _persona_export(ps,args)
+    if action=='import':return _persona_import(ps,args)
+    if action=='delete':return _persona_delete(ps,args)
+    print(f'[persona] unknown action {action!r}; use list|show|export|import|delete',flush=True);sys.exit(1)
+def _persona_list(ps,args):
+    known=ps.list_known()
+    if getattr(args,'json',False):print(json.dumps([p.to_dict() for p in known],indent=2,default=str),flush=True);return
+    print(f'\n  {len(known)} persona(s) · default={ps._default}\n',flush=True)
+    for p in known:
+        src=p.source if p.source!='preset' else ''
+        mark='*' if p.name.lower()==ps._default.lower() else ' '
+        suffix=f' [{src}]' if src else ''
+        print(f'  {mark} {p.name:<22} warmth={p.warmth:.2f} formality={p.formality:.2f} length={p.length:.2f}{suffix}',flush=True)
+    print('',flush=True)
+def _persona_show(ps,args):
+    name=(args.name or '').strip()
+    if not name:print('[persona show] need a name',flush=True);sys.exit(1)
+    if not ps.has(name):print(f'[persona show] unknown persona {name!r}',flush=True);sys.exit(1)
+    p=ps.get(name)
+    if getattr(args,'json',False):print(json.dumps(p.to_dict(),indent=2,default=str),flush=True);return
+    print(f'\n  {p.name}',flush=True)
+    print(f'  source: {p.source}',flush=True)
+    print(f'\n  {p.description}\n',flush=True)
+    if p.voice_hints:
+        print('  voice hints:',flush=True)
+        for h in p.voice_hints:print(f'    · {h}',flush=True)
+    print(f'\n  dims:  warmth={p.warmth:.2f}  formality={p.formality:.2f}  excitement={p.excitement:.2f}  length={p.length:.2f}',flush=True)
+    print(f'  tts:   {p.tts_voice}\n',flush=True)
+def _persona_export(ps,args):
+    name=(args.name or '').strip()
+    if not name:print('[persona export] need a name',flush=True);sys.exit(1)
+    if not ps.has(name):print(f'[persona export] unknown persona {name!r}',flush=True);sys.exit(1)
+    p=ps.get(name);data=p.to_dict()
+    payload={'_amni_persona_format':'v1','exported_at':time.time(),'persona':data}
+    body=json.dumps(payload,indent=2,default=str)
+    out=getattr(args,'output',None)
+    if out:Path(out).write_text(body,encoding='utf-8');print(f'[export] wrote {p.name} to {out}',flush=True)
+    else:print(body,flush=True)
+def _persona_import(ps,args):
+    src=Path(args.input)
+    if not src.exists():print(f'[persona import] file not found: {src}',flush=True);sys.exit(1)
+    try:raw=json.loads(src.read_text(encoding='utf-8'))
+    except Exception as e:print(f'[persona import] bad JSON: {e}',flush=True);sys.exit(1)
+    if isinstance(raw,dict) and isinstance(raw.get('persona'),dict):data=raw['persona']
+    else:data=raw
+    if not isinstance(data,dict):print('[persona import] no persona object found in file',flush=True);sys.exit(1)
+    p=ps.import_persona(data,new_name=getattr(args,'rename',None),overwrite=bool(getattr(args,'overwrite',False)))
+    if p is None:
+        if not getattr(args,'overwrite',False) and ps.has(getattr(args,'rename',None) or data.get('name','')):print('[persona import] already exists — pass --overwrite to replace',flush=True);sys.exit(1)
+        print('[persona import] invalid persona data (missing description, bad name, or unparseable dims)',flush=True);sys.exit(1)
+    print(f'[persona import] added {p.name} (source={p.source})',flush=True)
+def _persona_delete(ps,args):
+    name=(args.name or '').strip()
+    if not name:print('[persona delete] need a name',flush=True);sys.exit(1)
+    if not ps.has(name):print(f'[persona delete] unknown persona {name!r}',flush=True);sys.exit(1)
+    ok=ps.delete_persona(name)
+    if not ok:print(f'[persona delete] {name!r} is a preset — cannot delete (only learned/edited/imported overrides can be removed)',flush=True);sys.exit(1)
+    print(f'[persona delete] removed {name}',flush=True)
 def cmd_personas(args):
     from amni.adam import Adam
     from amni.serve import PersonaStore
@@ -664,6 +730,16 @@ def main():
     tc.add_argument('--bank',choices=['cot','coding','js','sql','devops','creative','facts','advanced','rust','concurrency','algo_adv','python_adv','go','frontend','mobile','data_eng','leetcode','ml','security_deep','distributed','performance','architecture','networking','gamedev','embedded','math_adv','facts_ext','python_libs','ai_rag','leetcode_hard','paraphrases','debug_adv','all'],default='all',help='Which seed bank to load')
     tc.add_argument('--dry-run',action='store_true')
     tc.set_defaults(func=cmd_teach_cot)
+    pers=sub.add_parser('persona',help='Persona management: list, show, export, import, delete')
+    pers.add_argument('action',nargs='?',default='list',choices=['list','show','export','import','delete'])
+    pers.add_argument('name',nargs='?',default=None,help='Persona name (for show/export/delete)')
+    pers.add_argument('input',nargs='?',default=None,help='Input file path (for import)')
+    pers.add_argument('--persona-bank',default='experiences/personas.json')
+    pers.add_argument('--output','-o',default=None,help='Output file (for export); stdout if omitted')
+    pers.add_argument('--rename',default=None,help='Rename on import (overrides the persona\'s own name)')
+    pers.add_argument('--overwrite',action='store_true',help='Allow import to replace an existing same-named persona')
+    pers.add_argument('--json',action='store_true',help='JSON output for list/show')
+    pers.set_defaults(func=cmd_persona)
     mcp=sub.add_parser('mcp',help='Inspect or test the MCP tool surface of a running Adam server')
     mcp.add_argument('action',nargs='?',default='list',choices=['list','test','ping'],help='list (default) | test | ping')
     mcp.add_argument('tool',nargs='?',default=None,help='Tool name (for action=test); e.g. ask_adam, skill_calc')
