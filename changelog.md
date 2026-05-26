@@ -2,6 +2,54 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.9 — INCREDIBLE Adam iter 17: streaming TTS for all voice + VAD tuning panel (2026-05-26)
+
+Two complementary upgrades:
+1. **Streaming TTS generalized** — what convo mode got in v6.10.8, regular VOICE-on mode now also gets. Click the mic once, or type with VOICE on, and Adam starts speaking the first sentence before he's finished writing the rest.
+2. **VAD settings panel** — per-microphone tuning. Sliders for the 4 thresholds + a live mic-level meter showing where your voice falls. Settings persist per-machine.
+
+### Refactor
+- Extracted `_streamReplyWithTTS(text, opts)` from `_convoStreamSend`. Opts: `{createBubbles:bool, bot:bubble, onDone:fn}`. Convo mode still wraps it with `_convoStreamSend(text)` (creates bubbles, drives state machine). Voice-mode `send()` calls it directly.
+- `window.send` extended: if `voiceOut && _voiceBackends.tts && !convoOn`, route to `_streamReplyWithTTS(t, {createBubbles:true})` instead of the blocking `/v1/chat/completions` + speak-after-everything path. Adam now talks as he thinks for text-mode users too.
+
+### VAD config object (replaces consts)
+- Old: `const CONVO_VAD_THRESHOLD=18`, `const CONVO_SILENCE_MS=600`, ... — were unmutable.
+- New: `_vadConfig = {silence_ms, min_speech_ms, vad_threshold, barge_threshold}` — read everywhere VAD runs.
+- Defaults restored from `_vadDefaults` if anything ever goes weird.
+- Persists to `localStorage['amni_jarvis_vad']` on every change. Loaded on page boot.
+
+### VAD tuning panel (`/jarvis` VAD button)
+- Slide-in left sidebar (300 px). 4 sliders with live value chips:
+  - Speech threshold (5-50)
+  - Barge-in threshold (15-60)  
+  - Silence to send, ms (200-2000, step 50)
+  - Min utterance ms (50-500)
+- **Live mic-level meter** with two reference lines: gold = speech threshold, magenta = barge-in threshold. Tune sliders so gold sits just below your speaking volume and magenta just above (so background room noise doesn't false-trigger but louder talk-over does).
+- If CONVO is on, meter reuses the existing analyser (no extra mic permission). If convo off, panel acquires its own mic stream temporarily.
+- Reset + Done buttons.
+
+### Tests
+`tests/test_voice_streaming_vad_v6_10_9.py` — **16/16 PASS**:
+- Streaming helper extracted with `createBubbles` opt
+- `_convoStreamSend` reuses shared helper
+- `send()` routes to streaming when voiceOut && tts && !convoOn
+- Old `CONVO_*=` consts gone, `_vadConfig` everywhere
+- localStorage persist + `_saveVadConfig`
+- All 14 VAD panel DOM elements present (sliders + meter + threshold lines)
+- VAD slider inputs wired to `_onVadSlider(key, val)`
+- `_resetVad` restores from `_vadDefaults`
+- Defaults at correct values (600/150/18/26)
+- Panel uses live mic when open (either convo analyser or own stream)
+- No regression to v6.10.8 convo or v6.10.7 widgets/watcher
+
+### Try it
+1. Open `/jarvis`, click VAD button
+2. Talk normally — watch your level on the meter
+3. Drag gold line just under your typical voice level (so room noise doesn't trigger)
+4. Drag magenta line just above your typical voice level (so only louder interjections barge-in mid-reply)
+5. Hit DONE. Settings persist forever.
+6. Now click mic (without CONVO) — Adam starts speaking the moment the first sentence is ready, mid-generation.
+
 ## v6.10.8 — INCREDIBLE Adam iter 16: continuous voice mode + 5 latency reductions (2026-05-26)
 
 Hands-free Jarvis-style conversation. Click CONVO, talk, Adam answers, mic re-arms automatically. Plus five concurrent latency reductions so the back-and-forth feels real-time instead of walkie-talkie.
