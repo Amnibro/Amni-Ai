@@ -639,7 +639,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <div id="toast-stack"></div>
-<div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE FOR ADAM</div></div>
+<div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE OR TEXT FILE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
 <script>
@@ -1786,11 +1786,34 @@ let _dragDepth=0;
 document.addEventListener('dragenter',e=>{if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files')){e.preventDefault();_dragDepth++;_dropOverlay.classList.add('show')}});
 document.addEventListener('dragover',e=>{if(_dropOverlay.classList.contains('show'))e.preventDefault()});
 document.addEventListener('dragleave',()=>{_dragDepth=Math.max(0,_dragDepth-1);if(_dragDepth===0)_dropOverlay.classList.remove('show')});
+const _TEXT_DROP_EXT=new Set(['md','txt','py','js','mjs','ts','tsx','jsx','rs','go','c','cpp','h','hpp','cs','java','kt','swift','rb','php','sh','bash','zsh','ps1','yaml','yml','toml','json','xml','html','htm','css','scss','sql','log','csv','tsv','ini','cfg','conf','env','lock','gitignore','dockerfile','makefile','rst','tex','vue','svelte','astro','lua','pl','r','jl','dart','m','f90','f95','asm']);
+const _TEXT_DROP_MAX=200_000;
+async function handleTextFileBlob(file){
+  try{
+    const text=await file.text();
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    const truncated=text.length>_TEXT_DROP_MAX;
+    const body=truncated?text.slice(0,_TEXT_DROP_MAX):text;
+    const head=`Dropped file **${esc(file.name)}** (${file.size} bytes${truncated?', truncated to '+_TEXT_DROP_MAX:''}). Asking Adam to analyze it…`;
+    bubble('user',head,'<span class="badge">drop</span>');
+    const fence=ext||'text';
+    const prompt=`I just dropped a file into the chat. Please analyze it. File: \`${file.name}\` · size: ${file.size} bytes${truncated?' (truncated)':''}\n\n\`\`\`${fence}\n${body}\n\`\`\``;
+    input.value=prompt;await send();
+  }catch(e){bubble('bot','Could not read dropped file: '+esc(e.message),'<span class="badge err">drop</span>')}
+}
+function _isTextDrop(f){
+  if(!f||!f.name)return false;
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(_TEXT_DROP_EXT.has(ext))return true;
+  if(f.type&&(f.type.startsWith('text/')||f.type==='application/json'||f.type==='application/x-yaml'||f.type==='application/xml'))return true;
+  return false;
+}
 document.addEventListener('drop',async e=>{
   _dragDepth=0;_dropOverlay.classList.remove('show');
   if(!e.dataTransfer)return;
   for(const f of e.dataTransfer.files||[]){
     if(f.type&&f.type.startsWith('image/')){e.preventDefault();await handleImageBlob(f);return}
+    if(_isTextDrop(f)){e.preventDefault();await handleTextFileBlob(f);return}
   }
 });
 async function memConfirmFact(id,isConf){
