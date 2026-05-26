@@ -696,6 +696,12 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .wake-ambient{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(8,14,28,.85);border:1px solid rgba(255,224,102,.35);color:#ffe066;font-size:10px;letter-spacing:.18em;padding:6px 14px;border-radius:3px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;text-transform:uppercase;font-family:inherit;text-shadow:0 0 4px rgba(255,224,102,.6)}
 .persona-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.95);background:rgba(8,14,28,.92);border:1px solid var(--cyan);color:var(--cyan);font-size:18px;letter-spacing:.22em;padding:14px 28px;border-radius:4px;backdrop-filter:blur(8px);z-index:7;opacity:0;pointer-events:none;transition:opacity .15s ease-out, transform .25s ease-out;text-transform:uppercase;font-family:JetBrains Mono,monospace;text-shadow:0 0 8px rgba(0,229,255,.7);box-shadow:0 0 24px rgba(0,229,255,.35),inset 0 0 14px rgba(0,229,255,.08)}
 .jtb-pill{position:fixed;bottom:96px;right:50%;transform:translate(50%,12px);background:rgba(8,14,28,.92);border:1px solid var(--cyan);color:var(--cyan);font-size:10px;letter-spacing:.2em;padding:5px 14px;border-radius:99px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .2s ease-out,transform .25s ease-out;text-transform:uppercase;font-family:JetBrains Mono,monospace;cursor:pointer;box-shadow:0 0 14px rgba(0,229,255,.25)}
+.slash-ac{position:fixed;background:rgba(8,14,28,.96);border:1px solid var(--cyan);border-radius:4px;padding:4px;z-index:15;box-shadow:0 0 22px rgba(0,229,255,.22);backdrop-filter:blur(8px);font-family:JetBrains Mono,monospace;display:none;max-height:240px;overflow-y:auto}
+.slash-ac.show{display:block}
+.slash-ac .sl-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-radius:3px;cursor:pointer;font-size:11px;color:var(--fg);transition:background .12s}
+.slash-ac .sl-row:hover,.slash-ac .sl-row.active{background:rgba(0,229,255,.14)}
+.slash-ac .sl-cmd{color:var(--cyan);font-weight:600;letter-spacing:.04em}
+.slash-ac .sl-hint{color:var(--mute);font-size:9.5px;letter-spacing:.03em}
 .jtb-pill.show{opacity:.95;transform:translate(50%,0);pointer-events:auto}
 .jtb-pill:hover{background:var(--cyan);color:var(--bg);box-shadow:0 0 22px rgba(0,229,255,.55)}
 .persona-flash.show{opacity:.95;transform:translate(-50%,-50%) scale(1)}
@@ -1445,6 +1451,47 @@ function stopStream(){
   _typeFlushAll();
   _setSendButtonState(false);
 }
+const _SLASH_COMMANDS=[
+  {cmd:'new',hint:'clear chat + start a fresh session'},
+  {cmd:'clear',hint:'clear chat (keep session)'},
+  {cmd:'help',hint:'open keyboard shortcuts overlay'},
+  {cmd:'persona',hint:'switch persona (e.g. /persona rikku)'},
+  {cmd:'sessions',hint:'open sessions browser'},
+  {cmd:'tools',hint:'toggle the TOOLS drawer'},
+  {cmd:'status',hint:'toggle the STATUS panel'},
+  {cmd:'jarvis',hint:'engage/disengage Jarvis mode'},
+  {cmd:'find',hint:'find <query> in workdir'},
+  {cmd:'pace',hint:'set stream cps (10-2000)'},
+];
+let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
+function _slashAcRender(){
+  let el=document.getElementById('slash-ac');
+  if(!el){el=document.createElement('div');el.id='slash-ac';el.className='slash-ac';document.body.appendChild(el)}
+  if(!_slashAcOpen||_slashAcMatches.length===0){el.classList.remove('show');return}
+  const rect=input.getBoundingClientRect();
+  el.style.left=rect.left+'px';el.style.bottom=(window.innerHeight-rect.top+6)+'px';el.style.width=Math.max(260,rect.width-180)+'px';
+  el.innerHTML=_slashAcMatches.map((c,i)=>`<div class="sl-row${i===_slashAcIdx?' active':''}" data-cmd="${esc(c.cmd)}"><span class="sl-cmd">/${esc(c.cmd)}</span><span class="sl-hint">${esc(c.hint)}</span></div>`).join('');
+  el.classList.add('show');
+  el.querySelectorAll('.sl-row').forEach((row,i)=>{row.onclick=()=>{_slashAcAccept(_slashAcMatches[i].cmd)};row.onmouseenter=()=>{_slashAcIdx=i;_slashAcRender()}});
+}
+function _slashAcUpdate(){
+  const t=input.value;
+  if(!t.startsWith('/')||t.includes(' ')){_slashAcOpen=false;_slashAcRender();return}
+  const q=t.slice(1).toLowerCase();
+  _slashAcMatches=_SLASH_COMMANDS.filter(c=>c.cmd.startsWith(q));
+  _slashAcOpen=_slashAcMatches.length>0;
+  if(_slashAcIdx>=_slashAcMatches.length)_slashAcIdx=0;
+  _slashAcRender();
+}
+function _slashAcAccept(cmd){
+  const needsArg=(cmd==='persona'||cmd==='find'||cmd==='pace');
+  input.value='/'+cmd+(needsArg?' ':'');
+  _slashAcOpen=false;_slashAcRender();
+  input.focus();try{input.setSelectionRange(input.value.length,input.value.length)}catch{}
+  if(!needsArg){send()}
+}
+function _slashAcClose(){_slashAcOpen=false;_slashAcRender()}
+input.addEventListener('input',_slashAcUpdate);
 function _handleSlashCommand(text){
   const m=text.match(/^\/(\w[\w-]*)(?:\s+(.*))?$/);
   if(!m)return false;
@@ -2500,6 +2547,13 @@ function pushInputHistory(text){
 function _inputCursorAtStart(){try{return input.selectionStart===0&&input.selectionEnd===0}catch{return true}}
 function _inputCursorAtEnd(){try{return input.selectionStart===(input.value||'').length}catch{return true}}
 input.addEventListener('keydown',e=>{
+  if(_slashAcOpen){
+    if(e.key==='ArrowDown'){e.preventDefault();_slashAcIdx=(_slashAcIdx+1)%_slashAcMatches.length;_slashAcRender();return}
+    if(e.key==='ArrowUp'){e.preventDefault();_slashAcIdx=(_slashAcIdx-1+_slashAcMatches.length)%_slashAcMatches.length;_slashAcRender();return}
+    if(e.key==='Tab'){e.preventDefault();_slashAcAccept(_slashAcMatches[_slashAcIdx].cmd);return}
+    if(e.key==='Enter'){e.preventDefault();_slashAcAccept(_slashAcMatches[_slashAcIdx].cmd);return}
+    if(e.key==='Escape'){e.preventDefault();_slashAcClose();return}
+  }
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();return}
   if(e.key==='ArrowUp'&&_inputHistory.length>0&&_inputCursorAtStart()){
     if(_historyIdx===-1)_draftBeforeRecall=input.value;
