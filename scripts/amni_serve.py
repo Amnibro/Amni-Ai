@@ -851,6 +851,7 @@ def main():
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
     print(f'[amni_serve]   Jarvis UI:     http://{args.host}:{args.port}/jarvis  (neon + widgets + voice)',flush=True)
+    print(f'[amni_serve]   HUD dashboard: http://{args.host}:{args.port}/hud',flush=True)
     print(f'[amni_serve]   Ollama compat: http://{args.host}:{args.port}/api/tags',flush=True)
     print(f'[amni_serve]   MCP server:    http://{args.host}:{args.port}/mcp',flush=True)
     print(f'[amni_serve]   OpenAI compat: http://{args.host}:{args.port}/v1/chat/completions  (Amni-Code, Continue.dev, Cline, Aider)',flush=True)

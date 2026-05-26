@@ -390,7 +390,7 @@ select:hover{border-color:var(--border-hover)}
 </div>
 
 <script>
-const API='http://127.0.0.1:11434';
+const API=(()=>{try{const o=window.location.origin;if(o&&o.startsWith('http'))return o.replace(/\/$/,'')}catch{}return 'http://127.0.0.1:7700'})();
 let session='hud_'+Math.random().toString(36).slice(2,10);
 let lastReplyAudio=null;
 let curPersona='Rikku';
