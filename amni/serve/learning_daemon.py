@@ -58,6 +58,11 @@ class LearningDaemon:
                     if should_run_now():
                         res=run_cycle();print(f'[LearningDaemon] self-reflection: {res.get("subsystem")} -> {len(res.get("proposed_ids") or [])} proposals',flush=True)
                 except Exception as e:print(f'[LearningDaemon] self-reflection skipped: {type(e).__name__}: {e}',flush=True)
+                try:
+                    from amni.serve.metrics_snapshot import should_run_now as _ms_should,snapshot as _ms_snap
+                    if _ms_should():
+                        r=_ms_snap();print(f'[LearningDaemon] metrics snapshot: wrote={r.get("wrote")} count={r.get("snapshot_count")}',flush=True)
+                except Exception as e:print(f'[LearningDaemon] metrics snapshot skipped: {type(e).__name__}: {e}',flush=True)
                 self._drain_queue()
             except Exception as e:print(f'[LearningDaemon] loop exception: {type(e).__name__}: {e}',flush=True)
             self._stop.wait(5.0)

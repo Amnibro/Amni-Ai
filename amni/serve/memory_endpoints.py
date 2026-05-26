@@ -82,6 +82,29 @@ def mount(app,agent):
         try:body=await req.json()
         except Exception:pass
         return attempt_next_eligible(max_attempts=int(body.get('max',1)),dry_run=bool(body.get('dry_run',False)))
+    @app.get('/memory/metrics')
+    def metrics_status():
+        from amni.serve.metrics_snapshot import status as _s
+        return _s()
+    @app.get('/memory/metrics/history')
+    def metrics_history(limit:int=30):
+        from amni.serve.metrics_snapshot import history as _h
+        return {'history':_h(limit=limit)}
+    @app.get('/memory/metrics/trend')
+    def metrics_trend(days:int=7):
+        from amni.serve.metrics_snapshot import trend as _t
+        return _t(days=days)
+    @app.post('/memory/metrics/snapshot')
+    async def metrics_snapshot_now(req:Request):
+        from amni.serve.metrics_snapshot import snapshot as _snap
+        body={}
+        try:body=await req.json()
+        except Exception:pass
+        return _snap(force=bool(body.get('force',False)),notify=bool(body.get('notify',False)))
+    @app.post('/memory/metrics/toggle')
+    async def metrics_toggle(req:Request):
+        from amni.serve.metrics_snapshot import set_enabled as _se
+        body=await req.json();return _se(bool(body.get('enabled',True)))
     @app.get('/memory/coach/reviews')
     def coach_reviews(topic:str='',limit:int=20):
         if getattr(agent,'coach_atlas',None) is None:return {'reviews':[]}
