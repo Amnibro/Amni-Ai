@@ -194,6 +194,28 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.info .w-head{color:var(--gold)}
 .widget.code .w-body pre{background:rgba(0,0,0,.6);padding:10px;border-radius:2px;font-size:11px;color:var(--cyan);overflow-x:auto}
 #composer{display:flex;gap:10px;align-items:center}
+#jarvis-toggle{padding:8px 14px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.4);color:var(--cyan);font-family:inherit;font-size:11px;letter-spacing:.25em;cursor:pointer;border-radius:3px;transition:all .18s;text-shadow:0 0 4px rgba(0,229,255,.5);font-weight:600}
+#jarvis-toggle:hover{background:rgba(0,229,255,.14);box-shadow:0 0 12px rgba(0,229,255,.35)}
+#jarvis-toggle.on{background:linear-gradient(180deg,rgba(0,229,255,.22),rgba(0,229,255,.08));border-color:var(--cyan);color:#dff6ff;box-shadow:0 0 18px rgba(0,229,255,.6),inset 0 0 12px rgba(0,229,255,.18);animation:jarvisPulse 2.4s ease-in-out infinite}
+@keyframes jarvisPulse{0%,100%{box-shadow:0 0 18px rgba(0,229,255,.55),inset 0 0 12px rgba(0,229,255,.15)}50%{box-shadow:0 0 24px rgba(0,229,255,.85),inset 0 0 16px rgba(0,229,255,.28)}}
+#tools-toggle{padding:8px 12px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.22);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.22em;cursor:pointer;border-radius:3px;transition:all .15s}
+#tools-toggle:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.1)}
+#tools-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.12)}
+#tools-drawer{position:fixed;bottom:84px;right:24px;width:340px;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(0,229,255,.35);border-radius:4px;box-shadow:0 0 28px rgba(0,229,255,.22);backdrop-filter:blur(10px);padding:14px;transform:translateY(10px);opacity:0;pointer-events:none;transition:opacity .2s ease-out, transform .25s ease-out}
+#tools-drawer.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#tools-drawer.td-hidden{display:block}
+#tools-drawer .td-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid rgba(0,229,255,.18);margin-bottom:10px;font-size:10px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;text-shadow:0 0 4px var(--cyan)}
+#tools-drawer .td-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#tools-drawer .td-close:hover{color:var(--err);border-color:var(--err)}
+#tools-drawer .td-section{margin-bottom:14px}
+#tools-drawer .td-section:last-child{margin-bottom:0}
+#tools-drawer .td-label{font-size:8.5px;letter-spacing:.28em;color:var(--mute);text-transform:uppercase;margin-bottom:6px}
+#tools-drawer .td-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#tools-drawer .td-btn{padding:7px 10px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.22);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:3px;transition:all .15s;text-transform:uppercase;text-align:center}
+#tools-drawer .td-btn:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.1)}
+#tools-drawer .td-btn.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.14);box-shadow:0 0 8px rgba(0,229,255,.25);text-shadow:0 0 4px var(--cyan)}
+#tools-drawer .td-btn .convo-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--mute);margin-right:5px;transition:background .2s}
+#tools-drawer .td-btn.on .convo-dot{background:var(--cyan);box-shadow:0 0 4px var(--cyan)}
 #quick-bar{display:flex;gap:6px;padding:6px 12px 0;flex-wrap:wrap;align-items:center;font-family:JetBrains Mono,monospace;border-top:1px solid rgba(0,229,255,.05)}
 .qchip{padding:5px 11px;border:1px solid rgba(0,229,255,.2);background:rgba(0,229,255,.04);color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:99px;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px;line-height:1}
 .qchip:hover{background:rgba(0,229,255,.14);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.25)}
@@ -733,15 +755,40 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   <div id="composer">
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
     <div id="input-shell"><textarea id="input" placeholder="Speak or type..." autofocus></textarea></div>
-    <button id="voiceout-toggle" type="button" onclick="toggleVoiceOut()" title="Speak responses">VOICE</button>
-    <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
-    <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
-    <button id="coach-toggle" type="button" onclick="toggleCoachPanel()" title="Ask-answer-ask coaching session — Adam tutors you on any topic">COACH</button>
-    <button id="export-btn" type="button" onclick="_exportChatMd()" title="Download this conversation as a Markdown file">EXPORT</button>
-    <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
-    <button id="wake-toggle" type="button" onclick="toggleWake()" oncontextmenu="event.preventDefault();_wakeConfigPrompt();return false" title='Wake word gate. Click to toggle. Right-click to add custom wake words (e.g. jarvis, computer). Default words: adam/atom/adams/adan.'>WAKE</button>
-    <button id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
+    <button id="jarvis-toggle" type="button" onclick="toggleJarvisMode()" title="Engage Jarvis mode — convo + wake + gesture + voice all on">JARVIS</button>
+    <button id="tools-toggle" type="button" onclick="toggleToolsDrawer()" title="Open tools drawer (voice, gesture, coach, export, etc)">TOOLS</button>
     <button id="send" onclick="send()">TRANSMIT</button>
+  </div>
+</div>
+<div id="tools-drawer" class="td-hidden">
+  <div class="td-head"><span>◆ TOOLS</span><span class="td-close" onclick="toggleToolsDrawer()">CLOSE</span></div>
+  <div class="td-section">
+    <div class="td-label">VOICE &amp; CONVO</div>
+    <div class="td-grid">
+      <button class="td-btn" id="voiceout-toggle" type="button" onclick="toggleVoiceOut()" title="Speak responses (TTS)">VOICE OUT</button>
+      <button class="td-btn" id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
+      <button class="td-btn" id="wake-toggle" type="button" onclick="toggleWake()" oncontextmenu="event.preventDefault();_wakeConfigPrompt();return false" title='Wake word gate. Right-click to add custom wake words.'>WAKE</button>
+      <button class="td-btn" id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
+    </div>
+  </div>
+  <div class="td-section">
+    <div class="td-label">VISION</div>
+    <div class="td-grid">
+      <button class="td-btn" id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
+    </div>
+  </div>
+  <div class="td-section">
+    <div class="td-label">LEARNING</div>
+    <div class="td-grid">
+      <button class="td-btn" id="coach-toggle" type="button" onclick="toggleCoachPanel()" title="Ask-answer-ask coaching session">COACH</button>
+      <button class="td-btn" id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
+    </div>
+  </div>
+  <div class="td-section">
+    <div class="td-label">SESSION</div>
+    <div class="td-grid">
+      <button class="td-btn" id="export-btn" type="button" onclick="_exportChatMd()" title="Download this conversation as Markdown">EXPORT</button>
+    </div>
   </div>
 </div>
 <div id="task-tray">
@@ -1972,6 +2019,43 @@ async function _coachEnd(){
 async function _coachSyncStatus(){if(!_coachSid)return;const res=await _coachCall({action:'status',session_id:_coachSid});if(res&&!res.error){_coachShowActive(true);_coachRender(res)}else{localStorage.removeItem(COACH_SID_KEY);_coachSid=''}}
 document.addEventListener('keydown',e=>{if(_coachPanelOpen&&e.ctrlKey&&e.key==='Enter'&&document.activeElement&&document.activeElement.id==='cp-answer'){e.preventDefault();_coachAnswer()}});
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
+let _toolsDrawerOpen=false;
+function toggleToolsDrawer(force){
+  const open=(typeof force==='boolean')?force:!_toolsDrawerOpen;
+  _toolsDrawerOpen=open;
+  const el=document.getElementById('tools-drawer');if(el)el.classList.toggle('show',open);
+  const btn=document.getElementById('tools-toggle');if(btn)btn.classList.toggle('on',open);
+}
+document.addEventListener('click',e=>{
+  if(!_toolsDrawerOpen)return;
+  const drawer=document.getElementById('tools-drawer'),trigger=document.getElementById('tools-toggle');
+  if(!drawer||!trigger)return;
+  if(drawer.contains(e.target)||trigger.contains(e.target))return;
+  toggleToolsDrawer(false);
+});
+function _jarvisModeActive(){return convoOn&&voiceOut&&wakeOn&&gestureOn}
+function toggleJarvisMode(){
+  const next=!_jarvisModeActive();
+  const setBtn=()=>{const b=document.getElementById('jarvis-toggle');if(b)b.classList.toggle('on',_jarvisModeActive())};
+  if(next){
+    if(!voiceOut)toggleVoiceOut();
+    if(!wakeOn)try{toggleWake()}catch(_){}
+    if(!convoOn)try{toggleConvo()}catch(_){}
+    if(!gestureOn)try{toggleGesture()}catch(_){}
+    setTimeout(setBtn,200);
+    bubble('bot','**Jarvis mode engaged.** Convo + wake + gesture + voice all online — say "Adam, ..." or wave to me.','<span class="badge">jarvis</span>');
+  }else{
+    if(convoOn)try{toggleConvo()}catch(_){}
+    if(gestureOn)try{toggleGesture()}catch(_){}
+    if(wakeOn)try{toggleWake()}catch(_){}
+    if(voiceOut)try{toggleVoiceOut()}catch(_){}
+    setTimeout(setBtn,200);
+    bubble('bot','**Jarvis mode disengaged.** Back to manual.','<span class="badge">jarvis</span>');
+  }
+  setBtn();
+}
+function _refreshJarvisButton(){const b=document.getElementById('jarvis-toggle');if(b)b.classList.toggle('on',_jarvisModeActive())}
+setInterval(_refreshJarvisButton,1500);
 let _audioEl=null;
 async function speak(text){
   if(!voiceOut)return;
