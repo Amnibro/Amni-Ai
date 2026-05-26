@@ -1298,22 +1298,47 @@ async function send(){
   input.value='';input.style.height='auto';send_btn.disabled=true;
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
+  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];
   try{
-    const body={model:'adam:e2b-gf17',messages:[{role:'user',content:text}],stream:false};
-    if(sid)body.user=sid;
-    const resp=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const j=await resp.json();
-    const msg=j.choices&&j.choices[0]&&j.choices[0].message||{};
-    const content=msg.content||'';
-    const widgets=msg.amni_widgets||j.amni_widgets||[];
+    const body=sid?{message:text,session_id:sid}:{message:text};
+    const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!resp.body){throw new Error('streaming not supported by browser')}
+    const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';
+    while(true){
+      const {done,value}=await reader.read();if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const events=buf.split('\n\n');buf=events.pop()||'';
+      for(const evt of events){
+        const lines=evt.split('\n');let etype='message',edata='';
+        for(const ln of lines){if(ln.startsWith('event: '))etype=ln.slice(7);else if(ln.startsWith('data: '))edata+=ln.slice(6)}
+        if(!edata)continue;
+        try{
+          if(etype==='token'){
+            const chunk=JSON.parse(edata);
+            if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}
+            acc+=chunk;bot.bubble.innerHTML=md(acc);log.scrollTop=log.scrollHeight;
+            if(typeof _corePulse==='function'&&performance.now()-_coreLastToken>180){_coreLastToken=performance.now();_corePulse()}
+          }else if(etype==='meta'){
+            const m=JSON.parse(edata);
+            if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}
+            if(m.persona)persona=m.persona;
+            if(m.skill)tier='tier0_skill_'+m.skill;
+            if(m.category)category=m.category;
+          }else if(etype==='widget'){
+            try{widgets.push(JSON.parse(edata))}catch{}
+          }else if(etype==='done'){
+            const d=JSON.parse(edata);tier=d.tier||tier;wall=d.wall_s||'';
+          }
+        }catch(p){}
+      }
+    }
     bot.bubble.classList.remove('thinking');
-    bot.bubble.innerHTML=md(content);
+    if(!acc)bot.bubble.textContent='(empty response)';
     if(widgets.length){appendWidgets(bot.msg,widgets)}
-    const tier=j.amni_tier||'?';const wall=j.amni_wall_s||'';
     const metaEl=document.createElement('div');metaEl.className='meta';
-    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}`;
+    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}`;
     bot.msg.appendChild(metaEl);
-    if(voiceOut&&content)speak(content);
+    if(voiceOut&&acc)speak(acc);
   }catch(err){bot.bubble.classList.remove('thinking');bot.bubble.textContent='Error: '+err.message}
   send_btn.disabled=false;input.focus();log.scrollTop=log.scrollHeight;
 }
