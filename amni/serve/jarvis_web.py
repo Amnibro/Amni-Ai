@@ -274,6 +274,9 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .msg.restored{opacity:.78}
 .msg.restored .bubble{border-left:2px solid rgba(255,255,255,.12)}
 .msg.restored .bubble::before{content:'';display:none}
+.tok-meter{font-size:9px;letter-spacing:.18em;color:var(--mute);font-family:JetBrains Mono,monospace;margin-top:4px;padding:2px 7px;border:1px solid rgba(0,229,255,.18);background:rgba(0,229,255,.04);border-radius:2px;display:inline-block;text-transform:uppercase;transition:opacity .8s, color .25s}
+.tok-meter.done{color:var(--cyan);border-color:rgba(0,229,255,.35);background:rgba(0,229,255,.08);text-shadow:0 0 3px rgba(0,229,255,.4)}
+.tok-meter.fade{opacity:0}
 #toast-stack{position:fixed;bottom:140px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:14;max-width:340px;pointer-events:none}
 .toast{pointer-events:auto;padding:10px 12px;border:1px solid rgba(0,229,255,.35);background:rgba(8,14,28,.94);border-left:3px solid var(--cyan);border-radius:3px;font-size:11px;color:var(--fg);box-shadow:0 0 14px rgba(0,229,255,.18);backdrop-filter:blur(6px);transform:translateX(60px);opacity:0;transition:transform .25s ease-out, opacity .25s ease-out;cursor:pointer;font-family:inherit}
 .toast.show{transform:translateX(0);opacity:1}
@@ -1731,6 +1734,13 @@ async function _streamReplyWithTTS(text,opts){
   if(createBubbles)bubble('user',text);
   const bot=opts.bot||bubble('bot','...');
   if(!opts.bot)bot.bubble.classList.add('thinking');
+  const tokMeter=document.createElement('div');tokMeter.className='tok-meter';tokMeter.textContent='— tok/s · 0 tok · 0.0s';bot.msg.appendChild(tokMeter);
+  const t0=performance.now();let tokCount=0,lastUpdate=0;
+  function _updateTokMeter(force){
+    const now=performance.now();if(!force&&now-lastUpdate<180)return;lastUpdate=now;
+    const sec=Math.max(0.01,(now-t0)/1000);const rate=tokCount/sec;
+    tokMeter.textContent=`${rate>=10?rate.toFixed(0):rate.toFixed(1)} tok/s · ${tokCount} tok · ${sec.toFixed(1)}s`;
+  }
   let acc='',spoken='',ttsQueue=[],ttsPlaying=false;
   const _SENT_RE=/([.!?…][\s"')\]\}]*)/;
   async function _flushTTS(chunk){
@@ -1771,13 +1781,13 @@ async function _streamReplyWithTTS(text,opts){
         for(const ln of lines){if(ln.startsWith('event: '))etype=ln.slice(7);else if(ln.startsWith('data: '))edata+=ln.slice(6)}
         if(!edata)continue;
         try{
-          if(etype==='token'){const chunk=JSON.parse(edata);if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}acc+=chunk;bot.bubble.innerHTML=md(acc);_consumeSentence();log.scrollTop=log.scrollHeight}
+          if(etype==='token'){const chunk=JSON.parse(edata);if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}acc+=chunk;tokCount+=Math.max(1,Math.ceil(chunk.length/4));_updateTokMeter();bot.bubble.innerHTML=md(acc);_consumeSentence();log.scrollTop=log.scrollHeight}
           else if(etype==='meta'){const m=JSON.parse(edata);if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}}
-          else if(etype==='done'){const tail=acc.slice(spoken.length);if(tail.trim()){spoken=acc;_flushTTS(tail)}}
+          else if(etype==='done'){const tail=acc.slice(spoken.length);if(tail.trim()){spoken=acc;_flushTTS(tail)};_updateTokMeter(true);tokMeter.classList.add('done');setTimeout(()=>{tokMeter.classList.add('fade')},2500);setTimeout(()=>{try{tokMeter.remove()}catch{}},3800)}
         }catch(p){}
       }
     }
-  }catch(e){bot.bubble.classList.remove('thinking');bot.bubble.textContent='stream error: '+e.message;if(convoOn)_setConvoState('listening')}
+  }catch(e){bot.bubble.classList.remove('thinking');bot.bubble.textContent='stream error: '+e.message;try{tokMeter.remove()}catch{};if(convoOn)_setConvoState('listening')}
 }
 async function _convoStreamSend(text){return _streamReplyWithTTS(text,{createBubbles:true})}
 function _stopConvo(){
