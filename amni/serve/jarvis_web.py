@@ -1297,6 +1297,48 @@ async function _fcMarkTested(path){
   catch(e){bubble('bot','Could not mark tested: '+esc(e.message),'<span class="badge err">err</span>')}
 }
 let _streamAbort=null;
+const TYPE_SPEED_KEY='amni_jarvis_type_speed';
+let _typePending='';let _typeShown=0;let _typeRAF=null;let _typeBot=null;let _typeOnDone=null;
+function _typeSpeedCps(){
+  const v=parseInt(localStorage.getItem(TYPE_SPEED_KEY)||'85',10);
+  return Math.max(10,Math.min(2000,isFinite(v)?v:85));
+}
+function _typeStart(botRef,onDone){
+  _typeBot=botRef;_typePending='';_typeShown=0;_typeOnDone=onDone||null;
+  if(_typeRAF)cancelAnimationFrame(_typeRAF);
+  _typeLastTs=0;_typeTick();
+}
+let _typeLastTs=0;
+function _typeTick(ts){
+  if(!_typeBot){_typeRAF=null;return}
+  if(!ts){ts=performance.now()}
+  if(!_typeLastTs)_typeLastTs=ts;
+  const dt=ts-_typeLastTs;
+  const remaining=_typePending.length-_typeShown;
+  const base=_typeSpeedCps();
+  const speed=remaining>800?Math.max(base*4,400):remaining>200?base*2:base;
+  const want=Math.floor(dt*speed/1000);
+  if(want>=1){
+    _typeShown=Math.min(_typePending.length,_typeShown+want);
+    _typeLastTs=ts;
+    try{_typeBot.bubble.innerHTML=md(_typePending.slice(0,_typeShown));log.scrollTop=log.scrollHeight}catch(_){}
+  }
+  if(_typeShown<_typePending.length||_typePending.length===0){
+    _typeRAF=requestAnimationFrame(_typeTick);
+  }else{
+    _typeRAF=null;
+    const fn=_typeOnDone;_typeOnDone=null;_typeBot=null;
+    if(typeof fn==='function')try{fn()}catch(_){}
+  }
+}
+function _typePush(chunk){_typePending+=chunk;if(!_typeRAF&&_typeBot)_typeRAF=requestAnimationFrame(_typeTick)}
+function _typeFlushAll(){
+  if(_typeRAF){cancelAnimationFrame(_typeRAF);_typeRAF=null}
+  if(_typeBot){try{_typeBot.bubble.innerHTML=md(_typePending);log.scrollTop=log.scrollHeight}catch(_){}}
+  _typeShown=_typePending.length;
+  const fn=_typeOnDone;_typeOnDone=null;_typeBot=null;
+  if(typeof fn==='function')try{fn()}catch(_){}
+}
 function _setSendButtonState(streaming){
   if(!send_btn)return;
   if(streaming){send_btn.dataset.streaming='1';send_btn.textContent='STOP';send_btn.classList.add('stop-mode');send_btn.disabled=false}
@@ -1304,6 +1346,7 @@ function _setSendButtonState(streaming){
 }
 function stopStream(){
   if(_streamAbort){try{_streamAbort.abort()}catch{}_streamAbort=null}
+  _typeFlushAll();
   _setSendButtonState(false);
 }
 async function send(){
@@ -1315,6 +1358,7 @@ async function send(){
   let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];let aborted=false;
   _streamAbort=new AbortController();
   _setSendButtonState(true);
+  _typeStart(bot,null);
   try{
     const body=sid?{message:text,session_id:sid}:{message:text};
     const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:_streamAbort.signal});
@@ -1335,7 +1379,7 @@ async function send(){
           if(etype==='token'){
             const chunk=JSON.parse(edata);
             if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}
-            acc+=chunk;bot.bubble.innerHTML=md(acc);log.scrollTop=log.scrollHeight;
+            acc+=chunk;_typePush(chunk);
             if(typeof _corePulse==='function'&&performance.now()-_coreLastToken>180){_coreLastToken=performance.now();_corePulse()}
           }else if(etype==='meta'){
             const m=JSON.parse(edata);
@@ -1351,6 +1395,7 @@ async function send(){
         }catch(p){}
       }
     }
+    _typeFlushAll();
     bot.bubble.classList.remove('thinking');
     if(!acc)bot.bubble.textContent=aborted?'(stopped before any tokens arrived)':'(empty response)';
     if(widgets.length){appendWidgets(bot.msg,widgets)}
