@@ -2,6 +2,50 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.56 — Self-improvement scaffold (Adam can inspect + propose changes to itself) (2026-05-26)
+
+the maintainer's directive: *"can we get adam to be able to run its own environments, investigate improving itself, etc? make it just an absolutely amazing model that improves itself over time?"* This is a multi-iter vision; v6.10.56 ships the cornerstone scaffold.
+
+### New module `amni/serve/self_improvement.py`
+Append-only proposal log with state machine. Every event lands in `data/self_improvement.jsonl` (no overwrites — full audit trail). State transitions:
+- `proposed → attempted → validated → deployed` (happy path)
+- `proposed → declined` (vetoed or infeasible)
+- `attempted → reverted` (didn't validate, rolled back)
+
+API: `propose(title, rationale, planned_change, files_touched?, category?)`, `transition(id, new_status, notes?)`, `list_proposals(status?, category?, limit?, include_history?)`, `get_proposal(id)`, `stats()`. Categories: enhancement, bug-fix, refactor, documentation, performance, security, experiment.
+
+### New `self_inspect` skill
+Adam reads its own source for reflection. Args: `{subsystem?='amni/serve', max_files?=12, max_chars_per_file?=2400}`. **Scope-checked** to repo root — can't escape via `../etc`. Returns digest with per-file path + line count + bytes + preview snippet (truncated at max_chars). Skips `_*.py` private modules and `__pycache__`. Hint included telling Adam to call `self_improvement` action=propose after inspecting.
+
+### New `self_improvement` skill
+Adam's notebook. Actions: `propose` / `list` / `get` / `transition` / `stats`. Adam (or user) can record observations + intended changes; transitions record what was tried.
+
+### New endpoints
+- `GET /memory/self-improvement?status=&category=&limit=&include_history=` — query proposals + stats
+- `POST /memory/self-improvement` `{title, rationale, planned_change, files_touched?, category?}` — record new proposal
+- `POST /memory/self-improvement/{id}/status` `{status, notes?, author?}` — transition
+
+### Design constraints (preserved in memory `feedback-amni-ai-self-improvement-vision`)
+- **Self-modification stays inside the v6.10.16 verification pipeline** — disk sha256 readback + ext-specific parse + sibling pytest. Adam can't bypass safety gates when editing its own files.
+- **The 5 Immutable Laws still apply** — proposals weakening safety screens or removing AsimovLayer MUST be auto-declined regardless of Adam's reasoning.
+- **No silent self-modification** — Adam may attempt + validate proposals, but `deployed` requires human approval. Honors `feedback-amni-ai-verify-edits` + `feedback-amni-ai-persona-safety`.
+- **Append-only log** — `data/self_improvement.jsonl` is never overwritten, so we can reconstruct exactly what Adam tried and when.
+
+### Vision for future iters (in memory note)
+1. `venv_create` + `venv_install` skills so Adam can spin up sandboxes for experiments
+2. LearningDaemon (v6.10.12) gets a periodic self-reflection task that runs `self_inspect` + proposes 1-3 improvements daily (capped to keep the log clean)
+3. Adam auto-attempts low-blast-radius proposals (refactor / documentation) via existing `code_edit` + v6.10.16 verify + v6.10.19 auto-pytest, marks `attempted → validated|reverted` based on test outcome
+4. Daily snapshot of Adam's own metrics (skill latency, daemon facts/hr, coach streak, verification pass rate) — used to assess whether proposals actually improved Adam over time
+5. Human approval gate for `deployed` — keeps the maintainer in the loop on what merges
+
+### Tests
+21/21 PASS (`tests/test_self_improvement_v6_10_56.py`): module exports, propose returns id + appends, rejects empty title/rationale + unknown category, transition progresses status, rejects unknown status + missing proposal, history records every transition (propose + 3 transitions = 4 events), list filters by status + category, stats buckets by status + category + open count, history excluded by default, **append-only audit trail** (3 events = 3 jsonl rows, never overwrites), `self_inspect` registered + reads actual files + scope-checks `../etc` + handles missing path, `self_improvement` skill registered + propose action works, 3 endpoints registered, v6.10.55 regression intact. Recent chain (v6.10.52 → .55): 67/67 still PASS. Total: 88/88.
+
+### Saved to durable memory
+`feedback-amni-ai-self-improvement-vision` — future loop iters now know the multi-iter trajectory and the constraints (verify-pipeline, laws, no-silent-deploy).
+
+---
+
 ## v6.10.55 — Bubble retry button (one-click discard + edit prompt) (2026-05-26)
 
 When Adam's reply misses the mark, the user had to retype the whole prompt by hand. v6.10.55 adds a hover-revealed `↻ retry` button on every bot bubble that yanks both the bot reply AND the preceding user prompt, then repopulates the input with the user's original text + focuses it for quick editing.

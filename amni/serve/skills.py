@@ -706,6 +706,52 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
             prev=d.get('output')
         return {'ok':ok,'n_steps':len(results),'results':results,'final':results[-1].get('output') if results else None}
     reg.register('chain',_skill_chain,desc='Run a sequence of skills in order. Args: {steps:[{skill, args, continue_on_error?},...], max_steps?=8}. Use "$prev" / "$prev_str" in args to inject previous step output. Nested chain disallowed.',schema={'steps':'list','max_steps':'int?'})
+    def _skill_self_inspect(args,ctx,reg_):
+        """Read Adam's own source for self-reflection. Returns summary digest the LLM can reason over to identify hotspots / propose improvements."""
+        from pathlib import Path as _P
+        repo_root=_P(__file__).resolve().parents[2]
+        subsystem=(args.get('subsystem') or 'amni/serve').strip().lstrip('/')
+        max_files=int(args.get('max_files',12));max_chars=int(args.get('max_chars_per_file',2400))
+        base=(repo_root/subsystem).resolve()
+        try:base.relative_to(repo_root.resolve())
+        except Exception:return {'error':f'subsystem must be inside repo root; got {subsystem}'}
+        if not base.exists():return {'error':f'subsystem path not found: {subsystem}'}
+        targets=[]
+        if base.is_file():targets=[base]
+        else:
+            for p in sorted(base.rglob('*.py')):
+                if p.name.startswith('_') and p.name!='__init__.py':continue
+                if '__pycache__' in p.parts:continue
+                targets.append(p)
+                if len(targets)>=max_files:break
+        snippets=[]
+        for p in targets:
+            try:
+                txt=p.read_text(encoding='utf-8',errors='ignore')
+                lines=txt.splitlines();line_count=len(lines)
+                if len(txt)>max_chars:txt=txt[:max_chars]+f'\n... ({line_count} total lines, truncated)'
+                snippets.append({'path':str(p.relative_to(repo_root)),'lines':line_count,'bytes':p.stat().st_size,'preview':txt})
+            except Exception:continue
+        return {'subsystem':subsystem,'files_inspected':len(snippets),'snippets':snippets,'hint':'Read the snippets, then propose specific improvements via the self_improvement skill (action=propose). Reference file paths + line numbers in your rationale.'}
+    reg.register('self_inspect',_skill_self_inspect,desc='Read Adam\'s own source files for self-reflection. Args: {subsystem?=\'amni/serve\', max_files?=12, max_chars_per_file?=2400}. Scope-checked to repo root.',schema={'subsystem':'str?','max_files':'int?','max_chars_per_file':'int?'})
+    def _skill_self_improvement(args,ctx,reg_):
+        """Record + manage self-improvement proposals. Actions: propose | list | get | transition | stats. The actual code changes flow through file_write+code_edit (with v6.10.16 verify + v6.10.19 auto-pytest). This skill is the notebook, not the robot arm."""
+        from amni.serve import self_improvement as _si
+        action=(args.get('action') or 'list').strip().lower()
+        if action=='propose':
+            return _si.propose(title=args.get('title',''),rationale=args.get('rationale',''),planned_change=args.get('planned_change',''),files_touched=args.get('files_touched',[]),category=args.get('category','enhancement'),author=args.get('author','adam'))
+        if action=='list':return {'proposals':_si.list_proposals(status=args.get('status'),category=args.get('category'),limit=int(args.get('limit',50)),include_history=bool(args.get('include_history')))}
+        if action=='get':
+            pid=args.get('id');
+            if not pid:return {'error':'need id for action=get'}
+            p=_si.get_proposal(pid);return p if p else {'error':f'no proposal {pid!r}'}
+        if action=='transition':
+            pid=args.get('id');new_status=args.get('status');
+            if not pid or not new_status:return {'error':'need id + status for transition'}
+            return _si.transition(pid,new_status,notes=args.get('notes',''),author=args.get('author','adam'))
+        if action=='stats':return _si.stats()
+        return {'error':f'unknown action {action!r}; valid: propose|list|get|transition|stats'}
+    reg.register('self_improvement',_skill_self_improvement,desc='Record and query Adam\'s self-improvement proposals. Actions: propose (title, rationale, planned_change, files_touched?, category?) | list (status?, category?, limit?, include_history?) | get (id) | transition (id, status: proposed|attempted|validated|deployed|declined|reverted, notes?) | stats. Proposals are an append-only audit log.',schema={'action':'str','title':'str?','rationale':'str?','planned_change':'str?','files_touched':'list?','category':'str?','id':'str?','status':'str?','notes':'str?','limit':'int?','include_history':'bool?'})
     try:
         from amni.serve import widgets as _w
         def _skill_weather(args,ctx,reg_):
