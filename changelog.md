@@ -2,6 +2,57 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.18 — Coach mode UI: ask-answer-ask learning sessions (2026-05-26)
+
+Closes the last unticked item from the original /loop request: "ask-answer-ask learning sessions, coaching." The `coach` skill + CoachAtlas have existed since pre-v6.10; v6.10.18 gives them a real UI.
+
+### New COACH button + slide-in panel
+New button in /jarvis composer (between MEMORY and CONVO). Click → magenta-themed slide-in panel with two states:
+
+**Start state:**
+- Topic input ("python decorators", "krebs cycle", "linear algebra", …)
+- Difficulty selector (1 intro → 5 expert)
+- START button — calls `coach skill {action:start, topic, difficulty}`, persists `session_id` to localStorage
+
+**Active session state:**
+- Large question display (cyan-shadowed, magenta border-left)
+- Meta row: difficulty · asked count · streaks (✓ green / ✗ red)
+- Mastery bar (magenta→gold gradient) + percent
+- Optional hint block (amber)
+- Optional grade card after answer:
+  - **Good** (≥70) green-tinted, **OK** (50-69) amber-tinted, **Bad** (<50) red-tinted
+  - Big score, feedback, correct_facts + missing_facts lists
+- Textarea for answer + Ctrl+Enter to submit
+- Buttons: SUBMIT, HINT, SKIP, NEXT, END SESSION (danger)
+
+Auto-closes the persona/learn/tests panels when opened so the four never stack.
+
+### Natural-language routing
+`agent._detect_skill` now routes coach-start phrasings without an LLM call:
+- "coach me on X" / "tutor me on X" / "quiz me on X" / "drill me on X" / "practice me on X" / "teach me about X"
+- "let's practice X" / "let's drill X" / "let's review X" / "let's study X"
+Rejects pronoun-only ("coach me on this", "quiz me", "tutor me") to avoid mis-dispatch.
+
+### Format pipe
+`_format_skill_output('coach', out)` returns natural sentences for:
+- Question: `Starting coach session on **<topic>** at difficulty <N>.\n\n**Q:** <question>`
+- Grade: `Score: **<N>/100** — <feedback>\n\nNext: <next_question>`
+- Hint: `**Hint:** <hint text>`
+- Skip / errors all handled with human phrasing
+
+If voice-out is on, grade feedback gets spoken via Piper (TTS-friendly).
+
+### Persistence
+`session_id` stored in localStorage as `amni_jarvis_coach_sid`. Opening the panel on next page-load auto-syncs via `action=status` — if the session is still alive, picks up where you left off; otherwise drops the key cleanly.
+
+### Tests
+18/18 PASS (`tests/test_coach_ui_v6_10_18.py`): button + ordering, panel structure, all 10 helper functions, 5 difficulty options, localStorage persistence, mutual exclusion with persona/learn/tests panels, /skills/coach endpoint shape, Ctrl+Enter handler, 3 grade color classes, mastery bar styling, 10 natural-language start phrasings + pronoun reject, 4 formatter branches, v6.10.17 regression intact. Full prior chain (v6.10.12 → .17): 91/91 still PASS. Total: 109/109.
+
+### What's now INCREDIBLE about Adam (full list)
+Looking at the original /loop request: **all eight bullets shipped.** Autonomous coding ✓ (v6.10.15 widget + v6.10.16 verification). Simple file generation ✓ (file_write skill). CLI ✓ (long-standing). Amni-Code integrations ✓ (OpenAI compat). TTS ✓ (Piper streaming). Live data inline like Jarvis ✓ (8 widget types). Loop runs ✓ (scheduler). Automated learning of content ✓ (LearningDaemon + visibility chip). Ask-answer-ask learning sessions + coaching ✓ (v6.10.18).
+
+---
+
 ## v6.10.17 — Pending-tests checklist visible in /jarvis (2026-05-26)
 
 v6.10.16 added `data/needs_testing.jsonl` and `GET /memory/needs-testing`, but the user had no way to actually see the checklist without curl. v6.10.17 surfaces it in /jarvis as a pill + panel — closes the verification loop end-to-end.
