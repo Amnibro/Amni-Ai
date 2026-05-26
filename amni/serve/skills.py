@@ -165,11 +165,15 @@ def _skill_file_read(args,ctx,reg):
         return {'path':str(p),'content':data,'bytes':len(data),'total_bytes':len(raw),'offset':_offset}
     data=raw[:max_bytes]
     return {'path':p,'content':data,'bytes':len(data)}
+def _file_change_stats(before:str,after:str,max_preview_lines:int=10):
+    bl=before.splitlines() if before else [];al=after.splitlines()
+    return {'lines_before':len(bl),'lines_after':len(al),'lines_added':max(0,len(al)-len(bl)),'lines_removed':max(0,len(bl)-len(al)),'bytes_before':len(before),'bytes_after':len(after),'preview':'\n'.join(al[:max_preview_lines])+(f'\n... ({len(al)-max_preview_lines} more)' if len(al)>max_preview_lines else '')}
 def _skill_file_write(args,ctx,reg):
     p=Path(args['path']);content=args.get('content','')
+    existed=p.exists();before=p.read_text(encoding='utf-8',errors='ignore') if existed else ''
     p.parent.mkdir(parents=True,exist_ok=True)
     p.write_text(content,encoding='utf-8')
-    return {'path':str(p),'bytes_written':len(content)}
+    return {'path':str(p),'bytes_written':len(content),'ext':p.suffix.lstrip('.') or 'txt','created':not existed,'change':_file_change_stats(before,content)}
 def _skill_code_edit(args,ctx,reg):
     p=Path(args['path']);find=args['find'];replace=args['replace'];count=int(args.get('count',1))
     src=p.read_text(encoding='utf-8')
@@ -179,7 +183,7 @@ def _skill_code_edit(args,ctx,reg):
         try:ast.parse(new)
         except SyntaxError as e:return {'error':f'syntax error after edit: {e}','path':str(p)}
     p.write_text(new,encoding='utf-8')
-    return {'path':str(p),'replacements':src.count(find) if count==0 else min(count,src.count(find))}
+    return {'path':str(p),'replacements':src.count(find) if count==0 else min(count,src.count(find)),'ext':p.suffix.lstrip('.') or 'txt','change':_file_change_stats(src,new)}
 def _skill_shell(args,ctx,reg):
     cmd=args['cmd'];timeout=int(args.get('timeout',15))
     r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))

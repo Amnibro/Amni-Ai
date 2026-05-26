@@ -604,8 +604,15 @@ class AmniAgent:
             return '\n'.join(lines)
         if name=='web':return f'{out.get("answer","(no answer)")}\n\nSources: {", ".join(out.get("sources",[])[:3])}'
         if name=='file_read':return f'```\n{out.get("content","")}\n```\n({out.get("bytes")} bytes from {out.get("path")})'
-        if name=='file_write':return f'Wrote {out.get("bytes_written")} bytes to {out.get("path")}.'
-        if name=='code_edit':return f'Edited {out.get("path")}: {out.get("replacements",0)} replacement(s).' if not out.get('error') else f'(code_edit error: {out.get("error")})'
+        if name=='file_write':
+            ch=out.get('change') or {};op='create' if out.get('created') else 'overwrite'
+            widget=json.dumps({'type':'file_change','title':op.upper()+': '+(out.get('path') or '?').split('/')[-1].split('\\')[-1],'icon':'+' if op=='create' else '↻','data':{'op':op,'path':out.get('path'),'ext':out.get('ext','txt'),'lines_added':ch.get('lines_added',0),'lines_removed':ch.get('lines_removed',0),'lines_before':ch.get('lines_before',0),'lines_after':ch.get('lines_after',0),'bytes_after':ch.get('bytes_after',out.get('bytes_written',0)),'preview':ch.get('preview','')}})
+            return f'Wrote {out.get("bytes_written")} bytes to {out.get("path")}.\n\n```widget\n{widget}\n```'
+        if name=='code_edit':
+            if out.get('error'):return f'(code_edit error: {out.get("error")})'
+            ch=out.get('change') or {}
+            widget=json.dumps({'type':'file_change','title':'EDIT: '+(out.get('path') or '?').split('/')[-1].split('\\')[-1],'icon':'✎','data':{'op':'edit','path':out.get('path'),'ext':out.get('ext','txt'),'replacements':out.get('replacements',0),'lines_added':ch.get('lines_added',0),'lines_removed':ch.get('lines_removed',0),'lines_before':ch.get('lines_before',0),'lines_after':ch.get('lines_after',0),'bytes_after':ch.get('bytes_after',0),'preview':ch.get('preview','')}})
+            return f'Edited {out.get("path")}: {out.get("replacements",0)} replacement(s).\n\n```widget\n{widget}\n```'
         if name=='shell':return f'$ {out.get("cmd")}\n(exit={out.get("returncode")})\n{out.get("stdout","")}{out.get("stderr","")}'
         if name=='scan':
             if out.get('error'):return f'(scan error: {out["error"]})'
