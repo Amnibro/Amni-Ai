@@ -833,13 +833,16 @@ async function _qcBriefing(){
   try{
     const r=await fetch('/memory/digest?hours=24');if(!r.ok){bubble('bot','Briefing unavailable: '+r.status,'<span class="badge err">briefing</span>');return}
     const j=await r.json();
-    const learn=j.learning||{};const shell=j.shell||{};const ver=j.verifier||{};const coach=j.coach||{};
+    const learn=j.learning||{};const shell=j.shell||{};const ver=j.verifier||{};const coach=j.coach||{};const skills=j.skills||{};
     const topics=(learn.topics_today||[]).slice(0,4).filter(Boolean);
     const topicsHtml=topics.length?topics.map(t=>`<span class="b-tag">${esc(t)}</span>`).join(''):'<span class="b-mute">none</span>';
+    const topSkills=(skills.top||[]).slice(0,4);
+    const skillsHtml=topSkills.length?topSkills.map(s=>`<span class="b-tag" title="${s.n} calls · ${(s.ok_rate*100).toFixed(0)}% ok">${esc(s.name)} <span style="color:var(--mute);font-size:8px">${s.n}× · ${s.avg_ms}ms</span></span>`).join(''):'<span class="b-mute">no skill calls yet</span>';
     const lines=[
       `<div class="b-section"><span class="b-lbl">LEARNING</span>${learn.facts_today||0} new facts · ${(learn.topics_today||[]).length} topic${(learn.topics_today||[]).length===1?'':'s'} <div class="b-tags">${topicsHtml}</div></div>`,
       `<div class="b-section"><span class="b-lbl">SHELL</span>${shell.runs_today||0} run${(shell.runs_today||0)===1?'':'s'} · ${shell.errors_today||0} error${(shell.errors_today||0)===1?'':'s'}</div>`,
       `<div class="b-section"><span class="b-lbl">EDITS</span>${ver.pass_today||0} verified · ${ver.fail_today||0} failed · ${ver.pending||0} pending review</div>`,
+      `<div class="b-section"><span class="b-lbl">SKILLS</span>${skills.n_calls||0} call${(skills.n_calls||0)===1?'':'s'} · avg ${skills.avg_ms||0}ms <div class="b-tags">${skillsHtml}</div></div>`,
       `<div class="b-section"><span class="b-lbl">COACH</span>${(coach.streak_days||0)>=14?'⚡':(coach.streak_days||0)>=3?'🔥':'·'} ${coach.streak_days||0} day streak${coach.today_active?' · today ✓':''} · ${coach.topics||0} topic${(coach.topics||0)===1?'':'s'} practiced</div>`
     ];
     const head='<div class="b-head"><span class="b-icon">◈</span>24-HOUR BRIEFING</div>';
@@ -2106,6 +2109,10 @@ def mount(app):
     def _notifs_read_all():
         from amni.serve.notifications import mark_all_read
         return {'marked':mark_all_read()}
+    @app.get('/memory/skill-stats')
+    def _skill_stats(hours:float=24,limit_per_skill:int=2000):
+        from amni.serve.skill_stats import aggregate
+        return aggregate(hours=hours if hours>0 else None,limit_per_skill=limit_per_skill)
     @app.get('/memory/digest')
     def _digest(hours:int=24):
         import time as _t,json as _j
@@ -2159,5 +2166,12 @@ def mount(app):
             from amni.storage.coach_atlas import CoachAtlas
             ca=CoachAtlas(root='experiences/coach_atlas');s=ca.streak_stats() if hasattr(ca,'streak_stats') else {}
             out['coach'].update({'streak_days':s.get('current_streak',0),'today_active':bool(s.get('today_active')),'total_days_active':s.get('total_days_active',0),'topics':len(ca.list_topics())})
+        except Exception:pass
+        out['skills']={'n_calls':0,'avg_ms':0,'top':[]}
+        try:
+            from amni.serve.skill_stats import aggregate as _agg
+            ss=_agg(hours=hours);tot=ss.get('totals') or {};sk=ss.get('skills') or {}
+            top=[{'name':n,'n':d['n_calls'],'avg_ms':d['avg_ms'],'ok_rate':d['ok_rate']} for n,d in list(sk.items())[:5]]
+            out['skills']={'n_calls':tot.get('n_calls',0),'avg_ms':tot.get('avg_ms',0),'overall_ok_rate':tot.get('overall_ok_rate',0.0),'top':top}
         except Exception:pass
         return out
