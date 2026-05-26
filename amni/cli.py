@@ -405,6 +405,120 @@ def _render_dashboard(base:str,data:dict)->str:
         lines.append(f'  ║    proposed {proposed:>3} · attempted {attempted:>3} · validated {validated:>3} · deployed {deployed:>3}      ║')
     lines.append(f'  ╚══════════════════════════════════════════════════════════════════╝')
     return '\n'.join(lines)
+def cmd_doctor(args):
+    checks=[_doctor_python(),_doctor_core_deps(),_doctor_optional_deps(),_doctor_config_dir(),_doctor_bake(args),_doctor_model(args),_doctor_lessons(args),_doctor_gpu(),_doctor_disk(args),_doctor_port(args),_doctor_workdir(args)]
+    if getattr(args,'network',False):checks.append(_doctor_network())
+    if getattr(args,'json',False):print(json.dumps({'checks':checks,'overall':_doctor_overall(checks)},indent=2,default=str),flush=True);return
+    print(_render_doctor_report(checks),flush=True)
+    overall=_doctor_overall(checks)
+    if overall=='fail':sys.exit(2)
+    if overall=='warn':sys.exit(1)
+def _doctor_overall(checks):
+    if any(c.get('status')=='fail' for c in checks):return 'fail'
+    if any(c.get('status')=='warn' for c in checks):return 'warn'
+    return 'ok'
+def _doctor_python():
+    v=sys.version_info;s=f'{v.major}.{v.minor}.{v.micro}'
+    ok=(v.major,v.minor)>=(3,10)
+    return {'name':'Python version','status':'ok' if ok else 'fail','detail':s+(' (need >=3.10)' if not ok else '')}
+def _doctor_core_deps():
+    missing=[]
+    for mod in ('torch','fastapi','uvicorn','numpy','transformers','huggingface_hub','safetensors'):
+        try:__import__(mod)
+        except Exception:missing.append(mod)
+    return {'name':'Core dependencies','status':'fail' if missing else 'ok','detail':'missing: '+', '.join(missing) if missing else 'all 7 importable'}
+def _doctor_optional_deps():
+    opt={'faster_whisper':'STT','piper':'TTS (offline)','mediapipe':'gesture control','sentence_transformers':'embedding sidecar','trafilatura':'web ingestion','ddgs':'duckduckgo search','amni_prism':'federated learning'}
+    have=[];missing=[]
+    for mod,what in opt.items():
+        try:__import__(mod);have.append(mod)
+        except Exception:missing.append(f'{mod} ({what})')
+    return {'name':'Optional dependencies','status':'info','detail':f'{len(have)}/{len(opt)} present'+(' · missing: '+', '.join(missing) if missing else '')}
+def _doctor_config_dir():
+    from amni.bootstrap import CONFIG_DIR,CONFIG_FILE
+    cd=Path(CONFIG_DIR);cf=Path(CONFIG_FILE)
+    if not cd.exists():return {'name':'Config directory','status':'warn','detail':f'{cd} does not exist (run `amni init`)'}
+    if not cf.exists():return {'name':'Config directory','status':'warn','detail':f'config dir present but {cf.name} missing'}
+    return {'name':'Config directory','status':'ok','detail':str(cd)}
+def _doctor_bake(args):
+    bake=getattr(args,'bake',None) or load_config().get('bake')
+    if not bake:return {'name':'Bake (GF17 model)','status':'fail','detail':'no bake configured — run `amni init`'}
+    p=Path(bake)
+    if not p.exists():return {'name':'Bake (GF17 model)','status':'fail','detail':f'path does not exist: {p}'}
+    if not p.is_dir():return {'name':'Bake (GF17 model)','status':'fail','detail':f'not a directory: {p}'}
+    n_files=sum(1 for _ in p.iterdir());size_mb=sum(f.stat().st_size for f in p.rglob('*') if f.is_file())/1e6
+    return {'name':'Bake (GF17 model)','status':'ok','detail':f'{p} · {n_files} top-level items · {size_mb:.0f} MB'}
+def _doctor_model(args):
+    model=getattr(args,'model',None) or load_config().get('model') or load_config().get('bake')
+    if not model:return {'name':'Runtime model','status':'fail','detail':'no model path configured'}
+    p=Path(model)
+    if not p.exists():return {'name':'Runtime model','status':'fail','detail':f'path does not exist: {p}'}
+    return {'name':'Runtime model','status':'ok','detail':str(p)}
+def _doctor_lessons(args):
+    lessons=getattr(args,'lessons',None) or 'experiences/adam_lessons.npz'
+    p=Path(lessons)
+    if not p.exists():return {'name':'Lessons bank','status':'warn','detail':f'{p} not found (will seed on first run if --seed)'}
+    try:size_kb=p.stat().st_size/1024
+    except Exception:size_kb=0
+    return {'name':'Lessons bank','status':'ok','detail':f'{p} · {size_kb:.1f} kb'}
+def _doctor_gpu():
+    try:import torch
+    except Exception:return {'name':'GPU acceleration','status':'warn','detail':'torch not importable'}
+    info=[];status='warn';detail='no GPU detected (CPU-only inference will be slow)'
+    if hasattr(torch,'cuda') and torch.cuda.is_available():
+        n=torch.cuda.device_count();names=[torch.cuda.get_device_name(i) for i in range(n)]
+        status='ok';detail=f'CUDA · {n} device(s): '+', '.join(names)
+    elif hasattr(torch.version,'hip') and torch.version.hip:
+        status='ok';detail=f'ROCm/HIP · torch.version.hip={torch.version.hip}'
+    elif hasattr(torch.backends,'mps') and torch.backends.mps.is_available():
+        status='ok';detail='Apple MPS (Metal) available'
+    return {'name':'GPU acceleration','status':status,'detail':detail}
+def _doctor_disk(args):
+    try:import shutil as _sh
+    except Exception:return {'name':'Disk space','status':'warn','detail':'shutil unavailable'}
+    target=Path(getattr(args,'workdir',None) or '.')
+    try:u=_sh.disk_usage(str(target.resolve()))
+    except Exception as e:return {'name':'Disk space','status':'warn','detail':f'disk_usage failed: {e}'}
+    free_gb=u.free/1e9;pct=u.used/u.total
+    status='ok' if free_gb>=5 else ('warn' if free_gb>=1 else 'fail')
+    return {'name':'Disk space','status':status,'detail':f'{free_gb:.1f} GB free at {target.resolve()} ({pct*100:.0f}% used)'}
+def _doctor_port(args):
+    import socket
+    port=int(getattr(args,'port',7700) or 7700)
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.settimeout(0.5)
+    try:s.bind(('127.0.0.1',port));free=True
+    except OSError:free=False
+    finally:
+        try:s.close()
+        except Exception:pass
+    if free:return {'name':f'Port {port}','status':'ok','detail':'bindable on 127.0.0.1'}
+    return {'name':f'Port {port}','status':'warn','detail':'already in use — server may already be running, or pick another --port'}
+def _doctor_workdir(args):
+    wd=Path(getattr(args,'workdir',None) or '.').resolve()
+    if not wd.exists():return {'name':'Workdir','status':'fail','detail':f'{wd} does not exist'}
+    test=wd/'.amni_doctor_writetest'
+    try:test.write_text('x',encoding='utf-8');test.unlink()
+    except Exception as e:return {'name':'Workdir','status':'fail','detail':f'not writable: {e}'}
+    return {'name':'Workdir','status':'ok','detail':f'{wd} writable'}
+def _doctor_network():
+    import urllib.request
+    try:
+        with urllib.request.urlopen('https://huggingface.co/',timeout=3) as r:code=r.status
+        return {'name':'Network (HuggingFace)','status':'ok','detail':f'reachable · HTTP {code}'}
+    except Exception as e:return {'name':'Network (HuggingFace)','status':'warn','detail':f'unreachable: {type(e).__name__}'}
+def _render_doctor_report(checks)->str:
+    enc=(getattr(sys.stdout,'encoding','') or '').lower()
+    unicode_ok=any(s in enc for s in ('utf','u8','u-8'))
+    if unicode_ok:marks={'ok':'\x1b[32m✓\x1b[0m','warn':'\x1b[33m⚠\x1b[0m','fail':'\x1b[31m✗\x1b[0m','info':'\x1b[36m·\x1b[0m'};dot='✗'
+    else:marks={'ok':'\x1b[32m[OK]\x1b[0m','warn':'\x1b[33m[!]\x1b[0m','fail':'\x1b[31m[X]\x1b[0m','info':'\x1b[36m[.]\x1b[0m'};dot='[X]'
+    lines=['','  Adam -- install diagnostics','']
+    for c in checks:
+        mark=marks.get(c.get('status'),'[.]');name=c.get('name','?');detail=c.get('detail','')
+        lines.append(f'  {mark}  {name:<28}  {detail}')
+    overall=_doctor_overall(checks)
+    summary={'ok':'\x1b[32mAll systems nominal.\x1b[0m','warn':'\x1b[33mSome warnings -- Adam will run but check the items above.\x1b[0m','fail':f'\x1b[31mFailing checks present -- Adam may not start. Fix the {dot} items first.\x1b[0m'}.get(overall,'')
+    lines.extend(['',f'  {summary}',''])
+    return '\n'.join(lines)
 def cmd_personas(args):
     from amni.adam import Adam
     from amni.serve import PersonaStore
@@ -494,6 +608,13 @@ def main():
     tc.add_argument('--bank',choices=['cot','coding','js','sql','devops','creative','facts','advanced','rust','concurrency','algo_adv','python_adv','go','frontend','mobile','data_eng','leetcode','ml','security_deep','distributed','performance','architecture','networking','gamedev','embedded','math_adv','facts_ext','python_libs','ai_rag','leetcode_hard','paraphrases','debug_adv','all'],default='all',help='Which seed bank to load')
     tc.add_argument('--dry-run',action='store_true')
     tc.set_defaults(func=cmd_teach_cot)
+    doc=sub.add_parser('doctor',help='Diagnose install: deps, bake, model, GPU, disk, port, workdir')
+    _add_common_adam(doc)
+    doc.add_argument('--workdir',default=None)
+    doc.add_argument('--port',type=int,default=DEFAULT_PORT)
+    doc.add_argument('--network',action='store_true',help='Also check HuggingFace reachability')
+    doc.add_argument('--json',action='store_true',help='Emit JSON instead of a pretty report')
+    doc.set_defaults(func=cmd_doctor)
     st=sub.add_parser('stats',help='Show Adam stats (local snapshot or live dashboard from a running server)')
     _add_common_adam(st)
     st.add_argument('--watch',action='store_true',help='Live-refresh terminal dashboard polling the running server')
