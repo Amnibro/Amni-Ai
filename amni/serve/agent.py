@@ -347,7 +347,30 @@ class AmniAgent:
                 elif like:facts.append(f"user likes/prefers {like.strip()}")
         seen=set();dedup=[f for f in facts if not (f in seen or seen.add(f))]
         return dedup[-limit:]
-    def _detect_skill(self,msg:str)->Optional[Tuple[str,Dict[str,Any]]]:
+    def _detect_chain(self,msg:str)->Optional[Tuple[str,Dict[str,Any]]]:
+        if not self.skills.has('chain'):return None
+        msg_orig=msg or '';msg=msg_orig.strip()
+        if len(msg)<8 or len(msg)>500:return None
+        _save_m=re.search(r"^(.+?)\s+(?:and\s+)?(?:save|write|store|put|dump|export)\s+(?:it|that|this|the\s+(?:result|output|answer|data|response))\s+(?:to|into|in|as)\s+([\w./\\:\-]+)\s*\.?$",msg,re.IGNORECASE)
+        if _save_m:
+            head_msg=_save_m.group(1).strip();path=_save_m.group(2).strip()
+            head_det=self._detect_skill_single(head_msg)
+            if head_det and self.skills.has('file_write'):
+                return ('chain',{'steps':[{'skill':head_det[0],'args':head_det[1]},{'skill':'file_write','args':{'path':path,'content':'$prev_str'}}]})
+        _split_m=re.split(r"(?:\s+and\s+then|\s*;\s*then|\s*,\s*then|\s+then\s+also)\s+",msg,maxsplit=2,flags=re.IGNORECASE)
+        if len(_split_m)>=2:
+            parts=[p.strip(' .,!?') for p in _split_m if p.strip()]
+            if 2<=len(parts)<=3:
+                dets=[self._detect_skill_single(p) for p in parts]
+                if all(d is not None for d in dets):
+                    return ('chain',{'steps':[{'skill':d[0],'args':d[1]} for d in dets]})
+        return None
+    def _detect_skill_single(self,msg:str)->Optional[Tuple[str,Dict[str,Any]]]:
+        return self._detect_skill(msg,_no_chain=True)
+    def _detect_skill(self,msg:str,_no_chain:bool=False)->Optional[Tuple[str,Dict[str,Any]]]:
+        if not _no_chain:
+            _c=self._detect_chain(msg)
+            if _c is not None:return _c
         _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('weather'):return ('weather',{'location':_m.group(1).strip(' ?.,!')})
         if re.search(r"\bsystem\s+stats?\b|\b(?:cpu|ram|memory|disk)\s+(?:usage|stats?|status)\b|\bhow'?s\s+my\s+(?:system|computer|machine)\b",msg,re.IGNORECASE) and self.skills.has('system_stats'):return ('system_stats',{})
@@ -642,6 +665,23 @@ class AmniAgent:
         if name=='scan':
             if out.get('error'):return f'(scan error: {out["error"]})'
             return f'Scanned {out.get("files_scanned",0)} file(s), added {out.get("lessons_added",0)} lesson(s) (total: {out.get("lessons_total",0)}). Distilled: {out.get("distilled")}.'
+        if name=='chain':
+            if out.get('error'):return f'(chain error: {out["error"]})'
+            results=out.get('results') or []
+            if not results:return '(empty chain)'
+            lines=[]
+            for i,r in enumerate(results):
+                sk=r.get('skill','?');ok=r.get('ok');marker='✓' if ok else '✗'
+                inner_out=r.get('output') or {}
+                if sk=='file_write' and isinstance(inner_out,dict):summary=f'wrote {inner_out.get("bytes_written",0)}b to {inner_out.get("path","?")}'
+                elif sk=='weather' and isinstance(inner_out,dict):summary=f'{inner_out.get("temp_c","?")}°C in {inner_out.get("location","?")}'
+                elif sk=='calc' and isinstance(inner_out,dict):summary=f'value={inner_out.get("value","?")}'
+                elif sk=='time' and isinstance(inner_out,dict):summary=str(inner_out.get('iso','?'))
+                elif r.get('error'):summary=f'error: {r["error"]}'
+                else:summary=str(inner_out)[:120] if inner_out else '(no output)'
+                lines.append(f'  {marker} step {i+1} **{sk}** → {summary}')
+            head=f'Chain {"completed" if out.get("ok") else "halted"} ({out.get("n_steps","?")} step(s)):'
+            return head+'\n'+'\n'.join(lines)
         if name=='coach':
             if out.get('error'):return f'(coach error: {out["error"]})'
             if out.get('score') is not None:
