@@ -2,6 +2,32 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.31 — Live token-rate meter under streaming bubbles (2026-05-26)
+
+Adam streams responses fast, but the user had no quantified feedback during the stream — just the bubble filling up. Real Jarvis quantifies everything. v6.10.31 adds a small mono-font meter below each streaming bubble showing live `X tok/s · N tok · Ys`.
+
+### Behavior
+- Created at stream start as a child of `bot.msg` (right below the bubble)
+- Updates throttled to ~5 fps (180ms cooldown between paints) — no layout thrash even at 50+ tok/s
+- Rate formatting: `≥10 tok/s` shows integer, `<10` shows 1 decimal place
+- Token count estimated from `chunk.length / 4` per token event (close enough for visible readout — exact tokenizer figures arrive in the final meta event)
+- `performance.now()` for high-precision elapsed time
+- On `done` event: forced final update (skips throttle), `.done` class flips border + color to cyan-glow, then `.fade` after 2.5s, removed after 3.8s — final stats stay visible for 2.5s before fading out
+- On stream error: meter torn down immediately (no orphan UI)
+
+### Visual
+- `.tok-meter` — small mono pill, JetBrains Mono, dim cyan border + soft cyan tint background, uppercase letter-spacing — reads as a tactical readout
+- `.tok-meter.done` — brightens to full cyan + adds text-shadow glow (final stats moment)
+- `.tok-meter.fade` — opacity 0 with 0.8s transition
+
+### Tests
+12/12 PASS (`tests/test_token_meter_v6_10_31.py`): CSS classes styled (base/done/fade), monospace font, meter created per stream + attached to bot.msg, initial `— tok/s · 0 tok · 0.0s` placeholder, 180ms throttle, rate formatter splits at 10 tok/s, token event increments count from chunk.length, done event forces final update + adds done + schedules fade + remove, error path removes meter, `performance.now()` usage, done/fade variants visually distinct, v6.10.30 regression intact. Recent chain (v6.10.27 → .30): 57/57 still PASS. Total: 69/69.
+
+### What this completes
+Combined with v6.10.30 voice waveform, v6.10.12 learning daemon pill, v6.10.22 shell-history pill, v6.10.17 tests pill, every Adam action is now quantified live: the daemon's facts/hr, the shell's run count, the verifier's queue, the convo audio level — and now every streaming reply. Tactical Jarvis vibe is locked in.
+
+---
+
 ## v6.10.30 — Voice waveform visualizer in convo mode (2026-05-26)
 
 In convo mode the user had a single thin amplitude bar inside the corner pill — useful but unsexy. Real Jarvis shows a live frequency-bin waveform. v6.10.30 adds a 32-bin canvas visualizer below the convo banner that pulses with the existing VAD analyser. Zero new audio plumbing — taps the analyser that was already running.
