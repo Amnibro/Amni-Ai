@@ -324,6 +324,21 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .math-pending{font-family:JetBrains Mono,monospace;color:var(--mute);font-style:italic}
 .math-pending.math-display{display:block;padding:6px 10px;margin:6px 0;background:rgba(0,229,255,.03);border-left:2px solid rgba(0,229,255,.2)}
 .math-fail{color:var(--err);font-family:JetBrains Mono,monospace;text-decoration:underline dotted}
+#gesture-tour{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,92vw);z-index:16;background:rgba(8,14,28,.97);border:1px solid var(--cyan);border-radius:6px;padding:22px;box-shadow:0 0 48px rgba(0,229,255,.4);display:none;font-family:inherit;max-height:88vh;overflow-y:auto}
+#gesture-tour.show{display:block}
+#gesture-tour h3{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 6px var(--cyan);margin:0 0 14px;text-align:center}
+#gesture-tour .tour-intro{font-size:11px;color:var(--mute);text-align:center;margin-bottom:18px;line-height:1.5}
+#gesture-tour .gesture-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px}
+#gesture-tour .g-card{padding:10px 12px;border:1px solid rgba(0,229,255,.22);background:rgba(0,229,255,.04);border-radius:4px;display:flex;flex-direction:column;gap:4px;transition:all .15s}
+#gesture-tour .g-card:hover{border-color:var(--cyan);background:rgba(0,229,255,.1);box-shadow:0 0 10px rgba(0,229,255,.18)}
+#gesture-tour .g-card .g-emoji{font-size:28px;line-height:1;text-align:center;text-shadow:0 0 6px var(--cyan);filter:drop-shadow(0 0 4px rgba(0,229,255,.6))}
+#gesture-tour .g-card .g-name{font-size:10px;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;text-align:center;font-family:JetBrains Mono,monospace}
+#gesture-tour .g-card .g-action{font-size:10px;color:var(--fg);text-align:center;line-height:1.4}
+#gesture-tour .tour-actions{display:flex;gap:8px;margin-top:6px;justify-content:space-between;align-items:center}
+#gesture-tour button.gt-act{padding:8px 14px;border:1px solid rgba(0,229,255,.4);background:rgba(0,229,255,.06);color:var(--cyan);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
+#gesture-tour button.gt-act:hover{background:rgba(0,229,255,.18)}
+#gesture-tour button.gt-act.primary{border-color:var(--cyan);background:rgba(0,229,255,.15)}
+#gesture-tour .tour-hint{font-size:10px;color:var(--mute);letter-spacing:.05em;flex:1;text-align:center;font-style:italic}
 #adam-core{position:fixed;top:18px;right:24px;width:60px;height:60px;z-index:8;cursor:pointer;opacity:.85;transition:opacity .25s, transform .25s}
 #adam-core:hover{opacity:1;transform:scale(1.08)}
 #adam-core.hidden{display:none}
@@ -739,6 +754,23 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div id="tp-list"><div class="tp-empty">loading…</div></div>
   </div>
 </div>
+<div id="gesture-tour">
+  <h3>◆ HAND GESTURES READY</h3>
+  <div class="tour-intro">Adam tracks your hand at 60 fps via MediaPipe. Hold a gesture in front of the camera and Adam will act. Six built-in gestures shown below — and you can teach Adam new ones too.</div>
+  <div class="gesture-grid">
+    <div class="g-card"><div class="g-emoji">🤏</div><div class="g-name">PINCH</div><div class="g-action">toggle voice output</div></div>
+    <div class="g-card"><div class="g-emoji">✊</div><div class="g-name">FIST</div><div class="g-action">clear the chat</div></div>
+    <div class="g-card"><div class="g-emoji">🖐️</div><div class="g-name">OPEN PALM</div><div class="g-action">show system stats</div></div>
+    <div class="g-card"><div class="g-emoji">✌️</div><div class="g-name">PEACE</div><div class="g-action">cycle color theme</div></div>
+    <div class="g-card"><div class="g-emoji">👆</div><div class="g-name">POINT</div><div class="g-action">"tell me more"</div></div>
+    <div class="g-card"><div class="g-emoji">👍</div><div class="g-name">THUMB UP</div><div class="g-action">submit current input</div></div>
+  </div>
+  <div class="tour-actions">
+    <button class="gt-act" onclick="_gtTrainFromTour()">+ TEACH ADAM A NEW ONE</button>
+    <span class="tour-hint">Hold each pose for ~0.4s; brief cooldown between fires</span>
+    <button class="gt-act primary" onclick="_gtClose()">GOT IT</button>
+  </div>
+</div>
 <div id="train-modal">
   <h3 id="tm-title">◆ TEACH NEW GESTURE</h3>
   <div id="tm-step-1">
@@ -756,7 +788,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div>
 </div>
 <div id="cam-panel">
-  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span><button class="cam-train-btn" id="cam-train-btn" onclick="_tmOpen()" title="Teach a new gesture">+ TRAIN</button><button class="cam-train-btn" onclick="_exportCustomGestures()" title="Download trained gestures as JSON">⬇</button><button class="cam-train-btn" onclick="document.getElementById('gesture-import-input').click()" title="Import gestures from JSON">⬆</button><input type="file" id="gesture-import-input" accept="application/json,.json" style="display:none" onchange="_importCustomGestures(this)"><span id="cam-fps">— fps</span></span></div>
+  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span><button class="cam-train-btn" onclick="_gtOpen()" title="Show built-in gestures">?</button><button class="cam-train-btn" id="cam-train-btn" onclick="_tmOpen()" title="Teach a new gesture">+ TRAIN</button><button class="cam-train-btn" onclick="_exportCustomGestures()" title="Download trained gestures as JSON">⬇</button><button class="cam-train-btn" onclick="document.getElementById('gesture-import-input').click()" title="Import gestures from JSON">⬆</button><input type="file" id="gesture-import-input" accept="application/json,.json" style="display:none" onchange="_importCustomGestures(this)"><span id="cam-fps">— fps</span></span></div>
   <div id="cam-stage">
     <video id="cam-video" autoplay playsinline muted></video>
     <canvas id="cam-landmarks"></canvas>
@@ -1669,6 +1701,11 @@ function _exportCustomGestures(){
     bubble('bot','Exported **'+_customGestures.length+'** custom gesture'+(_customGestures.length===1?'':'s')+' to your downloads.','<span class="badge">gesture</span>');
   }catch(e){bubble('bot','Export failed: '+esc(e.message),'<span class="badge err">gesture</span>')}
 }
+const GESTURE_TOUR_KEY='amni_jarvis_gesture_tour_seen';
+function _gtOpen(){document.getElementById('gesture-tour').classList.add('show')}
+function _gtClose(){document.getElementById('gesture-tour').classList.remove('show');localStorage.setItem(GESTURE_TOUR_KEY,'1')}
+function _gtTrainFromTour(){_gtClose();setTimeout(()=>_tmOpen(),250)}
+function _maybeShowGestureTour(){if(!localStorage.getItem(GESTURE_TOUR_KEY))setTimeout(_gtOpen,400)}
 async function _importCustomGestures(inputEl){
   const f=inputEl.files&&inputEl.files[0];if(!f){return}
   inputEl.value='';
@@ -1768,7 +1805,7 @@ function stopGesture(){
 }
 function toggleGesture(){
   gestureOn=!gestureOn;localStorage.setItem(GKEY,gestureOn?'1':'0');_gToggle.classList.toggle('on',gestureOn);
-  if(gestureOn)startGesture();else stopGesture();
+  if(gestureOn){startGesture();_maybeShowGestureTour()}else stopGesture();
 }
 if(localStorage.getItem(GKEY)==='1'){setTimeout(()=>{gestureOn=true;_gToggle.classList.add('on');startGesture()},800)}
 let memOpen=false;

@@ -2,6 +2,40 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.44 — First-time gesture tour (the 6 gestures users couldn't discover) (2026-05-26)
+
+Adam has 6 built-in gestures (pinch, fist, open_palm, peace, point, thumb_up) but **users had no way to discover them** unless they read the source. v6.10.44 fixes that with a one-time onboarding overlay that pops on first GESTURE toggle + a `?` help button to reopen anytime.
+
+### The overlay
+Cyan-trimmed modal centered in viewport with:
+- **Heading**: ◆ HAND GESTURES READY
+- **Intro line**: explains MediaPipe 60fps tracking + that users can train new ones too
+- **6-card grid** (auto-fit): emoji + gesture name + action description
+  - 🤏 PINCH → toggle voice output
+  - ✊ FIST → clear the chat
+  - 🖐️ OPEN PALM → show system stats
+  - ✌️ PEACE → cycle color theme
+  - 👆 POINT → "tell me more"
+  - 👍 THUMB UP → submit current input
+- **Footer**: `+ TEACH ADAM A NEW ONE` button (jumps to TRAIN modal) · cooldown hint · `GOT IT` primary button
+
+### Trigger
+- **First GESTURE enable** → 400ms after `startGesture()` fires, tour auto-opens (gated by `localStorage.GESTURE_TOUR_KEY`)
+- **Manual reopen** → new `?` button in cam-panel header (between dot indicator and `+ TRAIN`)
+- **GOT IT** marks the key, so it never auto-opens again
+- **Manual open never marks** — user can browse the gestures repeatedly without affecting the auto-show flag
+
+### Path-to-train
+`+ TEACH ADAM A NEW ONE` button calls `_gtTrainFromTour()` which closes the tour, then opens the `+ TRAIN` modal (v6.10.41) after a 250ms transition. Smooth funnel from discovery → custom training.
+
+### Tests
+16/16 PASS (`tests/test_gesture_tour_v6_10_44.py`): overlay element + all 6 built-in gestures listed by name + all 6 action descriptions + all 6 finger emojis, 4 helper functions present, localStorage key, GOT IT close sets flag, OPEN does NOT set flag (manual reopens are free), `?` button uses cam-train-btn class so it lives in cam-panel, `_gtTrainFromTour` closes then opens train modal, `_maybeShowGestureTour` gated on localStorage key, `toggleGesture` calls the helper, "TEACH ADAM A NEW ONE" + "GOT IT" buttons present, styled, v6.10.43 regression intact. Recent chain (v6.10.40 → .43): 79/79 still PASS. Total: 95/95.
+
+### Why this matters
+GESTURE was the most impressive feature with the worst discoverability — the camera turned on but the user had no idea what to do with their hands. v6.10.44 makes the gesture set self-documenting on first contact. Combined with v6.10.41 custom training + v6.10.43 export/import, the full gesture flow now reads: discover → use built-ins → train new ones → share packs.
+
+---
+
 ## v6.10.43 — Custom gesture export + import (portable pack format) (2026-05-26)
 
 v6.10.41 made Adam learn new gestures; v6.10.43 makes those gestures portable. Trained gestures now live in localStorage on one machine — this iter adds a pack format + download + file-picker import so you can back them up, share them, or move them across browsers/machines.
