@@ -240,6 +240,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #coach-panel select{background:rgba(0,0,0,.4);border:1px solid rgba(255,77,200,.2);color:var(--fg);padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px}
 #coach-panel button.cp-act{padding:6px 12px;border:1px solid rgba(255,77,200,.4);background:rgba(255,77,200,.06);color:var(--magenta);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;transition:all .15s}
 #coach-panel button.cp-act:hover{background:rgba(255,77,200,.16);border-color:var(--magenta)}
+#coach-panel button.cp-act.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.1);box-shadow:0 0 8px rgba(255,215,112,.25)}
 #coach-panel button.cp-act:disabled{opacity:.4;cursor:not-allowed}
 #coach-panel button.cp-act.danger{border-color:rgba(255,91,91,.4);color:#ff7b7b}
 #coach-panel button.cp-act.danger:hover{background:rgba(255,91,91,.12);border-color:#ff5b5b}
@@ -525,7 +526,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <div id="cp-hint" class="cp-hint" style="display:none"></div>
     <div id="cp-grade-slot"></div>
     <textarea id="cp-answer" placeholder="type your answer (or use mic) — Ctrl+Enter to submit" rows="3" style="margin-top:8px;width:100%"></textarea>
-    <div class="cp-btn-row"><button class="cp-act" onclick="_coachAnswer()">SUBMIT</button><button class="cp-act" onclick="_coachHint()">HINT</button><button class="cp-act" onclick="_coachSkip()">SKIP</button><button class="cp-act" onclick="_coachAsk()">NEXT</button><button class="cp-act danger" onclick="_coachEnd()" style="margin-left:auto">END SESSION</button></div>
+    <div class="cp-btn-row"><button class="cp-act" onclick="_coachAnswer()">SUBMIT</button><button class="cp-act" onclick="_coachHint()">HINT</button><button class="cp-act" onclick="_coachSkip()">SKIP</button><button class="cp-act" onclick="_coachAsk()">NEXT</button><button class="cp-act" id="cp-voice-toggle" onclick="_coachToggleVoice()" title="Auto-speak questions, feedback, and hints">VOICE OFF</button><button class="cp-act" id="cp-replay-btn" onclick="_coachReplayQuestion()" title="Re-speak current question">↻ REPLAY</button><button class="cp-act danger" onclick="_coachEnd()" style="margin-left:auto">END SESSION</button></div>
   </div>
 </div>
 <div id="tests-panel">
@@ -847,9 +848,13 @@ async function _tpMarkDone(path){
 }
 function _startTestsPolling(){if(_tpPollTimer)return;_pollTestsList();_tpPollTimer=setInterval(_pollTestsList,15000)}
 _startTestsPolling();
-const COACH_SID_KEY='amni_jarvis_coach_sid';
-let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false;
-function toggleCoachPanel(){_coachPanelOpen=!_coachPanelOpen;const p=document.getElementById('coach-panel');p.classList.toggle('show',_coachPanelOpen);document.getElementById('coach-toggle').classList.toggle('on',_coachPanelOpen);['persona-panel','learn-panel','tests-panel'].forEach(id=>{const el=document.getElementById(id);if(_coachPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_coachPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;if(_coachSid)_coachSyncStatus()}}
+const COACH_SID_KEY='amni_jarvis_coach_sid',COACH_VOICE_KEY='amni_jarvis_coach_voice';
+let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false,_coachVoiceOn=localStorage.getItem(COACH_VOICE_KEY)==='1',_coachLastQuestion='';
+function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(COACH_VOICE_KEY,_coachVoiceOn?'1':'0');_coachUpdateVoiceBtn();if(_coachVoiceOn){voiceOut=true;localStorage.setItem(VKEY,'1');const vb=document.getElementById('voiceout-toggle');if(vb)vb.classList.add('on');if(_coachLastQuestion)speak(_coachLastQuestion)}}
+function _coachUpdateVoiceBtn(){const b=document.getElementById('cp-voice-toggle');if(!b)return;b.textContent=_coachVoiceOn?'VOICE ON':'VOICE OFF';b.classList.toggle('on',_coachVoiceOn)}
+function _coachReplayQuestion(){if(_coachLastQuestion)speak(_coachLastQuestion);else bubble('bot','No active question to replay.','<span class="badge err">coach</span>')}
+function _coachSpeakIfOn(text){if(_coachVoiceOn&&text&&text.trim()&&_voiceBackends.tts)speak(text)}
+function toggleCoachPanel(){_coachPanelOpen=!_coachPanelOpen;const p=document.getElementById('coach-panel');p.classList.toggle('show',_coachPanelOpen);document.getElementById('coach-toggle').classList.toggle('on',_coachPanelOpen);['persona-panel','learn-panel','tests-panel'].forEach(id=>{const el=document.getElementById(id);if(_coachPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_coachPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_coachUpdateVoiceBtn();if(_coachSid)_coachSyncStatus()}}
 function _coachShowActive(show){document.getElementById('cp-start-section').style.display=show?'none':'block';document.getElementById('cp-active-section').style.display=show?'block':'none'}
 function _coachRender(res){
   if(!res)return;
@@ -886,7 +891,7 @@ async function _coachStart(){
   if(!res||res.error){bubble('bot','Could not start: '+esc(res&&res.error||'unknown'),'<span class="badge err">coach</span>');return}
   _coachSid=res.session_id;_coachTopic=res.topic;localStorage.setItem(COACH_SID_KEY,_coachSid);
   _coachShowActive(true);document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value='';
-  _coachRender(res);
+  _coachRender(res);_coachLastQuestion=res.question||'';_coachSpeakIfOn(res.question);
 }
 async function _coachAnswer(){
   if(!_coachSid){bubble('bot','No active coach session. Start one first.','<span class="badge err">coach</span>');return}
@@ -894,11 +899,13 @@ async function _coachAnswer(){
   const res=await _coachCall({action:'answer',session_id:_coachSid,answer:a});
   if(!res||res.error){bubble('bot','Grade failed: '+esc(res&&res.error||'unknown'),'<span class="badge err">coach</span>');return}
   _coachRender(res);document.getElementById('cp-answer').value='';
-  if(voiceOut&&res.feedback)speak(res.feedback);
+  if(_coachVoiceOn){const phrase=(res.feedback||'')+(res.next_question?(' Next question: '+res.next_question):'');_coachSpeakIfOn(phrase)}
+  else if(voiceOut&&res.feedback)speak(res.feedback);
+  if(res.next_question)_coachLastQuestion=res.next_question;
 }
-async function _coachHint(){if(!_coachSid)return;const res=await _coachCall({action:'hint',session_id:_coachSid});if(res&&res.hint){const el=document.getElementById('cp-hint');el.textContent='💡 '+res.hint;el.style.display='block'}}
-async function _coachSkip(){if(!_coachSid)return;const res=await _coachCall({action:'skip',session_id:_coachSid});_coachRender(res||{});document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value=''}
-async function _coachAsk(){if(!_coachSid)return;const res=await _coachCall({action:'ask',session_id:_coachSid});_coachRender(res||{});document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value=''}
+async function _coachHint(){if(!_coachSid)return;const res=await _coachCall({action:'hint',session_id:_coachSid});if(res&&res.hint){const el=document.getElementById('cp-hint');el.textContent='💡 '+res.hint;el.style.display='block';_coachSpeakIfOn('Hint: '+res.hint)}}
+async function _coachSkip(){if(!_coachSid)return;const res=await _coachCall({action:'skip',session_id:_coachSid});_coachRender(res||{});document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value='';if(res&&res.next_question){_coachLastQuestion=res.next_question;_coachSpeakIfOn('Skipped. Next question: '+res.next_question)}}
+async function _coachAsk(){if(!_coachSid)return;const res=await _coachCall({action:'ask',session_id:_coachSid});_coachRender(res||{});document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value='';if(res&&res.question){_coachLastQuestion=res.question;_coachSpeakIfOn(res.question)}}
 async function _coachEnd(){
   if(!_coachSid)return;const res=await _coachCall({action:'summary',session_id:_coachSid});
   const top=res&&res.topic||_coachTopic||'?';const pct=res&&res.mastery&&res.mastery.pct!=null?Math.round(res.mastery.pct):0;
