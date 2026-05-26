@@ -405,6 +405,62 @@ def _render_dashboard(base:str,data:dict)->str:
         lines.append(f'  ║    proposed {proposed:>3} · attempted {attempted:>3} · validated {validated:>3} · deployed {deployed:>3}      ║')
     lines.append(f'  ╚══════════════════════════════════════════════════════════════════╝')
     return '\n'.join(lines)
+def cmd_mcp(args):
+    action=(getattr(args,'action',None) or 'list').strip().lower()
+    if action=='list':return _mcp_list(args)
+    if action=='test':return _mcp_test(args)
+    if action=='ping':return _mcp_ping(args)
+    print(f'[mcp] unknown action {action!r}; use list|test|ping',flush=True);sys.exit(1)
+def _mcp_request(base:str,method:str,params=None,timeout:float=10.0):
+    import urllib.request,urllib.error
+    body=json.dumps({'jsonrpc':'2.0','id':1,'method':method,'params':params or {}}).encode('utf-8')
+    req=urllib.request.Request(base.rstrip('/')+'/mcp',data=body,headers={'content-type':'application/json'})
+    try:
+        with urllib.request.urlopen(req,timeout=timeout) as r:return json.loads(r.read().decode('utf-8','ignore'))
+    except urllib.error.HTTPError as e:return {'_http_error':e.code,'_body':e.read().decode('utf-8','ignore')[:400]}
+    except Exception as e:return {'_error':f'{type(e).__name__}: {e}'}
+def _mcp_url(args)->str:
+    base=getattr(args,'url',None) or 'http://127.0.0.1:7700'
+    if not base.startswith('http'):base='http://'+base
+    return base.rstrip('/')
+def _mcp_list(args):
+    base=_mcp_url(args);r=_mcp_request(base,'tools/list')
+    if '_error' in r or '_http_error' in r:print(f'[mcp] cannot reach {base}/mcp: {r.get("_error") or r.get("_http_error")}',flush=True);sys.exit(1)
+    tools=(r.get('result') or {}).get('tools') or []
+    if args.json:print(json.dumps({'tools':tools,'count':len(tools)},indent=2,default=str),flush=True);return
+    print(f'\n  Adam MCP server · {base}/mcp · {len(tools)} tool(s)\n',flush=True)
+    grep=(args.grep or '').strip().lower()
+    for t in tools:
+        name=t.get('name','?');desc=(t.get('description') or '')[:140]
+        if grep and grep not in name.lower() and grep not in desc.lower():continue
+        props=((t.get('inputSchema') or {}).get('properties') or {});params_s=', '.join(props.keys()) if props else '(no params)'
+        print(f'  {name:<26} {desc}',flush=True)
+        if args.verbose:print(f'    params: {params_s}',flush=True)
+    print('',flush=True)
+def _mcp_test(args):
+    name=(getattr(args,'tool',None) or '').strip()
+    if not name:print('[mcp] need a tool name; try `amni mcp list`',flush=True);sys.exit(1)
+    base=_mcp_url(args)
+    try:tool_args=json.loads(args.args) if args.args else {}
+    except Exception as e:print(f'[mcp] --args must be valid JSON: {e}',flush=True);sys.exit(1)
+    r=_mcp_request(base,'tools/call',{'name':name,'arguments':tool_args},timeout=float(args.timeout or 30))
+    if '_error' in r:print(f'[mcp] {r["_error"]}',flush=True);sys.exit(1)
+    res=r.get('result') or {};is_err=res.get('isError');raw=res.get('_raw')
+    if args.json:print(json.dumps({'tool':name,'arguments':tool_args,'is_error':bool(is_err),'result':raw if raw is not None else res},indent=2,default=str),flush=True);return
+    print(f'\n  tool      {name}',flush=True);print(f'  args      {json.dumps(tool_args,default=str)}',flush=True)
+    print(f'  status    {"ERROR" if is_err else "OK"}',flush=True)
+    if isinstance(raw,dict):
+        if 'answer' in raw:print(f'  answer    {(raw.get("answer") or "")[:400]}',flush=True);print(f'  tier      {raw.get("tier")}  persona={raw.get("persona")}  tokens={raw.get("tokens")}',flush=True)
+        else:print(f'  result    {json.dumps(raw,default=str)[:600]}',flush=True)
+    else:print(f'  result    {str(res)[:600]}',flush=True)
+    print('',flush=True)
+    if is_err:sys.exit(2)
+def _mcp_ping(args):
+    base=_mcp_url(args);t0=time.time();r=_mcp_request(base,'ping')
+    dur=round((time.time()-t0)*1000,1)
+    if '_error' in r:print(f'[mcp] {base}/mcp unreachable: {r["_error"]}',flush=True);sys.exit(1)
+    if args.json:print(json.dumps({'url':base+'/mcp','latency_ms':dur,'ok':True,'response':r},default=str),flush=True);return
+    print(f'  {base}/mcp — pong ({dur}ms)',flush=True)
 def cmd_doctor(args):
     checks=[_doctor_python(),_doctor_core_deps(),_doctor_optional_deps(),_doctor_config_dir(),_doctor_bake(args),_doctor_model(args),_doctor_lessons(args),_doctor_gpu(),_doctor_disk(args),_doctor_port(args),_doctor_workdir(args)]
     if getattr(args,'network',False):checks.append(_doctor_network())
@@ -608,6 +664,16 @@ def main():
     tc.add_argument('--bank',choices=['cot','coding','js','sql','devops','creative','facts','advanced','rust','concurrency','algo_adv','python_adv','go','frontend','mobile','data_eng','leetcode','ml','security_deep','distributed','performance','architecture','networking','gamedev','embedded','math_adv','facts_ext','python_libs','ai_rag','leetcode_hard','paraphrases','debug_adv','all'],default='all',help='Which seed bank to load')
     tc.add_argument('--dry-run',action='store_true')
     tc.set_defaults(func=cmd_teach_cot)
+    mcp=sub.add_parser('mcp',help='Inspect or test the MCP tool surface of a running Adam server')
+    mcp.add_argument('action',nargs='?',default='list',choices=['list','test','ping'],help='list (default) | test | ping')
+    mcp.add_argument('tool',nargs='?',default=None,help='Tool name (for action=test); e.g. ask_adam, skill_calc')
+    mcp.add_argument('--url',default=None,help='Server URL (default http://127.0.0.1:7700)')
+    mcp.add_argument('--args',default=None,help='JSON-encoded arguments for action=test (e.g. \'{"question":"hi"}\')')
+    mcp.add_argument('--timeout',type=float,default=30.0,help='Request timeout in seconds (default 30)')
+    mcp.add_argument('--grep',default=None,help='Filter tools by name/description substring (for action=list)')
+    mcp.add_argument('--verbose','-v',action='store_true',help='Show parameter names for each tool (action=list)')
+    mcp.add_argument('--json',action='store_true',help='Emit JSON instead of pretty output')
+    mcp.set_defaults(func=cmd_mcp)
     doc=sub.add_parser('doctor',help='Diagnose install: deps, bake, model, GPU, disk, port, workdir')
     _add_common_adam(doc)
     doc.add_argument('--workdir',default=None)
