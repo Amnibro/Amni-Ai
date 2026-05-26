@@ -371,6 +371,9 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #coach-panel .cp-topic-card .mini-bar{flex:1;max-width:80px;height:4px;background:rgba(255,77,200,.08);border-radius:2px;overflow:hidden;border:1px solid rgba(255,77,200,.12)}
 #coach-panel .cp-topic-card .mini-bar-fill{height:100%;background:linear-gradient(90deg,#ff4dc8,#ffe066);transition:width .3s}
 #coach-panel .cp-topic-card.lvl-master .mini-bar-fill{background:linear-gradient(90deg,#00ff9c,#ffe066)}
+#coach-panel .cp-topic-card .tc-export{margin-left:6px;width:20px;height:20px;border-radius:3px;background:rgba(0,255,156,.06);border:1px solid rgba(0,255,156,.18);color:#00ff9c;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;opacity:0;transition:opacity .15s}
+#coach-panel .cp-topic-card:hover .tc-export{opacity:1}
+#coach-panel .cp-topic-card .tc-export:hover{background:rgba(0,255,156,.18);color:#fff}
 #coach-panel button.cp-act:disabled{opacity:.4;cursor:not-allowed}
 #coach-panel button.cp-act.danger{border-color:rgba(255,91,91,.4);color:#ff7b7b}
 #coach-panel button.cp-act.danger:hover{background:rgba(255,91,91,.12);border-color:#ff5b5b}
@@ -1305,7 +1308,7 @@ async function _coachLoadTopics(){
       const pct=Math.round(t.mastery_pct||0);
       const lvl=pct>=85?'master':(pct>=65?'good':(pct>=40?'fair':'novice'));
       const name=esc(t.topic||'?');const safe=name.replace(/'/g,"\\\\'");
-      return `<div class="cp-topic-card lvl-${lvl}" onclick="_coachResumeTopic('${safe}')" title="Click to start a new session on this topic"><span class="name">${name}</span><span class="mini-bar"><span class="mini-bar-fill" style="width:${pct}%"></span></span><span class="pct">${pct}%</span><span class="n">${t.n_questions||0}q</span></div>`
+      return `<div class="cp-topic-card lvl-${lvl}" onclick="_coachResumeTopic('${safe}')" title="Click to start a new session on this topic"><span class="name">${name}</span><span class="mini-bar"><span class="mini-bar-fill" style="width:${pct}%"></span></span><span class="pct">${pct}%</span><span class="n">${t.n_questions||0}q</span><button class="tc-export" title="Export deck (Markdown)" onclick="event.stopPropagation();_coachExportTopic('${safe}')">⬇</button></div>`
     }).join('');
   }catch(e){list.innerHTML='<div style="font-size:10px;color:var(--err);font-style:italic;text-align:center;padding:6px">load error</div>'}
 }
@@ -1318,6 +1321,20 @@ function _coachUpdateStreakBadge(s){
   const flame=cur>=14?'⚡':(cur>=3?'🔥':'·');
   b.textContent=flame+' '+cur+' day'+(cur===1?'':'s');
   b.title=`current streak ${cur} day${cur===1?'':'s'} · best ${best} · ${total} active days total${s.today_active?' · today ✓':''}`;
+}
+async function _coachExportTopic(topic){
+  if(!topic)return;
+  try{
+    const url='/memory/coach/topic/'+encodeURIComponent(topic)+'/export.md';
+    const r=await fetch(url);if(!r.ok){bubble('bot','Export failed: '+r.status+' '+r.statusText,'<span class="badge err">coach</span>');return}
+    const md=await r.text();const blob=new Blob([md],{type:'text/markdown;charset=utf-8'});
+    const u=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=u;a.download='coach-'+topic.replace(/[^a-z0-9_\-]+/gi,'-').toLowerCase()+'.md';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(u),2000);
+    const cards=md.match(/## Card \d+/g);const n=cards?cards.length:0;
+    bubble('bot','Exported **'+n+' card'+(n===1?'':'s')+'** from **'+esc(topic)+'** to your downloads.','<span class="badge">coach</span>');
+  }catch(e){bubble('bot','Export error: '+esc(e.message),'<span class="badge err">coach</span>')}
 }
 function _coachResumeTopic(topic){
   const t=document.getElementById('cp-topic');if(t){t.value=topic;t.focus()}

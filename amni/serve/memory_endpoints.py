@@ -33,6 +33,18 @@ def mount(app,agent):
         if getattr(agent,'coach_atlas',None) is None:return {'topics':[],'streak':{}}
         atlas=agent.coach_atlas
         return {'topics':atlas.list_topics()[:limit],'streak':atlas.streak_stats() if hasattr(atlas,'streak_stats') else {}}
+    @app.get('/memory/coach/topic/{topic}/export.{fmt}')
+    def coach_export(topic:str,fmt:str):
+        from fastapi.responses import PlainTextResponse
+        if getattr(agent,'coach_atlas',None) is None:raise HTTPException(404,'CoachAtlas not initialized')
+        if fmt not in ('md','txt','json'):raise HTTPException(400,f'unknown fmt {fmt!r}; use md|txt|json')
+        atlas=agent.coach_atlas
+        if not hasattr(atlas,'export_topic'):raise HTTPException(501,'export_topic not implemented in this build')
+        actual_fmt='anki' if fmt=='txt' else fmt
+        out=atlas.export_topic(topic,fmt=actual_fmt)
+        if out['count']==0:raise HTTPException(404,f'no practice history for topic {topic!r}')
+        ct={'md':'text/markdown; charset=utf-8','txt':'text/plain; charset=utf-8','json':'application/json'}[fmt]
+        return PlainTextResponse(content=out['content'],media_type=ct,headers={'Content-Disposition':f'attachment; filename="{out["filename"]}"'})
     @app.get('/memory/daemon')
     def daemon():
         if getattr(agent,'learning_daemon',None) is None:return {'enabled':False,'reason':'no daemon'}

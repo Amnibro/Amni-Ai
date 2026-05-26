@@ -2,6 +2,57 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.39 — Coach session export to flashcard decks (2026-05-26)
+
+After all the practice (v6.10.18+20+21+32), the coach skill's per-topic question history was trapped in `topic_*.jsonl` files. v6.10.39 makes it portable — every topic exports as a markdown deck, Anki-import txt, or raw JSON. One click per topic card.
+
+### `CoachAtlas.export_topic(topic, fmt='md', include_skipped=False)`
+Walks the jsonl, dedupes by question text (keeping the latest answer per question — so progress through a topic captures the *best* version of each card, not every retry). Supports three formats:
+
+**`md` (default)** — readable flashcard deck:
+```
+# Coach Deck · python decorators
+_3 cards · exported 2026-05-26T13:08:22 from Adam (Amni-Ai)_
+
+> Mastery to date: 78%
+
+## Card 1 · difficulty 2 · scored 85/100
+**Q:** What is a decorator in Python?
+**Your last answer:** A function that modifies another function
+
+## Card 2 · difficulty 3 · scored 92/100
+...
+```
+
+**`anki` (.txt)** — `Q; A` per line, Anki-import-ready. Semicolons in body get replaced with commas; newlines stripped so each card stays single-line.
+
+**`json`** — raw structured `{topic, exported_at, count, cards:[{q,a,score,difficulty,ts},...]}` for custom downstream tooling.
+
+### New endpoint `GET /memory/coach/topic/{topic}/export.{fmt}`
+- `fmt` ∈ {`md`, `txt` (= anki), `json`} — 400 on anything else
+- 404 when topic has no practice history
+- Returns `Content-Disposition: attachment` with `coach-<slug>.{md|txt|json}` filename
+- Topic name URL-decoded so spaces work (`python%20decorators`)
+
+### UI: per-topic ⬇ button
+Each card in the coach panel's "PRACTICED TOPICS" list now reveals a small green `⬇` button on hover (top-right of the card). Click → fetches the markdown export → Blob + createObjectURL + programmatic download → revoke after 2s. Bubble confirms with card count: *"Exported **N cards** from **topic** to your downloads."*
+
+`event.stopPropagation()` on the button so clicking it doesn't also trigger the row's "load topic into input" handler.
+
+### Tests
+19/19 PASS (`tests/test_coach_export_v6_10_39.py`): method exists, md format renders heading + cards + mastery + scores, skipped excluded by default, duplicates deduped to latest answer, anki format semicolon-separated, json format structure correct, empty topic returns count=0, filename slugified (no `/` or `&`), anki escapes semicolons + strips newlines, real endpoint round-trip with temp dir, 404 missing topic, 400 bad fmt, `.txt` route also works, /jarvis button per topic + uses Blob + stops propagation + hover-revealed CSS, v6.10.38 regression intact. Recent chain (v6.10.35 → .38): 67/67 still PASS. Total: 86/86.
+
+### Coach feature set now complete
+- v6.10.18 — UI + state machine
+- v6.10.20 — voice-native (auto-speak Q + grade)
+- v6.10.21 — topics dashboard
+- v6.10.32 — streak gamification
+- v6.10.39 — per-topic export to portable decks
+
+Practice → progress → portability. Real spaced-repetition flow end-to-end.
+
+---
+
 ## v6.10.38 — Ambient Adam-core canvas (the Suryansh-Jarvis 3D HUD reference, in 2D) (2026-05-26)
 
 The Suryansh Jarvis-CV repo Anthony linked has a rotating 3D core — visual signature of "AI is alive". Three.js would be heavy for one iter, so v6.10.38 ships the same essence as a lightweight 2D canvas in the top-right corner. Always there, breathing, pulsing on token events, color-shifting with Adam's state.

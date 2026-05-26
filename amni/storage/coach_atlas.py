@@ -76,6 +76,41 @@ class CoachAtlas:
     def recent_questions(self,topic:str,k:int=10)->List[str]:
         rows=self._load_topic(topic)
         return [r.get('question','') for r in rows[-k:]]
+    def export_topic(self,topic:str,fmt:str='md',include_skipped:bool=False)->Dict[str,Any]:
+        """Export a topic's practice history as a study deck. fmt='md' (markdown flashcards), 'anki' (semicolon-separated for Anki import), 'json' (raw rows)."""
+        import datetime as _dt
+        rows=self._load_topic(topic)
+        if not include_skipped:rows=[r for r in rows if not r.get('skipped')]
+        if not rows:return {'topic':topic,'fmt':fmt,'count':0,'content':'','filename':f'coach-{_slug(topic)}.{ "txt" if fmt=="anki" else fmt}'}
+        fmt=(fmt or 'md').lower();ts=_dt.datetime.now().isoformat(timespec='seconds')
+        dedup={};
+        for r in rows:
+            q=(r.get('question') or '').strip()
+            if not q:continue
+            cur=dedup.get(q)
+            if cur is None or float(r.get('ts') or 0)>float(cur.get('ts') or 0):dedup[q]=r
+        unique=list(dedup.values())
+        unique.sort(key=lambda r:float(r.get('ts') or 0))
+        if fmt=='json':
+            import json as _j;content=_j.dumps({'topic':topic,'exported_at':ts,'count':len(unique),'cards':[{'q':r.get('question',''),'a':r.get('user_answer',''),'score':r.get('score',0),'difficulty':r.get('difficulty',2),'ts':r.get('ts',0)} for r in unique]},indent=2)
+            ext='json'
+        elif fmt=='anki':
+            lines=[];
+            for r in unique:
+                q=(r.get('question') or '').replace(';',',').replace('\n',' ').strip()
+                a=(r.get('user_answer') or '').replace(';',',').replace('\n',' ').strip()
+                if a and q:lines.append(f'{q}; {a}')
+            content='\n'.join(lines);ext='txt'
+        else:
+            lines=[f'# Coach Deck · {topic}',f'_{len(unique)} cards · exported {ts} from Adam (Amni-Ai)_','',f'> Mastery to date: {self.mastery(topic)["pct"]:.0f}%','']
+            for i,r in enumerate(unique,1):
+                q=(r.get('question') or '').strip();a=(r.get('user_answer') or '').strip()
+                score=r.get('score',0);diff=r.get('difficulty',2)
+                lines.append(f'## Card {i} · difficulty {diff} · scored {score}/100')
+                lines.append('');lines.append(f'**Q:** {q}');lines.append('')
+                lines.append(f'**Your last answer:** {a or "_(no answer recorded)_"}');lines.append('')
+            content='\n'.join(lines);ext='md'
+        return {'topic':topic,'fmt':fmt,'count':len(unique),'content':content,'filename':f'coach-{_slug(topic)}.{ext}'}
     def list_topics(self)->List[Dict[str,Any]]:
         out=[]
         for p in sorted(self.root.glob('topic_*.jsonl')):
