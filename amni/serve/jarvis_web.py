@@ -255,6 +255,19 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #persona-panel .pp-row.active .nm{color:var(--cyan);text-shadow:0 0 4px var(--cyan)}
 #persona-panel .pp-row .voice{font-size:9px;color:var(--mute);letter-spacing:.1em}
 #persona-panel .pp-empty{font-size:10px;color:var(--mute);text-align:center;padding:10px;font-style:italic}
+#persona-panel .pe-desc{font-size:10px;color:var(--fg);background:rgba(0,0,0,.45);border:1px solid rgba(0,229,255,.15);border-radius:3px;padding:6px 8px;line-height:1.45;margin-bottom:8px;max-height:120px;overflow:auto;font-family:JetBrains Mono,monospace}
+#persona-panel .pe-desc[contenteditable=true]{outline:1px solid rgba(0,229,255,.35);background:rgba(0,229,255,.04)}
+#persona-panel .pe-row{display:flex;align-items:center;gap:8px;font-size:10px;margin:5px 0;color:var(--mute);letter-spacing:.1em}
+#persona-panel .pe-row label{flex:0 0 80px;text-transform:uppercase}
+#persona-panel .pe-row input[type=range]{flex:1;accent-color:var(--cyan);height:14px}
+#persona-panel .pe-row .pe-val{flex:0 0 38px;color:var(--cyan);text-align:right;font-family:JetBrains Mono,monospace}
+#persona-panel .pe-hints{font-size:9.5px;color:var(--mute);background:rgba(0,0,0,.35);border:1px solid rgba(0,229,255,.1);border-radius:3px;padding:6px 8px;margin:6px 0;line-height:1.5;letter-spacing:.04em;max-height:90px;overflow:auto;font-family:JetBrains Mono,monospace;white-space:pre-wrap}
+#persona-panel .pe-source{font-size:8.5px;color:var(--mute);letter-spacing:.18em;margin:4px 0 6px}
+#persona-panel .pe-actions{display:flex;gap:6px;margin-top:8px}
+#persona-panel .pe-btn{flex:1;padding:6px 8px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.3);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;text-transform:uppercase}
+#persona-panel .pe-btn:hover{background:rgba(0,229,255,.16);border-color:var(--cyan)}
+#persona-panel .pe-btn.danger{color:#ff7b7b;border-color:rgba(255,123,123,.35)}
+#persona-panel .pe-btn.danger:hover{background:rgba(255,123,123,.12);border-color:#ff7b7b}
 #persona-panel .pp-input-row{display:flex;gap:6px}
 #persona-panel input[type=text]{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.2);color:var(--fg);padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px}
 #persona-panel input[type=text]:focus{outline:none;border-color:var(--cyan)}
@@ -767,6 +780,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div style="font-size:9px;color:var(--mute);margin-top:4px;letter-spacing:.05em">Unknown personas trigger a web-learn flow.</div>
   </div>
   <div class="pp-section">
+    <h3>EDIT CURRENT</h3>
+    <div id="pp-edit"><div class="pp-empty">pick a persona above first</div></div>
+  </div>
+  <div class="pp-section">
     <h3>TTS VOICE</h3>
     <div id="pp-voices"><div class="pp-empty">loading…</div></div>
     <div style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.05em">Piper voices ship as ~50MB .onnx — install more from <code style="color:var(--cyan)">github.com/rhasspy/piper</code></div>
@@ -1244,6 +1261,7 @@ function _renderPersonaPanel(){
       return `<div class="pp-row${active?' active':''}" onclick="_pickPersona('${esc(nm).replace(/'/g,"\\\\'")}')"><span class="nm">${esc(nm)}</span><span class="voice">${esc(voice)}</span></div>`;
     }).join('');
   }
+  _renderPersonaEdit();
   const voices=document.getElementById('pp-voices');
   if(_availableVoices.length===0){voices.innerHTML='<div class="pp-empty">no piper voices · install via <code style="color:var(--cyan)">pip install piper-tts</code> + download a voice</div>'}
   else{
@@ -1253,6 +1271,33 @@ function _renderPersonaPanel(){
     }).join('');
   }
 }
+function _renderPersonaEdit(){
+  const slot=document.getElementById('pp-edit');if(!slot)return;
+  const cur=_selectedPersona||personaName||'';
+  const p=_knownPersonas.find(x=>(typeof x==='object'&&(x.name||'').toLowerCase()===cur.toLowerCase()));
+  if(!p||typeof p!=='object'){slot.innerHTML='<div class="pp-empty">pick a persona above to edit</div>';return}
+  const src=(p.source||'preset');
+  const dims=[['warmth',p.warmth],['formality',p.formality],['excitement',p.excitement],['length',p.length]];
+  const rows=dims.map(([k,v])=>{const val=(v==null?.5:Number(v));return `<div class="pe-row"><label for="pe-${k}">${k}</label><input type="range" min="0" max="1" step="0.05" id="pe-${k}" value="${val}" oninput="document.getElementById('pe-${k}-v').textContent=Number(this.value).toFixed(2)"><span class="pe-val" id="pe-${k}-v">${val.toFixed(2)}</span></div>`}).join('');
+  const hints=(p.voice_hints||[]).join('\n');
+  slot.innerHTML=`<div class="pe-source">${esc(p.name)} · source: ${esc(src)}</div><div class="pe-desc" id="pe-desc" contenteditable="true" spellcheck="true">${esc(p.description||'')}</div>${rows}<div class="pe-row"><label for="pe-hints">hints</label></div><textarea class="pe-hints" id="pe-hints" rows="3" placeholder="one voice hint per line">${esc(hints)}</textarea><div class="pe-actions"><button class="pe-btn" onclick="_personaEditSave()">SAVE EDITS</button><button class="pe-btn danger" onclick="_personaEditReset()">RESET</button></div>`;
+}
+async function _personaEditSave(){
+  const cur=_selectedPersona||personaName||'';if(!cur)return;
+  const desc=(document.getElementById('pe-desc')||{}).textContent||'';
+  const hintsRaw=(document.getElementById('pe-hints')||{}).value||'';
+  const hints=hintsRaw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  const get=(k)=>{const el=document.getElementById('pe-'+k);return el?Number(el.value):null};
+  const body={description:desc,voice_hints:hints,warmth:get('warmth'),formality:get('formality'),excitement:get('excitement'),length:get('length')};
+  try{
+    const r=await fetch('/persona/'+encodeURIComponent(cur),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok){bubble('bot','Persona edit failed: '+esc(j.detail||r.status),'<span class="badge err">persona</span>');return}
+    await _loadPersonas();_renderPersonaPanel();
+    bubble('bot','Updated **'+esc(cur)+'** — voice/style edits saved.','<span class="badge persona">'+esc(cur)+'</span>');
+  }catch(e){bubble('bot','Persona PATCH failed: '+esc(String(e)),'<span class="badge err">persona</span>')}
+}
+function _personaEditReset(){_renderPersonaEdit()}
 async function togglePersonaPanel(){
   _personaPanelOpen=!_personaPanelOpen;
   const p=document.getElementById('persona-panel');p.classList.toggle('show',_personaPanelOpen);
