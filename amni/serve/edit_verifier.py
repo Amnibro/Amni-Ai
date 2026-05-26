@@ -74,8 +74,23 @@ def verify_edit(path:str,written_content:str,op:str='edit')->Dict[str,Any]:
         result['verified']=None;result['reason']=f'no automatic verifier for .{ext}';_queue_needs_testing(path,reason=f'no auto-verifier for .{ext} files',op=op);_log_verification(path,result);return result
     semantic=verifier(p,written_content)
     result.update(semantic)
+    suggested=semantic.get('suggested_tests') or []
+    if ext=='py' and suggested and semantic.get('verified') is True:
+        try:
+            from amni.serve.test_runner import run_pytest
+            test_run=run_pytest(suggested[0])
+            result['test_run']=test_run
+            if test_run.get('ran') and not test_run.get('ok'):
+                fails=test_run.get('failures') or []
+                tail=f' ({test_run.get("failed",0)} failed / {test_run.get("passed",0)} passed)'
+                msgs=[f"{f.get('test','?')}: {f.get('msg','')}" for f in fails[:3]]
+                if test_run.get('timeout'):msgs=[f'pytest timed out after {test_run.get("duration_s","?")}s']
+                result['verified']=False
+                result['issues']=(result.get('issues') or [])+[f'sibling tests failed{tail}']+msgs
+        except Exception as e:result['test_run']={'ran':False,'reason':f'runner error: {e}','path':suggested[0]}
     if ext in _NEEDS_USER_TEST_HINTS:_queue_needs_testing(path,reason=f'{_NEEDS_USER_TEST_HINTS[ext]} needs human eyes',checks_done=semantic.get('checks',[]),op=op)
-    elif semantic.get('suggested_tests'):_queue_needs_testing(path,reason='associated test file detected — please run',checks_done=semantic.get('checks',[])+[f'has_tests:{semantic.get("suggested_tests")}'],op=op)
+    elif suggested and not (result.get('test_run') or {}).get('ok'):
+        _queue_needs_testing(path,reason='associated test file detected — please run',checks_done=semantic.get('checks',[])+[f'has_tests:{suggested}'],op=op)
     _log_verification(path,result);return result
 def list_needs_testing(limit:int=50,include_done:bool=False)->List[Dict[str,Any]]:
     p=_needs_testing_path()

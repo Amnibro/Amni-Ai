@@ -2,6 +2,33 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.19 — Auto-run sibling pytest on .py edits (closes the verification loop) (2026-05-26)
+
+v6.10.16 detected `test_<stem>.py` sibling files and recommended running them — but Adam never actually ran them. v6.10.19 spawns pytest automatically on every successful .py verification, captures the result, and surfaces pass/fail counts on the widget. The verification chain is now end-to-end functional, not just static.
+
+### New module `amni/serve/test_runner.py`
+- `run_pytest(test_path, timeout_s=20)` spawns `python -m pytest <path> -x --tb=short -q --no-header --color=no` via subprocess with hard timeout
+- Parses pytest output for pass/fail/skip/error counts (regex tolerant of pytest 8+ summary-line format that no longer has `===` markers)
+- Captures up to 5 failure entries with test name + short message
+- Picks venv `.venv/Scripts/python.exe` if present, else `sys.executable`
+- Timeout returns `{ran:True, ok:False, timeout:True}` distinct from spawn errors
+
+### Integration in `edit_verifier.verify_edit`
+After the static verifiers pass for `.py` files, if a sibling `test_<stem>.py` (or `tests/test_<stem>.py`) exists, pytest runs automatically. If tests FAIL, `verified` flips to `False` and the failure summaries get appended to `issues[]` — the widget shows ✗ FAILED with the actual failing test names. Pytest does NOT run when static verification already failed (no point — broken syntax means import-time error).
+
+### Widget rendering
+New `.fc-test-run` block in the file_change widget (green / red / amber for pass / fail / timeout). For failures, shows each test name in red mono + the assertion message in muted mono below. If tests ran, the existing "recommended test" suggestion hides (already executed).
+
+### Chat text mirror
+Bubble text now reports:
+- `Sibling tests PASSED (3 passed in 0.5s).` — when all green
+- `Verification FAILED: sibling tests failed (1 failed / 2 passed); test_x: assert 1 == 2` — when red
+
+### Tests
+15/15 PASS (`tests/test_auto_pytest_v6_10_19.py`): runner exists, missing-file handling, real passing test run, real failing test run with failure list, timeout enforcement, verifier auto-runs sibling tests, verifier flips to FAILED on red, verifier skips pytest when syntax already broken, no pytest when no sibling, formatter announces pass, test_run threaded into widget data, CSS for all three states, failure list, suggestion hides when tests already ran, v6.10.18 regression intact. Full prior chain (v6.10.13 → .18): 96/96 still PASS. Total: 111/111.
+
+---
+
 ## v6.10.18 — Coach mode UI: ask-answer-ask learning sessions (2026-05-26)
 
 Closes the last unticked item from the original /loop request: "ask-answer-ask learning sessions, coaching." The `coach` skill + CoachAtlas have existed since pre-v6.10; v6.10.18 gives them a real UI.

@@ -97,6 +97,15 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.file_change .fc-issue{margin:2px 0}
 .widget.file_change .fc-suggested{font-size:10px;color:#ffb547;letter-spacing:.05em;margin:6px 0;padding:4px 8px;background:rgba(255,181,71,.05);border-left:2px solid rgba(255,181,71,.3);border-radius:0 3px 3px 0}
 .widget.file_change .fc-suggested code{background:transparent;color:var(--cyan);font-size:10px}
+.widget.file_change .fc-test-run{margin:6px 0;padding:6px 10px;border-radius:3px;font-size:10px;font-family:JetBrains Mono,monospace;border-left:2px solid}
+.widget.file_change .fc-test-run.pass{background:rgba(0,255,156,.06);border-left-color:#00ff9c;color:#a0ffd0}
+.widget.file_change .fc-test-run.fail{background:rgba(255,91,91,.06);border-left-color:#ff5b5b;color:#ffb0b0}
+.widget.file_change .fc-test-run.timeout{background:rgba(255,181,71,.06);border-left-color:#ffb547;color:#ffd699}
+.widget.file_change .fc-test-head{font-size:10px;letter-spacing:.12em;font-weight:bold;text-transform:uppercase}
+.widget.file_change .fc-test-fails{margin-top:5px;font-family:JetBrains Mono,monospace;font-size:9px}
+.widget.file_change .fc-test-fail{padding:3px 0;border-top:1px solid rgba(255,91,91,.1)}
+.widget.file_change .fc-test-fail .t{color:#ff7b7b;font-weight:bold}
+.widget.file_change .fc-test-fail .m{color:var(--mute);display:block;margin-left:8px;font-size:9px;line-height:1.3}
 .widget.news .w-body{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
 .widget.news .news-item{padding:6px 8px;border:1px solid rgba(0,229,255,.08);border-radius:3px;background:rgba(0,229,255,.02);text-decoration:none;color:var(--fg);display:block;transition:all .15s}
 .widget.news .news-item:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.05);box-shadow:0 0 8px rgba(0,229,255,.15)}
@@ -619,8 +628,17 @@ function renderWidget(w){
     const vstat=esc(d.verification_status||'manual');const vIssues=d.verification_issues||[];const vChecks=d.verification_checks||[];const vRsn=esc(d.verification_reason||'');const suggested=d.suggested_tests||[];
     const vBadge=vstat==='pass'?`<span class="fc-verify pass" title="${vChecks.join(', ')} all passed">✓ VERIFIED</span>`:vstat==='fail'?`<span class="fc-verify fail" title="${esc(vIssues.join('; '))}">✗ FAILED</span>`:`<span class="fc-verify manual" title="${vRsn||'manual verification required'}">⚠ MANUAL</span>`;
     const issueList=vIssues.length?`<div class="fc-issues">${vIssues.map(i=>`<div class="fc-issue">${esc(i)}</div>`).join('')}</div>`:'';
-    const suggList=suggested.length?`<div class="fc-suggested">recommended test: <code>${esc(suggested[0])}</code></div>`:'';
-    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${suggList}${d.preview?`<pre class="fc-preview">${esc(d.preview)}</pre>`:''}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
+    const tr=d.test_run||{};
+    let testRunBlock='';
+    if(tr.ran){
+      const cls=tr.ok?'pass':(tr.timeout?'timeout':'fail');
+      const head=tr.ok?`✓ TESTS PASSED · ${tr.passed||0}p / ${tr.skipped||0}s in ${tr.duration_s||'?'}s`:(tr.timeout?`⏱ TIMEOUT · ${tr.duration_s||'?'}s cap`:`✗ TESTS FAILED · ${tr.failed||0}f / ${tr.passed||0}p`);
+      const fails=Array.isArray(tr.failures)?tr.failures:[];
+      const failList=fails.length?`<div class="fc-test-fails">${fails.map(f=>`<div class="fc-test-fail"><span class="t">${esc(f.test||'?')}</span><span class="m">${esc(f.msg||'')}</span></div>`).join('')}</div>`:'';
+      testRunBlock=`<div class="fc-test-run ${cls}"><div class="fc-test-head">${head}</div>${failList}</div>`;
+    }
+    const suggList=(suggested.length && !tr.ran)?`<div class="fc-suggested">recommended test: <code>${esc(suggested[0])}</code></div>`:'';
+    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${testRunBlock}${suggList}${d.preview?`<pre class="fc-preview">${esc(d.preview)}</pre>`:''}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
   }else if(t==='error'||t==='info'){
     body=esc(d.message||'');
   }else{
