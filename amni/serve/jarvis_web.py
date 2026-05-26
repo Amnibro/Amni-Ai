@@ -804,7 +804,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div>
   <div id="composer">
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
-    <div id="input-shell"><textarea id="input" placeholder="Speak or type..." autofocus></textarea></div>
+    <div id="input-shell"><textarea id="input" placeholder="Speak or type… (/help for commands)" autofocus></textarea></div>
     <button id="jarvis-toggle" type="button" onclick="toggleJarvisMode()" title="Engage Jarvis mode — convo + wake + gesture + voice all on">JARVIS</button>
     <button id="tools-toggle" type="button" onclick="toggleToolsDrawer()" title="Open tools drawer (voice, gesture, coach, export, etc)">TOOLS</button>
     <button id="send" onclick="send()">TRANSMIT</button>
@@ -1445,9 +1445,33 @@ function stopStream(){
   _typeFlushAll();
   _setSendButtonState(false);
 }
+function _handleSlashCommand(text){
+  const m=text.match(/^\/(\w[\w-]*)(?:\s+(.*))?$/);
+  if(!m)return false;
+  const cmd=m[1].toLowerCase();const arg=(m[2]||'').trim();
+  if(cmd==='new'||cmd==='clear'){
+    document.querySelectorAll('#log .msg').forEach(el=>el.remove());
+    if(cmd==='new'){sid='';try{localStorage.removeItem(SKEY)}catch{}}
+    bubble('bot',cmd==='new'?'Started a fresh session.':'Chat cleared (session kept).','<span class="badge">cmd</span>');
+    return true;
+  }
+  if(cmd==='help'){const fn=window.toggleKbdOverlay||null;if(fn)try{fn()}catch{}else bubble('bot','Press `?` to open keyboard shortcuts.','<span class="badge">cmd</span>');return true}
+  if(cmd==='persona'){
+    if(!arg){bubble('bot','Usage: `/persona <name>` — e.g. `/persona rikku`. Use the panel for new persona learning.','<span class="badge">cmd</span>');return true}
+    _pickPersona(arg);return true;
+  }
+  if(cmd==='sessions'){toggleSessionsPanel();return true}
+  if(cmd==='tools'){toggleToolsDrawer();return true}
+  if(cmd==='status'){toggleStatusPanel();return true}
+  if(cmd==='jarvis'){toggleJarvisMode();return true}
+  if(cmd==='find'){if(!arg){bubble('bot','Usage: `/find <query>` — searches your workdir.','<span class="badge">cmd</span>');return true}input.value='find "'+arg.replace(/"/g,'\\"')+'"';return false}
+  if(cmd==='pace'){const n=parseInt(arg,10);if(isFinite(n)){_paceSliderChange(n);bubble('bot','Stream pace set to **'+n+' cps**.','<span class="badge">cmd</span>')}else{bubble('bot','Usage: `/pace <cps>` (10-2000). Current: **'+_typeSpeedCps()+' cps**.','<span class="badge">cmd</span>')}return true}
+  return false;
+}
 async function send(){
   if(send_btn&&send_btn.dataset.streaming==='1'){stopStream();return}
   const text=input.value.trim();if(!text)return;
+  if(text.startsWith('/')&&_handleSlashCommand(text)){input.value='';input.style.height='auto';input.focus();return}
   input.value='';input.style.height='auto';
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
