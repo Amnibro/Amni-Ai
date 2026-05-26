@@ -757,7 +757,7 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     except Exception as _we:print(f'[skills] widget skills register failed: {_we}',flush=True)
     try:
         from amni.serve.coach import coach_skill as _coach_skill
-        reg.register('coach',_coach_skill,desc='Socratic coaching/tutor mode. Actions: start <topic> | ask | answer <text> | hint | skip | summary | status. Tracks per-topic mastery in coach_atlas. Args: {action, topic?, session_id?, answer?, difficulty?}',schema={'action':'str','topic':'str?','session_id':'str?','answer':'str?','difficulty':'int?'})
+        reg.register('coach',_coach_skill,desc='Socratic coaching/tutor mode. Actions: start <topic> [seed_question?] | ask | answer <text> | hint | skip | summary | status. Tracks per-topic mastery in coach_atlas. Args: {action, topic?, session_id?, answer?, difficulty?, seed_question?, seed_model_answer?, seed_hint?}',schema={'action':'str','topic':'str?','session_id':'str?','answer':'str?','difficulty':'int?','seed_question':'str?','seed_model_answer':'str?','seed_hint':'str?'})
     except Exception as _ce:print(f'[skills] coach skill register failed: {_ce}',flush=True)
     try:
         from amni.serve.scheduler import schedule_loop_skill as _sched_skill

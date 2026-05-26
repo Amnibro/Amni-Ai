@@ -1497,9 +1497,10 @@ async function _coachLoadReviews(){
     const j=await r.json();const reviews=j.reviews||[];
     if(!reviews.length){sec.style.display='none';return}
     sec.style.display='block';if(ct)ct.textContent=reviews.length+' due';
-    list.innerHTML=reviews.map(rv=>{const urgent=rv.overdue_ratio>=2?' urgent':'';const safe=esc(rv.topic||'').replace(/'/g,"\\\\'");
-      return `<div class="cp-review-card${urgent}" onclick="_coachResumeTopic('${safe}')" title="Click to resume topic"><div class="rv-topic">${esc(rv.topic)}</div><div class="rv-q">${esc(rv.question)}</div><div class="rv-meta"><span>last: ${rv.last_score}/100 · ${rv.age_days}d ago</span><span class="rv-overdue">${rv.overdue_ratio}× overdue</span></div></div>`
+    list.innerHTML=reviews.map((rv,i)=>{const urgent=rv.overdue_ratio>=2?' urgent':'';
+      return `<div class="cp-review-card${urgent}" onclick="_coachStartReview(${i})" title="Click to re-ask this question now"><div class="rv-topic">${esc(rv.topic)}</div><div class="rv-q">${esc(rv.question)}</div><div class="rv-meta"><span>last: ${rv.last_score}/100 · ${rv.age_days}d ago</span><span class="rv-overdue">${rv.overdue_ratio}× overdue</span></div></div>`
     }).join('');
+    window._coachReviewItems=reviews;
   }catch{sec.style.display='none'}
 }
 async function _coachLoadTopics(){
@@ -1540,6 +1541,16 @@ async function _coachExportTopic(topic){
     const cards=md.match(/## Card \d+/g);const n=cards?cards.length:0;
     bubble('bot','Exported **'+n+' card'+(n===1?'':'s')+'** from **'+esc(topic)+'** to your downloads.','<span class="badge">coach</span>');
   }catch(e){bubble('bot','Export error: '+esc(e.message),'<span class="badge err">coach</span>')}
+}
+async function _coachStartReview(idx){
+  const items=window._coachReviewItems||[];const rv=items[idx];if(!rv){bubble('bot','Review card no longer available — refresh the coach panel.','<span class="badge err">coach</span>');return}
+  bubble('bot','Re-asking due card from **'+esc(rv.topic)+'** ('+rv.age_days+'d since last attempt, '+rv.overdue_ratio+'× overdue)…','<span class="badge">review</span>');
+  const res=await _coachCall({action:'start',topic:rv.topic,difficulty:rv.last_difficulty||2,seed_question:rv.question});
+  if(!res||res.error){bubble('bot','Could not start review: '+esc(res&&res.error||'unknown'),'<span class="badge err">coach</span>');return}
+  _coachSid=res.session_id;_coachTopic=res.topic;localStorage.setItem(COACH_SID_KEY,_coachSid);
+  _coachShowActive(true);document.getElementById('cp-grade-slot').innerHTML='';document.getElementById('cp-answer').value='';
+  _coachRender(res);_coachLastQuestion=res.question||'';_coachSpeakIfOn(res.question);
+  setTimeout(_coachLoadTopics,400);
 }
 function _coachResumeTopic(topic){
   const t=document.getElementById('cp-topic');if(t){t.value=topic;t.focus()}
