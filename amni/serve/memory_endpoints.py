@@ -36,6 +36,17 @@ def mount(app,agent):
     def daemon():
         if getattr(agent,'learning_daemon',None) is None:return {'enabled':False,'reason':'no daemon'}
         return agent.learning_daemon.stats()
+    @app.get('/memory/needs-testing')
+    def needs_testing(limit:int=50,include_done:bool=False):
+        from amni.serve.edit_verifier import list_needs_testing
+        items=list_needs_testing(limit=limit,include_done=include_done)
+        return {'items':items,'count':len(items),'pending':len([i for i in items if i.get('status')=='pending'])}
+    @app.post('/memory/needs-testing/done')
+    async def needs_testing_done(req:Request):
+        from amni.serve.edit_verifier import mark_needs_testing_done
+        body=await req.json();sub=(body.get('path_substring') or '').strip()
+        if not sub:raise HTTPException(400,'need path_substring')
+        n=mark_needs_testing_done(sub);return {'marked_done':n,'path_substring':sub}
     @app.post('/memory/forget')
     async def forget(req:Request):
         body=await req.json()

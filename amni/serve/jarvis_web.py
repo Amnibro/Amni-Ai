@@ -88,6 +88,15 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.file_change .fc-actions{display:flex;gap:6px;margin-top:6px}
 .widget.file_change .fc-btn{flex:0 0 auto;padding:4px 10px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.25);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
 .widget.file_change .fc-btn:hover{background:rgba(0,229,255,.14);border-color:var(--cyan)}
+.widget.file_change .fc-verify{margin-left:auto;font-size:9px;letter-spacing:.18em;padding:2px 6px;border-radius:2px;font-weight:bold;cursor:help}
+.widget.file_change .fc-verify.pass{background:rgba(0,255,156,.15);color:#00ff9c;border:1px solid rgba(0,255,156,.3);text-shadow:0 0 4px rgba(0,255,156,.5)}
+.widget.file_change .fc-verify.fail{background:rgba(255,91,91,.15);color:#ff5b5b;border:1px solid rgba(255,91,91,.4);text-shadow:0 0 4px rgba(255,91,91,.5);animation:fcShake .35s ease-out}
+.widget.file_change .fc-verify.manual{background:rgba(255,181,71,.1);color:#ffb547;border:1px solid rgba(255,181,71,.3)}
+@keyframes fcShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.widget.file_change .fc-issues{background:rgba(255,91,91,.06);border:1px solid rgba(255,91,91,.25);border-radius:3px;padding:6px 8px;margin:6px 0;font-size:10px;color:#ff7b7b;font-family:JetBrains Mono,monospace}
+.widget.file_change .fc-issue{margin:2px 0}
+.widget.file_change .fc-suggested{font-size:10px;color:#ffb547;letter-spacing:.05em;margin:6px 0;padding:4px 8px;background:rgba(255,181,71,.05);border-left:2px solid rgba(255,181,71,.3);border-radius:0 3px 3px 0}
+.widget.file_change .fc-suggested code{background:transparent;color:var(--cyan);font-size:10px}
 .widget.news .w-body{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
 .widget.news .news-item{padding:6px 8px;border:1px solid rgba(0,229,255,.08);border-radius:3px;background:rgba(0,229,255,.02);text-decoration:none;color:var(--fg);display:block;transition:all .15s}
 .widget.news .news-item:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.05);box-shadow:0 0 8px rgba(0,229,255,.15)}
@@ -511,7 +520,11 @@ function renderWidget(w){
     const op=esc(d.op||'edit');const path=esc(d.path||'?');const ext=esc(d.ext||'');const la=d.lines_added||0;const lr=d.lines_removed||0;const repl=d.replacements;
     const bn=path.split(/[\\/]/).pop();const folder=path.length>bn.length?path.slice(0,path.length-bn.length-1):'';
     const opCls='op-'+op;
-    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${d.preview?`<pre class="fc-preview">${esc(d.preview)}</pre>`:''}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button></div>`;
+    const vstat=esc(d.verification_status||'manual');const vIssues=d.verification_issues||[];const vChecks=d.verification_checks||[];const vRsn=esc(d.verification_reason||'');const suggested=d.suggested_tests||[];
+    const vBadge=vstat==='pass'?`<span class="fc-verify pass" title="${vChecks.join(', ')} all passed">✓ VERIFIED</span>`:vstat==='fail'?`<span class="fc-verify fail" title="${esc(vIssues.join('; '))}">✗ FAILED</span>`:`<span class="fc-verify manual" title="${vRsn||'manual verification required'}">⚠ MANUAL</span>`;
+    const issueList=vIssues.length?`<div class="fc-issues">${vIssues.map(i=>`<div class="fc-issue">${esc(i)}</div>`).join('')}</div>`:'';
+    const suggList=suggested.length?`<div class="fc-suggested">recommended test: <code>${esc(suggested[0])}</code></div>`:'';
+    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${suggList}${d.preview?`<pre class="fc-preview">${esc(d.preview)}</pre>`:''}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
   }else if(t==='error'||t==='info'){
     body=esc(d.message||'');
   }else{
@@ -533,6 +546,11 @@ async function _fcOpen(path){
   catch(e){bubble('bot','Could not open file: '+esc(e.message),'<span class="badge err">err</span>')}
 }
 function _fcCopyPath(path){if(!path)return;try{navigator.clipboard.writeText(path);bubble('bot','Copied path to clipboard: `'+esc(path)+'`','<span class="badge">copy</span>')}catch{bubble('bot','Clipboard unavailable. Path: `'+esc(path)+'`','<span class="badge err">err</span>')}}
+async function _fcMarkTested(path){
+  if(!path)return;
+  try{const r=await fetch('/memory/needs-testing/done',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path_substring:path})});const j=await r.json();bubble('bot','Marked '+j.marked_done+' testing item(s) as done for `'+esc(path)+'`','<span class="badge">tested</span>')}
+  catch(e){bubble('bot','Could not mark tested: '+esc(e.message),'<span class="badge err">err</span>')}
+}
 async function send(){
   const text=input.value.trim();if(!text)return;
   input.value='';input.style.height='auto';send_btn.disabled=true;
