@@ -159,6 +159,14 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.info .w-head{color:var(--gold)}
 .widget.code .w-body pre{background:rgba(0,0,0,.6);padding:10px;border-radius:2px;font-size:11px;color:var(--cyan);overflow-x:auto}
 #composer{display:flex;gap:10px;align-items:center}
+#quick-bar{display:flex;gap:6px;padding:6px 12px 0;flex-wrap:wrap;align-items:center;font-family:JetBrains Mono,monospace;border-top:1px solid rgba(0,229,255,.05)}
+.qchip{padding:5px 11px;border:1px solid rgba(0,229,255,.2);background:rgba(0,229,255,.04);color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:99px;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px;line-height:1}
+.qchip:hover{background:rgba(0,229,255,.14);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.25)}
+.qchip .ico{font-size:13px}
+.qchip.qc-coach:hover{background:rgba(255,77,200,.14);border-color:var(--magenta);color:var(--magenta);box-shadow:0 0 8px rgba(255,77,200,.25)}
+.qchip.qc-export:hover{background:rgba(0,255,156,.14);border-color:#00ff9c;color:#00ff9c;box-shadow:0 0 8px rgba(0,255,156,.25)}
+.qchip.qc-learn:hover{background:rgba(255,181,71,.12);border-color:#ffb547;color:#ffb547;box-shadow:0 0 8px rgba(255,181,71,.22)}
+.qchip-hint{font-size:9px;color:var(--mute);letter-spacing:.15em;margin-left:auto;opacity:.6;text-transform:uppercase}
 #mic-shell{position:relative;width:46px;height:46px;border:1px solid rgba(0,229,255,.4);border-radius:50%;background:rgba(0,229,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--cyan);transition:all .2s;flex-shrink:0}
 #mic-shell:hover{box-shadow:0 0 14px var(--cyan);border-color:var(--cyan)}
 #mic-shell.listening{background:rgba(255,43,214,.15);border-color:var(--magenta);color:var(--magenta);box-shadow:0 0 18px var(--magenta);animation:pulseMic 1.2s ease-in-out infinite}
@@ -519,6 +527,17 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
       </div>
     </div>
   </div></div>
+  <div id="quick-bar">
+    <button class="qchip" onclick="_qcAsk('What is the weather in Boston?')"><span class="ico">🌤</span>WEATHER</button>
+    <button class="qchip" onclick="_qcAsk('Show me current system stats')"><span class="ico">📊</span>SYSTEM</button>
+    <button class="qchip" onclick="_qcAsk('git status')"><span class="ico">⎇</span>GIT</button>
+    <button class="qchip qc-learn" onclick="_qcAsk('what are you learning right now?')"><span class="ico">🧠</span>DAEMON</button>
+    <button class="qchip qc-coach" onclick="toggleCoachPanel()"><span class="ico">🎯</span>COACH</button>
+    <button class="qchip qc-export" onclick="_exportChatMd()"><span class="ico">📥</span>EXPORT</button>
+    <button class="qchip" onclick="_qcAsk('summarize this conversation so far')"><span class="ico">📝</span>SUMMARIZE</button>
+    <button class="qchip" onclick="_qcAsk('what can you do?')"><span class="ico">?</span>HELP</button>
+    <span class="qchip-hint">drag a file · paste image · Ctrl+K to search</span>
+  </div>
   <div id="composer">
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
     <div id="input-shell"><textarea id="input" placeholder="Speak or type..." autofocus></textarea></div>
@@ -761,6 +780,7 @@ function appendWidgets(msgEl,widgets){
   msgEl.appendChild(wrap);log.scrollTop=log.scrollHeight;
 }
 function quick(t){input.value=t;send()}
+function _qcAsk(t){input.value=t;send()}
 async function _fcOpen(path){
   if(!path)return;
   try{const r=await fetch('/skills/file_read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{path}})});const j=await r.json();const c=(j.output&&j.output.content)||j.content||(typeof j==='string'?j:'(no content)');bubble('bot','```\n'+c.slice(0,4000)+(c.length>4000?'\n... ('+(c.length-4000)+' more chars)':'')+'\n```','<span class="badge">file</span>')}

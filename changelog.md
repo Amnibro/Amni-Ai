@@ -2,6 +2,36 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.33 — Always-visible quick-action chip bar above composer (2026-05-26)
+
+The welcome screen had example buttons but those disappear on first message. After the chat starts, every common Jarvis-style query required typing. v6.10.33 adds a persistent quick-action chip bar above the composer — eight one-tap shortcuts that stay visible the whole session.
+
+### The eight chips
+- 🌤 **WEATHER** — prefills `"What is the weather in Boston?"` (routes via v6.10.x weather skill)
+- 📊 **SYSTEM** — prefills `"Show me current system stats"` (system_stats widget)
+- ⎇ **GIT** — prefills `"git status"` (git_status widget)
+- 🧠 **DAEMON** (amber) — prefills `"what are you learning right now?"` (learning_daemon stats action from v6.10.14)
+- 🎯 **COACH** (magenta) — opens the coach panel directly (`toggleCoachPanel()`)
+- 📥 **EXPORT** (green) — triggers `_exportChatMd()` (v6.10.28 markdown download)
+- 📝 **SUMMARIZE** — prefills `"summarize this conversation so far"` (Adam reads the restored history + summarizes)
+- ❓ **HELP** — prefills `"what can you do?"` (triggers introspect path)
+
+Plus a hint line at the right edge: `drag a file · paste image · Ctrl+K to search` so users discover the existing power features.
+
+### Style
+- Pill-shaped, mono uppercase, cyan default with per-chip color variants (coach=magenta, export=green, learn=amber)
+- Hover lifts: brighter background + colored box-shadow glow
+- Flex-wrap so the bar reflows on narrow screens
+- Subtle border-top separator above the composer
+
+### Why these eight
+Every chip maps to an existing skill / panel / pipeline. No new logic — pure surface area to make discoverable what was already there. The queries are hand-tuned to hit the natural-language routing regexes from v6.10.14 / v6.10.24, so they fire as tier0 skill calls (zero LLM cost) when the matching skill is available.
+
+### Tests
+17/17 PASS (`tests/test_quick_bar_v6_10_33.py`): bar element present, .qchip CSS, _qcAsk helper, all 8 chip labels present, weather query exact string, system query exact string, git query exact string, daemon-learning query exact string, coach opens panel, export triggers download, summarize query, help query, 3 color-variant CSS classes, bar DOM order above composer, hint text mentions drag + Ctrl+K, end-to-end NL routing verification (all 4 prefill queries route to the correct skill via `_detect_skill`), v6.10.32 regression intact. Recent chain (v6.10.29 → .32): 57/57 still PASS. Total: 74/74.
+
+---
+
 ## v6.10.32 — Coach mastery streak badge (daily-use gamification) (2026-05-26)
 
 The CoachAtlas already tracked timestamped answers per topic. v6.10.32 adds a `streak_stats()` method that derives a daily-use streak across all topics + surfaces it in the coach panel header as a flame badge.
