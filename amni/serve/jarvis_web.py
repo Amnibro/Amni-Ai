@@ -54,6 +54,9 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .bubble code{background:rgba(0,0,0,.6);padding:1px 6px;border-radius:2px;font-size:11px;color:var(--cyan)}
 .bubble pre{background:rgba(0,0,0,.7);border:1px solid rgba(0,229,255,.15);padding:10px 12px;border-radius:3px;overflow-x:auto;font-size:11px;margin:6px 0;color:var(--cyan)}
 .bubble pre code{background:none;padding:0;color:inherit}
+.bubble .md-link{color:var(--cyan);text-decoration:none;border-bottom:1px dotted rgba(0,229,255,.45);padding-bottom:1px;transition:color .12s,border-color .12s}
+.bubble .md-link:hover{color:#dff6ff;border-bottom-color:var(--cyan);text-shadow:0 0 6px rgba(0,229,255,.6)}
+.bubble .md-link:visited{color:var(--cyan2)}
 .bubble pre,.widget pre{position:relative}
 .bubble pre .code-copy,.widget pre .code-copy{position:absolute;top:4px;right:4px;padding:2px 8px;background:rgba(8,14,28,.85);border:1px solid rgba(0,229,255,.25);color:var(--mute);font-family:JetBrains Mono,monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;border-radius:2px;opacity:0;transition:opacity .15s,color .15s,background .15s,border-color .15s;z-index:2}
 .bubble pre:hover .code-copy,.widget pre:hover .code-copy,.bubble pre .code-copy.ok,.widget pre .code-copy.ok,.bubble pre .code-copy.err,.widget pre .code-copy.err{opacity:.95}
@@ -1070,6 +1073,8 @@ function md(src){
     return `<pre${cls}><code${cls}>${c.replace(/\n$/,'')}</code></pre>`;
   });
   src=src.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+  src=src.replace(/\[([^\]]+)\]\(((?:https?:\/\/|\/)[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
+  src=src.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)(?=[\s.,!?)]|$)/g,'$1<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$2</a>');
   src=src.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
   src=src.replace(/^###\s+(.+)$/gm,'<strong>$1</strong>').replace(/^##\s+(.+)$/gm,'<strong>$1</strong>');
   src=src.replace(/\n\n+/g,'<br><br>').replace(/\n/g,'<br>');
