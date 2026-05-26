@@ -331,6 +331,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .restore-banner .rb-close:hover{background:rgba(0,229,255,.12)}
 .msg.restored{opacity:.78}
 .msg.restored .bubble{border-left:2px solid rgba(255,255,255,.12)}
+.msg.bot{position:relative}
+.msg-retry{position:absolute;top:8px;right:8px;background:rgba(255,77,200,.06);border:1px solid rgba(255,77,200,.18);color:var(--magenta);font-family:JetBrains Mono,monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;padding:3px 8px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .15s,background .15s,box-shadow .15s}
+.msg.bot:hover .msg-retry{opacity:.6}
+.msg-retry:hover{opacity:1!important;background:rgba(255,77,200,.18);box-shadow:0 0 8px rgba(255,77,200,.25)}
 .msg.restored .bubble::before{content:'';display:none}
 .tok-meter{font-size:9px;letter-spacing:.18em;color:var(--mute);font-family:JetBrains Mono,monospace;margin-top:4px;padding:2px 7px;border:1px solid rgba(0,229,255,.18);background:rgba(0,229,255,.04);border-radius:2px;display:inline-block;text-transform:uppercase;transition:opacity .8s, color .25s}
 .tok-meter.done{color:var(--cyan);border-color:rgba(0,229,255,.35);background:rgba(0,229,255,.08);text-shadow:0 0 3px rgba(0,229,255,.4)}
@@ -941,8 +945,23 @@ function bubble(role,text,meta){
   if(role==='bot')b.innerHTML=md(text||'');else b.textContent=text||'';
   m.appendChild(b);
   if(meta){const mt=document.createElement('div');mt.className='meta';mt.innerHTML=meta;m.appendChild(mt)}
+  if(role==='bot'){
+    const retry=document.createElement('button');retry.className='msg-retry';retry.textContent='↻ retry';retry.title='Discard this reply and edit the prompt';retry.onclick=ev=>{ev.stopPropagation();_retryBubble(m)};
+    m.appendChild(retry);
+  }
   log.appendChild(m);log.scrollTop=log.scrollHeight;
   return {msg:m,bubble:b};
+}
+function _retryBubble(botMsg){
+  if(!botMsg)return;
+  let prev=botMsg.previousElementSibling;
+  while(prev&&!prev.classList.contains('msg'))prev=prev.previousElementSibling;
+  if(prev&&prev.classList.contains('user')){
+    const userText=(prev.querySelector('.bubble')||{}).textContent||'';
+    if(userText){input.value=userText;input.focus();if(input.style)input.style.height=Math.min(160,input.scrollHeight)+'px'}
+    prev.remove();
+  }
+  botMsg.remove();
 }
 function renderWidget(w){
   const t=w.type;const d=w.data||{};const el=document.createElement('div');el.className='widget '+t;
