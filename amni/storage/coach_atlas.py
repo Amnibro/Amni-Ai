@@ -18,6 +18,19 @@ class CoachAtlas:
         self.root=Path(root);self.root.mkdir(parents=True,exist_ok=True)
         self.mastery_window=mastery_window
         self._sessions:Dict[str,Dict[str,Any]]={}
+        self._load_sessions()
+    def _sessions_path(self)->Path:return self.root/'_active_sessions.json'
+    def _load_sessions(self):
+        """Reload in-flight coach sessions from disk so server restarts don't wipe state."""
+        p=self._sessions_path()
+        if not p.exists():return
+        try:
+            raw=json.loads(p.read_text(encoding='utf-8'))
+            if isinstance(raw,dict):self._sessions=dict(raw)
+        except Exception as e:print(f'[CoachAtlas] session reload failed: {e}',flush=True)
+    def _save_sessions(self):
+        try:self._sessions_path().write_text(json.dumps(self._sessions,default=str,indent=2),encoding='utf-8')
+        except Exception as e:print(f'[CoachAtlas] session save failed: {e}',flush=True)
     def _topic_path(self,topic:str)->Path:return self.root/f'topic_{_slug(topic)}.jsonl'
     def _meta_path(self,topic:str)->Path:return self.root/f'topic_{_slug(topic)}.meta.json'
     def _load_topic(self,topic:str)->List[Dict[str,Any]]:
@@ -38,15 +51,17 @@ class CoachAtlas:
     def start_session(self,topic:str,session_id:Optional[str]=None,initial_difficulty:int=2)->str:
         sid=session_id or f'cs_{uuid.uuid4().hex[:12]}'
         self._sessions[sid]={'topic':topic,'difficulty':int(initial_difficulty),'started':time.time(),'asked':[],'streak_correct':0,'streak_wrong':0,'n_answered':0,'n_skipped':0,'n_hinted':0,'pending_question':None,'pending_model_answer':None,'pending_hint':None,'cumulative_score':0.0}
+        self._save_sessions()
         return sid
     def get_session(self,session_id:str)->Optional[Dict[str,Any]]:return self._sessions.get(session_id)
     def update_session(self,session_id:str,**kw):
         s=self._sessions.get(session_id)
         if s is None:return False
-        s.update(kw);return True
+        s.update(kw);self._save_sessions();return True
     def end_session(self,session_id:str)->Dict[str,Any]:
         s=self._sessions.pop(session_id,None)
         if s is None:return {'ended':False}
+        self._save_sessions()
         topic=s['topic'];m=self.mastery(topic)
         return {'ended':True,'topic':topic,'session_id':session_id,'n_answered':s.get('n_answered',0),'n_skipped':s.get('n_skipped',0),'n_hinted':s.get('n_hinted',0),'final_difficulty':s.get('difficulty'),'session_avg_score':(s.get('cumulative_score',0.0)/max(s.get('n_answered',1),1)),'topic_mastery':m,'started':s.get('started'),'wall_s':round(time.time()-s.get('started',time.time()),1)}
     def record(self,session_id:str,topic:str,question:str,user_answer:str,score:float,difficulty:int,hint_used:bool=False,skipped:bool=False)->Dict[str,Any]:
@@ -62,6 +77,7 @@ class CoachAtlas:
                 else:s['streak_correct']=0;s['streak_wrong']=0
                 if s['streak_correct']>=2 and s['difficulty']<5:s['difficulty']+=1;s['streak_correct']=0
                 elif s['streak_wrong']>=2 and s['difficulty']>1:s['difficulty']-=1;s['streak_wrong']=0
+            self._save_sessions()
         return row
     def mastery(self,topic:str)->Dict[str,Any]:
         rows=self._load_topic(topic)
