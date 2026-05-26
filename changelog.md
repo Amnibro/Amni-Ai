@@ -2,6 +2,33 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.34 — Sessions browser: see + load + delete past chats (2026-05-26)
+
+v6.10.26 restored chat history per session_id, but the user could only reach the LAST session (the one stored in localStorage SKEY). v6.10.34 surfaces every past session so the user can jump between them.
+
+### New chip + panel
+- 🗂 **SESSIONS** chip in the quick-bar (between SUMMARIZE and HELP)
+- Click → slide-in cyan panel polls `GET /sessions?enrich=true&limit=30` (endpoint pre-existed)
+- Each row shows: short session id (last 12 chars, mono cyan), turn count, age (`5m ago` / `1.2h ago` / `3d ago`), first user message (2-line clamp)
+- Current session highlighted with `.current` class — green left border + corner `CURRENT` label
+
+### Actions
+- **Click a row** → switches to that session (`SKEY` updated, chat wiped, `_restoreSession()` re-fires for the new session's history). No reload, no flicker.
+- **Hover-revealed ✕ button** per row → confirm prompt → `DELETE /sessions/{sid}`. If current, also clears SKEY.
+- **REFRESH** in toolbar — manual reload of list
+- **NEW** in toolbar — drop SKEY, wipe log, ready for a fresh session on next message
+
+### Mutual exclusion
+Sessions panel auto-closes the other 5 panels (persona/learn/tests/shell/coach) when opened, so they never stack.
+
+### Why this matters
+After 33 iters of dogfooding Adam, the average user accumulates dozens of sessions but can only access the most recent. Sessions browser surfaces all of them with enough metadata (first message + age) to recognize at a glance. Combined with v6.10.27 chat search + v6.10.28 export + v6.10.26 restore, this completes the full session lifecycle UI: list → switch → search → export → delete.
+
+### Tests
+19/19 PASS (`tests/test_sessions_browser_v6_10_34.py`): chip + panel + toolbar + count element present, 5 CSS hooks (panel/show/item/current/del-button), 6 helper fns, polls `/sessions?enrich=true&limit=30`, load uses existing `_restoreSession`, load clears log via `querySelectorAll('#log .msg').remove()`, load skips when already current, delete uses HTTP DELETE method, delete prompts confirm, delete clears SKEY when target was current, new-session clears log+SKEY, current session marked `.current` based on `s.session_id===sid`, mutual exclusion with all 5 sibling panels, age buckets (s/m/h/d), CURRENT corner marker via `::after`, first-msg 2-line clamp, chip DOM order before HELP, v6.10.33 regression intact. Recent chain (v6.10.30 → .33): 59/59 still PASS. Total: 78/78.
+
+---
+
 ## v6.10.33 — Always-visible quick-action chip bar above composer (2026-05-26)
 
 The welcome screen had example buttons but those disappear on first message. After the chat starts, every common Jarvis-style query required typing. v6.10.33 adds a persistent quick-action chip bar above the composer — eight one-tap shortcuts that stay visible the whole session.

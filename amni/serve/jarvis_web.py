@@ -234,6 +234,29 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #tests-panel .tp-toolbar button{padding:4px 8px;border:1px solid rgba(255,181,71,.3);background:rgba(255,181,71,.04);color:#ffb547;font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
 #tests-panel .tp-toolbar button:hover{background:rgba(255,181,71,.12)}
 #tests-panel .tp-summary{font-size:10px;color:var(--mute);letter-spacing:.05em;margin-left:auto;align-self:center}
+#sessions-panel{position:fixed;top:60px;right:24px;width:440px;z-index:11;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,229,255,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
+#sessions-panel.show{display:block}
+#sessions-panel .sp-head{padding:10px 14px;border-bottom:1px solid rgba(0,229,255,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
+#sessions-panel .sp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:10px}
+#sessions-panel .sp-head .close:hover{color:var(--err);border-color:var(--err)}
+#sessions-panel .sp-toolbar{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid rgba(0,229,255,.08);font-size:10px}
+#sessions-panel .sp-toolbar button{padding:4px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.04);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
+#sessions-panel .sp-toolbar button:hover{background:rgba(0,229,255,.12)}
+#sessions-panel .sp-toolbar .sp-count{margin-left:auto;align-self:center;font-size:10px;color:var(--mute);letter-spacing:.05em}
+#sessions-panel .sp-list{padding:8px 12px}
+#sessions-panel .sp-item{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-left:2px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);margin-bottom:6px;border-radius:0 3px 3px 0;cursor:pointer;transition:all .15s;position:relative}
+#sessions-panel .sp-item:hover{background:rgba(0,229,255,.1);border-left-color:var(--cyan)}
+#sessions-panel .sp-item.current{border-left-color:#00ff9c;background:rgba(0,255,156,.05)}
+#sessions-panel .sp-item.current::after{content:'CURRENT';position:absolute;top:8px;right:32px;font-size:8px;letter-spacing:.18em;color:#00ff9c;font-family:JetBrains Mono,monospace;font-weight:bold}
+#sessions-panel .sp-item .sp-row1{display:flex;gap:8px;align-items:baseline;font-size:11px}
+#sessions-panel .sp-item .sp-sid{font-family:JetBrains Mono,monospace;color:var(--cyan);font-size:10px;font-weight:bold;letter-spacing:.08em}
+#sessions-panel .sp-item .sp-turns{font-size:9px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase}
+#sessions-panel .sp-item .sp-age{margin-left:auto;font-size:9px;color:var(--mute)}
+#sessions-panel .sp-item .sp-first{font-size:11px;color:var(--fg);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#sessions-panel .sp-item .sp-del{position:absolute;top:8px;right:10px;width:18px;height:18px;border-radius:50%;background:rgba(255,91,91,.1);border:1px solid rgba(255,91,91,.2);color:#ff7b7b;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;opacity:0;transition:opacity .15s}
+#sessions-panel .sp-item:hover .sp-del{opacity:1}
+#sessions-panel .sp-item .sp-del:hover{background:rgba(255,91,91,.3);color:#fff}
+#sessions-panel .sp-empty{padding:24px;text-align:center;color:var(--mute);font-size:10px;font-style:italic}
 .sh-led{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4a5568;box-shadow:0 0 4px #4a5568;margin-right:6px;vertical-align:middle;transition:background .25s}
 .sh-led.clean{background:#00e5ff;box-shadow:0 0 6px #00e5ff}
 .sh-led.dirty{background:#ff7b7b;box-shadow:0 0 8px #ff7b7b, 0 0 14px rgba(255,123,123,.4);animation:shPulse 1.4s ease-in-out infinite}
@@ -535,6 +558,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <button class="qchip qc-coach" onclick="toggleCoachPanel()"><span class="ico">🎯</span>COACH</button>
     <button class="qchip qc-export" onclick="_exportChatMd()"><span class="ico">📥</span>EXPORT</button>
     <button class="qchip" onclick="_qcAsk('summarize this conversation so far')"><span class="ico">📝</span>SUMMARIZE</button>
+    <button class="qchip" onclick="toggleSessionsPanel()" title="Browse past chat sessions"><span class="ico">🗂</span>SESSIONS</button>
     <button class="qchip" onclick="_qcAsk('what can you do?')"><span class="ico">?</span>HELP</button>
     <span class="qchip-hint">drag a file · paste image · Ctrl+K to search</span>
   </div>
@@ -623,6 +647,11 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <h3>RECENT TOPICS</h3>
     <div id="lp-recent"><div style="font-size:10px;color:var(--mute);text-align:center;padding:8px;font-style:italic">no completed topics yet</div></div>
   </div>
+</div>
+<div id="sessions-panel">
+  <div class="sp-head"><span>◆ CHAT SESSIONS</span><span class="close" onclick="toggleSessionsPanel()">CLOSE</span></div>
+  <div class="sp-toolbar"><button onclick="_pollSessionsList()">REFRESH</button><button onclick="_spNewSession()" title="Start a fresh session">NEW</button><span class="sp-count" id="sp-count">—</span></div>
+  <div class="sp-list" id="sp-list"><div class="sp-empty">loading…</div></div>
 </div>
 <div id="coach-panel">
   <div class="cp-head"><span>◆ COACH · ASK-ANSWER-ASK</span><span id="cp-streak-badge" class="cp-streak-badge" title="Consecutive days you've practiced">—</span><span class="close" onclick="toggleCoachPanel()">CLOSE</span></div>
@@ -781,6 +810,40 @@ function appendWidgets(msgEl,widgets){
 }
 function quick(t){input.value=t;send()}
 function _qcAsk(t){input.value=t;send()}
+let _spPanelOpen=false,_spItems=[];
+function _spHumanAge(ts){if(!ts)return '—';const s=Math.max(0,Date.now()/1000-ts);if(s<60)return Math.round(s)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';if(s<86400)return (s/3600).toFixed(1)+'h ago';if(s<86400*7)return (s/86400).toFixed(1)+'d ago';return Math.round(s/86400)+'d ago'}
+async function _pollSessionsList(){
+  const list=document.getElementById('sp-list');if(!list)return;
+  try{const r=await fetch('/sessions?enrich=true&limit=30');if(!r.ok){list.innerHTML='<div class="sp-empty">sessions endpoint unavailable</div>';return}
+    const j=await r.json();_spItems=j.sessions||[];
+    const cnt=document.getElementById('sp-count');if(cnt)cnt.textContent=_spItems.length+' session'+(_spItems.length===1?'':'s');
+    if(!_spItems.length){list.innerHTML='<div class="sp-empty">no past sessions yet — start chatting!</div>';return}
+    list.innerHTML=_spItems.map(s=>{
+      const isCur=(s.session_id===sid);const cls='sp-item'+(isCur?' current':'');
+      const safeId=esc(s.session_id||'').replace(/'/g,"\\\\'");
+      const turns=s.turns_n||0;const first=esc(s.first_msg||'(no messages)');
+      return `<div class="${cls}" onclick="_spLoadSession('${safeId}')"><div class="sp-row1"><span class="sp-sid">${esc((s.session_id||'?').slice(-12))}</span><span class="sp-turns">${turns} turn${turns===1?'':'s'}</span><span class="sp-age">${_spHumanAge(s.updated_ts)}</span></div><div class="sp-first">${first}</div><button class="sp-del" onclick="event.stopPropagation();_spDeleteSession('${safeId}')" title="Delete this session">✕</button></div>`
+    }).join('');
+  }catch(e){list.innerHTML='<div class="sp-empty">load error: '+esc(e.message)+'</div>'}
+}
+function toggleSessionsPanel(){_spPanelOpen=!_spPanelOpen;const p=document.getElementById('sessions-panel');p.classList.toggle('show',_spPanelOpen);['persona-panel','learn-panel','tests-panel','shell-panel','coach-panel'].forEach(id=>{const el=document.getElementById(id);if(_spPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_spPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_shPanelOpen=false;_coachPanelOpen=false;document.getElementById('coach-toggle').classList.remove('on');_pollSessionsList()}}
+async function _spLoadSession(targetSid){
+  if(!targetSid)return;
+  if(targetSid===sid){toggleSessionsPanel();return}
+  sid=targetSid;localStorage.setItem(SKEY,sid);
+  document.querySelectorAll('#log .msg').forEach(m=>m.remove());
+  const banner=document.querySelector('.restore-banner');if(banner)banner.remove();
+  await _restoreSession();
+  bubble('bot','Switched to session **'+esc(sid.slice(-12))+'**.','<span class="badge">session</span>');
+  toggleSessionsPanel();
+}
+async function _spDeleteSession(targetSid){
+  if(!targetSid)return;
+  if(!confirm('Delete session '+targetSid.slice(-12)+'? This cannot be undone.'))return;
+  try{await fetch('/sessions/'+encodeURIComponent(targetSid),{method:'DELETE'});if(targetSid===sid){sid='';localStorage.removeItem(SKEY)}_pollSessionsList();bubble('bot','Deleted session '+esc(targetSid.slice(-12))+'.','<span class="badge">session</span>')}
+  catch(e){bubble('bot','Delete failed: '+esc(e.message),'<span class="badge err">session</span>')}
+}
+function _spNewSession(){sid='';localStorage.removeItem(SKEY);document.querySelectorAll('#log .msg').forEach(m=>m.remove());const banner=document.querySelector('.restore-banner');if(banner)banner.remove();bubble('bot','Started a fresh session. Anything you say next will create a new one.','<span class="badge">session</span>');toggleSessionsPanel()}
 async function _fcOpen(path){
   if(!path)return;
   try{const r=await fetch('/skills/file_read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{path}})});const j=await r.json();const c=(j.output&&j.output.content)||j.content||(typeof j==='string'?j:'(no content)');bubble('bot','```\n'+c.slice(0,4000)+(c.length>4000?'\n... ('+(c.length-4000)+' more chars)':'')+'\n```','<span class="badge">file</span>')}
