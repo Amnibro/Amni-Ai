@@ -332,6 +332,18 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .mermaid-pending.mermaid-rendered svg{max-width:100%;height:auto;display:block;margin:0 auto}
 .mermaid-pending.mermaid-ok::before{content:'';display:none}
 .mermaid-fail{color:var(--err);font-family:JetBrains Mono,monospace;font-size:10px;padding:4px 0;border-bottom:1px dotted rgba(255,85,119,.4);margin-bottom:6px}
+#kbd-overlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(500px,92vw);z-index:17;background:rgba(8,14,28,.97);border:1px solid var(--cyan);border-radius:6px;padding:18px 20px;box-shadow:0 0 36px rgba(0,229,255,.4);display:none;font-family:inherit;max-height:88vh;overflow-y:auto}
+#kbd-overlay.show{display:block}
+#kbd-overlay .kbd-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 6px var(--cyan);padding-bottom:10px;border-bottom:1px solid rgba(0,229,255,.18);margin-bottom:12px}
+#kbd-overlay .kbd-close{cursor:pointer;color:var(--mute);padding:1px 8px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:10px;letter-spacing:.2em}
+#kbd-overlay .kbd-close:hover{color:var(--err);border-color:var(--err)}
+#kbd-overlay .kbd-grid{display:grid;grid-template-columns:1fr;gap:4px}
+#kbd-overlay .kbd-row{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:3px;font-size:11px}
+#kbd-overlay .kbd-row:hover{background:rgba(0,229,255,.04)}
+#kbd-overlay .kbd-row span{color:var(--fg);flex:1}
+#kbd-overlay kbd{display:inline-block;padding:2px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.06);color:var(--cyan);border-radius:3px;font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.1em;min-width:90px;text-align:center}
+#kbd-overlay .kbd-foot{padding-top:10px;margin-top:12px;border-top:1px solid rgba(0,229,255,.12);font-size:9px;color:var(--mute);letter-spacing:.05em;text-align:center}
+#kbd-overlay .kbd-foot kbd{min-width:auto;padding:1px 5px;font-size:9px}
 #gesture-tour{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,92vw);z-index:16;background:rgba(8,14,28,.97);border:1px solid var(--cyan);border-radius:6px;padding:22px;box-shadow:0 0 48px rgba(0,229,255,.4);display:none;font-family:inherit;max-height:88vh;overflow-y:auto}
 #gesture-tour.show{display:block}
 #gesture-tour h3{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 6px var(--cyan);margin:0 0 14px;text-align:center}
@@ -791,6 +803,11 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <span class="tour-hint">Hold each pose for ~0.4s; brief cooldown between fires</span>
     <button class="gt-act primary" onclick="_gtClose()">GOT IT</button>
   </div>
+</div>
+<div id="kbd-overlay">
+  <div class="kbd-head"><span>◆ KEYBOARD SHORTCUTS</span><span class="kbd-close" onclick="toggleKbdOverlay()">CLOSE</span></div>
+  <div class="kbd-body"><div style="font-size:10px;color:var(--mute);text-align:center;padding:10px">loading…</div></div>
+  <div class="kbd-foot">Press <kbd>?</kbd> anytime to toggle this overlay · <kbd>Esc</kbd> closes anything open</div>
 </div>
 <div id="train-modal">
   <h3 id="tm-title">◆ TEACH NEW GESTURE</h3>
@@ -1661,6 +1678,45 @@ function toggleMic(){
   else _startBrowserSTT();
 }
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+const _KBD_SHORTCUTS=[
+  {k:'Ctrl+/',d:'Focus input'},
+  {k:'Ctrl+K',d:'Search chat'},
+  {k:'Ctrl+E',d:'Export chat to Markdown'},
+  {k:'Ctrl+B',d:'Show 24-hour briefing'},
+  {k:'Ctrl+G',d:'Open coach panel'},
+  {k:'Ctrl+L',d:'Open learning daemon panel'},
+  {k:'Ctrl+M',d:'Open memory inspector'},
+  {k:'Ctrl+Shift+S',d:'Open sessions browser'},
+  {k:'Ctrl+Shift+P',d:'Open persona / voice picker'},
+  {k:'Ctrl+Shift+E',d:'Open shell audit log'},
+  {k:'?',d:'Show / hide this shortcuts overlay'},
+  {k:'Esc',d:'Close any open panel / overlay'}
+];
+function _kbdOverlayHTML(){return '<div class="kbd-grid">'+_KBD_SHORTCUTS.map(s=>`<div class="kbd-row"><kbd>${esc(s.k)}</kbd><span>${esc(s.d)}</span></div>`).join('')+'</div>'}
+function toggleKbdOverlay(){const ov=document.getElementById('kbd-overlay');if(!ov)return;ov.classList.toggle('show');if(ov.classList.contains('show')&&!ov.dataset.populated){ov.querySelector('.kbd-body').innerHTML=_kbdOverlayHTML();ov.dataset.populated='1'}}
+function _closeAllOverlays(){
+  ['gesture-tour','train-modal','kbd-overlay','chat-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show')});
+  ['persona-panel','learn-panel','tests-panel','shell-panel','sessions-panel','coach-panel'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))el.classList.remove('show')});
+  _personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_shPanelOpen=false;_spPanelOpen=false;_coachPanelOpen=false;
+  document.getElementById('coach-toggle').classList.remove('on');
+  if(_csOpen)closeChatSearch();
+}
+document.addEventListener('keydown',e=>{
+  const inField=e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable);
+  if(e.key==='Escape'){_closeAllOverlays();return}
+  if(e.key==='?'&&!inField&&!e.ctrlKey&&!e.metaKey){e.preventDefault();toggleKbdOverlay();return}
+  if(!(e.ctrlKey||e.metaKey))return;
+  const key=e.key.toLowerCase();const sh=e.shiftKey;
+  if(key==='/'&&!sh){e.preventDefault();input.focus();return}
+  if(key==='e'&&!sh){e.preventDefault();_exportChatMd();return}
+  if(key==='b'&&!sh){e.preventDefault();_qcBriefing();return}
+  if(key==='g'&&!sh){e.preventDefault();toggleCoachPanel();return}
+  if(key==='l'&&!sh){e.preventDefault();toggleLearnPanel();return}
+  if(key==='m'&&!sh){e.preventDefault();toggleMem();return}
+  if(key==='s'&&sh){e.preventDefault();toggleSessionsPanel();return}
+  if(key==='p'&&sh){e.preventDefault();togglePersonaPanel();return}
+  if(key==='e'&&sh){e.preventDefault();toggleShellPanel();return}
+});
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px'});
 async function refreshStats(){try{const r=await fetch('/stats');const j=await r.json();lessonPill.textContent='lessons '+(j.lessons_n||0);}catch{}}
 if(voiceOut)document.getElementById('voiceout-toggle').classList.add('on');

@@ -2,6 +2,42 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.48 — Keyboard shortcuts + cheat-sheet overlay (2026-05-26)
+
+After 47 iters of features stacked into /jarvis, power-users need keyboard access. v6.10.48 wires 10 ctrl-modified shortcuts + `?` cheat-sheet overlay + `Esc` universal-close.
+
+### Shortcut map
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+/ | Focus input |
+| Ctrl+K | Search chat (already wired in v6.10.27) |
+| Ctrl+E | Export chat to Markdown (v6.10.28) |
+| Ctrl+B | 24-hour briefing (v6.10.37) |
+| Ctrl+G | Coach panel |
+| Ctrl+L | Learning daemon panel |
+| Ctrl+M | Memory inspector |
+| Ctrl+Shift+S | Sessions browser |
+| Ctrl+Shift+P | Persona / voice picker |
+| Ctrl+Shift+E | Shell audit log |
+| `?` | Toggle this overlay |
+| `Esc` | Close any open panel / overlay |
+
+`metaKey` (Cmd) accepted alongside `ctrlKey` for macOS.
+
+### `?` overlay
+Tactical mono-font card centered in viewport with all shortcuts in a kbd-styled grid. Hover-highlight per row. Footer reminds about `?` and `Esc`. Populates lazily on first open (no DOM cost when never used). `?` ignored when typing in any INPUT/TEXTAREA/SELECT/contentEditable so it doesn't fire during normal chat.
+
+### Universal `Esc`
+New `_closeAllOverlays()` walks every panel + modal + overlay (gesture-tour, train-modal, kbd-overlay, chat-search, persona-panel, learn-panel, tests-panel, shell-panel, sessions-panel, coach-panel) and dismisses anything open. Cleans up the corresponding open flags + the coach-toggle pill state. One Esc closes everything.
+
+### Why it matters
+After 47 features the surface is dense. Power-users want speed; mouse-clicking through pills + chips + modals breaks flow. With Ctrl-shortcuts a tactical-Jarvis user can ask Adam to brief, scan errors, pick a coach topic, and export the conversation — all without touching the mouse.
+
+### Tests
+21/21 PASS (`tests/test_kbd_shortcuts_v6_10_48.py`): overlay element present + close button + lazy populate, CSS for all 5 hooks, `_closeAllOverlays` covers all 10 panels/modals, `?` toggles + ignores fields, `Esc` closes all, each of the 10 ctrl-shortcuts wired to its handler (focus/export/briefing/coach/learn/mem/sessions/persona/shell + shift modifiers correct), shortcut table has all 12 entries (10 ctrl + ? + Esc), `metaKey` accepted for macOS, v6.10.47 regression intact. Recent chain (v6.10.44 → .47): 70/70 still PASS. Total: 91/91.
+
+---
+
 ## v6.10.47 — Coach spaced-repetition review queue (SM-2-lite) (2026-05-26)
 
 Coach mode generated fresh questions per session but never resurfaced old questions for review. A real spaced-repetition tool brings cards back when they're due. v6.10.47 adds SM-2-lite scheduling + a "DUE FOR REVIEW" section in the coach panel.
