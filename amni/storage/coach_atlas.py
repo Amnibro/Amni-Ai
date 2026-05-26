@@ -84,6 +84,40 @@ class CoachAtlas:
             if m['n_questions']>0:out.append({'topic':t,'mastery_pct':m['pct'],'n_questions':m['n_questions']})
         out.sort(key=lambda x:-x['mastery_pct'])
         return out
+    def streak_stats(self,now:Optional[float]=None)->Dict[str,Any]:
+        """Compute current consecutive-day-use streak across ALL topics.
+        Returns {current_streak, best_streak, total_days_active, days_with_activity:[YYYY-MM-DD, ...], today_active, last_active_ts}."""
+        import datetime as _dt
+        now=now or time.time()
+        days=set();last_ts=0.0;total_answers=0
+        for p in self.root.glob('topic_*.jsonl'):
+            try:
+                for ln in p.read_text(encoding='utf-8').strip().splitlines():
+                    if not ln.strip():continue
+                    try:r=json.loads(ln)
+                    except Exception:continue
+                    if r.get('skipped'):continue
+                    ts=float(r.get('ts') or 0)
+                    if ts<=0:continue
+                    last_ts=max(last_ts,ts);total_answers+=1
+                    d=_dt.datetime.fromtimestamp(ts).date()
+                    days.add(d.isoformat())
+            except Exception:continue
+        if not days:return {'current_streak':0,'best_streak':0,'total_days_active':0,'today_active':False,'last_active_ts':None,'total_answers':0}
+        today=_dt.datetime.fromtimestamp(now).date()
+        sorted_days=sorted(days)
+        sorted_dates=[_dt.date.fromisoformat(d) for d in sorted_days]
+        today_active=today.isoformat() in days
+        ref=today if today_active else (today-_dt.timedelta(days=1))
+        current=0
+        for d in reversed(sorted_dates):
+            if d==ref:current+=1;ref-=_dt.timedelta(days=1)
+            elif d<ref:break
+        best=1;run=1
+        for i in range(1,len(sorted_dates)):
+            if (sorted_dates[i]-sorted_dates[i-1]).days==1:run+=1;best=max(best,run)
+            else:run=1
+        return {'current_streak':current,'best_streak':best,'total_days_active':len(days),'today_active':today_active,'last_active_ts':last_ts,'total_answers':total_answers,'last_7_days':[d for d in sorted_days[-7:]]}
     def forget(self,topic:str)->bool:
         p=self._topic_path(topic)
         if not p.exists():return False

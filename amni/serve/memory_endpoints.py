@@ -30,8 +30,9 @@ def mount(app,agent):
         return {'stats':kg.stats(),'top_subjects':[{'subject':s,'edges_out':n} for s,n in by_deg],'top_predicates':[{'predicate':p,'count':n} for p,n in top_preds]}
     @app.get('/memory/coach')
     def coach(limit:int=50):
-        if getattr(agent,'coach_atlas',None) is None:return {'topics':[]}
-        return {'topics':agent.coach_atlas.list_topics()[:limit]}
+        if getattr(agent,'coach_atlas',None) is None:return {'topics':[],'streak':{}}
+        atlas=agent.coach_atlas
+        return {'topics':atlas.list_topics()[:limit],'streak':atlas.streak_stats() if hasattr(atlas,'streak_stats') else {}}
     @app.get('/memory/daemon')
     def daemon():
         if getattr(agent,'learning_daemon',None) is None:return {'enabled':False,'reason':'no daemon'}
