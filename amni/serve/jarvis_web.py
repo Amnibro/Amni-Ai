@@ -193,6 +193,22 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #wd-pill .wd-lbl{color:var(--cyan);margin-right:6px}
 #wd-pill.unrestricted{border-color:rgba(255,181,71,.35)}
 #wd-pill.unrestricted .wd-lbl{color:#ffb547}
+#wd-panel{position:fixed;bottom:50px;right:24px;width:380px;max-height:60vh;z-index:11;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,229,255,.18);backdrop-filter:blur(8px);display:none;overflow:hidden;flex-direction:column}
+#wd-panel.show{display:flex}
+#wd-panel .wp-head{padding:10px 14px;border-bottom:1px solid rgba(0,229,255,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;justify-content:space-between;align-items:center}
+#wd-panel .wp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:10px}
+#wd-panel .wp-head .close:hover{color:var(--err);border-color:var(--err)}
+#wd-panel .wp-base{padding:6px 14px;font-size:9px;color:var(--mute);font-family:JetBrains Mono,monospace;border-bottom:1px solid rgba(0,229,255,.08);word-break:break-all;letter-spacing:.02em}
+#wd-panel .wp-list{flex:1;overflow-y:auto;padding:6px 8px}
+#wd-panel .wp-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:3px;cursor:pointer;font-size:11px;font-family:JetBrains Mono,monospace;transition:background .12s}
+#wd-panel .wp-row:hover{background:rgba(0,229,255,.08)}
+#wd-panel .wp-row .wp-icon{width:18px;text-align:center;color:var(--mute);font-size:12px}
+#wd-panel .wp-row.dir .wp-icon{color:var(--cyan)}
+#wd-panel .wp-row.dir .wp-name{color:var(--cyan)}
+#wd-panel .wp-row .wp-name{flex:1;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#wd-panel .wp-row .wp-size{color:var(--mute);font-size:9px;letter-spacing:.05em;flex-shrink:0}
+#wd-panel .wp-empty{padding:18px;text-align:center;color:var(--mute);font-size:10px;font-style:italic}
+#wd-panel .wp-trunc{padding:6px 14px;font-size:9px;color:#ffb547;border-top:1px solid rgba(255,181,71,.2);text-align:center;letter-spacing:.05em}
 .status .pill.clickable{cursor:pointer}
 .status .pill.clickable:hover{border-color:var(--cyan);background:rgba(0,229,255,.12)}
 #persona-panel{position:fixed;top:60px;right:24px;width:300px;z-index:11;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,229,255,.22);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
@@ -846,7 +862,12 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 <div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE OR TEXT FILE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
-<span id="wd-pill" onclick="_wdCopy()" title="Click to copy full path"><span class="wd-lbl">WORKDIR</span><span id="wd-path">—</span></span>
+<span id="wd-pill" onclick="_wdToggle()" oncontextmenu="event.preventDefault();_wdCopy();return false" title="Click to browse · Right-click to copy path"><span class="wd-lbl">WORKDIR</span><span id="wd-path">—</span></span>
+<div id="wd-panel">
+  <div class="wp-head"><span>◆ WORKDIR TREE</span><span class="close" onclick="_wdToggle()">CLOSE</span></div>
+  <div class="wp-base" id="wp-base">—</div>
+  <div class="wp-list" id="wp-list"><div class="wp-empty">loading…</div></div>
+</div>
 <script>
 const SKEY='amni_jarvis_session',VKEY='amni_jarvis_voiceout';
 let sid=localStorage.getItem(SKEY)||'';
@@ -1226,6 +1247,37 @@ function _wdCopy(){
   catch{bubble('bot','Workdir: `'+esc(_wdFull)+'` (clipboard unavailable)','<span class="badge err">copy</span>')}
 }
 _loadWorkdir();
+let _wdPanelOpen=false;
+const _WD_EXT_ICON={py:'🐍',js:'📜',ts:'📜',tsx:'📜',jsx:'📜',rs:'🦀',go:'🐹',rb:'💎',md:'📝',txt:'📝',json:'⚙',yaml:'⚙',yml:'⚙',toml:'⚙',html:'🌐',htm:'🌐',css:'🎨',scss:'🎨',sql:'🗄',log:'📋',csv:'📊',tsv:'📊',png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼',svg:'🖼',pdf:'📄',sh:'🖥',bash:'🖥',ps1:'🖥',xml:'⚙',ini:'⚙',cfg:'⚙',env:'⚙',lock:'🔒',exe:'⚡',bat:'🖥',dll:'⚡'};
+function _wdFmtSize(n){if(n==null)return '';if(n<1024)return n+'b';if(n<1024*1024)return Math.round(n/1024)+'kb';if(n<1024*1024*1024)return (n/1024/1024).toFixed(1)+'mb';return (n/1024/1024/1024).toFixed(1)+'gb'}
+async function _wdToggle(){
+  _wdPanelOpen=!_wdPanelOpen;const p=document.getElementById('wd-panel');p.classList.toggle('show',_wdPanelOpen);
+  if(_wdPanelOpen)await _wdLoadTree('');
+}
+async function _wdLoadTree(subpath){
+  const base=document.getElementById('wp-base');const list=document.getElementById('wp-list');
+  list.innerHTML='<div class="wp-empty">loading…</div>';
+  try{
+    const url='/workdir/tree?max_depth=2&max_files=200'+(subpath?'&subpath='+encodeURIComponent(subpath):'');
+    const r=await fetch(url);if(!r.ok){list.innerHTML='<div class="wp-empty">tree unavailable ('+r.status+')</div>';return}
+    const j=await r.json();base.textContent=j.base||'';
+    const entries=j.entries||[];
+    if(!entries.length){list.innerHTML='<div class="wp-empty">empty directory</div>';return}
+    list.innerHTML=entries.map(e=>{
+      const icon=e.is_dir?'📁':(_WD_EXT_ICON[e.ext]||'📄');
+      const cls='wp-row'+(e.is_dir?' dir':'');
+      const indent=' '.repeat(Math.max(0,e.depth)*2);
+      const safe=e.rel.replace(/'/g,"\\\\'");
+      const size=e.is_dir?'':_wdFmtSize(e.size);
+      return `<div class="${cls}" onclick="_wdRowClick('${safe}',${e.is_dir})" title="${esc(e.rel)}"><span class="wp-icon">${icon}</span><span class="wp-name">${esc(indent+e.name)}</span><span class="wp-size">${size}</span></div>`;
+    }).join('');
+    if(j.truncated)list.insertAdjacentHTML('afterend','<div class="wp-trunc">truncated at '+j.max_files+' files — try a deeper subpath</div>');
+  }catch(e){list.innerHTML='<div class="wp-empty">error: '+esc(e.message)+'</div>'}
+}
+function _wdRowClick(rel,isDir){
+  if(isDir){bubble('bot','Drilling into `'+esc(rel)+'`…','<span class="badge">workdir</span>');_wdLoadTree(rel);return}
+  input.value='Read `'+rel+'` and tell me what it does';input.focus();
+}
 async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_applyWelcomeForPersona()}}
 _initPersonaPill();
 let _ldStats=null,_ldPanelOpen=false,_ldPollTimer=null,_ldLastTopic=null,_ldErrCount=0;

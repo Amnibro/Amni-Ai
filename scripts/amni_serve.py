@@ -673,6 +673,34 @@ def main():
         wd=str(skills.workdir) if hasattr(skills,'workdir') else ''
         roots=[str(p) for p in (getattr(skills,'roots',[]) or [])]
         return {'workdir':wd,'roots':roots,'unrestricted':bool(getattr(skills,'unrestricted',False))}
+    @app.get('/workdir/tree')
+    def workdir_tree(max_depth:int=2,max_files:int=200,subpath:str=''):
+        import os as _os
+        wd=Path(skills.workdir) if hasattr(skills,'workdir') else Path('.')
+        base=(wd/subpath).resolve() if subpath else wd.resolve()
+        try:base.relative_to(wd.resolve())
+        except Exception:
+            if not getattr(skills,'unrestricted',False):raise HTTPException(403,'path escapes workdir scope')
+        if not base.exists():raise HTTPException(404,f'path not found: {base}')
+        _IGNORE={'.git','.venv','venv','__pycache__','node_modules','.pytest_cache','.mypy_cache','.idea','.vscode','dist','build','.next','.nuxt'}
+        entries=[];count=[0]
+        def _walk(p,depth):
+            if count[0]>=max_files or depth>max_depth:return
+            try:children=sorted(p.iterdir(),key=lambda x:(not x.is_dir(),x.name.lower()))
+            except (PermissionError,OSError):return
+            for c in children:
+                if count[0]>=max_files:break
+                if c.name.startswith('.') and c.name not in {'.env','.gitignore'}:continue
+                if c.name in _IGNORE:continue
+                try:
+                    is_dir=c.is_dir();size=0 if is_dir else c.stat().st_size;mtime=c.stat().st_mtime
+                    rel=str(c.relative_to(base)).replace('\\','/')
+                except Exception:continue
+                entries.append({'rel':rel,'name':c.name,'is_dir':is_dir,'size':size,'mtime':mtime,'depth':depth,'ext':c.suffix.lstrip('.').lower() if not is_dir else ''})
+                count[0]+=1
+                if is_dir and depth<max_depth:_walk(c,depth+1)
+        _walk(base,0)
+        return {'base':str(base),'workdir':str(wd),'subpath':subpath,'max_depth':max_depth,'max_files':max_files,'truncated':count[0]>=max_files,'entries':entries}
     @app.get('/warmup')
     def warmup_status():return {'warmup':_warmup_state}
     class IntentReq(BaseModel):

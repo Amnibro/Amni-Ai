@@ -2,6 +2,52 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.52 — Workdir file-tree browser (click the pill to drill in) (2026-05-26)
+
+v6.10.51 added the workdir indicator pill — v6.10.52 makes it interactive. Click the pill → tree panel slides in showing the workdir contents. Click a directory → drills in. Click a file → seeds a `Read <path>` prompt in the input.
+
+### New endpoint `GET /workdir/tree?max_depth=2&max_files=200&subpath=`
+- Walks the workdir (or a subpath) with depth + file cap (max 200 per request, configurable)
+- Filters noise dirs: `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `.pytest_cache`, `.mypy_cache`, `.idea`, `.vscode`, `dist`, `build`, `.next`, `.nuxt`
+- Skips dotfiles except `.env` and `.gitignore` (those are real config users want to see)
+- **Scope-checked**: rejects 403 if `subpath` escapes the workdir (unless unrestricted mode)
+- 404 if path missing
+- Returns per-entry: `{rel, name, is_dir, size, mtime, depth, ext}`
+- `truncated: true` if file cap hit
+
+### Pill behavior — split left/right click
+- **Left-click** → toggle the tree panel (was: copy in v6.10.51)
+- **Right-click** → still copies the full path (preserves the v6.10.51 muscle memory)
+- Title updated: `Click to browse · Right-click to copy path`
+
+### Tree panel
+Slide-in panel at bottom-right above the pill (`bottom:50px right:24px`, 380px wide, 60vh max-height). Mono font, cyan-trim, follows the existing panel aesthetic.
+- Header: `◆ WORKDIR TREE` + CLOSE
+- Base row showing current absolute path (mono, breakable)
+- Scrollable list with one row per entry: emoji icon + indented name + size
+- 2-space indent per depth level so structure reads top-down
+- Directories cyan-bold, files default color
+- Truncation warning shown when file cap hit ("truncated at 200 files — try a deeper subpath")
+
+### Extension → emoji map
+```
+py 🐍 · js/ts/tsx/jsx 📜 · rs 🦀 · go 🐹 · rb 💎 · md/txt 📝 · json/yaml/toml/xml/ini/cfg/env ⚙
+html/htm 🌐 · css/scss 🎨 · sql 🗄 · log 📋 · csv/tsv 📊 · png/jpg/jpeg/gif/svg 🖼 · pdf 📄
+sh/bash/ps1/bat 🖥 · exe/dll ⚡ · lock 🔒 · directory 📁 · unknown 📄
+```
+
+### Interactions
+- **Click directory** → drills in (`_wdLoadTree(rel)`), bubbles confirmation
+- **Click file** → fills input with `Read \`<path>\` and tell me what it does`, focuses input
+
+### Size formatter
+`_wdFmtSize(n)` scales bytes through b/kb/mb/gb so files render compact: `42b`, `1.4kb`, `12.7mb`, `2.1gb`.
+
+### Tests
+21/21 PASS (`tests/test_workdir_tree_v6_10_52.py`): endpoint registered with all 3 params, ignores 7 noise dirs, returns 7-field entry shape, truncation flag, scope-check 403 on escape, 404 on missing path, full e2e round-trip (creates temp dir with file + dir + .git, verifies .git filtered + correct entries), panel + 3 helper fns + 4 size units, left-click toggles + right-click copies (split-click), extension-to-emoji map, dir-click drills + file-click seeds Read prompt, truncation row renders, v6.10.51 regression intact. Recent chain (v6.10.48 → .51): 74/74 still PASS. Total: 95/95.
+
+---
+
 ## v6.10.51 — Workdir indicator pill (bottom-right) (2026-05-26)
 
 Adam can write files but the user could lose track of which directory he's scoped to — especially when multiple Adam instances run for different projects. v6.10.51 adds a small footer pill showing the current workdir, with click-to-copy + an amber warning variant for unrestricted mode.
