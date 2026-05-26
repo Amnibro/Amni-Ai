@@ -2,6 +2,52 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.41 — User-trained custom gestures (Adam can learn new ones) (2026-05-26)
+
+Anthony's question: "is it possible to learn/make new gestures as well?" Yes — and that's a clean iter. The 6 built-in gestures (pinch/fist/open_palm/peace/point/thumb_up) were hardcoded; v6.10.41 adds a record-template-from-demo pipeline so users can teach Adam new hand poses and bind them to actions.
+
+### Feature vector
+`_featurize(landmarks)` extracts a 10-dim normalized vector from MediaPipe's 21 hand-landmarks:
+- 5 binary flags: thumb/index/middle/ring/pinky extended (1) or curled (0)
+- 5 normalized distances: thumb-index pinch, thumb-middle, index-middle spread, middle-ring spread, ring-pinky spread (all clamped to [0,1])
+
+Robust to hand position + rotation; sensitive to pose shape. `_featDist(a,b)` is the Euclidean distance over those 10 dims.
+
+### Training flow
+1. User clicks `+ TRAIN` button in the cam-panel header → modal opens
+2. User types a **name** (e.g. `spock`, `ok-sign`, `hang-loose`) + picks **action**:
+   - **Send chat message** → routes user-typed prompt through `quick()`
+   - **Trigger built-in action** → maps to voice/clear/theme/submit/system handlers
+   - **Open panel** → toggles coach/learn/tests/shell/sessions/persona panels
+3. Click `RECORD` → 3-second countdown overlay → 1.5s recording window
+4. During the 1.5s, every frame's `_featurize(lm)` is pushed into `_tmFrames`
+5. On done, template = per-feature mean across all collected frames
+6. Saved to `localStorage` as `amni_jarvis_custom_gestures` (capped at 20)
+7. Bubble confirms: *"Trained new gesture **NAME** (N samples). Make it again on camera to fire its action."*
+
+Rejects when <5 frames captured (probably means GESTURE mode wasn't enabled).
+
+### Recognition pipeline
+`_onHandsResults` now runs:
+1. `classifyGesture(lm)` → built-in (existing 6, unchanged)
+2. If `g==='unknown'` AND features available → `_matchCustom(features)` finds nearest template
+3. If distance < `_CUSTOM_MATCH_THRESHOLD` (0.18) → fires the custom gesture's bound action
+4. Readout shows `★ NAME` for custom matches (built-ins remain uppercase)
+5. Same cooldown + flash + apply pipeline — debouncing inherited
+
+### UI
+- Custom gestures list at bottom of cam-panel (below the readout) with per-row ✕ delete
+- + TRAIN button in cam-panel header, magenta-themed modal
+- Modal has 2 steps (form → countdown+record) with a status line for feedback
+- All persists in localStorage; survives page reload
+
+### Tests
+23/23 PASS (`tests/test_custom_gestures_v6_10_41.py`): train button + modal structure, 3 action type options, `_featurize` uses correct landmark indices + reuses existing helpers, `_featDist` Euclidean, threshold constant, localStorage key + load/save fns, 20-cap on save, `_matchCustom` returns best-distance match, recognition tries custom only after built-in returns unknown, recording collects per-frame features, name + prompt-action validation, 1.5s window, 3-2-1 countdown, template = mean of frames, min-5-sample reject, all 3 action dispatchers (prompt/builtin/panel) wired with their action mappings, delete fn, list rendering, v6.10.40 regression intact (briefing SKILLS + /memory/skill-stats endpoint still 200).
+
+Combined with v6.10.30 voice waveform + v6.10.38 adam-core + v6.10.40 skill stats: Adam now learns from the user across every input modality — voice (Piper voices), code (sandbox), facts (LearningDaemon), and hands.
+
+---
+
 ## v6.10.40 — Per-skill latency stats: Adam knows how fast his skills run (2026-05-26)
 
 `SkillRegistry.call()` already wrote every invocation to `logs/agent_skill_calls.jsonl` with `elapsed_ms` and `ok`, but those numbers never rolled up anywhere. v6.10.40 adds a tiny aggregator + endpoint + threads the result into the existing v6.10.37 briefing as a SKILLS section.

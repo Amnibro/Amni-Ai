@@ -478,6 +478,29 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #cam-video{transform:scaleX(-1);object-fit:cover}
 #cam-panel .gesture-readout{padding:6px 10px;border-top:1px solid rgba(0,229,255,.18);font-size:10px;letter-spacing:.15em;color:var(--cyan);text-shadow:0 0 4px var(--cyan);text-align:center;min-height:22px}
 #cam-panel.idle .gesture-readout{color:var(--mute);text-shadow:none}
+#cam-panel .cam-train-btn{font-size:9px;padding:2px 6px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.04);color:var(--cyan);cursor:pointer;border-radius:2px;letter-spacing:.15em;font-family:inherit}
+#cam-panel .cam-train-btn:hover{background:rgba(0,229,255,.18)}
+#cam-panel .cam-train-btn.recording{background:rgba(255,77,200,.18);border-color:var(--magenta);color:var(--magenta);animation:pulse 0.6s ease-in-out infinite}
+#cam-panel .custom-list{border-top:1px solid rgba(0,229,255,.12);padding:4px 8px;font-size:9px;max-height:80px;overflow-y:auto}
+#cam-panel .custom-row{display:flex;align-items:center;gap:6px;padding:2px 0}
+#cam-panel .custom-row .cg-name{color:var(--magenta);text-shadow:0 0 3px var(--magenta);flex:1;text-transform:uppercase;letter-spacing:.1em}
+#cam-panel .custom-row .cg-act{color:var(--mute);font-size:8px;letter-spacing:.05em}
+#cam-panel .custom-row .cg-del{color:var(--err);cursor:pointer;padding:0 4px;border-radius:2px;border:1px solid transparent}
+#cam-panel .custom-row .cg-del:hover{border-color:var(--err);background:rgba(255,91,91,.1)}
+#train-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:15;background:rgba(8,14,28,.97);border:1px solid var(--magenta);border-radius:6px;padding:18px;box-shadow:0 0 40px rgba(255,77,200,.4);display:none;font-family:inherit}
+#train-modal.show{display:block}
+#train-modal h3{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 6px var(--magenta);margin:0 0 14px;text-align:center}
+#train-modal label{display:block;font-size:9px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;margin:8px 0 4px}
+#train-modal input,#train-modal select{width:100%;padding:7px 10px;background:rgba(0,0,0,.5);border:1px solid rgba(255,77,200,.3);color:var(--fg);font-family:inherit;font-size:12px;border-radius:3px}
+#train-modal input:focus,#train-modal select:focus{outline:none;border-color:var(--magenta)}
+#train-modal .tm-actions{display:flex;gap:8px;margin-top:14px}
+#train-modal button.tm-act{flex:1;padding:8px 12px;border:1px solid rgba(255,77,200,.4);background:rgba(255,77,200,.06);color:var(--magenta);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
+#train-modal button.tm-act.primary{background:rgba(255,77,200,.18);border-color:var(--magenta)}
+#train-modal button.tm-act:hover{background:rgba(255,77,200,.25)}
+#train-modal .tm-status{font-size:10px;color:var(--mute);letter-spacing:.05em;margin-top:10px;min-height:14px;text-align:center}
+#train-modal .tm-prompt-row{display:flex;gap:6px;margin-top:4px}
+#train-modal .tm-prompt-row input{flex:1}
+#train-modal .tm-countdown{font-size:36px;color:var(--magenta);text-shadow:0 0 12px var(--magenta);text-align:center;font-family:JetBrains Mono,monospace;font-weight:bold;letter-spacing:.05em}
 #convo-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px;position:relative}
 #convo-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 12px rgba(0,229,255,.3)}
 #wake-toggle.on{color:#ffe066;border-color:#ffe066;background:rgba(255,224,102,.08);box-shadow:0 0 10px rgba(255,224,102,.28)}
@@ -709,13 +732,30 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div id="tp-list"><div class="tp-empty">loading…</div></div>
   </div>
 </div>
+<div id="train-modal">
+  <h3 id="tm-title">◆ TEACH NEW GESTURE</h3>
+  <div id="tm-step-1">
+    <label>GESTURE NAME</label>
+    <input type="text" id="tm-name" placeholder="e.g. spock, ok-sign, hang-loose">
+    <label>ACTION WHEN RECOGNIZED</label>
+    <select id="tm-action-type"><option value="prompt">Send chat message</option><option value="builtin">Trigger built-in action</option><option value="panel">Open panel</option></select>
+    <div class="tm-prompt-row" id="tm-action-input-wrap"><input type="text" id="tm-action-value" placeholder="text or selector"></div>
+    <div class="tm-actions"><button class="tm-act" onclick="_tmClose()">CANCEL</button><button class="tm-act primary" onclick="_tmStartRecord()">RECORD</button></div>
+    <div class="tm-status" id="tm-status">Hold the gesture in view of the camera, then click RECORD</div>
+  </div>
+  <div id="tm-step-2" style="display:none">
+    <div class="tm-countdown" id="tm-countdown">3</div>
+    <div class="tm-status" id="tm-rec-status">Get your hand ready…</div>
+  </div>
+</div>
 <div id="cam-panel">
-  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span id="cam-fps">— fps</span></div>
+  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span><button class="cam-train-btn" id="cam-train-btn" onclick="_tmOpen()" title="Teach a new gesture">+ TRAIN</button> <span id="cam-fps">— fps</span></span></div>
   <div id="cam-stage">
     <video id="cam-video" autoplay playsinline muted></video>
     <canvas id="cam-landmarks"></canvas>
   </div>
   <div class="gesture-readout" id="gesture-readout">—</div>
+  <div class="custom-list" id="custom-list"></div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
@@ -1529,6 +1569,68 @@ function classifyGesture(lm){
   return 'unknown';
 }
 const GESTURE_ACTIONS={pinch:'toggle voice',fist:'clear chat',open_palm:'system check',peace:'cycle theme',point:'next question',thumb_up:'submit input'};
+const CUSTOM_GESTURE_KEY='amni_jarvis_custom_gestures';
+const _CUSTOM_MATCH_THRESHOLD=0.18;
+function _featurize(lm){
+  if(!lm||lm.length<21)return null;
+  const t=lm[4],i=lm[8],m=lm[12],r=lm[16],p=lm[20];
+  const ext={t:_dist(t,lm[0])>_dist(lm[2],lm[0])?1:0,i:_fingerExtended(lm,8,6,5)?1:0,m:_fingerExtended(lm,12,10,9)?1:0,r:_fingerExtended(lm,16,14,13)?1:0,p:_fingerExtended(lm,20,18,17)?1:0};
+  const pinch=_dist(t,i),tm=_dist(t,m),im=_dist(i,m),mr=_dist(m,r),rp=_dist(r,p);
+  return [ext.t,ext.i,ext.m,ext.r,ext.p,Math.min(1,pinch*4),Math.min(1,tm*3),Math.min(1,im*5),Math.min(1,mr*5),Math.min(1,rp*5)];
+}
+function _featDist(a,b){let s=0;const n=Math.min(a.length,b.length);for(let i=0;i<n;i++){const d=a[i]-b[i];s+=d*d;}return Math.sqrt(s/n)}
+function _loadCustomGestures(){try{return JSON.parse(localStorage.getItem(CUSTOM_GESTURE_KEY)||'[]')||[]}catch{return []}}
+function _saveCustomGestures(arr){try{localStorage.setItem(CUSTOM_GESTURE_KEY,JSON.stringify(arr.slice(0,20)))}catch{}}
+let _customGestures=_loadCustomGestures();
+function _matchCustom(features){
+  if(!features||!_customGestures.length)return null;
+  let best=null,bestD=999;
+  for(const g of _customGestures){
+    const d=_featDist(features,g.template);
+    if(d<bestD){bestD=d;best=g}
+  }
+  return (best&&bestD<_CUSTOM_MATCH_THRESHOLD)?{gesture:best,distance:bestD}:null;
+}
+function _renderCustomList(){
+  const el=document.getElementById('custom-list');if(!el)return;
+  if(!_customGestures.length){el.innerHTML='';return}
+  el.innerHTML=_customGestures.map((g,i)=>`<div class="custom-row"><span class="cg-name">${esc(g.name)}</span><span class="cg-act">${esc(g.action_type||'prompt')}</span><span class="cg-del" onclick="_deleteCustomGesture(${i})" title="Delete">✕</span></div>`).join('');
+}
+function _deleteCustomGesture(idx){if(idx<0||idx>=_customGestures.length)return;const name=_customGestures[idx].name;_customGestures.splice(idx,1);_saveCustomGestures(_customGestures);_renderCustomList();bubble('bot','Deleted custom gesture **'+esc(name)+'**','<span class="badge">gesture</span>')}
+let _tmRecording=false,_tmFrames=[],_tmRecordTimer=null;
+function _tmOpen(){const m=document.getElementById('train-modal');m.classList.add('show');document.getElementById('tm-step-1').style.display='block';document.getElementById('tm-step-2').style.display='none';document.getElementById('tm-name').value='';document.getElementById('tm-action-value').value='';document.getElementById('tm-name').focus()}
+function _tmClose(){const m=document.getElementById('train-modal');m.classList.remove('show');_tmRecording=false;if(_tmRecordTimer){clearInterval(_tmRecordTimer);_tmRecordTimer=null}}
+function _tmStartRecord(){
+  const name=(document.getElementById('tm-name').value||'').trim().slice(0,30);
+  if(!name){document.getElementById('tm-status').textContent='Name required.';return}
+  if(!convoAnalyser&&!_hands){}
+  const actType=document.getElementById('tm-action-type').value;const actVal=(document.getElementById('tm-action-value').value||'').trim();
+  if(actType==='prompt'&&!actVal){document.getElementById('tm-status').textContent='Action message required.';return}
+  document.getElementById('tm-step-1').style.display='none';document.getElementById('tm-step-2').style.display='block';
+  let cd=3;const cdEl=document.getElementById('tm-countdown');const stEl=document.getElementById('tm-rec-status');cdEl.textContent=cd;stEl.textContent='Hold your gesture steady…';
+  const cdTimer=setInterval(()=>{cd--;if(cd>0){cdEl.textContent=cd}else{clearInterval(cdTimer);_tmRecording=true;_tmFrames=[];cdEl.textContent='REC';stEl.textContent='Recording 1.5s of landmarks…';
+    setTimeout(()=>{_tmRecording=false;if(_tmFrames.length<5){stEl.textContent='Not enough samples — enable GESTURE first, then retry.';setTimeout(_tmClose,1500);return}
+      const mean=new Array(_tmFrames[0].length).fill(0);
+      for(const f of _tmFrames)for(let k=0;k<f.length;k++)mean[k]+=f[k];
+      for(let k=0;k<mean.length;k++)mean[k]/=_tmFrames.length;
+      _customGestures.push({name,action_type:actType,action_value:actVal,template:mean,samples:_tmFrames.length,created_at:Date.now()});
+      _saveCustomGestures(_customGestures);_renderCustomList();
+      stEl.textContent='Saved **'+name+'** ('+_tmFrames.length+' samples).';bubble('bot','Trained new gesture **'+esc(name)+'** ('+_tmFrames.length+' samples). Make it again on camera to fire its action.','<span class="badge">gesture</span>');
+      setTimeout(_tmClose,1200);},1500);
+  }},1000);
+}
+function applyCustomAction(g){
+  if(g.action_type==='prompt'&&g.action_value){quick(g.action_value);return}
+  if(g.action_type==='builtin'){
+    const map={'voice':toggleVoiceOut,'clear':()=>{log.innerHTML='';bubble('bot','(chat cleared)')},'theme':_cycleTheme,'submit':()=>{const t=input.value.trim();if(t)send()},'system':()=>quick('Show me current system stats')};
+    const fn=map[(g.action_value||'').toLowerCase()];if(fn)fn();return;
+  }
+  if(g.action_type==='panel'){
+    const panels={'coach':toggleCoachPanel,'learn':toggleLearnPanel,'tests':toggleTestsPanel,'shell':toggleShellPanel,'sessions':toggleSessionsPanel,'persona':togglePersonaPanel};
+    const fn=panels[(g.action_value||'').toLowerCase()];if(fn)fn();return;
+  }
+}
+_renderCustomList();
 function _flashGesture(name){
   _flash.textContent=name.replace('_',' ').toUpperCase();_flash.classList.add('show');
   setTimeout(()=>_flash.classList.remove('show'),650);
@@ -1558,11 +1660,15 @@ function _onHandsResults(res){
   ctx.shadowBlur=0;ctx.strokeStyle='rgba(0,229,255,.45)';ctx.lineWidth=1.4;
   const conns=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
   for(const [a,b] of conns){ctx.beginPath();ctx.moveTo((1-lms[a].x)*_camLm.width,lms[a].y*_camLm.height);ctx.lineTo((1-lms[b].x)*_camLm.width,lms[b].y*_camLm.height);ctx.stroke()}
-  const g=classifyGesture(lms);_readout.textContent=g==='unknown'?'—':g.replace('_',' ').toUpperCase();
+  const features=_featurize(lms);
+  if(_tmRecording&&features)_tmFrames.push(features);
+  let g=classifyGesture(lms);let custom=null;
+  if(g==='unknown'&&features){const m=_matchCustom(features);if(m){custom=m;g='custom:'+m.gesture.name}}
+  _readout.textContent=g==='unknown'?'—':(custom?('★ '+custom.gesture.name.toUpperCase()):g.replace('_',' ').toUpperCase());
   const now=performance.now();frameTimes.push(now);if(frameTimes.length>30)frameTimes.shift();
   if(frameTimes.length>=2){const fps=Math.round(1000*(frameTimes.length-1)/(frameTimes[frameTimes.length-1]-frameTimes[0]));document.getElementById('cam-fps').textContent=fps+' fps'}
   if(g!=='unknown'&&g!==lastGesture&&(now-lastGestureAt)>GESTURE_COOLDOWN_MS){
-    lastGesture=g;lastGestureAt=now;_flashGesture(g);applyGestureAction(g);
+    lastGesture=g;lastGestureAt=now;_flashGesture(custom?custom.gesture.name:g);if(custom)applyCustomAction(custom.gesture);else applyGestureAction(g);
   }else if(g==='unknown'){lastGesture=''}
 }
 async function _loadMediaPipe(){
