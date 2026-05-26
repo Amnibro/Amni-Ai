@@ -1518,8 +1518,8 @@ function _handleSlashCommand(text){
 async function send(){
   if(send_btn&&send_btn.dataset.streaming==='1'){stopStream();return}
   const text=input.value.trim();if(!text)return;
-  if(text.startsWith('/')&&_handleSlashCommand(text)){pushInputHistory(text);input.value='';input.style.height='auto';input.focus();return}
-  pushInputHistory(text);
+  if(text.startsWith('/')&&_handleSlashCommand(text)){pushInputHistory(text);input.value='';input.style.height='auto';_clearDraft();input.focus();return}
+  pushInputHistory(text);_clearDraft();
   input.value='';input.style.height='auto';
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
@@ -2533,6 +2533,14 @@ function toggleMic(){
   if(_voiceBackends.stt && typeof MediaRecorder!=='undefined' && navigator.mediaDevices)_startServerSTT();
   else _startBrowserSTT();
 }
+const _INPUT_DRAFT_KEY='amni_jarvis_input_draft';
+(function(){try{const d=localStorage.getItem(_INPUT_DRAFT_KEY);if(d&&!input.value){input.value=d;requestAnimationFrame(()=>{try{input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px'}catch(_){}})}}catch(_){}})();
+let _draftSaveTimer=null;
+input.addEventListener('input',()=>{
+  clearTimeout(_draftSaveTimer);
+  _draftSaveTimer=setTimeout(()=>{try{const v=input.value||'';if(v.trim())localStorage.setItem(_INPUT_DRAFT_KEY,v);else localStorage.removeItem(_INPUT_DRAFT_KEY)}catch(_){}},250);
+});
+function _clearDraft(){try{localStorage.removeItem(_INPUT_DRAFT_KEY)}catch(_){}}
 const _INPUT_HISTORY_KEY='amni_jarvis_input_history';const _INPUT_HISTORY_MAX=20;
 let _inputHistory=(()=>{try{const j=JSON.parse(localStorage.getItem(_INPUT_HISTORY_KEY)||'[]');return Array.isArray(j)?j.slice(-_INPUT_HISTORY_MAX):[]}catch{return[]}})();
 let _historyIdx=-1;let _draftBeforeRecall='';
