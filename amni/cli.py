@@ -413,6 +413,60 @@ def _render_dashboard(base:str,data:dict)->str:
         lines.append(f'  ║    proposed {proposed:>3} · attempted {attempted:>3} · validated {validated:>3} · deployed {deployed:>3}      ║')
     lines.append(f'  ╚══════════════════════════════════════════════════════════════════╝')
     return '\n'.join(lines)
+def cmd_failures(args):
+    action=(getattr(args,'action',None) or 'list').strip().lower()
+    url=getattr(args,'url',None)
+    if url and not url.startswith('http'):url='http://'+url
+    if url:url=url.rstrip('/')
+    if action=='list':return _failures_list(args,url)
+    if action=='stats':return _failures_stats(args,url)
+    if action=='ack':return _failures_ack(args,url)
+    print(f'[failures] unknown action {action!r}; use list|stats|ack',flush=True);sys.exit(1)
+def _failures_list(args,url):
+    if url:
+        r=_fetch_json(url+f'/memory/skill-failures?limit={int(args.limit or 20)}'+(f'&skill={args.skill}' if args.skill else ''))
+        if r is None:print(f'[failures] unreachable: {url}',flush=True);sys.exit(1)
+        failures=r.get('failures') or [];stats=r.get('stats') or {}
+    else:
+        from amni.serve.skill_failures import recent,stats as _stats
+        failures=recent(limit=int(args.limit or 20),skill_filter=args.skill or None);stats=_stats()
+    if args.json:print(json.dumps({'failures':failures,'stats':stats},indent=2,default=str),flush=True);return
+    if not failures:print('\n  No skill failures recorded.  [OK]\n',flush=True);return
+    total=stats.get('total',0);unacked=stats.get('unacked',0)
+    print(f'\n  Skill failures · {total} total · {unacked} unacked\n',flush=True)
+    for f in failures[-int(args.limit or 20):]:
+        ts=f.get('iso','?');sk=f.get('skill','?');err=(f.get('error') or '')[:120];msg=(f.get('message') or '')[:80]
+        print(f'  {ts}  [{sk}]',flush=True);print(f'    msg: {msg}',flush=True);print(f'    err: {err}',flush=True);print('',flush=True)
+def _failures_stats(args,url):
+    if url:
+        r=_fetch_json(url+'/memory/skill-failures?limit=1')
+        if r is None:print(f'[failures] unreachable: {url}',flush=True);sys.exit(1)
+        s=r.get('stats') or {}
+    else:
+        from amni.serve.skill_failures import stats
+        s=stats()
+    if args.json:print(json.dumps(s,indent=2,default=str),flush=True);return
+    print(f'\n  total      {s.get("total",0)}',flush=True)
+    print(f'  unacked    {s.get("unacked",0)}',flush=True)
+    print(f'  ack count  {s.get("ack_count",0)}',flush=True)
+    print(f'  last       {s.get("last_iso") or "—"}\n',flush=True)
+    by=s.get('by_skill') or {}
+    if by:
+        print('  by skill:',flush=True)
+        for sk,n in by.items():print(f'    {sk:<24} {n}',flush=True)
+        print('',flush=True)
+def _failures_ack(args,url):
+    if url:
+        import urllib.request
+        try:
+            req=urllib.request.Request(url+'/memory/skill-failures/ack',data=b'',method='POST',headers={'content-type':'application/json'})
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[failures] ack failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.skill_failures import ack_all
+        r=ack_all()
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    print(f'  Acknowledged {r.get("acked",0)} skill failure(s) as of {r.get("ack_iso","?")}.',flush=True)
 def cmd_mcp(args):
     action=(getattr(args,'action',None) or 'list').strip().lower()
     if action=='list':return _mcp_list(args)
@@ -748,6 +802,13 @@ def main():
     pers.add_argument('--overwrite',action='store_true',help='Allow import to replace an existing same-named persona')
     pers.add_argument('--json',action='store_true',help='JSON output for list/show')
     pers.set_defaults(func=cmd_persona)
+    fai=sub.add_parser('failures',help='Inspect skill-failure log: list / stats / ack')
+    fai.add_argument('action',nargs='?',default='list',choices=['list','stats','ack'])
+    fai.add_argument('--limit',type=int,default=20)
+    fai.add_argument('--skill',default=None,help='Filter to a single skill name')
+    fai.add_argument('--url',default=None,help='Hit a running server instead of reading local files')
+    fai.add_argument('--json',action='store_true')
+    fai.set_defaults(func=cmd_failures)
     mcp=sub.add_parser('mcp',help='Inspect or test the MCP tool surface of a running Adam server')
     mcp.add_argument('action',nargs='?',default='list',choices=['list','test','ping'],help='list (default) | test | ping')
     mcp.add_argument('tool',nargs='?',default=None,help='Tool name (for action=test); e.g. ask_adam, skill_calc')
