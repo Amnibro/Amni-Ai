@@ -247,6 +247,9 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #cam-panel.idle .gesture-readout{color:var(--mute);text-shadow:none}
 #convo-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px;position:relative}
 #convo-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 12px rgba(0,229,255,.3)}
+#wake-toggle.on{color:#ffe066;border-color:#ffe066;background:rgba(255,224,102,.08);box-shadow:0 0 10px rgba(255,224,102,.28)}
+.wake-ambient{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(8,14,28,.85);border:1px solid rgba(255,224,102,.35);color:#ffe066;font-size:10px;letter-spacing:.18em;padding:6px 14px;border-radius:3px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;text-transform:uppercase;font-family:inherit;text-shadow:0 0 4px rgba(255,224,102,.6)}
+.wake-ambient.show{opacity:.85}
 #convo-toggle .convo-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mute);transition:all .2s}
 #convo-toggle.on .convo-dot{background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:convoPulse 1.4s ease-in-out infinite}
 #convo-toggle.state-recording .convo-dot{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:convoPulse .8s ease-in-out infinite}
@@ -329,6 +332,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <button id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
     <button id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
     <button id="convo-toggle" type="button" onclick="toggleConvo()" title="Continuous hands-free conversation (VAD)"><span class="convo-dot"></span>CONVO</button>
+    <button id="wake-toggle" type="button" onclick="toggleWake()" title='When on, only respond in convo mode if you say "Adam, ..." or "Hey Adam, ..." (Jarvis-style wake word)'>WAKE</button>
     <button id="vad-toggle" type="button" onclick="toggleVadPanel()" title="Tune VAD thresholds for your microphone">VAD</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
@@ -984,6 +988,36 @@ function _isWhisperHallucination(text){
   }
   return false;
 }
+const WAKE_KEY='amni_jarvis_wake';
+let wakeOn=localStorage.getItem(WAKE_KEY)==='1';
+const _WAKE_PREFIX='(?:hey[,\\s]+|ok(?:ay)?[,\\s]+|yo[,\\s]+|hi[,\\s]+|hello[,\\s]+)?(?:adam|atom|adams|adan)';
+const _WAKE_PATTERN_PUNCT=new RegExp('^\\s*'+_WAKE_PREFIX+'[,:;!?]+\\s*(.+)','i');
+const _WAKE_PATTERN_SPACE=new RegExp('^\\s*'+_WAKE_PREFIX+'\\s+(.+)','i');
+const _WAKE_PATTERN=_WAKE_PATTERN_SPACE;
+const _WAKE_DECLARATIVE=/^(?:is|isn't|was|wasn't|were|weren't|has|hasn't|have|haven't|had|hadn't|seems|seemed|looks|looked|appears|appeared|sounds|sounded|seems\s+to|got|gets)\b/i;
+function _wakeWordGate(text){
+  if(!wakeOn)return text;
+  const t=text||'';
+  const mp=t.match(_WAKE_PATTERN_PUNCT);
+  if(mp){const s=(mp[1]||'').trim();return s.length>=2?s:null}
+  const ms=t.match(_WAKE_PATTERN_SPACE);
+  if(!ms)return null;
+  const s=(ms[1]||'').trim();
+  if(_WAKE_DECLARATIVE.test(s))return null;
+  return s.length>=2?s:null;
+}
+let _ambientFlashTimer=null;
+function _flashAmbient(text){
+  const led=document.getElementById('ld-led');
+  let amb=document.getElementById('wake-ambient');
+  if(!amb){amb=document.createElement('div');amb.id='wake-ambient';amb.className='wake-ambient';document.body.appendChild(amb)}
+  amb.textContent='heard: '+(text||'').slice(0,60)+((text||'').length>60?'…':'');
+  amb.classList.add('show');
+  clearTimeout(_ambientFlashTimer);
+  _ambientFlashTimer=setTimeout(()=>amb.classList.remove('show'),2200);
+}
+function toggleWake(){wakeOn=!wakeOn;localStorage.setItem(WAKE_KEY,wakeOn?'1':'0');document.getElementById('wake-toggle').classList.toggle('on',wakeOn);if(wakeOn)bubble('bot','Wake word **on** — only respond when you say "Adam, ..." in convo mode.','<span class="badge">wake</span>');else bubble('bot','Wake word **off** — respond to every convo utterance.','<span class="badge">wake</span>')}
+if(wakeOn){setTimeout(()=>{const b=document.getElementById('wake-toggle');if(b)b.classList.add('on')},50)}
 let _vadConfig={..._vadDefaults};
 try{const saved=JSON.parse(localStorage.getItem(VAD_KEY)||'null');if(saved&&typeof saved==='object')_vadConfig={..._vadDefaults,...saved}}catch{}
 function _saveVadConfig(){try{localStorage.setItem(VAD_KEY,JSON.stringify(_vadConfig))}catch{}}
@@ -1097,10 +1131,12 @@ async function _convoFinishRecording(){
     if(!r.ok||!(j.text||'').trim()){convoFailCount++;if(convoFailCount>=CONVO_MAX_FAILS){_convoFail('too many empty transcriptions');return};_setConvoState('listening');return}
     const text=j.text.trim();
     if(_isWhisperHallucination(text)){console.debug('convo: dropped Whisper hallucination:',JSON.stringify(text));_setConvoState('listening');return}
+    const gated=_wakeWordGate(text);
+    if(gated===null){console.debug('convo: no wake word — ignoring',JSON.stringify(text));_flashAmbient(text);_setConvoState('listening');return}
     convoFailCount=0;
     _setConvoState('thinking');
     input.value='';
-    await _convoStreamSend(text);
+    await _convoStreamSend(gated);
   }catch(e){console.warn('convo transcribe failed',e);convoFailCount++;if(convoFailCount>=CONVO_MAX_FAILS){_convoFail('transcribe error')}else _setConvoState('listening')}
 }
 function _convoFail(reason){
