@@ -54,6 +54,12 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .bubble code{background:rgba(0,0,0,.6);padding:1px 6px;border-radius:2px;font-size:11px;color:var(--cyan)}
 .bubble pre{background:rgba(0,0,0,.7);border:1px solid rgba(0,229,255,.15);padding:10px 12px;border-radius:3px;overflow-x:auto;font-size:11px;margin:6px 0;color:var(--cyan)}
 .bubble pre code{background:none;padding:0;color:inherit}
+.bubble pre,.widget pre{position:relative}
+.bubble pre .code-copy,.widget pre .code-copy{position:absolute;top:4px;right:4px;padding:2px 8px;background:rgba(8,14,28,.85);border:1px solid rgba(0,229,255,.25);color:var(--mute);font-family:JetBrains Mono,monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;border-radius:2px;opacity:0;transition:opacity .15s,color .15s,background .15s,border-color .15s;z-index:2}
+.bubble pre:hover .code-copy,.widget pre:hover .code-copy,.bubble pre .code-copy.ok,.widget pre .code-copy.ok,.bubble pre .code-copy.err,.widget pre .code-copy.err{opacity:.95}
+.bubble pre .code-copy:hover,.widget pre .code-copy:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.1)}
+.bubble pre .code-copy.ok,.widget pre .code-copy.ok{color:#00ff9c;border-color:rgba(0,255,156,.5);background:rgba(0,255,156,.08)}
+.bubble pre .code-copy.err,.widget pre .code-copy.err{color:#ff7b7b;border-color:rgba(255,123,123,.5);background:rgba(255,123,123,.08)}
 .bubble pre[class*="language-"]{background:rgba(0,0,0,.78);border:1px solid rgba(0,229,255,.22);box-shadow:inset 0 0 12px rgba(0,229,255,.05)}
 .bubble pre[class*="language-"] code{font-family:JetBrains Mono,SF Mono,Consolas,monospace;font-size:11px;text-shadow:none}
 .bubble .token.comment,.bubble .token.prolog,.bubble .token.doctype,.bubble .token.cdata{color:#5e7a99}
@@ -1317,6 +1323,40 @@ function _updateJumpPill(){
   pill.classList.toggle('show',!atBottom);
 }
 log.addEventListener('scroll',_updateJumpPill,{passive:true});
+function _addCopyButtonsTo(root){
+  if(!root||typeof root.querySelectorAll!=='function')return;
+  const blocks=root.querySelectorAll('pre:not([data-copy-wired])');
+  blocks.forEach(pre=>{
+    if(!pre.querySelector('code'))return;
+    pre.setAttribute('data-copy-wired','1');
+    pre.style.position=pre.style.position||'relative';
+    const btn=document.createElement('button');
+    btn.className='code-copy';btn.type='button';btn.textContent='copy';btn.title='Copy code to clipboard';
+    btn.onclick=ev=>{
+      ev.stopPropagation();
+      const code=pre.querySelector('code');
+      const text=code?(code.textContent||''):(pre.textContent||'');
+      try{
+        navigator.clipboard.writeText(text).then(()=>{btn.textContent='copied!';btn.classList.add('ok');setTimeout(()=>{btn.textContent='copy';btn.classList.remove('ok')},1400)})
+        .catch(()=>{btn.textContent='clipboard?';btn.classList.add('err');setTimeout(()=>{btn.textContent='copy';btn.classList.remove('err')},1800)});
+      }catch(_){btn.textContent='err';setTimeout(()=>{btn.textContent='copy'},1400)}
+    };
+    pre.appendChild(btn);
+  });
+}
+const _copyObs=new MutationObserver(muts=>{
+  for(const m of muts){
+    if(m.type!=='childList')continue;
+    m.addedNodes.forEach(n=>{
+      if(n.nodeType!==1)return;
+      if(n.tagName==='PRE')_addCopyButtonsTo(n.parentElement||n);
+      else _addCopyButtonsTo(n);
+    });
+    if(m.target&&m.target.tagName==='CODE')_addCopyButtonsTo(m.target.parentElement);
+  }
+});
+try{_copyObs.observe(log,{childList:true,subtree:true,characterData:false})}catch(_){}
+_addCopyButtonsTo(log);
 let _typePending='';let _typeShown=0;let _typeRAF=null;let _typeBot=null;let _typeOnDone=null;
 function _personaTypeCps(){
   const cur=(_selectedPersona||personaName||'').toLowerCase();
