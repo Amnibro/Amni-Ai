@@ -2,6 +2,41 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.12 — Live learning daemon visibility chip in /jarvis (2026-05-26)
+
+The 24/7 LearningDaemon was already running — but invisible to the user. v6.10.12 surfaces it as a live header pill + slide-in inspection panel, and fixes a latent bug where `/skills/{name}` HTTP calls couldn't reach the daemon/coach/scheduler/KG/etc. because those registries weren't in the skill ctx.
+
+### Daemon: track current_topic + recent_topics
+`LearningDaemon._run_ingest_task` now updates `self.current_topic`, `self.current_topic_phase` (searching → fetching → distilling → extracting → consensus), and `self.current_topic_started_at` while a topic is in flight. On finish, the topic + counts + duration push onto `self.recent_topics` (capped at 8). `stats()` exposes all four fields.
+
+### /jarvis header pill
+New `learn-pill` after `persona-pill`. Color-coded LED:
+- **green pulse** — actively learning a topic
+- **gray** — idle (waiting for next curiosity tick, or paused because user is active)
+- **amber** — daemon paused
+- **red** — `/memory/daemon` unreachable
+
+Text: `learning: <truncated-topic>` when active, `idle • N facts • R/h` when idle, `learning paused • N facts` when paused. Polls every 8s.
+
+### Slide-in inspection panel
+Click pill → `#learn-panel` slides in (mirrors persona-panel pattern, but green not cyan):
+- **NOW LEARNING** card — current topic + phase + age
+- **STATS grid** — facts learned, facts/hour, queue depth, uptime, URLs ingested, atlas cells
+- **Controls** — PAUSE/RESUME toggle, CURIOSITY TICK trigger, freeform "queue topic" input
+- **RECENT TOPICS** — last 6 completed with +new / +reinforced / duration
+
+Opening the learn-panel auto-closes the persona-panel (and vice-versa) so they never stack.
+
+### /skills/{name} HTTP ctx fix
+`POST /skills/{name}` previously passed only `{adam,agent,personas,store}` into the skill ctx — but stateful skills (`learning_daemon`, `kg_query`, `coach`, `schedule_loop`, `watch`, `describe_image`, `mem`) expect `learning_daemon`, `knowledge_graph`, `coach_atlas`, `personal_atlas`, `scheduler`, `task_registry`, `vision`, `file_watcher`. They were silently returning "not in skill context" errors over HTTP, even though they worked fine through agent.chat. Fixed — the HTTP route now passes the same ctx the agent's internal skill dispatcher uses.
+
+### Tests
+13/13 PASS (`tests/test_learning_chip_v6_10_12.py`): pill present, all 4 LED states styled, panel structure complete, polling functions defined, body-shape correct (`{args:{action}}`), persona/learn panels mutually exclusive, topic truncation, daemon fields exposed, recent_topics cap, /skills ctx fix, no v6.10.11 regression.
+
+13/13 v6.10.11 regression also PASS.
+
+---
+
 ## v6.10.10 — Field polish: truncation fix, real skill routing, Whisper hallucination filter, layout tidy (2026-05-26)
 
 Six issues caught from live testing on the Z:\Amni-Ai install, fixed together.

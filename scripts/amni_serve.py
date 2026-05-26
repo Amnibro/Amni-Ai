@@ -711,7 +711,7 @@ def main():
     def list_skills():return {'skills':skills.list_skills()}
     @app.post('/skills/{name}')
     def call_skill(name:str,req:SkillRequest):
-        r=skills.call(name,req.args,ctx={'adam':adam,'agent':agent,'personas':personas,'store':store})
+        r=skills.call(name,req.args,ctx={'adam':adam,'agent':agent,'personas':personas,'store':store,'conv':None,'coach_atlas':getattr(agent,'coach_atlas',None),'personal_atlas':getattr(agent,'personal_atlas',None),'scheduler':getattr(agent,'scheduler',None),'learning_daemon':getattr(agent,'learning_daemon',None),'knowledge_graph':getattr(agent,'knowledge_graph',None),'task_registry':getattr(agent,'task_registry',None),'vision':getattr(agent,'vision',None),'file_watcher':getattr(agent,'file_watcher',None)})
         if not r.ok:raise HTTPException(status_code=400,detail=r.to_dict())
         return r.to_dict()
     @app.get('/sessions')
