@@ -756,7 +756,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div>
 </div>
 <div id="cam-panel">
-  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span><button class="cam-train-btn" id="cam-train-btn" onclick="_tmOpen()" title="Teach a new gesture">+ TRAIN</button> <span id="cam-fps">— fps</span></span></div>
+  <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span><button class="cam-train-btn" id="cam-train-btn" onclick="_tmOpen()" title="Teach a new gesture">+ TRAIN</button><button class="cam-train-btn" onclick="_exportCustomGestures()" title="Download trained gestures as JSON">⬇</button><button class="cam-train-btn" onclick="document.getElementById('gesture-import-input').click()" title="Import gestures from JSON">⬆</button><input type="file" id="gesture-import-input" accept="application/json,.json" style="display:none" onchange="_importCustomGestures(this)"><span id="cam-fps">— fps</span></span></div>
   <div id="cam-stage">
     <video id="cam-video" autoplay playsinline muted></video>
     <canvas id="cam-landmarks"></canvas>
@@ -1655,6 +1655,38 @@ function _tmStartRecord(){
       stEl.textContent='Saved **'+name+'** ('+_tmFrames.length+' samples).';bubble('bot','Trained new gesture **'+esc(name)+'** ('+_tmFrames.length+' samples). Make it again on camera to fire its action.','<span class="badge">gesture</span>');
       setTimeout(_tmClose,1200);},1500);
   }},1000);
+}
+const _GESTURE_PACK_VERSION=1;
+function _exportCustomGestures(){
+  if(!_customGestures.length){bubble('bot','No custom gestures to export. Click **+ TRAIN** to teach one first.','<span class="badge err">gesture</span>');return}
+  const pack={schema:'amni-ai-gesture-pack',version:_GESTURE_PACK_VERSION,exported_at:new Date().toISOString(),count:_customGestures.length,gestures:_customGestures.map(g=>({name:g.name,action_type:g.action_type,action_value:g.action_value,template:g.template,samples:g.samples,created_at:g.created_at}))};
+  try{
+    const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download='adam-gestures-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    bubble('bot','Exported **'+_customGestures.length+'** custom gesture'+(_customGestures.length===1?'':'s')+' to your downloads.','<span class="badge">gesture</span>');
+  }catch(e){bubble('bot','Export failed: '+esc(e.message),'<span class="badge err">gesture</span>')}
+}
+async function _importCustomGestures(inputEl){
+  const f=inputEl.files&&inputEl.files[0];if(!f){return}
+  inputEl.value='';
+  try{
+    const text=await f.text();const pack=JSON.parse(text);
+    if(!pack||pack.schema!=='amni-ai-gesture-pack'){bubble('bot','Not a valid Adam gesture pack (missing schema marker).','<span class="badge err">gesture</span>');return}
+    if(!Array.isArray(pack.gestures)){bubble('bot','Gesture pack has no `gestures` array.','<span class="badge err">gesture</span>');return}
+    const existing=new Map(_customGestures.map(g=>[g.name.toLowerCase(),g]));let added=0,replaced=0,skipped=0;
+    for(const raw of pack.gestures){
+      if(!raw||!raw.name||!Array.isArray(raw.template)||raw.template.length!==10){skipped++;continue}
+      const nm=String(raw.name).slice(0,30);
+      const entry={name:nm,action_type:raw.action_type||'prompt',action_value:String(raw.action_value||'').slice(0,200),template:raw.template.map(Number),samples:raw.samples||0,created_at:raw.created_at||Date.now(),imported_at:Date.now()};
+      if(existing.has(nm.toLowerCase())){const idx=_customGestures.findIndex(g=>g.name.toLowerCase()===nm.toLowerCase());_customGestures[idx]=entry;replaced++}
+      else{_customGestures.push(entry);added++}
+    }
+    _customGestures=_customGestures.slice(0,20);_saveCustomGestures(_customGestures);_renderCustomList();
+    bubble('bot','Imported gesture pack: **'+added+'** new · '+replaced+' replaced · '+skipped+' skipped ('+(pack.exported_at?'exported '+pack.exported_at.slice(0,10):'unknown date')+').','<span class="badge">gesture</span>');
+  }catch(e){bubble('bot','Import failed: '+esc(e.message),'<span class="badge err">gesture</span>')}
 }
 function applyCustomAction(g){
   if(g.action_type==='prompt'&&g.action_value){quick(g.action_value);return}

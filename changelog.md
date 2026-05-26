@@ -2,6 +2,56 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.43 — Custom gesture export + import (portable pack format) (2026-05-26)
+
+v6.10.41 made Adam learn new gestures; v6.10.43 makes those gestures portable. Trained gestures now live in localStorage on one machine — this iter adds a pack format + download + file-picker import so you can back them up, share them, or move them across browsers/machines.
+
+### New buttons in cam-panel header
+Next to `+ TRAIN`:
+- `⬇` — Export current trained gestures as a JSON file
+- `⬆` — File picker to import a previously-exported pack
+
+Both use the same magenta-trim styling as the train button. Hidden `<input type="file">` for the file picker.
+
+### Pack format
+```json
+{
+  "schema": "amni-ai-gesture-pack",
+  "version": 1,
+  "exported_at": "2026-05-26T...",
+  "count": 3,
+  "gestures": [
+    {"name":"spock","action_type":"prompt","action_value":"...","template":[0,1,1,1,1,0.4,...],"samples":42,"created_at":...}
+  ]
+}
+```
+
+Schema marker is mandatory — imports without `"schema":"amni-ai-gesture-pack"` are rejected with a friendly error message. Future format bumps will use the `version` field.
+
+### Validation (import path)
+- Wrong/missing schema → friendly reject
+- `gestures` not an array → reject
+- Per-entry: name required, template must be exactly 10 floats (matches `_featurize()` output dim) → silently skip entries that fail
+- Action_value truncated to 200 chars (prevent paste-bomb abuse)
+- Name truncated to 30 chars
+- Total cap remains 20 — extras get sliced off
+- Duplicate by name (case-insensitive) → replaces existing
+- New imports get an `imported_at` timestamp for audit
+
+### Summary
+Import bubbles a report: *"Imported gesture pack: **N** new · M replaced · K skipped (exported 2026-05-26)."*
+
+### Why it matters
+A trained gesture is 15 minutes of demo + tuning per pose. Without portability, every machine swap or browser clear wipes that investment. v6.10.43 lets users:
+- Back up their gesture set to git, cloud storage, etc.
+- Share gesture packs ("here's my power-user set" — like Vim keymaps)
+- Reset localStorage knowing they can re-import
+
+### Tests
+20/20 PASS (`tests/test_gesture_export_import_v6_10_43.py`): both buttons + helpers + hidden file input + JSON accept type, pack schema marker + version constant, export uses Blob+download+revoke, export bails on empty, export includes all 5 metadata fields, dated filename, import validates schema marker + array + 10-dim template, dedup-by-name with replace, 20-cap enforced, file input cleared after use, action_value 200-char truncation, name 30-char truncation, imported_at stamp, summary bubble reports added/replaced/skipped, v6.10.42 regression intact. Recent chain (v6.10.39 → .42): 78/78 still PASS. Total: 98/98.
+
+---
+
 ## v6.10.42 — Inline math rendering (KaTeX, graceful fallback) (2026-05-26)
 
 the maintainer's engineering work + coach sessions on STEM topics generate math constantly, but `$x^2+1$` was rendering as literal characters in the chat. v6.10.42 hooks KaTeX into the md() pipeline so LaTeX inside `$...$` (inline) and `$$...$$` (display) renders as actual math.
