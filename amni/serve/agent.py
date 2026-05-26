@@ -474,6 +474,11 @@ class AmniAgent:
                     skill_answer=self._format_skill_output(name,r.output)
                     used_tier=f'tier0_skill_{name}'
                 else:
+                    try:
+                        from amni.serve.skill_failures import record as _sfrec
+                        _sfrec(skill=name,message=message,args=args,error=str(r.error or ''),extra={'session_id':conv.session_id})
+                    except Exception as _e:print(f'[agent] skill_failures log write failed: {_e}',flush=True)
+                    print(f'[agent] skill={name} failed args={args} error={r.error!r}',flush=True)
                     skill_answer=f'(skill {name} failed: {r.error}) Falling back to Adam.'
         persona=self.personas.for_session(conv.session_id) if self.use_persona else _PERSONA_PRESETS['neutral']
         if skill_answer is not None and not skill_answer.startswith('(skill'):
