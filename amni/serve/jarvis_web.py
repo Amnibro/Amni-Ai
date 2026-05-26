@@ -1179,6 +1179,31 @@ async function _applyWelcomeForPersona(){
   }catch{}
 }
 setTimeout(_applyWelcomeForPersona,250);
+const KICKOFF_KEY='amni_jarvis_kickoff_date';
+function _kickoffDateKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+async function _dailyKickoff(){
+  if(localStorage.getItem(KICKOFF_KEY)===_kickoffDateKey())return;
+  try{
+    const [digestR,reviewsR]=await Promise.all([fetch('/memory/digest?hours=24'),fetch('/memory/coach/reviews?limit=5').catch(()=>null)]);
+    if(!digestR||!digestR.ok)return;
+    const dg=await digestR.json();const reviews=(reviewsR&&reviewsR.ok)?(await reviewsR.json()).reviews||[]:[];
+    const facts=(dg.learning||{}).facts_today||0;const errs=(dg.shell||{}).errors_today||0;const pending=(dg.verifier||{}).pending||0;const streak=(dg.coach||{}).streak_days||0;const today_active=(dg.coach||{}).today_active;
+    const parts=[];
+    if(reviews.length)parts.push(reviews.length+' coach card'+(reviews.length===1?'':'s')+' due for review');
+    if(pending)parts.push(pending+' edit'+(pending===1?'':'s')+' awaiting your review');
+    if(errs)parts.push(errs+' shell error'+(errs===1?'':'s')+' overnight');
+    if(facts)parts.push(facts+' new fact'+(facts===1?'':'s')+' learned via daemon');
+    if(streak>0&&!today_active)parts.push('your '+streak+'-day coach streak is at stake — practice once today to keep it');
+    if(!parts.length){localStorage.setItem(KICKOFF_KEY,_kickoffDateKey());return}
+    const hour=new Date().getHours();const greet=hour<5?'Up late':(hour<12?'Good morning':(hour<17?'Good afternoon':'Good evening'));
+    const head=greet+'. Here\'s what\'s waiting for you today:';
+    const body=parts.map((p,i)=>(i+1)+'. '+p).join('\n');
+    const tail=reviews.length?'\n\nOpen the coach panel ('+(navigator.platform.toLowerCase().includes('mac')?'⌘+G':'Ctrl+G')+') to clear the review queue.':((pending||errs)?'\n\nTap the TESTS or SHELL pill to drill in.':'\n\nNothing on fire — your call where to start.');
+    bubble('bot',head+'\n\n'+body+tail,'<span class="badge">kickoff</span>');
+    localStorage.setItem(KICKOFF_KEY,_kickoffDateKey());
+  }catch{}
+}
+setTimeout(_dailyKickoff,1400);
 async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_applyWelcomeForPersona()}}
 _initPersonaPill();
 let _ldStats=null,_ldPanelOpen=false,_ldPollTimer=null,_ldLastTopic=null,_ldErrCount=0;
