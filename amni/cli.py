@@ -39,6 +39,26 @@ def _open_browser_delayed(url:str,delay:float=2.5):
         try:webbrowser.open(url)
         except Exception:pass
     threading.Thread(target=_go,daemon=True).start()
+def _print_serve_banner(host:str,port:int,workdir:str=''):
+    base=f'http://{host}:{port}' if host not in ('0.0.0.0','::') else f'http://localhost:{port}'
+    lines=[
+        '',
+        '  ┌─────────────────────────────────────────────────────────┐',
+        '  │  Adam — local AI server                                 │',
+        '  ├─────────────────────────────────────────────────────────┤',
+        f'  │  chat ui      {base:<42} │',
+        f'  │  jarvis mode  {base+"/jarvis":<42} │',
+        f'  │  memory       {base+"/memory":<42} │',
+        f'  │  api docs     {base+"/docs":<42} │',
+        f'  │  health       {base+"/health":<42} │',
+        '  ├─────────────────────────────────────────────────────────┤',
+        f'  │  Ollama drop-in: OLLAMA_HOST={base:<28} │',
+        f'  │  OpenAI drop-in: OPENAI_BASE_URL={base+"/v1":<24} │',
+    ]
+    if workdir:lines.append(f'  │  workdir      {workdir[:42]:<42} │')
+    lines.append('  └─────────────────────────────────────────────────────────┘')
+    lines.append('')
+    print('\n'.join(lines),flush=True)
 def cmd_serve(args):
     cfg=load_config()
     if is_first_run() and not (Path(args.bake).exists() or Path(cfg.get('bake') or '').exists()):
@@ -57,6 +77,7 @@ def cmd_serve(args):
     if args.default_persona:sys.argv+=['--default-persona',args.default_persona]
     if args.no_persona:sys.argv.append('--no-persona')
     if getattr(args,'open_browser',False):_open_browser_delayed(f'http://{args.host}:{args.port}/')
+    _print_serve_banner(args.host,args.port,workdir=getattr(args,'workdir','') or '')
     from scripts import amni_serve
     amni_serve.main()
 def cmd_code(args):
@@ -94,6 +115,14 @@ def cmd_chat(args):
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
+    if getattr(args,'list_sessions',False):
+        store=ConversationStore(root=args.conv_root);sessions=store.list_sessions()
+        if not sessions:print('(no prior sessions)',flush=True);return
+        print(f'Recent sessions ({len(sessions)}):',flush=True)
+        for s in sessions[:20]:
+            ts=time.strftime('%Y-%m-%d %H:%M',time.localtime(s['mtime']));kb=round(s['size']/1024,1)
+            print(f'  {s["session_id"]}  {ts}  {kb}kb',flush=True)
+        return
     print('[amni] booting Adam... ',end='',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None)
     skills=default_registry(workdir=args.workdir,unrestricted=args.unrestricted_files,audit_log='logs/agent_skill_calls.jsonl')
@@ -102,8 +131,21 @@ def cmd_chat(args):
     if args.persona:personas.set_default(args.persona)
     agent=AmniAgent(adam=adam,skills=skills,store=store,personas=personas,workdir=args.workdir)
     print(f'ready. lessons={adam.stats().get("lessons_n",0)} skills={len(skills.list_skills())} persona={personas._default}',flush=True)
-    print('Type /quit to exit, /persona <name> to switch, /skills to list, /stats for stats.\n',flush=True)
     sid=None
+    if getattr(args,'session',None):sid=args.session
+    elif getattr(args,'resume',False):
+        sess=store.list_sessions()
+        if sess:sid=sess[0]['session_id'];print(f'(resuming session {sid} from {time.strftime("%Y-%m-%d %H:%M",time.localtime(sess[0]["mtime"]))})',flush=True)
+        else:print('(no prior session to resume — starting new)',flush=True)
+    if sid:
+        conv=store.get(sid);recent=conv.recent(4) if hasattr(conv,'recent') else []
+        if recent:
+            print('(last turns:)',flush=True)
+            for t in recent:
+                role=t.get('role','');content=(t.get('content') or '')[:120]
+                if role=='user' and content:print(f'  > {content}',flush=True)
+                elif role=='assistant' and content:print(f'    {content}',flush=True)
+    print('Type /quit to exit, /persona <name> to switch, /skills to list, /stats for stats, /sessions to list past sessions.\n',flush=True)
     while True:
         try:msg=input('> ').strip()
         except (EOFError,KeyboardInterrupt):print('\nbye!',flush=True);break
@@ -121,6 +163,19 @@ def cmd_chat(args):
             else:personas.set_default(name)
             print(f'(persona -> {p.name}, source={p.source})\n  {p.description[:200]}\n',flush=True);continue
         if msg=='/new':sid=None;print('(new session)',flush=True);continue
+        if msg=='/sessions':
+            sess=store.list_sessions()[:10]
+            if not sess:print('(no sessions yet)',flush=True)
+            else:
+                for s in sess:
+                    ts=time.strftime('%Y-%m-%d %H:%M',time.localtime(s['mtime']));mark=' *' if s['session_id']==sid else ''
+                    print(f'  {s["session_id"]}  {ts}  {round(s["size"]/1024,1)}kb{mark}',flush=True)
+            continue
+        if msg.startswith('/resume '):
+            target=msg.split(None,1)[1].strip()
+            sess=store.list_sessions();match=[s for s in sess if s['session_id'].startswith(target)]
+            if not match:print(f'(no session matches {target!r})',flush=True);continue
+            sid=match[0]['session_id'];print(f'(resumed {sid})',flush=True);continue
         r=agent.chat(msg,session_id=sid)
         sid=r.get('session_id') or sid
         print(f'\n{r.get("answer")}\n',flush=True)
@@ -226,6 +281,9 @@ def main():
     c.add_argument('--persona',default=None);c.add_argument('--workdir',default=None)
     c.add_argument('--unrestricted-files',action='store_true');c.add_argument('--seed',action='store_true')
     c.add_argument('--conv-root',default='experiences/conversations');c.add_argument('--persona-bank',default='experiences/personas.json')
+    c.add_argument('--resume',action='store_true',help='Resume the most recent session')
+    c.add_argument('--session',default=None,help='Resume a specific session id (or prefix)')
+    c.add_argument('--list-sessions',action='store_true',help='List recent sessions and exit')
     c.set_defaults(func=cmd_chat)
     a=sub.add_parser('ask',help='Single-shot question (no REPL)')
     _add_common_adam(a)
