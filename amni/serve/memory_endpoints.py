@@ -82,6 +82,10 @@ def mount(app,agent):
         try:body=await req.json()
         except Exception:pass
         return attempt_next_eligible(max_attempts=int(body.get('max',1)),dry_run=bool(body.get('dry_run',False)))
+    @app.get('/memory/skill-failures')
+    def skill_failures_list(limit:int=20,skill:str=''):
+        from amni.serve.skill_failures import recent,stats
+        return {'failures':recent(limit=limit,skill_filter=skill or None),'stats':stats()}
     @app.get('/memory/metrics')
     def metrics_status():
         from amni.serve.metrics_snapshot import status as _s
