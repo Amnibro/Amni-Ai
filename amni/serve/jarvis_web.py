@@ -630,6 +630,8 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 @keyframes wakeFiredPulse{0%{box-shadow:0 0 6px rgba(255,224,102,.4)}50%{box-shadow:0 0 22px rgba(255,224,102,.85),inset 0 0 12px rgba(255,224,102,.3)}100%{box-shadow:0 0 10px rgba(255,224,102,.28)}}
 @keyframes wakeFiredRing{0%{opacity:1;transform:scale(.9)}80%{opacity:.4;transform:scale(1.5)}100%{opacity:0;transform:scale(1.7)}}
 .wake-ambient{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(8,14,28,.85);border:1px solid rgba(255,224,102,.35);color:#ffe066;font-size:10px;letter-spacing:.18em;padding:6px 14px;border-radius:3px;backdrop-filter:blur(6px);z-index:6;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;text-transform:uppercase;font-family:inherit;text-shadow:0 0 4px rgba(255,224,102,.6)}
+.persona-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.95);background:rgba(8,14,28,.92);border:1px solid var(--cyan);color:var(--cyan);font-size:18px;letter-spacing:.22em;padding:14px 28px;border-radius:4px;backdrop-filter:blur(8px);z-index:7;opacity:0;pointer-events:none;transition:opacity .15s ease-out, transform .25s ease-out;text-transform:uppercase;font-family:JetBrains Mono,monospace;text-shadow:0 0 8px rgba(0,229,255,.7);box-shadow:0 0 24px rgba(0,229,255,.35),inset 0 0 14px rgba(0,229,255,.08)}
+.persona-flash.show{opacity:.95;transform:translate(-50%,-50%) scale(1)}
 .wake-ambient.show{opacity:.85}
 #convo-toggle .convo-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mute);transition:all .2s}
 #convo-toggle.on .convo-dot{background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:convoPulse 1.4s ease-in-out infinite}
@@ -1765,7 +1767,37 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){e.preventDefault();closeChatSearch();return}
     if(e.key==='Enter'){e.preventDefault();e.shiftKey?_csPrev():_csNext();return}
   }
+  if(e.altKey&&(e.key==='p'||e.key==='P')&&!e.ctrlKey&&!e.metaKey){
+    const tag=(document.activeElement||{}).tagName||'';
+    if(tag==='INPUT'||tag==='TEXTAREA'||(document.activeElement||{}).isContentEditable)return;
+    e.preventDefault();_personaCycle(e.shiftKey?-1:1);
+  }
 });
+async function _personaCycle(step){
+  step=step||1;
+  if(!_knownPersonas||_knownPersonas.length<2){
+    if(_knownPersonas.length===0){try{await _loadPersonas()}catch{}if(_knownPersonas.length===0)return}
+  }
+  const names=_knownPersonas.map(p=>(typeof p==='string'?p:(p.name||''))).filter(Boolean);
+  if(names.length<2)return;
+  const cur=(_selectedPersona||personaName||names[0]).toLowerCase();
+  let idx=names.findIndex(n=>n.toLowerCase()===cur);
+  if(idx<0)idx=0;
+  const next=names[(idx+step+names.length)%names.length];
+  _personaFlash('persona → '+next);
+  try{
+    const r=await fetch('/persona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:next,session_id:sid,learn_via_web:false})});
+    const j=await r.json();
+    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_renderPersonaPanel()}
+  }catch(_){}
+}
+let _personaFlashTimer=null;
+function _personaFlash(text){
+  let el=document.getElementById('persona-flash');
+  if(!el){el=document.createElement('div');el.id='persona-flash';el.className='persona-flash';document.body.appendChild(el)}
+  el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+  clearTimeout(_personaFlashTimer);_personaFlashTimer=setTimeout(()=>el.classList.remove('show'),1400);
+}
 document.addEventListener('input',e=>{if(e.target&&e.target.id==='cs-input')_csRunSearch()});
 async function _exportChatMd(){
   if(!sid){bubble('bot','No active session to export yet — start a conversation first.','<span class="badge err">export</span>');return}
@@ -1995,6 +2027,7 @@ const _KBD_SHORTCUTS=[
   {k:'Ctrl+M',d:'Open memory inspector'},
   {k:'Ctrl+Shift+S',d:'Open sessions browser'},
   {k:'Ctrl+Shift+P',d:'Open persona / voice picker'},
+  {k:'Alt+P',d:'Cycle to next persona (Alt+Shift+P for previous)'},
   {k:'Ctrl+Shift+E',d:'Open shell audit log'},
   {k:'?',d:'Show / hide this shortcuts overlay'},
   {k:'Esc',d:'Close any open panel / overlay'}
