@@ -874,6 +874,12 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div id="pp-edit"><div class="pp-empty">pick a persona above first</div></div>
   </div>
   <div class="pp-section">
+    <h3>STREAM PACE</h3>
+    <div class="pe-row"><label for="pp-pace">pace</label><input type="range" min="20" max="200" step="5" id="pp-pace" oninput="_paceSliderChange(this.value)"><span class="pe-val" id="pp-pace-v">—</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span id="pp-pace-mode" style="font-size:9px;color:var(--mute);letter-spacing:.1em;flex:1">—</span><button class="pe-btn" onclick="_paceReset()" style="padding:3px 8px;font-size:8.5px">RESET TO PERSONA</button></div>
+    <div style="font-size:9px;color:var(--mute);margin-top:4px;letter-spacing:.04em">Characters per second the chat bubble reveals. Persona default kicks in when override is reset.</div>
+  </div>
+  <div class="pp-section">
     <h3>TTS VOICE</h3>
     <div id="pp-voices"><div class="pp-empty">loading…</div></div>
     <div style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.05em">Piper voices ship as ~50MB .onnx — install more from <code style="color:var(--cyan)">github.com/rhasspy/piper</code></div>
@@ -1320,6 +1326,25 @@ function _typeSpeedCps(){
   if(pc!=null)return pc;
   return 85;
 }
+function _paceSliderChange(v){
+  const cps=parseInt(v,10);if(!isFinite(cps))return;
+  localStorage.setItem(TYPE_SPEED_KEY,String(cps));
+  _renderPaceUI();
+}
+function _paceReset(){
+  localStorage.removeItem(TYPE_SPEED_KEY);
+  _renderPaceUI();
+  bubble('bot','Pace reset — now using **'+esc(String(_typeSpeedCps()))+' cps** from persona default.','<span class="badge">pace</span>');
+}
+function _renderPaceUI(){
+  const slider=document.getElementById('pp-pace');const val=document.getElementById('pp-pace-v');const mode=document.getElementById('pp-pace-mode');
+  if(!slider)return;
+  const override=localStorage.getItem(TYPE_SPEED_KEY);
+  const cps=_typeSpeedCps();
+  slider.value=String(cps);
+  if(val)val.textContent=cps+' cps';
+  if(mode)mode.textContent=override?'override · user-set':'auto · from persona';
+}
 function _typeStart(botRef,onDone){
   _typeBot=botRef;_typePending='';_typeShown=0;_typeOnDone=onDone||null;
   if(_typeRAF)cancelAnimationFrame(_typeRAF);
@@ -1463,6 +1488,7 @@ function _renderPersonaPanel(){
     }).join('');
   }
   _renderPersonaEdit();
+  _renderPaceUI();
   const voices=document.getElementById('pp-voices');
   if(_availableVoices.length===0){voices.innerHTML='<div class="pp-empty">no piper voices · install via <code style="color:var(--cyan)">pip install piper-tts</code> + download a voice</div>'}
   else{
