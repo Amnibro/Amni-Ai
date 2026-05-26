@@ -188,9 +188,12 @@ def _skill_code_edit(args,ctx,reg):
     p.write_text(new,encoding='utf-8')
     return {'path':str(p),'replacements':src.count(find) if count==0 else min(count,src.count(find)),'ext':p.suffix.lstrip('.') or 'txt','change':_file_change_stats(src,new),'verification':verify_edit(str(p),new,op='edit')}
 def _skill_shell(args,ctx,reg):
-    cmd=args['cmd'];timeout=int(args.get('timeout',15))
+    from amni.serve.shell_audit import log_shell_run
+    cmd=args['cmd'];timeout=int(args.get('timeout',15));t0=time.time()
     r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
-    return {'cmd':cmd,'returncode':r.returncode,'stdout':r.stdout[:8000],'stderr':r.stderr[:4000]}
+    dur=round(time.time()-t0,3)
+    log_shell_run('shell',cmd,r.returncode,r.stdout,r.stderr,str(reg.workdir),dur)
+    return {'cmd':cmd,'returncode':r.returncode,'stdout':r.stdout[:8000],'stderr':r.stderr[:4000],'duration_s':dur}
 _GIT_SAFE_CMDS={'status','log','diff','branch','blame','show','ls-files','remote','config','rev-parse','describe','tag','shortlog','reflog'}
 def _skill_git(args,ctx,reg):
     cmd=(args.get('cmd') or '').strip()
@@ -201,8 +204,10 @@ def _skill_git(args,ctx,reg):
     if args.get('file'):parts.append(str(args['file']))
     if args.get('n') and head in ('log','shortlog','reflog'):parts[2:2]=['-n',str(int(args['n']))]
     try:
-        r=subprocess.run(parts,capture_output=True,text=True,timeout=20,cwd=str(reg.workdir))
-        return {'cmd':' '.join(parts),'returncode':r.returncode,'stdout':r.stdout[:6000],'stderr':r.stderr[:1500]}
+        from amni.serve.shell_audit import log_shell_run
+        t0=time.time();r=subprocess.run(parts,capture_output=True,text=True,timeout=20,cwd=str(reg.workdir));dur=round(time.time()-t0,3)
+        log_shell_run('git',' '.join(parts),r.returncode,r.stdout,r.stderr,str(reg.workdir),dur)
+        return {'cmd':' '.join(parts),'returncode':r.returncode,'stdout':r.stdout[:6000],'stderr':r.stderr[:1500],'duration_s':dur}
     except FileNotFoundError:return {'error':'git not installed or not in PATH'}
     except subprocess.TimeoutExpired:return {'error':'git command exceeded 20s timeout'}
     except Exception as e:return {'error':f'{type(e).__name__}: {e}'}

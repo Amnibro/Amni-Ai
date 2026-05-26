@@ -2,6 +2,43 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.22 — Shell audit log: every command Adam runs is now visible (2026-05-26)
+
+Adam can run shell + git commands via the `shell` and `git` skills, but until now there was no audit trail — commands executed silently with their results buried in chat history. v6.10.22 adds append-only logging of every invocation and surfaces it in /jarvis via a new SHELL pill.
+
+### New module `amni/serve/shell_audit.py`
+- `log_shell_run(kind, cmd, returncode, stdout, stderr, cwd, duration_s)` — appends one JSONL row to `data/shell_history.jsonl`
+- `list_shell_history(limit=50, errors_only=False, kind=None)` — read recent entries, newest first
+- `shell_history_stats()` — `{n_total, n_errors, last_ts, by_kind}`
+
+### Skill integration
+`_skill_shell` and `_skill_git` now log every invocation with timestamp, command, exit code, cwd, duration, and stdout/stderr tails. Tails capped (1.2KB stdout, 600B stderr) to keep the file lean. Existing skill return shapes preserved; new `duration_s` field added to outputs.
+
+### New endpoint
+`GET /memory/shell-history?limit=N&errors_only=true&kind=git` — returns `{items, count, stats}`. Stats include error count so the pill can pulse when something went wrong.
+
+### Pill + panel in /jarvis
+New `shell-pill` in header after tests-pill. Color-coded LED:
+- **clean cyan** — runs happened, no errors
+- **red pulse** — at least one non-zero exit code recorded
+- **gray** — endpoint unreachable
+Text: `shell · 47 runs` / `shell · 47 runs · 3 errors` / `shell · idle`.
+
+Click pill → slide-in panel with:
+- **Toolbar** — REFRESH, ERRORS ONLY toggle (highlights red when on), live total/error summary
+- **Items** — each row shows: `$ <command>` (mono, full text, color-coded fail border), kind badge (SHELL/GIT), rc badge (ok green / bad red), duration, truncated cwd, age (`5m ago`/`1.2h ago`)
+- **SHOW OUTPUT** toggle per item — reveals stdout/stderr tail in a scrollable mono block
+
+Auto-closes the four other panels (persona/learn/tests/coach) when opened.
+
+### Tests
+18/18 PASS (`tests/test_shell_audit_v6_10_22.py`): module API, log + retrieve round-trip, error counting in stats, errors_only + kind filters, `_skill_shell` actually logs, `_skill_git` actually logs, all pill+panel UI elements present, polling endpoint+interval, panel mutual exclusion, /memory/shell-history endpoint registered, show/hide-output toggle, pill ordering after tests-pill, v6.10.21 regression intact. Recent chain (v6.10.17 → .21): 79/79 still PASS. Total: 97/97.
+
+### Safety posture
+Adam still runs commands with the same shell skill it always had — the audit log doesn't change permissions. What it does change: any time Adam touches the user's shell, there's now a permanent record they can scroll through. Combined with the v6.10.16 verification log, every state-mutating action Adam performs is auditable.
+
+---
+
 ## v6.10.21 — Practiced-topics dashboard in coach panel (2026-05-26)
 
 The coach UI started sessions but lost them. The `CoachAtlas` tracks every question and grade per topic, but there was no way to see your history from /jarvis. v6.10.21 adds a "PRACTICED TOPICS" section below the New Session form — a sorted live list of every topic you've ever tutored on with its mastery percentage, color-coded by level.

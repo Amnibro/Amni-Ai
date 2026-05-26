@@ -226,6 +226,36 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #tests-panel .tp-toolbar button{padding:4px 8px;border:1px solid rgba(255,181,71,.3);background:rgba(255,181,71,.04);color:#ffb547;font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
 #tests-panel .tp-toolbar button:hover{background:rgba(255,181,71,.12)}
 #tests-panel .tp-summary{font-size:10px;color:var(--mute);letter-spacing:.05em;margin-left:auto;align-self:center}
+.sh-led{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4a5568;box-shadow:0 0 4px #4a5568;margin-right:6px;vertical-align:middle;transition:background .25s}
+.sh-led.clean{background:#00e5ff;box-shadow:0 0 6px #00e5ff}
+.sh-led.dirty{background:#ff7b7b;box-shadow:0 0 8px #ff7b7b, 0 0 14px rgba(255,123,123,.4);animation:shPulse 1.4s ease-in-out infinite}
+.sh-led.error{background:#4a5568}
+@keyframes shPulse{0%,100%{opacity:1}50%{opacity:.55}}
+#shell-panel{position:fixed;top:60px;right:24px;width:480px;z-index:11;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,229,255,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
+#shell-panel.show{display:block}
+#shell-panel .sh-head{padding:10px 14px;border-bottom:1px solid rgba(0,229,255,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
+#shell-panel .sh-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:10px}
+#shell-panel .sh-head .close:hover{color:var(--err);border-color:var(--err)}
+#shell-panel .sh-toolbar{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid rgba(0,229,255,.08);font-size:10px}
+#shell-panel .sh-toolbar button{padding:4px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.04);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
+#shell-panel .sh-toolbar button:hover{background:rgba(0,229,255,.12)}
+#shell-panel .sh-toolbar button.on{background:rgba(255,123,123,.12);border-color:#ff7b7b;color:#ff7b7b}
+#shell-panel .sh-summary{font-size:10px;color:var(--mute);letter-spacing:.05em;margin-left:auto;align-self:center}
+#shell-panel .sh-section{padding:8px 14px}
+#shell-panel .sh-item{padding:8px 10px;border-left:2px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);margin-bottom:6px;font-family:JetBrains Mono,monospace}
+#shell-panel .sh-item.fail{border-left-color:#ff7b7b;background:rgba(255,123,123,.05)}
+#shell-panel .sh-item .cmd{font-size:11px;color:var(--fg);word-break:break-all;line-height:1.4}
+#shell-panel .sh-item .meta{display:flex;gap:8px;font-size:9px;color:var(--mute);letter-spacing:.1em;margin-top:4px;text-transform:uppercase;flex-wrap:wrap}
+#shell-panel .sh-item .kind{display:inline-block;padding:1px 5px;border-radius:2px;background:rgba(0,229,255,.12);color:var(--cyan);font-size:8px;font-weight:bold}
+#shell-panel .sh-item.fail .kind{background:rgba(255,123,123,.15);color:#ff7b7b}
+#shell-panel .sh-item .rc{padding:1px 5px;border-radius:2px;font-size:8px;font-weight:bold}
+#shell-panel .sh-item .rc.ok{background:rgba(0,255,156,.12);color:#00ff9c}
+#shell-panel .sh-item .rc.bad{background:rgba(255,91,91,.12);color:#ff7b7b}
+#shell-panel .sh-item .age{margin-left:auto;color:var(--mute);font-size:9px}
+#shell-panel .sh-item .toggle{cursor:pointer;color:var(--cyan);font-size:9px;letter-spacing:.15em;margin-top:6px;display:inline-block;text-transform:uppercase}
+#shell-panel .sh-item pre{margin:6px 0 0 0;font-size:9.5px;background:rgba(0,0,0,.4);padding:6px 8px;border-radius:2px;max-height:160px;overflow:auto;color:var(--fg);line-height:1.35;display:none;white-space:pre-wrap;word-break:break-all}
+#shell-panel .sh-item pre.show{display:block}
+#shell-panel .sh-empty{padding:24px;text-align:center;color:var(--mute);font-size:10px;font-style:italic}
 #coach-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,77,200,.08);box-shadow:0 0 10px rgba(255,77,200,.3)}
 #coach-panel{position:fixed;top:60px;right:24px;width:440px;z-index:11;border:1px solid rgba(255,77,200,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(255,77,200,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
 #coach-panel.show{display:block}
@@ -422,6 +452,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
       <span class="pill clickable" id="persona-pill" onclick="togglePersonaPanel()" title="Click to change persona + voice">persona —</span>
       <span class="pill clickable" id="learn-pill" onclick="toggleLearnPanel()" title="Click to inspect 24/7 learning daemon"><span class="ld-led" id="ld-led"></span><span id="ld-text">learning —</span></span>
       <span class="pill clickable" id="tests-pill" onclick="toggleTestsPanel()" title="Pending verification items Adam couldn't auto-check"><span class="tp-led" id="tp-led"></span><span id="tp-text">tests —</span></span>
+      <span class="pill clickable" id="shell-pill" onclick="toggleShellPanel()" title="Audit log of every shell command Adam has run"><span class="sh-led" id="sh-led"></span><span id="sh-text">shell —</span></span>
     </div>
   </header>
   <div id="chat-wrap"><div id="log">
@@ -544,6 +575,11 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <textarea id="cp-answer" placeholder="type your answer (or use mic) — Ctrl+Enter to submit" rows="3" style="margin-top:8px;width:100%"></textarea>
     <div class="cp-btn-row"><button class="cp-act" onclick="_coachAnswer()">SUBMIT</button><button class="cp-act" onclick="_coachHint()">HINT</button><button class="cp-act" onclick="_coachSkip()">SKIP</button><button class="cp-act" onclick="_coachAsk()">NEXT</button><button class="cp-act" id="cp-voice-toggle" onclick="_coachToggleVoice()" title="Auto-speak questions, feedback, and hints">VOICE OFF</button><button class="cp-act" id="cp-replay-btn" onclick="_coachReplayQuestion()" title="Re-speak current question">↻ REPLAY</button><button class="cp-act danger" onclick="_coachEnd()" style="margin-left:auto">END SESSION</button></div>
   </div>
+</div>
+<div id="shell-panel">
+  <div class="sh-head"><span>◆ SHELL AUDIT</span><span class="close" onclick="toggleShellPanel()">CLOSE</span></div>
+  <div class="sh-toolbar"><button onclick="_pollShellHistory()">REFRESH</button><button id="sh-errors-btn" onclick="_shToggleErrors()">ERRORS ONLY</button><span class="sh-summary" id="sh-summary">—</span></div>
+  <div class="sh-section" id="sh-list"><div class="sh-empty">loading…</div></div>
 </div>
 <div id="tests-panel">
   <div class="tp-head"><span>◆ PENDING TESTS</span><span class="close" onclick="toggleTestsPanel()">CLOSE</span></div>
@@ -864,6 +900,44 @@ async function _tpMarkDone(path){
 }
 function _startTestsPolling(){if(_tpPollTimer)return;_pollTestsList();_tpPollTimer=setInterval(_pollTestsList,15000)}
 _startTestsPolling();
+let _shItems=[],_shStats={n_total:0,n_errors:0},_shPanelOpen=false,_shPollTimer=null,_shErrorsOnly=false;
+function _shHumanAge(s){if(!s||s<60)return Math.round(s||0)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';if(s<86400)return (s/3600).toFixed(1)+'h ago';return (s/86400).toFixed(1)+'d ago'}
+async function _pollShellHistory(){
+  try{
+    const r=await fetch('/memory/shell-history?limit=50&errors_only='+(_shErrorsOnly?'true':'false'));
+    if(!r.ok){_shUpdatePill('error',0,0);return}
+    const j=await r.json();_shItems=j.items||[];_shStats=j.stats||{n_total:0,n_errors:0};
+    _shUpdatePill((_shStats.n_errors||0)>0?'dirty':'clean',_shStats.n_total||0,_shStats.n_errors||0);
+    if(_shPanelOpen)_renderShellPanel();
+    const sum=document.getElementById('sh-summary');if(sum)sum.textContent=(_shStats.n_total||0)+' total · '+(_shStats.n_errors||0)+' errors';
+  }catch{_shUpdatePill('error',0,0)}
+}
+function _shUpdatePill(state,total,errors){
+  const led=document.getElementById('sh-led');const txt=document.getElementById('sh-text');if(!led||!txt)return;
+  led.className='sh-led '+state;
+  if(state==='error')txt.textContent='shell offline';
+  else if(total===0)txt.textContent='shell · idle';
+  else if(errors>0)txt.textContent='shell · '+total+' runs · '+errors+' errors';
+  else txt.textContent='shell · '+total+' runs';
+}
+function _shToggleErrors(){_shErrorsOnly=!_shErrorsOnly;const b=document.getElementById('sh-errors-btn');if(b)b.classList.toggle('on',_shErrorsOnly);_pollShellHistory()}
+function toggleShellPanel(){_shPanelOpen=!_shPanelOpen;const p=document.getElementById('shell-panel');p.classList.toggle('show',_shPanelOpen);['persona-panel','learn-panel','tests-panel','coach-panel'].forEach(id=>{const el=document.getElementById(id);if(_shPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_shPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_coachPanelOpen=false;document.getElementById('coach-toggle').classList.remove('on');_pollShellHistory()}}
+function _renderShellPanel(){
+  const list=document.getElementById('sh-list');
+  if(!_shItems.length){list.innerHTML='<div class="sh-empty">no shell commands run yet</div>';return}
+  const now=Date.now()/1000;
+  list.innerHTML=_shItems.map((it,i)=>{
+    const rc=it.returncode||0;const ok=rc===0;const cls=ok?'':' fail';
+    const cmd=esc(it.cmd||'?');const kind=esc(it.kind||'shell').toUpperCase();
+    const age=now-(it.ts||now);const cwd=esc((it.cwd||'').slice(-50));const dur=it.duration_s!=null?it.duration_s.toFixed(2)+'s':'?';
+    const out=esc((it.stdout_tail||'').slice(0,1000));const err=esc((it.stderr_tail||'').slice(0,500));
+    const hasOut=out.length>0||err.length>0;
+    return `<div class="sh-item${cls}"><div class="cmd">$ ${cmd}</div><div class="meta"><span class="kind">${kind}</span><span class="rc ${ok?'ok':'bad'}">rc ${rc}</span><span>${dur}</span>${cwd?`<span title="${cwd}">${cwd.length>40?'…'+cwd.slice(-40):cwd}</span>`:''}<span class="age">${_shHumanAge(age)}</span></div>${hasOut?`<span class="toggle" onclick="_shToggleOut(${i})">SHOW OUTPUT</span><pre id="sh-out-${i}">${out}${err?`\n--- STDERR ---\n${err}`:''}</pre>`:''}</div>`;
+  }).join('');
+}
+function _shToggleOut(i){const el=document.getElementById('sh-out-'+i);if(!el)return;el.classList.toggle('show');const tog=el.previousElementSibling;if(tog&&tog.classList.contains('toggle'))tog.textContent=el.classList.contains('show')?'HIDE OUTPUT':'SHOW OUTPUT'}
+function _startShellPolling(){if(_shPollTimer)return;_pollShellHistory();_shPollTimer=setInterval(_pollShellHistory,20000)}
+_startShellPolling();
 const COACH_SID_KEY='amni_jarvis_coach_sid',COACH_VOICE_KEY='amni_jarvis_coach_voice';
 let _coachSid=localStorage.getItem(COACH_SID_KEY)||'',_coachPanelOpen=false,_coachTopic='',_coachBusy=false,_coachVoiceOn=localStorage.getItem(COACH_VOICE_KEY)==='1',_coachLastQuestion='';
 function _coachToggleVoice(){_coachVoiceOn=!_coachVoiceOn;localStorage.setItem(COACH_VOICE_KEY,_coachVoiceOn?'1':'0');_coachUpdateVoiceBtn();if(_coachVoiceOn){voiceOut=true;localStorage.setItem(VKEY,'1');const vb=document.getElementById('voiceout-toggle');if(vb)vb.classList.add('on');if(_coachLastQuestion)speak(_coachLastQuestion)}}
