@@ -2492,7 +2492,45 @@ async function speak(text){
   }
   _speakBrowser(clean);
 }
-function _speakBrowser(clean){if(!('speechSynthesis' in window))return;try{const u=new SpeechSynthesisUtterance(clean);u.rate=1;u.pitch=1;speechSynthesis.cancel();speechSynthesis.speak(u)}catch{}}
+function _personaVoiceTuning(){
+  const cur=(_selectedPersona||personaName||'').toLowerCase();
+  if(!cur||!_knownPersonas||_knownPersonas.length===0)return null;
+  const p=_knownPersonas.find(x=>typeof x==='object'&&(x.name||'').toLowerCase()===cur);
+  if(!p||typeof p!=='object')return null;
+  if(cur==='yoda')return {rate:0.78,pitch:0.85,prefer:['male','low']};
+  if(cur==='haiku')return {rate:0.75,pitch:1.05,prefer:['female','soft']};
+  if(cur==='alfred'||cur==='jarvis')return {rate:0.95,pitch:0.9,prefer:['male','british','daniel']};
+  if(cur==='rikku')return {rate:1.18,pitch:1.18,prefer:['female','young']};
+  if(cur==='pirate')return {rate:1.0,pitch:0.85,prefer:['male','rough']};
+  if(cur==='sherlock')return {rate:0.95,pitch:0.95,prefer:['male','british']};
+  const ex=Number(p.excitement||0),fo=Number(p.formality||0);
+  return {rate:Math.max(0.7,Math.min(1.3,1+ex*0.3-fo*0.15)),pitch:Math.max(0.7,Math.min(1.3,1+(ex-0.5)*0.4)),prefer:[]};
+}
+let _browserVoices=[];
+function _refreshBrowserVoices(){try{_browserVoices=window.speechSynthesis.getVoices()||[]}catch{_browserVoices=[]}}
+if('speechSynthesis' in window){_refreshBrowserVoices();try{window.speechSynthesis.onvoiceschanged=_refreshBrowserVoices}catch{}}
+function _pickBrowserVoice(prefer){
+  if(!_browserVoices||_browserVoices.length===0)return null;
+  const lang=(navigator.language||'en').toLowerCase();
+  const localized=_browserVoices.filter(v=>(v.lang||'').toLowerCase().startsWith(lang.split('-')[0]));
+  const pool=localized.length?localized:_browserVoices;
+  for(const tag of (prefer||[])){
+    const t=tag.toLowerCase();
+    const hit=pool.find(v=>(v.name||'').toLowerCase().includes(t)||((v.voiceURI||'').toLowerCase().includes(t)));
+    if(hit)return hit;
+  }
+  return pool[0]||null;
+}
+function _speakBrowser(clean){
+  if(!('speechSynthesis' in window))return;
+  try{
+    const u=new SpeechSynthesisUtterance(clean);
+    const tune=_personaVoiceTuning();
+    if(tune){u.rate=tune.rate;u.pitch=tune.pitch;const v=_pickBrowserVoice(tune.prefer);if(v)u.voice=v}
+    else{u.rate=1;u.pitch=1}
+    speechSynthesis.cancel();speechSynthesis.speak(u);
+  }catch{}
+}
 let _mediaRec=null,_mediaChunks=[],_recAbort=null;
 async function _startServerSTT(){
   const m=document.getElementById('mic-shell');
