@@ -198,6 +198,22 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #jarvis-toggle:hover{background:rgba(0,229,255,.14);box-shadow:0 0 12px rgba(0,229,255,.35)}
 #jarvis-toggle.on{background:linear-gradient(180deg,rgba(0,229,255,.22),rgba(0,229,255,.08));border-color:var(--cyan);color:#dff6ff;box-shadow:0 0 18px rgba(0,229,255,.6),inset 0 0 12px rgba(0,229,255,.18);animation:jarvisPulse 2.4s ease-in-out infinite}
 @keyframes jarvisPulse{0%,100%{box-shadow:0 0 18px rgba(0,229,255,.55),inset 0 0 12px rgba(0,229,255,.15)}50%{box-shadow:0 0 24px rgba(0,229,255,.85),inset 0 0 16px rgba(0,229,255,.28)}}
+#status-pill .sp-led{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mute);margin-right:6px;transition:background .25s,box-shadow .25s;vertical-align:middle}
+#status-pill.attention .sp-led{background:#ffb547;box-shadow:0 0 6px #ffb547}
+#status-pill.error .sp-led{background:#ff5b5b;box-shadow:0 0 6px #ff5b5b}
+#status-pill.ok .sp-led{background:#00ff9c;box-shadow:0 0 5px #00ff9c}
+#status-panel{position:fixed;top:60px;right:24px;width:300px;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(0,229,255,.35);border-radius:4px;box-shadow:0 0 24px rgba(0,229,255,.18);backdrop-filter:blur(8px);padding:12px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
+#status-panel.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#status-panel.td-hidden{display:block}
+#status-panel .sp-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(0,229,255,.18);margin-bottom:8px;font-size:9.5px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;text-shadow:0 0 4px var(--cyan)}
+#status-panel .sp-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#status-panel .sp-close:hover{color:var(--err);border-color:var(--err)}
+#status-panel .sp-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:3px;font-size:11px;color:var(--fg);cursor:pointer;transition:background .12s;font-family:JetBrains Mono,monospace;letter-spacing:.04em}
+#status-panel .sp-row:hover{background:rgba(0,229,255,.08)}
+#status-panel .sp-name{flex:1;color:var(--fg)}
+#status-panel .sp-val{color:var(--cyan2);font-size:10.5px;letter-spacing:.05em}
+#status-panel .sp-arrow{color:var(--mute);font-size:13px}
+#status-panel .sp-led-inline{width:6px;height:6px;border-radius:50%;background:var(--mute);box-shadow:0 0 4px transparent;transition:background .2s,box-shadow .2s}
 #tools-toggle{padding:8px 12px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.22);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.22em;cursor:pointer;border-radius:3px;transition:all .15s}
 #tools-toggle:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.1)}
 #tools-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.12)}
@@ -717,12 +733,17 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div class="title">A D A M ▸ JARVIS</div>
     <div class="status">
       <span class="pill"><span class="dot"></span>GF(17) online</span>
-      <span class="pill" id="lesson-pill">lessons —</span>
       <span class="pill clickable" id="persona-pill" onclick="togglePersonaPanel()" title="Click to change persona + voice">persona —</span>
-      <span class="pill clickable" id="learn-pill" onclick="toggleLearnPanel()" title="Click to inspect 24/7 learning daemon"><span class="ld-led" id="ld-led"></span><span id="ld-text">learning —</span></span>
-      <span class="pill clickable" id="tests-pill" onclick="toggleTestsPanel()" title="Pending verification items Adam couldn't auto-check"><span class="tp-led" id="tp-led"></span><span id="tp-text">tests —</span></span>
-      <span class="pill clickable" id="shell-pill" onclick="toggleShellPanel()" title="Audit log of every shell command Adam has run"><span class="sh-led" id="sh-led"></span><span id="sh-text">shell —</span></span>
+      <span class="pill clickable" id="status-pill" onclick="toggleStatusPanel()" title="System status: lessons, learning daemon, pending tests, shell history"><span class="sp-led" id="sp-led"></span><span id="sp-text">status —</span></span>
     </div>
+    <div id="status-panel" class="td-hidden">
+      <div class="sp-head"><span>◆ SYSTEM STATUS</span><span class="sp-close" onclick="toggleStatusPanel()">CLOSE</span></div>
+      <div class="sp-row" onclick="toggleStatusPanel();togglePersonaPanel()"><span class="sp-name">lessons</span><span class="sp-val" id="sp-lessons">—</span></div>
+      <div class="sp-row" id="sp-learn-row" onclick="toggleStatusPanel();toggleLearnPanel()"><span class="sp-led-inline" id="ld-led"></span><span class="sp-name" id="ld-text">learning —</span><span class="sp-arrow">›</span></div>
+      <div class="sp-row" id="sp-tests-row" onclick="toggleStatusPanel();toggleTestsPanel()"><span class="sp-led-inline" id="tp-led"></span><span class="sp-name" id="tp-text">tests —</span><span class="sp-arrow">›</span></div>
+      <div class="sp-row" id="sp-shell-row" onclick="toggleStatusPanel();toggleShellPanel()"><span class="sp-led-inline" id="sh-led"></span><span class="sp-name" id="sh-text">shell —</span><span class="sp-arrow">›</span></div>
+    </div>
+    <span class="pill" id="lesson-pill" style="display:none">lessons —</span>
   </header>
   <div id="chat-wrap"><div id="log">
     <div class="welcome">
@@ -2026,6 +2047,44 @@ function toggleToolsDrawer(force){
   const el=document.getElementById('tools-drawer');if(el)el.classList.toggle('show',open);
   const btn=document.getElementById('tools-toggle');if(btn)btn.classList.toggle('on',open);
 }
+let _statusPanelOpen=false;
+function toggleStatusPanel(force){
+  const open=(typeof force==='boolean')?force:!_statusPanelOpen;
+  _statusPanelOpen=open;
+  const el=document.getElementById('status-panel');if(el)el.classList.toggle('show',open);
+  if(open)_refreshStatusRollupLessons();
+}
+document.addEventListener('click',e=>{
+  if(!_statusPanelOpen)return;
+  const panel=document.getElementById('status-panel'),trigger=document.getElementById('status-pill');
+  if(!panel||!trigger)return;
+  if(panel.contains(e.target)||trigger.contains(e.target))return;
+  toggleStatusPanel(false);
+});
+async function _refreshStatusRollupLessons(){
+  try{const r=await fetch('/stats');const j=await r.json();const v=document.getElementById('sp-lessons');if(v)v.textContent=(j.lessons_n||0)+' indexed'}catch(_){}
+}
+function _statusRollupSeverity(){
+  const leds=['ld-led','tp-led','sh-led'].map(id=>{const el=document.getElementById(id);return el?(el.className||''):''});
+  if(leds.some(c=>c.includes('error')||c.includes('failed')))return 'error';
+  if(leds.some(c=>c.includes('pending')||c.includes('paused')))return 'attention';
+  if(leds.some(c=>c.includes('active')||c.includes('empty')))return 'ok';
+  return '';
+}
+function _refreshStatusPillBadge(){
+  const pill=document.getElementById('status-pill');if(!pill)return;
+  const sev=_statusRollupSeverity();
+  pill.classList.remove('attention','error','ok');
+  if(sev)pill.classList.add(sev);
+  const txt=document.getElementById('sp-text');
+  if(txt){
+    const ldOn=(document.getElementById('ld-led')||{className:''}).className.includes('active');
+    const tp=(document.getElementById('tp-text')||{textContent:''}).textContent;
+    const m=/tests\s+(\d+)/i.exec(tp||'');const pending=m?m[1]:'0';
+    txt.textContent=`status${ldOn?' · live':''}${pending!=='0'?' · '+pending+' pending':''}`;
+  }
+}
+setInterval(_refreshStatusPillBadge,2500);_refreshStatusPillBadge();
 document.addEventListener('click',e=>{
   if(!_toolsDrawerOpen)return;
   const drawer=document.getElementById('tools-drawer'),trigger=document.getElementById('tools-toggle');
@@ -2168,7 +2227,7 @@ document.addEventListener('keydown',e=>{
   if(key==='e'&&sh){e.preventDefault();toggleShellPanel();return}
 });
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px'});
-async function refreshStats(){try{const r=await fetch('/stats');const j=await r.json();lessonPill.textContent='lessons '+(j.lessons_n||0);}catch{}}
+async function refreshStats(){try{const r=await fetch('/stats');const j=await r.json();lessonPill.textContent='lessons '+(j.lessons_n||0);const lr=document.getElementById('sp-lessons');if(lr)lr.textContent=(j.lessons_n||0)+' indexed'}catch{}}
 if(voiceOut)document.getElementById('voiceout-toggle').classList.add('on');
 refreshStats();setInterval(refreshStats,30000);
 const canvas=document.getElementById('netcanvas'),ctx=canvas.getContext('2d');
