@@ -191,6 +191,32 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .ld-led.active{background:#00ff9c;box-shadow:0 0 8px #00ff9c, 0 0 14px rgba(0,255,156,.5);animation:ldPulse 1.4s ease-in-out infinite}
 .ld-led.paused{background:#ffb547;box-shadow:0 0 6px #ffb547}
 .ld-led.error{background:#ff5b5b;box-shadow:0 0 6px #ff5b5b}
+.tp-led{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4a5568;box-shadow:0 0 4px #4a5568;margin-right:6px;vertical-align:middle;transition:background .25s, box-shadow .25s}
+.tp-led.empty{background:#00ff9c;box-shadow:0 0 6px #00ff9c}
+.tp-led.pending{background:#ffb547;box-shadow:0 0 8px #ffb547, 0 0 14px rgba(255,181,71,.4);animation:tpPulse 1.6s ease-in-out infinite}
+.tp-led.failed{background:#ff5b5b;box-shadow:0 0 8px #ff5b5b, 0 0 14px rgba(255,91,91,.5);animation:tpPulse 1.0s ease-in-out infinite}
+.tp-led.error{background:#4a5568;box-shadow:0 0 4px #4a5568}
+@keyframes tpPulse{0%,100%{opacity:1}50%{opacity:.5}}
+#tests-panel{position:fixed;top:60px;right:24px;width:380px;z-index:11;border:1px solid rgba(255,181,71,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(255,181,71,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
+#tests-panel.show{display:block}
+#tests-panel .tp-head{padding:10px 14px;border-bottom:1px solid rgba(255,181,71,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#ffb547;text-shadow:0 0 4px #ffb547;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
+#tests-panel .tp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(255,181,71,.22);border-radius:3px;font-size:10px}
+#tests-panel .tp-head .close:hover{color:var(--err);border-color:var(--err)}
+#tests-panel .tp-section{padding:12px 14px;border-bottom:1px solid rgba(255,181,71,.08)}
+#tests-panel .tp-item{padding:8px 10px;border:1px solid rgba(255,181,71,.18);border-radius:3px;background:rgba(255,181,71,.04);margin-bottom:6px}
+#tests-panel .tp-item .path{font-family:JetBrains Mono,monospace;font-size:11px;color:var(--fg);word-break:break-all}
+#tests-panel .tp-item .meta{font-size:9px;color:var(--mute);letter-spacing:.1em;margin-top:4px;text-transform:uppercase}
+#tests-panel .tp-item .reason{font-size:10px;color:#ffb547;margin-top:4px;font-style:italic}
+#tests-panel .tp-item .row{display:flex;gap:6px;margin-top:6px;align-items:center}
+#tests-panel .tp-item .op{display:inline-block;font-size:8px;letter-spacing:.15em;padding:1px 5px;border-radius:2px;background:rgba(255,181,71,.15);color:#ffb547;text-transform:uppercase;font-weight:bold}
+#tests-panel .tp-item .age{font-size:9px;color:var(--mute);margin-left:auto}
+#tests-panel .tp-item button.act{padding:4px 9px;border:1px solid rgba(0,255,156,.4);background:rgba(0,255,156,.04);color:#00ff9c;font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
+#tests-panel .tp-item button.act:hover{background:rgba(0,255,156,.14)}
+#tests-panel .tp-empty{padding:20px 14px;text-align:center;color:var(--mute);font-size:11px;font-style:italic}
+#tests-panel .tp-toolbar{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid rgba(255,181,71,.08);font-size:10px}
+#tests-panel .tp-toolbar button{padding:4px 8px;border:1px solid rgba(255,181,71,.3);background:rgba(255,181,71,.04);color:#ffb547;font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px}
+#tests-panel .tp-toolbar button:hover{background:rgba(255,181,71,.12)}
+#tests-panel .tp-summary{font-size:10px;color:var(--mute);letter-spacing:.05em;margin-left:auto;align-self:center}
 @keyframes ldPulse{0%,100%{opacity:1}50%{opacity:.45}}
 #learn-panel{position:fixed;top:60px;right:24px;width:340px;z-index:11;border:1px solid rgba(0,255,156,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,255,156,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
 #learn-panel.show{display:block}
@@ -335,6 +361,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
       <span class="pill" id="lesson-pill">lessons —</span>
       <span class="pill clickable" id="persona-pill" onclick="togglePersonaPanel()" title="Click to change persona + voice">persona —</span>
       <span class="pill clickable" id="learn-pill" onclick="toggleLearnPanel()" title="Click to inspect 24/7 learning daemon"><span class="ld-led" id="ld-led"></span><span id="ld-text">learning —</span></span>
+      <span class="pill clickable" id="tests-pill" onclick="toggleTestsPanel()" title="Pending verification items Adam couldn't auto-check"><span class="tp-led" id="tp-led"></span><span id="tp-text">tests —</span></span>
     </div>
   </header>
   <div id="chat-wrap"><div id="log">
@@ -432,6 +459,17 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   <div class="lp-section">
     <h3>RECENT TOPICS</h3>
     <div id="lp-recent"><div style="font-size:10px;color:var(--mute);text-align:center;padding:8px;font-style:italic">no completed topics yet</div></div>
+  </div>
+</div>
+<div id="tests-panel">
+  <div class="tp-head"><span>◆ PENDING TESTS</span><span class="close" onclick="toggleTestsPanel()">CLOSE</span></div>
+  <div class="tp-toolbar">
+    <button onclick="_pollTestsList()">REFRESH</button>
+    <button onclick="_tpShowDone(!_tpIncludeDone)" id="tp-toggle-done">SHOW DONE</button>
+    <span class="tp-summary" id="tp-summary">—</span>
+  </div>
+  <div class="tp-section">
+    <div id="tp-list"><div class="tp-empty">loading…</div></div>
   </div>
 </div>
 <div id="cam-panel">
@@ -692,6 +730,47 @@ async function _daemonTick(){try{await fetch('/skills/learning_daemon',{method:'
 async function _daemonQueue(){const inp=document.getElementById('lp-queue-topic');const t=(inp.value||'').trim();if(!t)return;try{const r=await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'queue_topic',topic:t}})});if(r.ok){inp.value='';bubble('bot','Queued **'+esc(t)+'** for autonomous learning','<span class="badge">learn</span>');setTimeout(_pollLearningDaemon,400)}}catch{}}
 function _startLearnPolling(){if(_ldPollTimer)return;_pollLearningDaemon();_ldPollTimer=setInterval(_pollLearningDaemon,8000)}
 _startLearnPolling();
+let _tpItems=[],_tpPanelOpen=false,_tpPollTimer=null,_tpIncludeDone=false;
+function _tpHumanAge(s){if(!s||s<60)return Math.round(s||0)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';if(s<86400)return (s/3600).toFixed(1)+'h ago';return (s/86400).toFixed(1)+'d ago'}
+async function _pollTestsList(){
+  try{
+    const r=await fetch('/memory/needs-testing?include_done='+(_tpIncludeDone?'true':'false'));
+    if(!r.ok){_tpUpdatePill('error',0);return}
+    const j=await r.json();_tpItems=j.items||[];const pending=j.pending||0;const total=j.count||0;
+    _tpUpdatePill(pending>0?'pending':'empty',pending);
+    if(_tpPanelOpen)_renderTestsPanel();
+    const sum=document.getElementById('tp-summary');if(sum)sum.textContent=pending+' pending · '+total+' shown'
+  }catch{_tpUpdatePill('error',0)}
+}
+function _tpUpdatePill(state,n){
+  const led=document.getElementById('tp-led');const txt=document.getElementById('tp-text');if(!led||!txt)return;
+  led.className='tp-led '+state;
+  if(state==='error')txt.textContent='tests offline';
+  else if(state==='empty')txt.textContent='tests · all clear';
+  else txt.textContent='tests · '+n+' pending';
+}
+function _tpShowDone(v){_tpIncludeDone=v;const b=document.getElementById('tp-toggle-done');if(b)b.textContent=v?'HIDE DONE':'SHOW DONE';_pollTestsList()}
+function toggleTestsPanel(){_tpPanelOpen=!_tpPanelOpen;const p=document.getElementById('tests-panel');p.classList.toggle('show',_tpPanelOpen);const pp=document.getElementById('persona-panel');if(_tpPanelOpen&&pp&&pp.classList.contains('show')){pp.classList.remove('show');_personaPanelOpen=false}const lp=document.getElementById('learn-panel');if(_tpPanelOpen&&lp&&lp.classList.contains('show')){lp.classList.remove('show');_ldPanelOpen=false}if(_tpPanelOpen)_pollTestsList()}
+function _renderTestsPanel(){
+  const list=document.getElementById('tp-list');
+  if(!_tpItems.length){list.innerHTML='<div class="tp-empty">No pending tests — Adam is keeping up.</div>';return}
+  const now=Date.now()/1000;
+  list.innerHTML=_tpItems.map(item=>{
+    const age=now-(item.ts||now);
+    const done=item.status==='done';
+    const path=esc(item.path||'?');
+    const reason=esc(item.reason||'');
+    const op=esc((item.op||'edit').toUpperCase());
+    const checks=Array.isArray(item.checks_already_done)?item.checks_already_done.join(', '):'';
+    return `<div class="tp-item" style="${done?'opacity:.55;':''}"><div class="path">${path}</div><div class="reason">${reason}</div>${checks?`<div class="meta">already checked: ${esc(checks)}</div>`:''}<div class="row"><span class="op">${op}</span>${done?'<span class="op" style="background:rgba(0,255,156,.15);color:#00ff9c">DONE</span>':''}<span class="age">${_tpHumanAge(age)}</span>${done?'':`<button class="act" onclick="_tpMarkDone('${path.replace(/'/g,"\\\\'")}')">MARK TESTED</button>`}</div></div>`
+  }).join('');
+}
+async function _tpMarkDone(path){
+  try{const r=await fetch('/memory/needs-testing/done',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path_substring:path})});const j=await r.json();bubble('bot','Marked '+(j.marked_done||0)+' item(s) tested for `'+esc(path)+'`','<span class="badge">tested</span>');_pollTestsList()}
+  catch(e){bubble('bot','Could not mark tested: '+esc(e.message),'<span class="badge err">err</span>')}
+}
+function _startTestsPolling(){if(_tpPollTimer)return;_pollTestsList();_tpPollTimer=setInterval(_pollTestsList,15000)}
+_startTestsPolling();
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
 let _audioEl=null;
 async function speak(text){

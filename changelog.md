@@ -2,6 +2,36 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.17 — Pending-tests checklist visible in /jarvis (2026-05-26)
+
+v6.10.16 added `data/needs_testing.jsonl` and `GET /memory/needs-testing`, but the user had no way to actually see the checklist without curl. v6.10.17 surfaces it in /jarvis as a pill + panel — closes the verification loop end-to-end.
+
+### Pill: `TESTS · N pending`
+New `tests-pill` in header after the `learn-pill`. Color-coded LED:
+- **green dot** — empty (no pending verifications)
+- **amber pulse (1.6s)** — N pending items
+- **red pulse (1.0s)** — some verification recorded a failure (future hook)
+- **gray** — `/memory/needs-testing` unreachable
+
+Polls every 15s. Auto-updates count.
+
+### Panel (click pill)
+Slide-in amber-themed panel mirrors learn-panel structure but for verification state:
+- **Toolbar** — REFRESH, SHOW/HIDE DONE toggle, live summary (`N pending · M shown`)
+- **Items list** — each row: path (monospace), reason ("visual UI render needs human eyes", "no auto-verifier for .xyz", "associated test file detected"), already-completed checks (e.g. "ast.parse, compile"), op badge (EDIT/CREATE/OVERWRITE), age (`5m ago`, `1.2h ago`), MARK TESTED button per item
+- **Done items** — dimmed (opacity 0.55), labeled DONE badge in green, MARK TESTED button hidden
+- **Empty state** — "No pending tests — Adam is keeping up."
+
+Auto-closes persona-panel and learn-panel when opened so the three never stack.
+
+### Mark-done flow
+Click MARK TESTED → POSTs `/memory/needs-testing/done {path_substring}` → `edit_verifier.mark_needs_testing_done()` flips `status:pending → status:done, done_ts:now`. Pill auto-refreshes. Confirmation bubble in chat.
+
+### Tests
+14/14 PASS (`tests/test_tests_pill_v6_10_17.py`): pill present + ordered after learn-pill, all 4 LED states styled, panel structure, polling endpoint + interval + start-at-load, three-way mutual exclusion (persona/learn/tests), mark-done body shape, list endpoint returns items, render includes op/reason/path, empty-state message, done dimming, v6.10.16 regression intact. Full chain (v6.10.11 → .16): 90/90 still PASS. Total: 104/104.
+
+---
+
 ## v6.10.16 — Adam self-verifies its own edits + user-testing checklist (2026-05-26)
 
 Per the maintainer's directive: when Adam writes/edits a file, it must actually verify the change is functional. If it can't, leave a note for later. If user testing is the only way, queue it on a checklist.
