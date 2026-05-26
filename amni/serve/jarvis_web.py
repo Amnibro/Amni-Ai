@@ -308,6 +308,15 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .tok-meter{font-size:9px;letter-spacing:.18em;color:var(--mute);font-family:JetBrains Mono,monospace;margin-top:4px;padding:2px 7px;border:1px solid rgba(0,229,255,.18);background:rgba(0,229,255,.04);border-radius:2px;display:inline-block;text-transform:uppercase;transition:opacity .8s, color .25s}
 .tok-meter.done{color:var(--cyan);border-color:rgba(0,229,255,.35);background:rgba(0,229,255,.08);text-shadow:0 0 3px rgba(0,229,255,.4)}
 .tok-meter.fade{opacity:0}
+.briefing{font-family:JetBrains Mono,monospace;font-size:11px;border:1px solid rgba(0,229,255,.25);background:rgba(0,229,255,.04);border-radius:4px;padding:10px 12px;box-shadow:0 0 14px rgba(0,229,255,.12)}
+.briefing .b-head{font-size:11px;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 4px var(--cyan);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,229,255,.18);display:flex;align-items:center;gap:8px}
+.briefing .b-icon{font-size:14px;color:var(--cyan)}
+.briefing .b-section{padding:5px 0;font-size:11px;color:var(--fg)}
+.briefing .b-section+.b-section{border-top:1px dashed rgba(0,229,255,.08)}
+.briefing .b-lbl{display:inline-block;width:80px;font-size:9px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase}
+.briefing .b-tags{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
+.briefing .b-tag{display:inline-block;padding:1px 6px;font-size:9px;background:rgba(0,229,255,.08);color:var(--cyan);border:1px solid rgba(0,229,255,.18);border-radius:2px;letter-spacing:.05em;text-transform:capitalize}
+.briefing .b-mute{color:var(--mute);font-style:italic;font-size:10px}
 #toast-stack{position:fixed;bottom:140px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:14;max-width:340px;pointer-events:none}
 .toast{pointer-events:auto;padding:10px 12px;border:1px solid rgba(0,229,255,.35);background:rgba(8,14,28,.94);border-left:3px solid var(--cyan);border-radius:3px;font-size:11px;color:var(--fg);box-shadow:0 0 14px rgba(0,229,255,.18);backdrop-filter:blur(6px);transform:translateX(60px);opacity:0;transition:transform .25s ease-out, opacity .25s ease-out;cursor:pointer;font-family:inherit}
 .toast.show{transform:translateX(0);opacity:1}
@@ -558,6 +567,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <button class="qchip qc-coach" onclick="toggleCoachPanel()"><span class="ico">🎯</span>COACH</button>
     <button class="qchip qc-export" onclick="_exportChatMd()"><span class="ico">📥</span>EXPORT</button>
     <button class="qchip" onclick="_qcAsk('summarize this conversation so far')"><span class="ico">📝</span>SUMMARIZE</button>
+    <button class="qchip" onclick="_qcBriefing()" title="Adam's last-24h activity briefing"><span class="ico">◈</span>BRIEFING</button>
     <button class="qchip" onclick="toggleSessionsPanel()" title="Browse past chat sessions"><span class="ico">🗂</span>SESSIONS</button>
     <button class="qchip" onclick="_qcAsk('what can you do?')"><span class="ico">?</span>HELP</button>
     <span class="qchip-hint">drag a file · paste image · Ctrl+K to search</span>
@@ -810,6 +820,27 @@ function appendWidgets(msgEl,widgets){
 }
 function quick(t){input.value=t;send()}
 function _qcAsk(t){input.value=t;send()}
+function _briefingHumanCount(n,sing,plur){return (n||0)+' '+((n||0)===1?sing:(plur||sing+'s'))}
+async function _qcBriefing(){
+  try{
+    const r=await fetch('/memory/digest?hours=24');if(!r.ok){bubble('bot','Briefing unavailable: '+r.status,'<span class="badge err">briefing</span>');return}
+    const j=await r.json();
+    const learn=j.learning||{};const shell=j.shell||{};const ver=j.verifier||{};const coach=j.coach||{};
+    const topics=(learn.topics_today||[]).slice(0,4).filter(Boolean);
+    const topicsHtml=topics.length?topics.map(t=>`<span class="b-tag">${esc(t)}</span>`).join(''):'<span class="b-mute">none</span>';
+    const lines=[
+      `<div class="b-section"><span class="b-lbl">LEARNING</span>${learn.facts_today||0} new facts · ${(learn.topics_today||[]).length} topic${(learn.topics_today||[]).length===1?'':'s'} <div class="b-tags">${topicsHtml}</div></div>`,
+      `<div class="b-section"><span class="b-lbl">SHELL</span>${shell.runs_today||0} run${(shell.runs_today||0)===1?'':'s'} · ${shell.errors_today||0} error${(shell.errors_today||0)===1?'':'s'}</div>`,
+      `<div class="b-section"><span class="b-lbl">EDITS</span>${ver.pass_today||0} verified · ${ver.fail_today||0} failed · ${ver.pending||0} pending review</div>`,
+      `<div class="b-section"><span class="b-lbl">COACH</span>${(coach.streak_days||0)>=14?'⚡':(coach.streak_days||0)>=3?'🔥':'·'} ${coach.streak_days||0} day streak${coach.today_active?' · today ✓':''} · ${coach.topics||0} topic${(coach.topics||0)===1?'':'s'} practiced</div>`
+    ];
+    const head='<div class="b-head"><span class="b-icon">◈</span>24-HOUR BRIEFING</div>';
+    const html='<div class="briefing">'+head+lines.join('')+'</div>';
+    const m=document.createElement('div');m.className='msg bot';
+    const b=document.createElement('div');b.className='bubble';b.innerHTML=html;
+    m.appendChild(b);log.appendChild(m);log.scrollTop=log.scrollHeight;
+  }catch(e){bubble('bot','Briefing error: '+esc(e.message),'<span class="badge err">briefing</span>')}
+}
 let _spPanelOpen=false,_spItems=[];
 function _spHumanAge(ts){if(!ts)return '—';const s=Math.max(0,Date.now()/1000-ts);if(s<60)return Math.round(s)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';if(s<86400)return (s/3600).toFixed(1)+'h ago';if(s<86400*7)return (s/86400).toFixed(1)+'d ago';return Math.round(s/86400)+'d ago'}
 async function _pollSessionsList(){
@@ -1988,3 +2019,58 @@ def mount(app):
     def _notifs_read_all():
         from amni.serve.notifications import mark_all_read
         return {'marked':mark_all_read()}
+    @app.get('/memory/digest')
+    def _digest(hours:int=24):
+        import time as _t,json as _j
+        from pathlib import Path as _P
+        cutoff=_t.time()-max(1,hours)*3600;out={'hours':hours,'cutoff_ts':cutoff,'generated_at':_t.time()}
+        data_dir=_P(__file__).resolve().parents[2]/'data'
+        out['learning']={'facts_today':0,'topics_today':[],'current_topic':None,'enabled':False}
+        try:
+            from amni.serve import notifications as _nf
+            ld_notifs=[n for n in _nf.list_active(limit=200,include_read=True) if n.get('source')=='learning_daemon' and n.get('ts',0)>=cutoff]
+            out['learning']['facts_today']=sum(((n.get('extras') or {}).get('new',0) or 0) for n in ld_notifs)
+            out['learning']['topics_today']=[((n.get('extras') or {}).get('topic') or n.get('title','').replace('Learned about ','')) for n in ld_notifs[:8]]
+        except Exception:pass
+        out['shell']={'runs_today':0,'errors_today':0,'kinds':{}}
+        sh_log=data_dir/'shell_history.jsonl'
+        if sh_log.exists():
+            try:
+                for ln in sh_log.read_text(encoding='utf-8').splitlines():
+                    if not ln.strip():continue
+                    try:r=_j.loads(ln)
+                    except Exception:continue
+                    if float(r.get('ts') or 0)<cutoff:continue
+                    out['shell']['runs_today']+=1
+                    if (r.get('returncode') or 0)!=0:out['shell']['errors_today']+=1
+                    k=r.get('kind','?');out['shell']['kinds'][k]=out['shell']['kinds'].get(k,0)+1
+            except Exception:pass
+        out['verifier']={'pass_today':0,'fail_today':0,'pending':0}
+        v_log=data_dir/'verification_log.jsonl'
+        if v_log.exists():
+            try:
+                for ln in v_log.read_text(encoding='utf-8').splitlines():
+                    if not ln.strip():continue
+                    try:r=_j.loads(ln)
+                    except Exception:continue
+                    if float(r.get('ts') or 0)<cutoff:continue
+                    if r.get('verified') is True:out['verifier']['pass_today']+=1
+                    elif r.get('verified') is False:out['verifier']['fail_today']+=1
+            except Exception:pass
+        nt_log=data_dir/'needs_testing.jsonl'
+        if nt_log.exists():
+            try:
+                for ln in nt_log.read_text(encoding='utf-8').splitlines():
+                    if not ln.strip():continue
+                    try:r=_j.loads(ln)
+                    except Exception:continue
+                    if r.get('status')=='pending':out['verifier']['pending']+=1
+            except Exception:pass
+        out['coach']={'streak_days':0,'today_active':False,'total_days_active':0,'topics':0}
+        try:
+            from pathlib import Path as _P2
+            from amni.storage.coach_atlas import CoachAtlas
+            ca=CoachAtlas(root='experiences/coach_atlas');s=ca.streak_stats() if hasattr(ca,'streak_stats') else {}
+            out['coach'].update({'streak_days':s.get('current_streak',0),'today_active':bool(s.get('today_active')),'total_days_active':s.get('total_days_active',0),'topics':len(ca.list_topics())})
+        except Exception:pass
+        return out
