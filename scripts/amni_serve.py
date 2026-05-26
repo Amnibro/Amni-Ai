@@ -838,6 +838,10 @@ def main():
             p=personas.learn(name)
             return {'persona':p.to_dict(),'learned_now':True}
         return {'persona':personas.get(name).to_dict(),'learned_now':False}
+    @app.get('/persona/panel',response_class=HTMLResponse)
+    def persona_panel():
+        from amni.serve.persona_panel import PERSONA_PANEL_HTML
+        return HTMLResponse(PERSONA_PANEL_HTML)
     @app.get('/persona/observe')
     def observe_persona(session_id:str=''):
         """Full render-state of the active persona. Lets external clients (Amni-Code side-panel, status bars) mirror /jarvis without polling N endpoints."""
