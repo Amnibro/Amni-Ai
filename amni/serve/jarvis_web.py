@@ -745,6 +745,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
       <div class="sp-row" id="sp-learn-row" onclick="toggleStatusPanel();toggleLearnPanel()"><span class="sp-led-inline" id="ld-led"></span><span class="sp-name" id="ld-text">learning —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-tests-row" onclick="toggleStatusPanel();toggleTestsPanel()"><span class="sp-led-inline" id="tp-led"></span><span class="sp-name" id="tp-text">tests —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-shell-row" onclick="toggleStatusPanel();toggleShellPanel()"><span class="sp-led-inline" id="sh-led"></span><span class="sp-name" id="sh-text">shell —</span><span class="sp-arrow">›</span></div>
+      <div class="sp-row" id="sp-skill-failures-row" onclick="toggleStatusPanel();_skillFailuresShow()"><span class="sp-led-inline" id="sfl-led"></span><span class="sp-name" id="sfl-text">skill failures —</span><span class="sp-arrow">›</span></div>
     </div>
     <span class="pill" id="lesson-pill" style="display:none">lessons —</span>
   </header>
@@ -2076,7 +2077,7 @@ async function _refreshStatusRollupLessons(){
   try{const r=await fetch('/stats');const j=await r.json();const v=document.getElementById('sp-lessons');if(v)v.textContent=(j.lessons_n||0)+' indexed'}catch(_){}
 }
 function _statusRollupSeverity(){
-  const leds=['ld-led','tp-led','sh-led'].map(id=>{const el=document.getElementById(id);return el?(el.className||''):''});
+  const leds=['ld-led','tp-led','sh-led','sfl-led'].map(id=>{const el=document.getElementById(id);return el?(el.className||''):''});
   if(leds.some(c=>c.includes('error')||c.includes('failed')))return 'error';
   if(leds.some(c=>c.includes('pending')||c.includes('paused')))return 'attention';
   if(leds.some(c=>c.includes('active')||c.includes('empty')))return 'ok';
@@ -2096,6 +2097,36 @@ function _refreshStatusPillBadge(){
   }
 }
 setInterval(_refreshStatusPillBadge,2500);_refreshStatusPillBadge();
+let _skillFailuresLastTotal=0;
+async function _refreshSkillFailures(){
+  try{
+    const r=await fetch('/memory/skill-failures?limit=5');if(!r.ok)return;
+    const j=await r.json();const recent=j.failures||[];const stats=j.stats||{};
+    const total=stats.total||0;
+    const txt=document.getElementById('sfl-text');const led=document.getElementById('sfl-led');
+    if(led){
+      let cls='ld-led idle';
+      if(recent.length>0){const newCount=total-_skillFailuresLastTotal;cls=newCount>0?'ld-led error':'ld-led paused'}
+      led.className=cls;
+    }
+    if(txt){
+      if(total===0){txt.textContent='skill failures — none'}
+      else{const last=recent[recent.length-1]||{};const lastSkill=(last.skill||'?');txt.textContent=`skill failures · ${total} total · last: ${lastSkill}`}
+    }
+    _skillFailuresLastTotal=total;
+  }catch(_){}
+}
+async function _skillFailuresShow(){
+  try{
+    const r=await fetch('/memory/skill-failures?limit=10');if(!r.ok){bubble('bot','Skill failures endpoint unreachable.','<span class="badge err">diag</span>');return}
+    const j=await r.json();const recent=(j.failures||[]).slice().reverse();const stats=j.stats||{};
+    if(recent.length===0){bubble('bot','No skill failures recorded. ✓','<span class="badge">diag</span>');return}
+    const rows=recent.slice(0,8).map(f=>{const t=f.iso||'?';const sk=esc(f.skill||'?');const err=esc((f.error||'').slice(0,140));const msg=esc((f.message||'').slice(0,60));return `<div style="margin:6px 0;padding:6px 8px;background:rgba(255,91,91,.04);border-left:2px solid rgba(255,91,91,.4);border-radius:0 3px 3px 0;font-size:10.5px;line-height:1.5;font-family:JetBrains Mono,monospace"><div><span style="color:#ff7b7b;font-weight:600">${sk}</span> <span style="color:var(--mute)">· ${esc(t)}</span></div><div style="color:var(--mute);margin-top:2px">"${msg}"</div><div style="color:#ffb7b7;margin-top:3px">${err}</div></div>`}).join('');
+    const head=`<div style="font-size:9.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin-bottom:6px">◆ RECENT SKILL FAILURES · ${stats.total||0} TOTAL</div>`;
+    bubble('bot',head+rows,'<span class="badge err">diag</span>');
+  }catch(e){bubble('bot','Skill failures fetch failed: '+esc(String(e)),'<span class="badge err">diag</span>')}
+}
+setInterval(_refreshSkillFailures,5000);_refreshSkillFailures();
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   const gt=document.getElementById('gesture-tour');
