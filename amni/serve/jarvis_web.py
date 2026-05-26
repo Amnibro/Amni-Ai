@@ -107,6 +107,17 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.file_change .fc-repl{color:var(--cyan)}
 .widget.file_change .fc-size{margin-left:auto;color:var(--mute)}
 .widget.file_change .fc-preview{font-size:10px;font-family:JetBrains Mono,monospace;background:rgba(0,0,0,.35);border:1px solid rgba(0,229,255,.1);border-radius:3px;padding:6px 8px;max-height:160px;overflow:auto;color:var(--fg);white-space:pre;line-height:1.4;margin:4px 0}
+.widget.skill_error{border-color:rgba(255,91,91,.4);box-shadow:0 0 12px rgba(255,91,91,.2)}
+.widget.skill_error .w-head{color:#ff7b7b;border-color:rgba(255,91,91,.3)}
+.widget.skill_error .se-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.widget.skill_error .se-skill{font-size:13px;color:#ff7b7b;font-weight:600;letter-spacing:.05em;font-family:JetBrains Mono,monospace}
+.widget.skill_error .se-status{font-size:9px;letter-spacing:.22em;color:#ff5b5b;padding:2px 6px;border:1px solid rgba(255,91,91,.4);border-radius:2px;background:rgba(255,91,91,.08)}
+.widget.skill_error .se-msg{font-size:10.5px;color:var(--mute);font-style:italic;margin:5px 0;padding:4px 8px;border-left:2px solid rgba(255,91,91,.3);background:rgba(0,0,0,.2)}
+.widget.skill_error .se-err{font-size:10.5px;color:#ffb7b7;background:rgba(255,91,91,.06);border:1px solid rgba(255,91,91,.2);border-radius:3px;padding:6px 8px;font-family:JetBrains Mono,monospace;white-space:pre-wrap;word-break:break-all;line-height:1.45;margin:5px 0}
+.widget.skill_error .se-args{font-size:9px;color:var(--mute);letter-spacing:.04em;font-family:JetBrains Mono,monospace;margin-top:5px;opacity:.7}
+.widget.skill_error .se-actions{display:flex;gap:6px;margin-top:8px}
+.widget.skill_error .se-btn{padding:5px 10px;background:rgba(255,91,91,.06);border:1px solid rgba(255,91,91,.35);color:#ffb7b7;font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;text-transform:uppercase}
+.widget.skill_error .se-btn:hover{background:rgba(255,91,91,.14);border-color:#ff5b5b;color:#ff7b7b}
 .widget.file_change .fc-diff{font-size:10px;font-family:JetBrains Mono,monospace;background:rgba(0,0,0,.45);border:1px solid rgba(0,229,255,.12);border-radius:3px;max-height:200px;overflow:auto;line-height:1.45;margin:4px 0}
 .widget.file_change .fc-diff .dl{display:block;padding:1px 8px;white-space:pre;word-break:break-all}
 .widget.file_change .fc-diff .dl.add{background:rgba(0,255,156,.08);color:#9eff9c;border-left:2px solid #00ff9c}
@@ -1171,6 +1182,10 @@ function renderWidget(w){
     const beforeHtml=hasBefore?`<pre class="fc-preview" data-view="before" data-fcid="${wid}" style="display:none">${esc(beforeStr)}</pre>`:'';
     const afterHtml=afterStr?`<pre class="fc-preview" data-view="after" data-fcid="${wid}" style="display:${hasDiff?'none':'block'}">${esc(afterStr)}</pre>`:'';
     body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${testRunBlock}${suggList}${toggle}${diffHtml}${beforeHtml}${afterHtml}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
+  }else if(t==='skill_error'){
+    const sk=esc(d.skill||'?');const err=esc(d.error||'unknown error');const msg=esc(d.message||'');
+    const argsStr=esc(JSON.stringify(d.args||{}).slice(0,200));
+    body=`<div class="se-head"><span class="se-skill">${sk}</span><span class="se-status">FAILED</span></div><div class="se-msg">"${msg}"</div><div class="se-err">${err}</div><div class="se-args">args: ${argsStr}</div><div class="se-actions"><button class="se-btn" onclick="_skillErrorRetry('${esc(d.message||'').replace(/'/g,"\\\\'")}')">↻ RETRY</button><button class="se-btn" onclick="_skillFailuresShow()">VIEW LOG</button></div>`;
   }else if(t==='error'||t==='info'){
     body=esc(d.message||'');
   }else{
@@ -2127,6 +2142,11 @@ async function _skillFailuresShow(){
   }catch(e){bubble('bot','Skill failures fetch failed: '+esc(String(e)),'<span class="badge err">diag</span>')}
 }
 setInterval(_refreshSkillFailures,5000);_refreshSkillFailures();
+function _skillErrorRetry(originalMsg){
+  if(!originalMsg)return;
+  input.value=originalMsg;input.focus();
+  bubble('bot','Restored your original message to the input — edit if needed, then press TRANSMIT to retry.','<span class="badge">retry</span>');
+}
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   const gt=document.getElementById('gesture-tour');

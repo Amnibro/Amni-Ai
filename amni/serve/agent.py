@@ -479,7 +479,12 @@ class AmniAgent:
                         _sfrec(skill=name,message=message,args=args,error=str(r.error or ''),extra={'session_id':conv.session_id})
                     except Exception as _e:print(f'[agent] skill_failures log write failed: {_e}',flush=True)
                     print(f'[agent] skill={name} failed args={args} error={r.error!r}',flush=True)
-                    skill_answer=f'(skill {name} failed: {r.error}) Falling back to Adam.'
+                    err_widget=json.dumps({'type':'skill_error','title':f'{name.upper()} skill failed','icon':'⚠','data':{'skill':name,'args':args,'error':str(r.error or 'unknown error'),'message':message,'ts':time.time()}})
+                    persona_for_err=self.personas.for_session(conv.session_id) if self.use_persona else _PERSONA_PRESETS['neutral']
+                    wrapped_err=f'I tried the **{name}** skill for that but it errored out: `{r.error}`. The full trace is in /memory/skill-failures (or click the STATUS panel\'s skill-failures row). Want me to try a different approach?\n\n```widget\n{err_widget}\n```'
+                    cat_err=tone_atlas.classify_intent(message,skill_used=name)
+                    conv.append('assistant',wrapped_err,{'tier':f'tier0_skill_{name}_failed','skill_calls':skill_calls,'tokens':0,'persona':persona_for_err.name,'category':cat_err})
+                    return {'answer':wrapped_err,'tier':f'tier0_skill_{name}_failed','tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona_for_err.name,'category':cat_err,'skill_error':True}
         persona=self.personas.for_session(conv.session_id) if self.use_persona else _PERSONA_PRESETS['neutral']
         if skill_answer is not None and not skill_answer.startswith('(skill'):
             cat=tone_atlas.classify_intent(message,skill_used=(skill_calls[0]['skill'] if skill_calls else None))
