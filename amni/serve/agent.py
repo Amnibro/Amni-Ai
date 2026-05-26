@@ -357,6 +357,16 @@ class AmniAgent:
         if _m and self.skills.has('stock'):return ('stock',{'symbols':re.sub(r'\s+',',',_m.group(1).upper())})
         if re.search(r"\b(?:disk|drive)\s+(?:usage|space|free)\b|\bhow\s+much\s+(?:disk|drive|storage)\s+(?:space|free)\b",msg,re.IGNORECASE) and self.skills.has('disk_widget'):return ('disk_widget',{})
         if re.search(r"\bgit\s+status\b|\b(?:current\s+)?(?:git\s+)?branch\b|\bunstaged\s+(?:files|changes)\b",msg,re.IGNORECASE) and self.skills.has('git_status'):return ('git_status',{})
+        if self.skills.has('learning_daemon'):
+            if re.search(r"^\s*(?:please\s+)?(?:pause|stop|halt|silence)\s+(?:the\s+)?(?:learning(?:\s+daemon)?|daemon|autonomous\s+learning)\s*\.?$",msg,re.IGNORECASE):return ('learning_daemon',{'action':'pause'})
+            if re.search(r"^\s*(?:please\s+)?(?:resume|start|restart|unpause|continue)\s+(?:the\s+)?(?:learning(?:\s+daemon)?|daemon|autonomous\s+learning)\s*\.?$",msg,re.IGNORECASE):return ('learning_daemon',{'action':'resume'})
+            if re.search(r"\bwhat(?:'s|\s+are\s+you|\s+is\s+adam)?\s+(?:learning|studying|researching)\s*(?:right\s+now|now|currently|at\s+the\s+moment)?\s*\??\s*$",msg,re.IGNORECASE):return ('learning_daemon',{'action':'stats'})
+            if re.search(r"\b(?:daemon|learning)\s+(?:stats?|status|state)\b|\bhow(?:'s|\s+is)\s+(?:the\s+)?(?:learning|daemon)\b",msg,re.IGNORECASE):return ('learning_daemon',{'action':'stats'})
+            _m=re.search(r"^\s*(?:please\s+)?(?:queue|add|teach\s+yourself|go\s+learn|learn|study|research|investigate|read\s+(?:about|up\s+on))\s+(?:(?:about|on|the\s+topic\s+of|topic|some|something\s+about)\s+)?([\w\s\-,'.()]{3,80})\??\s*$",msg,re.IGNORECASE)
+            if _m:
+                topic=_m.group(1).strip(' ?.,!').strip()
+                if topic and topic.lower() not in ('this','that','it','something','more'):return ('learning_daemon',{'action':'queue_topic','topic':topic})
+            if re.search(r"\b(?:run\s+(?:a\s+)?curiosity(?:\s+tick)?|trigger\s+curiosity|do\s+a\s+curiosity\s+tick)\b",msg,re.IGNORECASE):return ('learning_daemon',{'action':'curiosity_tick'})
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
         m=_CALC_RE.search(msg)
@@ -600,6 +610,18 @@ class AmniAgent:
         if name=='scan':
             if out.get('error'):return f'(scan error: {out["error"]})'
             return f'Scanned {out.get("files_scanned",0)} file(s), added {out.get("lessons_added",0)} lesson(s) (total: {out.get("lessons_total",0)}). Distilled: {out.get("distilled")}.'
+        if name=='learning_daemon':
+            if out.get('error'):return f'(daemon error: {out["error"]})'
+            if out.get('paused'):return 'Learning daemon paused. I will stop autonomous topic ingestion until you resume me.'
+            if out.get('resumed'):return 'Learning daemon resumed. I am back to autonomous learning in the background.'
+            if 'gap' in out:
+                g=out.get('gap');return (f'Curiosity tick fired — picked "{g.get("topic","?")}" ({g.get("reason","")}) and queued it. Queue depth now {out.get("queue_depth","?")}.' if g else 'Curiosity tick fired but no knowledge gap to fill right now.')
+            if out.get('queued') is True and 'topic' in out:return f'Queued "{out.get("topic","")}" for autonomous learning. I will research it in the background and integrate what I find.'
+            if out.get('queued') is False:return f'Could not queue topic: {out.get("reason","queue full")}.'
+            ct=out.get('current_topic');cph=out.get('current_topic_phase','');c=out.get('counters',{}) or {};fph=out.get('facts_per_hour',0);qd=out.get('queue_depth',0);uh=out.get('uptime_hours',0);en=out.get('enabled');new=c.get('qa_pairs_new',0);urls=c.get('urls_ingested',0)
+            if ct:return f'Right now I am learning about **{ct}** ({cph or "working"}). Daemon has been up {uh}h, learned {new} new facts across {urls} sources, currently {fph}/h. Queue depth {qd}.'
+            if not en:return f'Daemon is paused. {new} facts learned in {uh}h of uptime ({fph}/h average). Queue depth {qd}.'
+            return f'Daemon idle, waiting for the next curiosity tick. {new} facts learned in {uh}h ({fph}/h average). Queue depth {qd}.'
         return json.dumps(out,default=str)[:1000]
     def _introspect_answer(self,persona:Optional[Persona]=None)->str:
         skills=[s['name'] for s in self.list_skills()]
