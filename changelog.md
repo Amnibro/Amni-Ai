@@ -2,6 +2,33 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.14 — Voice-friendly natural-language routing for the LearningDaemon (2026-05-26)
+
+Ties v6.10.12 (daemon visibility) and v6.10.13 (wake word) together: spoken or typed commands like "Adam, pause learning" / "Adam, what are you learning right now?" / "Adam, learn about black holes" now hit the daemon skill directly without any intermediate LLM call. Same path works from voice (post-wake-strip), text, and OpenAI/Ollama API clients.
+
+### Routing patterns added to `agent._detect_skill`
+- **pause**: `pause learning` / `pause the daemon` / `stop autonomous learning` / `halt learning` → `{action:pause}`
+- **resume**: `resume learning` / `start the daemon` / `unpause` / `continue learning` → `{action:resume}`
+- **status**: `what are you learning?` / `what is adam learning right now` / `daemon status` / `how's the learning?` → `{action:stats}`
+- **queue topic**: `learn about X` / `study X` / `research X` / `queue X` / `teach yourself about X` / `read up on X` → `{action:queue_topic, topic:X}`; rejects pronoun-only ("learn it", "study this")
+- **curiosity tick**: `run a curiosity tick` / `trigger curiosity` → `{action:curiosity_tick}`
+
+### Natural-language responses (TTS-friendly)
+`_format_skill_output('learning_daemon', ...)` now emits human sentences instead of JSON dumps:
+- paused: "Learning daemon paused. I will stop autonomous topic ingestion until you resume me."
+- resumed: "Learning daemon resumed. I am back to autonomous learning in the background."
+- queue ok: 'Queued "{topic}" for autonomous learning. I will research it in the background and integrate what I find.'
+- stats (active): "Right now I am learning about **{topic}** ({phase}). Daemon has been up {Nh}h, learned {N} new facts across {U} sources, currently {Rate}/h. Queue depth {Q}."
+- stats (idle/paused): similar shape, calls out the state explicitly
+- curiosity tick result: "Curiosity tick fired — picked '{topic}' ({reason}) and queued it. Queue depth now {N}." or "no knowledge gap to fill right now"
+
+When the response gets spoken via Piper streaming TTS (voice out enabled), it sounds like a real assistant reporting on its own background work.
+
+### Tests
+17/17 PASS (`tests/test_voice_daemon_commands_v6_10_14.py`): all five action routings across 30+ phrasings, no route when skill absent, no regression of other skill routes (weather/system_stats/git_status), all six formatter branches, v6.10.13 jarvis_web regression. Full prior chain (v6.10.11 + v6.10.12 + v6.10.13) all green: 45/45 + 17/17 = 62/62.
+
+---
+
 ## v6.10.13 — Jarvis wake-word gate ("Adam, …") in convo mode (2026-05-26)
 
 Convo mode currently sends every Whisper transcription to chat. That makes Adam respond to room chatter, half-finished sentences, and anything Whisper hallucinates that survives the v6.10.10 filter. v6.10.13 adds an explicit **wake word** gate — when on, Adam only responds in convo mode if you address him directly. This is the canonical Jarvis behavior.
