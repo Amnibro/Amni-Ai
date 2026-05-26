@@ -265,6 +265,9 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #input::placeholder{color:var(--mute);font-style:italic}
 #send{padding:0 22px;height:46px;border:1px solid var(--cyan);background:rgba(0,229,255,.1);color:var(--cyan);font-family:inherit;font-size:11px;letter-spacing:.25em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all .2s;text-shadow:0 0 4px var(--cyan)}
 #send:hover:not(:disabled){background:var(--cyan);color:var(--bg);box-shadow:0 0 18px var(--cyan)}
+#send.stop-mode{border-color:#ff5577;color:#ff8aa2;background:rgba(255,85,119,.1);text-shadow:0 0 4px rgba(255,85,119,.6);animation:stopPulse 1.6s ease-in-out infinite}
+#send.stop-mode:hover{background:#ff5577;color:var(--bg);box-shadow:0 0 18px rgba(255,85,119,.7);animation:none}
+@keyframes stopPulse{0%,100%{box-shadow:0 0 6px rgba(255,85,119,.4)}50%{box-shadow:0 0 18px rgba(255,85,119,.85)}}
 #send:disabled{opacity:.3;cursor:wait}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
@@ -1293,19 +1296,35 @@ async function _fcMarkTested(path){
   try{const r=await fetch('/memory/needs-testing/done',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path_substring:path})});const j=await r.json();bubble('bot','Marked '+j.marked_done+' testing item(s) as done for `'+esc(path)+'`','<span class="badge">tested</span>')}
   catch(e){bubble('bot','Could not mark tested: '+esc(e.message),'<span class="badge err">err</span>')}
 }
+let _streamAbort=null;
+function _setSendButtonState(streaming){
+  if(!send_btn)return;
+  if(streaming){send_btn.dataset.streaming='1';send_btn.textContent='STOP';send_btn.classList.add('stop-mode');send_btn.disabled=false}
+  else{delete send_btn.dataset.streaming;send_btn.textContent='TRANSMIT';send_btn.classList.remove('stop-mode')}
+}
+function stopStream(){
+  if(_streamAbort){try{_streamAbort.abort()}catch{}_streamAbort=null}
+  _setSendButtonState(false);
+}
 async function send(){
+  if(send_btn&&send_btn.dataset.streaming==='1'){stopStream();return}
   const text=input.value.trim();if(!text)return;
-  input.value='';input.style.height='auto';send_btn.disabled=true;
+  input.value='';input.style.height='auto';
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
-  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];
+  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];let aborted=false;
+  _streamAbort=new AbortController();
+  _setSendButtonState(true);
   try{
     const body=sid?{message:text,session_id:sid}:{message:text};
-    const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:_streamAbort.signal});
     if(!resp.body){throw new Error('streaming not supported by browser')}
     const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';
     while(true){
-      const {done,value}=await reader.read();if(done)break;
+      let chunk;
+      try{chunk=await reader.read()}
+      catch(e){if(e&&e.name==='AbortError'){aborted=true;break}throw e}
+      const {done,value}=chunk;if(done)break;
       buf+=decoder.decode(value,{stream:true});
       const events=buf.split('\n\n');buf=events.pop()||'';
       for(const evt of events){
@@ -1333,14 +1352,18 @@ async function send(){
       }
     }
     bot.bubble.classList.remove('thinking');
-    if(!acc)bot.bubble.textContent='(empty response)';
+    if(!acc)bot.bubble.textContent=aborted?'(stopped before any tokens arrived)':'(empty response)';
     if(widgets.length){appendWidgets(bot.msg,widgets)}
     const metaEl=document.createElement('div');metaEl.className='meta';
-    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}`;
+    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}${aborted?'<span class="badge err">stopped</span>':''}`;
     bot.msg.appendChild(metaEl);
-    if(voiceOut&&acc)speak(acc);
-  }catch(err){bot.bubble.classList.remove('thinking');bot.bubble.textContent='Error: '+err.message}
-  send_btn.disabled=false;input.focus();log.scrollTop=log.scrollHeight;
+    if(voiceOut&&acc&&!aborted)speak(acc);
+  }catch(err){
+    if(err&&err.name==='AbortError'){bot.bubble.classList.remove('thinking');if(!acc)bot.bubble.textContent='(stopped)'}
+    else{bot.bubble.classList.remove('thinking');bot.bubble.textContent='Error: '+err.message}
+  }
+  _streamAbort=null;_setSendButtonState(false);
+  input.focus();log.scrollTop=log.scrollHeight;
 }
 let _voiceBackends={tts:false,stt:false,tts_backend:'',stt_backend:''};
 async function probeVoiceBackends(){
@@ -2188,6 +2211,7 @@ function _skillErrorRetry(originalMsg){
 }
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
+  if(_streamAbort){e.preventDefault();stopStream();return}
   const gt=document.getElementById('gesture-tour');
   if(gt&&gt.classList.contains('show')){e.preventDefault();_gtClose();return}
   if(_toolsDrawerOpen){e.preventDefault();toggleToolsDrawer(false);return}
