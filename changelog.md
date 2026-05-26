@@ -2,6 +2,48 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.53 — Coach active sessions persist across server restart (2026-05-26)
+
+The coach skill's in-flight sessions (`CoachAtlas._sessions`) lived in memory only. If the server restarted mid-session — even for a routine reload — the user's question + difficulty + streak state vanished, breaking the persistence loop that v6.10.18 → .49 built up.
+
+### What changed
+- `CoachAtlas.__init__` now calls `_load_sessions()` at startup
+- `_sessions_path()` returns `<atlas-root>/_active_sessions.json`
+- `_save_sessions()` writes the full `_sessions` dict as indented JSON (debuggable on inspection)
+- Every mutation calls `_save_sessions()`:
+  - `start_session()` after registering a new sid
+  - `update_session()` after kwarg merge
+  - `record()` after the score/streak/difficulty math
+  - `end_session()` after pop
+
+### Failure modes — graceful
+- Missing file → `_sessions={}` (first ever run)
+- Corrupt JSON → `_sessions={}` + warn to stderr (user not blocked)
+- Save failure (disk full, permission) → warn to stderr (in-memory state still works)
+
+### Why this matters
+Coach is the most stateful skill — a 20-question session has accumulated difficulty, streak, mastery deltas. Losing that to a server bounce broke the user's flow more than any other skill. With persistence, the user can:
+- Close /jarvis, restart Adam, come back hours later → coach session still alive
+- Server crash mid-session → next start resumes exactly where it stopped (pending question included)
+- Run experiments / iterate on coach code without nuking practice state
+
+### Tests
+12/12 PASS (`tests/test_coach_session_persistence_v6_10_53.py`): session_path + load + save helpers present, start_session writes file, update_session persists kwargs, end_session removes from file, record persists post-mutation state (n_answered + cumulative_score), **fresh CoachAtlas instance reloads existing sessions** (the actual restart scenario), missing-file handled cleanly, corrupt-JSON file recovers to empty, multiple concurrent sessions all persisted, indented JSON for readability, no regression of mastery/list_topics/streak_stats/due_reviews/export_topic. Full coach chain regression (v6.10.18 → .49): 121/121 still PASS. Plus recent /jarvis chain (v6.10.50 → .52): 37/37. Total: 170/170.
+
+### Coach feature set — now truly durable
+- v6.10.18 interactive loop
+- v6.10.20 voice-native
+- v6.10.21 topics dashboard
+- v6.10.32 streak gamification
+- v6.10.39 deck export
+- v6.10.47 SR review queue
+- v6.10.49 review-now
+- **v6.10.53 — session persistence across restarts**
+
+Nothing the user does is lost to a bounce anymore.
+
+---
+
 ## v6.10.52 — Workdir file-tree browser (click the pill to drill in) (2026-05-26)
 
 v6.10.51 added the workdir indicator pill — v6.10.52 makes it interactive. Click the pill → tree panel slides in showing the workdir contents. Click a directory → drills in. Click a file → seeds a `Read <path>` prompt in the input.
