@@ -2,6 +2,53 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.45 — Mermaid diagram rendering (flowcharts, sequence, state, ER) (2026-05-26)
+
+Adam can now render Mermaid diagrams directly in chat bubbles. When the LLM (or skills) emit a ` ```mermaid ` fenced code block, it renders as an actual SVG diagram instead of plain text. Pattern mirrors v6.10.42 KaTeX integration.
+
+### CDN load
+Mermaid 11 loaded as an ES module from jsDelivr inside a `<script type="module">`. On successful import: `window._mermaid = m.default`, `window._mermaidReady = true`. Init config picks a custom dark theme matching the Jarvis palette:
+- `primaryColor: #00e5ff` (cyan)
+- `primaryBorderColor: #00e5ff`
+- `secondaryColor: #ff2bd6` (magenta accent)
+- `mainBkg: #0a1224`, `background: #040711`
+- `fontFamily: JetBrains Mono, monospace`
+- `securityLevel: 'loose'` so HTML labels render inside nodes
+
+### Pipeline
+`md()` extended:
+1. When a fence has language=`mermaid`, emit `<div class="mermaid-pending" id="..." data-src="<encoded src>">` instead of `<pre><code>`
+2. Source HTML-encoded into `data-src` attribute so quotes/braces survive
+3. `_rerenderPendingMermaid()` walks `.mermaid-pending:not(.mermaid-rendered)`, decodes `data-src`, calls `mermaid.render(id, src)` → swaps in the SVG
+4. Marks `.mermaid-rendered` so it doesn't re-fire
+
+### Trigger points
+- After CDN load completes (polling every 150ms, 18s safety timeout)
+- After every `bubble('bot', ...)` (50ms debounce via setTimeout wrapping the original bubble function)
+
+### Failure modes (all graceful)
+- CDN unreachable → 18s polling gives up, mermaid blocks stay as styled `.mermaid-pending` placeholders with mono source visible
+- Render error (malformed mermaid syntax) → `.mermaid-fail` red banner above the original source code shown in a `<pre><code>` block, never crashes the bubble
+- Already-rendered nodes skipped via `:not(.mermaid-rendered)`
+
+### Visual polish
+- Pending: dim cyan border + small mono source text, reads as "queued"
+- Rendered: bright cyan border + soft cyan glow + SVG centered with `max-width: 100%` so it never breaks bubble width
+- Failed: red dotted-underline error line + the original source so user can see what went wrong
+
+### What Adam can now visualize
+- Flowcharts (`flowchart TD`, `graph LR`)
+- Sequence diagrams (request/response interactions)
+- State diagrams (`stateDiagram-v2`)
+- ER diagrams (`erDiagram`)
+- Class diagrams (`classDiagram`)
+- Gantt charts, pie charts, mindmaps, journey maps, all of mermaid 11
+
+### Tests
+18/18 PASS (`tests/test_mermaid_v6_10_45.py`): CDN ESM module loaded, dark theme + custom Jarvis palette (cyan primary + magenta secondary), ready flag, loose security, md() branches on `mermaid` language before code-block fallback, other languages still render as code, data-src HTML-encoded, `_rerenderPendingMermaid` exists + uses mermaid.render API + decodes data-src + handles errors + skips already-rendered, 18s polling timeout, bubble hook triggers rerender on bot messages, all 3 CSS states styled (pending/rendered/fail), SVG capped to 100% width, v6.10.44 regression intact. Recent chain (v6.10.41 → .44): 79/79 still PASS. Total: 97/97.
+
+---
+
 ## v6.10.44 — First-time gesture tour (the 6 gestures users couldn't discover) (2026-05-26)
 
 Adam has 6 built-in gestures (pinch, fist, open_palm, peace, point, thumb_up) but **users had no way to discover them** unless they read the source. v6.10.44 fixes that with a one-time onboarding overlay that pops on first GESTURE toggle + a `?` help button to reopen anytime.
