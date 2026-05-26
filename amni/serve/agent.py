@@ -402,6 +402,13 @@ class AmniAgent:
         if re.search(r"\b(?:what\s+time|when)\s+(?:does|do|is|are)\s+\w+(?:\s+\w+){0,3}\s+(?:open|clos|start|end|stop|begin|due|arriv|leav|depart)",msg,re.IGNORECASE) and self.skills.has('web'):return ('web',{'query':msg})
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
+        if self.skills.has('find'):
+            _m=re.search(r"^(?:please\s+)?(?:find|grep|search\s+for|search|locate|show\s+me\s+where)\s+(?:for\s+)?[\"'`]([^\"'`]{2,160})[\"'`](?:\s+in\s+(?:my\s+)?(?:code|repo|project|files))?\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('find',{'query':_m.group(1).strip()})
+            _m=re.search(r"^(?:where(?:'s|\s+is|\s+did\s+i)?\s+(?:the\s+)?)?(?:implement(?:ed|ation)?\s+(?:of\s+)?|define[ds]?\s+(?:in\s+)?|defin(?:ed|ition)\s+(?:of\s+)?)([\w_.]{2,80})\s*\??\s*$",msg,re.IGNORECASE)
+            if _m:tok=_m.group(1).strip(' .?');return ('find',{'query':tok}) if tok else None
+            _m=re.search(r"^(?:show\s+me\s+(?:the\s+)?code\s+for\s+|find\s+the\s+function\s+|where(?:'s|\s+is)\s+function\s+|find\s+function\s+)([\w_]{2,80})\s*\(?\)?\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('find',{'query':'def '+_m.group(1).strip(),'regex':False})
         m=_CALC_RE.search(msg)
         if m:
             ex=_EXPR_EXTRACT.search(msg)
@@ -646,6 +653,15 @@ class AmniAgent:
                 lines.append(f'\n{i+1}.{s_str} Q: {q[:120]}\n   A: {a[:300]}')
             return '\n'.join(lines)
         if name=='web':return f'{out.get("answer","(no answer)")}\n\nSources: {", ".join(out.get("sources",[])[:3])}'
+        if name=='find':
+            hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)
+            if not hits:return f'No matches for `{q}` in workdir ({files_s} text file(s) scanned).'
+            lines=[f'Found **{n}** hit(s) for `{q}` across {files_s} file(s):']
+            for h in hits[:20]:
+                p=h.get('path','?');ln=h.get('line','?');sn=h.get('snippet','')
+                lines.append(f'\n- `{p}:{ln}`  →  {sn}')
+            if out.get('truncated'):lines.append(f'\n_(truncated to {len(hits)} hits — refine the query for more)_')
+            return '\n'.join(lines)
         if name=='file_read':return f'```\n{out.get("content","")}\n```\n({out.get("bytes")} bytes from {out.get("path")})'
         if name=='file_write':
             ch=out.get('change') or {};v=out.get('verification') or {};op='create' if out.get('created') else 'overwrite'
