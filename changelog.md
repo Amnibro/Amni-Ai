@@ -2,6 +2,35 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.30 — Voice waveform visualizer in convo mode (2026-05-26)
+
+In convo mode the user had a single thin amplitude bar inside the corner pill — useful but unsexy. Real Jarvis shows a live frequency-bin waveform. v6.10.30 adds a 32-bin canvas visualizer below the convo banner that pulses with the existing VAD analyser. Zero new audio plumbing — taps the analyser that was already running.
+
+### New canvas `#voice-wave`
+- 560×92px native (CSS-scaled to 280×46px), centered below the convo banner at `top:106px`
+- Hidden by default; only shown when convo state ∈ {listening, recording, thinking, transcribing, speaking}
+- State-tied border + box-shadow color: **listening** dim cyan, **recording** bright cyan, **thinking/transcribing** magenta, **speaking** gold
+
+### Frequency-bin rendering
+`_drawVoiceWave(buf)` runs every VAD tick (already in `_vadLoop`):
+- Splits the `convoAnalyser.frequencyBinCount` byte array into 32 bins (averaged)
+- Each bin → a vertical bar, height proportional to bin energy, color matches state (`_vwColorForState`)
+- Faint state-tinted background wash + single-pixel baseline so the canvas reads as "active" even when audio is silent
+- Skips entirely when the canvas is hidden (no wasted RAF work)
+
+### State-driven feel
+- **Listening** — dim blue-cyan bars, gentle border glow → "I'm waiting"
+- **Recording** — bright cyan, sharper glow → "I'm capturing your voice"
+- **Thinking / Transcribing** — magenta → "I'm processing"
+- **Speaking** — gold → "I'm replying"
+
+Transcribing maps to the thinking color (same visual state from user POV — Adam is working).
+
+### Tests
+14/14 PASS (`tests/test_voice_wave_v6_10_30.py`): canvas element present with correct dimensions, default hidden, .show class displays it, all 4 state classes styled, color distinct per state (magenta for thinking, gold for speaking), `_setConvoState` toggles wave classes, transcribing aliases to thinking color, `_vwColorForState` branches on all 4 states, `_drawVoiceWave` uses canvas 2D context with clearRect+fillRect, 32-bin discretization, bails early when hidden, VAD loop calls draw fn each frame, canvas DOM ordering after banner, v6.10.29 regression intact. Recent chain (v6.10.26 → .29): 59/59 still PASS. Total: 73/73.
+
+---
+
 ## v6.10.29 — Drag-drop text & code files into /jarvis (2026-05-26)
 
 Adam already accepted dropped images (BLIP caption + VQA). But dropping a `.py` / `.md` / `.json` / `.csv` file did nothing — the file was ignored. v6.10.29 fixes that: any text or code file dropped onto /jarvis gets ingested, wrapped in a language-tagged fence, and posted to Adam for analysis.

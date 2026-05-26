@@ -466,6 +466,12 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #convo-banner.show{display:flex}
 #convo-banner .level{height:14px;width:60px;background:rgba(0,229,255,.1);border-radius:2px;overflow:hidden;border:1px solid rgba(0,229,255,.2)}
 #convo-banner .level .bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));transition:width .08s}
+#voice-wave{position:fixed;left:50%;top:106px;transform:translateX(-50%);z-index:7;width:280px;height:46px;display:none;border:1px solid rgba(0,229,255,.18);background:rgba(0,229,255,.025);border-radius:3px;backdrop-filter:blur(4px);box-shadow:0 0 12px rgba(0,229,255,.12)}
+#voice-wave.show{display:block}
+#voice-wave.state-listening{border-color:rgba(0,229,255,.3);box-shadow:0 0 14px rgba(0,229,255,.2)}
+#voice-wave.state-recording{border-color:var(--cyan);box-shadow:0 0 18px rgba(0,229,255,.4)}
+#voice-wave.state-thinking{border-color:var(--magenta);box-shadow:0 0 18px rgba(255,77,200,.35)}
+#voice-wave.state-speaking{border-color:var(--gold);box-shadow:0 0 18px rgba(255,215,112,.4)}
 #gesture-toggle{padding:0 12px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #gesture-toggle.on{color:var(--magenta);border-color:var(--magenta);background:rgba(255,43,214,.08);box-shadow:0 0 12px rgba(255,43,214,.3)}
 .msg .img-attach{max-width:280px;max-height:200px;border:1px solid rgba(0,229,255,.4);border-radius:3px;margin-top:6px;box-shadow:0 0 10px rgba(0,229,255,.18)}
@@ -547,6 +553,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div>
 </div>
 <div id="convo-banner"><span id="convo-state-label">LISTENING</span><span class="level"><span class="bar" id="convo-level-bar"></span></span></div>
+<canvas id="voice-wave" width="560" height="92"></canvas>
 <div id="persona-panel">
   <div class="pp-head"><span>◆ PERSONA + VOICE</span><span class="close" onclick="togglePersonaPanel()">CLOSE</span></div>
   <div class="pp-section">
@@ -1600,6 +1607,33 @@ function _setConvoState(s){
   if(s==='speaking')_convoToggle.classList.add('state-speaking');
   if(s==='error')_convoToggle.classList.add('state-error');
   _convoStateLabel.textContent=({listening:'LISTENING',recording:'RECORDING',transcribing:'TRANSCRIBING',thinking:'THINKING',speaking:'SPEAKING',error:'PAUSED',idle:'IDLE'})[s]||s.toUpperCase();
+  const wv=document.getElementById('voice-wave');
+  if(wv){
+    for(const c of ['state-listening','state-recording','state-thinking','state-speaking'])wv.classList.remove(c);
+    if(s==='listening'||s==='recording'||s==='thinking'||s==='transcribing'||s==='speaking'){
+      wv.classList.add('show');wv.classList.add(s==='transcribing'?'state-thinking':'state-'+s);
+    }else wv.classList.remove('show');
+  }
+}
+function _vwColorForState(){
+  if(convoState==='speaking')return ['#ffd770','rgba(255,215,112,'];
+  if(convoState==='thinking'||convoState==='transcribing')return ['#ff4dc8','rgba(255,77,200,'];
+  if(convoState==='recording')return ['#00e5ff','rgba(0,229,255,'];
+  return ['#7ad6ff','rgba(122,214,255,'];
+}
+function _drawVoiceWave(buf){
+  const cv=document.getElementById('voice-wave');if(!cv||!cv.classList.contains('show'))return;
+  const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const BINS=32;const step=Math.max(1,Math.floor(buf.length/BINS));
+  const [stroke,rgba]=_vwColorForState();const barW=W/(BINS*1.4);
+  ctx.fillStyle=rgba+'0.06)';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=stroke;
+  for(let i=0;i<BINS;i++){
+    let s=0,n=0;for(let j=0;j<step;j++){const idx=i*step+j;if(idx<buf.length){s+=buf[idx];n++}}
+    const v=n?s/n:0;const h=Math.max(2,(v/255)*H*0.92);
+    const x=(i+0.2)*(W/BINS);ctx.fillRect(x,H-h-2,barW,h);
+  }
+  ctx.fillStyle=rgba+'0.5)';ctx.fillRect(0,H-1,W,1);
 }
 function _vadLoop(){
   if(!convoOn||!convoAnalyser){convoRAF=null;return}
@@ -1608,6 +1642,7 @@ function _vadLoop(){
   let sum=0;for(let i=0;i<buf.length;i++)sum+=buf[i];
   const avg=sum/buf.length;
   _convoLevelBar.style.width=Math.min(100,(avg/40)*100)+'%';
+  _drawVoiceWave(buf);
   const now=performance.now();
   if((convoState==='speaking'||convoState==='thinking') && avg>_vadConfig.barge_threshold){
     if(_audioEl){try{_audioEl.pause();_audioEl.currentTime=0}catch{}}
