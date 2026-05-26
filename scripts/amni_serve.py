@@ -753,6 +753,35 @@ def main():
         except Exception as e:raise HTTPException(status_code=500,detail=f'read failed: {e}')
     @app.delete('/sessions/{sid}')
     def del_session(sid:str):return {'deleted':store.delete(sid)}
+    @app.get('/sessions/{sid}/export.md')
+    def export_session_md(sid:str,limit:int=500):
+        from fastapi.responses import PlainTextResponse
+        import json as _j,datetime as _dt
+        fp=Path(store.root)/f'{sid}.jsonl'
+        if not fp.exists():raise HTTPException(status_code=404,detail=f'session {sid!r} not found')
+        try:
+            lines=fp.read_text(encoding='utf-8').strip().splitlines()[-limit:]
+            turns=[]
+            for ln in lines:
+                try:turns.append(_j.loads(ln))
+                except Exception:pass
+            md=[f'# Conversation `{sid}`',f'_{len(turns)} turn(s) · exported {_dt.datetime.now().isoformat(timespec="seconds")}_','']
+            for t in turns:
+                role=t.get('role','?');content=(t.get('content') or t.get('message') or '').rstrip()
+                if not content:continue
+                ts=t.get('ts');hdr_ts=''
+                if ts:
+                    try:hdr_ts=' · '+_dt.datetime.fromtimestamp(float(ts)).strftime('%Y-%m-%d %H:%M:%S')
+                    except Exception:pass
+                meta=t.get('metadata') or {};persona=meta.get('persona') or t.get('persona');tier=meta.get('tier') or t.get('tier');cat=meta.get('category') or t.get('category')
+                tags=[];_=tags.append(f'persona={persona}') if persona else None;_=tags.append(f'tier={tier}') if tier else None;_=tags.append(f'category={cat}') if cat and cat!='general' else None
+                hdr_tags=(' · '+' · '.join(tags)) if tags else ''
+                speaker={'user':'User','assistant':'Adam','system':'System'}.get(role,role.title())
+                md.append(f'## {speaker}{hdr_ts}{hdr_tags}');md.append('');md.append(content);md.append('')
+            body='\n'.join(md)
+            return PlainTextResponse(content=body,media_type='text/markdown; charset=utf-8',headers={'Content-Disposition':f'attachment; filename="adam-chat-{sid[-8:]}.md"'})
+        except HTTPException:raise
+        except Exception as e:raise HTTPException(status_code=500,detail=f'export failed: {e}')
     @app.get('/lessons')
     def lessons(q:str='',offset:int=0,limit:int=50):
         sl=getattr(adam,'sem_lut',None)

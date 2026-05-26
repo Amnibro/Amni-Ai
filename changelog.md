@@ -2,6 +2,38 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.28 — Chat export to Markdown (download the conversation) (2026-05-26)
+
+v6.10.26 restored chat across reloads, v6.10.27 made it searchable, v6.10.28 lets you take it with you. New EXPORT button in /jarvis composer downloads the entire current conversation as a clean markdown file.
+
+### New endpoint `GET /sessions/{sid}/export.md?limit=500`
+- Returns `text/markdown; charset=utf-8` with `Content-Disposition: attachment; filename="adam-chat-<last8>.md"`
+- 404 cleanly when session missing
+- Reads the session jsonl, renders as:
+  - `# Conversation <sid>` header with turn count + export timestamp
+  - Each turn → `## User <date>` or `## Adam <date> · persona=X · tier=Y · category=Z` heading
+  - Body content rendered as-is (Adam already produces markdown — code blocks, lists, links all survive)
+  - Skipped turns: empty content, unrecognized roles
+
+### EXPORT button
+Sits between COACH and CONVO in the composer. Clicking it:
+1. Checks `sid` is set (bails with friendly bubble if no session yet)
+2. Fetches `/sessions/{sid}/export.md`
+3. Wraps response text in a `Blob`, creates an object URL, programmatically triggers a download (no popup, no extra clicks)
+4. Cleans up the object URL after 2s (memory hygiene)
+5. Bubbles a confirmation with the line count + filename
+
+### Why markdown
+- Renders in any editor — VS Code, Obsidian, Bear, Marked, plain text fallback
+- Preserves Adam's code blocks, links, lists, bold, etc. exactly as you saw them
+- Headings encode timestamp + persona + tier so the export reads as a real transcript, not a JSON dump
+- Easy to grep / pipe / commit to a notes repo
+
+### Tests
+12/12 PASS (`tests/test_chat_export_v6_10_28.py`): EXPORT button present + ordered between COACH and CONVO, helper fn present, Blob/createObjectURL/download/revokeObjectURL pattern, correct endpoint URL with encodeURIComponent, bails on missing sid, endpoint source has 404 handler + markdown media type + Content-Disposition attachment + speaker headings (User/Adam) + persona/tier/category metadata, real end-to-end test that writes a 4-turn fake session to a temp dir, hits the endpoint, parses the response, verifies all metadata round-trips + 404 on bogus sid, v6.10.27 regression intact. Recent chain (v6.10.24 → .27): 69/69 still PASS. Total: 81/81.
+
+---
+
 ## v6.10.27 — Chat search overlay: Ctrl+K finds anything in the conversation (2026-05-26)
 
 After v6.10.26's session restore lands you back into a long chat, you need to find things. v6.10.27 adds a Ctrl+K search overlay with live filter + highlight + match navigation.
