@@ -301,6 +301,11 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #coach-panel .cp-head{padding:10px 14px;border-bottom:1px solid rgba(255,77,200,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 4px var(--magenta);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
 #coach-panel .cp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(255,77,200,.22);border-radius:3px;font-size:10px}
 #coach-panel .cp-head .close:hover{color:var(--err);border-color:var(--err)}
+#coach-panel .cp-streak-badge{margin-left:auto;padding:2px 8px;font-size:10px;font-weight:bold;letter-spacing:.05em;border-radius:99px;background:rgba(255,77,200,.08);border:1px solid rgba(255,77,200,.25);color:var(--magenta);text-shadow:none;font-family:JetBrains Mono,monospace;cursor:help;display:none}
+#coach-panel .cp-streak-badge.active{display:inline-block}
+#coach-panel .cp-streak-badge.fire{background:rgba(255,140,60,.15);border-color:rgba(255,140,60,.45);color:#ffa460;text-shadow:0 0 6px rgba(255,140,60,.6);animation:streakPulse 2.4s ease-in-out infinite}
+#coach-panel .cp-streak-badge.elite{background:rgba(0,255,156,.15);border-color:rgba(0,255,156,.5);color:#00ff9c;text-shadow:0 0 6px rgba(0,255,156,.6);animation:streakPulse 1.8s ease-in-out infinite}
+@keyframes streakPulse{0%,100%{opacity:1}50%{opacity:.7}}
 #coach-panel .cp-section{padding:12px 14px;border-bottom:1px solid rgba(255,77,200,.08)}
 #coach-panel .cp-section h3{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
 #coach-panel .cp-topic-row{display:flex;gap:6px;align-items:center}
@@ -601,7 +606,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div>
 </div>
 <div id="coach-panel">
-  <div class="cp-head"><span>◆ COACH · ASK-ANSWER-ASK</span><span class="close" onclick="toggleCoachPanel()">CLOSE</span></div>
+  <div class="cp-head"><span>◆ COACH · ASK-ANSWER-ASK</span><span id="cp-streak-badge" class="cp-streak-badge" title="Consecutive days you've practiced">—</span><span class="close" onclick="toggleCoachPanel()">CLOSE</span></div>
   <div class="cp-section" id="cp-start-section">
     <h3>NEW SESSION</h3>
     <div class="cp-topic-row"><input type="text" id="cp-topic" placeholder="topic (e.g. python decorators, krebs cycle)"><select id="cp-diff"><option value="1">1 — intro</option><option value="2" selected>2 — basic</option><option value="3">3 — intermediate</option><option value="4">4 — advanced</option><option value="5">5 — expert</option></select><button class="cp-act" onclick="_coachStart()">START</button></div>
@@ -1110,7 +1115,7 @@ async function _coachLoadTopics(){
   const list=document.getElementById('cp-topics-list');if(!list)return;
   try{
     const r=await fetch('/memory/coach');if(!r.ok){list.innerHTML='<div style="font-size:10px;color:var(--mute);font-style:italic;text-align:center;padding:6px">coach memory unavailable</div>';return}
-    const j=await r.json();const topics=j.topics||[];
+    const j=await r.json();const topics=j.topics||[];_coachUpdateStreakBadge(j.streak||{});
     if(!topics.length){list.innerHTML='<div style="font-size:10px;color:var(--mute);font-style:italic;text-align:center;padding:6px">no topics practiced yet · start a session above</div>';return}
     list.innerHTML=topics.slice(0,20).map(t=>{
       const pct=Math.round(t.mastery_pct||0);
@@ -1119,6 +1124,16 @@ async function _coachLoadTopics(){
       return `<div class="cp-topic-card lvl-${lvl}" onclick="_coachResumeTopic('${safe}')" title="Click to start a new session on this topic"><span class="name">${name}</span><span class="mini-bar"><span class="mini-bar-fill" style="width:${pct}%"></span></span><span class="pct">${pct}%</span><span class="n">${t.n_questions||0}q</span></div>`
     }).join('');
   }catch(e){list.innerHTML='<div style="font-size:10px;color:var(--err);font-style:italic;text-align:center;padding:6px">load error</div>'}
+}
+function _coachUpdateStreakBadge(s){
+  const b=document.getElementById('cp-streak-badge');if(!b)return;
+  const cur=s.current_streak||0;const best=s.best_streak||0;const total=s.total_days_active||0;
+  if(cur===0){b.classList.remove('active','fire','elite');b.textContent='—';return}
+  b.classList.add('active');b.classList.remove('fire','elite');
+  if(cur>=14)b.classList.add('elite');else if(cur>=3)b.classList.add('fire');
+  const flame=cur>=14?'⚡':(cur>=3?'🔥':'·');
+  b.textContent=flame+' '+cur+' day'+(cur===1?'':'s');
+  b.title=`current streak ${cur} day${cur===1?'':'s'} · best ${best} · ${total} active days total${s.today_active?' · today ✓':''}`;
 }
 function _coachResumeTopic(topic){
   const t=document.getElementById('cp-topic');if(t){t.value=topic;t.focus()}

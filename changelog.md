@@ -2,6 +2,42 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.32 — Coach mastery streak badge (daily-use gamification) (2026-05-26)
+
+The CoachAtlas already tracked timestamped answers per topic. v6.10.32 adds a `streak_stats()` method that derives a daily-use streak across all topics + surfaces it in the coach panel header as a flame badge.
+
+### New `CoachAtlas.streak_stats(now=None)`
+Walks every `topic_*.jsonl` once, deduplicating timestamps by calendar day (skipped questions don't count). Returns:
+```
+{current_streak, best_streak, total_days_active, today_active, last_active_ts, total_answers, last_7_days:[YYYY-MM-DD, ...]}
+```
+- **current_streak** — consecutive days from today (or yesterday if today not done yet) backward, until a gap
+- **best_streak** — longest consecutive run anywhere in history
+- **today_active** — true if any non-skipped answer logged today
+- **last_7_days** — ISO date strings of the most recent 7 active days
+
+### Streak tiers (visual)
+- **0 days** — badge hidden (no scolding)
+- **1-2 days** — magenta dot — "you've started"
+- **3-13 days** — 🔥 with orange glow + 2.4s pulse — "fire mode"
+- **14+ days** — ⚡ with green glow + 1.8s faster pulse — "elite mode"
+
+Badge text: `🔥 5 days` / `⚡ 21 days`. Tooltip shows full context: `current streak 5 days · best 17 · 42 active days total · today ✓`.
+
+### Endpoint extension
+`GET /memory/coach` now returns `{topics, streak}` (was `{topics}`). Existing topic dashboard code unchanged; streak rendered alongside on every refresh.
+
+### JS hooks
+`_coachUpdateStreakBadge(s)` called inside `_coachLoadTopics` — runs on panel open, after every START / END SESSION, after REFRESH. No new polling needed.
+
+### Tests
+16/16 PASS (`tests/test_coach_streak_v6_10_32.py`): method existence, empty atlas returns 0, today-only=1, yesterday-only=1 (grace), 2-day-gap=0, 3-day streak detected, split-streak (current vs best disambiguation), multiple-answers-same-day count once, skipped questions excluded, today_active flag, JS badge element present, all 3 tier CSS classes + keyframe pulse, `_coachUpdateStreakBadge` fn with 14/3 thresholds + flame/lightning icons, wired into `_coachLoadTopics`, /memory/coach endpoint returns `streak` field, v6.10.31 regression intact. Recent chain (v6.10.29 → .31): 55/55 still PASS. Total: 71/71.
+
+### Why it matters
+Consistency is the actual learning superpower. Adam tutors well — but the user is the one who has to show up daily. The streak badge gives the user a quiet reason to come back: see the number tick up. Combined with v6.10.21 topics dashboard + v6.10.20 voice-native coach, coach mode now has the three things that make spaced-repetition apps sticky: practice loop, progress visibility, streak.
+
+---
+
 ## v6.10.31 — Live token-rate meter under streaming bubbles (2026-05-26)
 
 Adam streams responses fast, but the user had no quantified feedback during the stream — just the bubble filling up. Real Jarvis quantifies everything. v6.10.31 adds a small mono-font meter below each streaming bubble showing live `X tok/s · N tok · Ys`.
