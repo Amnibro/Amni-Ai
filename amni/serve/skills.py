@@ -167,7 +167,14 @@ def _skill_file_read(args,ctx,reg):
     return {'path':p,'content':data,'bytes':len(data)}
 def _file_change_stats(before:str,after:str,max_preview_lines:int=10):
     bl=before.splitlines() if before else [];al=after.splitlines()
-    return {'lines_before':len(bl),'lines_after':len(al),'lines_added':max(0,len(al)-len(bl)),'lines_removed':max(0,len(bl)-len(al)),'bytes_before':len(before),'bytes_after':len(after),'preview':'\n'.join(al[:max_preview_lines])+(f'\n... ({len(al)-max_preview_lines} more)' if len(al)>max_preview_lines else '')}
+    return {'lines_before':len(bl),'lines_after':len(al),'lines_added':max(0,len(al)-len(bl)),'lines_removed':max(0,len(bl)-len(al)),'bytes_before':len(before),'bytes_after':len(after),'preview':'\n'.join(al[:max_preview_lines])+(f'\n... ({len(al)-max_preview_lines} more)' if len(al)>max_preview_lines else ''),'before_preview':'\n'.join(bl[:max_preview_lines])+(f'\n... ({len(bl)-max_preview_lines} more)' if len(bl)>max_preview_lines else ''),'diff_unified':_unified_diff(bl,al,max_lines=max_preview_lines*4)}
+def _unified_diff(before_lines,after_lines,max_lines:int=40):
+    import difflib
+    if not before_lines and not after_lines:return ''
+    if before_lines==after_lines:return ''
+    raw=list(difflib.unified_diff(before_lines or [],after_lines or [],lineterm='',n=2))
+    if len(raw)>max_lines:raw=raw[:max_lines]+[f'... ({len(raw)-max_lines} more diff lines)']
+    return '\n'.join(raw)
 def _skill_file_write(args,ctx,reg):
     from amni.serve.edit_verifier import verify_edit
     p=Path(args['path']);content=args.get('content','')

@@ -107,6 +107,19 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.file_change .fc-repl{color:var(--cyan)}
 .widget.file_change .fc-size{margin-left:auto;color:var(--mute)}
 .widget.file_change .fc-preview{font-size:10px;font-family:JetBrains Mono,monospace;background:rgba(0,0,0,.35);border:1px solid rgba(0,229,255,.1);border-radius:3px;padding:6px 8px;max-height:160px;overflow:auto;color:var(--fg);white-space:pre;line-height:1.4;margin:4px 0}
+.widget.file_change .fc-diff{font-size:10px;font-family:JetBrains Mono,monospace;background:rgba(0,0,0,.45);border:1px solid rgba(0,229,255,.12);border-radius:3px;max-height:200px;overflow:auto;line-height:1.45;margin:4px 0}
+.widget.file_change .fc-diff .dl{display:block;padding:1px 8px;white-space:pre;word-break:break-all}
+.widget.file_change .fc-diff .dl.add{background:rgba(0,255,156,.08);color:#9eff9c;border-left:2px solid #00ff9c}
+.widget.file_change .fc-diff .dl.rem{background:rgba(255,123,123,.08);color:#ffb7b7;border-left:2px solid #ff7b7b}
+.widget.file_change .fc-diff .dl.hunk{color:var(--mute);background:rgba(0,229,255,.05);border-left:2px solid rgba(0,229,255,.3);font-style:italic}
+.widget.file_change .fc-diff .dl.ctx{color:var(--mute)}
+.widget.file_change .fc-viewtoggle{display:flex;gap:0;margin:4px 0 2px;font-size:9px;letter-spacing:.18em}
+.widget.file_change .fc-viewtoggle button{flex:0 0 auto;padding:3px 9px;background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.18);color:var(--mute);font-family:inherit;cursor:pointer}
+.widget.file_change .fc-viewtoggle button:first-child{border-radius:2px 0 0 2px}
+.widget.file_change .fc-viewtoggle button:last-child{border-radius:0 2px 2px 0}
+.widget.file_change .fc-viewtoggle button:not(:last-child){border-right:none}
+.widget.file_change .fc-viewtoggle button.on{background:rgba(0,229,255,.15);color:var(--cyan);border-color:var(--cyan)}
+.widget.file_change .fc-viewtoggle button:hover:not(.on){background:rgba(0,229,255,.06);color:var(--fg)}
 .widget.file_change .fc-actions{display:flex;gap:6px;margin-top:6px}
 .widget.file_change .fc-btn{flex:0 0 auto;padding:4px 10px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.25);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
 .widget.file_change .fc-btn:hover{background:rgba(0,229,255,.14);border-color:var(--cyan)}
@@ -1053,7 +1066,14 @@ function renderWidget(w){
       testRunBlock=`<div class="fc-test-run ${cls}"><div class="fc-test-head">${head}</div>${failList}</div>`;
     }
     const suggList=(suggested.length && !tr.ran)?`<div class="fc-suggested">recommended test: <code>${esc(suggested[0])}</code></div>`:'';
-    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${testRunBlock}${suggList}${d.preview?`<pre class="fc-preview">${esc(d.preview)}</pre>`:''}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
+    const diffStr=d.diff_unified||'';const beforeStr=d.before_preview||'';const afterStr=d.preview||'';
+    const hasDiff=!!diffStr.trim()&&op!=='create';const hasBefore=!!beforeStr.trim()&&op!=='create';
+    const wid='fc_'+Math.random().toString(36).slice(2,10);
+    const toggle=hasDiff?`<div class="fc-viewtoggle" data-fcid="${wid}"><button class="on" data-v="diff">DIFF</button>${hasBefore?'<button data-v="before">BEFORE</button>':''}<button data-v="after">AFTER</button></div>`:'';
+    const diffHtml=hasDiff?`<div class="fc-diff" data-view="diff" data-fcid="${wid}">${_renderDiffLines(diffStr)}</div>`:'';
+    const beforeHtml=hasBefore?`<pre class="fc-preview" data-view="before" data-fcid="${wid}" style="display:none">${esc(beforeStr)}</pre>`:'';
+    const afterHtml=afterStr?`<pre class="fc-preview" data-view="after" data-fcid="${wid}" style="display:${hasDiff?'none':'block'}">${esc(afterStr)}</pre>`:'';
+    body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${testRunBlock}${suggList}${toggle}${diffHtml}${beforeHtml}${afterHtml}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
   }else if(t==='error'||t==='info'){
     body=esc(d.message||'');
   }else{
@@ -1134,6 +1154,26 @@ async function _fcOpen(path){
   catch(e){bubble('bot','Could not open file: '+esc(e.message),'<span class="badge err">err</span>')}
 }
 function _fcCopyPath(path){if(!path)return;try{navigator.clipboard.writeText(path);bubble('bot','Copied path to clipboard: `'+esc(path)+'`','<span class="badge">copy</span>')}catch{bubble('bot','Clipboard unavailable. Path: `'+esc(path)+'`','<span class="badge err">err</span>')}}
+function _renderDiffLines(diff){
+  if(!diff)return '';
+  return diff.split('\n').map(line=>{
+    if(line.startsWith('@@'))return `<span class="dl hunk">${esc(line)}</span>`;
+    if(line.startsWith('+++')||line.startsWith('---'))return `<span class="dl ctx">${esc(line)}</span>`;
+    if(line.startsWith('+'))return `<span class="dl add">${esc(line)}</span>`;
+    if(line.startsWith('-'))return `<span class="dl rem">${esc(line)}</span>`;
+    return `<span class="dl ctx">${esc(line)}</span>`;
+  }).join('');
+}
+document.addEventListener('click',function(ev){
+  const btn=ev.target.closest('.fc-viewtoggle button[data-v]');if(!btn)return;
+  const wrap=btn.closest('.fc-viewtoggle');if(!wrap)return;
+  const fcid=wrap.getAttribute('data-fcid');const v=btn.getAttribute('data-v');
+  wrap.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===btn));
+  const widget=wrap.closest('.widget.file_change');if(!widget)return;
+  widget.querySelectorAll(`[data-fcid="${fcid}"][data-view]`).forEach(el=>{
+    el.style.display=el.getAttribute('data-view')===v?'block':'none';
+  });
+});
 async function _fcMarkTested(path){
   if(!path)return;
   try{const r=await fetch('/memory/needs-testing/done',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path_substring:path})});const j=await r.json();bubble('bot','Marked '+j.marked_done+' testing item(s) as done for `'+esc(path)+'`','<span class="badge">tested</span>')}
