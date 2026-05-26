@@ -138,7 +138,28 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #send:disabled{opacity:.3;cursor:wait}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
-.sidehint{position:fixed;bottom:16px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:6}
+.sidehint{position:fixed;bottom:14px;left:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:3;pointer-events:none;opacity:.6}
+.status .pill.clickable{cursor:pointer}
+.status .pill.clickable:hover{border-color:var(--cyan);background:rgba(0,229,255,.12)}
+#persona-panel{position:fixed;top:60px;right:24px;width:300px;z-index:11;border:1px solid rgba(0,229,255,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,229,255,.22);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
+#persona-panel.show{display:block}
+#persona-panel .pp-head{padding:10px 14px;border-bottom:1px solid rgba(0,229,255,.2);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
+#persona-panel .pp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.2);border-radius:3px;font-size:10px}
+#persona-panel .pp-head .close:hover{color:var(--err);border-color:var(--err)}
+#persona-panel .pp-section{padding:12px 14px;border-bottom:1px solid rgba(0,229,255,.08)}
+#persona-panel .pp-section h3{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+#persona-panel .pp-row{padding:6px 8px;border:1px solid rgba(0,229,255,.12);border-radius:3px;margin-bottom:4px;cursor:pointer;font-size:11px;display:flex;justify-content:space-between;align-items:center;transition:all .15s;background:rgba(0,229,255,.02)}
+#persona-panel .pp-row:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.08)}
+#persona-panel .pp-row.active{border-color:var(--cyan);background:rgba(0,229,255,.14);box-shadow:inset 0 0 6px rgba(0,229,255,.2)}
+#persona-panel .pp-row .nm{color:var(--fg);text-transform:capitalize}
+#persona-panel .pp-row.active .nm{color:var(--cyan);text-shadow:0 0 4px var(--cyan)}
+#persona-panel .pp-row .voice{font-size:9px;color:var(--mute);letter-spacing:.1em}
+#persona-panel .pp-empty{font-size:10px;color:var(--mute);text-align:center;padding:10px;font-style:italic}
+#persona-panel .pp-input-row{display:flex;gap:6px}
+#persona-panel input[type=text]{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.2);color:var(--fg);padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px}
+#persona-panel input[type=text]:focus{outline:none;border-color:var(--cyan)}
+#persona-panel button.act{padding:5px 10px;border:1px solid rgba(0,229,255,.4);background:rgba(0,229,255,.04);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
+#persona-panel button.act:hover{background:rgba(0,229,255,.14)}
 #task-tray{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(140%);width:min(560px,92vw);z-index:8;border:1px solid rgba(0,229,255,.3);border-radius:4px;background:rgba(8,14,28,.95);box-shadow:0 0 24px rgba(0,229,255,.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:30vh;overflow-y:auto}
 #task-tray.show{transform:translateX(-50%) translateY(0)}
 #task-tray .tray-head{padding:6px 12px;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);border-bottom:1px solid rgba(0,229,255,.15);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:rgba(8,14,28,.95)}
@@ -251,7 +272,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <div class="status">
       <span class="pill"><span class="dot"></span>GF(17) online</span>
       <span class="pill" id="lesson-pill">lessons —</span>
-      <span class="pill" id="persona-pill">persona —</span>
+      <span class="pill clickable" id="persona-pill" onclick="togglePersonaPanel()" title="Click to change persona + voice">persona —</span>
     </div>
   </header>
   <div id="chat-wrap"><div id="log">
@@ -307,6 +328,25 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
   </div>
 </div>
 <div id="convo-banner"><span id="convo-state-label">LISTENING</span><span class="level"><span class="bar" id="convo-level-bar"></span></span></div>
+<div id="persona-panel">
+  <div class="pp-head"><span>◆ PERSONA + VOICE</span><span class="close" onclick="togglePersonaPanel()">CLOSE</span></div>
+  <div class="pp-section">
+    <h3>PERSONA</h3>
+    <div id="pp-list"><div class="pp-empty">loading…</div></div>
+    <div class="pp-input-row" style="margin-top:8px"><input type="text" id="pp-new" placeholder="learn new (e.g. Sherlock, Tony Stark)"><button class="act" onclick="_personaLearnNew()">LEARN</button></div>
+    <div style="font-size:9px;color:var(--mute);margin-top:4px;letter-spacing:.05em">Unknown personas trigger a web-learn flow.</div>
+  </div>
+  <div class="pp-section">
+    <h3>TTS VOICE</h3>
+    <div id="pp-voices"><div class="pp-empty">loading…</div></div>
+    <div style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.05em">Piper voices ship as ~50MB .onnx — install more from <code style="color:var(--cyan)">github.com/rhasspy/piper</code></div>
+  </div>
+  <div class="pp-section">
+    <h3>STATUS</h3>
+    <div style="font-size:10px;color:var(--mute)">Current: <span id="pp-current" style="color:var(--cyan)">—</span></div>
+    <div style="font-size:10px;color:var(--mute);margin-top:4px">TTS backend: <span id="pp-tts-backend" style="color:var(--cyan)">—</span></div>
+  </div>
+</div>
 <div id="cam-panel">
   <div class="cam-head"><span><span class="dot"></span>HAND TRACK</span><span id="cam-fps">— fps</span></div>
   <div id="cam-stage">
@@ -438,6 +478,67 @@ async function probeVoiceBackends(){
   }catch{}
 }
 probeVoiceBackends();
+const PERSONA_KEY='amni_jarvis_persona',VOICE_KEY='amni_jarvis_voice';
+let _selectedPersona=localStorage.getItem(PERSONA_KEY)||'';
+let _selectedVoice=localStorage.getItem(VOICE_KEY)||'';
+let _personaPanelOpen=false,_knownPersonas=[],_availableVoices=[];
+async function _loadPersonas(){
+  try{const j=await(await fetch('/personas')).json();_knownPersonas=j.known||j.list||(Array.isArray(j)?j:[]);if(!Array.isArray(_knownPersonas))_knownPersonas=[]}
+  catch{_knownPersonas=[]}
+}
+async function _loadVoices(){
+  try{const j=await(await fetch('/voice/status')).json();_availableVoices=(j.tts&&j.tts.voices)||[];document.getElementById('pp-tts-backend').textContent=(j.tts&&j.tts.backend)||'none'}
+  catch{_availableVoices=[]}
+}
+function _renderPersonaPanel(){
+  const cur=_selectedPersona||personaName||'Rikku';
+  document.getElementById('pp-current').textContent=cur+(_selectedVoice?' · '+_selectedVoice:'');
+  const list=document.getElementById('pp-list');
+  if(_knownPersonas.length===0){list.innerHTML='<div class="pp-empty">no personas loaded</div>'}
+  else{
+    list.innerHTML=_knownPersonas.map(p=>{
+      const nm=(typeof p==='string'?p:p.name)||'?';
+      const voice=(typeof p==='object'&&p.tts_voice)?p.tts_voice:'';
+      const active=(nm.toLowerCase()===(cur||'').toLowerCase());
+      return `<div class="pp-row${active?' active':''}" onclick="_pickPersona('${esc(nm).replace(/'/g,"\\\\'")}')"><span class="nm">${esc(nm)}</span><span class="voice">${esc(voice)}</span></div>`;
+    }).join('');
+  }
+  const voices=document.getElementById('pp-voices');
+  if(_availableVoices.length===0){voices.innerHTML='<div class="pp-empty">no piper voices · install via <code style="color:var(--cyan)">pip install piper-tts</code> + download a voice</div>'}
+  else{
+    voices.innerHTML='<div class="pp-row'+(!_selectedVoice?' active':'')+'" onclick="_pickVoice(\'\')"><span class="nm">auto (persona default)</span></div>'+_availableVoices.map(v=>{
+      const active=(v===_selectedVoice);
+      return `<div class="pp-row${active?' active':''}" onclick="_pickVoice('${esc(v).replace(/'/g,"\\\\'")}')"><span class="nm" style="font-family:Consolas,monospace;font-size:10px">${esc(v)}</span></div>`;
+    }).join('');
+  }
+}
+async function togglePersonaPanel(){
+  _personaPanelOpen=!_personaPanelOpen;
+  const p=document.getElementById('persona-panel');p.classList.toggle('show',_personaPanelOpen);
+  if(_personaPanelOpen){await Promise.all([_loadPersonas(),_loadVoices()]);_renderPersonaPanel()}
+}
+async function _pickPersona(name){
+  try{
+    const r=await fetch('/persona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,session_id:sid,learn_via_web:false})});
+    const j=await r.json();
+    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;_renderPersonaPanel();bubble('bot','Now: **'+esc(_selectedPersona)+'** — '+(esc(j.persona.description||'')),'<span class="badge persona">'+esc(_selectedPersona)+'</span>')}
+  }catch(e){console.warn('persona switch failed',e)}
+}
+async function _personaLearnNew(){
+  const inp=document.getElementById('pp-new');const name=(inp.value||'').trim();
+  if(!name)return;inp.value='';
+  bubble('bot','Web-learning persona "'+esc(name)+'" — this may take ~10s…','<span class="badge persona">learn</span>');
+  try{
+    const r=await fetch('/persona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,session_id:sid,learn_via_web:true})});
+    const j=await r.json();
+    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;await _loadPersonas();_renderPersonaPanel();bubble('bot','Learned **'+esc(_selectedPersona)+'** — '+esc(j.persona.description||''),'<span class="badge persona">'+esc(_selectedPersona)+'</span>')}
+    else bubble('bot','Learn failed: '+(esc(j.error||JSON.stringify(j))),'<span class="badge err">err</span>')
+  }catch(e){bubble('bot','Learn error: '+esc(e.message),'<span class="badge err">err</span>')}
+}
+function _pickVoice(v){_selectedVoice=v;localStorage.setItem(VOICE_KEY,v);_renderPersonaPanel();if(v)bubble('bot','TTS voice set to **'+esc(v)+'**','<span class="badge">voice</span>')}
+const _origProbeVoiceBackends=probeVoiceBackends;
+async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona}}
+_initPersonaPill();
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
 let _audioEl=null;
 async function speak(text){
@@ -445,7 +546,8 @@ async function speak(text){
   const clean=text.replace(/```[\s\S]*?```/g,'(code)').replace(/[*_`#<>]/g,'').slice(0,800);
   if(_voiceBackends.tts){
     try{
-      const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:clean})});
+      const body={text:clean};if(_selectedVoice)body.voice=_selectedVoice;
+      const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(r.ok){
         const j=await r.json();
         if(j.audio_base64){
@@ -933,7 +1035,8 @@ async function _streamReplyWithTTS(text,opts){
     if(!useTTS)return;
     if(!_voiceBackends.tts){_speakBrowser(chunk);return}
     try{
-      const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:chunk})});
+      const body={text:chunk};if(_selectedVoice)body.voice=_selectedVoice;
+      const r=await fetch('/voice/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(!r.ok){_speakBrowser(chunk);return}
       const j=await r.json();if(!j.audio_base64){_speakBrowser(chunk);return}
       ttsQueue.push('data:'+(j.content_type||'audio/wav')+';base64,'+j.audio_base64);
