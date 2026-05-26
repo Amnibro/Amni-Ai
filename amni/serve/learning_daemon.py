@@ -53,6 +53,11 @@ class LearningDaemon:
                     self.run_sleep_pass();self.counters['last_sleep_at']=now
                 if (now-self.counters['last_repetition_at'])>=self.config['repetition_period_s']:
                     self.run_repetition_pass();self.counters['last_repetition_at']=now
+                try:
+                    from amni.serve.self_reflection import should_run_now,run_cycle
+                    if should_run_now():
+                        res=run_cycle();print(f'[LearningDaemon] self-reflection: {res.get("subsystem")} -> {len(res.get("proposed_ids") or [])} proposals',flush=True)
+                except Exception as e:print(f'[LearningDaemon] self-reflection skipped: {type(e).__name__}: {e}',flush=True)
                 self._drain_queue()
             except Exception as e:print(f'[LearningDaemon] loop exception: {type(e).__name__}: {e}',flush=True)
             self._stop.wait(5.0)

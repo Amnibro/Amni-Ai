@@ -765,6 +765,16 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='remove':return _vm.remove(wd,name)
         return {'error':f'unknown action {action!r}; valid: list|create|install|run|remove'}
     reg.register('venv',_skill_venv,desc='Sandboxed Python venv management for Adam\'s experiments. Actions: list | create (name) | install (name, packages: list) | run (name, cmd, timeout?) | remove (name). All venvs live under <workdir>/.adam-venvs/; name must match [a-z0-9_-]{1,32}; cap of 8 concurrent venvs; pip install validates package specs; run refuses obviously-destructive cmds.',schema={'action':'str','name':'str?','packages':'list?','cmd':'str?','timeout':'int?'})
+    def _skill_self_reflect(args,ctx,reg_):
+        """Run / inspect Adam's periodic self-reflection cycle. Actions: status | run | enable | disable."""
+        from amni.serve import self_reflection as _sr
+        action=(args.get('action') or 'status').strip().lower()
+        if action=='status':return _sr.status()
+        if action=='run':return _sr.run_cycle(force=bool(args.get('force',False)),dry_run=bool(args.get('dry_run',False)),notify=bool(args.get('notify',True)))
+        if action=='enable':return _sr.set_enabled(True)
+        if action=='disable':return _sr.set_enabled(False)
+        return {'error':f'unknown action {action!r}; valid: status|run|enable|disable'}
+    reg.register('self_reflect',_skill_self_reflect,desc='Adam\'s daily self-reflection cycle. Rotates through subsystems (amni/serve, amni/storage, amni/agent, amni/skills, amni/cli, scripts), scans for heuristic signals (TODOs, large files, missing tests, missing docstrings), drops up to 3 proposals/cycle into the self_improvement log. Actions: status | run (force?, dry_run?, notify?) | enable | disable. Cap: one cycle per ~20h unless force=True.',schema={'action':'str?','force':'bool?','dry_run':'bool?','notify':'bool?'})
     try:
         from amni.serve import widgets as _w
         def _skill_weather(args,ctx,reg_):
