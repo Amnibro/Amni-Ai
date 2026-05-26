@@ -2,6 +2,39 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.42 — Inline math rendering (KaTeX, graceful fallback) (2026-05-26)
+
+the maintainer's engineering work + coach sessions on STEM topics generate math constantly, but `$x^2+1$` was rendering as literal characters in the chat. v6.10.42 hooks KaTeX into the md() pipeline so LaTeX inside `$...$` (inline) and `$$...$$` (display) renders as actual math.
+
+### Pipeline
+KaTeX CSS + JS loaded from jsDelivr CDN with subresource integrity (SRI) hashes for security. JS is `defer`-loaded with `onload` setting `window._katexReady=true` so the rest of the page never blocks on it.
+
+`md()` extended:
+1. **First** (before HTML-escape): scan for `$$...$$` (display math) and `$...$` (inline math), stash latex source into `_MATH_PLACEHOLDERS[]`, replace with `MATH<idx>` tokens
+2. Run existing escape + markdown transforms (which leave the MATH tokens alone)
+3. **Last**: `_restoreMath(html)` replaces each `MATH<idx>` with either a KaTeX render (if ready) or a `<span class="math-pending" data-latex="..." data-display="...">` placeholder
+
+The placeholder approach means if KaTeX hasn't loaded yet, math falls back to a styled inline span showing the raw LaTeX. When KaTeX finishes loading (the deferred script onload fires), `_rerenderPendingMath()` walks every `.math-pending` span, reads `data-latex`, and swaps in the rendered version. So **streaming responses written before KaTeX loaded auto-upgrade once it's ready**.
+
+### Inline-math guard
+`$5` (dollar amount) shouldn't render as math. The inline pattern `$([^$\n][^$\n]*?)$` is filtered with `/[a-zA-Z\\^_{}\d]/.test(t)` — at least one math-likely character must be present. So `$5` stays plain, but `$x^2$`, `$\alpha$`, `$\frac{1}{2}$` all trigger render.
+
+### Failure modes (all graceful)
+- KaTeX CDN unreachable → polling gives up after 15s, math stays as `$...$` text fallback (styled `.math-pending`)
+- `throwOnError: false` passed to KaTeX so any malformed LaTeX produces an underlined `.math-fail` span, never crashes the bubble
+- Streaming partial math (e.g. `$x^` mid-token) gets re-evaluated on the next chunk because md() runs on the full accumulated string
+
+### Visual polish
+- `.bubble .katex` — rendered math gets cyan tint + soft glow matching the rest of the Jarvis palette
+- `.bubble .katex-display` — display-mode math gets its own scrollable cyan-bordered card with left accent
+- `.math-pending` — italic mono in muted color so the user knows it's queued, not broken
+- `.math-fail` — red underlined dot pattern for malformed LaTeX
+
+### Tests
+20/20 PASS (`tests/test_math_rendering_v6_10_42.py`): CSS + JS loaded with SRI, defer + onload flag, stash/restore/rerender helpers exist, stash runs BEFORE esc(), display-math + inline-math regex patterns present, dollar-amount guard, all 4 CSS classes (pending/display/katex/fail), polling for KaTeX-load with 15s safety timeout, throwOnError:false, restore-math uses katex.renderToString when ready, pending span carries data-latex + data-display attrs, rerender uses those attrs, v6.10.41 regression intact. Recent chain (v6.10.38 → .41): 76/76 still PASS. Total: 96/96.
+
+---
+
 ## v6.10.41 — User-trained custom gestures (Adam can learn new ones) (2026-05-26)
 
 the maintainer's question: "is it possible to learn/make new gestures as well?" Yes — and that's a clean iter. The 6 built-in gestures (pinch/fist/open_palm/peace/point/thumb_up) were hardcoded; v6.10.41 adds a record-template-from-demo pipeline so users can teach Adam new hand poses and bind them to actions.
