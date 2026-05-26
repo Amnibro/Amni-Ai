@@ -24,6 +24,10 @@ class LearningDaemon:
         self._loop_thread=None
         self.counters={'curiosity_ticks':0,'gaps_picked':0,'urls_ingested':0,'qa_pairs_taught':0,'qa_pairs_new':0,'qa_pairs_reinforced':0,'qa_pairs_debated':0,'sleep_passes':0,'cells_consolidated':0,'repetition_passes':0,'stale_retested':0,'started_at':time.time(),'last_curiosity_at':0.0,'last_sleep_at':0.0,'last_repetition_at':0.0}
         self.last_user_activity_ts=0.0
+        self.current_topic:Optional[str]=None
+        self.current_topic_started_at:float=0.0
+        self.current_topic_phase:str=''
+        self.recent_topics:List[Dict[str,Any]]=[]
         if start_thread and self.config.get('enabled'):self._start()
     def _start(self):
         if self._loop_thread is not None and self._loop_thread.is_alive():return
@@ -82,35 +86,48 @@ class LearningDaemon:
             if len(clean)>=n:break
         return clean
     def _run_ingest_task(self,item:Dict[str,Any]):
+        topic=item.get('topic','') or ''
+        new_in_task=0;reinforced_in_task=0
         try:
             kind=item.get('kind')
             if kind!='topic_ingest':return
-            topic=item.get('topic','')
             if not topic:return
+            self.current_topic=topic;self.current_topic_started_at=time.time();self.current_topic_phase='searching'
             urls=self._ddg_search(topic,n=self.config['max_sources_per_topic'])
-            if not urls:return
+            if not urls:self.current_topic_phase='no_sources';return
             from amni.serve.ingest import _safe_fetch,_distill,_chunk,_dedupe
             from amni.serve.qa_extractor import extract_qa_pairs
             from amni.serve.consensus import ingest_qa_pairs_with_consensus
             for url in urls[:self.config['max_sources_per_topic']]:
                 if self._user_active_recently():break
+                self.current_topic_phase='fetching'
                 raw,err=_safe_fetch(url,timeout=6.0)
                 if raw is None:continue
+                self.current_topic_phase='distilling'
                 text,title=_distill(raw,True)
                 if not text or len(text)<200:continue
                 chunks=_dedupe(_chunk(text,max_chars=900))[:6]
                 source_label=title or url
                 for c in chunks:
                     if self._user_active_recently():return
+                    self.current_topic_phase='extracting'
                     pairs=extract_qa_pairs(self.adam,c,max_pairs=4)
                     if not pairs:continue
+                    self.current_topic_phase='consensus'
                     out=ingest_qa_pairs_with_consensus(self.adam,pairs,source=source_label,learning_atlas=self.learning_atlas)
-                    self.counters['qa_pairs_taught']+=out['counts'].get('new',0)+out['counts'].get('reinforced',0)
-                    self.counters['qa_pairs_new']+=out['counts'].get('new',0)
-                    self.counters['qa_pairs_reinforced']+=out['counts'].get('reinforced',0)
+                    _n=out['counts'].get('new',0);_r=out['counts'].get('reinforced',0)
+                    new_in_task+=_n;reinforced_in_task+=_r
+                    self.counters['qa_pairs_taught']+=_n+_r
+                    self.counters['qa_pairs_new']+=_n
+                    self.counters['qa_pairs_reinforced']+=_r
                     self.counters['qa_pairs_debated']+=out['counts'].get('debated',0)
                 self.counters['urls_ingested']+=1
         except Exception as e:print(f'[LearningDaemon] ingest task exception: {type(e).__name__}: {e}',flush=True);traceback.print_exc()
+        finally:
+            if topic:
+                self.recent_topics.insert(0,{'topic':topic,'finished_at':time.time(),'duration_s':round(time.time()-self.current_topic_started_at,1) if self.current_topic_started_at else 0.0,'new':new_in_task,'reinforced':reinforced_in_task})
+                self.recent_topics=self.recent_topics[:8]
+            self.current_topic=None;self.current_topic_phase=''
     def run_sleep_pass(self)->Dict[str,Any]:
         from amni.serve.sleep_consolidator import sleep_pass
         out=sleep_pass(self.adam,sem_lut=getattr(self.adam,'sem_lut',None),learning_atlas=self.learning_atlas,max_clusters=5)
@@ -129,7 +146,7 @@ class LearningDaemon:
     def stats(self)->Dict[str,Any]:
         uptime=time.time()-self.counters['started_at']
         rate=self.counters['qa_pairs_new']/max(uptime/3600.0,0.001)
-        return {'uptime_s':round(uptime,1),'uptime_hours':round(uptime/3600,2),'queue_depth':self._task_queue.qsize(),'user_active_recently':self._user_active_recently(),'enabled':bool(self.config.get('enabled')),'counters':dict(self.counters),'facts_per_hour':round(rate,2),'atlas':self.learning_atlas.stats(),'config':{k:v for k,v in self.config.items() if k!='enabled'}}
+        return {'uptime_s':round(uptime,1),'uptime_hours':round(uptime/3600,2),'queue_depth':self._task_queue.qsize(),'user_active_recently':self._user_active_recently(),'enabled':bool(self.config.get('enabled')),'counters':dict(self.counters),'facts_per_hour':round(rate,2),'atlas':self.learning_atlas.stats(),'config':{k:v for k,v in self.config.items() if k!='enabled'},'current_topic':self.current_topic,'current_topic_phase':self.current_topic_phase,'current_topic_age_s':(round(time.time()-self.current_topic_started_at,1) if (self.current_topic and self.current_topic_started_at) else 0.0),'recent_topics':list(self.recent_topics)}
 def learning_daemon_skill(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     daemon=ctx.get('learning_daemon') if ctx else None
     if daemon is None:return {'error':'LearningDaemon not in skill context (server must instantiate it)'}

@@ -160,6 +160,38 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #persona-panel input[type=text]:focus{outline:none;border-color:var(--cyan)}
 #persona-panel button.act{padding:5px 10px;border:1px solid rgba(0,229,255,.4);background:rgba(0,229,255,.04);color:var(--cyan);font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
 #persona-panel button.act:hover{background:rgba(0,229,255,.14)}
+.ld-led{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4a5568;box-shadow:0 0 4px #4a5568;margin-right:6px;vertical-align:middle;transition:background .25s, box-shadow .25s}
+.ld-led.idle{background:#4a5568;box-shadow:0 0 4px #4a5568}
+.ld-led.active{background:#00ff9c;box-shadow:0 0 8px #00ff9c, 0 0 14px rgba(0,255,156,.5);animation:ldPulse 1.4s ease-in-out infinite}
+.ld-led.paused{background:#ffb547;box-shadow:0 0 6px #ffb547}
+.ld-led.error{background:#ff5b5b;box-shadow:0 0 6px #ff5b5b}
+@keyframes ldPulse{0%,100%{opacity:1}50%{opacity:.45}}
+#learn-panel{position:fixed;top:60px;right:24px;width:340px;z-index:11;border:1px solid rgba(0,255,156,.4);border-radius:4px;background:rgba(8,14,28,.96);box-shadow:0 0 28px rgba(0,255,156,.18);backdrop-filter:blur(8px);display:none;max-height:calc(100vh - 120px);overflow-y:auto}
+#learn-panel.show{display:block}
+#learn-panel .lp-head{padding:10px 14px;border-bottom:1px solid rgba(0,255,156,.22);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#00ff9c;text-shadow:0 0 4px #00ff9c;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(8,14,28,.98)}
+#learn-panel .lp-head .close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,255,156,.22);border-radius:3px;font-size:10px}
+#learn-panel .lp-head .close:hover{color:var(--err);border-color:var(--err)}
+#learn-panel .lp-section{padding:12px 14px;border-bottom:1px solid rgba(0,255,156,.08)}
+#learn-panel .lp-section h3{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+#learn-panel .lp-now{padding:10px 12px;border:1px solid rgba(0,255,156,.3);border-radius:3px;background:rgba(0,255,156,.05);font-size:11px}
+#learn-panel .lp-now .topic{color:#00ff9c;text-shadow:0 0 4px #00ff9c;font-weight:bold;font-size:12px;word-break:break-word}
+#learn-panel .lp-now .phase{color:var(--mute);font-size:9px;letter-spacing:.2em;margin-top:4px;text-transform:uppercase}
+#learn-panel .lp-now.idle{border-color:rgba(74,85,104,.4);background:rgba(74,85,104,.05)}
+#learn-panel .lp-now.idle .topic{color:var(--mute);text-shadow:none;font-weight:normal;font-style:italic}
+#learn-panel .lp-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px}
+#learn-panel .lp-stat{padding:6px 8px;border:1px solid rgba(0,255,156,.12);border-radius:3px;background:rgba(0,255,156,.02)}
+#learn-panel .lp-stat .v{color:#00ff9c;font-size:13px;font-weight:bold;display:block}
+#learn-panel .lp-stat .k{color:var(--mute);font-size:8px;letter-spacing:.18em;text-transform:uppercase;display:block;margin-top:2px}
+#learn-panel .lp-recent{font-size:10px;color:var(--fg);padding:5px 8px;border-left:2px solid rgba(0,255,156,.3);margin-bottom:4px;background:rgba(0,255,156,.02)}
+#learn-panel .lp-recent .t{color:#00ff9c}
+#learn-panel .lp-recent .meta{color:var(--mute);font-size:8px;letter-spacing:.1em;margin-top:2px}
+#learn-panel .lp-btn-row{display:flex;gap:6px;margin-top:8px}
+#learn-panel button.lp-act{flex:1;padding:6px 10px;border:1px solid rgba(0,255,156,.4);background:rgba(0,255,156,.04);color:#00ff9c;font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px}
+#learn-panel button.lp-act:hover{background:rgba(0,255,156,.14)}
+#learn-panel button.lp-act:disabled{opacity:.4;cursor:not-allowed}
+#learn-panel .lp-queue-row{display:flex;gap:6px;margin-top:6px}
+#learn-panel .lp-queue-row input{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,156,.2);color:var(--fg);padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px}
+#learn-panel .lp-queue-row input:focus{outline:none;border-color:#00ff9c}
 #task-tray{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(140%);width:min(560px,92vw);z-index:8;border:1px solid rgba(0,229,255,.3);border-radius:4px;background:rgba(8,14,28,.95);box-shadow:0 0 24px rgba(0,229,255,.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:30vh;overflow-y:auto}
 #task-tray.show{transform:translateX(-50%) translateY(0)}
 #task-tray .tray-head{padding:6px 12px;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);border-bottom:1px solid rgba(0,229,255,.15);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:rgba(8,14,28,.95)}
@@ -273,6 +305,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
       <span class="pill"><span class="dot"></span>GF(17) online</span>
       <span class="pill" id="lesson-pill">lessons —</span>
       <span class="pill clickable" id="persona-pill" onclick="togglePersonaPanel()" title="Click to change persona + voice">persona —</span>
+      <span class="pill clickable" id="learn-pill" onclick="toggleLearnPanel()" title="Click to inspect 24/7 learning daemon"><span class="ld-led" id="ld-led"></span><span id="ld-text">learning —</span></span>
     </div>
   </header>
   <div id="chat-wrap"><div id="log">
@@ -345,6 +378,30 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
     <h3>STATUS</h3>
     <div style="font-size:10px;color:var(--mute)">Current: <span id="pp-current" style="color:var(--cyan)">—</span></div>
     <div style="font-size:10px;color:var(--mute);margin-top:4px">TTS backend: <span id="pp-tts-backend" style="color:var(--cyan)">—</span></div>
+  </div>
+</div>
+<div id="learn-panel">
+  <div class="lp-head"><span>◆ LEARNING DAEMON</span><span class="close" onclick="toggleLearnPanel()">CLOSE</span></div>
+  <div class="lp-section">
+    <h3>NOW LEARNING</h3>
+    <div id="lp-now" class="lp-now idle"><div class="topic">— idle —</div><div class="phase">waiting for curiosity tick</div></div>
+  </div>
+  <div class="lp-section">
+    <h3>STATS</h3>
+    <div class="lp-stat-grid">
+      <div class="lp-stat"><span class="v" id="lp-facts">—</span><span class="k">facts learned</span></div>
+      <div class="lp-stat"><span class="v" id="lp-rate">—</span><span class="k">facts / hour</span></div>
+      <div class="lp-stat"><span class="v" id="lp-queue">—</span><span class="k">queue depth</span></div>
+      <div class="lp-stat"><span class="v" id="lp-uptime">—</span><span class="k">uptime</span></div>
+      <div class="lp-stat"><span class="v" id="lp-urls">—</span><span class="k">urls ingested</span></div>
+      <div class="lp-stat"><span class="v" id="lp-cells">—</span><span class="k">atlas cells</span></div>
+    </div>
+    <div class="lp-btn-row"><button class="lp-act" id="lp-pause-btn" onclick="_daemonToggle()">PAUSE</button><button class="lp-act" onclick="_daemonTick()">CURIOSITY TICK</button></div>
+    <div class="lp-queue-row"><input type="text" id="lp-queue-topic" placeholder="queue topic (e.g. mitochondrial dynamics)" onkeydown="if(event.key==='Enter')_daemonQueue()"><button class="lp-act" onclick="_daemonQueue()">QUEUE</button></div>
+  </div>
+  <div class="lp-section">
+    <h3>RECENT TOPICS</h3>
+    <div id="lp-recent"><div style="font-size:10px;color:var(--mute);text-align:center;padding:8px;font-style:italic">no completed topics yet</div></div>
   </div>
 </div>
 <div id="cam-panel">
@@ -539,6 +596,52 @@ function _pickVoice(v){_selectedVoice=v;localStorage.setItem(VOICE_KEY,v);_rende
 const _origProbeVoiceBackends=probeVoiceBackends;
 async function _initPersonaPill(){await _origProbeVoiceBackends();await _loadPersonas();if(_selectedPersona){personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona}}
 _initPersonaPill();
+let _ldStats=null,_ldPanelOpen=false,_ldPollTimer=null,_ldLastTopic=null,_ldErrCount=0;
+function _ldHumanDur(s){if(!s||s<60)return Math.round(s||0)+'s';if(s<3600)return Math.round(s/60)+'m';if(s<86400)return (s/3600).toFixed(1)+'h';return (s/86400).toFixed(1)+'d'}
+function _ldHumanRate(r){return (r||0).toFixed(r>=10?0:1)}
+async function _pollLearningDaemon(){
+  try{
+    const r=await fetch('/memory/daemon');
+    if(!r.ok){_ldErrCount++;_ldUpdatePill('error',null);return}
+    _ldErrCount=0;const j=await r.json();_ldStats=j;_ldUpdatePill(j.enabled?(j.current_topic?'active':'idle'):'paused',j);
+    if(_ldPanelOpen)_renderLearnPanel();
+    if(j.current_topic && j.current_topic!==_ldLastTopic){_ldLastTopic=j.current_topic}
+  }catch(e){_ldErrCount++;_ldUpdatePill('error',null)}
+}
+function _ldUpdatePill(state,j){
+  const led=document.getElementById('ld-led');const txt=document.getElementById('ld-text');if(!led||!txt)return;
+  led.className='ld-led '+state;
+  if(state==='error'){txt.textContent='learning offline';return}
+  if(!j){txt.textContent='learning —';return}
+  const n=(j.counters&&j.counters.qa_pairs_new)||0;
+  if(state==='active'){const t=j.current_topic||'';txt.textContent='learning: '+(t.length>22?t.slice(0,22)+'…':t)}
+  else if(state==='paused')txt.textContent='learning paused • '+n+' facts'
+  else txt.textContent='idle • '+n+' facts • '+_ldHumanRate(j.facts_per_hour||0)+'/h'
+}
+function toggleLearnPanel(){_ldPanelOpen=!_ldPanelOpen;const p=document.getElementById('learn-panel');p.classList.toggle('show',_ldPanelOpen);const pp=document.getElementById('persona-panel');if(_ldPanelOpen&&pp&&pp.classList.contains('show')){pp.classList.remove('show');_personaPanelOpen=false}if(_ldPanelOpen)_pollLearningDaemon()}
+function _renderLearnPanel(){
+  const j=_ldStats;if(!j)return;
+  const now=document.getElementById('lp-now');const active=!!j.current_topic;
+  now.className='lp-now'+(active?'':' idle');
+  if(active){now.innerHTML='<div class="topic">'+esc(j.current_topic)+'</div><div class="phase">'+esc(j.current_topic_phase||'working')+' • '+_ldHumanDur(j.current_topic_age_s)+'</div>'}
+  else{const reason=j.enabled?(j.user_active_recently?'paused — user is active':'waiting for curiosity tick'):'daemon paused';now.innerHTML='<div class="topic">— idle —</div><div class="phase">'+esc(reason)+'</div>'}
+  const c=j.counters||{};const a=j.atlas||{};
+  document.getElementById('lp-facts').textContent=(c.qa_pairs_new||0);
+  document.getElementById('lp-rate').textContent=_ldHumanRate(j.facts_per_hour||0);
+  document.getElementById('lp-queue').textContent=(j.queue_depth||0);
+  document.getElementById('lp-uptime').textContent=_ldHumanDur(j.uptime_s||0);
+  document.getElementById('lp-urls').textContent=(c.urls_ingested||0);
+  document.getElementById('lp-cells').textContent=(a.n_cells||a.cells||0);
+  const btn=document.getElementById('lp-pause-btn');btn.textContent=j.enabled?'PAUSE':'RESUME';
+  const recent=document.getElementById('lp-recent');const rt=j.recent_topics||[];
+  if(rt.length===0){recent.innerHTML='<div style="font-size:10px;color:var(--mute);text-align:center;padding:8px;font-style:italic">no completed topics yet</div>'}
+  else{recent.innerHTML=rt.slice(0,6).map(t=>'<div class="lp-recent"><div class="t">'+esc(t.topic||'')+'</div><div class="meta">+'+(t.new||0)+' new · '+(t.reinforced||0)+' reinforced · '+_ldHumanDur(t.duration_s||0)+'</div></div>').join('')}
+}
+async function _daemonToggle(){if(!_ldStats)return;const action=_ldStats.enabled?'pause':'resume';try{await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action}})});await _pollLearningDaemon()}catch{}}
+async function _daemonTick(){try{await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'curiosity_tick'}})});setTimeout(_pollLearningDaemon,500)}catch{}}
+async function _daemonQueue(){const inp=document.getElementById('lp-queue-topic');const t=(inp.value||'').trim();if(!t)return;try{const r=await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'queue_topic',topic:t}})});if(r.ok){inp.value='';bubble('bot','Queued **'+esc(t)+'** for autonomous learning','<span class="badge">learn</span>');setTimeout(_pollLearningDaemon,400)}}catch{}}
+function _startLearnPolling(){if(_ldPollTimer)return;_pollLearningDaemon();_ldPollTimer=setInterval(_pollLearningDaemon,8000)}
+_startLearnPolling();
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
 let _audioEl=null;
 async function speak(text){
