@@ -235,6 +235,21 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #status-panel .sp-val{color:var(--cyan2);font-size:10.5px;letter-spacing:.05em}
 #status-panel .sp-arrow{color:var(--mute);font-size:13px}
 #status-panel .sp-led-inline{width:6px;height:6px;border-radius:50%;background:var(--mute);box-shadow:0 0 4px transparent;transition:background .2s,box-shadow .2s}
+#bookmarks-panel{position:fixed;top:60px;right:24px;width:380px;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(255,224,102,.4);border-radius:4px;box-shadow:0 0 24px rgba(255,224,102,.18);backdrop-filter:blur(8px);padding:12px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
+#bookmarks-panel.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#bookmarks-panel.td-hidden{display:block}
+#bookmarks-panel .sp-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(255,224,102,.2);margin-bottom:8px;font-size:9.5px;letter-spacing:.3em;color:#ffe066;text-transform:uppercase;text-shadow:0 0 4px #ffe066}
+#bookmarks-panel .sp-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(255,224,102,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#bookmarks-panel .sp-close:hover{color:var(--err);border-color:var(--err)}
+.bm-row{margin:6px 0;padding:7px 9px;background:rgba(255,224,102,.04);border-left:2px solid rgba(255,224,102,.4);border-radius:0 3px 3px 0;font-size:10.5px;line-height:1.5;position:relative;font-family:JetBrains Mono,monospace}
+.bm-row .bm-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.bm-row .bm-ts{font-size:9px;letter-spacing:.15em;color:#ffd770;flex:1}
+.bm-row .bm-pers{font-size:8.5px;letter-spacing:.15em;color:var(--magenta);padding:1px 6px;border:1px solid rgba(255,43,214,.3);border-radius:2px}
+.bm-row .bm-del{background:none;border:1px solid rgba(255,91,91,.25);color:var(--mute);font-size:9px;padding:1px 6px;border-radius:2px;cursor:pointer;font-family:inherit}
+.bm-row .bm-del:hover{color:#ff5b5b;border-color:#ff5b5b;background:rgba(255,91,91,.1)}
+.bm-row .bm-q{color:var(--mute);font-style:italic;font-size:10px}
+.bm-row .bm-a{color:var(--fg);margin-top:3px}
+.bm-row .bm-note{color:#ffd770;margin-top:3px;font-size:10px}
 #tools-toggle{padding:8px 12px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.22);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.22em;cursor:pointer;border-radius:3px;transition:all .15s}
 #tools-toggle:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.1)}
 #tools-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.12)}
@@ -785,6 +800,12 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
       <div class="sp-row" id="sp-tests-row" onclick="toggleStatusPanel();toggleTestsPanel()"><span class="sp-led-inline" id="tp-led"></span><span class="sp-name" id="tp-text">tests —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-shell-row" onclick="toggleStatusPanel();toggleShellPanel()"><span class="sp-led-inline" id="sh-led"></span><span class="sp-name" id="sh-text">shell —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-skill-failures-row" onclick="toggleStatusPanel();_skillFailuresShow()"><span class="sp-led-inline" id="sfl-led"></span><span class="sp-name" id="sfl-text">skill failures —</span><span class="sp-arrow">›</span></div>
+      <div class="sp-row" id="sp-bookmarks-row" onclick="toggleStatusPanel();toggleBookmarksPanel()"><span class="sp-led-inline"></span><span class="sp-name">bookmarks ★</span><span class="sp-arrow">›</span></div>
+    </div>
+    <div id="bookmarks-panel" class="td-hidden">
+      <div class="sp-head"><span>★ BOOKMARKS</span><span class="sp-close" onclick="toggleBookmarksPanel()">CLOSE</span></div>
+      <input type="text" id="bm-search" placeholder="filter…" oninput="_bookmarksPanelRender()" style="width:100%;background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.2);color:var(--fg);padding:5px 9px;border-radius:3px;font-family:inherit;font-size:11px;margin-bottom:8px">
+      <div id="bm-list" style="max-height:60vh;overflow-y:auto"></div>
     </div>
     <span class="pill" id="lesson-pill" style="display:none">lessons —</span>
   </header>
@@ -1155,16 +1176,40 @@ async function _bookmarkBubble(msg,btn){
     bubble('bot','Bookmarked. List them anytime with `/bookmarks`.','<span class="badge">bookmark</span>');
   }catch(e){bubble('bot','Bookmark failed: '+esc(String(e)),'<span class="badge err">bookmark</span>')}
 }
-async function _bookmarksShow(){
-  try{
-    const r=await fetch('/memory/bookmarks?limit=10');if(!r.ok){bubble('bot','Bookmarks endpoint unreachable.','<span class="badge err">bookmark</span>');return}
-    const j=await r.json();const items=j.bookmarks||[];const stats=j.stats||{};
-    if(items.length===0){bubble('bot','No bookmarks yet. Click the ☆ on any bot reply to save it.','<span class="badge">bookmark</span>');return}
-    const rows=items.map(bm=>{const ts=esc(bm.iso||'?');const u=esc((bm.user_msg||'').slice(0,80));const a=esc((bm.bot_msg||'').slice(0,200));const note=bm.note?`<div style="font-size:10px;color:#ffd770;margin-top:3px">note: ${esc(bm.note)}</div>`:'';return `<div style="margin:6px 0;padding:7px 9px;background:rgba(0,229,255,.04);border-left:2px solid rgba(0,229,255,.35);border-radius:0 3px 3px 0;font-size:10.5px;line-height:1.5"><div style="color:var(--mute);font-size:9px;letter-spacing:.15em;margin-bottom:3px">★ ${ts}</div><div style="color:var(--mute);font-style:italic">"${u}"</div><div style="color:var(--fg);margin-top:3px">${a}</div>${note}</div>`}).join('');
-    const head=`<div style="font-size:9.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin-bottom:6px">◆ BOOKMARKS · ${stats.total||0} TOTAL</div>`;
-    bubble('bot',head+rows,'<span class="badge">bookmark</span>');
-  }catch(e){bubble('bot','Bookmarks fetch failed: '+esc(String(e)),'<span class="badge err">bookmark</span>')}
+let _bookmarksPanelOpen=false;let _bookmarksData=[];
+function toggleBookmarksPanel(force){
+  const open=(typeof force==='boolean')?force:!_bookmarksPanelOpen;
+  _bookmarksPanelOpen=open;
+  const el=document.getElementById('bookmarks-panel');if(el)el.classList.toggle('show',open);
+  if(open)_bookmarksLoad();
 }
+async function _bookmarksLoad(){
+  try{
+    const r=await fetch('/memory/bookmarks?limit=200');if(!r.ok){_bookmarksData=[];_bookmarksPanelRender();return}
+    const j=await r.json();_bookmarksData=j.bookmarks||[];_bookmarksPanelRender();
+  }catch{_bookmarksData=[];_bookmarksPanelRender()}
+}
+function _bookmarksPanelRender(){
+  const list=document.getElementById('bm-list');if(!list)return;
+  const q=((document.getElementById('bm-search')||{}).value||'').trim().toLowerCase();
+  const filtered=q?_bookmarksData.filter(bm=>((bm.user_msg||'')+' '+(bm.bot_msg||'')+' '+(bm.note||'')).toLowerCase().includes(q)):_bookmarksData;
+  if(filtered.length===0){list.innerHTML='<div style="font-size:10px;color:var(--mute);text-align:center;padding:14px;font-style:italic">'+(q?'no matches':'no bookmarks yet — click ☆ on any reply')+'</div>';return}
+  list.innerHTML=filtered.map(bm=>{
+    const id=esc(bm.id||'');const ts=esc(bm.iso||'?');const u=esc((bm.user_msg||'').slice(0,160));const a=esc((bm.bot_msg||'').slice(0,500));const n=bm.note?esc(bm.note):'';const p=bm.persona?esc(bm.persona):'';
+    return `<div class="bm-row" data-id="${id}"><div class="bm-head"><span class="bm-ts">★ ${ts}</span>${p?'<span class="bm-pers">'+p+'</span>':''}<button class="bm-del" onclick="event.stopPropagation();_bookmarksDelete('${id}')" title="Delete bookmark">✕</button></div><div class="bm-q">"${u}"</div><div class="bm-a">${a}</div>${n?'<div class="bm-note">note: '+n+'</div>':''}</div>`;
+  }).join('');
+}
+async function _bookmarksDelete(id){
+  if(!id)return;
+  if(!confirm('Delete this bookmark?'))return;
+  try{
+    const r=await fetch('/memory/bookmarks/'+encodeURIComponent(id),{method:'DELETE'});
+    if(!r.ok){bubble('bot','Delete failed: HTTP '+r.status,'<span class="badge err">bookmark</span>');return}
+    _bookmarksData=_bookmarksData.filter(b=>b.id!==id);
+    _bookmarksPanelRender();
+  }catch(e){bubble('bot','Delete failed: '+esc(String(e)),'<span class="badge err">bookmark</span>')}
+}
+function _bookmarksShow(){toggleBookmarksPanel(true)}
 function _retryBubble(botMsg){
   if(!botMsg)return;
   let prev=botMsg.previousElementSibling;
@@ -2472,6 +2517,7 @@ document.addEventListener('keydown',e=>{
   if(_streamAbort){e.preventDefault();stopStream();return}
   const gt=document.getElementById('gesture-tour');
   if(gt&&gt.classList.contains('show')){e.preventDefault();_gtClose();return}
+  if(_bookmarksPanelOpen){e.preventDefault();toggleBookmarksPanel(false);return}
   if(_toolsDrawerOpen){e.preventDefault();toggleToolsDrawer(false);return}
   if(_statusPanelOpen){e.preventDefault();toggleStatusPanel(false);return}
 });
