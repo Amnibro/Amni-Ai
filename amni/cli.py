@@ -574,6 +574,82 @@ def _bookmarks_add(args,url):
     if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
     if 'error' in r:print(f'[bookmarks] {r["error"]}',flush=True);sys.exit(1)
     print(f'  Added {r.get("id","?")} at {r.get("iso","?")}.',flush=True)
+def cmd_notes(args):
+    action=(getattr(args,'action',None) or 'list').strip().lower()
+    if action=='delete' and not getattr(args,'id',None) and getattr(args,'text',None):
+        args.id=args.text;args.text=None
+    url=getattr(args,'url',None)
+    if url and not url.startswith('http'):url='http://'+url
+    if url:url=url.rstrip('/')
+    if action=='list':return _notes_list(args,url)
+    if action=='add':return _notes_add(args,url)
+    if action=='delete':return _notes_delete(args,url)
+    if action=='tags':return _notes_tags(args,url)
+    if action=='stats':return _notes_stats(args,url)
+    print(f'[notes] unknown action {action!r}; use list|add|delete|tags|stats',flush=True);sys.exit(1)
+def _notes_fetch(args,url):
+    if url:
+        qs=f'?limit={int(args.limit or 50)}'+(f'&tag={args.tag}' if getattr(args,"tag",None) else '')+(f'&search={args.search}' if getattr(args,"search",None) else '')
+        r=_fetch_json(url+'/memory/notes'+qs)
+        if r is None:print(f'[notes] unreachable: {url}',flush=True);sys.exit(1)
+        return r.get('notes') or [],r.get('tags') or [],r.get('stats') or {}
+    from amni.serve.notes import list_recent,stats,all_tags
+    return list_recent(limit=int(args.limit or 50),tag=getattr(args,'tag',None),search=getattr(args,'search','') or ''),all_tags(),stats()
+def _notes_list(args,url):
+    items,tags,stats=_notes_fetch(args,url)
+    if args.json:print(json.dumps({'notes':items,'tags':tags,'stats':stats},indent=2,default=str),flush=True);return
+    if not items:print('\n  No notes yet. Add one with `amni notes add "text #tag"`.\n',flush=True);return
+    print(f'\n  {len(items)} note(s) · total {stats.get("total",0)}\n',flush=True)
+    for n in items:
+        ts=(n.get('iso','') or '').replace('T',' ')[:16];nid=n.get('id','?');tg=' '.join(f'#{t}' for t in (n.get('tags') or []));txt=n.get('text','')
+        print(f'  {ts}  [{nid}]'+(f'  {tg}' if tg else ''),flush=True);print(f'    {txt}',flush=True);print('',flush=True)
+def _notes_add(args,url):
+    text=(args.text or '').strip()
+    if not text:print('[notes add] text required (positional arg or --text)',flush=True);sys.exit(1)
+    tags=[t.strip() for t in (getattr(args,'tag',None) or '').split(',') if t.strip()] or None
+    if url:
+        import urllib.request
+        body=json.dumps({'text':text,'tags':tags,'session_id':getattr(args,'session','') or ''}).encode('utf-8')
+        try:
+            req=urllib.request.Request(url+'/memory/notes',data=body,headers={'content-type':'application/json'},method='POST')
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[notes] add failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.notes import add
+        r=add(text=text,tags=tags,session_id=getattr(args,'session','') or '')
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    if 'error' in r:print(f'[notes] {r["error"]}',flush=True);sys.exit(1)
+    tg=' '.join(f'#{t}' for t in (r.get('tags') or []))
+    print(f'  Added {r.get("id","?")}'+(f' · {tg}' if tg else ''),flush=True)
+def _notes_delete(args,url):
+    nid=(args.id or '').strip()
+    if not nid:print('[notes delete] need an id (use `amni notes list` to find one)',flush=True);sys.exit(1)
+    if url:
+        import urllib.request
+        try:
+            req=urllib.request.Request(url+'/memory/notes/'+nid,method='DELETE')
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[notes] delete failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.notes import delete
+        r=delete(nid)
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    if 'error' in r:print(f'[notes] {r["error"]}',flush=True);sys.exit(1)
+    print(f'  Deleted {nid} · {r.get("remaining",0)} remaining.',flush=True)
+def _notes_tags(args,url):
+    _,tags,_=_notes_fetch(args,url)
+    if args.json:print(json.dumps({'tags':tags},indent=2,default=str),flush=True);return
+    if not tags:print('\n  No tags in use.\n',flush=True);return
+    print('\n  '+' '.join(f'#{t}' for t in tags)+'\n',flush=True)
+def _notes_stats(args,url):
+    _,_,stats=_notes_fetch(args,url)
+    if args.json:print(json.dumps(stats,indent=2,default=str),flush=True);return
+    print(f'\n  total   {stats.get("total",0)}',flush=True);print(f'  last    {stats.get("last_iso") or "—"}\n',flush=True)
+    tc=stats.get('tag_counts') or {}
+    if tc:
+        print('  by tag:',flush=True)
+        for t,n in tc.items():print(f'    #{t:<18} {n}',flush=True)
+    print('',flush=True)
 def cmd_failures(args):
     action=(getattr(args,'action',None) or 'list').strip().lower()
     url=getattr(args,'url',None)
@@ -987,6 +1063,17 @@ def main():
     bm.add_argument('--persona',default=None,help='Persona tag (for add)')
     bm.add_argument('--tier',default=None,help='Tier tag (for add)')
     bm.set_defaults(func=cmd_bookmarks)
+    nt=sub.add_parser('notes',help='Quick text capture: list / add / delete / tags / stats')
+    nt.add_argument('action',nargs='?',default='list',choices=['list','add','delete','tags','stats'])
+    nt.add_argument('text',nargs='?',default=None,help='Note text (for add) or id (for delete)')
+    nt.add_argument('--id',default=None,help='Note id (for delete)')
+    nt.add_argument('--tag',default=None,help='Filter by tag (list) or comma-separated tags (add)')
+    nt.add_argument('--search',default=None,help='Case-insensitive substring search (list)')
+    nt.add_argument('--limit',type=int,default=50)
+    nt.add_argument('--session',default=None,help='Session id to attach (add)')
+    nt.add_argument('--url',default=None,help='Hit a running server instead of reading local files')
+    nt.add_argument('--json',action='store_true')
+    nt.set_defaults(func=cmd_notes)
     fai=sub.add_parser('failures',help='Inspect skill-failure log: list / stats / ack')
     fai.add_argument('action',nargs='?',default='list',choices=['list','stats','ack'])
     fai.add_argument('--limit',type=int,default=20)

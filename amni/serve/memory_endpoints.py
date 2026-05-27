@@ -112,6 +112,19 @@ def mount(app,agent):
     def bookmarks_delete(bid:str):
         from amni.serve.bookmarks import delete
         return delete(bid)
+    @app.get('/memory/notes')
+    def notes_list(limit:int=50,tag:str='',search:str='',session_id:str='',session_only:bool=False):
+        from amni.serve.notes import list_recent,stats,all_tags
+        return {'notes':list_recent(limit=limit,tag=tag or None,search=search or '',session_id=(session_id or None) if session_only else None),'tags':all_tags(),'stats':stats()}
+    @app.post('/memory/notes')
+    async def notes_add(req:Request):
+        from amni.serve.notes import add
+        body=await req.json()
+        return add(text=body.get('text',''),tags=body.get('tags'),session_id=body.get('session_id',''))
+    @app.delete('/memory/notes/{nid}')
+    def notes_delete(nid:str):
+        from amni.serve.notes import delete
+        return delete(nid)
     @app.post('/memory/skill-failures/ack')
     def skill_failures_ack():
         from amni.serve.skill_failures import ack_all

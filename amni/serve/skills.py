@@ -809,6 +809,31 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
                 if len(hits)>=max_sessions:break
         return {'query':q,'hits':hits,'n_hits':len(hits),'sessions_scanned':sessions_scanned}
     reg.register('recall',_skill_recall,desc='Cross-session conversation recall. Searches all session JSONLs (skipping current session + archived) for substring matches. Args: query, max_sessions? (default 5), max_snippets_per_session? (default 2). Returns hits grouped by session with timestamp + role + 240-char snippet.',schema={'query':'str','max_sessions':'int?','max_snippets_per_session':'int?'})
+    def _skill_note(args,ctx,reg_):
+        """Quick text capture. Actions: add (text, tags?) | list (limit?, tag?, search?, session_only?) | delete (id) | tags | stats."""
+        try:from amni.serve import notes as _nt
+        except Exception as e:return {'error':f'notes module unavailable: {e}'}
+        action=str(args.get('action') or 'add').lower().strip()
+        sid=''
+        try:
+            if ctx.get('conv'):sid=ctx['conv'].session_id or ''
+        except Exception:pass
+        if action=='add':
+            text=args.get('text') or ''
+            tags=args.get('tags');tags=tags if isinstance(tags,list) else ([str(tags)] if tags else None)
+            return _nt.add(text=text,tags=tags,session_id=sid)
+        if action=='list':
+            limit=int(args.get('limit',20));tag=args.get('tag');search=args.get('search','') or ''
+            session_only=bool(args.get('session_only',False))
+            return {'notes':_nt.list_recent(limit=limit,tag=tag,search=search,session_id=(sid if session_only else None))}
+        if action=='delete':
+            nid=args.get('id','')
+            if not nid:return {'error':'id required'}
+            return _nt.delete(nid)
+        if action=='tags':return {'tags':_nt.all_tags()}
+        if action=='stats':return _nt.stats()
+        return {'error':f'unknown action {action!r}; valid: add|list|delete|tags|stats'}
+    reg.register('note',_skill_note,desc='Quick text capture (3rd capture surface after bookmarks/reminders). Actions: add (text, tags?) | list (limit?, tag?, search?, session_only?) | delete (id) | tags | stats. #hashtags in text auto-extracted as tags.',schema={'action':'str?','text':'str?','tags':'list?','id':'str?','tag':'str?','search':'str?','limit':'int?','session_only':'bool?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})
