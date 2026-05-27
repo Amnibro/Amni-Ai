@@ -402,6 +402,10 @@ class AmniAgent:
         if re.search(r"\b(?:what\s+time|when)\s+(?:does|do|is|are)\s+\w+(?:\s+\w+){0,3}\s+(?:open|clos|start|end|stop|begin|due|arriv|leav|depart)",msg,re.IGNORECASE) and self.skills.has('web'):return ('web',{'query':msg})
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
+        if self.skills.has('reminder'):
+            _m=re.search(r"^(?:please\s+)?(?:remind\s+me|set\s+a\s+reminder)\s+to\s+(.+?)\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('reminder',{'action':'add','text':_m.group(1).strip()})
+            if re.search(r"^(?:what\s+(?:are\s+)?(?:my\s+)?|list\s+(?:my\s+)?|show\s+(?:my\s+)?)reminders\??\s*$",msg,re.IGNORECASE):return ('reminder',{'action':'list'})
         if self.skills.has('find'):
             _m=re.search(r"^(?:please\s+)?(?:find|grep|search\s+for|search|locate|show\s+me\s+where)\s+(?:for\s+)?[\"'`]([^\"'`]{2,160})[\"'`](?:\s+in\s+(?:my\s+)?(?:code|repo|project|files))?\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('find',{'query':_m.group(1).strip()})
@@ -663,6 +667,22 @@ class AmniAgent:
                 except Exception:return u
             cite_lines='\n'.join(f'  {i+1}. [{_host(s)}]({s})' for i,s in enumerate(srcs)) if srcs else ''
             return f'{ans}\n\n**Sources:**\n{cite_lines}' if cite_lines else ans
+        if name=='reminder':
+            if out.get('error'):return f'(reminder error: {out["error"]})'
+            if 'id' in out and 'text' in out:
+                due=out.get('due_iso')
+                tail=f' for **{due}**' if due else ''
+                return f'Reminder saved{tail}: _{out["text"]}_  \nDismiss anytime via `/reminders` or `amni reminders dismiss {out["id"]}`.'
+            if 'reminders' in out:
+                items=out['reminders'] or []
+                if not items:return 'No active reminders. Set one with "remind me to ...".'
+                lines=[f'**{len(items)} active reminder(s):**']
+                for r in items[:10]:
+                    due=r.get('due_iso');tag=f'· due {due}' if due else '· no due'
+                    lines.append(f'- `{r.get("id","?")}`  _{r.get("text","")}_  {tag}')
+                return '\n'.join(lines)
+            if 'dismissed' in out:return f'Dismissed reminder `{out["dismissed"]}`.'
+            return json.dumps(out,default=str)[:600]
         if name=='find':
             hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)
             if not hits:return f'No matches for `{q}` in workdir ({files_s} text file(s) scanned).'

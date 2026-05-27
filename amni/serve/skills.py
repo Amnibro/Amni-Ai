@@ -747,6 +747,24 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     reg.register('web',_skill_web,desc="DDG search + distill via Adam's crawler. Args: {query}",schema={'query':'str'})
     reg.register('file_read',_skill_file_read,gate=_gate_path,desc=f'Read a UTF-8 text file within {scope}. Args: {{path, max_bytes?}}',schema={'path':'str','max_bytes':'int?'})
     reg.register('find',_skill_find,desc=f'Fast substring/regex search across workdir text files. Skips binary + noise dirs (.git/.venv/__pycache__/etc). Args: {{query, regex?, case_sensitive?, glob?, max_hits?, max_chars?}}',schema={'query':'str','regex':'bool?','case_sensitive':'bool?','glob':'str?','max_hits':'int?','max_chars':'int?'})
+    def _skill_reminder(args,ctx,reg_):
+        """Manage time-aware reminders. Actions: add (text, due_at?, session_id?) | list (session_id?, limit?) | due | dismiss (id) | stats."""
+        from amni.serve import reminders as _rm
+        action=(args.get('action') or 'list').strip().lower()
+        sid=(ctx.get('conv') and getattr(ctx['conv'],'session_id',None)) or args.get('session_id','')
+        if action=='add':
+            text=args.get('text','')
+            if not text:return {'error':'text required'}
+            return _rm.add(text=text,due_at=args.get('due_at'),session_id=sid)
+        if action=='list':return {'reminders':_rm.list_active(session_id=args.get('session_id') or None,limit=int(args.get('limit',50)))}
+        if action=='due':return {'due':_rm.list_due()}
+        if action=='dismiss':
+            rid=args.get('id','')
+            if not rid:return {'error':'id required'}
+            return _rm.dismiss(rid)
+        if action=='stats':return _rm.stats()
+        return {'error':f'unknown action {action!r}; valid: add|list|due|dismiss|stats'}
+    reg.register('reminder',_skill_reminder,desc='Time-aware reminders / todo store. Actions: add (text, due_at?) | list (limit?) | due | dismiss (id) | stats. Add auto-parses "in N minutes/hours/days", "tomorrow", "at HH:MM(am|pm)" from the text.',schema={'action':'str?','text':'str?','due_at':'float?','id':'str?','session_id':'str?','limit':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})
