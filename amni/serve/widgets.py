@@ -71,8 +71,12 @@ def fetch_time_card(tz_name:Optional[str]=None)->Dict[str,Any]:
     except Exception:dt=_dt.datetime.now()
     return {'iso':dt.isoformat(timespec='seconds'),'tz':str(dt.tzinfo) if dt.tzinfo else 'local','weekday':dt.strftime('%A'),'date_human':dt.strftime('%b %d, %Y'),'time_human':dt.strftime('%I:%M %p'),'epoch':int(time.time())}
 _DDG_NEWS_URL='https://duckduckgo.com/html/?q={q}&iar=news'
-def fetch_news(query:str='',n:int=6)->Dict[str,Any]:
+def fetch_news(query:str='',n:int=6,atlas=None)->Dict[str,Any]:
     q=(query or 'top news').strip()
+    try:
+        from amni.serve.pii_egress import scrub as _scrub
+        q=_scrub(q,atlas=atlas,source='news') or 'top news'
+    except Exception:pass
     j=_safe_get(_DDG_NEWS_URL.format(q=__import__('urllib.parse',fromlist=['quote']).quote(q)),timeout=6.0,headers={'User-Agent':'Mozilla/5.0 Amni-Ai/6.10.5'})
     if not j or j.get('_error'):return {'_error':j.get('_error','news fetch failed') if j else 'news fetch failed'}
     html=j.get('_raw','')

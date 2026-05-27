@@ -83,6 +83,10 @@ class LearningDaemon:
             except queue.Full:return {'gap':gap,'queued':False,'reason':'queue_full'}
     def _ddg_search(self,query:str,n:int=5)->List[str]:
         try:
+            from amni.serve.pii_egress import scrub as _scrub
+            query=_scrub(query,atlas=getattr(self,'personal_atlas',None),source='daemon') or query
+        except Exception:pass
+        try:
             req=urllib.request.Request(_DDG_URL+urllib.parse.quote(query),headers={'User-Agent':'Mozilla/5.0 Amni-Ai/6.10 LearningDaemon'})
             with urllib.request.urlopen(req,timeout=8) as r:html=r.read(800000).decode('utf-8',errors='ignore')
         except Exception:return []

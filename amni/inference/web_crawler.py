@@ -43,6 +43,10 @@ class WebCrawler:
     def search(self,query:str,k:int=3)->List[str]:
         try:from ddgs import DDGS
         except Exception:from duckduckgo_search import DDGS
+        try:
+            from amni.serve.pii_egress import scrub as _scrub
+            query=_scrub(query,atlas=getattr(self,'personal_atlas',None),source='crawler') or query
+        except Exception:pass
         urls=[]
         try:
             with DDGS() as ddg:
