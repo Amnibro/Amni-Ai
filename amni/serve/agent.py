@@ -411,6 +411,9 @@ class AmniAgent:
         if re.search(r"\b(?:what\s+time|when)\s+(?:does|do|is|are)\s+\w+(?:\s+\w+){0,3}\s+(?:open|clos|start|end|stop|begin|due|arriv|leav|depart)",msg,re.IGNORECASE) and self.skills.has('web'):return ('web',{'query':msg})
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
+        if self.skills.has('coding_runner'):
+            _m=re.search(r"^(?:please\s+)?(?:code\s+this|code\s+task|coding\s+task|implement\s+and\s+test|build\s+and\s+test)\s*[:\-]\s*(.+?)\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('coding_runner',{'action':'prepare','task':_m.group(1).strip()})
         if self.skills.has('recall'):
             _m=re.search(r"^(?:do\s+you\s+)?remember\s+(?:when\s+)?(?:we\s+)?(?:discussed|talk(?:ed|ing)?\s+about|covered|spoke\s+about|mentioned)\s+(.+?)\s*\??\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('recall',{'query':_m.group(1).strip(' ?.,!')})
@@ -785,6 +788,24 @@ class AmniAgent:
                 items=out['pending'] or []
                 if not items:return 'No PC actions awaiting confirmation.'
                 return '**Pending PC actions:**\n'+'\n'.join(f'- `{i["token"]}` [{i["risk"]}] {i["action"]}: {i["target"]}' for i in items[:10])
+            return json.dumps(out,default=str)[:600]
+        if name=='coding_runner':
+            if out.get('error'):return f'(coding_runner error: {out["error"]})'
+            if 'run_id' in out and 'context' in out:
+                lines=[f'🛠️ **Coding run `{out["run_id"]}`** — attempt #{out.get("attempt")} of {out.get("max_attempts")}']
+                pa=out.get('prior_attempts') or []
+                if pa:lines.append(f'_{len(pa)} prior attempt(s) recalled — I\'ll avoid what failed._')
+                lf=out.get('located_files') or []
+                if lf:lines.append('**Relevant files:** '+', '.join(f'`{f["path"]}`' for f in lf[:6]))
+                else:lines.append('_No code map yet — run `code_index build` to help me locate files._')
+                lines.append('\nWorking the task now. When done I\'ll `complete` the run so the outcome + lesson are saved for next time.')
+                return '\n'.join(lines)
+            if out.get('completed'):
+                tail=f' Retry warranted — next attempt will use: _{out.get("next_hint","")[:160]}_' if out.get('will_retry') else (' ✓ done, recorded.' if out.get('success') else ' Recorded (no more retries).')
+                return f'Coding run `{out.get("run_id")}` attempt #{out.get("attempt")} {"succeeded" if out.get("success") else "failed"}.{tail}'
+            if 'open' in out:
+                runs=out['open'] or []
+                return ('Open coding runs:\n'+'\n'.join(f'- `{r["run_id"]}` {r["task"]}' for r in runs[:10])) if runs else 'No open coding runs.'
             return json.dumps(out,default=str)[:600]
         if name=='find':
             hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)
