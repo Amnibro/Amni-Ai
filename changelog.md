@@ -2,6 +2,21 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.122 — Amni-Chat text bridge (Adam as a lightweight chat participant) + PC-operator roadmap (2026-05-26)
+
+Directive: *"Adam should be able to lightweight interact with Amni-Chat users (streamed from PC) via text messaging, and hopefully Adam would be able to do ANYTHING on a PC."* First slice of both.
+
+### New `amni/serve/amni_chat_bridge.py` + `/bridge/amni-chat`
+A relay on the PC forwards an inbound Amni-Chat DM → Adam runs it through the agent → returns a reply. Per-peer session continuity (`amnichat:<conversation_id|from_user>`), so each conversation keeps its own thread.
+- **Two safety rails for an external-facing surface:** (1) outbound replies are scrubbed through `pii_egress` with the **owner's** PersonalAtlas — Adam never leaks the owner's name/location/contact to a chat peer (the leak-liability rule now covers replies, not just search queries); (2) per-peer rate limit (12/min default) + input/reply length caps + an enable toggle — lightweight, not a firehose.
+- Endpoints: `POST /bridge/amni-chat` `{text, from_user?, conversation_id?}` → `{reply}`; `GET /bridge/amni-chat/status`; `POST /bridge/amni-chat/toggle`. Mounted in `amni_serve`.
+
+### Roadmap Tier 5 — Adam as participant + PC operator
+- **5a Amni-Chat bridge** (this slice) — next: wire the real X25519/ChaCha20/WebRTC relay, per-peer persona, opt-in conversation allowlist, streamed replies.
+- **5b "do anything on a PC"** — vision + safety-gated path: existing `shell/file_write/code_edit/run_python/git/find` are the safe primitives → broaden local actions (confirm-listed) → screen+input computer-use (screenshot→vision→plan→action with dry-run) → agentic task runner. **Non-negotiable rails:** Law 0/1 checked before any action, destructive ops always confirm, full audit log, no owner PII off-box, human-in-the-loop — "anything" means *capable of*, never *unsupervised and unbounded*.
+
+15/15 new tests pass (reply, per-peer session, rate limit + isolation, owner-PII-scrubbed-from-reply, length caps, toggle, endpoints, mount, roadmap rails); permissions (v6.10.121) regression intact.
+
 ## v6.10.121 — Unified permissions panel: location · mic · camera · notifications (2026-05-26)
 
 Directive: *"give permissions for location for searches, voice and video for interaction, etc."* The grant flows existed but scattered across features; now one panel surfaces every permission's live status with a one-tap grant.
