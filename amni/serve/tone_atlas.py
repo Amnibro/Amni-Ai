@@ -79,7 +79,19 @@ def sample_closer(category:str,warmth:float,formality:float,excitement:float,see
     bucket=_CLOSERS.get(key)
     if not bucket:return ''
     return bucket[_hash_idx(seed or category+'_close',len(bucket))]
+def _strip_thinking_process(text:str)->str:
+    """Remove meta-reasoning leakage (Thinking Process:, numbered RESTATE/APPROACH/FIRST SHOT lists, etc.).
+    These patterns are explicitly banned in the tool_discipline prompt but some models leak them anyway."""
+    if not text:return text
+    import re as _re
+    t=_re.sub(r'(?is)\n*(?:thinking\s*process|thought)\s*:?\s*\n.*?(?=\n\s*\n[^\d\s*•\-]|\Z)','',text)
+    t=_re.sub(r'(?im)^\s*\d+\.\s+(?:analyze|check|determine|formulate|apply|final\s+output|self-correction|refinement)\b.*$\n?','',t)
+    t=_re.sub(r'(?im)^\s*\*\s*(?:restate|knowns|approach|first\s+shot|critique|refine)\s*:.*$\n?','',t)
+    t=_re.sub(r'(?im)^\s*-?\s*(?:restate|knowns|approach|first\s+shot|critique|refine)\s*:.*$\n?','',t)
+    t=_re.sub(r'\n{3,}','\n\n',t)
+    return t.strip() or text
 def wrap(answer:str,category:str,persona,seed:str='')->str:
+    answer=_strip_thinking_process(answer)
     op=sample_opener(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
     cl=sample_closer(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
     parts=[]

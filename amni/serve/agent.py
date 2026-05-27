@@ -373,6 +373,10 @@ class AmniAgent:
             if _c is not None:return _c
         _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('weather'):return ('weather',{'location':_m.group(1).strip(' ?.,!')})
+        if self.skills.has('weather') and re.search(r"\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:here|now|today|outside)|forecast\s+(?:for\s+today|today|this\s+week)?)\b",msg,re.IGNORECASE):
+            _lat=getattr(self,'_client_lat',None);_lon=getattr(self,'_client_lon',None)
+            if _lat is not None and _lon is not None:return ('weather',{'lat':float(_lat),'lon':float(_lon)})
+            return ('weather',{'location':'__need_geolocation__'})
         if re.search(r"\bsystem\s+stats?\b|\b(?:cpu|ram|memory|disk)\s+(?:usage|stats?|status)\b|\bhow'?s\s+my\s+(?:system|computer|machine)\b",msg,re.IGNORECASE) and self.skills.has('system_stats'):return ('system_stats',{})
         _m=re.search(r"\b(?:top\s+)?news(?:\s+about|\s+on|\s+regarding)?\s+([\w\s\-]{2,60})\??$|\bwhat'?s\s+(?:happening|new)\s+(?:in|with|about)\s+([\w\s\-]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('news'):return ('news',{'query':(_m.group(1) or _m.group(2) or '').strip(' ?.,!')})
