@@ -2,6 +2,17 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.125 — Screenshot → local-vision action: Adam can see your screen, on-box (2026-05-26)
+
+The perception half of computer-use (Tier 5b), built privacy-first: Adam can *see* the screen but the image never leaves the machine.
+
+- New `screenshot` action in `pc_actions` (medium risk, **confirm-gated like everything else** — nothing captures until you confirm the token). Captures via `mss` (fallback `PIL.ImageGrab`) to gitignored `data/screenshots/`, returns path + dims.
+- On confirm, the skill routes the captured image to the **local** VisionService (BLIP) for a caption / VQA answer (`question` arg) — described entirely on-box, never sent to any external service. Skill desc documents "LOCAL vision … never sent off-box."
+- Agent NL route: "what's on my screen", "describe my screen", "take a screenshot", "look at my screen" → proposes the screenshot action (then the v6.10.124 confirm card gates it). A trailing question after "my screen" becomes the VQA prompt.
+- Graceful when capture libs absent or no vision service — clear error, no crash.
+
+13/13 new tests pass (risk level, executor registered, propose token, confirm-via-stub, **nothing-captures-until-confirm**, default target, local-vision-on-confirm + no-vision-ok, NL route + non-overmatch, privacy doc); pc_actions (24/24) + confirm-widget (14/14) regressions green.
+
 ## v6.10.124 — One-tap CONFIRM/CANCEL widget for proposed PC actions (2026-05-26)
 
 Completes the human-in-the-loop ergonomics for Tier 5b: when Adam proposes a PC action, the chat now renders a **confirm card** with CONFIRM / CANCEL buttons instead of making the owner type the token.
