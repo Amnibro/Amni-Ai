@@ -732,6 +732,24 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #pose-panel .pc-fb.warn{color:#ffb347}
 #pose-panel .pc-fb.good{color:var(--ok)}
 #pose-panel .pc-fps{font-size:8px;color:var(--mute);letter-spacing:.1em}
+#perms-panel{position:fixed;top:60px;right:24px;width:308px;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(0,229,255,.35);border-radius:4px;box-shadow:0 0 24px rgba(0,229,255,.18);backdrop-filter:blur(8px);padding:12px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
+#perms-panel.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#perms-panel.td-hidden{display:block}
+#perms-panel .pm-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(0,229,255,.18);margin-bottom:10px;font-size:9.5px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;text-shadow:0 0 4px var(--cyan)}
+#perms-panel .pm-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#perms-panel .pm-close:hover{color:var(--err);border-color:var(--err)}
+#perms-panel .pm-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(0,229,255,.08)}
+#perms-panel .pm-row:last-of-type{border-bottom:none}
+#perms-panel .pm-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+#perms-panel .pm-name{font-size:11px;color:var(--fg);letter-spacing:.05em}
+#perms-panel .pm-why{font-size:8.5px;color:var(--mute);letter-spacing:.02em}
+#perms-panel .pm-state{font-size:7.5px;letter-spacing:.16em;text-transform:uppercase;padding:2px 7px;border-radius:10px;border:1px solid var(--mute);color:var(--mute);white-space:nowrap}
+#perms-panel .pm-state.granted{color:var(--ok);border-color:var(--ok);text-shadow:0 0 4px var(--ok)}
+#perms-panel .pm-state.denied{color:var(--err);border-color:var(--err)}
+#perms-panel .pm-state.prompt{color:#ffe066;border-color:#ffe066}
+#perms-panel .pm-grant{font-size:9px;padding:4px 10px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.05);color:var(--cyan);cursor:pointer;border-radius:3px;letter-spacing:.12em;font-family:inherit}
+#perms-panel .pm-grant:hover{background:rgba(0,229,255,.16)}
+#perms-panel .pm-foot{font-size:8.5px;color:var(--mute);margin-top:9px;line-height:1.45;letter-spacing:.02em}
 #train-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:15;background:rgba(8,14,28,.97);border:1px solid var(--magenta);border-radius:6px;padding:18px;box-shadow:0 0 40px rgba(255,77,200,.4);display:none;font-family:inherit}
 #train-modal.show{display:block}
 #train-modal h3{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 6px var(--magenta);margin:0 0 14px;text-align:center}
@@ -922,6 +940,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div class="td-label">SESSION</div>
     <div class="td-grid">
       <button class="td-btn" id="export-btn" type="button" onclick="_exportChatMd()" title="Download this conversation as Markdown">EXPORT</button>
+      <button class="td-btn" id="perms-btn" type="button" onclick="togglePermsPanel()" title="Location, microphone, camera + notification permissions">PERMISSIONS</button>
     </div>
   </div>
 </div>
@@ -1119,6 +1138,14 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div class="pc-stat"><div class="v" id="pose-angle">—</div><div class="l">angle</div></div>
   </div>
   <div class="pc-fb" id="pose-fb">Pick an exercise, hit START, and step back so your whole body is in frame.</div>
+</div>
+<div id="perms-panel" class="td-hidden">
+  <div class="pm-head"><span>◆ PERMISSIONS</span><span class="pm-close" onclick="togglePermsPanel(false)">CLOSE</span></div>
+  <div class="pm-row" data-perm="geolocation"><div class="pm-info"><span class="pm-name">📍 Location</span><span class="pm-why">local weather + "near me" searches</span></div><span class="pm-state" id="pm-state-geolocation">—</span><button class="pm-grant" onclick="_permsRequest('geolocation')">GRANT</button></div>
+  <div class="pm-row" data-perm="microphone"><div class="pm-info"><span class="pm-name">🎤 Microphone</span><span class="pm-why">voice input · wake word · convo mode</span></div><span class="pm-state" id="pm-state-microphone">—</span><button class="pm-grant" onclick="_permsRequest('microphone')">GRANT</button></div>
+  <div class="pm-row" data-perm="camera"><div class="pm-info"><span class="pm-name">📷 Camera</span><span class="pm-why">gestures + PT form coaching</span></div><span class="pm-state" id="pm-state-camera">—</span><button class="pm-grant" onclick="_permsRequest('camera')">GRANT</button></div>
+  <div class="pm-row" data-perm="notifications"><div class="pm-info"><span class="pm-name">🔔 Notifications</span><span class="pm-why">due reminders when tabbed away</span></div><span class="pm-state" id="pm-state-notifications">—</span><button class="pm-grant" onclick="_permsRequest('notifications')">GRANT</button></div>
+  <div class="pm-foot">Granted locally in your browser. Adam never sends raw location, audio, or video off-box — only PII-scrubbed search text ever leaves.</div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
@@ -1684,6 +1711,7 @@ const _SLASH_COMMANDS=[
   {cmd:'pace',hint:'set stream cps (10-2000)'},
   {cmd:'bookmarks',hint:'list recent starred replies'},
   {cmd:'reminders',hint:'open reminders panel'},
+  {cmd:'perms',hint:'location/mic/camera/notification permissions'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
 function _slashAcRender(){
@@ -1772,7 +1800,39 @@ function _handleSlashCommand(text){
   if(cmd==='pace'){const n=parseInt(arg,10);if(isFinite(n)){_paceSliderChange(n);bubble('bot','Stream pace set to **'+n+' cps**.','<span class="badge">cmd</span>')}else{bubble('bot','Usage: `/pace <cps>` (10-2000). Current: **'+_typeSpeedCps()+' cps**.','<span class="badge">cmd</span>')}return true}
   if(cmd==='bookmarks'){_bookmarksShow();return true}
   if(cmd==='reminders'){toggleRemindersPanel(true);return true}
+  if(cmd==='perms'){togglePermsPanel(true);return true}
   return false;
+}
+let _permsOpen=false;
+function togglePermsPanel(force){
+  const open=(typeof force==='boolean')?force:!_permsOpen;_permsOpen=open;
+  const el=document.getElementById('perms-panel');if(el)el.classList.toggle('show',open);
+  if(open)_permsRefresh();
+}
+async function _permsQuery(name){
+  try{if(navigator.permissions&&navigator.permissions.query){const s=await navigator.permissions.query({name:name});return s.state}}catch(e){}
+  return null;
+}
+function _permsSetState(k,st){
+  const el=document.getElementById('pm-state-'+k);if(!el)return;
+  const s=st||'unknown';el.textContent=s;
+  el.className='pm-state '+(s==='granted'?'granted':(s==='denied'?'denied':(s==='prompt'?'prompt':'')));
+}
+async function _permsRefresh(){
+  _permsSetState('geolocation',await _permsQuery('geolocation'));
+  _permsSetState('microphone',await _permsQuery('microphone'));
+  _permsSetState('camera',await _permsQuery('camera'));
+  let n='unknown';try{if(typeof Notification!=='undefined')n=(Notification.permission==='default'?'prompt':Notification.permission)}catch(e){}
+  _permsSetState('notifications',n);
+}
+async function _permsRequest(kind){
+  try{
+    if(kind==='geolocation'){await _resolveLocalLocation().catch(()=>{})}
+    else if(kind==='microphone'){const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop())}
+    else if(kind==='camera'){const s=await navigator.mediaDevices.getUserMedia({video:true});s.getTracks().forEach(t=>t.stop())}
+    else if(kind==='notifications'){if(typeof Notification!=='undefined')await Notification.requestPermission()}
+  }catch(e){bubble('bot','Permission for '+esc(kind)+' was blocked or unavailable: '+esc(e.message||String(e))+' — you may need to allow it in your browser site settings.','<span class="badge err">perms</span>')}
+  setTimeout(_permsRefresh,400);
 }
 async function send(){
   if(send_btn&&send_btn.dataset.streaming==='1'){stopStream();return}

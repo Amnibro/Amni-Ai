@@ -2,6 +2,16 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.121 — Unified permissions panel: location · mic · camera · notifications (2026-05-26)
+
+Directive: *"give permissions for location for searches, voice and video for interaction, etc."* The grant flows existed but scattered across features; now one panel surfaces every permission's live status with a one-tap grant.
+
+- **PERMISSIONS** button in the TOOLS drawer → SESSION (decluttered — no new always-on indicator) + `/perms` slash command.
+- Four rows, each with its *why*: 📍 Location (local weather + near-me search), 🎤 Microphone (voice/wake/convo), 📷 Camera (gestures + PT coach), 🔔 Notifications (due reminders). Live state pill (granted/denied/prompt) via `navigator.permissions.query`; **GRANT** triggers the real request — `getUserMedia`, `geolocation`, `Notification.requestPermission` — and immediately releases mic/camera tracks after the probe.
+- Privacy footnote on the panel: raw location/audio/video never leave the box — only PII-scrubbed search text does (ties to the v6.10.116 egress choke-point).
+
+14/14 new tests pass (panel + button + 4 grants + JS fns + Permissions API + request methods + track-release + node `--check`); search (v6.10.120) + pose regressions intact.
+
 ## v6.10.120 — Search callable whenever: /search slash command + authoritative NL route + CLI (2026-05-26)
 
 Directive: *"make sure the search tool can be called whenever."* Search was reachable only via uncertainty-triggered crawling or fuzzy NL phrasing that other intents could shadow. Now it has three guaranteed, always-on surfaces.
