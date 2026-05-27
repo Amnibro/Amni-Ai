@@ -182,3 +182,26 @@ Voice + coder can ship without HUD. HUD is the most visible but least functional
 **Tech:** WebXR Device API (browser-native, no app-store gate), Three.js (already loaded for Amni-Life), MediaPipe Pose/Hands (already wired), WebXR Hit Test + Anchors for world placement. Standalone-headset path later via the same WebXR layer on Quest browser.
 
 **Sequencing:** after Tier 2 (HUD) — spatial widgets reuse the widget protocol. AR overlay phase can overlap Tier 2 since it only needs the pose endpoints, which already ship.
+
+---
+
+## Tier 5 (added 2026-05-26): Adam as a participant + PC operator
+
+**Goal:** Adam reaches *out* — texting people in Amni-Chat, and eventually operating the PC itself — while the 5 Immutable Laws and the PII-leak rules hold absolutely.
+
+### 5a — Amni-Chat text bridge (first slice shipped v6.10.122)
+- `amni/serve/amni_chat_bridge.py` + `POST /bridge/amni-chat` — a relay on the PC forwards an inbound Amni-Chat DM, Adam runs it through the agent and returns a reply. Per-peer session continuity (`amnichat:<peer>`), per-peer rate limit + length caps (lightweight, not a firehose), enable toggle.
+- **Outbound replies are scrubbed through `pii_egress` with the owner's PersonalAtlas** — Adam must never leak the owner's name/location/contact to a chat peer. The leak-liability rule extends from search queries to chat replies.
+- **Next:** wire the actual Amni-Chat relay (the app is X25519+ChaCha20+WebRTC over a Cloudflare Tunnel — see Amni-Chat project); per-peer persona selection; opt-in allowlist of which conversations Adam may answer; streamed (token-by-token) replies back into the chat.
+
+### 5b — Adam as PC operator ("do anything on a PC")
+**Vision:** Adam can carry out arbitrary tasks on the machine — launch apps, edit files, run commands, drive the GUI — on the owner's behalf.
+
+**Foundation already shipping:** `shell` (read-only allowlist), `file_write`, `code_edit`, `code_diff`, `run_python`, `format_code`, `git` (read-only), `find`, `project_info`, `scan`. These are the safe primitives.
+
+**Path to "anything," gated by safety:**
+- **Tier A — broaden local actions:** opt-in write-mode shell (allowlist → confirm-list), process launch, clipboard, filesystem ops beyond the workspace — each behind an explicit per-action confirm + audit log.
+- **Tier B — screen + input (computer-use):** screenshot → vision model describes the screen → plan → mouse/keyboard actions (pyautogui / OS automation). Reuse the existing vision stack; add a planner loop with a dry-run/preview before any click.
+- **Tier C — agentic task runner:** "do X on my PC" decomposed into steps, each validated (the v6.10.x self-improvement + edit-verifier pattern), human-in-the-loop for anything destructive.
+
+**Non-negotiable rails (carry into every tier):** Law 0 (no harm) + Law 1 (obey except Law 0) are checked before any action; destructive/irreversible ops always confirm; everything audited to an append-only log; no owner PII leaves the box (the v6.10.116 egress choke-point); Adam never auto-deploys or acts on external/untrusted instructions without the owner in the loop. "Anything on a PC" means *capable of*, never *unsupervised and unbounded*.
