@@ -2,6 +2,18 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.120 — Search callable whenever: /search slash command + authoritative NL route + CLI (2026-05-26)
+
+Directive: *"make sure the search tool can be called whenever."* Search was reachable only via uncertainty-triggered crawling or fuzzy NL phrasing that other intents could shadow. Now it has three guaranteed, always-on surfaces.
+
+- **`/search <query>` slash command** (UI) — `_runWebSearch()` hits `/skills/web` directly, bypassing intent classification entirely, and renders the distilled answer + clickable sources. Shows a **"PII scrubbed before send"** badge when the egress choke-point cleaned the query; degrades to a clear message if the optional crawler deps are offline. Added to the slash autocomplete with arg hint.
+- **Authoritative NL route** (agent) — an explicit `search…/search the web/online/for…/google…/web search…` prefix now routes to the web skill at the **top** of `_detect_skill` (right after chain detection), so it can never be shadowed by weather/time/other intents. Guarded against memory-scoped phrasing (`…in my memory/notes/lessons/bank`) so those still hit the local memory search, not the web.
+- **`amni search <query>` CLI** — POSTs to a running server's `/skills/web` (default `127.0.0.1:7700`), prints answer + sources, notes when PII was scrubbed.
+
+All three funnel through the existing v6.10.116 PII egress scrubber before anything leaves the box — search-anytime never means leak-anytime.
+
+18/18 new tests pass (slash registration/dispatch, `_runWebSearch` wiring + sources + PII badge + unavailable path, node `--check`, authoritative route priority + phrasings + memory-guard, CLI defined + `--help` parses); recall (17/17), notes (25/25), pre-response-review (25/25) regressions green.
+
 ## v6.10.119 — Close the PTEX-persistence loop: KG into review + cadence auto-commit of leaks (2026-05-26)
 
 Finishes the *"stored in PTEX + reviewed pre-response"* directive by (a) widening what `review()` consults and (b) making the leak→PTEX commit automatic instead of on-demand.

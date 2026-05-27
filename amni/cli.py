@@ -650,6 +650,25 @@ def _notes_stats(args,url):
         print('  by tag:',flush=True)
         for t,n in tc.items():print(f'    #{t:<18} {n}',flush=True)
     print('',flush=True)
+def cmd_search(args):
+    import urllib.request
+    q=(getattr(args,'query',None) or '').strip()
+    if not q:print('[search] need a query: amni search <words>',flush=True);sys.exit(1)
+    url=getattr(args,'url',None) or 'http://127.0.0.1:7700'
+    if not url.startswith('http'):url='http://'+url
+    url=url.rstrip('/')
+    body=json.dumps({'args':{'query':q}}).encode('utf-8')
+    try:
+        req=urllib.request.Request(url+'/skills/web',data=body,headers={'content-type':'application/json'},method='POST')
+        with urllib.request.urlopen(req,timeout=60) as resp:j=json.loads(resp.read().decode('utf-8','ignore'))
+    except Exception as e:print(f'[search] request failed ({url}): {e}\n  Is the server running?  amni serve',flush=True);sys.exit(1)
+    out=j.get('output') if isinstance(j,dict) and 'output' in j else j
+    if args.json:print(json.dumps(out,indent=2,default=str),flush=True);return
+    if not out or out.get('error'):print(f'[search] {out.get("error","no result") if out else "no result"}',flush=True);sys.exit(1)
+    print('\n'+(out.get('answer') or '(no answer)')+'\n',flush=True)
+    for i,s in enumerate(out.get('sources',[])[:5]):print(f'  {i+1}. {s}',flush=True)
+    if out.get('pii_scrubbed'):print('\n  [PII scrubbed before the query left the box]',flush=True)
+    print('',flush=True)
 def cmd_failures(args):
     action=(getattr(args,'action',None) or 'list').strip().lower()
     url=getattr(args,'url',None)
@@ -1074,6 +1093,11 @@ def main():
     nt.add_argument('--url',default=None,help='Hit a running server instead of reading local files')
     nt.add_argument('--json',action='store_true')
     nt.set_defaults(func=cmd_notes)
+    se=sub.add_parser('search',help='Web search anytime via a running server (PII-scrubbed before send)')
+    se.add_argument('query',nargs='+',help='Search query words')
+    se.add_argument('--url',default=None,help='Server URL (default http://127.0.0.1:7700)')
+    se.add_argument('--json',action='store_true')
+    se.set_defaults(func=lambda a:(setattr(a,'query',' '.join(a.query)),cmd_search(a))[1])
     fai=sub.add_parser('failures',help='Inspect skill-failure log: list / stats / ack')
     fai.add_argument('action',nargs='?',default='list',choices=['list','stats','ack'])
     fai.add_argument('--limit',type=int,default=20)

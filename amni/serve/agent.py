@@ -371,6 +371,11 @@ class AmniAgent:
         if not _no_chain:
             _c=self._detect_chain(msg)
             if _c is not None:return _c
+        if self.skills.has('web') and not re.search(r"\b(?:my\s+(?:memory|notes?|lessons?|bookmarks?)|the\s+(?:lesson\s+)?bank|knowledge\s+bank|in\s+(?:my\s+|your\s+|the\s+)?(?:memory|notes?|lessons?|bank))\b",msg,re.IGNORECASE):
+            _m=re.search(r"^\s*(?:please\s+)?(?:web\s*search|search\s+(?:the\s+web|online|for)?|google)\b[:\s]*(.*)$",msg,re.IGNORECASE)
+            if _m:
+                _q=_m.group(1).strip(' ?.,!')
+                return ('web',{'query':_q or msg})
         _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('weather'):return ('weather',{'location':_m.group(1).strip(' ?.,!')})
         if self.skills.has('weather') and re.search(r"\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:here|now|today|outside)|forecast\s+(?:for\s+today|today|this\s+week)?)\b",msg,re.IGNORECASE):

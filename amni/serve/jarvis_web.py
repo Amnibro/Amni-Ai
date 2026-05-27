@@ -1680,6 +1680,7 @@ const _SLASH_COMMANDS=[
   {cmd:'status',hint:'toggle the STATUS panel'},
   {cmd:'jarvis',hint:'engage/disengage Jarvis mode'},
   {cmd:'find',hint:'find <query> in workdir'},
+  {cmd:'search',hint:'web search anytime (e.g. /search rust async)'},
   {cmd:'pace',hint:'set stream cps (10-2000)'},
   {cmd:'bookmarks',hint:'list recent starred replies'},
   {cmd:'reminders',hint:'open reminders panel'},
@@ -1705,7 +1706,7 @@ function _slashAcUpdate(){
   _slashAcRender();
 }
 function _slashAcAccept(cmd){
-  const needsArg=(cmd==='persona'||cmd==='find'||cmd==='pace');
+  const needsArg=(cmd==='persona'||cmd==='find'||cmd==='pace'||cmd==='search');
   input.value='/'+cmd+(needsArg?' ':'');
   _slashAcOpen=false;_slashAcRender();
   input.focus();try{input.setSelectionRange(input.value.length,input.value.length)}catch{}
@@ -1725,6 +1726,27 @@ function _resolveLocalLocation(){
       resolve(c);
     },err=>reject(err),{timeout:8000,maximumAge:300000,enableHighAccuracy:false});
   });
+}
+async function _runWebSearch(query){
+  const w=document.querySelector('.welcome');if(w)w.remove();
+  const uMsg=document.createElement('div');uMsg.className='msg user';const uB=document.createElement('div');uB.className='bubble';uB.textContent='/search '+query;uMsg.appendChild(uB);log.appendChild(uMsg);
+  const botMsg=document.createElement('div');botMsg.className='msg bot';const botB=document.createElement('div');botB.className='bubble thinking';botB.textContent='searching the web…';botMsg.appendChild(botB);log.appendChild(botMsg);log.scrollTop=log.scrollHeight;
+  try{
+    const r=await fetch('/skills/web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{query:query}})});
+    const j=await r.json();
+    const out=(j&&j.output)?j.output:j;
+    botB.classList.remove('thinking');
+    if(!r.ok||!out||out.error){botB.innerHTML=md('Web search unavailable: '+esc((out&&out.error)||('HTTP '+r.status))+'\n\n_The crawler may be offline (optional `ddgs`+`trafilatura` deps). Search stays gated behind the PII egress scrubber when it runs._')}
+    else{
+      const ans=out.answer||'(no answer distilled)';const srcs=out.sources||[];
+      let html=md(ans);
+      if(srcs.length){html+='<div class="meta" style="margin-top:6px"><b>Sources:</b><br>'+srcs.slice(0,5).map((s,i)=>(i+1)+'. <a href="'+esc(s)+'" target="_blank" rel="noopener">'+esc(s)+'</a>').join('<br>')+'</div>'}
+      if(out.pii_scrubbed)html+='<div class="meta" style="margin-top:4px"><span class="badge">PII scrubbed before send</span></div>';
+      botB.innerHTML=html;
+    }
+    const metaEl=document.createElement('div');metaEl.className='meta';metaEl.innerHTML='<span class="badge">web</span>'+(out&&out.tokens?'<span class="badge">'+out.tokens+' tok</span>':'');botMsg.appendChild(metaEl);
+  }catch(e){botB.classList.remove('thinking');botB.textContent='Search request failed: '+e.message}
+  log.scrollTop=log.scrollHeight;
 }
 function _handleSlashCommand(text){
   const m=text.match(/^\/(\w[\w-]*)(?:\s+(.*))?$/);
@@ -1746,6 +1768,7 @@ function _handleSlashCommand(text){
   if(cmd==='status'){toggleStatusPanel();return true}
   if(cmd==='jarvis'){toggleJarvisMode();return true}
   if(cmd==='find'){if(!arg){bubble('bot','Usage: `/find <query>` — searches your workdir.','<span class="badge">cmd</span>');return true}input.value='find "'+arg.replace(/"/g,'\\"')+'"';return false}
+  if(cmd==='search'){if(!arg){bubble('bot','Usage: `/search <query>` — web search anytime, no matter the context.','<span class="badge">cmd</span>');return true}_runWebSearch(arg);return true}
   if(cmd==='pace'){const n=parseInt(arg,10);if(isFinite(n)){_paceSliderChange(n);bubble('bot','Stream pace set to **'+n+' cps**.','<span class="badge">cmd</span>')}else{bubble('bot','Usage: `/pace <cps>` (10-2000). Current: **'+_typeSpeedCps()+' cps**.','<span class="badge">cmd</span>')}return true}
   if(cmd==='bookmarks'){_bookmarksShow();return true}
   if(cmd==='reminders'){toggleRemindersPanel(true);return true}
