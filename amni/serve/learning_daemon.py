@@ -5,12 +5,12 @@
   4. Spaced repetition (default every 6h):     re-verify cells unused >30d
   5. Stats roll-up:                            facts/hr, dedup ratio, consensus pct, queue depth
 Yields when user is actively chatting (last_user_activity_ts updated by agent). HTTP endpoint /learning/stats exposes counters."""
-import time,threading,queue,traceback,re
+import time,threading,queue,traceback,re,json
 from typing import Dict,Any,Optional,List
 from concurrent.futures import ThreadPoolExecutor
 import urllib.request,urllib.parse
 _DDG_URL='https://duckduckgo.com/html/?q='
-_DEFAULT_CONFIG={'curiosity_period_s':1800,'sleep_period_s':4*3600,'repetition_period_s':6*3600,'leak_commit_period_s':3600,'ingest_workers':2,'max_queue':40,'pause_during_user_activity_s':60,'max_sources_per_topic':6,'enabled':True}
+_DEFAULT_CONFIG={'curiosity_period_s':1800,'sleep_period_s':4*3600,'repetition_period_s':6*3600,'leak_commit_period_s':3600,'federation_pull_period_s':6*3600,'federation_peers':[],'ingest_workers':2,'max_queue':40,'pause_during_user_activity_s':60,'max_sources_per_topic':6,'enabled':True}
 class LearningDaemon:
     def __init__(self,adam=None,skill_registry=None,coach_atlas=None,learning_atlas=None,config:Optional[Dict[str,Any]]=None,start_thread:bool=True):
         self.adam=adam;self.skills=skill_registry;self.coach_atlas=coach_atlas
@@ -65,6 +65,11 @@ class LearningDaemon:
                         if _cr.get('committed',0)>0:print(f'[LearningDaemon] coding ledger -> PTEX: committed={_cr.get("committed")} total={_cr.get("total")}',flush=True)
                     except Exception as e:print(f'[LearningDaemon] coding commit skipped: {type(e).__name__}: {e}',flush=True)
                     self.counters['last_leak_commit_at']=now
+                _peers=self.config.get('federation_peers') or []
+                if _peers and (now-self.counters.get('last_federation_pull_at',0.0))>=self.config.get('federation_pull_period_s',6*3600):
+                    try:self._federation_pull(_peers)
+                    except Exception as e:print(f'[LearningDaemon] federation pull skipped: {type(e).__name__}: {e}',flush=True)
+                    self.counters['last_federation_pull_at']=now
                 try:
                     from amni.serve.self_reflection import should_run_now,run_cycle
                     if should_run_now():
@@ -93,6 +98,23 @@ class LearningDaemon:
             self.counters['gaps_picked']+=1
             try:self._task_queue.put_nowait({'kind':'topic_ingest','topic':gap['topic'],'reason':gap.get('reason',''),'priority':gap.get('priority',0.5)});return {'gap':gap,'queued':True,'queue_depth':self._task_queue.qsize()}
             except queue.Full:return {'gap':gap,'queued':False,'reason':'queue_full'}
+    def _federation_pull(self,peers:List[str])->Dict[str,Any]:
+        """Opt-in: pull federable coding lessons from EXPLICITLY configured peer Adams. Empty by default (off).
+        Imported lessons are re-scrubbed + marked federated by coding_ledger, never counted as first-party attempts."""
+        from amni.serve.coding_ledger import federation_import
+        total=0
+        for url in peers:
+            url=str(url).strip()
+            if not url:continue
+            peer=url.rstrip('/');peer=peer if peer.endswith('/memory/coding-federation') else peer+'/memory/coding-federation'
+            try:
+                req=urllib.request.Request(peer,headers={'User-Agent':'Amni-Ai LearningDaemon federation-pull'})
+                with urllib.request.urlopen(req,timeout=8) as r:data=json.loads(r.read(2000000).decode('utf-8','ignore'))
+            except Exception as e:print(f'[LearningDaemon] federation peer unreachable {peer}: {e}',flush=True);continue
+            res=federation_import(data.get('federable') or [],source=peer)
+            n=res.get('imported',0);total+=n
+            if n>0:print(f'[LearningDaemon] federation pull {peer}: imported {n}',flush=True)
+        return {'imported':total,'peers':len(peers)}
     def _ddg_search(self,query:str,n:int=5)->List[str]:
         try:
             from amni.serve.pii_egress import scrub as _scrub
