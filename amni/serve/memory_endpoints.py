@@ -133,6 +133,11 @@ def mount(app,agent):
     def thinking_leaks(limit:int=30):
         from amni.serve.leak_ledger import stats
         return stats(limit=limit)
+    @app.get('/memory/review')
+    def pre_response_review(q:str=''):
+        from amni.serve.pre_response_review import review
+        if not q:raise HTTPException(400,'need q (the message to review for)')
+        return review(q,agent=agent)
     @app.post('/memory/thinking-leaks/commit')
     async def thinking_leaks_commit(req:Request):
         from amni.serve.leak_ledger import commit_to_ptex

@@ -2,6 +2,26 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.118 — Unified pre-response review + Reffelt-nonce contextual tagging; AR/XR/VR on roadmap (2026-05-26)
+
+Directive: *"make sure ALL knowledge and lessons and errors and leaks — everything that should be reviewed per response — is stored in ptex and reviewed prior to response. Tag with clear contextual ties so it can't be missed via reffelt nonce."* + *"everything should be a self-learning loop."*
+
+### New `amni/serve/reffelt_tag.py` — contextual Reffelt-nonce addressing
+Every reviewable item gets (1) **clear context tags** (salient keywords, stopwords dropped) and (2) a **Reffelt nonce** — a base-17 4-digit address (RGBA digits, `REFFELT_K4=[1,17,289,4913]`) where each digit is a hash projection of one slice of the tag set, so shared-context items share digits. `nonce()/decompose()/recompose()` roundtrip exactly; `relevance()` ranks by tag-overlap (recall-safe — *can't be missed*) with nonce proximity as tie-break. The nonce IS the address IS the meaning.
+
+### New `amni/serve/pre_response_review.py` — the pass run BEFORE every response
+`review(message, agent)` gathers the whole substrate — **learned leaks (avoid), past errors, relevant lessons, known facts** — addresses each by its context-nonce, ranks by relevance to the incoming message, and assembles a compact directive **brief** injected into the system prompt pre-generation. Errors near the current context rank first (e.g. a prior `web→timeout` surfaces when the user asks something web-shaped). Brief is headed with the reffelt-nonce address (`[PRE-RESPONSE REVIEW · reffelt-nonce d0.d1.d2.d3]`).
+
+### Wired the loop closed
+- `agent.chat()` injects `review().brief` into `sys_p` before persona generation.
+- `skill_failures.record()` + `leak_ledger.record()` now tag every entry with `{tags, nonce}` so they're addressable.
+- `GET /memory/review?q=` inspects exactly what would be reviewed for a query.
+
+### Roadmap: Tier 4 — AR/XR/VR spatial embodiment
+Per *"add AR/XR/VR support to the roadmap."* Added to `docs/ROADMAP.md`: WebXR AR overlay of the PT-Coach skeleton/HUD → spatial widgets → VR coach room → persona presence → PTEX-as-spatial-memory (notes anchored in physical space, addressed by Reffelt nonce). Framed as the natural extension of Law 4 (2D→3D embodiment); the pose pipeline (v6.10.114–115) is the bridge. All PII/Law/persona/no-leak constraints carry into spatial sensors.
+
+25/25 new tests pass (nonce range/determinism/roundtrip/base-17, tag overlap, relevance ranking, review shape + context-ranked errors, brief assembly, record tagging, agent injection, endpoint, roadmap); v6.10.108/116/117 regressions all green.
+
 ## v6.10.117 — Thinking-process leak hardening + self-learning leak ledger (commit-to-PTEX loop) (2026-05-26)
 
 Directive: *"thought process hardening should be able to be done by committing the error itself to a ptex file to avoid"* + *"everything should be a self-learning loop."* So leak defense is now a closed loop, not just a regex patch.

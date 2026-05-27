@@ -557,6 +557,11 @@ class AmniAgent:
             cot_tag='code' if 'Code task' in first_line else ('math' if 'Math problem' in first_line else ('debug' if 'Debugging' in first_line else ('design' if 'System design' in first_line else ('reasoning' if 'Reasoning question' in first_line else 'generic'))))
         if not raw_ans and persona.name!='Adam' and self.use_persona and hasattr(self.adam,'chat_persona'):
             sys_p=persona.system_prompt(message)
+            try:
+                from amni.serve.pre_response_review import review as _prr
+                _rv=_prr(message,agent=self)
+                if _rv.get('brief'):sys_p=f"{sys_p}\n\n{_rv['brief']}"
+            except Exception:pass
             if apply_cot:sys_p=f'{sys_p}\n\n{cot_scaffold}'
             cot_extra=1400 if (apply_cot and cot_tag=='code') else (700 if apply_cot else 0)
             _is_code=bool(_CODE_LANG_RE.search(message) or any(k in message.lower() for k in ('write','implement','function','how do i','example','code','setup','config','server')))
