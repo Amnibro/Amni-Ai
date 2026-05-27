@@ -406,6 +406,11 @@ class AmniAgent:
         if re.search(r"\b(?:what\s+time|when)\s+(?:does|do|is|are)\s+\w+(?:\s+\w+){0,3}\s+(?:open|clos|start|end|stop|begin|due|arriv|leav|depart)",msg,re.IGNORECASE) and self.skills.has('web'):return ('web',{'query':msg})
         m=_TIME_RE.search(msg)
         if m:return ('time',{})
+        if self.skills.has('recall'):
+            _m=re.search(r"^(?:do\s+you\s+)?remember\s+(?:when\s+)?(?:we\s+)?(?:discussed|talk(?:ed|ing)?\s+about|covered|spoke\s+about|mentioned)\s+(.+?)\s*\??\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('recall',{'query':_m.group(1).strip(' ?.,!')})
+            _m=re.search(r"^(?:what\s+(?:did\s+)?(?:we\s+|you\s+)?(?:talk(?:ed)?\s+about|discuss(?:ed)?|say\s+about|cover(?:ed)?)\s+(?:about\s+|regarding\s+)?)(.+?)\s*\??\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('recall',{'query':_m.group(1).strip(' ?.,!')})
         if self.skills.has('reminder'):
             _m=re.search(r"^(?:please\s+)?(?:remind\s+me|set\s+a\s+reminder)\s+to\s+(.+?)\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('reminder',{'action':'add','text':_m.group(1).strip()})
@@ -483,7 +488,7 @@ class AmniAgent:
             det=self._detect_skill(message)
             if det is not None:
                 name,args=det
-                r=self.skills.call(name,args,ctx={'adam':self.adam,'agent':self,'conv':conv,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None),'file_watcher':getattr(self,'file_watcher',None)})
+                r=self.skills.call(name,args,ctx={'adam':self.adam,'agent':self,'conv':conv,'store':self.store,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None),'file_watcher':getattr(self,'file_watcher',None)})
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)
@@ -671,6 +676,18 @@ class AmniAgent:
                 except Exception:return u
             cite_lines='\n'.join(f'  {i+1}. [{_host(s)}]({s})' for i,s in enumerate(srcs)) if srcs else ''
             return f'{ans}\n\n**Sources:**\n{cite_lines}' if cite_lines else ans
+        if name=='recall':
+            if out.get('error'):return f'(recall error: {out["error"]})'
+            hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0)
+            if not hits:return f'I scanned {out.get("sessions_scanned",0)} past session(s) and found no matches for `{q}`.'
+            lines=[f'Found **{n}** past session(s) mentioning `{q}`:']
+            for h in hits[:5]:
+                sid=h.get('session_id','?')[:8];iso=h.get('iso','?')
+                lines.append(f'\n**{iso}** · session `{sid}`')
+                for s in (h.get('snippets') or [])[:2]:
+                    role=s.get('role','?');txt=(s.get('text','') or '').replace('\n',' ')[:200]
+                    lines.append(f'  - _{role}_: {txt}')
+            return '\n'.join(lines)
         if name=='reminder':
             if out.get('error'):return f'(reminder error: {out["error"]})'
             if 'id' in out and 'text' in out:
