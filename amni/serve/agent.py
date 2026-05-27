@@ -771,7 +771,8 @@ class AmniAgent:
             if out.get('refused'):return f'⛔ I won\'t run that — it matches a destructive/irreversible pattern. ({out.get("target","")[:80]})'
             if out.get('error'):return f'(pc_action error: {out["error"]})'
             if out.get('requires_confirm'):
-                return f'{out.get("description","")}\n\n**This won\'t run until you confirm.** Reply `confirm {out.get("token")}` to proceed, or `cancel {out.get("token")}`.'
+                _w=json.dumps({'type':'pc_confirm','title':'PC action — confirm','icon':'⚙','data':{'token':out.get('token'),'description':out.get('description',''),'risk':out.get('risk'),'action':out.get('action'),'target':out.get('target')}})
+                return f'{out.get("description","")}\n\n**This won\'t run until you confirm.** Tap CONFIRM below, or reply `cancel {out.get("token")}`.\n\n```widget\n{_w}\n```'
             if out.get('executed'):
                 res=out.get('result') or {}
                 return f'✅ Done — {out.get("action")}: `{out.get("target","")[:80]}`.\n```\n{json.dumps(res,default=str)[:800]}\n```'
