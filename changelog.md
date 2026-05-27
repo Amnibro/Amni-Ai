@@ -2,6 +2,21 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.115 — PT Coach mode: live in-browser MediaPipe-Pose camera → rep counting + form cues (2026-05-26)
+
+Wires the camera to last iteration's pose engine. **PT COACH** lives in the TOOLS drawer → VISION section (no new always-on indicator — respects the declutter directive).
+
+### Flow
+Toggle PT COACH → loads `@mediapipe/pose@0.5` from CDN → requests camera (clean error bubble if denied — "video for interaction" permission gate) → live skeleton overlay in a gold-themed `#pose-panel`. Pick an exercise (push-up / sit-up / squat / bicep curl), hit **START** → `POST /vision/pose/start` opens a session. Each frame's 33 landmarks (x, y, visibility) are **throttled to ~120ms** and `POST`ed to `/vision/pose/frame`; the response updates live **reps · clean · angle** stat tiles and a colour-coded feedback line (gold cue / green clean rep / amber form warning). **STOP** → `/vision/pose/stop` drops a session summary into chat (reps, clean-rate %, peak depth, most-common faults).
+
+### Details
+- Independent camera stream (`poseStream`) + RAF loop — does not disturb the gesture (`@mediapipe/hands`) pipeline; both coexist.
+- Non-overlapping sends (`_poseSending` guard) so a slow frame can't pile up requests.
+- Landmarks never persist client-side and the session JSONL stays gitignored/local — body keypoints only, **no PII leaves the box**.
+- Skeleton draws mirrored to match the selfie-view video; angle math is mirror-invariant so reps/feedback are unaffected.
+
+16/16 new UI tests pass (panel + button + exercise options + JS fns + CDN + endpoint calls + throttle + node `--check` syntax validation); pose-engine (114) 37/37 regression green; gesture pipeline intact.
+
 ## v6.10.114 — Pose-coach engine: physical-therapy form coaching from body landmarks (2026-05-26)
 
 Directive: *"use the camera to interact with and support the user (ie: measure angles of crunches/pushups to help guide physical therapy)."* This iteration ships the load-bearing, fully-tested **server-side core**; the in-browser MediaPipe-Pose camera feed + live skeleton overlay is the next iteration's wiring on top of these endpoints.

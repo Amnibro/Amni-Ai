@@ -709,6 +709,29 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #cam-panel .custom-row .cg-act{color:var(--mute);font-size:8px;letter-spacing:.05em}
 #cam-panel .custom-row .cg-del{color:var(--err);cursor:pointer;padding:0 4px;border-radius:2px;border:1px solid transparent}
 #cam-panel .custom-row .cg-del:hover{border-color:var(--err);background:rgba(255,91,91,.1)}
+#pose-panel{position:fixed;top:60px;right:24px;width:268px;z-index:9;display:none;border:1px solid rgba(255,224,102,.45);border-radius:4px;background:rgba(8,14,28,.92);box-shadow:0 0 22px rgba(255,224,102,.2);overflow:hidden}
+#pose-panel.show{display:block}
+#pose-panel .pc-head{padding:5px 10px;background:rgba(255,224,102,.09);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:#ffe066;text-shadow:0 0 4px #ffe066;display:flex;align-items:center;justify-content:space-between}
+#pose-panel .pc-head .dot{width:6px;height:6px;border-radius:50%;background:var(--mute);transition:background .2s}
+#pose-panel.live .pc-head .dot{background:var(--ok);box-shadow:0 0 6px var(--ok);animation:pulse 1.6s ease-in-out infinite}
+#pose-panel .pc-close{cursor:pointer;color:var(--mute);padding:0 6px;border:1px solid rgba(255,224,102,.25);border-radius:2px;font-size:9px}
+#pose-panel .pc-close:hover{color:var(--err);border-color:var(--err)}
+#pose-stage{position:relative;width:268px;height:201px;background:#03060d}
+#pose-video,#pose-landmarks{position:absolute;inset:0;width:100%;height:100%}
+#pose-video{transform:scaleX(-1);object-fit:cover}
+#pose-panel .pc-controls{padding:6px 8px;display:flex;gap:6px;align-items:center;border-top:1px solid rgba(255,224,102,.16)}
+#pose-panel .pc-controls select{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(255,224,102,.28);color:var(--fg);font-family:inherit;font-size:10px;padding:5px 6px;border-radius:3px}
+#pose-panel .pc-go{padding:5px 11px;border:1px solid rgba(255,224,102,.4);background:rgba(255,224,102,.08);color:#ffe066;font-family:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;border-radius:3px;text-transform:uppercase}
+#pose-panel .pc-go:hover{background:rgba(255,224,102,.2)}
+#pose-panel .pc-go.live{border-color:var(--err);color:var(--err);background:rgba(255,91,91,.08)}
+#pose-panel .pc-stats{display:flex;justify-content:space-around;padding:6px 8px;border-top:1px solid rgba(255,224,102,.16);font-family:JetBrains Mono,monospace}
+#pose-panel .pc-stat{text-align:center}
+#pose-panel .pc-stat .v{font-size:18px;color:#ffe066;text-shadow:0 0 6px #ffe066;line-height:1}
+#pose-panel .pc-stat .l{font-size:7.5px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;margin-top:3px}
+#pose-panel .pc-fb{padding:7px 10px;border-top:1px solid rgba(255,224,102,.16);font-size:10px;line-height:1.4;color:var(--fg);min-height:20px;text-align:center}
+#pose-panel .pc-fb.warn{color:#ffb347}
+#pose-panel .pc-fb.good{color:var(--ok)}
+#pose-panel .pc-fps{font-size:8px;color:var(--mute);letter-spacing:.1em}
 #train-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:15;background:rgba(8,14,28,.97);border:1px solid var(--magenta);border-radius:6px;padding:18px;box-shadow:0 0 40px rgba(255,77,200,.4);display:none;font-family:inherit}
 #train-modal.show{display:block}
 #train-modal h3{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 6px var(--magenta);margin:0 0 14px;text-align:center}
@@ -885,6 +908,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div class="td-label">VISION</div>
     <div class="td-grid">
       <button class="td-btn" id="gesture-toggle" type="button" onclick="toggleGesture()" title="Hand gesture control (webcam)">GESTURE</button>
+      <button class="td-btn" id="pose-toggle" type="button" onclick="togglePoseCoach()" title="Camera form coach — counts reps + checks angles for push-ups, sit-ups, squats, curls">PT COACH</button>
     </div>
   </div>
   <div class="td-section">
@@ -1078,6 +1102,23 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div>
   <div class="gesture-readout" id="gesture-readout">—</div>
   <div class="custom-list" id="custom-list"></div>
+</div>
+<div id="pose-panel">
+  <div class="pc-head"><span><span class="dot"></span>PT COACH</span><span><span class="pc-fps" id="pose-fps">— fps</span> <span class="pc-close" onclick="togglePoseCoach(false)">CLOSE</span></span></div>
+  <div id="pose-stage">
+    <video id="pose-video" autoplay playsinline muted></video>
+    <canvas id="pose-landmarks"></canvas>
+  </div>
+  <div class="pc-controls">
+    <select id="pose-exercise" title="Pick an exercise"><option value="pushup">Push-up</option><option value="situp">Sit-up / Crunch</option><option value="squat">Squat</option><option value="bicep_curl">Bicep curl</option></select>
+    <button class="pc-go" id="pose-go" onclick="_poseToggleSession()">START</button>
+  </div>
+  <div class="pc-stats">
+    <div class="pc-stat"><div class="v" id="pose-reps">0</div><div class="l">reps</div></div>
+    <div class="pc-stat"><div class="v" id="pose-clean">0</div><div class="l">clean</div></div>
+    <div class="pc-stat"><div class="v" id="pose-angle">—</div><div class="l">angle</div></div>
+  </div>
+  <div class="pc-fb" id="pose-fb">Pick an exercise, hit START, and step back so your whole body is in frame.</div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
@@ -3101,6 +3142,101 @@ function toggleGesture(){
   if(gestureOn){startGesture();_maybeShowGestureTour()}else stopGesture();
 }
 if(localStorage.getItem(GKEY)==='1'){setTimeout(()=>{gestureOn=true;_gToggle.classList.add('on');startGesture()},800)}
+let poseOn=false,poseStream=null,poseRAF=null,pose=null,poseSessionId=null,poseSessionActive=false,_poseLastSendAt=0,_poseSending=false,poseFrameTimes=[];
+const _POSE_CONNS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[15,17],[16,18],[27,29],[28,30],[29,31],[30,32]];
+const _poseVideo=()=>document.getElementById('pose-video'),_poseCanvas=()=>document.getElementById('pose-landmarks'),_posePanel=()=>document.getElementById('pose-panel');
+async function _loadPoseLib(){
+  if(window.Pose)return true;
+  await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js';s.crossOrigin='anonymous';s.onload=res;s.onerror=rej;document.head.appendChild(s)}).catch(e=>console.warn('pose load fail',e));
+  return !!window.Pose;
+}
+function _onPoseResults(res){
+  const cv=_poseCanvas();if(!cv)return;const ctx=cv.getContext('2d');
+  cv.width=cv.clientWidth*window.devicePixelRatio;cv.height=cv.clientHeight*window.devicePixelRatio;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const lms=res.poseLandmarks;
+  const panel=_posePanel();
+  if(!lms){if(panel)panel.classList.remove('live');return}
+  if(panel)panel.classList.add('live');
+  ctx.strokeStyle='rgba(255,224,102,.55)';ctx.lineWidth=2;
+  for(const [a,b] of _POSE_CONNS){if(lms[a]&&lms[b]){ctx.beginPath();ctx.moveTo((1-lms[a].x)*cv.width,lms[a].y*cv.height);ctx.lineTo((1-lms[b].x)*cv.width,lms[b].y*cv.height);ctx.stroke()}}
+  ctx.fillStyle='rgba(255,224,102,.95)';ctx.shadowBlur=5;ctx.shadowColor='rgba(255,224,102,.7)';
+  for(const lm of lms){if((lm.visibility||1)<0.3)continue;ctx.beginPath();ctx.arc((1-lm.x)*cv.width,lm.y*cv.height,3,0,Math.PI*2);ctx.fill()}
+  ctx.shadowBlur=0;
+  const now=performance.now();poseFrameTimes.push(now);if(poseFrameTimes.length>30)poseFrameTimes.shift();
+  if(poseFrameTimes.length>=2){const fps=Math.round(1000*(poseFrameTimes.length-1)/(poseFrameTimes[poseFrameTimes.length-1]-poseFrameTimes[0]));const fe=document.getElementById('pose-fps');if(fe)fe.textContent=fps+' fps'}
+  if(poseSessionActive&&poseSessionId&&!_poseSending&&(now-_poseLastSendAt)>120){
+    _poseLastSendAt=now;_poseSending=true;
+    const pl=lms.map(l=>({x:l.x,y:l.y,visibility:l.visibility}));
+    fetch('/vision/pose/frame',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:poseSessionId,landmarks:pl,exercise:document.getElementById('pose-exercise').value})})
+      .then(r=>r.json()).then(_updatePoseUI).catch(()=>{}).finally(()=>{_poseSending=false});
+  }
+}
+function _updatePoseUI(j){
+  if(!j||j.error)return;
+  const re=document.getElementById('pose-reps'),ce=document.getElementById('pose-clean'),ae=document.getElementById('pose-angle'),fe=document.getElementById('pose-fb');
+  if(typeof j.reps==='number'&&re)re.textContent=j.reps;
+  if(typeof j.good_reps==='number'&&ce)ce.textContent=j.good_reps;
+  if(ae)ae.textContent=(j.angle==null?'—':Math.round(j.angle)+'°');
+  if(fe&&j.feedback){fe.textContent=j.feedback;fe.classList.remove('warn','good');
+    if(j.rep_completed&&j.rep&&j.rep.clean)fe.classList.add('good');
+    else if((j.form_issues&&j.form_issues.length)||(j.rep_completed&&j.rep&&!j.rep.clean))fe.classList.add('warn');}
+}
+async function startPoseCam(){
+  const ok=await _loadPoseLib();
+  if(!ok){bubble('bot','Could not load MediaPipe Pose from CDN — check your network or content blocker.','<span class="badge err">coach</span>');return false}
+  try{poseStream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'},audio:false})}
+  catch(e){bubble('bot','Camera permission denied or unavailable: '+esc(e.message)+' — PT Coach needs your camera to see your form.','<span class="badge err">coach</span>');return false}
+  const v=_poseVideo();v.srcObject=poseStream;await v.play().catch(()=>{});
+  pose=new window.Pose({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/${f}`});
+  pose.setOptions({modelComplexity:1,smoothLandmarks:true,enableSegmentation:false,minDetectionConfidence:.5,minTrackingConfidence:.5});
+  pose.onResults(_onPoseResults);
+  const loop=async()=>{if(!poseOn)return;if(v.readyState>=2){try{await pose.send({image:v})}catch{}}poseRAF=requestAnimationFrame(loop)};
+  poseRAF=requestAnimationFrame(loop);
+  return true;
+}
+function stopPoseCam(){
+  if(poseRAF){cancelAnimationFrame(poseRAF);poseRAF=null}
+  if(poseStream){poseStream.getTracks().forEach(t=>t.stop());poseStream=null}
+  if(pose){try{pose.close()}catch{}pose=null}
+  poseFrameTimes=[];const fe=document.getElementById('pose-fps');if(fe)fe.textContent='— fps';
+}
+async function togglePoseCoach(force){
+  const want=(typeof force==='boolean')?force:!poseOn;
+  const tog=document.getElementById('pose-toggle');
+  if(want){
+    poseOn=true;if(tog)tog.classList.add('on');_posePanel().classList.add('show');
+    const started=await startPoseCam();
+    if(!started){poseOn=false;if(tog)tog.classList.remove('on');_posePanel().classList.remove('show')}
+  }else{
+    if(poseSessionActive)await _poseStopSession(true);
+    poseOn=false;if(tog)tog.classList.remove('on');_posePanel().classList.remove('show');stopPoseCam();
+  }
+}
+async function _poseStartSession(){
+  const ex=document.getElementById('pose-exercise').value;
+  try{
+    const j=await(await fetch('/vision/pose/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exercise:ex,session_id:''})})).json();
+    if(j.error){bubble('bot','Could not start coach session: '+esc(j.error),'<span class="badge err">coach</span>');return}
+    poseSessionId=j.session_id;poseSessionActive=true;
+    document.getElementById('pose-reps').textContent='0';document.getElementById('pose-clean').textContent='0';
+    const fb=document.getElementById('pose-fb');fb.classList.remove('warn','good');fb.textContent=j.cue?('Go! '+j.cue):'Go! I\'m watching your form.';
+    const go=document.getElementById('pose-go');go.textContent='STOP';go.classList.add('live');
+  }catch(e){bubble('bot','Coach start failed: '+esc(e.message),'<span class="badge err">coach</span>')}
+}
+async function _poseStopSession(silent){
+  if(!poseSessionActive||!poseSessionId)return;
+  poseSessionActive=false;const sid=poseSessionId;poseSessionId=null;
+  const go=document.getElementById('pose-go');if(go){go.textContent='START';go.classList.remove('live')}
+  try{
+    const s=await(await fetch('/vision/pose/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})})).json();
+    if(!silent&&s&&!s.error){
+      const issues=(s.common_issues||[]).map(i=>i.msg).join('; ');
+      bubble('bot',md('**'+(s.label||'Workout')+' done!** '+s.reps+' reps · '+s.good_reps+' clean ('+s.clean_rate_pct+'%) · peak depth '+(s.peak_depth==null?'—':Math.round(s.peak_depth)+'°')+' · '+s.duration_s+'s.'+(issues?'\n\nWatch next time: '+issues:'\n\nClean form — nice work!')),'<span class="badge">coach</span>');
+    }
+  }catch(e){if(!silent)bubble('bot','Coach summary failed: '+esc(e.message),'<span class="badge err">coach</span>')}
+}
+function _poseToggleSession(){if(!poseOn){return}poseSessionActive?_poseStopSession(false):_poseStartSession()}
 let memOpen=false;
 const _MEM_PANEL=document.getElementById('mem-panel'),_MEM_TOG=document.getElementById('mem-toggle');
 function toggleMem(){memOpen=!memOpen;_MEM_PANEL.classList.toggle('show',memOpen);_MEM_TOG.classList.toggle('on',memOpen);if(memOpen)refreshMemory()}
