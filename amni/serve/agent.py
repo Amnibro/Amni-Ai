@@ -421,6 +421,9 @@ class AmniAgent:
             if re.search(r"^(?:what\s+(?:are\s+)?(?:my\s+)?|list\s+(?:my\s+)?|show\s+(?:my\s+)?)notes\??\s*$",msg,re.IGNORECASE):return ('note',{'action':'list'})
             _m=re.search(r"^(?:find|search)\s+(?:in\s+)?(?:my\s+)?notes\s+(?:for\s+)?[\"'`]?([^\"'`]+?)[\"'`]?\s*\??\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('note',{'action':'list','search':_m.group(1).strip()})
+        if self.skills.has('pose_coach'):
+            if re.search(r"\b(?:what\s+exercises|which\s+exercises|exercises\s+can\s+you\s+coach|what\s+can\s+you\s+coach|coach(?:able)?\s+exercises|physical\s+therapy\s+(?:exercises|options))\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'exercises'})
+            if re.search(r"\b(?:my|show\s+my|exercise|workout|pt|pose)\s+(?:coach|history|sessions?)\b|\b(?:coach|workout)\s+history\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'history'})
         if self.skills.has('find'):
             _m=re.search(r"^(?:please\s+)?(?:find|grep|search\s+for|search|locate|show\s+me\s+where)\s+(?:for\s+)?[\"'`]([^\"'`]{2,160})[\"'`](?:\s+in\s+(?:my\s+)?(?:code|repo|project|files))?\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('find',{'query':_m.group(1).strip()})
@@ -728,6 +731,27 @@ class AmniAgent:
             if 'tags' in out:
                 tags=out['tags'] or []
                 return ('Tags in use: ' + ' '.join(f'`#{t}`' for t in tags[:40])) if tags else 'No tags yet.'
+            return json.dumps(out,default=str)[:600]
+        if name=='pose_coach':
+            if out.get('error'):return f'(pose_coach error: {out["error"]})'
+            if 'exercises' in out:
+                ex=out['exercises'] or []
+                lines=['I can coach your form on these — enable the camera (📷) and I\'ll count reps + check your angles live:']
+                for e in ex:
+                    tb=e.get('target_bottom');tail=f' · target ≤{tb:.0f}°' if tb is not None else ''
+                    lines.append(f'- **{e.get("label","?")}** — {e.get("cue","")}{tail}')
+                return '\n'.join(lines)
+            if 'history' in out:
+                h=out['history'] or []
+                if not h:return 'No workout history yet. Start a session with the camera on and I\'ll log your reps + form.'
+                lines=[f'**Last {len(h)} session(s):**']
+                for s in h[:10]:
+                    iso=(s.get('iso','') or '').replace('T',' ')[:16]
+                    lines.append(f'- {iso} · **{s.get("label","?")}** — {s.get("reps",0)} reps, {s.get("clean_rate_pct",0)}% clean')
+                return '\n'.join(lines)
+            if 'started' in out:return f'Started a **{out.get("label","?")}** session. {out.get("cue","")}. I\'m watching your form — go!'
+            if 'reps' in out and 'feedback' in out:return out['feedback']
+            if 'feedback' in out:return out['feedback']
             return json.dumps(out,default=str)[:600]
         if name=='find':
             hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)
