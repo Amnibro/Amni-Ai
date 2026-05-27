@@ -889,8 +889,9 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='brief':return {'brief':_cl.brief(str(args.get('task') or ''))}
         if action=='stats':return _cl.stats()
         if action=='commit':return _cl.commit_to_ptex(adam=ctx.get('adam'))
-        return {'error':f'unknown action {action!r}; valid: record|recall|brief|stats|commit'}
-    reg.register('coding_ledger',_skill_coding_ledger,desc='Coding-attempt learning loop: so a 2nd attempt beats the 1st. Actions: record (task, outcome?, approach?, errors?, lesson?, success?, files?) | recall (task — prior attempts ranked by Reffelt-nonce relevance) | brief (task) | stats | commit (to PTEX). Records persist to data/coding_attempts.jsonl + lessons/coding_attempts_ptex; surfaced pre-response.',schema={'action':'str?','task':'str?','outcome':'str?','approach':'str?','errors':'list?','lesson':'str?','success':'bool?','files':'list?','k':'int?'})
+        if action=='federate':return _cl.federation_export(limit=int(args.get('limit',200)),only_success=bool(args.get('only_success',True)))
+        return {'error':f'unknown action {action!r}; valid: record|recall|brief|stats|commit|federate'}
+    reg.register('coding_ledger',_skill_coding_ledger,desc='Coding-attempt learning loop: so a 2nd attempt beats the 1st. Actions: record (task, outcome?, approach?, errors?, lesson?, success?, files?) | recall (task — prior attempts ranked by Reffelt-nonce relevance) | brief (task) | stats | commit (to PTEX) | federate (export PII-scrubbed successful lessons — no raw tasks/paths/errors — for cross-instance sharing). Records persist to data/coding_attempts.jsonl + lessons/coding_attempts_ptex; surfaced pre-response.',schema={'action':'str?','task':'str?','outcome':'str?','approach':'str?','errors':'list?','lesson':'str?','success':'bool?','files':'list?','k':'int?','limit':'int?','only_success':'bool?'})
     def _skill_coding_runner(args,ctx,reg_):
         """Conductor for the SE loop. Actions: prepare (task) -> work order with prior attempts + located files; complete (run_id, success, outcome?, errors?, lesson?, approach?, files?) -> records + says whether to retry; status (run_id) | runs."""
         try:from amni.serve import coding_runner as _cr
