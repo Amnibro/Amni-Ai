@@ -128,6 +128,23 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .widget.skill_error .se-actions{display:flex;gap:6px;margin-top:8px}
 .widget.skill_error .se-btn{padding:5px 10px;background:rgba(255,91,91,.06);border:1px solid rgba(255,91,91,.35);color:#ffb7b7;font-family:inherit;font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;text-transform:uppercase}
 .widget.skill_error .se-btn:hover{background:rgba(255,91,91,.14);border-color:#ff5b5b;color:#ff7b7b}
+.widget.pc_confirm{border-color:rgba(255,224,102,.45);box-shadow:0 0 14px rgba(255,224,102,.18)}
+.widget.pc_confirm .w-head{color:#ffe066;border-color:rgba(255,224,102,.3)}
+.widget.pc_confirm .pcw-risk{font-size:9px;letter-spacing:.2em;text-transform:uppercase;padding:3px 8px;border-radius:3px;display:inline-block;margin-bottom:7px;border:1px solid}
+.widget.pc_confirm .pcw-low{color:var(--ok);border-color:var(--ok)}
+.widget.pc_confirm .pcw-medium{color:#ffe066;border-color:#ffe066}
+.widget.pc_confirm .pcw-high{color:var(--err);border-color:var(--err);text-shadow:0 0 4px var(--err)}
+.widget.pc_confirm .pcw-target{font-family:JetBrains Mono,monospace;font-size:11px;color:var(--fg);background:rgba(0,0,0,.3);border:1px solid rgba(255,224,102,.15);border-radius:3px;padding:6px 8px;word-break:break-all;white-space:pre-wrap;line-height:1.4;margin-bottom:6px}
+.widget.pc_confirm .pcw-note{font-size:9px;color:var(--mute);letter-spacing:.03em;margin-bottom:8px}
+.widget.pc_confirm .pcw-actions{display:flex;gap:8px}
+.widget.pc_confirm .pcw-btn{flex:1;padding:7px 12px;font-family:inherit;font-size:10px;letter-spacing:.18em;cursor:pointer;border-radius:3px;text-transform:uppercase}
+.widget.pc_confirm .pcw-btn>*{pointer-events:none}
+.widget.pc_confirm .pcw-btn.confirm{border:1px solid var(--ok);background:rgba(0,255,140,.08);color:var(--ok)}
+.widget.pc_confirm .pcw-btn.confirm:hover{background:rgba(0,255,140,.2)}
+.widget.pc_confirm .pcw-btn.cancel{border:1px solid rgba(255,91,91,.4);background:rgba(255,91,91,.06);color:#ffb7b7}
+.widget.pc_confirm .pcw-btn.cancel:hover{background:rgba(255,91,91,.16)}
+.widget.pc_confirm.resolved{opacity:.55}
+.widget.pc_confirm.resolved .pcw-actions{display:none}
 .widget.file_change .fc-diff{font-size:10px;font-family:JetBrains Mono,monospace;background:rgba(0,0,0,.45);border:1px solid rgba(0,229,255,.12);border-radius:3px;max-height:200px;overflow:auto;line-height:1.45;margin:4px 0}
 .widget.file_change .fc-diff .dl{display:block;padding:1px 8px;white-space:pre;word-break:break-all}
 .widget.file_change .fc-diff .dl.add{background:rgba(0,255,156,.08);color:#9eff9c;border-left:2px solid #00ff9c}
@@ -1455,6 +1472,9 @@ function renderWidget(w){
     const beforeHtml=hasBefore?`<pre class="fc-preview" data-view="before" data-fcid="${wid}" style="display:none">${esc(beforeStr)}</pre>`:'';
     const afterHtml=afterStr?`<pre class="fc-preview" data-view="after" data-fcid="${wid}" style="display:${hasDiff?'none':'block'}">${esc(afterStr)}</pre>`:'';
     body=`<div class="fc-head"><span class="fc-op ${opCls}">${op.toUpperCase()}</span><span class="fc-bn">${bn}</span>${ext?`<span class="fc-ext">.${ext}</span>`:''}${vBadge}</div>${folder?`<div class="fc-folder">${folder}</div>`:''}<div class="fc-stats"><span class="fc-add">+${la}</span><span class="fc-rem">-${lr}</span>${repl!=null?`<span class="fc-repl">${repl} replacement${repl===1?'':'s'}</span>`:''}<span class="fc-size">${d.lines_after||0} lines · ${d.bytes_after!=null?(d.bytes_after<1024?d.bytes_after+'b':Math.round(d.bytes_after/1024)+'kb'):'?'}</span></div>${issueList}${testRunBlock}${suggList}${toggle}${diffHtml}${beforeHtml}${afterHtml}<div class="fc-actions"><button class="fc-btn" onclick="_fcOpen('${esc(d.path||'').replace(/'/g,"\\\\'")}')">OPEN</button><button class="fc-btn" onclick="_fcCopyPath('${esc(d.path||'').replace(/'/g,"\\\\'")}')">COPY PATH</button>${vstat==='manual'?`<button class="fc-btn" onclick="_fcMarkTested('${esc(d.path||'').replace(/'/g,"\\\\'")}')">MARK TESTED</button>`:''}</div>`;
+  }else if(t==='pc_confirm'){
+    const tok=esc(d.token||'');const risk=esc(d.risk||'?');const act=esc(d.action||'?');const tgt=esc(d.target||'');
+    body=`<div class="pcw-risk pcw-${risk}">${risk.toUpperCase()} RISK · ${act}</div><div class="pcw-target">${tgt}</div><div class="pcw-note">Nothing runs until you confirm. Adam never executes destructive commands.</div><div class="pcw-actions"><button class="pcw-btn confirm" data-tok="${tok}" onclick="_pcConfirm('${tok}')">✓ CONFIRM</button><button class="pcw-btn cancel" data-tok="${tok}" onclick="_pcCancel('${tok}')">✕ CANCEL</button></div>`;
   }else if(t==='skill_error'){
     const sk=esc(d.skill||'?');const err=esc(d.error||'unknown error');const msg=esc(d.message||'');
     const argsStr=esc(JSON.stringify(d.args||{}).slice(0,200));
@@ -1467,6 +1487,21 @@ function renderWidget(w){
   el.innerHTML=head+'<div class="w-body">'+body+'</div>';
   return el;
 }
+async function _pcAction(token,act){
+  const card=document.querySelector('.widget.pc_confirm .pcw-btn[data-tok="'+token+'"]');
+  const widget=card?card.closest('.widget.pc_confirm'):null;
+  try{
+    const r=await fetch('/skills/pc_action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:act,token:token}})});
+    const j=await r.json();const out=(j&&j.output)?j.output:j;
+    if(widget)widget.classList.add('resolved');
+    if(act==='confirm'){
+      if(out&&out.executed){const res=JSON.stringify(out.result||{}).slice(0,500);bubble('bot','✅ Ran '+esc(out.action||'')+': `'+esc((out.target||'').slice(0,80))+'`\n```\n'+esc(res)+'\n```','<span class="badge">pc</span>')}
+      else{bubble('bot','PC action did not run: '+esc((out&&out.error)||('HTTP '+r.status)),'<span class="badge err">pc</span>')}
+    }else{bubble('bot','Cancelled the PC action.','<span class="badge">pc</span>')}
+  }catch(e){bubble('bot','PC action request failed: '+esc(e.message),'<span class="badge err">pc</span>')}
+}
+function _pcConfirm(token){_pcAction(token,'confirm')}
+function _pcCancel(token){_pcAction(token,'cancel')}
 function appendWidgets(msgEl,widgets){
   if(!widgets||!widgets.length)return;
   const wrap=document.createElement('div');wrap.className='widgets';

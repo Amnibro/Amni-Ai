@@ -2,6 +2,16 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.124 — One-tap CONFIRM/CANCEL widget for proposed PC actions (2026-05-26)
+
+Completes the human-in-the-loop ergonomics for Tier 5b: when Adam proposes a PC action, the chat now renders a **confirm card** with CONFIRM / CANCEL buttons instead of making the owner type the token.
+
+- `_format_skill_output` for a `pc_action` proposal emits a `pc_confirm` widget fence (`{token, description, risk, action, target}`).
+- New `renderWidget` branch: risk-coloured badge (low=green / medium=gold / high=red), the exact target in monospace, a "nothing runs until you confirm" note, and **✓ CONFIRM / ✕ CANCEL** buttons → `_pcConfirm()/_pcCancel()` POST to `/skills/pc_action`. On confirm the result is bubbled; the card greys out + hides its buttons (`resolved`). Typing `cancel pca_…` still works as a fallback.
+- iOS-Safari flex-button guard (`.pcw-btn>*{pointer-events:none}`) so a tap on a button's child still fires.
+
+14/14 new tests pass (render branch, buttons, endpoint wiring, risk classes, Safari guard, resolved state, node `--check`, agent widget emission, refused→no-widget); pc_actions (24/24) + perms/search regressions green.
+
 ## v6.10.123 — Tier 5b first slice: safe PC operation behind a propose→confirm gate (2026-05-26)
 
 Directive: *"hopefully Adam would be able to do ANYTHING on a PC"* — built the **safety spine** first so capability can grow on top without ever being unsupervised.
