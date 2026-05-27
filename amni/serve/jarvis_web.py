@@ -1276,14 +1276,34 @@ async function _remindersAddFromPanel(){
     inp.value='';_remindersLoad();_refreshRemindersBadge();
   }catch(e){bubble('bot','Add failed: '+esc(String(e)),'<span class="badge err">reminder</span>')}
 }
+const _REM_NOTIFIED_KEY='amni_jarvis_rem_notified';
+let _remNotifiedIds=(()=>{try{const a=JSON.parse(localStorage.getItem(_REM_NOTIFIED_KEY)||'[]');return new Set(Array.isArray(a)?a:[])}catch{return new Set()}})();
+function _remPersistNotified(){try{localStorage.setItem(_REM_NOTIFIED_KEY,JSON.stringify(Array.from(_remNotifiedIds).slice(-200)))}catch{}}
 async function _refreshRemindersBadge(){
   try{
-    const r=await fetch('/memory/reminders?limit=1');if(!r.ok)return;
-    const j=await r.json();const stats=j.stats||{};const active=stats.active||0;const dueNow=stats.due_now||0;
+    const r=await fetch('/memory/reminders?limit=50');if(!r.ok)return;
+    const j=await r.json();const stats=j.stats||{};const active=stats.active||0;const dueNow=stats.due_now||0;const due=j.due||[];
     const txt=document.getElementById('rm-text');const led=document.getElementById('rm-led');
     if(txt)txt.textContent=active===0?'reminders ⏰':`reminders · ${active}${dueNow>0?' · '+dueNow+' due':''}`;
     if(led)led.className=dueNow>0?'ld-led error':(active>0?'ld-led active':'ld-led idle');
+    for(const r of due){
+      if(!r||!r.id||_remNotifiedIds.has(r.id))continue;
+      _remNotifiedIds.add(r.id);_remPersistNotified();
+      _remNotifyDue(r);
+    }
   }catch{}
+}
+function _remNotifyDue(r){
+  if(!r)return;
+  const text=r.text||'(no text)';const id=r.id||'';
+  bubble('bot',`⏰ **Reminder due:** _${esc(text)}_  \n[dismiss](#) — say or click ✓ in the reminders panel.`,'<span class="badge" style="background:rgba(255,91,91,.15);border-color:rgba(255,91,91,.4);color:#ff7b7b">⏰ DUE</span>');
+  if(voiceOut&&typeof speak==='function')try{speak('Reminder: '+text)}catch{}
+  if('Notification' in window){
+    try{
+      if(Notification.permission==='granted'){new Notification('Adam reminder',{body:text,tag:'amni-rem-'+id})}
+      else if(Notification.permission==='default'){Notification.requestPermission().then(p=>{if(p==='granted')new Notification('Adam reminder',{body:text,tag:'amni-rem-'+id})})}
+    }catch{}
+  }
 }
 setInterval(_refreshRemindersBadge,30000);_refreshRemindersBadge();
 function _retryBubble(botMsg){
