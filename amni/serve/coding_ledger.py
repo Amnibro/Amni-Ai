@@ -3,7 +3,7 @@ Every coding attempt records task -> approach -> outcome -> errors/debug -> less
 data/coding_attempts.jsonl AND committed to a PTEX file (lessons/coding_attempts_ptex). Before a retry,
 recall() surfaces prior attempts on the same task (Reffelt-nonce + tag match) so Adam sees exactly what failed
 last time and why — then changes approach. This is the self-learning loop for the software-engineer north star."""
-import time,json,uuid,threading
+import time,json,uuid,threading,re
 from pathlib import Path
 from typing import Dict,Any,List,Optional
 from amni.serve import reffelt_tag as _rt
@@ -93,6 +93,28 @@ def maybe_commit_to_ptex(adam=None,min_new:int=3)->Dict[str,Any]:
         try:sp.write_text(json.dumps({'committed_total':total,'ts':time.time()}),encoding='utf-8')
         except Exception:pass
     return {**r,'total':total,'new_since_last':total-last}
+def _defederate_paths(s:str)->str:
+    s=re.sub(r'(?i)[A-Za-z]:\\Users\\[^\\\s]+','<path>',s)
+    s=re.sub(r'/(?:home|Users)/[^/\s]+','<path>',s)
+    return s
+def federation_export(limit:int=200,only_success:bool=True)->Dict[str,Any]:
+    """Share WHAT WORKED across Adam instances without leaking. Exports only the scrubbed LESSON + generic tags +
+    Reffelt nonce — never the raw task, file paths, or error traces (which can carry proprietary code / PII).
+    Successful lessons only by default. Double-scrubbed: pii_egress patterns + user-home path stripping."""
+    try:from amni.serve.pii_egress import scrub as _scrub
+    except Exception:_scrub=lambda t,**k:t
+    out=[];seen=set()
+    for r in _read_all():
+        if only_success and r.get('success') is not True:continue
+        lesson=(r.get('lesson') or '').strip()
+        if not lesson:continue
+        scrubbed=_defederate_paths(_scrub(lesson,source='federation'))
+        key=(r.get('nonce'),scrubbed.lower())
+        if not scrubbed or key in seen:continue
+        seen.add(key)
+        out.append({'tags':(r.get('tags') or [])[:8],'nonce':r.get('nonce'),'lesson':scrubbed[:300],'success':True})
+        if len(out)>=int(limit):break
+    return {'federable':out,'n':len(out),'source':'coding_ledger','note':'lessons only; raw tasks/paths/errors never exported'}
 def stats()->Dict[str,Any]:
     rows=_read_all()
     succ=sum(1 for r in rows if r.get('success') is True);fail=sum(1 for r in rows if r.get('success') is False)
