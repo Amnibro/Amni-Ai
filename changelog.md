@@ -2,6 +2,22 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.128 — code_index: train Adam on a codebase, PTEX-backed map (Adam-as-software-engineer, step 1) (2026-05-26)
+
+Directive: *"Adam must become a software engineer capable of continuous coding… I'll test it by training it on my ai folder + all subfolders, then a complex task… and the map should be ptex files."* This is the **locate** foundation of the coding loop (locate → edit → verify → iterate).
+
+### New `amni/serve/code_index.py` + `code_index` skill
+Walks a directory tree (excludes `node_modules/.git/__pycache__/data/models/…`), extracts per-file **language + symbols + summary + line count** via fast per-language regex (Python/JS/TS/Rust/Go/Java/C/C++…), and writes two artifacts:
+- `experiences/code_index.json` — the fast substring/symbol manifest.
+- **`experiences/code_map_ptex` — the map AS PTEX** (per the directive): each file → a `SemanticPTEXLUT` cell keyed by its descriptor, so semantic "where is X" queries land on the right file by Reffelt-style cell address. Built with Adam's MiniLM encoder; skipped cleanly with a note if no encoder is booted.
+- Skill actions: `build (root?)` | `query (term)` (substring over paths+symbols) | `semantic (q)` (nearest PTEX cell) | `file (path)` | `stats`.
+
+**Proven on real code:** indexed the `amni/` tree — **252 files, 1895 symbols, 0.18 s** — and `query('pii_egress')` pinpoints `serve/pii_egress.py`. Scales to the whole `ai` folder (6000-file cap, 500 KB/file cap, symlink-safe walk).
+
+14/14 new tests pass (index, dir-exclude, Python/JS symbol extraction, query by symbol + path, PTEX skipped-without-encoder, **PTEX map built + file written with encoder**, stats, skill build/query); cross-platform path normalization + `re.MULTILINE` fixes folded in.
+
+**Next (v6.10.129):** the retry-learning half — a coding-attempt PTEX ledger (task → approach → outcome → errors/debug → lesson) consulted before a second attempt so it does better. (Today's substrate already logs `skill_failures`, `leak_ledger`, `self_improvement`, `edit_verifier`/`needs_testing`; 129 unifies them into a coding-attempt loop.)
+
 ## v6.10.127 — Input simulation (type/press/click) closes see→confirm→act; Adam-micro on roadmap (2026-05-26)
 
 ### Computer-use action half (Tier 5b)

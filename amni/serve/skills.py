@@ -872,6 +872,19 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='pending':return _pca.list_pending()
         if action=='audit':return _pca.audit_recent(limit=int(args.get('limit',30)))
         return {'error':f'unknown action {action!r}; valid: propose|confirm|cancel|pending|audit'}
+    def _skill_code_index(args,ctx,reg_):
+        """Train Adam on a codebase: build a PTEX-backed map of files+symbols, then query it. Actions: build (root?) | query (term) | semantic (q) | file (path) | stats."""
+        try:from amni.serve import code_index as _ci
+        except Exception as e:return {'error':f'code_index unavailable: {e}'}
+        action=str(args.get('action') or 'stats').lower().strip()
+        enc=getattr(getattr(ctx.get('adam'),'sem_lut',None),'encoder',None) if ctx.get('adam') is not None else None
+        if action=='build':return _ci.build_index(root=args.get('root'),max_files=int(args.get('max_files',6000)),ptex=bool(args.get('ptex',True)),encoder=enc)
+        if action=='query':return _ci.query(str(args.get('term') or args.get('query') or ''),limit=int(args.get('limit',25)))
+        if action=='semantic':return _ci.semantic_query(str(args.get('q') or args.get('query') or ''),encoder=enc,k=int(args.get('k',5)))
+        if action=='file':return _ci.file_info(str(args.get('path') or ''))
+        if action=='stats':return _ci.stats()
+        return {'error':f'unknown action {action!r}; valid: build|query|semantic|file|stats'}
+    reg.register('code_index',_skill_code_index,desc='Train Adam on a codebase + locate code. Walks a tree extracting per-file language/symbols/summary into a PTEX-backed map (experiences/code_map_ptex). Actions: build (root?, max_files?) | query (term — substring over paths+symbols) | semantic (q — Reffelt-cell nearest file) | file (path — its symbols) | stats. Foundation for the coding loop: locate -> edit -> verify -> iterate.',schema={'action':'str?','root':'str?','term':'str?','query':'str?','q':'str?','path':'str?','max_files':'int?','limit':'int?','k':'int?','ptex':'bool?'})
     reg.register('pc_action',_skill_pc_action,desc='Safe PC operation (Tier 5b). propose-then-confirm gate: nothing touches the OS until the owner confirms a token. pc_action one of: echo|notify|open_url|open_path|launch_app|screenshot|type_text|press_key|click|run. type_text target=text to type; press_key target=key or combo e.g. "ctrl+c"; click target="x,y" or args {x,y,button,clicks}; screenshot describes the screen via LOCAL vision (never sent off-box). Actions: propose | confirm (token) | cancel (token) | pending | audit. Destructive patterns refused outright; every step audited to logs/pc_actions.jsonl. Tip: screenshot first so you can see the target before click/type.',schema={'action':'str?','pc_action':'str?','target':'str?','args':'dict?','token':'str?','question':'str?','limit':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
