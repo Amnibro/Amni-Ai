@@ -765,6 +765,50 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='stats':return _rm.stats()
         return {'error':f'unknown action {action!r}; valid: add|list|due|dismiss|stats'}
     reg.register('reminder',_skill_reminder,desc='Time-aware reminders / todo store. Actions: add (text, due_at?) | list (limit?) | due | dismiss (id) | stats. Add auto-parses "in N minutes/hours/days", "tomorrow", "at HH:MM(am|pm)" from the text.',schema={'action':'str?','text':'str?','due_at':'float?','id':'str?','session_id':'str?','limit':'int?'})
+    def _skill_recall(args,ctx,reg_):
+        """Search past conversation sessions for matching content. Args: query (str), max_sessions?, max_snippets_per_session?."""
+        import re as _re,json as _json
+        q=str(args.get('query') or '').strip()
+        if not q:return {'error':'query required'}
+        max_sessions=int(args.get('max_sessions',5));max_snip=int(args.get('max_snippets_per_session',2))
+        conv_root=None
+        try:
+            store=ctx.get('store') or (ctx.get('agent') and ctx['agent'].store)
+            if store is not None:conv_root=getattr(store,'root',None)
+        except Exception:pass
+        if conv_root is None:
+            conv_root=Path('experiences/conversations')
+        if not conv_root.exists():return {'query':q,'hits':[],'n_hits':0,'sessions_scanned':0}
+        pat=_re.compile(_re.escape(q),_re.IGNORECASE)
+        cur_sid=None
+        try:
+            if ctx.get('conv'):cur_sid=ctx['conv'].session_id
+        except Exception:pass
+        hits=[];sessions_scanned=0
+        files=sorted(conv_root.glob('*.jsonl'),key=lambda p:-p.stat().st_mtime)
+        for p in files:
+            if '.archived.' in p.name:continue
+            sid=p.stem
+            if sid==cur_sid:continue
+            sessions_scanned+=1;snips=[]
+            try:lines=p.read_text(encoding='utf-8',errors='ignore').splitlines()
+            except Exception:continue
+            for ln in lines:
+                ln=ln.strip()
+                if not ln:continue
+                try:t=_json.loads(ln)
+                except Exception:continue
+                content=str(t.get('content') or '')
+                if pat.search(content):
+                    role=t.get('role','?');snippet=content[:240]
+                    snips.append({'role':role,'text':snippet,'ts':t.get('ts')})
+                    if len(snips)>=max_snip:break
+            if snips:
+                ts=p.stat().st_mtime
+                hits.append({'session_id':sid,'mtime':ts,'iso':time.strftime('%Y-%m-%dT%H:%M:%S',time.localtime(ts)),'snippets':snips})
+                if len(hits)>=max_sessions:break
+        return {'query':q,'hits':hits,'n_hits':len(hits),'sessions_scanned':sessions_scanned}
+    reg.register('recall',_skill_recall,desc='Cross-session conversation recall. Searches all session JSONLs (skipping current session + archived) for substring matches. Args: query, max_sessions? (default 5), max_snippets_per_session? (default 2). Returns hits grouped by session with timestamp + role + 240-char snippet.',schema={'query':'str','max_sessions':'int?','max_snippets_per_session':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})
