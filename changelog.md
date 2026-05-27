@@ -2,6 +2,22 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.130 — Coding runner: the SE-loop conductor (prepare → edit/test → complete → retry-with-lesson) (2026-05-26)
+
+The capstone that turns the scattered software-engineer pieces into one autonomous task lifecycle.
+
+### New `amni/serve/coding_runner.py` + `coding_runner` skill
+- **`prepare(task)`** → a work order: the **attempt number**, **prior attempts** recalled from `coding_ledger` (what failed + the lessons), and **relevant files located** from the `code_index` PTEX map — bundled into a ready-to-inject `context` string. This is review→locate in one call.
+- (agent then edits via `code_edit`/`code_diff` and tests via `test_run` — all through the existing **propose→confirm PC rails**; *the runner never touches disk itself*.)
+- **`complete(run_id, success, outcome?, errors?, lesson?, approach?, files?)`** → records the attempt to `coding_ledger` and returns **`will_retry`** (true iff failed and attempt < max) plus **`next_hint`** (the lesson) so attempt N+1 starts smarter. Stops retrying at `max_attempts` (default 3).
+- `status` / `runs`; runs logged to `data/coding_runs.jsonl`. Endpoints `POST /memory/coding-run/{prepare,complete}`.
+
+**End-to-end proven:** fail attempt #1 (record "race condition", lesson "use a lock") → `prepare` attempt #2 → the work-order context already carries that lesson. The loop literally makes the second attempt smarter.
+
+So the full north-star loop is now a single conductor: **prepare (review+locate) → edit → verify → complete (learn) → retry-with-lesson**, all PTEX-backed and Reffelt-nonce addressed, all writes gated.
+
+14/14 new tests pass (work order, prior-attempt surfacing, success→no-retry, failure→retry-with-lesson, **max-attempts stop**, single-use run, status/list, end-to-end attempt-2-sees-attempt-1, skill flow, endpoints); coding_ledger (15/15) + code_index (14/14) regressions green.
+
 ## v6.10.129 — Coding-attempt ledger: Adam's 2nd attempt learns from the 1st (PTEX, retry-aware) (2026-05-26)
 
 Directive: *"confirmation that it stores learnings, errors, debugs… so that if it attempts a second approach, it does a better job. The map should be ptex files."* This is that loop.

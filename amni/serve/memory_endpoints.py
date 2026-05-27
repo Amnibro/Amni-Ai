@@ -141,6 +141,18 @@ def mount(app,agent):
     def coding_attempts(task:str='',limit:int=10):
         from amni.serve.coding_ledger import stats,recall
         return {**stats(),'recall':(recall(task,k=limit) if task else [])}
+    @app.post('/memory/coding-run/prepare')
+    async def coding_run_prepare(req:Request):
+        from amni.serve.coding_runner import prepare
+        body=await req.json()
+        if not body.get('task'):raise HTTPException(400,'need task')
+        return prepare(body['task'],agent=agent,max_attempts=int(body.get('max_attempts',3)))
+    @app.post('/memory/coding-run/complete')
+    async def coding_run_complete(req:Request):
+        from amni.serve.coding_runner import complete
+        body=await req.json()
+        if not body.get('run_id'):raise HTTPException(400,'need run_id')
+        return complete(body['run_id'],success=bool(body.get('success',False)),outcome=body.get('outcome',''),errors=body.get('errors'),lesson=body.get('lesson',''),approach=body.get('approach',''),files=body.get('files'),agent=agent)
     @app.get('/memory/review')
     def pre_response_review(q:str=''):
         from amni.serve.pre_response_review import review

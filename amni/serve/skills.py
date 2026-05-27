@@ -891,6 +891,22 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='commit':return _cl.commit_to_ptex(adam=ctx.get('adam'))
         return {'error':f'unknown action {action!r}; valid: record|recall|brief|stats|commit'}
     reg.register('coding_ledger',_skill_coding_ledger,desc='Coding-attempt learning loop: so a 2nd attempt beats the 1st. Actions: record (task, outcome?, approach?, errors?, lesson?, success?, files?) | recall (task — prior attempts ranked by Reffelt-nonce relevance) | brief (task) | stats | commit (to PTEX). Records persist to data/coding_attempts.jsonl + lessons/coding_attempts_ptex; surfaced pre-response.',schema={'action':'str?','task':'str?','outcome':'str?','approach':'str?','errors':'list?','lesson':'str?','success':'bool?','files':'list?','k':'int?'})
+    def _skill_coding_runner(args,ctx,reg_):
+        """Conductor for the SE loop. Actions: prepare (task) -> work order with prior attempts + located files; complete (run_id, success, outcome?, errors?, lesson?, approach?, files?) -> records + says whether to retry; status (run_id) | runs."""
+        try:from amni.serve import coding_runner as _cr
+        except Exception as e:return {'error':f'coding_runner unavailable: {e}'}
+        action=str(args.get('action') or 'runs').lower().strip()
+        if action=='prepare':return _cr.prepare(str(args.get('task') or ''),agent=ctx.get('agent'),max_attempts=int(args.get('max_attempts',3)))
+        if action=='complete':
+            rid=args.get('run_id','')
+            if not rid:return {'error':'run_id required'}
+            errs=args.get('errors');errs=errs if isinstance(errs,list) else ([str(errs)] if errs else None)
+            fls=args.get('files');fls=fls if isinstance(fls,list) else ([str(fls)] if fls else None)
+            return _cr.complete(rid,success=bool(args.get('success',False)),outcome=str(args.get('outcome') or ''),errors=errs,lesson=str(args.get('lesson') or ''),approach=str(args.get('approach') or ''),files=fls,agent=ctx.get('agent'))
+        if action=='status':return _cr.status(str(args.get('run_id') or ''))
+        if action=='runs':return _cr.list_runs()
+        return {'error':f'unknown action {action!r}; valid: prepare|complete|status|runs'}
+    reg.register('coding_runner',_skill_coding_runner,desc='Agentic SE conductor: prepare (task) bundles prior-attempt recall + located files (code map) into a work order with attempt#; complete (run_id, success, outcome?, errors?, lesson?, approach?, files?) records to coding_ledger + returns will_retry + the lesson for the next attempt; status | runs. The runner never edits disk — writes go through pc_action propose->confirm.',schema={'action':'str?','task':'str?','run_id':'str?','success':'bool?','outcome':'str?','errors':'list?','lesson':'str?','approach':'str?','files':'list?','max_attempts':'int?'})
     def _skill_code_index(args,ctx,reg_):
         """Train Adam on a codebase: build a PTEX-backed map of files+symbols, then query it. Actions: build (root?) | query (term) | semantic (q) | file (path) | stats."""
         try:from amni.serve import code_index as _ci
