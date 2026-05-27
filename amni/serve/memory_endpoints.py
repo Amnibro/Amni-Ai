@@ -86,6 +86,19 @@ def mount(app,agent):
     def skill_failures_list(limit:int=20,skill:str=''):
         from amni.serve.skill_failures import recent,stats
         return {'failures':recent(limit=limit,skill_filter=skill or None),'stats':stats()}
+    @app.get('/memory/reminders')
+    def reminders_list(limit:int=50,session_id:str=''):
+        from amni.serve.reminders import list_active,list_due,stats
+        return {'reminders':list_active(session_id=session_id or None,limit=limit),'due':list_due(),'stats':stats()}
+    @app.post('/memory/reminders')
+    async def reminders_add(req:Request):
+        from amni.serve.reminders import add
+        body=await req.json()
+        return add(text=body.get('text',''),due_at=body.get('due_at'),session_id=body.get('session_id',''))
+    @app.post('/memory/reminders/{rid}/dismiss')
+    def reminders_dismiss(rid:str):
+        from amni.serve.reminders import dismiss
+        return dismiss(rid)
     @app.get('/memory/bookmarks')
     def bookmarks_list(limit:int=20,session_id:str='',search:str=''):
         from amni.serve.bookmarks import list_recent,stats
