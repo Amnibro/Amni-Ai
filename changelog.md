@@ -2,6 +2,24 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.116 — PII egress hardening: one scrubber, every internet-bound path (2026-05-26)
+
+Directive: *"incredibly secure with PII — no more leaks ever."* Audit found the scrubber only guarded `_skill_web`; three other paths sent queries to DuckDuckGo **unscrubbed**: the web crawler, the 24/7 learning daemon, and the news widget. Closed all of them behind a single choke-point.
+
+### New module `amni/serve/pii_egress.py` (single source of truth)
+- `scrub_text(text, atlas?)` → `(cleaned, report)`. Pattern scrub covers **email, SSN, US + international phone, credit-card runs, IPv4, ZIP+4, and street addresses**, PLUS removal of every token drawn from the user's PersonalAtlas (real name, city, stored numbers). Over-scrubs PII-shaped tokens by design; never returns empty (falls back to original if it would).
+- `scrub(text, agent?/atlas?, source, audit=True)` → string convenience used by all call sites.
+- **Audit trail** `data/pii_egress_audit.jsonl` (gitignored) logs only `{categories, removed_count, source, sha256[:12] of input}` — **never the raw value**, so the log can't become a PII store. `audit_stats()` summarizes by category/source.
+
+### Wired the leaks shut
+- `web_crawler.search()` — scrubs **before** `ddg.text()`; this is the deepest choke-point every crawler caller funnels through (tier-4 loop, skill, daemon).
+- `learning_daemon._ddg_search()` — scrubs curiosity queries (`source='daemon'`).
+- `widgets.fetch_news()` — scrubs before the DDG news URL (`source='news'`, optional `atlas`).
+- `skills._scrub_pii_from_query()` — now delegates to the central module (kept for back-compat; `_skill_web` unchanged at the call site).
+- New `GET /memory/pii-egress` surfaces the audit (categories/counts only) for transparency.
+
+23/23 new tests pass (each pattern + atlas tokens + clean-query preservation + never-empty + audit-logs-no-values + scrub-before-send ordering in all 3 paths); the v6.5.0 paranoid privacy suite still passes 15/15.
+
 ## v6.10.115 — PT Coach mode: live in-browser MediaPipe-Pose camera → rep counting + form cues (2026-05-26)
 
 Wires the camera to last iteration's pose engine. **PT COACH** lives in the TOOLS drawer → VISION section (no new always-on indicator — respects the declutter directive).

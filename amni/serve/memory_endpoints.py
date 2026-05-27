@@ -125,6 +125,10 @@ def mount(app,agent):
     def notes_delete(nid:str):
         from amni.serve.notes import delete
         return delete(nid)
+    @app.get('/memory/pii-egress')
+    def pii_egress_audit(limit:int=50):
+        from amni.serve.pii_egress import audit_stats
+        return audit_stats(limit=limit)
     @app.post('/memory/skill-failures/ack')
     def skill_failures_ack():
         from amni.serve.skill_failures import ack_all

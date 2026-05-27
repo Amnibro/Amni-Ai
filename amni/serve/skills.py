@@ -141,33 +141,12 @@ def _skill_mem(args,ctx,reg):
                 hits.append({'q':sl._raw[int(i)][0][:200],'a':sl._raw[int(i)][1][:400],'score':float(scores[int(i)]),'method':'flat_cosine'})
     except Exception as e:hits.append({'error':f'flat-cosine: {e}'})
     return {'hits':hits,'lessons_n':n}
-def _scrub_pii_from_query(q:str,agent=None)->str:
-    """Strip personal-info tokens (name parts, location, email, phone) from web queries before any external HTTP.
-    Pulls known PII from the agent's PersonalAtlas if available."""
-    if not q:return q
-    import re as _re
-    cleaned=q
-    cleaned=_re.sub(r'\b[\w.+-]+@[\w.-]+\.\w{2,}\b','',cleaned)
-    cleaned=_re.sub(r'\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b','',cleaned)
-    cleaned=_re.sub(r'\+\d{1,3}[ -.]?\(?\d{3}\)?[ -.]?\d{3}[ -.]?\d{4}\b','',cleaned)
-    cleaned=_re.sub(r'\b\(\d{3}\)\s?\d{3}[-.\s]\d{4}\b','',cleaned)
+def _scrub_pii_from_query(q:str,agent=None,source:str='web')->str:
+    """Strip personal-info from any text before external HTTP. Delegates to the central pii_egress choke-point (single source of truth)."""
     try:
-        pa=getattr(agent,'personal_atlas',None) if agent is not None else None
-        if pa is not None and hasattr(pa,'list_facts'):
-            facts=pa.list_facts(include_confidential=True,limit=200) or []
-            tokens=set()
-            for f in facts:
-                v=str(f.get('value') or '').strip()
-                if not v:continue
-                for tok in _re.findall(r"[A-Za-z][A-Za-z'\-]{2,}",v):
-                    tl=tok.lower()
-                    if tl in ('the','and','for','with','this','that','from','your','have'):continue
-                    if len(tl)>=3:tokens.add(tok)
-            for tok in sorted(tokens,key=len,reverse=True):
-                cleaned=_re.sub(r'(?i)\b'+_re.escape(tok)+r'\b','',cleaned)
-    except Exception:pass
-    cleaned=_re.sub(r'\s+',' ',cleaned).strip(' ,.;:!?')
-    return cleaned or q
+        from amni.serve.pii_egress import scrub as _scrub
+        return _scrub(q,agent=agent,source=source)
+    except Exception:return q
 def _skill_web(args,ctx,reg):
     adam=ctx.get('adam')
     agent=ctx.get('agent')
