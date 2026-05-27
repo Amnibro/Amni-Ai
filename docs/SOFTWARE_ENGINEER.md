@@ -69,6 +69,28 @@ curl -s 'localhost:7700/memory/coding-attempts?task=<your+task>'   # stats + rec
 Open `/se` in the UI (or TOOLS → LEARNING → **SW ENG**): files mapped, symbols, coding attempts,
 **success rate**, language breakdown, open runs.
 
+## Federation — share what worked across Adam instances (PII-safe)
+Adam can teach other Adam instances *only the lessons that worked* — never raw tasks, file paths, or error
+traces (those can carry proprietary code / PII). Lessons are double-scrubbed (pii_egress + user-home path
+stripping); imported lessons are re-scrubbed, marked `federated`, and **never count as first-party attempts**.
+
+```bash
+# export this instance's successful lessons
+curl -s 'localhost:7700/memory/coding-federation?only_success=true'
+#   -> {federable:[{tags,nonce,lesson,success}], n, note:"lessons only; raw tasks/paths/errors never exported"}
+
+# import a peer's lessons (paste their /memory/coding-federation export)
+curl -s -XPOST localhost:7700/memory/coding-federation \
+  -H 'content-type: application/json' -d '{"federable":[...],"source":"peerA"}'
+
+# OR pull straight from a peer Adam by URL
+curl -s -XPOST localhost:7700/memory/coding-federation/pull \
+  -H 'content-type: application/json' -d '{"url":"http://peer-host:7700"}'
+```
+Skill form: `coding_ledger federate` (export) / `coding_ledger import {entries,source}` (merge). The 24/7
+`LearningDaemon` also auto-commits the local ledger to PTEX hourly. Federated lessons surface in recall flagged
+`federated:true`, so Adam can weigh provenance.
+
 ## Where the learnings live (all PTEX / append-only, gitignored)
 - `experiences/code_map_ptex(.npz/.json)` — the code map (each file a Reffelt-addressed cell)
 - `data/coding_attempts.jsonl` + `lessons/coding_attempts_ptex` — every attempt + lesson
