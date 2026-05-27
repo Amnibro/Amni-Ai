@@ -47,6 +47,10 @@ def review(message:str,agent=None,max_errors:int=3,max_lessons:int=1)->Dict[str,
         seen=set();uniq=[s for s in subs if not (s in seen or seen.add(s))]
         return uniq[:5]
     items['kg']=_safe(_kg,[])
+    def _coding():
+        from amni.serve.coding_ledger import recall as _crecall
+        return _crecall(message,k=3)
+    items['coding_attempts']=_safe(_coding,[])
     brief=build_brief(qn,qtags,items)
     return {'nonce':qn,'digits':_rt.decompose(qn),'tags':qtags,'brief':brief,'items':items}
 def build_brief(qn:int,qtags:List[str],items:Dict[str,Any])->str:
@@ -68,6 +72,16 @@ def build_brief(qn:int,qtags:List[str],items:Dict[str,Any])->str:
     kg=items.get('kg') or []
     if kg:
         lines.append(f"KNOWLEDGE-GRAPH subjects on file near this context: {', '.join(kg[:5])}.")
+    ca=items.get('coding_attempts') or []
+    if ca:
+        bits=[]
+        for h in ca[:3]:
+            st='✓' if h.get('success') else ('✗' if h.get('success') is False else '?')
+            seg=f"#{h.get('attempt','?')}{st}"
+            if h.get('lesson'):seg+=f" lesson: {h['lesson'][:90]}"
+            elif h.get('errors'):seg+=f" err: {'; '.join(h['errors'][:1])[:90]}"
+            bits.append(seg)
+        lines.append(f"PRIOR ATTEMPTS at a similar task — do better than before: {' | '.join(bits)}")
     if not lines:return ''
     head=f"[PRE-RESPONSE REVIEW · reffelt-nonce {'.'.join(str(d) for d in digits)}]"
     return head+"\n"+"\n".join(lines)

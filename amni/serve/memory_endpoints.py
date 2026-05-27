@@ -137,6 +137,10 @@ def mount(app,agent):
     def pc_actions_audit(limit:int=30):
         from amni.serve.pc_actions import audit_recent,list_pending
         return {**audit_recent(limit=limit),'pending':list_pending().get('pending',[])}
+    @app.get('/memory/coding-attempts')
+    def coding_attempts(task:str='',limit:int=10):
+        from amni.serve.coding_ledger import stats,recall
+        return {**stats(),'recall':(recall(task,k=limit) if task else [])}
     @app.get('/memory/review')
     def pre_response_review(q:str=''):
         from amni.serve.pre_response_review import review

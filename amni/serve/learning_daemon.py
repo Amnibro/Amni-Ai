@@ -59,6 +59,11 @@ class LearningDaemon:
                         _lr=maybe_commit_to_ptex(adam=self.adam)
                         if _lr.get('committed',0)>0:print(f'[LearningDaemon] leak ledger -> PTEX: committed={_lr.get("committed")} total={_lr.get("total")}',flush=True)
                     except Exception as e:print(f'[LearningDaemon] leak commit skipped: {type(e).__name__}: {e}',flush=True)
+                    try:
+                        from amni.serve.coding_ledger import maybe_commit_to_ptex as _cc
+                        _cr=_cc(adam=self.adam)
+                        if _cr.get('committed',0)>0:print(f'[LearningDaemon] coding ledger -> PTEX: committed={_cr.get("committed")} total={_cr.get("total")}',flush=True)
+                    except Exception as e:print(f'[LearningDaemon] coding commit skipped: {type(e).__name__}: {e}',flush=True)
                     self.counters['last_leak_commit_at']=now
                 try:
                     from amni.serve.self_reflection import should_run_now,run_cycle
