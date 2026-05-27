@@ -2,6 +2,23 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.117 — Thinking-process leak hardening + self-learning leak ledger (commit-to-PTEX loop) (2026-05-26)
+
+Directive: *"thought process hardening should be able to be done by committing the error itself to a ptex file to avoid"* + *"everything should be a self-learning loop."* So leak defense is now a closed loop, not just a regex patch.
+
+### Hardened `_strip_thinking_process` (the regex safety net)
+- Strips `<think>`/`<thinking>`/`<thought>`/`<reasoning>`/`<scratchpad>`/`<reflection>`/`<analysis>` tags **and their content** (reasoning-model style), plus orphan tags.
+- **Final-Output recovery**: a single-line `Thinking Process: 1. … Final Output: <answer>` now slices to the real answer after the last `Final (Output|Answer|Response):` marker.
+- **Trailing-scaffold cut**: scaffold that trails a real answer (`…sources don't contain that. thought Thinking Process: 1. Analyze… 2. Check…`) is cut from the marker to EOF — but only after the bounded-block pass runs first, so a scaffold *between* two real passages keeps both sides.
+- Inline numbered meta-steps (`1. Analyze the Request…`, `Check Context/Tools…`) are removed even when not line-anchored; legit numbered lists ("1. Download… 2. Run…") and markdown links survive.
+
+### New `amni/serve/leak_ledger.py` — the self-learning loop
+**Detect → commit → consult.** When the stripper removes a scaffold block it `record()`s the fragment to append-only `data/thinking_leaks.jsonl` (gitignored) and to learned in-memory signatures. `scrub_learned()` then catches repeats the regex never anticipated. `commit_to_ptex()` writes the accumulated error→correction pairs into a dedicated PTEX lesson file (`lessons/leak_avoidance_ptex`) — the errors-to-avoid substrate Adam keeps.
+- **Safe by construction**: both `record()` and `scrub_learned()` gate on `_is_scaffoldish()` — the learned layer can *only ever* learn/strip text containing scaffold markers, so legit content can never be scrubbed even if mis-recorded.
+- `GET /memory/thinking-leaks` (stats) + `POST /memory/thinking-leaks/commit` (flush to PTEX) for the loop + transparency.
+
+23/23 new tests pass (XML tags, single-line recovery, trailing cut, mid-block both-sides, legit-list survival, ledger record/scrub/gate, commit-to-PTEX via stub LUT); v6.10.107 (19/19) + v6.10.108 (15/15) thinking-strip regressions both green.
+
 ## v6.10.116 — PII egress hardening: one scrubber, every internet-bound path (2026-05-26)
 
 Directive: *"incredibly secure with PII — no more leaks ever."* Audit found the scrubber only guarded `_skill_web`; three other paths sent queries to DuckDuckGo **unscrubbed**: the web crawler, the 24/7 learning daemon, and the news widget. Closed all of them behind a single choke-point.
