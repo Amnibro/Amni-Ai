@@ -2,6 +2,27 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.113 — Notes skill: third capture surface (bookmarks ★ + reminders ⏰ + notes 📝) (2026-05-26)
+
+Completes the capture triplet. Bookmarks star a bot reply; reminders are time-aware; **notes** are bare text snippets with no ceremony — "jot this down" for anything that isn't a reply or a deadline.
+
+### New module `amni/serve/notes.py`
+Append-only `data/notes.jsonl` (gitignored — stays local, never federated). `add(text, tags?, session_id?)` auto-extracts `#hashtags` from the body and merges with explicit tags. `list_recent(limit, tag?, search?, session_id?)`, `delete(id)` (rewrites file), `stats()` (tag-count histogram), `all_tags()`.
+
+### New `note` skill
+Actions: `add` (text, tags?) | `list` (limit?, tag?, search?, session_only?) | `delete` (id) | `tags` | `stats`. Session id pulled from ctx['conv'] so notes can scope to the current chat.
+
+### Agent NL routing
+- "note: …" / "take a note …" / "jot this down …" / "note to self …" → add
+- "list my notes" / "show notes" → list
+- "find/search my notes for X" → search
+
+### Endpoints + CLI
+- `GET/POST /memory/notes`, `DELETE /memory/notes/{nid}` (mirrors bookmarks)
+- `amni notes list|add|delete|tags|stats` with `--tag`, `--search`, `--url` (remote-server) parity
+
+25/25 new tests pass; recall (112) + reminders (106) regression suites green.
+
 ## v6.10.56 — Self-improvement scaffold (Adam can inspect + propose changes to itself) (2026-05-26)
 
 the maintainer's directive: *"can we get adam to be able to run its own environments, investigate improving itself, etc? make it just an absolutely amazing model that improves itself over time?"* This is a multi-iter vision; v6.10.56 ships the cornerstone scaffold.

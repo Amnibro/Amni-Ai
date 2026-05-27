@@ -415,6 +415,12 @@ class AmniAgent:
             _m=re.search(r"^(?:please\s+)?(?:remind\s+me|set\s+a\s+reminder)\s+to\s+(.+?)\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('reminder',{'action':'add','text':_m.group(1).strip()})
             if re.search(r"^(?:what\s+(?:are\s+)?(?:my\s+)?|list\s+(?:my\s+)?|show\s+(?:my\s+)?)reminders\??\s*$",msg,re.IGNORECASE):return ('reminder',{'action':'list'})
+        if self.skills.has('note'):
+            _m=re.search(r"^(?:please\s+)?(?:take\s+(?:a\s+)?note|note\s+(?:to\s+self|that)|save\s+(?:a\s+)?note|jot\s+(?:this\s+)?down|note)[\s:,]+(.+?)\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('note',{'action':'add','text':_m.group(1).strip()})
+            if re.search(r"^(?:what\s+(?:are\s+)?(?:my\s+)?|list\s+(?:my\s+)?|show\s+(?:my\s+)?)notes\??\s*$",msg,re.IGNORECASE):return ('note',{'action':'list'})
+            _m=re.search(r"^(?:find|search)\s+(?:in\s+)?(?:my\s+)?notes\s+(?:for\s+)?[\"'`]?([^\"'`]+?)[\"'`]?\s*\??\s*\.?\s*$",msg,re.IGNORECASE)
+            if _m:return ('note',{'action':'list','search':_m.group(1).strip()})
         if self.skills.has('find'):
             _m=re.search(r"^(?:please\s+)?(?:find|grep|search\s+for|search|locate|show\s+me\s+where)\s+(?:for\s+)?[\"'`]([^\"'`]{2,160})[\"'`](?:\s+in\s+(?:my\s+)?(?:code|repo|project|files))?\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('find',{'query':_m.group(1).strip()})
@@ -703,6 +709,25 @@ class AmniAgent:
                     lines.append(f'- `{r.get("id","?")}`  _{r.get("text","")}_  {tag}')
                 return '\n'.join(lines)
             if 'dismissed' in out:return f'Dismissed reminder `{out["dismissed"]}`.'
+            return json.dumps(out,default=str)[:600]
+        if name=='note':
+            if out.get('error'):return f'(note error: {out["error"]})'
+            if 'id' in out and 'text' in out:
+                tg=out.get('tags') or [];tag_s=(' · ' + ' '.join(f'#{t}' for t in tg)) if tg else ''
+                return f'Note saved 📝{tag_s}  \n_{out["text"][:200]}_  \n`{out["id"]}` — manage via `/notes` or `amni notes`.'
+            if 'notes' in out:
+                items=out['notes'] or []
+                if not items:return 'No notes yet. Try "note: pick up groceries tomorrow #errands" or just /notes.'
+                lines=[f'**{len(items)} note(s):**']
+                for r in items[:20]:
+                    tg=r.get('tags') or [];tag_s=(' ' + ' '.join(f'`#{t}`' for t in tg)) if tg else ''
+                    iso=(r.get('iso','') or '').replace('T',' ')[:16]
+                    lines.append(f'- `{r.get("id","?")}` _{iso}_{tag_s}  \n  {r.get("text","")[:240]}')
+                return '\n'.join(lines)
+            if 'deleted' in out:return f'Deleted note `{out["deleted"]}` ({out.get("remaining",0)} remaining).'
+            if 'tags' in out:
+                tags=out['tags'] or []
+                return ('Tags in use: ' + ' '.join(f'`#{t}`' for t in tags[:40])) if tags else 'No tags yet.'
             return json.dumps(out,default=str)[:600]
         if name=='find':
             hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)
