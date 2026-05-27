@@ -205,3 +205,21 @@ Voice + coder can ship without HUD. HUD is the most visible but least functional
 - **Tier C — agentic task runner:** "do X on my PC" decomposed into steps, each validated (the v6.10.x self-improvement + edit-verifier pattern), human-in-the-loop for anything destructive.
 
 **Non-negotiable rails (carry into every tier):** Law 0 (no harm) + Law 1 (obey except Law 0) are checked before any action; destructive/irreversible ops always confirm; everything audited to an append-only log; no owner PII leaves the box (the v6.10.116 egress choke-point); Adam never auto-deploys or acts on external/untrusted instructions without the owner in the loop. "Anything on a PC" means *capable of*, never *unsupervised and unbounded*.
+
+---
+
+## Tier 6 (added 2026-05-26): Adam-micro — Adam on a phone, home hub, or watch
+
+**Goal:** a tiny Adam that runs on edge devices — phone, smart-home hub, smartwatch — not a cloud dependency. The PTEX architecture is *built* for this: the whole point of GF(17) Reffelt streaming is that 1 GB of VRAM can stream the full weight set ([[project_ptex_sliding_rule]]), and PTEX atlases are the memory. Adam-micro is that vision realized on the smallest hardware.
+
+**Why it fits the architecture (not a separate model):**
+- **SSD/flash-streaming tiers** — d3 (coarse) lives resident; d2/d1/d0 stream from flash on demand. A watch with ~1–2 GB RAM holds d3 + the hot LUT cells; cold cells return zeros until touched. Same engine, smaller resident footprint.
+- **TMU-first lookups** — no GEMM, so a mobile GPU / NPU's texture units do the work; falls back to a tiny CPU LUT path where no GPU exists.
+- **Federated learnings** — each micro device learns locally (PTEX lesson cells) and shares *only* federable, PII-scrubbed deltas via Amni-Prism ([[project_amni_prism_pypi_published]]); personal facts never leave the device (the v6.10.116 egress + per-device PersonalAtlas rules hold).
+
+**Tiers:**
+- **6a — phone (Android first):** Adam-micro as a native wrapper (the Amni-Learn/Haven pattern) around a slimmed serve; on-device d3 + flash-streamed tiers; voice in/out via the platform STT/TTS; the same skill surface, capability-gated to what a phone can do.
+- **6b — home hub:** always-on, wake-word, room-aware; bridges to the full Adam on the PC over LAN when heavy lifting is needed (the Amni-Chat relay pattern, [[project_amni_ai_chat_bridge_and_pc_operator]]); answers locally when it can.
+- **6c — watch / wearable:** the smallest tier — glanceable answers, reminders, PT-coach rep counts from the wrist IMU, hand-off to phone/PC for anything bigger. d3-only resident; everything else deferred.
+
+**Shared constraints:** the 5 Immutable Laws ship in every tier (baked into the GF(17) hash LUT — they can't be stripped to save space); persona system + safety baseline intact; nothing personal leaves the device unscrubbed; graceful degradation — a micro device that can't answer hands off rather than guessing.
