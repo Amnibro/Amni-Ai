@@ -2,6 +2,24 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.114 — Pose-coach engine: physical-therapy form coaching from body landmarks (2026-05-26)
+
+Directive: *"use the camera to interact with and support the user (ie: measure angles of crunches/pushups to help guide physical therapy)."* This iteration ships the load-bearing, fully-tested **server-side core**; the in-browser MediaPipe-Pose camera feed + live skeleton overlay is the next iteration's wiring on top of these endpoints.
+
+### New module `amni/serve/pose_coach.py`
+- `angle(a,b,c)` — joint angle (degrees) at vertex `b` via clamped dot-product; returns `None` on missing/degenerate input rather than crashing.
+- Landmark indices follow **MediaPipe Pose (BlazePose 33-pt)** so the browser can POST `@mediapipe/pose` output verbatim. Each landmark accepts `{x,y,visibility?}` or `[x,y,v?]`, normalized [0,1]. Low-visibility joints (< per-exercise `min_vis`) are ignored. Left/right are averaged when both are visible.
+- 4 exercises: **push-up, sit-up/crunch, squat, bicep curl** — each with a primary joint triplet, down/up rep thresholds, a target depth, form-check triplets, and coaching cues.
+- `PoseCoach` — stateful rep machine: phase (`up`/`down`) transitions count reps, track per-rep minimum angle (depth), collect form issues, and flag each rep `clean` (hit depth + no form faults). `summary()` returns reps, clean-rate %, peak depth, and the most-common form issues.
+- `analyze_frame()` — stateless single-frame angle + instant feedback. `start_session/feed_session/stop_session` — in-memory session registry keyed by chat session id; `stop` persists a summary to gitignored `data/pose_sessions.jsonl` (**local only, never federated** — body keypoints, no PII). `session_history()` reads it back.
+
+### New `pose_coach` skill + endpoints
+- Skill actions: `exercises | analyze | start | frame | stop | history`.
+- `GET /vision/pose/exercises`, `POST /vision/pose/{analyze,start,frame,stop}`, `GET /vision/pose/history`.
+- Agent NL routes: "what exercises can you coach", "show my workout history" → discoverable in chat. `_format_skill_output` renders exercise menu, history, live rep feedback.
+
+37/37 new tests pass (angle math, rep counting, depth gating, form faults, session lifecycle, persistence, skill + endpoint wiring); notes (113) regression green.
+
 ## v6.10.113 — Notes skill: third capture surface (bookmarks ★ + reminders ⏰ + notes 📝) (2026-05-26)
 
 Completes the capture triplet. Bookmarks star a bot reply; reminders are time-aware; **notes** are bare text snippets with no ceremony — "jot this down" for anything that isn't a reply or a deadline.

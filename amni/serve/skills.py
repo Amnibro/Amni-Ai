@@ -834,6 +834,33 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='stats':return _nt.stats()
         return {'error':f'unknown action {action!r}; valid: add|list|delete|tags|stats'}
     reg.register('note',_skill_note,desc='Quick text capture (3rd capture surface after bookmarks/reminders). Actions: add (text, tags?) | list (limit?, tag?, search?, session_only?) | delete (id) | tags | stats. #hashtags in text auto-extracted as tags.',schema={'action':'str?','text':'str?','tags':'list?','id':'str?','tag':'str?','search':'str?','limit':'int?','session_only':'bool?'})
+    def _skill_pose_coach(args,ctx,reg_):
+        """Physical-therapy form coach from body-pose landmarks. Actions: exercises | analyze (landmarks, exercise) | start (exercise) | frame (landmarks, exercise?) | stop | history (exercise?, limit?)."""
+        try:from amni.serve import pose_coach as _pc
+        except Exception as e:return {'error':f'pose_coach module unavailable: {e}'}
+        action=str(args.get('action') or 'exercises').lower().strip()
+        sid=''
+        try:
+            if ctx.get('conv'):sid=ctx['conv'].session_id or ''
+        except Exception:pass
+        sid=args.get('session_id') or sid
+        if action in ('exercises','list'):return {'exercises':_pc.list_exercises()}
+        if action=='analyze':
+            lms=args.get('landmarks')
+            if not lms:return {'error':'landmarks required (list of {x,y,visibility?})'}
+            return _pc.analyze_frame(lms,str(args.get('exercise') or 'pushup'))
+        if action=='start':return _pc.start_session(str(args.get('exercise') or 'pushup'),session_id=sid)
+        if action=='frame':
+            lms=args.get('landmarks')
+            if not lms:return {'error':'landmarks required'}
+            if not sid:return {'error':'session_id required for frame (start a session first)'}
+            return _pc.feed_session(sid,lms,exercise=args.get('exercise'))
+        if action in ('stop','summary'):
+            if not sid:return {'error':'session_id required'}
+            return _pc.stop_session(sid)
+        if action=='history':return {'history':_pc.session_history(limit=int(args.get('limit',20)),exercise=args.get('exercise'))}
+        return {'error':f'unknown action {action!r}; valid: exercises|analyze|start|frame|stop|history'}
+    reg.register('pose_coach',_skill_pose_coach,desc='Physical-therapy / exercise form coach. Computes joint angles from MediaPipe-Pose 33-pt landmarks, counts reps, and gives form feedback (push-up, sit-up/crunch, squat, bicep curl). Actions: exercises | analyze (landmarks, exercise) | start (exercise) | frame (landmarks, exercise?) | stop | history. Landmarks: list of {x,y,visibility?} normalized [0,1].',schema={'action':'str?','exercise':'str?','landmarks':'list?','session_id':'str?','limit':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})

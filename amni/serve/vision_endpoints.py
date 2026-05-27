@@ -46,6 +46,42 @@ def mount(app,agent):
         try:image_bytes=base64.b64decode(b64.split(',',1)[-1] if ',' in b64 else b64)
         except Exception as e:raise HTTPException(400,f'base64 decode: {e}')
         return _run_describe(image_bytes,question=question)
+    @app.get('/vision/pose/exercises')
+    def pose_exercises():
+        from amni.serve.pose_coach import list_exercises
+        return {'exercises':list_exercises()}
+    @app.post('/vision/pose/analyze')
+    async def pose_analyze(req:Request):
+        from amni.serve.pose_coach import analyze_frame
+        body=await req.json()
+        lms=body.get('landmarks')
+        if not lms:raise HTTPException(400,'need landmarks')
+        return analyze_frame(lms,str(body.get('exercise') or 'pushup'))
+    @app.post('/vision/pose/start')
+    async def pose_start(req:Request):
+        from amni.serve.pose_coach import start_session
+        body=await req.json()
+        return start_session(str(body.get('exercise') or 'pushup'),session_id=body.get('session_id',''))
+    @app.post('/vision/pose/frame')
+    async def pose_frame(req:Request):
+        from amni.serve.pose_coach import feed_session
+        body=await req.json()
+        sid=body.get('session_id')
+        lms=body.get('landmarks')
+        if not sid:raise HTTPException(400,'need session_id')
+        if not lms:raise HTTPException(400,'need landmarks')
+        return feed_session(sid,lms,exercise=body.get('exercise'))
+    @app.post('/vision/pose/stop')
+    async def pose_stop(req:Request):
+        from amni.serve.pose_coach import stop_session
+        body=await req.json()
+        sid=body.get('session_id')
+        if not sid:raise HTTPException(400,'need session_id')
+        return stop_session(sid)
+    @app.get('/vision/pose/history')
+    def pose_history(limit:int=20,exercise:str=''):
+        from amni.serve.pose_coach import session_history
+        return {'history':session_history(limit=limit,exercise=exercise or None)}
     try:
         import multipart as _mp_check
         _has_multipart=True
