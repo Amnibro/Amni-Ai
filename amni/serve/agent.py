@@ -430,6 +430,10 @@ class AmniAgent:
             _m=re.search(r"^\s*(confirm|cancel)\s+(pca_[0-9a-f]{6,})\s*$",msg,re.IGNORECASE)
             if _m:return ('pc_action',{'action':_m.group(1).lower(),'token':_m.group(2)})
             if re.search(r"\b(?:what\s+(?:pc\s+)?actions?\s+(?:are\s+)?pending|pending\s+(?:pc\s+)?actions?)\b",msg,re.IGNORECASE):return ('pc_action',{'action':'pending'})
+            _m=re.search(r"\b(?:take\s+a\s+screenshot|capture\s+(?:my\s+|the\s+)?screen|screenshot\s+(?:my\s+|the\s+)?screen|what(?:'s|\s+is)?\s+(?:on\s+)?my\s+screen|describe\s+my\s+screen|look\s+at\s+my\s+screen)\b",msg,re.IGNORECASE)
+            if _m:
+                _q=re.sub(r"(?i).*?(?:my|the)\s+screen\b","",msg).strip(' ?.,!') if 'screen' in msg.lower() else ''
+                return ('pc_action',{'action':'propose','pc_action':'screenshot','target':'full screen','question':_q})
         if self.skills.has('pose_coach'):
             if re.search(r"\b(?:what\s+exercises|which\s+exercises|exercises\s+can\s+you\s+coach|what\s+can\s+you\s+coach|coach(?:able)?\s+exercises|physical\s+therapy\s+(?:exercises|options))\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'exercises'})
             if re.search(r"\b(?:my|show\s+my|exercise|workout|pt|pose)\s+(?:coach|history|sessions?)\b|\b(?:coach|workout)\s+history\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'history'})

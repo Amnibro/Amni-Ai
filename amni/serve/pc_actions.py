@@ -10,7 +10,7 @@ _PENDING:Dict[str,Dict[str,Any]]={}
 _LOCK=threading.Lock()
 _TTL=300.0
 _DENY=re.compile(r'(?i)(?:\brm\s+-rf\b|\brmdir\s+/s\b|\bdel\s+/[sq]\b|\bformat\s+[a-z]:|\bmkfs\b|\bdd\s+if=|\bshutdown\b|\breboot\b|:\(\)\s*\{|\bfork\s*bomb\b|\breg\s+delete\b|\bdiskpart\b|\bdrop\s+(?:table|database)\b|>\s*/dev/sd)')
-_RISK={'echo':'low','notify':'low','open_url':'low','open_path':'medium','launch_app':'medium','run':'high'}
+_RISK={'echo':'low','notify':'low','open_url':'low','open_path':'medium','launch_app':'medium','screenshot':'medium','run':'high'}
 def _audit_path()->Path:
     p=Path(__file__).resolve().parents[2]/'logs'/'pc_actions.jsonl';p.parent.mkdir(parents=True,exist_ok=True);return p
 def _audit(rec:Dict[str,Any]):
@@ -39,9 +39,22 @@ def _exec_notify(t,a):
     return {'notified':t[:200]}
 def _exec_echo(t,a):
     return {'echoed':t}
-_EXECUTORS={'echo':_exec_echo,'notify':_exec_notify,'open_url':_exec_open_url,'open_path':_exec_open_path,'launch_app':_exec_launch,'run':_exec_run}
+def _exec_screenshot(t,a):
+    out_dir=Path(__file__).resolve().parents[2]/'data'/'screenshots';out_dir.mkdir(parents=True,exist_ok=True)
+    path=out_dir/f'shot_{int(time.time())}.png';w=h=0
+    try:
+        import mss,mss.tools
+        with mss.mss() as sct:
+            shot=sct.grab(sct.monitors[0]);mss.tools.to_png(shot.rgb,shot.size,output=str(path));w,h=shot.size
+    except Exception:
+        try:
+            from PIL import ImageGrab
+            im=ImageGrab.grab();im.save(str(path));w,h=im.size
+        except Exception as e:return {'error':f'screenshot capture unavailable (need mss or Pillow ImageGrab): {e}'}
+    return {'screenshot_path':str(path),'width':w,'height':h,'bytes':path.stat().st_size if path.exists() else 0}
+_EXECUTORS={'echo':_exec_echo,'notify':_exec_notify,'open_url':_exec_open_url,'open_path':_exec_open_path,'launch_app':_exec_launch,'screenshot':_exec_screenshot,'run':_exec_run}
 def _describe(action,target,risk):
-    verb={'echo':'echo','notify':'show a desktop notification','open_url':'open in your browser','open_path':'open with the default app','launch_app':'launch the program','run':'run the shell command'}.get(action,action)
+    verb={'echo':'echo','notify':'show a desktop notification','open_url':'open in your browser','open_path':'open with the default app','launch_app':'launch the program','screenshot':'capture your screen and describe it locally','run':'run the shell command'}.get(action,action)
     return f'[{risk.upper()} RISK] Adam wants to {verb}: {target[:160]}'
 def propose(action:str,target:str,args:Optional[Dict[str,Any]]=None)->Dict[str,Any]:
     action=(action or '').lower().strip()
