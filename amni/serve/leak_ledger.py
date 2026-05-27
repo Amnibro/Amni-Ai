@@ -51,6 +51,10 @@ def record(leaked:str,clean:str='',categories:Optional[List[str]]=None,source:st
     sigs=_signatures_from(leaked)
     rec={'ts':time.time(),'iso':time.strftime('%Y-%m-%dT%H:%M:%S'),'source':source,'categories':sorted(set(categories or [])),'leaked':leaked[:400],'clean_preview':_norm(clean)[:120],'signatures':sigs,'hash':hashlib.sha256(leaked.encode('utf-8','ignore')).hexdigest()[:12]}
     try:
+        from amni.serve.reffelt_tag import tag_record
+        _t=tag_record(_norm(clean) or leaked,extra_tags=['thinking_process_leak']);rec['tags']=_t['tags'];rec['nonce']=_t['nonce']
+    except Exception:pass
+    try:
         with _LOCK:
             with _ledger_path().open('a',encoding='utf-8') as fh:fh.write(json.dumps(rec,ensure_ascii=False)+'\n')
             s=_load_sigs()

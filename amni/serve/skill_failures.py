@@ -10,6 +10,10 @@ def _log_path()->Path:
     p=_repo_root()/_LOG_REL;p.parent.mkdir(parents=True,exist_ok=True);return p
 def record(skill:str,message:str,args:Dict[str,Any],error:str,tb:Optional[str]=None,extra:Optional[Dict[str,Any]]=None)->Dict[str,Any]:
     rec={'ts':time.time(),'iso':time.strftime('%Y-%m-%dT%H:%M:%S',time.localtime()),'skill':skill,'message':(message or '')[:400],'args':args,'error':(error or '')[:600]}
+    try:
+        from amni.serve.reffelt_tag import tag_record
+        _t=tag_record((skill or '')+' '+(message or ''),extra_tags=[skill] if skill else None);rec['tags']=_t['tags'];rec['nonce']=_t['nonce']
+    except Exception:pass
     if tb:rec['tb']=(tb or '')[:1500]
     if extra:rec['extra']=extra
     try:

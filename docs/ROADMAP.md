@@ -161,3 +161,24 @@ WEEK 12+:  Benchmarks, public launch, integrate with robot chassis (separate roa
 ```
 
 Voice + coder can ship without HUD. HUD is the most visible but least functional of the three.
+
+---
+
+## Tier 4 (added 2026-05-26): AR/XR/VR spatial embodiment
+
+**Goal:** Adam steps off the 2D screen into spatial computing — the natural extension of Law 4 (Ascend: 2D → 3D embodiment). The PT Coach pose pipeline (v6.10.114–115) is the bridge: body-landmark understanding is already the hard part of spatial interaction.
+
+**Why now on the roadmap:** the camera + MediaPipe-Pose work means Adam already reasons about a human body in 3D space. AR/XR/VR is the surface that makes that reciprocal — Adam *projected into* the user's space.
+
+**Phases (each depends on the prior):**
+- **AR overlay (phone/tablet, WebXR `immersive-ar`)** — render the PT Coach skeleton + rep/angle HUD as a world-anchored overlay on the live camera, not a 2D panel. Reuse `/vision/pose/*`; swap the canvas for a WebXR layer. Lowest lift — the data already flows.
+- **Spatial widgets** — the Jarvis-style inline widgets (weather, system, news) become floating world-anchored cards in `immersive-ar`; gaze/pinch to summon, the existing gesture pipeline (`@mediapipe/hands`) drives selection.
+- **VR coach room (`immersive-vr`, Quest/Index)** — a calibrated room where Adam demonstrates exercise form on an avatar and the user mirrors it; full-body landmarks scored against a reference pose, real-time angle feedback in 3D.
+- **Persona presence** — the active persona (Rikku et al.) gets a minimal 3D avatar/voice anchor in-scene; persona system + TTS already exist, this is the spatial body.
+- **PTEX as spatial memory** — world-anchored notes/reminders/bookmarks placed in the room, addressed by Reffelt context-nonce (v6.10.118) so the right memory surfaces in the right physical spot.
+
+**Hard constraints carried in:** all PII rules hold (no body-scan or location data leaves the box — extends the v6.10.116 egress choke-point to spatial sensors); the 5 Immutable Laws are untouched; personas respected in-scene; thought-process never bleeds into the spatial HUD.
+
+**Tech:** WebXR Device API (browser-native, no app-store gate), Three.js (already loaded for Amni-Life), MediaPipe Pose/Hands (already wired), WebXR Hit Test + Anchors for world placement. Standalone-headset path later via the same WebXR layer on Quest browser.
+
+**Sequencing:** after Tier 2 (HUD) — spatial widgets reuse the widget protocol. AR overlay phase can overlap Tier 2 since it only needs the pose endpoints, which already ship.
