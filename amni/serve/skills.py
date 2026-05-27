@@ -872,6 +872,25 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='pending':return _pca.list_pending()
         if action=='audit':return _pca.audit_recent(limit=int(args.get('limit',30)))
         return {'error':f'unknown action {action!r}; valid: propose|confirm|cancel|pending|audit'}
+    def _skill_coding_ledger(args,ctx,reg_):
+        """Record/recall coding attempts so retries do better. Actions: record (task, outcome?, approach?, errors?, lesson?, success?, files?) | recall (task) | brief (task) | stats | commit."""
+        try:from amni.serve import coding_ledger as _cl
+        except Exception as e:return {'error':f'coding_ledger unavailable: {e}'}
+        action=str(args.get('action') or 'stats').lower().strip()
+        sid=''
+        try:
+            if ctx.get('conv'):sid=ctx['conv'].session_id or ''
+        except Exception:pass
+        if action=='record':
+            errs=args.get('errors');errs=errs if isinstance(errs,list) else ([str(errs)] if errs else None)
+            fls=args.get('files');fls=fls if isinstance(fls,list) else ([str(fls)] if fls else None)
+            return _cl.record(task=str(args.get('task') or ''),outcome=str(args.get('outcome') or ''),approach=str(args.get('approach') or ''),errors=errs,lesson=str(args.get('lesson') or ''),success=args.get('success'),files=fls,session_id=sid)
+        if action=='recall':return {'attempts':_cl.recall(str(args.get('task') or ''),k=int(args.get('k',3))),'prior':_cl.attempts_for(str(args.get('task') or ''))}
+        if action=='brief':return {'brief':_cl.brief(str(args.get('task') or ''))}
+        if action=='stats':return _cl.stats()
+        if action=='commit':return _cl.commit_to_ptex(adam=ctx.get('adam'))
+        return {'error':f'unknown action {action!r}; valid: record|recall|brief|stats|commit'}
+    reg.register('coding_ledger',_skill_coding_ledger,desc='Coding-attempt learning loop: so a 2nd attempt beats the 1st. Actions: record (task, outcome?, approach?, errors?, lesson?, success?, files?) | recall (task — prior attempts ranked by Reffelt-nonce relevance) | brief (task) | stats | commit (to PTEX). Records persist to data/coding_attempts.jsonl + lessons/coding_attempts_ptex; surfaced pre-response.',schema={'action':'str?','task':'str?','outcome':'str?','approach':'str?','errors':'list?','lesson':'str?','success':'bool?','files':'list?','k':'int?'})
     def _skill_code_index(args,ctx,reg_):
         """Train Adam on a codebase: build a PTEX-backed map of files+symbols, then query it. Actions: build (root?) | query (term) | semantic (q) | file (path) | stats."""
         try:from amni.serve import code_index as _ci

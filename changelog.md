@@ -2,6 +2,25 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.129 — Coding-attempt ledger: Adam's 2nd attempt learns from the 1st (PTEX, retry-aware) (2026-05-26)
+
+Directive: *"confirmation that it stores learnings, errors, debugs… so that if it attempts a second approach, it does a better job. The map should be ptex files."* This is that loop.
+
+### New `amni/serve/coding_ledger.py` + `coding_ledger` skill
+Every coding attempt records **task → attempt# → approach → outcome → errors/debug → lesson → success** to append-only `data/coding_attempts.jsonl`, **committed to PTEX** at `lessons/coding_attempts_ptex` (task → lesson cells). Each record is **Reffelt-nonce + tag tagged**, so attempts on the *same* task cluster.
+- `record(task, outcome?, approach?, errors?, lesson?, success?, files?)` — auto-computes attempt# (counts prior same-nonce attempts, so attempt #2 knows it's #2).
+- `recall(task)` — prior attempts ranked by Reffelt-nonce relevance; `brief(task)` — compact "do better than before" summary; `attempts_for(task)`, `stats()`.
+- Skill actions: `record | recall | brief | stats | commit`.
+
+### Wired into the pre-response loop (the part that makes retry #2 better)
+- **`pre_response_review.review()` now recalls prior coding attempts** and injects them into the system prompt *before generation*: `PRIOR ATTEMPTS at a similar task — do better than before: #1✗ lesson: …`. So when Adam re-approaches a task, it literally reads what failed last time first.
+- `LearningDaemon` auto-commits the ledger to PTEX on its hourly tick (alongside the leak ledger), reusing Adam's encoder — the loop self-persists.
+- `GET /memory/coding-attempts?task=` for inspection.
+
+**The full software-engineer loop is now closed:** locate (code_index, v128) → edit (code_edit/diff) → verify (test_run/edit_verifier) → **learn (coding_ledger)** → recall-before-retry (review) → do better.
+
+15/15 new tests pass (record, attempt-counter, recall + relevance ranking, brief, stats success/fail/retry, min-new gate, PTEX commit with encoder, skill flow, **review surfaces prior attempts**, daemon wiring, endpoint); review (25/25) + code_index (14/14) regressions green.
+
 ## v6.10.128 — code_index: train Adam on a codebase, PTEX-backed map (Adam-as-software-engineer, step 1) (2026-05-26)
 
 Directive: *"Adam must become a software engineer capable of continuous coding… I'll test it by training it on my ai folder + all subfolders, then a complex task… and the map should be ptex files."* This is the **locate** foundation of the coding loop (locate → edit → verify → iterate).
