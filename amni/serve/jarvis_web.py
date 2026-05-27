@@ -785,6 +785,23 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #pclog-panel .pl-st.proposed{color:var(--cyan);border-color:var(--cyan)}
 #pclog-panel .pl-pending{margin:8px 0 4px;font-size:8.5px;letter-spacing:.2em;color:#ffe066;text-transform:uppercase}
 #pclog-panel .pl-empty{color:var(--mute);font-size:10px;text-align:center;padding:10px}
+#se-panel{position:fixed;top:60px;right:24px;width:340px;max-height:74vh;overflow-y:auto;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(0,229,255,.4);border-radius:4px;box-shadow:0 0 24px rgba(0,229,255,.2);backdrop-filter:blur(8px);padding:13px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
+#se-panel.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#se-panel.td-hidden{display:block}
+#se-panel .se-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(0,229,255,.18);margin-bottom:10px;font-size:9.5px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;text-shadow:0 0 4px var(--cyan)}
+#se-panel .se-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#se-panel .se-close:hover{color:var(--err);border-color:var(--err)}
+#se-panel .se-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+#se-panel .se-stat{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.16);border-radius:4px;padding:8px;text-align:center}
+#se-panel .se-stat .v{font-size:19px;color:var(--cyan);text-shadow:0 0 6px var(--cyan);line-height:1;font-family:JetBrains Mono,monospace}
+#se-panel .se-stat .l{font-size:7.5px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;margin-top:4px}
+#se-panel .se-sec{font-size:8.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin:6px 0 5px;border-top:1px solid rgba(0,229,255,.08);padding-top:7px}
+#se-panel .se-bar{height:6px;background:rgba(0,0,0,.35);border-radius:3px;overflow:hidden;margin-top:4px}
+#se-panel .se-bar .fill{height:100%;background:linear-gradient(90deg,var(--ok),var(--cyan));box-shadow:0 0 6px var(--cyan)}
+#se-panel .se-run{font-size:10px;color:var(--fg);padding:4px 4px;border-bottom:1px solid rgba(0,229,255,.07);font-family:JetBrains Mono,monospace;display:flex;gap:8px}
+#se-panel .se-run .id{color:var(--cyan)}
+#se-panel .se-langs{font-size:9px;color:var(--mute);letter-spacing:.04em;margin-top:4px}
+#se-panel .se-empty{color:var(--mute);font-size:10px;text-align:center;padding:8px}
 #train-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:15;background:rgba(8,14,28,.97);border:1px solid var(--magenta);border-radius:6px;padding:18px;box-shadow:0 0 40px rgba(255,77,200,.4);display:none;font-family:inherit}
 #train-modal.show{display:block}
 #train-modal h3{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 6px var(--magenta);margin:0 0 14px;text-align:center}
@@ -969,6 +986,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div class="td-grid">
       <button class="td-btn" id="coach-toggle" type="button" onclick="toggleCoachPanel()" title="Ask-answer-ask coaching session">COACH</button>
       <button class="td-btn" id="mem-toggle" type="button" onclick="toggleMem()" title="Inspect what Adam knows">MEMORY</button>
+      <button class="td-btn" id="se-toggle" type="button" onclick="toggleSePanel()" title="Software-engineer dashboard: code map + coding attempts + open runs">SW ENG</button>
     </div>
   </div>
   <div class="td-section">
@@ -1187,6 +1205,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   <div class="pl-head"><span>◆ PC ACTION LOG</span><span class="pl-close" onclick="togglePcLogPanel(false)">CLOSE</span></div>
   <div class="pl-summary" id="pl-summary">loading…</div>
   <div id="pl-rows"></div>
+</div>
+<div id="se-panel" class="td-hidden">
+  <div class="se-head"><span>◆ SOFTWARE ENGINEER</span><span class="se-close" onclick="toggleSePanel(false)">CLOSE</span></div>
+  <div id="se-body"><div class="se-empty">loading…</div></div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
@@ -1772,6 +1794,7 @@ const _SLASH_COMMANDS=[
   {cmd:'reminders',hint:'open reminders panel'},
   {cmd:'perms',hint:'location/mic/camera/notification permissions'},
   {cmd:'pclog',hint:'PC action audit log (proposed/ran/refused)'},
+  {cmd:'se',hint:'software-engineer dashboard (code map + attempts)'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
 function _slashAcRender(){
@@ -1862,7 +1885,37 @@ function _handleSlashCommand(text){
   if(cmd==='reminders'){toggleRemindersPanel(true);return true}
   if(cmd==='perms'){togglePermsPanel(true);return true}
   if(cmd==='pclog'){togglePcLogPanel(true);return true}
+  if(cmd==='se'){toggleSePanel(true);return true}
   return false;
+}
+let _seOpen=false;
+function toggleSePanel(force){
+  const open=(typeof force==='boolean')?force:!_seOpen;_seOpen=open;
+  const el=document.getElementById('se-panel');if(el)el.classList.toggle('show',open);
+  if(open)_seRefresh();
+}
+async function _seRefresh(){
+  const body=document.getElementById('se-body');if(!body)return;
+  try{
+    const j=await(await fetch('/memory/se-dashboard')).json();
+    const ci=j.code_index||{};const c=j.coding||{};const runs=j.open_runs||[];
+    const rate=c.success_rate_pct||0;
+    let html='<div class="se-grid">';
+    html+='<div class="se-stat"><div class="v">'+(ci.built?(ci.n_files||0):'—')+'</div><div class="l">files mapped</div></div>';
+    html+='<div class="se-stat"><div class="v">'+(ci.built?(ci.n_symbols||0):'—')+'</div><div class="l">symbols</div></div>';
+    html+='<div class="se-stat"><div class="v">'+(c.total||0)+'</div><div class="l">coding attempts</div></div>';
+    html+='<div class="se-stat"><div class="v">'+rate+'%</div><div class="l">success rate</div></div>';
+    html+='</div>';
+    if(ci.built&&ci.languages){const ls=Object.entries(ci.languages).slice(0,6).map(([k,v])=>esc(k)+' '+v).join(' · ');html+='<div class="se-langs">'+ls+(ci.iso?' · indexed '+esc(ci.iso.replace("T"," ").slice(5,16)):'')+'</div>'}
+    else{html+='<div class="se-empty">No code map yet — say <b>code_index build</b> or train Adam on a folder.</div>'}
+    html+='<div class="se-sec">attempts</div>';
+    html+='<div class="se-bar"><div class="fill" style="width:'+rate+'%"></div></div>';
+    html+='<div class="se-langs">'+(c.succeeded||0)+' passed · '+(c.failed||0)+' failed · '+(c.retried_attempts||0)+' retries</div>';
+    html+='<div class="se-sec">open runs</div>';
+    if(runs.length){for(const r of runs){html+='<div class="se-run"><span class="id">'+esc(r.run_id||'')+'</span><span>'+esc((r.task||'').slice(0,40))+' · #'+(r.attempt||1)+'</span></div>'}}
+    else{html+='<div class="se-empty">No open runs. Start one with <b>code this: &lt;task&gt;</b>.</div>'}
+    body.innerHTML=html;
+  }catch(e){body.innerHTML='<div class="se-empty">dashboard unavailable: '+esc(e.message)+'</div>'}
 }
 let _pcLogOpen=false;
 function togglePcLogPanel(force){
