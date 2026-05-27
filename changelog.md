@@ -2,6 +2,16 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.126 — PC-action audit panel: see everything Adam proposed / ran / refused (2026-05-26)
+
+Completes the trust story before any input-control lands — full transparency on the propose→confirm gate.
+
+- New `GET /memory/pc-actions` returns `audit_recent()` (totals + by-status + recent rows from `logs/pc_actions.jsonl`) plus current `pending` actions.
+- **PC LOG** button in the TOOLS drawer → SESSION (+ `/pclog` slash command) opens a gold panel: a one-line summary (`N logged · X ran · Y refused · Z cancelled`), a **pending** section for actions awaiting confirm, and a scrollable history with status-coloured badges (executed=green, refused=red, cancelled/expired=amber, proposed=cyan), timestamp, action, and target. Empty state reassures: "Adam asks before doing anything on your machine."
+- Broad regression sweep this iteration: **all 13 session suites green — 259 tests, zero cross-iteration drift** (notes 25, pose 37+16, pii-egress 23, leak 23, review 25+12, search 18, perms 14, chat-bridge 15, pc-actions 24, confirm-widget 14, screenshot 13).
+
+13/13 new tests pass (panel + button + slash + JS fns + endpoint fetch + status classes + pending + empty state + node `--check` + endpoint mounted + audit shape); no regressions.
+
 ## v6.10.125 — Screenshot → local-vision action: Adam can see your screen, on-box (2026-05-26)
 
 The perception half of computer-use (Tier 5b), built privacy-first: Adam can *see* the screen but the image never leaves the machine.

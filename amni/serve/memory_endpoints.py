@@ -133,6 +133,10 @@ def mount(app,agent):
     def thinking_leaks(limit:int=30):
         from amni.serve.leak_ledger import stats
         return stats(limit=limit)
+    @app.get('/memory/pc-actions')
+    def pc_actions_audit(limit:int=30):
+        from amni.serve.pc_actions import audit_recent,list_pending
+        return {**audit_recent(limit=limit),'pending':list_pending().get('pending',[])}
     @app.get('/memory/review')
     def pre_response_review(q:str=''):
         from amni.serve.pre_response_review import review

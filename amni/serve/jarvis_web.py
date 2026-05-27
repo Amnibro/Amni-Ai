@@ -767,6 +767,24 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 #perms-panel .pm-grant{font-size:9px;padding:4px 10px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.05);color:var(--cyan);cursor:pointer;border-radius:3px;letter-spacing:.12em;font-family:inherit}
 #perms-panel .pm-grant:hover{background:rgba(0,229,255,.16)}
 #perms-panel .pm-foot{font-size:8.5px;color:var(--mute);margin-top:9px;line-height:1.45;letter-spacing:.02em}
+#pclog-panel{position:fixed;top:60px;right:24px;width:360px;max-height:74vh;overflow-y:auto;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(255,224,102,.35);border-radius:4px;box-shadow:0 0 24px rgba(255,224,102,.16);backdrop-filter:blur(8px);padding:12px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
+#pclog-panel.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#pclog-panel.td-hidden{display:block}
+#pclog-panel .pl-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(255,224,102,.18);margin-bottom:8px;font-size:9.5px;letter-spacing:.3em;color:#ffe066;text-transform:uppercase;text-shadow:0 0 4px #ffe066}
+#pclog-panel .pl-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(255,224,102,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#pclog-panel .pl-close:hover{color:var(--err);border-color:var(--err)}
+#pclog-panel .pl-summary{font-size:9px;color:var(--mute);letter-spacing:.05em;margin-bottom:8px}
+#pclog-panel .pl-row{display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid rgba(255,224,102,.07);font-size:10px}
+#pclog-panel .pl-row:last-child{border-bottom:none}
+#pclog-panel .pl-when{color:var(--mute);font-size:8px;font-family:JetBrains Mono,monospace;white-space:nowrap}
+#pclog-panel .pl-act{color:var(--fg);font-family:JetBrains Mono,monospace;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pclog-panel .pl-st{font-size:7px;letter-spacing:.14em;text-transform:uppercase;padding:2px 6px;border-radius:9px;border:1px solid var(--mute);color:var(--mute);white-space:nowrap}
+#pclog-panel .pl-st.executed{color:var(--ok);border-color:var(--ok)}
+#pclog-panel .pl-st.refused{color:var(--err);border-color:var(--err)}
+#pclog-panel .pl-st.cancelled,#pclog-panel .pl-st.expired{color:#ffb347;border-color:#ffb347}
+#pclog-panel .pl-st.proposed{color:var(--cyan);border-color:var(--cyan)}
+#pclog-panel .pl-pending{margin:8px 0 4px;font-size:8.5px;letter-spacing:.2em;color:#ffe066;text-transform:uppercase}
+#pclog-panel .pl-empty{color:var(--mute);font-size:10px;text-align:center;padding:10px}
 #train-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:15;background:rgba(8,14,28,.97);border:1px solid var(--magenta);border-radius:6px;padding:18px;box-shadow:0 0 40px rgba(255,77,200,.4);display:none;font-family:inherit}
 #train-modal.show{display:block}
 #train-modal h3{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--magenta);text-shadow:0 0 6px var(--magenta);margin:0 0 14px;text-align:center}
@@ -958,6 +976,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
     <div class="td-grid">
       <button class="td-btn" id="export-btn" type="button" onclick="_exportChatMd()" title="Download this conversation as Markdown">EXPORT</button>
       <button class="td-btn" id="perms-btn" type="button" onclick="togglePermsPanel()" title="Location, microphone, camera + notification permissions">PERMISSIONS</button>
+      <button class="td-btn" id="pclog-btn" type="button" onclick="togglePcLogPanel()" title="Audit log of every PC action Adam proposed/ran/refused">PC LOG</button>
     </div>
   </div>
 </div>
@@ -1163,6 +1182,11 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   <div class="pm-row" data-perm="camera"><div class="pm-info"><span class="pm-name">📷 Camera</span><span class="pm-why">gestures + PT form coaching</span></div><span class="pm-state" id="pm-state-camera">—</span><button class="pm-grant" onclick="_permsRequest('camera')">GRANT</button></div>
   <div class="pm-row" data-perm="notifications"><div class="pm-info"><span class="pm-name">🔔 Notifications</span><span class="pm-why">due reminders when tabbed away</span></div><span class="pm-state" id="pm-state-notifications">—</span><button class="pm-grant" onclick="_permsRequest('notifications')">GRANT</button></div>
   <div class="pm-foot">Granted locally in your browser. Adam never sends raw location, audio, or video off-box — only PII-scrubbed search text ever leaves.</div>
+</div>
+<div id="pclog-panel" class="td-hidden">
+  <div class="pl-head"><span>◆ PC ACTION LOG</span><span class="pl-close" onclick="togglePcLogPanel(false)">CLOSE</span></div>
+  <div class="pl-summary" id="pl-summary">loading…</div>
+  <div id="pl-rows"></div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
@@ -1747,6 +1771,7 @@ const _SLASH_COMMANDS=[
   {cmd:'bookmarks',hint:'list recent starred replies'},
   {cmd:'reminders',hint:'open reminders panel'},
   {cmd:'perms',hint:'location/mic/camera/notification permissions'},
+  {cmd:'pclog',hint:'PC action audit log (proposed/ran/refused)'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
 function _slashAcRender(){
@@ -1836,7 +1861,33 @@ function _handleSlashCommand(text){
   if(cmd==='bookmarks'){_bookmarksShow();return true}
   if(cmd==='reminders'){toggleRemindersPanel(true);return true}
   if(cmd==='perms'){togglePermsPanel(true);return true}
+  if(cmd==='pclog'){togglePcLogPanel(true);return true}
   return false;
+}
+let _pcLogOpen=false;
+function togglePcLogPanel(force){
+  const open=(typeof force==='boolean')?force:!_pcLogOpen;_pcLogOpen=open;
+  const el=document.getElementById('pclog-panel');if(el)el.classList.toggle('show',open);
+  if(open)_pcLogRefresh();
+}
+async function _pcLogRefresh(){
+  const rows=document.getElementById('pl-rows'),sum=document.getElementById('pl-summary');
+  try{
+    const j=await(await fetch('/memory/pc-actions?limit=40')).json();
+    const by=j.by_status||{};
+    if(sum)sum.textContent=(j.total||0)+' logged · '+(by.executed||0)+' ran · '+(by.refused||0)+' refused · '+(by.cancelled||0)+' cancelled';
+    let html='';
+    const pend=j.pending||[];
+    if(pend.length){html+='<div class="pl-pending">awaiting confirm</div>';for(const p of pend){html+='<div class="pl-row"><span class="pl-st proposed">pending</span><span class="pl-act">['+esc(p.risk||'?')+'] '+esc(p.action||'?')+': '+esc((p.target||'').slice(0,60))+'</span></div>'}}
+    const recent=j.recent||[];
+    if(!recent.length&&!pend.length){rows.innerHTML='<div class="pl-empty">No PC actions yet. Adam asks before doing anything on your machine.</div>';return}
+    for(const r of recent){
+      const st=esc(r.status||'?');const when=esc((r.iso||'').replace('T',' ').slice(5,16));
+      const tgt=esc((r.target||'').slice(0,60));const act=esc(r.action||'?');
+      html+='<div class="pl-row"><span class="pl-when">'+when+'</span><span class="pl-st '+st+'">'+st+'</span><span class="pl-act">'+act+(tgt?': '+tgt:'')+'</span></div>';
+    }
+    rows.innerHTML=html;
+  }catch(e){if(rows)rows.innerHTML='<div class="pl-empty">log unavailable: '+esc(e.message)+'</div>'}
 }
 let _permsOpen=false;
 function togglePermsPanel(force){
