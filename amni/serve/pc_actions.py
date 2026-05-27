@@ -10,7 +10,7 @@ _PENDING:Dict[str,Dict[str,Any]]={}
 _LOCK=threading.Lock()
 _TTL=300.0
 _DENY=re.compile(r'(?i)(?:\brm\s+-rf\b|\brmdir\s+/s\b|\bdel\s+/[sq]\b|\bformat\s+[a-z]:|\bmkfs\b|\bdd\s+if=|\bshutdown\b|\breboot\b|:\(\)\s*\{|\bfork\s*bomb\b|\breg\s+delete\b|\bdiskpart\b|\bdrop\s+(?:table|database)\b|>\s*/dev/sd)')
-_RISK={'echo':'low','notify':'low','open_url':'low','open_path':'medium','launch_app':'medium','screenshot':'medium','run':'high'}
+_RISK={'echo':'low','notify':'low','open_url':'low','open_path':'medium','launch_app':'medium','screenshot':'medium','type_text':'high','press_key':'high','click':'high','run':'high'}
 def _audit_path()->Path:
     p=Path(__file__).resolve().parents[2]/'logs'/'pc_actions.jsonl';p.parent.mkdir(parents=True,exist_ok=True);return p
 def _audit(rec:Dict[str,Any]):
@@ -52,9 +52,37 @@ def _exec_screenshot(t,a):
             im=ImageGrab.grab();im.save(str(path));w,h=im.size
         except Exception as e:return {'error':f'screenshot capture unavailable (need mss or Pillow ImageGrab): {e}'}
     return {'screenshot_path':str(path),'width':w,'height':h,'bytes':path.stat().st_size if path.exists() else 0}
-_EXECUTORS={'echo':_exec_echo,'notify':_exec_notify,'open_url':_exec_open_url,'open_path':_exec_open_path,'launch_app':_exec_launch,'screenshot':_exec_screenshot,'run':_exec_run}
+def _pyautogui():
+    import pyautogui as _pg
+    _pg.FAILSAFE=True
+    return _pg
+def _exec_type_text(t,a):
+    try:pg=_pyautogui()
+    except Exception as e:return {'error':f'input simulation unavailable (need pyautogui): {e}'}
+    interval=float((a or {}).get('interval',0.0)) if isinstance(a,dict) else 0.0
+    pg.write(t,interval=interval)
+    return {'typed_chars':len(t)}
+def _exec_press_key(t,a):
+    try:pg=_pyautogui()
+    except Exception as e:return {'error':f'input simulation unavailable (need pyautogui): {e}'}
+    keys=[k.strip().lower() for k in re.split(r'[+\s]+',t) if k.strip()]
+    if len(keys)>1:pg.hotkey(*keys)
+    else:pg.press(keys[0] if keys else t)
+    return {'pressed':keys or [t]}
+def _exec_click(t,a):
+    try:pg=_pyautogui()
+    except Exception as e:return {'error':f'input simulation unavailable (need pyautogui): {e}'}
+    a=a or {};x=a.get('x');y=a.get('y')
+    if x is None or y is None:
+        m=re.match(r'\s*(\d+)\s*,\s*(\d+)\s*$',t or '')
+        if m:x,y=int(m.group(1)),int(m.group(2))
+    button=str(a.get('button','left'));clicks=int(a.get('clicks',1))
+    if x is not None and y is not None:pg.click(x=int(x),y=int(y),clicks=clicks,button=button)
+    else:pg.click(clicks=clicks,button=button)
+    return {'clicked':{'x':x,'y':y,'button':button,'clicks':clicks}}
+_EXECUTORS={'echo':_exec_echo,'notify':_exec_notify,'open_url':_exec_open_url,'open_path':_exec_open_path,'launch_app':_exec_launch,'screenshot':_exec_screenshot,'type_text':_exec_type_text,'press_key':_exec_press_key,'click':_exec_click,'run':_exec_run}
 def _describe(action,target,risk):
-    verb={'echo':'echo','notify':'show a desktop notification','open_url':'open in your browser','open_path':'open with the default app','launch_app':'launch the program','screenshot':'capture your screen and describe it locally','run':'run the shell command'}.get(action,action)
+    verb={'echo':'echo','notify':'show a desktop notification','open_url':'open in your browser','open_path':'open with the default app','launch_app':'launch the program','screenshot':'capture your screen and describe it locally','type_text':'type (into whatever window is focused)','press_key':'press the key(s)','click':'click at','run':'run the shell command'}.get(action,action)
     return f'[{risk.upper()} RISK] Adam wants to {verb}: {target[:160]}'
 def propose(action:str,target:str,args:Optional[Dict[str,Any]]=None)->Dict[str,Any]:
     action=(action or '').lower().strip()

@@ -2,6 +2,18 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.127 — Input simulation (type/press/click) closes see→confirm→act; Adam-micro on roadmap (2026-05-26)
+
+### Computer-use action half (Tier 5b)
+Three new `pc_action` executors — `type_text`, `press_key`, `click` — via `pyautogui` (FAILSAFE on), each **high-risk and behind the same propose→confirm→audit gate** as everything else. With screenshot (v6.10.125) as the *see* step, confirm widget (v6.10.124) as the *confirm* step, this is the *act* step: **see → confirm → act**.
+- `type_text` target = text to type; `press_key` target = key or combo (`ctrl+c` → hotkey, `enter` → press); `click` target = `"x,y"` or args `{x,y,button,clicks}`.
+- **Destructive denylist applies to typed text** — proposing to type `rm -rf /` is refused outright (tested). Graceful clean error when `pyautogui` isn't installed. Skill desc nudges "screenshot first so you can see the target."
+
+### Roadmap Tier 6 — Adam-micro (phone / home hub / watch)
+Per *"can we add Adam-micro to the future path — something even a phone/home/watch can run."* Framed as the PTEX sliding-rule vision realized on the smallest hardware: d3 resident + d2/d1/d0 flash-streamed, TMU-first lookups on mobile NPU (CPU-LUT fallback), federated PII-scrubbed deltas via Amni-Prism while personal facts stay on-device. Tiers: 6a phone (Android wrapper), 6b home hub (always-on, LAN-bridges to full Adam), 6c watch (d3-only, glanceable, hands off when it can't answer). The 5 Immutable Laws ship baked into every tier — can't be stripped to save space.
+
+14/14 new tests pass (high-risk levels, executors registered, type confirm-gated, **destructive-typed-text refused**, combo/coord parsing, args override, pyautogui-absent graceful, skill flow, Adam-micro roadmap + laws); pc-actions (24/24) + screenshot (13/13) regressions green.
+
 ## v6.10.126 — PC-action audit panel: see everything Adam proposed / ran / refused (2026-05-26)
 
 Completes the trust story before any input-control lands — full transparency on the propose→confirm gate.
