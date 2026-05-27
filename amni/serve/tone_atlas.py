@@ -80,14 +80,18 @@ def sample_closer(category:str,warmth:float,formality:float,excitement:float,see
     if not bucket:return ''
     return bucket[_hash_idx(seed or category+'_close',len(bucket))]
 def _strip_thinking_process(text:str)->str:
-    """Remove meta-reasoning leakage (Thinking Process:, numbered RESTATE/APPROACH/FIRST SHOT lists, etc.).
-    These patterns are explicitly banned in the tool_discipline prompt but some models leak them anyway."""
+    """Remove meta-reasoning + tool-narration leakage. The tool_discipline prompt bans these
+    but models leak them anyway; this is the server-side safety net."""
     if not text:return text
     import re as _re
     t=_re.sub(r'(?is)\n*(?:thinking\s*process|thought)\s*:?\s*\n.*?(?=\n\s*\n[^\d\s*•\-]|\Z)','',text)
     t=_re.sub(r'(?im)^\s*\d+\.\s+(?:analyze|check|determine|formulate|apply|final\s+output|self-correction|refinement)\b.*$\n?','',t)
     t=_re.sub(r'(?im)^\s*\*\s*(?:restate|knowns|approach|first\s+shot|critique|refine)\s*:.*$\n?','',t)
     t=_re.sub(r'(?im)^\s*-?\s*(?:restate|knowns|approach|first\s+shot|critique|refine)\s*:.*$\n?','',t)
+    t=_re.sub(r'(?im)^\s*\[(?:looked|looked\s+it\s+up|search(?:\s+performed)?|searching|searched|presenting|current\s+(?:weather|system|time|news|data)\s*(?:data|info|results?)?|inserting[^\]]*|result\s+of[^\]]*|the\s+system\s+(?:returns?|outputs?)[^\]]*|output|outputs|simulating|waiting[^\]]*|assuming[^\]]*)\][:.]?\s*\n?',' ',t)
+    t=_re.sub(r'(?im)\s*\[(?:looked|looked\s+it\s+up|search(?:\s+performed)?|searching|searched|presenting|current\s+(?:weather|system|time|news|data)\s*(?:data|info|results?)?|simulating|output)\]\s*',' ',t)
+    t=_re.sub(r'(?im)^\s*\((?:outputting[^)]*|search\s+returns?[^)]*|simulating[^)]*|waiting[^)]*|assuming[^)]*)\)\s*\n?',' ',t)
+    t=_re.sub(r'(?m)[ \t]+$','',t)
     t=_re.sub(r'\n{3,}','\n\n',t)
     return t.strip() or text
 def wrap(answer:str,category:str,persona,seed:str='')->str:
