@@ -250,6 +250,23 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 .bm-row .bm-q{color:var(--mute);font-style:italic;font-size:10px}
 .bm-row .bm-a{color:var(--fg);margin-top:3px}
 .bm-row .bm-note{color:#ffd770;margin-top:3px;font-size:10px}
+#reminders-panel{position:fixed;top:60px;right:24px;width:380px;z-index:12;background:rgba(8,14,28,.96);border:1px solid rgba(0,229,255,.35);border-radius:4px;box-shadow:0 0 24px rgba(0,229,255,.18);backdrop-filter:blur(8px);padding:12px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
+#reminders-panel.show{transform:translateY(0);opacity:1;pointer-events:auto}
+#reminders-panel.td-hidden{display:block}
+#reminders-panel .sp-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(0,229,255,.18);margin-bottom:8px;font-size:9.5px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;text-shadow:0 0 4px var(--cyan)}
+#reminders-panel .sp-close{cursor:pointer;color:var(--mute);padding:1px 7px;border:1px solid rgba(0,229,255,.22);border-radius:3px;font-size:9px;letter-spacing:.18em}
+#reminders-panel .sp-close:hover{color:var(--err);border-color:var(--err)}
+.rm-row{margin:6px 0;padding:7px 9px;background:rgba(0,229,255,.04);border-left:2px solid rgba(0,229,255,.4);border-radius:0 3px 3px 0;font-size:10.5px;line-height:1.5;font-family:JetBrains Mono,monospace}
+.rm-row.rm-due{background:rgba(255,91,91,.06);border-left-color:#ff5b5b;animation:rmDuePulse 1.8s ease-in-out infinite}
+@keyframes rmDuePulse{0%,100%{box-shadow:0 0 4px rgba(255,91,91,.2)}50%{box-shadow:0 0 12px rgba(255,91,91,.5)}}
+.rm-row .rm-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.rm-row .rm-icon{font-size:11px;color:var(--cyan);width:14px;text-align:center}
+.rm-row.rm-due .rm-icon{color:#ff7b7b;font-weight:bold}
+.rm-row .rm-due-iso{font-size:9.5px;letter-spacing:.1em;color:var(--mute);flex:1}
+.rm-row.rm-due .rm-due-iso{color:#ffb7b7}
+.rm-row .rm-del{background:rgba(0,255,156,.05);border:1px solid rgba(0,255,156,.25);color:#00ff9c;font-size:11px;padding:1px 8px;border-radius:2px;cursor:pointer;font-family:inherit;line-height:1}
+.rm-row .rm-del:hover{background:rgba(0,255,156,.18);border-color:#00ff9c;box-shadow:0 0 8px rgba(0,255,156,.3)}
+.rm-row .rm-text{color:var(--fg);font-style:italic}
 #tools-toggle{padding:8px 12px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.22);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.22em;cursor:pointer;border-radius:3px;transition:all .15s}
 #tools-toggle:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.1)}
 #tools-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.12)}
@@ -801,6 +818,15 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
       <div class="sp-row" id="sp-shell-row" onclick="toggleStatusPanel();toggleShellPanel()"><span class="sp-led-inline" id="sh-led"></span><span class="sp-name" id="sh-text">shell —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-skill-failures-row" onclick="toggleStatusPanel();_skillFailuresShow()"><span class="sp-led-inline" id="sfl-led"></span><span class="sp-name" id="sfl-text">skill failures —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-bookmarks-row" onclick="toggleStatusPanel();toggleBookmarksPanel()"><span class="sp-led-inline"></span><span class="sp-name">bookmarks ★</span><span class="sp-arrow">›</span></div>
+      <div class="sp-row" id="sp-reminders-row" onclick="toggleStatusPanel();toggleRemindersPanel()"><span class="sp-led-inline" id="rm-led"></span><span class="sp-name" id="rm-text">reminders ⏰</span><span class="sp-arrow">›</span></div>
+    </div>
+    <div id="reminders-panel" class="td-hidden">
+      <div class="sp-head"><span>⏰ REMINDERS</span><span class="sp-close" onclick="toggleRemindersPanel()">CLOSE</span></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="text" id="rmp-new" placeholder="remind me to..." style="flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.2);color:var(--fg);padding:5px 9px;border-radius:3px;font-family:inherit;font-size:11px" onkeydown="if(event.key==='Enter')_remindersAddFromPanel()">
+        <button class="pe-btn" onclick="_remindersAddFromPanel()" style="padding:5px 12px">ADD</button>
+      </div>
+      <div id="rm-list" style="max-height:60vh;overflow-y:auto"></div>
     </div>
     <div id="bookmarks-panel" class="td-hidden">
       <div class="sp-head"><span>★ BOOKMARKS</span><span class="sp-close" onclick="toggleBookmarksPanel()">CLOSE</span></div>
@@ -1210,6 +1236,56 @@ async function _bookmarksDelete(id){
   }catch(e){bubble('bot','Delete failed: '+esc(String(e)),'<span class="badge err">bookmark</span>')}
 }
 function _bookmarksShow(){toggleBookmarksPanel(true)}
+let _remindersPanelOpen=false;let _remindersData=[];let _remindersDueIds=new Set();
+function toggleRemindersPanel(force){
+  const open=(typeof force==='boolean')?force:!_remindersPanelOpen;
+  _remindersPanelOpen=open;
+  const el=document.getElementById('reminders-panel');if(el)el.classList.toggle('show',open);
+  if(open)_remindersLoad();
+}
+async function _remindersLoad(){
+  try{
+    const r=await fetch('/memory/reminders?limit=200');if(!r.ok){_remindersData=[];_remindersPanelRender();return}
+    const j=await r.json();_remindersData=j.reminders||[];_remindersDueIds=new Set((j.due||[]).map(x=>x.id));_remindersPanelRender();
+  }catch{_remindersData=[];_remindersPanelRender()}
+}
+function _remindersPanelRender(){
+  const list=document.getElementById('rm-list');if(!list)return;
+  if(_remindersData.length===0){list.innerHTML='<div style="font-size:10px;color:var(--mute);text-align:center;padding:14px;font-style:italic">no active reminders — say "remind me to..." or use the input above</div>';return}
+  list.innerHTML=_remindersData.map(r=>{
+    const id=esc(r.id||'');const t=esc(r.text||'');const due=r.due_iso?esc(r.due_iso):'';const isDue=_remindersDueIds.has(r.id);
+    return `<div class="rm-row${isDue?' rm-due':''}" data-id="${id}"><div class="rm-head"><span class="rm-icon">${isDue?'!':'·'}</span><span class="rm-due-iso">${due||'no due'}</span><button class="rm-del" onclick="event.stopPropagation();_remindersDismiss('${id}')" title="Dismiss reminder">✓</button></div><div class="rm-text">${t}</div></div>`;
+  }).join('');
+}
+async function _remindersDismiss(id){
+  if(!id)return;
+  try{
+    const r=await fetch('/memory/reminders/'+encodeURIComponent(id)+'/dismiss',{method:'POST'});
+    if(!r.ok){bubble('bot','Dismiss failed: HTTP '+r.status,'<span class="badge err">reminder</span>');return}
+    _remindersData=_remindersData.filter(x=>x.id!==id);_remindersDueIds.delete(id);
+    _remindersPanelRender();_refreshRemindersBadge();
+  }catch(e){bubble('bot','Dismiss failed: '+esc(String(e)),'<span class="badge err">reminder</span>')}
+}
+async function _remindersAddFromPanel(){
+  const inp=document.getElementById('rmp-new');if(!inp)return;
+  const text=(inp.value||'').trim();if(!text)return;
+  try{
+    const r=await fetch('/memory/reminders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,session_id:sid||''})});
+    const j=await r.json();
+    if(!r.ok||j.error){bubble('bot','Add failed: '+esc(j.error||r.status),'<span class="badge err">reminder</span>');return}
+    inp.value='';_remindersLoad();_refreshRemindersBadge();
+  }catch(e){bubble('bot','Add failed: '+esc(String(e)),'<span class="badge err">reminder</span>')}
+}
+async function _refreshRemindersBadge(){
+  try{
+    const r=await fetch('/memory/reminders?limit=1');if(!r.ok)return;
+    const j=await r.json();const stats=j.stats||{};const active=stats.active||0;const dueNow=stats.due_now||0;
+    const txt=document.getElementById('rm-text');const led=document.getElementById('rm-led');
+    if(txt)txt.textContent=active===0?'reminders ⏰':`reminders · ${active}${dueNow>0?' · '+dueNow+' due':''}`;
+    if(led)led.className=dueNow>0?'ld-led error':(active>0?'ld-led active':'ld-led idle');
+  }catch{}
+}
+setInterval(_refreshRemindersBadge,30000);_refreshRemindersBadge();
 function _retryBubble(botMsg){
   if(!botMsg)return;
   let prev=botMsg.previousElementSibling;
@@ -1545,6 +1621,7 @@ const _SLASH_COMMANDS=[
   {cmd:'find',hint:'find <query> in workdir'},
   {cmd:'pace',hint:'set stream cps (10-2000)'},
   {cmd:'bookmarks',hint:'list recent starred replies'},
+  {cmd:'reminders',hint:'open reminders panel'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
 function _slashAcRender(){
@@ -1610,6 +1687,7 @@ function _handleSlashCommand(text){
   if(cmd==='find'){if(!arg){bubble('bot','Usage: `/find <query>` — searches your workdir.','<span class="badge">cmd</span>');return true}input.value='find "'+arg.replace(/"/g,'\\"')+'"';return false}
   if(cmd==='pace'){const n=parseInt(arg,10);if(isFinite(n)){_paceSliderChange(n);bubble('bot','Stream pace set to **'+n+' cps**.','<span class="badge">cmd</span>')}else{bubble('bot','Usage: `/pace <cps>` (10-2000). Current: **'+_typeSpeedCps()+' cps**.','<span class="badge">cmd</span>')}return true}
   if(cmd==='bookmarks'){_bookmarksShow();return true}
+  if(cmd==='reminders'){toggleRemindersPanel(true);return true}
   return false;
 }
 async function send(){
@@ -2536,6 +2614,7 @@ document.addEventListener('keydown',e=>{
   const gt=document.getElementById('gesture-tour');
   if(gt&&gt.classList.contains('show')){e.preventDefault();_gtClose();return}
   if(_bookmarksPanelOpen){e.preventDefault();toggleBookmarksPanel(false);return}
+  if(_remindersPanelOpen){e.preventDefault();toggleRemindersPanel(false);return}
   if(_toolsDrawerOpen){e.preventDefault();toggleToolsDrawer(false);return}
   if(_statusPanelOpen){e.preventDefault();toggleStatusPanel(false);return}
 });
