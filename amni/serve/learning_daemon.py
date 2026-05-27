@@ -10,7 +10,7 @@ from typing import Dict,Any,Optional,List
 from concurrent.futures import ThreadPoolExecutor
 import urllib.request,urllib.parse
 _DDG_URL='https://duckduckgo.com/html/?q='
-_DEFAULT_CONFIG={'curiosity_period_s':1800,'sleep_period_s':4*3600,'repetition_period_s':6*3600,'ingest_workers':2,'max_queue':40,'pause_during_user_activity_s':60,'max_sources_per_topic':6,'enabled':True}
+_DEFAULT_CONFIG={'curiosity_period_s':1800,'sleep_period_s':4*3600,'repetition_period_s':6*3600,'leak_commit_period_s':3600,'ingest_workers':2,'max_queue':40,'pause_during_user_activity_s':60,'max_sources_per_topic':6,'enabled':True}
 class LearningDaemon:
     def __init__(self,adam=None,skill_registry=None,coach_atlas=None,learning_atlas=None,config:Optional[Dict[str,Any]]=None,start_thread:bool=True):
         self.adam=adam;self.skills=skill_registry;self.coach_atlas=coach_atlas
@@ -53,6 +53,13 @@ class LearningDaemon:
                     self.run_sleep_pass();self.counters['last_sleep_at']=now
                 if (now-self.counters['last_repetition_at'])>=self.config['repetition_period_s']:
                     self.run_repetition_pass();self.counters['last_repetition_at']=now
+                if (now-self.counters.get('last_leak_commit_at',0.0))>=self.config.get('leak_commit_period_s',3600):
+                    try:
+                        from amni.serve.leak_ledger import maybe_commit_to_ptex
+                        _lr=maybe_commit_to_ptex(adam=self.adam)
+                        if _lr.get('committed',0)>0:print(f'[LearningDaemon] leak ledger -> PTEX: committed={_lr.get("committed")} total={_lr.get("total")}',flush=True)
+                    except Exception as e:print(f'[LearningDaemon] leak commit skipped: {type(e).__name__}: {e}',flush=True)
+                    self.counters['last_leak_commit_at']=now
                 try:
                     from amni.serve.self_reflection import should_run_now,run_cycle
                     if should_run_now():

@@ -99,6 +99,26 @@ def commit_to_ptex(lut=None,adam=None,max_pairs:int=300,save:bool=True)->Dict[st
         try:lut.fit();lut.save(str(_ptex_path()))
         except Exception as e:return {'committed':len(pairs),'fit_or_save_error':str(e)[:160]}
     return {'committed':len(pairs),'ptex':str(_ptex_path())}
+def _commit_state_path()->Path:
+    return Path(__file__).resolve().parents[2]/'data'/'leak_commit_state.json'
+def maybe_commit_to_ptex(adam=None,min_new:int=5)->Dict[str,Any]:
+    """Cadence guard: only re-commit to the PTEX file when >= min_new records accrued since last commit.
+    Safe to call from a periodic loop — re-fitting the LUT is heavy, so this avoids redundant work."""
+    p=_ledger_path()
+    if not p.exists():return {'committed':0,'reason':'no ledger'}
+    try:total=sum(1 for ln in p.read_text(encoding='utf-8').splitlines() if ln.strip())
+    except Exception:return {'committed':0,'reason':'unreadable'}
+    last=0
+    sp=_commit_state_path()
+    if sp.exists():
+        try:last=int(json.loads(sp.read_text(encoding='utf-8')).get('committed_total',0))
+        except Exception:last=0
+    if total-last<int(min_new):return {'committed':0,'reason':f'only {total-last} new (<{min_new})','total':total}
+    r=commit_to_ptex(adam=adam,save=True)
+    if r.get('committed',0)>0 and 'fit_or_save_error' not in r:
+        try:sp.write_text(json.dumps({'committed_total':total,'ts':time.time()}),encoding='utf-8')
+        except Exception:pass
+    return {**r,'total':total,'new_since_last':total-last}
 def stats(limit:int=30)->Dict[str,Any]:
     p=_ledger_path()
     if not p.exists():return {'total':0,'by_category':{},'by_source':{},'distinct_signatures':0,'recent':[]}
