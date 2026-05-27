@@ -2,6 +2,16 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.131 — "code this: <task>" routes to the SE conductor + full-session regression sweep (2026-05-26)
+
+Makes the software-engineer loop reachable the way Anthony will test it — from chat.
+
+- **Agent NL route**: `code this: …` / `code task - …` / `coding task: …` / `implement and test: …` / `build and test: …` → `coding_runner prepare`, which injects the work order (attempt #, prior-attempt recall, located files from the code map). Conservative trigger — explicit verb + `:`/`-`, so "what does this code do" / "implement a feature someday" don't misfire.
+- **`_format_skill_output` for `coding_runner`** renders the work order in chat (run id, attempt #/max, prior-attempt note, relevant files, or a nudge to build the code map), and renders `complete` outcomes (succeeded / failed-will-retry with the next lesson).
+- **Full-session regression sweep: all 19 suites green — 337 tests, zero drift** across the entire 113→131 arc (notes, pose+UI, pii-egress, leak-ledger, review×2, search, perms, chat-bridge, pc-actions/confirm/screenshot/pclog/input-sim, code_index, coding-ledger, coding-runner, this route).
+
+8/8 new tests pass (route match + non-overmatch, agent wiring, work-order render with/without prior, complete retry + success render).
+
 ## v6.10.130 — Coding runner: the SE-loop conductor (prepare → edit/test → complete → retry-with-lesson) (2026-05-26)
 
 The capstone that turns the scattered software-engineer pieces into one autonomous task lifecycle.
