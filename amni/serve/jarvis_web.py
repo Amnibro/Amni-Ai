@@ -815,7 +815,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
       <div id="welcome-tagline" style="color:var(--mute);font-size:11px;letter-spacing:.1em">Ask anything. Live data renders inline as glowing cards.</div>
       <div id="welcome-persona-stamp" style="margin-top:8px;font-size:10px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-family:JetBrains Mono,monospace"></div>
       <div class="examples">
-        <button class="ex" onclick="quick('What is the weather in Boston?')"><span class="lbl">live data</span>What is the weather in Boston?</button>
+        <button class="ex" onclick="quick(&quot;what's my local weather and forecast for the day today and this week?&quot;)"><span class="lbl">live data</span>What's my local weather and forecast?</button>
         <button class="ex" onclick="quick('Show me current system stats')"><span class="lbl">live data</span>Show me current system stats</button>
         <button class="ex" onclick="quick('What time is it in Tokyo?')"><span class="lbl">live data</span>What time is it in Tokyo?</button>
         <button class="ex" onclick="quick('Write a python function to reverse a string')"><span class="lbl">code</span>Write a python function to reverse a string</button>
@@ -826,7 +826,7 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
   </div></div>
   <div id="quick-bar" class="qb-collapsed">
     <button class="qchip qb-toggle" onclick="toggleQuickBar()" title="Show example prompts"><span class="ico">⋯</span><span id="qb-toggle-label">EXAMPLES</span></button>
-    <button class="qchip qb-item" onclick="_qcAsk('What is the weather in Boston?')"><span class="ico">🌤</span>WEATHER</button>
+    <button class="qchip qb-item" onclick="_qcAsk(&quot;what's my local weather and forecast for today and this week?&quot;)"><span class="ico">🌤</span>WEATHER</button>
     <button class="qchip qb-item" onclick="_qcAsk('Show me current system stats')"><span class="ico">📊</span>SYSTEM</button>
     <button class="qchip qb-item" onclick="_qcAsk('git status')"><span class="ico">⎇</span>GIT</button>
     <button class="qchip qb-item qc-learn" onclick="_qcAsk('what are you learning right now?')"><span class="ico">🧠</span>DAEMON</button>
@@ -1575,6 +1575,19 @@ function _slashAcAccept(cmd){
 }
 function _slashAcClose(){_slashAcOpen=false;_slashAcRender()}
 input.addEventListener('input',_slashAcUpdate);
+const _GEO_CACHE_KEY='amni_jarvis_geo_cache';let _geoCache=null;
+(function(){try{const j=JSON.parse(localStorage.getItem(_GEO_CACHE_KEY)||'null');if(j&&typeof j.lat==='number'&&typeof j.lon==='number'&&Date.now()-(j.ts||0)<3600000)_geoCache=j}catch{}})();
+function _resolveLocalLocation(){
+  return new Promise((resolve,reject)=>{
+    if(_geoCache){resolve(_geoCache);return}
+    if(!('geolocation' in navigator)){reject(new Error('geolocation unavailable'));return}
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const c={lat:pos.coords.latitude,lon:pos.coords.longitude,ts:Date.now()};
+      _geoCache=c;try{localStorage.setItem(_GEO_CACHE_KEY,JSON.stringify(c))}catch{}
+      resolve(c);
+    },err=>reject(err),{timeout:8000,maximumAge:300000,enableHighAccuracy:false});
+  });
+}
 function _handleSlashCommand(text){
   const m=text.match(/^\/(\w[\w-]*)(?:\s+(.*))?$/);
   if(!m)return false;
@@ -1611,8 +1624,13 @@ async function send(){
   _streamAbort=new AbortController();
   _setSendButtonState(true);
   _typeStart(bot,null);
+  let _geoCoords=null;
+  if(/\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:here|now|today|outside)|near\s+me|around\s+me)\b/i.test(text)){
+    try{_geoCoords=await _resolveLocalLocation()}catch(_){_geoCoords=null}
+  }
   try{
     const body=sid?{message:text,session_id:sid}:{message:text};
+    if(_geoCoords){body.client_lat=_geoCoords.lat;body.client_lon=_geoCoords.lon}
     const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:_streamAbort.signal});
     if(!resp.body){throw new Error('streaming not supported by browser')}
     const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';

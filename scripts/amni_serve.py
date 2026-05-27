@@ -250,6 +250,8 @@ def main():
         session_id:Optional[str]=None
         use_skills:bool=True
         writeback:bool=True
+        client_lat:Optional[float]=None
+        client_lon:Optional[float]=None
     class AskRequest(BaseModel):
         query:str
         writeback:bool=True
@@ -261,13 +263,19 @@ def main():
     _iter_counters={'tests_passed':0,'tests_failed':0,'promoted':0,'quality_gated':0,'perturb_attempted':0,'perturb_succeeded_small':0,'perturb_succeeded_medium':0,'perturb_succeeded_large':0,'perturb_failed':0,'intent_blocked':0,'multi_block_stitched':0,'hint_injected':0,'lut_hits':0,'cot_generations':0}
     def _bump(k,n=1):_iter_counters[k]=_iter_counters.get(k,0)+n
     @app.post('/chat')
-    def chat(req:ChatRequest):return agent.chat(req.message,session_id=req.session_id,use_skills=req.use_skills,writeback=req.writeback)
+    def chat(req:ChatRequest):
+        if req.client_lat is not None:agent._client_lat=req.client_lat
+        if req.client_lon is not None:agent._client_lon=req.client_lon
+        try:return agent.chat(req.message,session_id=req.session_id,use_skills=req.use_skills,writeback=req.writeback)
+        finally:agent._client_lat=None;agent._client_lon=None
     @app.post('/chat/stream')
     async def chat_stream(req:ChatRequest,request:Request):
         from fastapi.responses import StreamingResponse
         import json as _json
         from amni.serve.agent import _needs_cot,_pick_cot
         from amni.serve import tone_atlas
+        if req.client_lat is not None:agent._client_lat=req.client_lat
+        if req.client_lon is not None:agent._client_lon=req.client_lon
         def gen():
             t0=time.time()
             conv=store.get(req.session_id)
