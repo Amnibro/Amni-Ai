@@ -426,6 +426,10 @@ class AmniAgent:
             if re.search(r"^(?:what\s+(?:are\s+)?(?:my\s+)?|list\s+(?:my\s+)?|show\s+(?:my\s+)?)notes\??\s*$",msg,re.IGNORECASE):return ('note',{'action':'list'})
             _m=re.search(r"^(?:find|search)\s+(?:in\s+)?(?:my\s+)?notes\s+(?:for\s+)?[\"'`]?([^\"'`]+?)[\"'`]?\s*\??\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('note',{'action':'list','search':_m.group(1).strip()})
+        if self.skills.has('pc_action'):
+            _m=re.search(r"^\s*(confirm|cancel)\s+(pca_[0-9a-f]{6,})\s*$",msg,re.IGNORECASE)
+            if _m:return ('pc_action',{'action':_m.group(1).lower(),'token':_m.group(2)})
+            if re.search(r"\b(?:what\s+(?:pc\s+)?actions?\s+(?:are\s+)?pending|pending\s+(?:pc\s+)?actions?)\b",msg,re.IGNORECASE):return ('pc_action',{'action':'pending'})
         if self.skills.has('pose_coach'):
             if re.search(r"\b(?:what\s+exercises|which\s+exercises|exercises\s+can\s+you\s+coach|what\s+can\s+you\s+coach|coach(?:able)?\s+exercises|physical\s+therapy\s+(?:exercises|options))\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'exercises'})
             if re.search(r"\b(?:my|show\s+my|exercise|workout|pt|pose)\s+(?:coach|history|sessions?)\b|\b(?:coach|workout)\s+history\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'history'})
@@ -762,6 +766,20 @@ class AmniAgent:
             if 'started' in out:return f'Started a **{out.get("label","?")}** session. {out.get("cue","")}. I\'m watching your form — go!'
             if 'reps' in out and 'feedback' in out:return out['feedback']
             if 'feedback' in out:return out['feedback']
+            return json.dumps(out,default=str)[:600]
+        if name=='pc_action':
+            if out.get('refused'):return f'⛔ I won\'t run that — it matches a destructive/irreversible pattern. ({out.get("target","")[:80]})'
+            if out.get('error'):return f'(pc_action error: {out["error"]})'
+            if out.get('requires_confirm'):
+                return f'{out.get("description","")}\n\n**This won\'t run until you confirm.** Reply `confirm {out.get("token")}` to proceed, or `cancel {out.get("token")}`.'
+            if out.get('executed'):
+                res=out.get('result') or {}
+                return f'✅ Done — {out.get("action")}: `{out.get("target","")[:80]}`.\n```\n{json.dumps(res,default=str)[:800]}\n```'
+            if out.get('cancelled'):return f'Cancelled `{out["cancelled"]}`.'
+            if 'pending' in out:
+                items=out['pending'] or []
+                if not items:return 'No PC actions awaiting confirmation.'
+                return '**Pending PC actions:**\n'+'\n'.join(f'- `{i["token"]}` [{i["risk"]}] {i["action"]}: {i["target"]}' for i in items[:10])
             return json.dumps(out,default=str)[:600]
         if name=='find':
             hits=out.get('hits') or [];q=out.get('query','');n=out.get('n_hits',0);files_s=out.get('files_scanned',0)

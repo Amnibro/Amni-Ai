@@ -840,6 +840,22 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='history':return {'history':_pc.session_history(limit=int(args.get('limit',20)),exercise=args.get('exercise'))}
         return {'error':f'unknown action {action!r}; valid: exercises|analyze|start|frame|stop|history'}
     reg.register('pose_coach',_skill_pose_coach,desc='Physical-therapy / exercise form coach. Computes joint angles from MediaPipe-Pose 33-pt landmarks, counts reps, and gives form feedback (push-up, sit-up/crunch, squat, bicep curl). Actions: exercises | analyze (landmarks, exercise) | start (exercise) | frame (landmarks, exercise?) | stop | history. Landmarks: list of {x,y,visibility?} normalized [0,1].',schema={'action':'str?','exercise':'str?','landmarks':'list?','session_id':'str?','limit':'int?'})
+    def _skill_pc_action(args,ctx,reg_):
+        """Safe PC operation behind a propose->confirm gate. Actions: propose (action, target, args?) | confirm (token) | cancel (token) | pending | audit. Destructive patterns refused; everything audited. Nothing runs until confirmed."""
+        try:from amni.serve import pc_actions as _pca
+        except Exception as e:return {'error':f'pc_actions unavailable: {e}'}
+        action=str(args.get('action') or 'pending').lower().strip()
+        if action=='propose':return _pca.propose(str(args.get('pc_action') or args.get('type') or ''),str(args.get('target') or ''),args.get('args') if isinstance(args.get('args'),dict) else None)
+        if action=='confirm':
+            tok=args.get('token','')
+            return _pca.confirm(tok) if tok else {'error':'token required'}
+        if action=='cancel':
+            tok=args.get('token','')
+            return _pca.cancel(tok) if tok else {'error':'token required'}
+        if action=='pending':return _pca.list_pending()
+        if action=='audit':return _pca.audit_recent(limit=int(args.get('limit',30)))
+        return {'error':f'unknown action {action!r}; valid: propose|confirm|cancel|pending|audit'}
+    reg.register('pc_action',_skill_pc_action,desc='Safe PC operation (Tier 5b). propose-then-confirm gate: nothing touches the OS until the owner confirms a token. Actions: propose (pc_action=echo|notify|open_url|open_path|launch_app|run, target, args?) | confirm (token) | cancel (token) | pending | audit. Destructive patterns refused outright; every step audited to logs/pc_actions.jsonl.',schema={'action':'str?','pc_action':'str?','target':'str?','args':'dict?','token':'str?','limit':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
     reg.register('shell',_skill_shell,gate=_gate_shell,desc=f'Run a read-only allowlisted shell command from primary root. Scope: {scope}. Args: {{cmd, timeout?}}',schema={'cmd':'str','timeout':'int?'})
