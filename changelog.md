@@ -2,6 +2,19 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.119 — Close the PTEX-persistence loop: KG into review + cadence auto-commit of leaks (2026-05-26)
+
+Finishes the *"stored in PTEX + reviewed pre-response"* directive by (a) widening what `review()` consults and (b) making the leak→PTEX commit automatic instead of on-demand.
+
+### Knowledge graph folded into the pre-response review
+`pre_response_review.review()` now also queries `knowledge_graph.search_subject()` for each salient query tag, dedupes, and surfaces matching subjects in the brief (`KNOWLEDGE-GRAPH subjects on file near this context: …`). So **all four substrates — leaks, errors, lessons, facts — plus the KG** are reviewed before every response, each addressed by Reffelt context-nonce. Robust when the KG is absent (returns `[]`).
+
+### Cadence auto-commit of the leak ledger to PTEX
+- `leak_ledger.maybe_commit_to_ptex(adam, min_new=5)` — re-commits the error→correction pairs to `lessons/leak_avoidance_ptex` only when ≥ `min_new` records accrued since the last commit (tracked in `data/leak_commit_state.json`). Re-fitting a LUT is heavy, so the cadence guard prevents redundant work.
+- Wired into `LearningDaemon._loop` on a `leak_commit_period_s` (default 1h) tick, reusing `self.adam`'s encoder — the 24/7 loop now persists Adam's own leaks to the PTEX substrate on its own, no manual `/commit` needed. The errors-to-avoid file grows itself.
+
+12/12 new tests pass (KG in review + dedupe + absent-safe, brief KG line, min-new gate, threshold fire, commit-state persistence, daemon config/wiring); v6.10.117 (23/23) + v6.10.118 (25/25) regressions green.
+
 ## v6.10.118 — Unified pre-response review + Reffelt-nonce contextual tagging; AR/XR/VR on roadmap (2026-05-26)
 
 Directive: *"make sure ALL knowledge and lessons and errors and leaks — everything that should be reviewed per response — is stored in ptex and reviewed prior to response. Tag with clear contextual ties so it can't be missed via reffelt nonce."* + *"everything should be a self-learning loop."*

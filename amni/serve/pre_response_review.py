@@ -37,6 +37,16 @@ def review(message:str,agent=None,max_errors:int=3,max_lessons:int=1)->Dict[str,
         hits=pa.recall(message,k=3,include_confidential=True) or []
         return [{'fact':(h.get('fact') or '')[:80],'confidential':bool(h.get('is_confidential'))} for h in hits]
     items['knowledge']=_safe(_know,[])
+    def _kg():
+        kg=getattr(agent,'knowledge_graph',None) if agent is not None else None
+        if kg is None or not hasattr(kg,'search_subject'):return []
+        subs=[]
+        for tg in qtags[:6]:
+            try:subs+=kg.search_subject(tg,limit=3) or []
+            except Exception:pass
+        seen=set();uniq=[s for s in subs if not (s in seen or seen.add(s))]
+        return uniq[:5]
+    items['kg']=_safe(_kg,[])
     brief=build_brief(qn,qtags,items)
     return {'nonce':qn,'digits':_rt.decompose(qn),'tags':qtags,'brief':brief,'items':items}
 def build_brief(qn:int,qtags:List[str],items:Dict[str,Any])->str:
@@ -55,6 +65,9 @@ def build_brief(qn:int,qtags:List[str],items:Dict[str,Any])->str:
     kn=items.get('knowledge') or []
     if kn:
         lines.append(f"KNOWN about the user ({len(kn)} fact(s)) — use naturally, never echo confidential items to external tools.")
+    kg=items.get('kg') or []
+    if kg:
+        lines.append(f"KNOWLEDGE-GRAPH subjects on file near this context: {', '.join(kg[:5])}.")
     if not lines:return ''
     head=f"[PRE-RESPONSE REVIEW · reffelt-nonce {'.'.join(str(d) for d in digits)}]"
     return head+"\n"+"\n".join(lines)
