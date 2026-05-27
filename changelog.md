@@ -2,6 +2,16 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.132 — Objective coding success: the tests decide, not self-assessment (2026-05-26)
+
+Closes the verification spine of the acceptance test — "did it do what's correct" is now answered by *tests passing*, not the model's opinion.
+
+- **`coding_runner.complete_from_test(run_id, test_result)`** — derives `success = test passed and no error`; on failure, **extracts the failing lines** (FAILED / AssertionError / `error[Exxxx]` / panicked / traceback) as the errors recorded to the ledger, and auto-writes a lesson pointing at the first failure. Returns `objective: True`.
+- **`coding_runner verify` skill action** — RUNS `test_run` (auto-detected or explicit `cmd`) *and* completes the run objectively in one call. So the full autonomous beat is: `prepare` → edit (gated) → **`verify`** → pass ⇒ done & recorded / fail ⇒ recorded with real errors + `will_retry` + the lesson for attempt N+1.
+- Proven end-to-end: `verify` with `python -c "sys.exit(0)"` → success recorded; `sys.exit(1)` → failure recorded with `will_retry`. No self-grading — the exit code is the judge.
+
+12/12 new tests pass (pass/fail derivation, error extraction, timeout-as-single-error, auto-lesson, objective flag, real verify pass + fail via subprocess, needs-run-id); coding_runner (14/14) + coding_ledger (15/15) regressions green.
+
 ## v6.10.131 — "code this: <task>" routes to the SE conductor + full-session regression sweep (2026-05-26)
 
 Makes the software-engineer loop reachable the way the maintainer will test it — from chat.

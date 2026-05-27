@@ -903,10 +903,17 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
             errs=args.get('errors');errs=errs if isinstance(errs,list) else ([str(errs)] if errs else None)
             fls=args.get('files');fls=fls if isinstance(fls,list) else ([str(fls)] if fls else None)
             return _cr.complete(rid,success=bool(args.get('success',False)),outcome=str(args.get('outcome') or ''),errors=errs,lesson=str(args.get('lesson') or ''),approach=str(args.get('approach') or ''),files=fls,agent=ctx.get('agent'))
+        if action=='verify':
+            rid=args.get('run_id','')
+            if not rid:return {'error':'run_id required'}
+            tr=reg_.call('test_run',{'cmd':args.get('cmd'),'timeout':int(args.get('timeout',60))},ctx=ctx)
+            test_result=getattr(tr,'output',None) if tr is not None else None
+            if not isinstance(test_result,dict):test_result=test_result if isinstance(test_result,dict) else {'error':'test_run produced no result','passed':False}
+            return _cr.complete_from_test(rid,test_result,lesson=str(args.get('lesson') or ''),approach=str(args.get('approach') or ''),agent=ctx.get('agent'))
         if action=='status':return _cr.status(str(args.get('run_id') or ''))
         if action=='runs':return _cr.list_runs()
-        return {'error':f'unknown action {action!r}; valid: prepare|complete|status|runs'}
-    reg.register('coding_runner',_skill_coding_runner,desc='Agentic SE conductor: prepare (task) bundles prior-attempt recall + located files (code map) into a work order with attempt#; complete (run_id, success, outcome?, errors?, lesson?, approach?, files?) records to coding_ledger + returns will_retry + the lesson for the next attempt; status | runs. The runner never edits disk — writes go through pc_action propose->confirm.',schema={'action':'str?','task':'str?','run_id':'str?','success':'bool?','outcome':'str?','errors':'list?','lesson':'str?','approach':'str?','files':'list?','max_attempts':'int?'})
+        return {'error':f'unknown action {action!r}; valid: prepare|complete|verify|status|runs'}
+    reg.register('coding_runner',_skill_coding_runner,desc='Agentic SE conductor: prepare (task) bundles prior-attempt recall + located files (code map) into a work order with attempt#; verify (run_id, cmd?) RUNS the tests + records OBJECTIVE success (tests pass=success, failures=errors to learn) + returns will_retry; complete (run_id, success, ...) for manual outcomes; status | runs. The runner never edits disk — writes go through pc_action propose->confirm.',schema={'action':'str?','task':'str?','run_id':'str?','success':'bool?','outcome':'str?','errors':'list?','lesson':'str?','approach':'str?','files':'list?','cmd':'str?','timeout':'int?','max_attempts':'int?'})
     def _skill_code_index(args,ctx,reg_):
         """Train Adam on a codebase: build a PTEX-backed map of files+symbols, then query it. Actions: build (root?) | query (term) | semantic (q) | file (path) | stats."""
         try:from amni.serve import code_index as _ci
