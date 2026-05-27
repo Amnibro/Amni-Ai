@@ -17,12 +17,17 @@ def _log(rec:Dict[str,Any]):
         import json
         with _runs_log().open('a',encoding='utf-8') as fh:fh.write(json.dumps(rec,default=str)+'\n')
     except Exception:pass
-def _locate(task:str,limit:int=6)->List[Dict[str,Any]]:
+def _locate(task:str,limit:int=6,encoder=None)->List[Dict[str,Any]]:
     try:from amni.serve import code_index as _ci
     except Exception:return []
-    tags=_rt.salient_tags(task)
     hits={};order=[]
-    for term in tags[:8]:
+    if encoder is not None:
+        try:
+            sem=_ci.semantic_query(task,encoder=encoder,k=3)
+            p=sem.get('path')
+            if p and not sem.get('error') and p not in hits:hits[p]={'path':p,'via':'semantic'};order.append(p)
+        except Exception:pass
+    for term in _rt.salient_tags(task)[:8]:
         try:q=_ci.query(term,limit=4)
         except Exception:continue
         for h in (q.get('symbols') or []):
@@ -42,7 +47,8 @@ def prepare(task:str,agent=None,max_attempts:int=3)->Dict[str,Any]:
         from amni.serve import coding_ledger as _cl
         prior=_cl.recall(task,k=3);attempt_n=_cl.attempts_for(task)+1
     except Exception:pass
-    located=_locate(task)
+    _enc=getattr(getattr(getattr(agent,'adam',None),'sem_lut',None),'encoder',None) if agent is not None else None
+    located=_locate(task,encoder=_enc)
     ctx_lines=[f'TASK (attempt #{attempt_n} of up to {max_attempts}): {task}']
     if prior:
         ctx_lines.append('PRIOR ATTEMPTS — do better than these:')
