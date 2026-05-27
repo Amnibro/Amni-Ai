@@ -80,6 +80,26 @@ def complete(run_id:str,success:bool,outcome:str='',errors:Optional[List[str]]=N
         except Exception:pass
     _log({'run_id':run_id,'task':run['task'][:300],'attempt':run['attempt'],'status':'success' if success else 'failed','iso':time.strftime('%Y-%m-%dT%H:%M:%S'),'event':'complete','will_retry':will_retry})
     return {'completed':True,'run_id':run_id,'attempt':run['attempt'],'success':bool(success),'recorded':rec_out.get('recorded',False),'will_retry':will_retry,'next_hint':next_hint}
+def _errors_from_test(tr:Dict[str,Any])->List[str]:
+    import re as _re
+    if tr.get('error'):return [str(tr['error'])[:300]]
+    out=((tr.get('stdout','') or '')+'\n'+(tr.get('stderr','') or ''))
+    errs=[]
+    for ln in out.splitlines():
+        s=ln.strip()
+        if len(s)>5 and _re.search(r'(?i)(?:\bFAILED\b|AssertionError|\bError:|error\[|panicked|\bFAIL\b|traceback|\bE\s{2,}|✗)',s):
+            errs.append(s[:200])
+        if len(errs)>=6:break
+    return errs
+def complete_from_test(run_id:str,test_result:Dict[str,Any],lesson:str='',approach:str='',files:Optional[List[str]]=None,agent=None)->Dict[str,Any]:
+    """Objective completion: success is decided by the tests, not self-assessment. tests pass -> success; failures -> extracted as the errors to learn from."""
+    tr=test_result or {}
+    success=bool(tr.get('passed')) and not tr.get('error')
+    errors=[] if success else _errors_from_test(tr)
+    outcome=('tests passed' if success else 'tests failed')+(f" rc={tr.get('returncode')}" if tr.get('returncode') is not None else '')+(f" via {tr.get('flavor')}" if tr.get('flavor') else '')
+    if not lesson and not success and errors:lesson=f'address first failure: {errors[0][:140]}'
+    out=complete(run_id,success=success,outcome=outcome,errors=errors,lesson=lesson,approach=approach,files=files,agent=agent)
+    return {**out,'objective':True,'tests_passed':success}
 def status(run_id:str)->Dict[str,Any]:
     with _LOCK:run=_RUNS.get(run_id)
     return dict(run) if run else {'error':f'no open run {run_id!r}'}
