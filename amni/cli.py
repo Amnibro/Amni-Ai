@@ -413,6 +413,92 @@ def _render_dashboard(base:str,data:dict)->str:
         lines.append(f'  ║    proposed {proposed:>3} · attempted {attempted:>3} · validated {validated:>3} · deployed {deployed:>3}      ║')
     lines.append(f'  ╚══════════════════════════════════════════════════════════════════╝')
     return '\n'.join(lines)
+def cmd_bookmarks(args):
+    action=(getattr(args,'action',None) or 'list').strip().lower()
+    url=getattr(args,'url',None)
+    if url and not url.startswith('http'):url='http://'+url
+    if url:url=url.rstrip('/')
+    if action=='list':return _bookmarks_list(args,url)
+    if action=='stats':return _bookmarks_stats(args,url)
+    if action=='delete':return _bookmarks_delete(args,url)
+    if action=='export':return _bookmarks_export(args,url)
+    if action=='add':return _bookmarks_add(args,url)
+    print(f'[bookmarks] unknown action {action!r}; use list|stats|delete|export|add',flush=True);sys.exit(1)
+def _bookmarks_fetch(args,url):
+    if url:
+        qs=f'?limit={int(args.limit or 50)}'+(f'&session_id={args.session}' if args.session else '')+(f'&search={args.search}' if args.search else '')
+        r=_fetch_json(url+'/memory/bookmarks'+qs)
+        if r is None:print(f'[bookmarks] unreachable: {url}',flush=True);sys.exit(1)
+        return r.get('bookmarks') or [],r.get('stats') or {}
+    from amni.serve.bookmarks import list_recent,stats
+    return list_recent(limit=int(args.limit or 50),session_id=args.session or None,search=args.search or ''),stats()
+def _bookmarks_list(args,url):
+    items,stats=_bookmarks_fetch(args,url)
+    if args.json:print(json.dumps({'bookmarks':items,'stats':stats},indent=2,default=str),flush=True);return
+    if not items:print('\n  No bookmarks recorded.\n',flush=True);return
+    print(f'\n  {len(items)} bookmark(s) · total {stats.get("total",0)}\n',flush=True)
+    for bm in items:
+        ts=bm.get('iso','?');bid=bm.get('id','?');u=(bm.get('user_msg') or '')[:80];a=(bm.get('bot_msg') or '')[:200];n=(bm.get('note') or '').strip()
+        print(f'  {ts}  [{bid}]',flush=True);print(f'    Q: {u}',flush=True);print(f'    A: {a}',flush=True)
+        if n:print(f'    note: {n}',flush=True)
+        print('',flush=True)
+def _bookmarks_stats(args,url):
+    _,stats=_bookmarks_fetch(args,url)
+    if args.json:print(json.dumps(stats,indent=2,default=str),flush=True);return
+    print(f'\n  total   {stats.get("total",0)}',flush=True)
+    print(f'  last    {stats.get("last_iso") or "—"}\n',flush=True)
+    by=stats.get('by_persona') or {}
+    if by:print('  by persona:',flush=True)
+    for p,n in sorted(by.items(),key=lambda kv:-kv[1]):print(f'    {p:<20} {n}',flush=True)
+    print('',flush=True)
+def _bookmarks_delete(args,url):
+    bid=(args.id or '').strip()
+    if not bid:print('[bookmarks delete] need an id (use `amni bookmarks list` to find one)',flush=True);sys.exit(1)
+    if url:
+        import urllib.request
+        try:
+            req=urllib.request.Request(url+'/memory/bookmarks/'+bid,method='DELETE')
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[bookmarks] delete failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.bookmarks import delete
+        r=delete(bid)
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    if 'error' in r:print(f'[bookmarks] {r["error"]}',flush=True);sys.exit(1)
+    print(f'  Deleted {bid} · {r.get("remaining",0)} remaining.',flush=True)
+def _bookmarks_export(args,url):
+    items,stats=_bookmarks_fetch(args,url)
+    if not items:print('[bookmarks export] no bookmarks to export',flush=True);return
+    lines=[f'# Amni-Ai bookmarks ({len(items)} entries)',f'',f'Exported: {time.strftime("%Y-%m-%d %H:%M:%S")}','','---','']
+    for bm in items:
+        ts=bm.get('iso','?');u=bm.get('user_msg','');a=bm.get('bot_msg','');n=(bm.get('note') or '').strip();p=bm.get('persona','');t=bm.get('tier','')
+        lines.append(f'## {ts}')
+        if p or t:lines.append(f'_{p}{" · "+t if t else ""}_')
+        lines.append('')
+        lines.append('**Q:** '+u);lines.append('')
+        lines.append('**A:** '+a);lines.append('')
+        if n:lines.append('> '+n);lines.append('')
+        lines.append('---');lines.append('')
+    content='\n'.join(lines)
+    out=getattr(args,'output',None)
+    if out:Path(out).write_text(content,encoding='utf-8');print(f'  Wrote {len(items)} bookmark(s) to {out}',flush=True)
+    else:print(content,flush=True)
+def _bookmarks_add(args,url):
+    user_msg=(args.user or '').strip();bot_msg=(args.bot or '').strip();note=(args.note or '').strip();persona=(args.persona or '').strip();tier=(args.tier or '').strip();session=(args.session or '').strip()
+    if not bot_msg:print('[bookmarks add] --bot is required',flush=True);sys.exit(1)
+    if url:
+        import urllib.request
+        body=json.dumps({'session_id':session,'user_msg':user_msg,'bot_msg':bot_msg,'note':note,'tier':tier,'persona':persona}).encode('utf-8')
+        try:
+            req=urllib.request.Request(url+'/memory/bookmarks',data=body,headers={'content-type':'application/json'},method='POST')
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[bookmarks] add failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.bookmarks import add
+        r=add(session_id=session,user_msg=user_msg,bot_msg=bot_msg,note=note,tier=tier,persona=persona)
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    if 'error' in r:print(f'[bookmarks] {r["error"]}',flush=True);sys.exit(1)
+    print(f'  Added {r.get("id","?")} at {r.get("iso","?")}.',flush=True)
 def cmd_failures(args):
     action=(getattr(args,'action',None) or 'list').strip().lower()
     url=getattr(args,'url',None)
@@ -802,6 +888,21 @@ def main():
     pers.add_argument('--overwrite',action='store_true',help='Allow import to replace an existing same-named persona')
     pers.add_argument('--json',action='store_true',help='JSON output for list/show')
     pers.set_defaults(func=cmd_persona)
+    bm=sub.add_parser('bookmarks',help='Manage starred bot replies: list / stats / add / delete / export')
+    bm.add_argument('action',nargs='?',default='list',choices=['list','stats','add','delete','export'])
+    bm.add_argument('id',nargs='?',default=None,help='Bookmark id (for delete)')
+    bm.add_argument('--limit',type=int,default=50)
+    bm.add_argument('--session',default=None,help='Filter to a single session id')
+    bm.add_argument('--search',default=None,help='Case-insensitive substring search')
+    bm.add_argument('--url',default=None,help='Hit a running server instead of reading local files')
+    bm.add_argument('--json',action='store_true')
+    bm.add_argument('--output','-o',default=None,help='Output path (for export); stdout if omitted')
+    bm.add_argument('--user',default=None,help='User message (for add)')
+    bm.add_argument('--bot',default=None,help='Bot response (for add, required)')
+    bm.add_argument('--note',default=None,help='Optional note (for add)')
+    bm.add_argument('--persona',default=None,help='Persona tag (for add)')
+    bm.add_argument('--tier',default=None,help='Tier tag (for add)')
+    bm.set_defaults(func=cmd_bookmarks)
     fai=sub.add_parser('failures',help='Inspect skill-failure log: list / stats / ack')
     fai.add_argument('action',nargs='?',default='list',choices=['list','stats','ack'])
     fai.add_argument('--limit',type=int,default=20)
