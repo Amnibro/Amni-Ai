@@ -129,6 +129,17 @@ def mount(app,agent):
     def pii_egress_audit(limit:int=50):
         from amni.serve.pii_egress import audit_stats
         return audit_stats(limit=limit)
+    @app.get('/memory/thinking-leaks')
+    def thinking_leaks(limit:int=30):
+        from amni.serve.leak_ledger import stats
+        return stats(limit=limit)
+    @app.post('/memory/thinking-leaks/commit')
+    async def thinking_leaks_commit(req:Request):
+        from amni.serve.leak_ledger import commit_to_ptex
+        body={}
+        try:body=await req.json()
+        except Exception:pass
+        return commit_to_ptex(adam=agent.adam if getattr(agent,'adam',None) is not None else None,save=bool(body.get('save',True)))
     @app.post('/memory/skill-failures/ack')
     def skill_failures_ack():
         from amni.serve.skill_failures import ack_all

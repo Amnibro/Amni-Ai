@@ -81,10 +81,24 @@ def sample_closer(category:str,warmth:float,formality:float,excitement:float,see
     return bucket[_hash_idx(seed or category+'_close',len(bucket))]
 def _strip_thinking_process(text:str)->str:
     """Remove meta-reasoning + tool-narration leakage. The tool_discipline prompt bans these
-    but models leak them anyway; this is the server-side safety net."""
+    but models leak them anyway; this is the server-side safety net. Detected leaks feed the
+    self-learning leak_ledger (commit-to-PTEX + learned-signature consult) so repeats the regex
+    never anticipated still get caught."""
     if not text:return text
     import re as _re
-    t=_re.sub(r'(?is)\n*(?:thinking\s*process|thought)\s*:?\s*\n.*?(?=\n\s*\n[^\d\s*•\-]|\Z)','',text)
+    orig=text;leak_frag=''
+    t=_re.sub(r'(?is)<\s*(think|thinking|thought|reasoning|scratchpad|reflection|analysis|monologue)\s*>.*?<\s*/\s*\1\s*>',' ',text)
+    t=_re.sub(r'(?is)<\s*/?\s*(?:think|thinking|thought|reasoning|scratchpad|reflection|analysis|monologue)\s*>',' ',t)
+    t=_re.sub(r'(?is)\n*(?:thinking\s*process|thought\s*process|thought)\s*:?\s*\n.*?(?=\n\s*\n[^\d\s*•\-]|\Z)','',t)
+    hdr=_re.search(r'(?i)(?:thought\s+)?(?:thinking|thought)\s*process\s*:?|\bchain[\s-]of[\s-]thought\b|(?:^|\n)\s*(?:my\s+)?(?:reasoning|internal\s+monologue|scratchpad)\s*:',t)
+    if hdr:
+        p=hdr.start()
+        fin=list(_re.finditer(r'(?i)\b(?:final\s+(?:output|answer|response)\s*:|final\s*:)\s*',t[p:]))
+        if fin:leak_frag=t[p:p+fin[-1].end()];t=t[p+fin[-1].end():]
+        else:
+            before=t[:p].strip()
+            if len(before)>=12:leak_frag=t[p:];t=before
+    t=_re.sub(r'(?i)(?:(?<=\s)|^)\d+\.\s+(?:analyze\s+the\s+request|check\s+(?:context|tools|the\s+context)|determine\s+(?:the\s+)?strategy|formulate\s+(?:the\s+)?\w+|self[- ]correction|refinement|recall\s+(?:the\s+)?persona|apply\s+(?:the\s+)?persona|final\s+output)\b[^\n]*?(?=\s+\d+\.\s|\n|$)',' ',t)
     t=_re.sub(r'(?im)^\s*\d+\.\s+(?:analyze|check|determine|formulate|apply|final\s+output|self-correction|refinement)\b.*$\n?','',t)
     t=_re.sub(r'(?im)^\s*\*\s*(?:restate|knowns|approach|first\s+shot|critique|refine)\s*:.*$\n?','',t)
     t=_re.sub(r'(?im)^\s*-?\s*(?:restate|knowns|approach|first\s+shot|critique|refine)\s*:.*$\n?','',t)
@@ -93,7 +107,14 @@ def _strip_thinking_process(text:str)->str:
     t=_re.sub(r'(?im)^\s*\((?:outputting[^)]*|search\s+returns?[^)]*|simulating[^)]*|waiting[^)]*|assuming[^)]*)\)\s*\n?',' ',t)
     t=_re.sub(r'(?m)[ \t]+$','',t)
     t=_re.sub(r'\n{3,}','\n\n',t)
-    return t.strip() or text
+    t=t.strip()
+    try:
+        from amni.serve import leak_ledger as _ll
+        if leak_frag and len(_ll._norm(leak_frag))>=16:_ll.record(leak_frag,clean=t,categories=['thinking_process'],source='wrap')
+        t2=_ll.scrub_learned(t)
+        if t2:t=t2
+    except Exception:pass
+    return t or text
 def wrap(answer:str,category:str,persona,seed:str='')->str:
     answer=_strip_thinking_process(answer)
     op=sample_opener(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
