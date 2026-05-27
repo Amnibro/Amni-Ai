@@ -2,6 +2,19 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.133 — SW ENG dashboard: watch Adam's software-engineer loop live (2026-05-26)
+
+Makes the acceptance test *observable* — during a `code this:` run you can see what Adam indexed, what it tried, and what passed.
+
+- New `GET /memory/se-dashboard` aggregates `code_index.stats()` + `coding_ledger.stats()` (with computed success-rate %) + `coding_runner.list_runs()`.
+- **SW ENG** button in the TOOLS drawer → LEARNING (+ `/se` slash command) opens a panel: 4 metric tiles (files mapped · symbols · coding attempts · success rate), the indexed-language breakdown + timestamp, a success-rate bar (passed/failed/retries), and the list of open coding runs. Empty states guide you ("say code_index build" / "code this: <task>").
+
+13/13 new tests pass (panel + button + slash + JS fns + dashboard fetch + metrics + empty states + node `--check` + endpoint + aggregation + rate math); pclog regression green.
+
+---
+
+**Session arc 113→133 (Adam = INCREDIBLE):** capture triplet (notes/bookmarks/reminders) → cross-session recall → PT pose coaching (engine + camera) → PII egress choke-point → thinking-leak self-learning → unified pre-response review w/ Reffelt-nonce → search-anytime → permissions panel → Amni-Chat bridge → PC-operator stack (gate→confirm→screenshot→audit→input-sim) → **software-engineer loop** (code_index PTEX map → coding_ledger retry-learning → coding_runner conductor → objective verify → SW ENG dashboard). 350 tests, all green.
+
 ## v6.10.132 — Objective coding success: the tests decide, not self-assessment (2026-05-26)
 
 Closes the verification spine of the acceptance test — "did it do what's correct" is now answered by *tests passing*, not the model's opinion.

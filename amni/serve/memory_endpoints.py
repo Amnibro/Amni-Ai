@@ -147,6 +147,14 @@ def mount(app,agent):
         body=await req.json()
         if not body.get('task'):raise HTTPException(400,'need task')
         return prepare(body['task'],agent=agent,max_attempts=int(body.get('max_attempts',3)))
+    @app.get('/memory/se-dashboard')
+    def se_dashboard():
+        from amni.serve.code_index import stats as _ci_stats
+        from amni.serve.coding_ledger import stats as _cl_stats
+        from amni.serve.coding_runner import list_runs as _cr_runs
+        ci=_ci_stats();cl=_cl_stats()
+        rate=round(100.0*cl.get('succeeded',0)/cl['total'],1) if cl.get('total') else 0.0
+        return {'code_index':ci,'coding':{**cl,'success_rate_pct':rate},'open_runs':_cr_runs().get('open',[])}
     @app.post('/memory/coding-run/complete')
     async def coding_run_complete(req:Request):
         from amni.serve.coding_runner import complete
