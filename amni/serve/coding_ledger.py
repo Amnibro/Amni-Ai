@@ -47,10 +47,10 @@ def recall(task:str,k:int=3)->List[Dict[str,Any]]:
         rel=_rt.relevance(qtags,qn,r.get('tags') or [],r.get('nonce') if isinstance(r.get('nonce'),int) else _rt.nonce(r.get('tags') or []))
         if rel>0.05:scored.append((rel,r))
     scored.sort(key=lambda x:(-x[0],-(x[1].get('ts') or 0)))
-    return [{'task':r['task'],'attempt':r.get('attempt'),'success':r.get('success'),'outcome':r.get('outcome',''),'errors':r.get('errors',[]),'lesson':r.get('lesson',''),'approach':r.get('approach',''),'rel':round(rel,3)} for rel,r in scored[:k]]
+    return [{'task':r['task'],'attempt':r.get('attempt'),'success':r.get('success'),'outcome':r.get('outcome',''),'errors':r.get('errors',[]),'lesson':r.get('lesson',''),'approach':r.get('approach',''),'federated':bool(r.get('federated')),'rel':round(rel,3)} for rel,r in scored[:k]]
 def attempts_for(task:str)->int:
     qn=_rt.nonce(_rt.salient_tags(task or ''))
-    return sum(1 for r in _read_all() if r.get('nonce')==qn)
+    return sum(1 for r in _read_all() if r.get('nonce')==qn and not r.get('federated'))
 def brief(task:str,k:int=3)->str:
     hits=recall(task,k=k)
     if not hits:return ''
@@ -115,8 +115,34 @@ def federation_export(limit:int=200,only_success:bool=True)->Dict[str,Any]:
         out.append({'tags':(r.get('tags') or [])[:8],'nonce':r.get('nonce'),'lesson':scrubbed[:300],'success':True})
         if len(out)>=int(limit):break
     return {'federable':out,'n':len(out),'source':'coding_ledger','note':'lessons only; raw tasks/paths/errors never exported'}
+def federation_import(entries:List[Dict[str,Any]],source:str='peer')->Dict[str,Any]:
+    """Receive a peer's scrubbed successful lessons into the local ledger, marked federated (so they help recall but
+    never count as first-party attempts). Re-scrubbed on the way in — peers aren't trusted blindly. Idempotent (nonce+lesson dedupe)."""
+    try:from amni.serve.pii_egress import scrub as _scrub
+    except Exception:_scrub=lambda t,**k:t
+    existing=set((r.get('nonce'),(r.get('lesson') or '').lower()) for r in _read_all())
+    added=0;skipped=0;lines=[]
+    for e in (entries or []):
+        if not isinstance(e,dict):skipped+=1;continue
+        lesson=(e.get('lesson') or '').strip();tags=e.get('tags') if isinstance(e.get('tags'),list) else []
+        if not lesson:skipped+=1;continue
+        lesson=_defederate_paths(_scrub(lesson,source='federation_import'))[:300]
+        nonce=e.get('nonce') if isinstance(e.get('nonce'),int) else _rt.nonce(tags or _rt.salient_tags(lesson))
+        key=(nonce,lesson.lower())
+        if not lesson or key in existing:skipped+=1;continue
+        existing.add(key)
+        rec={'id':'cf_'+uuid.uuid4().hex[:12],'ts':time.time(),'iso':time.strftime('%Y-%m-%dT%H:%M:%S'),'task':'[federated] '+', '.join((tags or [])[:6]),'attempt':0,'approach':'','outcome':'federated lesson','errors':[],'lesson':lesson,'success':True,'files':[],'tags':(tags or [])[:16],'nonce':nonce,'federated':True,'source':str(source)[:40],'session_id':''}
+        lines.append(rec);added+=1
+    if lines:
+        try:
+            with _LOCK:
+                with _ledger_path().open('a',encoding='utf-8') as fh:
+                    for r in lines:fh.write(json.dumps(r,ensure_ascii=False)+'\n')
+        except Exception as ex:return {'imported':0,'skipped':skipped,'error':str(ex)}
+    return {'imported':added,'skipped':skipped,'source':source}
 def stats()->Dict[str,Any]:
     rows=_read_all()
-    succ=sum(1 for r in rows if r.get('success') is True);fail=sum(1 for r in rows if r.get('success') is False)
-    retried=len([r for r in rows if (r.get('attempt') or 1)>1])
-    return {'total':len(rows),'succeeded':succ,'failed':fail,'unknown':len(rows)-succ-fail,'retried_attempts':retried,'last_iso':rows[-1].get('iso') if rows else None}
+    fed=sum(1 for r in rows if r.get('federated'));own=[r for r in rows if not r.get('federated')]
+    succ=sum(1 for r in own if r.get('success') is True);fail=sum(1 for r in own if r.get('success') is False)
+    retried=len([r for r in own if (r.get('attempt') or 1)>1])
+    return {'total':len(own),'succeeded':succ,'failed':fail,'unknown':len(own)-succ-fail,'retried_attempts':retried,'federated':fed,'last_iso':rows[-1].get('iso') if rows else None}
