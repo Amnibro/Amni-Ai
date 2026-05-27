@@ -2,6 +2,22 @@
 
 > Pre-v5.0.0 history (v3.x → v4.40.x, 670 KB) preserved at `backups/v4.40.1_pre_v5_pivot/changelog.v4.40.1.bak`. Going forward, this file tracks the **texture-native composition era** only.
 
+## v6.10.123 — Tier 5b first slice: safe PC operation behind a propose→confirm gate (2026-05-26)
+
+Directive: *"hopefully Adam would be able to do ANYTHING on a PC"* — built the **safety spine** first so capability can grow on top without ever being unsupervised.
+
+### New `amni/serve/pc_actions.py` + `pc_action` skill
+A two-step **propose → confirm** gate: `propose(action, target)` returns a token + plain-language description + risk level; **nothing touches the OS until the owner confirms that token**. Actions: `echo` / `notify` / `open_url` / `open_path` / `launch_app` / `run` (shell). 
+- **Destructive-pattern denylist** (`rm -rf`, `format c:`, `shutdown`, `dd if=`, `mkfs`, `reg delete`, `drop table`, fork-bombs, `> /dev/sd…`) is **refused outright** — at propose *and* re-checked at confirm, so a target mutated after proposal still can't run.
+- Tokens are **single-use** and **expire** (5 min); cancel anytime. Every stage (proposed/executed/refused/cancelled/expired/error) is appended to `logs/pc_actions.jsonl`. Executors live in a swappable dict so tests never touch the real OS.
+- Skill actions: `propose | confirm | cancel | pending | audit`.
+
+### Closed the human-in-the-loop in chat
+- `_format_skill_output` renders a proposal as a confirm prompt (`Reply 'confirm pca_…' to proceed, or 'cancel pca_…'`), shows ⛔ on refusal, and a result block on execution.
+- Agent NL routes `confirm pca_<token>` / `cancel pca_<token>` (token-shaped only) and "what actions are pending".
+
+These are the Tier-5b rails from the roadmap made real: Law-aligned (no harm / destructive refused), confirm-gated, fully audited, OS-untouched-until-confirmed. 24/24 new tests pass (propose/confirm/single-use/expiry/cancel, destructive refusal at both stages, audit stages, swappable executors, skill flow, chat format + routing); pose-coach (37/37) + search (18/18) regressions green.
+
 ## v6.10.122 — Amni-Chat text bridge (Adam as a lightweight chat participant) + PC-operator roadmap (2026-05-26)
 
 Directive: *"Adam should be able to lightweight interact with Amni-Chat users (streamed from PC) via text messaging, and hopefully Adam would be able to do ANYTHING on a PC."* First slice of both.
