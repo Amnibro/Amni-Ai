@@ -413,6 +413,81 @@ def _render_dashboard(base:str,data:dict)->str:
         lines.append(f'  ║    proposed {proposed:>3} · attempted {attempted:>3} · validated {validated:>3} · deployed {deployed:>3}      ║')
     lines.append(f'  ╚══════════════════════════════════════════════════════════════════╝')
     return '\n'.join(lines)
+def cmd_reminders(args):
+    action=(getattr(args,'action',None) or 'list').strip().lower()
+    if action=='dismiss' and not getattr(args,'id',None) and getattr(args,'text',None):
+        args.id=args.text;args.text=None
+    url=getattr(args,'url',None)
+    if url and not url.startswith('http'):url='http://'+url
+    if url:url=url.rstrip('/')
+    if action=='list':return _reminders_list(args,url)
+    if action=='due':return _reminders_due(args,url)
+    if action=='stats':return _reminders_stats(args,url)
+    if action=='add':return _reminders_add(args,url)
+    if action=='dismiss':return _reminders_dismiss(args,url)
+    print(f'[reminders] unknown action {action!r}; use list|due|stats|add|dismiss',flush=True);sys.exit(1)
+def _reminders_fetch(args,url):
+    if url:
+        r=_fetch_json(url+f'/memory/reminders?limit={int(args.limit or 50)}'+(f'&session_id={args.session}' if args.session else ''))
+        if r is None:print(f'[reminders] unreachable: {url}',flush=True);sys.exit(1)
+        return r.get('reminders') or [],r.get('due') or [],r.get('stats') or {}
+    from amni.serve.reminders import list_active,list_due,stats
+    return list_active(session_id=args.session or None,limit=int(args.limit or 50)),list_due(),stats()
+def _reminders_list(args,url):
+    items,due,stats=_reminders_fetch(args,url)
+    if args.json:print(json.dumps({'reminders':items,'due':due,'stats':stats},indent=2,default=str),flush=True);return
+    if not items:print('\n  No active reminders. Add one with `amni reminders add "text"`.\n',flush=True);return
+    due_ids={r.get('id') for r in due}
+    print(f'\n  {len(items)} active reminder(s) · {stats.get("due_now",0)} due now\n',flush=True)
+    for r in items:
+        rid=r.get('id','?');text=r.get('text','');due_iso=r.get('due_iso') or '(no due)';marker='!' if rid in due_ids else ' '
+        print(f'  {marker} {rid}  {due_iso}  {text}',flush=True)
+    print('',flush=True)
+def _reminders_due(args,url):
+    _,due,_=_reminders_fetch(args,url)
+    if args.json:print(json.dumps({'due':due},indent=2,default=str),flush=True);return
+    if not due:print('\n  Nothing due right now.\n',flush=True);return
+    print(f'\n  {len(due)} reminder(s) due:\n',flush=True)
+    for r in due:print(f'  ! {r.get("id","?")}  {r.get("due_iso","?")}  {r.get("text","")}',flush=True)
+    print('',flush=True)
+def _reminders_stats(args,url):
+    _,_,stats=_reminders_fetch(args,url)
+    if args.json:print(json.dumps(stats,indent=2,default=str),flush=True);return
+    print(f'\n  active   {stats.get("active",0)}',flush=True)
+    print(f'  due now  {stats.get("due_now",0)}',flush=True)
+    print(f'  with due {stats.get("with_due",0)}\n',flush=True)
+def _reminders_add(args,url):
+    text=(args.text or '').strip()
+    if not text:print('[reminders add] text required (positional arg or --text)',flush=True);sys.exit(1)
+    if url:
+        import urllib.request
+        body=json.dumps({'text':text,'session_id':args.session or ''}).encode('utf-8')
+        try:
+            req=urllib.request.Request(url+'/memory/reminders',data=body,headers={'content-type':'application/json'},method='POST')
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[reminders] add failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.reminders import add
+        r=add(text=text,session_id=args.session or '')
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    if 'error' in r:print(f'[reminders] {r["error"]}',flush=True);sys.exit(1)
+    tail=f' · due {r.get("due_iso")}' if r.get('due_iso') else ' · no due parsed'
+    print(f'  Added {r.get("id","?")}{tail}',flush=True)
+def _reminders_dismiss(args,url):
+    rid=(args.id or '').strip()
+    if not rid:print('[reminders dismiss] need an id',flush=True);sys.exit(1)
+    if url:
+        import urllib.request
+        try:
+            req=urllib.request.Request(url+'/memory/reminders/'+rid+'/dismiss',data=b'',method='POST')
+            with urllib.request.urlopen(req,timeout=5) as resp:r=json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:print(f'[reminders] dismiss failed: {e}',flush=True);sys.exit(1)
+    else:
+        from amni.serve.reminders import dismiss
+        r=dismiss(rid)
+    if args.json:print(json.dumps(r,indent=2,default=str),flush=True);return
+    if 'error' in r:print(f'[reminders] {r["error"]}',flush=True);sys.exit(1)
+    print(f'  Dismissed {rid}',flush=True)
 def cmd_bookmarks(args):
     action=(getattr(args,'action',None) or 'list').strip().lower()
     url=getattr(args,'url',None)
@@ -888,6 +963,15 @@ def main():
     pers.add_argument('--overwrite',action='store_true',help='Allow import to replace an existing same-named persona')
     pers.add_argument('--json',action='store_true',help='JSON output for list/show')
     pers.set_defaults(func=cmd_persona)
+    rm=sub.add_parser('reminders',help='Manage reminders: list / due / stats / add / dismiss')
+    rm.add_argument('action',nargs='?',default='list',choices=['list','due','stats','add','dismiss'])
+    rm.add_argument('text',nargs='?',default=None,help='Reminder text (for add)')
+    rm.add_argument('--id',default=None,help='Reminder id (for dismiss)')
+    rm.add_argument('--limit',type=int,default=50)
+    rm.add_argument('--session',default=None,help='Filter to a single session id')
+    rm.add_argument('--url',default=None,help='Hit a running server instead of reading local files')
+    rm.add_argument('--json',action='store_true')
+    rm.set_defaults(func=cmd_reminders)
     bm=sub.add_parser('bookmarks',help='Manage starred bot replies: list / stats / add / delete / export')
     bm.add_argument('action',nargs='?',default='list',choices=['list','stats','add','delete','export'])
     bm.add_argument('id',nargs='?',default=None,help='Bookmark id (for delete)')
