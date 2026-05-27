@@ -147,6 +147,29 @@ def mount(app,agent):
         body=await req.json()
         if not body.get('task'):raise HTTPException(400,'need task')
         return prepare(body['task'],agent=agent,max_attempts=int(body.get('max_attempts',3)))
+    @app.get('/memory/coding-federation')
+    def coding_federation_export(limit:int=200,only_success:bool=True):
+        from amni.serve.coding_ledger import federation_export
+        return federation_export(limit=limit,only_success=bool(only_success))
+    @app.post('/memory/coding-federation')
+    async def coding_federation_import(req:Request):
+        from amni.serve.coding_ledger import federation_import
+        body=await req.json()
+        entries=body.get('federable') or body.get('entries') or []
+        if not isinstance(entries,list):raise HTTPException(400,'need federable/entries list')
+        return federation_import(entries,source=str(body.get('source') or 'http-peer'))
+    @app.post('/memory/coding-federation/pull')
+    async def coding_federation_pull(req:Request):
+        import urllib.request,json as _json
+        from amni.serve.coding_ledger import federation_import
+        body=await req.json()
+        url=(body.get('url') or '').strip()
+        if not url:raise HTTPException(400,'need url of a peer Adam (its /memory/coding-federation)')
+        peer=url.rstrip('/')+('/memory/coding-federation' if not url.rstrip('/').endswith('/memory/coding-federation') else '')
+        try:
+            with urllib.request.urlopen(peer,timeout=8) as resp:data=_json.loads(resp.read().decode('utf-8','ignore'))
+        except Exception as e:raise HTTPException(502,f'peer unreachable: {e}')
+        return federation_import(data.get('federable') or [],source=str(body.get('source') or peer))
     @app.get('/memory/se-dashboard')
     def se_dashboard():
         from amni.serve.code_index import stats as _ci_stats
