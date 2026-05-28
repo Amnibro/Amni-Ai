@@ -75,7 +75,7 @@ def load_sample(limit=None)->List[Dict[str,Any]]:
 _SUITES={'arc':load_arc,'mmlu':load_mmlu,'hellaswag':load_hellaswag,'winogrande':load_winogrande,'gsm8k':load_gsm8k,'sample':load_sample}
 def format_prompt(item:Dict[str,Any])->str:
     if item['kind']=='numeric':
-        return f"Solve this problem step by step. End with the final numeric answer prefixed by '####'.\n\nProblem: {item['question']}\n"
+        return f"Problem: {item['question']}\nSolution (work through it step by step, then write the final answer on its own line prefixed by '####'):\n"
     opts='\n'.join(f'{_LETTERS[i]}. {c}' for i,c in enumerate(item['choices']))
     return f"Answer the multiple-choice question with ONLY the single letter of the correct option.\n\n{item['question']}\n{opts}\nAnswer:"
 def extract_answer(item:Dict[str,Any],output:str)->str:
