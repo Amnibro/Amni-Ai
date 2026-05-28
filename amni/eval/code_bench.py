@@ -96,6 +96,38 @@ def run_twice(generate_fn:Callable,problems:List[Dict[str,Any]],timeout:int=10,l
     run2=run_benchmark(generate_fn,problems,timeout=timeout,prior=prior)
     r1=set(r['task_id'] for r in run1['results'] if r['passed']);r2=set(r['task_id'] for r in run2['results'] if r['passed'])
     return {'run1_pass_at_1':run1['pass_at_1'],'run2_pass_at_1':run2['pass_at_1'],'delta':round(run2['pass_at_1']-run1['pass_at_1'],1),'newly_fixed':sorted(r2-r1),'regressed':sorted(r1-r2),'n':run1['n'],'run1':run1,'run2':run2}
+def run_until_pass(problem:Dict[str,Any],generate_fn:Callable,max_attempts:int=3,timeout:int=10,record_fn:Optional[Callable]=None,synth_fn:Optional[Callable]=None)->Dict[str,Any]:
+    """Escalating memory: attempt 1 cold; attempt 2 gets the last error; attempt 3+ (after failing TWICE) gets the
+    SYNTHESIZED notes (inferred from all prior attempts) so Adam reasons about what's required, not just the last bug.
+    record_fn(problem,result,attempt) persists each try; synth_fn(task_key)->notes builds the inference brief (task_key = problem['task_id'])."""
+    trace=[];lesson=None
+    for attempt in range(1,max_attempts+1):
+        res=run_problem(problem,generate_fn,prior_lesson=lesson,timeout=timeout)
+        trace.append({'attempt':attempt,'passed':res['passed'],'error':res['error'][:200]})
+        if record_fn:
+            try:record_fn(problem,res,attempt)
+            except Exception:pass
+        if res['passed']:return {'task_id':problem['task_id'],'passed':True,'attempts':attempt,'trace':trace,'completion':res.get('completion','')}
+        if attempt>=2 and synth_fn:
+            try:s=synth_fn(problem.get('task_id') or problem.get('prompt',''))
+            except Exception:s=''
+            lesson=s if s else f"your previous attempts failed; latest: {res['error'][:200]} — change approach"
+        else:
+            lesson=f"your previous attempt FAILED with: {res['error'][:240]} — fix that exact error"
+    return {'task_id':problem['task_id'],'passed':False,'attempts':max_attempts,'trace':trace,'completion':trace and ''}
+def run_benchmark_iterative(generate_fn:Callable,problems:List[Dict[str,Any]],max_attempts:int=3,timeout:int=10,record_fn:Optional[Callable]=None,synth_fn:Optional[Callable]=None)->Dict[str,Any]:
+    """The full escalating run: per problem, keep trying up to max_attempts with growing memory. Reports pass@1 (cold)
+    vs pass-within-N (with notes+inference), the attempts-to-pass histogram, and which problems needed the synthesis step (>=3)."""
+    results=[];cold=0;eventual=0;dist={};needed_inference=[]
+    for p in problems:
+        r=run_until_pass(p,generate_fn,max_attempts=max_attempts,timeout=timeout,record_fn=record_fn,synth_fn=synth_fn)
+        results.append(r)
+        if r['trace'][0]['passed']:cold+=1
+        if r['passed']:
+            eventual+=1;dist[r['attempts']]=dist.get(r['attempts'],0)+1
+            if r['attempts']>=3:needed_inference.append(r['task_id'])
+    n=len(problems) or 1
+    return {'n':len(problems),'pass_at_1':round(100.0*cold/n,1),f'pass_within_{max_attempts}':round(100.0*eventual/n,1),'gain':round(100.0*(eventual-cold)/n,1),'attempts_to_pass':dict(sorted(dist.items())),'fixed_by_inference':needed_inference,'results':results}
 _CODEX_REF={'humaneval':{'codex_frontier_pass_at_1':92.0,'note':'GPT-5/o-series-class published HumanEval pass@1 (~90%+); code-davinci-002 was ~47%'},
             'mbpp':{'codex_frontier_pass_at_1':80.0,'note':'frontier MBPP pass@1 ~80%+'},
             'swe-bench':{'codex_frontier_pct':70.0,'note':'SWE-bench Verified frontier ~70%+; out of scope for a 2-4B single-shot model'}}
