@@ -41,6 +41,8 @@ def main():
     ap.add_argument('--timeout',type=int,default=10,help='per-problem test execution timeout (s)')
     ap.add_argument('--req-timeout',type=int,default=120,help='per-generation request timeout (s)')
     ap.add_argument('--persist',action='store_true',help='also record attempts to coding_ledger (cross-run memory)')
+    ap.add_argument('--baseline-url',default=None,help='raw base-model server (e.g. Gemma-4) for single-shot baseline; enables Adam-vs-baseline comparison')
+    ap.add_argument('--max-attempts',dest='max_attempts2',type=int,default=3,help='Adam loop attempts in baseline comparison mode')
     ap.add_argument('--json',action='store_true')
     a=ap.parse_args()
     probs={'humaneval':cb.load_humaneval,'mbpp':cb.load_mbpp,'sample':cb.load_sample}[a.benchmark](limit=a.limit)
@@ -55,6 +57,18 @@ def main():
                 cl.record(task=p['task_id']+' :: '+p['entry_point'],success=False,errors=[r.get('error','')[:200]],lesson=f"failed: {r.get('error','')[:160]}",approach='benchmark')
                 return f"your previous attempt FAILED with: {r.get('error','')[:300]} — fix that exact error"
         except Exception:pass
+    if a.baseline_url:
+        baseline_gen=_make_generate_fn(a.baseline_url,a.max_tokens,a.req_timeout)
+        record_fn=synth_fn=None
+        if a.persist:
+            try:
+                from amni.serve import coding_ledger as cl
+                def record_fn(prob,res,attempt):cl.record(task=prob['task_id'],success=res['passed'],errors=[res['error'][:160]] if not res['passed'] else None,approach=f'attempt{attempt}')
+                synth_fn=cl.synthesize
+            except Exception:pass
+        comp=cb.run_comparison(baseline_gen,gen,probs,max_attempts=a.max_attempts2,timeout=a.timeout,record_fn=record_fn,synth_fn=synth_fn)
+        if a.json:print(json.dumps({k:v for k,v in comp.items()},indent=2));return
+        print('\n'+cb.compare_baseline_table(comp,baseline_label='Gemma-4 (raw, single-shot)',benchmark=a.benchmark)+'\n',flush=True);return
     out=cb.run_twice(gen,probs,timeout=a.timeout,lesson_fn=lesson_fn)
     if a.json:print(json.dumps({k:v for k,v in out.items() if k not in ('run1','run2')},indent=2));return
     print('\n'+cb.compare_to_codex(out,a.benchmark)+'\n',flush=True)
