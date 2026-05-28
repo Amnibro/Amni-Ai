@@ -20,9 +20,9 @@ def _make_generate_fn(url,max_tokens,timeout):
         instr='Complete this Python function. Output ONLY the function definition (you may include needed imports), no prose, no markdown.'
         if prior_lesson:instr='Your previous attempt FAILED: '+str(prior_lesson)[:300]+'\nFix that specific problem. '+instr
         msg=instr+'\n\n'+prompt
-        for path,key,outk in (('/complete','prompt',('completion','text','output')),('/chat','message',('answer','text','response'))):
+        for path,payload,outk in ((url+'/complete',{'prefix':prompt,'max_tokens':max_tokens,'stop':['\ndef ','\nclass ','\nprint(','\n# ','```']},('completion','text','output')),(url+'/chat',{'message':msg,'max_new_tokens':max_tokens},('answer','text','response'))):
             try:
-                j=_post(url+path,{key:msg,'max_tokens':max_tokens,'max_new_tokens':max_tokens},timeout=timeout)
+                j=_post(path,payload,timeout=timeout)
                 if isinstance(j,dict):
                     for k in outk:
                         if j.get(k):return j[k]

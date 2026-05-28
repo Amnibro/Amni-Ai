@@ -17,9 +17,9 @@ def _make_generate_fn(url,timeout):
     url=url.rstrip('/')
     def gen(prompt):
         mt=8 if 'single letter' in prompt else 320
-        for path,key,outk in (('/complete','prompt',('completion','text','output')),('/chat','message',('answer','text','response'))):
+        for path,payload,outk in ((url+'/complete',{'prefix':prompt,'max_tokens':mt,'stop':['\n\n','</task>','Question:']},('completion','text','output')),(url+'/chat',{'message':prompt,'max_new_tokens':mt},('answer','text','response'))):
             try:
-                j=_post(url+path,{key:prompt,'max_tokens':mt,'max_new_tokens':mt},timeout)
+                j=_post(path,payload,timeout)
                 if isinstance(j,dict):
                     for k in outk:
                         if j.get(k):return j[k]

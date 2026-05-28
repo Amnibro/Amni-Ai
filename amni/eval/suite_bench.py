@@ -88,6 +88,8 @@ def extract_answer(item:Dict[str,Any],output:str)->str:
     n=len(item['choices']);valid=set(_LETTERS[:n])
     m=re.search(r'(?:answer\s*(?:is|:)?\s*)\(?([A-H])\)?',out,re.IGNORECASE)
     if m and m.group(1).upper() in valid:return m.group(1).upper()
+    mb=re.search(r'(?:^|[^A-Za-z])([A-H])(?:[^A-Za-z]|$)',out)
+    if mb and mb.group(1).upper() in valid:return mb.group(1).upper()
     for ch in out:
         if ch.upper() in valid:return ch.upper()
     return ''
