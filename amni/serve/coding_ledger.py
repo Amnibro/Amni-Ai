@@ -48,6 +48,26 @@ def recall(task:str,k:int=3)->List[Dict[str,Any]]:
         if rel>0.05:scored.append((rel,r))
     scored.sort(key=lambda x:(-x[0],-(x[1].get('ts') or 0)))
     return [{'task':r['task'],'attempt':r.get('attempt'),'success':r.get('success'),'outcome':r.get('outcome',''),'errors':r.get('errors',[]),'lesson':r.get('lesson',''),'approach':r.get('approach',''),'federated':bool(r.get('federated')),'rel':round(rel,3)} for rel,r in scored[:k]]
+def synthesize(task:str,k:int=10)->str:
+    """When Adam has failed the same kind of task repeatedly, don't just echo the last error — read ALL prior
+    attempts and INFER what's actually required: distinct failure modes, approaches already burned, recorded lessons.
+    The model then forms a hypothesis from these notes and changes approach. This is the 'take notes' step for when
+    the mission shifts and a single retry won't cut it."""
+    hits=[h for h in recall(task,k=k) if h.get('success') is False]
+    if not hits:return ''
+    errs=[];seen=set()
+    for h in hits:
+        for e in (h.get('errors') or []):
+            sig=re.sub(r'\d+','N',str(e))[:70].lower()
+            if sig not in seen:seen.add(sig);errs.append(str(e)[:140])
+    approaches=[h['approach'] for h in hits if h.get('approach')]
+    lessons=[h['lesson'] for h in hits if h.get('lesson')]
+    lines=[f'NOTES from {len(hits)} prior FAILED attempt(s) — you have failed this repeatedly, so INFER the real requirement from these memories and change approach fundamentally:']
+    if errs:lines.append('  distinct failures seen: '+' | '.join(errs[:5]))
+    if approaches:lines.append('  approaches already tried (do something DIFFERENT): '+'; '.join(a[:60] for a in approaches[:4]))
+    if lessons:lines.append('  lessons recorded: '+'; '.join(l[:80] for l in lessons[:4]))
+    lines.append('  Form a hypothesis about what is actually being asked, then solve it a new way that addresses every failure above.')
+    return '\n'.join(lines)
 def attempts_for(task:str)->int:
     qn=_rt.nonce(_rt.salient_tags(task or ''))
     return sum(1 for r in _read_all() if r.get('nonce')==qn and not r.get('federated'))
