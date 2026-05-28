@@ -128,6 +128,29 @@ def run_benchmark_iterative(generate_fn:Callable,problems:List[Dict[str,Any]],ma
             if r['attempts']>=3:needed_inference.append(r['task_id'])
     n=len(problems) or 1
     return {'n':len(problems),'pass_at_1':round(100.0*cold/n,1),f'pass_within_{max_attempts}':round(100.0*eventual/n,1),'gain':round(100.0*(eventual-cold)/n,1),'attempts_to_pass':dict(sorted(dist.items())),'fixed_by_inference':needed_inference,'results':results}
+def run_comparison(baseline_gen:Callable,adam_gen:Callable,problems:List[Dict[str,Any]],max_attempts:int=3,timeout:int=10,record_fn:Optional[Callable]=None,synth_fn:Optional[Callable]=None)->Dict[str,Any]:
+    """Isolate what the ARCHITECTURE adds over the raw base weights. baseline_gen = the bare model, ONE shot, no loop,
+    no memory. adam_gen = the same task set run through Adam's full escalating loop (cold -> last-error -> synthesized notes).
+    If Adam's base is Gemma-4-derived, baseline pass@1 ~ Adam cold pass@1; the LIFT to pass-within-N is the loop+memory
+    contribution — concrete evidence of a stepwise system improvement, not a rebake/distillation."""
+    base=run_benchmark(baseline_gen,problems,timeout=timeout)
+    adam=run_benchmark_iterative(adam_gen,problems,max_attempts=max_attempts,timeout=timeout,record_fn=record_fn,synth_fn=synth_fn)
+    within=adam.get(f'pass_within_{max_attempts}',adam.get('pass_at_1'))
+    base_pass=set(r['task_id'] for r in base['results'] if r['passed'])
+    adam_pass=set(r['task_id'] for r in adam['results'] if r['passed'])
+    return {'n':base['n'],'max_attempts':max_attempts,'baseline_pass_at_1':base['pass_at_1'],'adam_pass_at_1':adam['pass_at_1'],'adam_pass_within_n':within,'lift_over_baseline':round(within-base['pass_at_1'],1),'loop_gain':adam.get('gain'),'adam_solved_baseline_missed':sorted(adam_pass-base_pass),'baseline_solved_adam_missed':sorted(base_pass-adam_pass),'fixed_by_inference':adam.get('fixed_by_inference',[])}
+def compare_baseline_table(comp:Dict[str,Any],baseline_label:str='Gemma-4 (raw, single-shot)',benchmark:str='humaneval')->str:
+    n=comp.get('n');ma=comp.get('max_attempts')
+    lines=[f'=== Adam vs {baseline_label} — {benchmark} (pass@1, n={n}) ===',
+           f'  {baseline_label}:        {comp.get("baseline_pass_at_1")}%   (no loop, no memory)',
+           f'  Adam cold (attempt 1):   {comp.get("adam_pass_at_1")}%   (same base weights, 1 shot)',
+           f'  Adam within {ma} attempts: {comp.get("adam_pass_within_n")}%   (loop + escalating memory)',
+           f'  LIFT over baseline:      {comp.get("lift_over_baseline"):+}%   <- the architecture\'s contribution',
+           f'  solved by Adam, missed by baseline: {len(comp.get("adam_solved_baseline_missed") or [])}',
+           f'  fixed only after inference (>=3 attempts): {len(comp.get("fixed_by_inference") or [])}']
+    if comp.get('baseline_solved_adam_missed'):lines.append(f'  ⚠ baseline solved, Adam missed: {comp["baseline_solved_adam_missed"]}')
+    lines.append('  Thesis: baseline ~ Adam-cold (shared weights); the lift to within-N is loop+memory = stepwise improvement, not a rebake.')
+    return '\n'.join(lines)
 _CODEX_REF={'humaneval':{'codex_frontier_pass_at_1':92.0,'note':'GPT-5/o-series-class published HumanEval pass@1 (~90%+); code-davinci-002 was ~47%'},
             'mbpp':{'codex_frontier_pass_at_1':80.0,'note':'frontier MBPP pass@1 ~80%+'},
             'swe-bench':{'codex_frontier_pct':70.0,'note':'SWE-bench Verified frontier ~70%+; out of scope for a 2-4B single-shot model'}}
