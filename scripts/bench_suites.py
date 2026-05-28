@@ -16,8 +16,10 @@ def _post(url,payload,timeout):
 def _make_generate_fn(url,timeout):
     url=url.rstrip('/')
     def gen(prompt):
-        mt=8 if 'single letter' in prompt else 320
-        for path,payload,outk in ((url+'/complete',{'prefix':prompt,'max_tokens':mt,'stop':['\n\n','</task>','Question:']},('completion','text','output')),(url+'/chat',{'message':prompt,'max_new_tokens':mt},('answer','text','response'))):
+        numeric=('####' in prompt) or ('step by step' in prompt)
+        mt=8 if 'single letter' in prompt else (640 if numeric else 320)
+        stops=['Problem:','Question:'] if numeric else ['\n\n','</task>','Question:']
+        for path,payload,outk in ((url+'/complete',{'prefix':prompt,'max_tokens':mt,'stop':stops},('completion','text','output')),(url+'/chat',{'message':prompt,'max_new_tokens':mt},('answer','text','response'))):
             try:
                 j=_post(path,payload,timeout)
                 if isinstance(j,dict):
