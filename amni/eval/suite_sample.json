@@ -1,0 +1,7 @@
+[
+  {"task_id": "sample/mcq0", "kind": "mcq", "question": "What is the capital of France?", "choices": ["London", "Paris", "Berlin", "Madrid"], "answer": "B"},
+  {"task_id": "sample/mcq1", "kind": "mcq", "question": "Which of these is a mammal?", "choices": ["Shark", "Frog", "Whale", "Eagle"], "answer": "C"},
+  {"task_id": "sample/mcq2", "kind": "mcq", "question": "What is 2 + 2?", "choices": ["3", "4", "5", "6"], "answer": "B"},
+  {"task_id": "sample/num0", "kind": "numeric", "question": "What is 12 multiplied by 12?", "answer": "144"},
+  {"task_id": "sample/num1", "kind": "numeric", "question": "If you start with 5 apples and eat 2, how many are left?", "answer": "3"}
+]
