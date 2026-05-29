@@ -4,12 +4,12 @@ Endpoints:
   POST /v1/chat/completions       — messages[] + tools[] + stream → tool_calls or final text
 Wire shape exactly mirrors OpenAI's spec. Tool-call grammar is taught via system prompt (tool_protocol.build_system_prompt). Adam emits ```tool_call fenced JSON, the parser lifts them into the OpenAI tool_calls[] shape. role:"tool" messages get flattened into Adam's history as OBSERVATION blocks.
 Persistent autonomy: every completion records (intent → tool sequence) into the CodeAtlas via cell-address LUT, so future similar coding tasks get a `hint_for_prompt` injected up front."""
-import time,json,uuid,asyncio
+import os,time,json,uuid,asyncio
 from typing import List,Dict,Any,Optional,AsyncIterator
 from amni.serve.tool_protocol import parse_tool_calls,strip_tool_calls,build_system_prompt,flatten_history,tools_digest,build_openai_tool_calls,openai_finish_reason,now_unix
 from amni.serve.widget_protocol import parse_widgets,strip_widgets,build_system_prompt_addendum as _widget_sys_addendum
-_MODEL_NAME='adam:e2b-gf17'
-_MODEL_ALIASES=['adam','adam:latest','adam-e2b-gf17','amni-a1','amni-ai','adam-gf17','gpt-3.5-turbo','gpt-4','gpt-4o-mini','claude-3-sonnet','llama3.1','qwen2.5','gemma2']
+_MODEL_NAME='adam:granite-gf17'
+_MODEL_ALIASES=['adam','adam:latest','adam:e2b-gf17','adam-e2b-gf17','adam-granite-gf17','amni-a1','amni-ai','adam-gf17','gpt-3.5-turbo','gpt-4','gpt-4o-mini','claude-3-sonnet','llama3.1','qwen2.5']
 def _model_card(name:str)->Dict[str,Any]:return {'id':name,'object':'model','created':1715000000,'owned_by':'amnibro','permission':[],'root':_MODEL_NAME,'parent':None}
 def models_list()->Dict[str,Any]:return {'object':'list','data':[_model_card(_MODEL_NAME)]+[_model_card(a) for a in _MODEL_ALIASES]}
 def _completion_id()->str:return f'chatcmpl-{uuid.uuid4().hex[:24]}'
@@ -82,8 +82,8 @@ def mount(app,adam,agent,code_atlas=None):
         tools=body.get('tools') or []
         is_stream=bool(body.get('stream',False))
         model=body.get('model',_MODEL_NAME)
-        max_tokens=int(body.get('max_tokens') or body.get('max_completion_tokens') or 1024)
-        temperature=float(body.get('temperature') or 0.7)
+        max_tokens=int(body.get('max_tokens') or body.get('max_completion_tokens') or os.environ.get('AMNI_DEFAULT_MAX_TOKENS','4096'))
+        temperature=float(body.get('temperature') or os.environ.get('AMNI_DEFAULT_TEMPERATURE','0.7'))
         do_sample=temperature>0.01
         session_id=body.get('user') or body.get('session_id') or 'oai_default'
         pairs,user_msg,client_system=flatten_history(messages)

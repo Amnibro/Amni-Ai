@@ -46,6 +46,10 @@ class PtexMemoryAtlas:
         e=self._index['entries'][entry_id]
         data=bytes(self._mmap[e['offset']:e['offset']+e['len']])
         return data.decode('utf-8',errors='replace')
+    def read_raw(self,entry_id):
+        if entry_id<0 or entry_id>=len(self._index['entries']):return None
+        self._ensure_mmap();e=self._index['entries'][entry_id]
+        return bytes(self._mmap[e['offset']:e['offset']+e['len']])
     def read_meta(self,entry_id):
         if entry_id<0 or entry_id>=len(self._index['entries']):return None
         return self._index['entries'][entry_id].get('meta')

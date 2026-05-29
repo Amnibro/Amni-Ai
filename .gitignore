@@ -176,3 +176,12 @@ docs/demo/
 # amni/inference/ (minus asimov.py) — streaming, LUT, encoder
 # scripts/amni_serve.py — main entry
 # tests/ — public test suite
+
+# session scratch + local artifacts (do not ship)
+scripts/_scratch/
+*.wav
+.amni/
+data/*.json
+json/
+tests/*.log
+*.bak_pre_fp8

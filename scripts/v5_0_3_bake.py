@@ -11,6 +11,7 @@ def to_uint16_np(t):
     if t.dtype==torch.uint16:return t.numpy()
     if t.dtype==torch.float32:return t.numpy().view(np.uint16)
     if t.dtype==torch.float64:return t.numpy().view(np.uint16)
+    if t.dtype in (torch.float8_e4m3fn,torch.float8_e5m2):return t.to(torch.bfloat16).view(torch.float16).numpy().view(np.uint16)
     raise NotImplementedError(f'unsupported source dtype {t.dtype} — extend bake to handle')
 def _u16_per_element(dtype_str):
     return {'bfloat16':1,'float16':1,'uint16':1,'float32':2,'float64':4}.get(dtype_str,1)
@@ -60,30 +61,41 @@ def bake(src,out,model_name):
             for ki,k in enumerate(keys):
                 t=f.get_tensor(k)
                 src_dtype=str(t.dtype).replace('torch.','')
+                if t.dtype in (torch.float8_e4m3fn,torch.float8_e5m2):src_dtype='bfloat16'
                 shape=tuple(int(x) for x in t.shape)
                 u16=to_uint16_np(t)
                 upe=_u16_per_element(src_dtype)
                 if u16.size>50_000_000:
                     fp16_view=u16.view(np.float16).reshape(-1)
+                    u16_flat=u16.reshape(-1)
                     chunk=20_000_000
                     n=fp16_view.size
+                    MAX_TEX=16384
                     page_w=int(shape[-1])*upe if len(shape)>=2 else min(4096,n)
                     page_h=(n+page_w-1)//page_w
+                    if page_h>MAX_TEX:
+                        page_w=(n+MAX_TEX-1)//MAX_TEX
+                        page_h=(n+page_w-1)//page_w
                     page=np.zeros((page_h,page_w,4),dtype=np.uint8)
                     page_flat=page.reshape(-1,4)
-                    ok=True;sample_done=False
+                    ok=True
                     for off in range(0,n,chunk):
                         end=min(off+chunk,n)
                         c_rgba=encode_fp16_to_rgba4(fp16_view[off:end])
                         page_flat[off:end]=c_rgba
-                        if not sample_done and (end-off)>=200_000:
-                            s=min(200_000,end-off)
-                            sd=decode_rgba4_to_fp16(c_rgba[:s]).view(np.uint16)
-                            ok=np.array_equal(u16.reshape(-1)[off:off+s],sd)
-                            sample_done=True;del sd
-                        del c_rgba
+                        sd=decode_rgba4_to_fp16(c_rgba).view(np.uint16)
+                        if not np.array_equal(u16_flat[off:end],sd):ok=False;del c_rgba,sd;break
+                        del c_rgba,sd
                 else:
                     page,n,page_h,page_w=encode_uint16_as_rgba_natural(u16,shape,u16_per_elem=upe)
+                    MAX_TEX=16384
+                    if page_h>MAX_TEX or page_w>MAX_TEX:
+                        new_w=(n+MAX_TEX-1)//MAX_TEX if page_h>MAX_TEX else page_w
+                        if new_w>MAX_TEX:new_w=MAX_TEX
+                        new_h=(n+new_w-1)//new_w
+                        new_page=np.zeros((new_h,new_w,4),dtype=np.uint8)
+                        new_page.reshape(-1,4)[:n]=page.reshape(-1,4)[:n]
+                        page,page_h,page_w=new_page,new_h,new_w
                     u16_dec=decode_rgba_to_uint16(page,n).reshape(u16.shape)
                     ok=np.array_equal(u16,u16_dec)
                 if not ok:

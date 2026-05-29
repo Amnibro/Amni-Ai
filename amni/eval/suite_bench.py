@@ -110,17 +110,18 @@ def run_suite(name:str,generate_fn:Callable,limit:Optional[int]=None,items:Optio
         res.append({'task_id':it['task_id'],'correct':ok,'got':extract_answer(it,o),'want':it['answer']})
     n=len(items)
     return {'suite':name,'n':n,'accuracy':round(100.0*correct/n,1),'correct':correct,'results':res}
-_REF={'arc':{'gpt-4o':96.7,'llama-3.1-8b':83.4,'gemma-2-2b':55.7,'phi-3-mini':84.9},
-      'mmlu':{'gpt-4o':88.7,'llama-3.1-8b':68.0,'gemma-2-2b':51.3,'phi-3-mini':68.8},
-      'gsm8k':{'gpt-4o':92.0,'llama-3.1-8b':84.5,'gemma-2-2b':62.6,'phi-3-mini':82.5},
-      'hellaswag':{'gpt-4o':95.3,'llama-3.1-8b':78.5,'gemma-2-2b':73.0,'phi-3-mini':78.9},
-      'winogrande':{'gpt-4o':87.5,'llama-3.1-8b':77.4,'gemma-2-2b':68.3,'phi-3-mini':74.6}}
+_REF={'arc':{'gemma-3-4b-it':'n/a','qwen3-4b':'n/a','phi-4-mini-3.8b':'n/a','claude-sonnet-4.6':'n/a'},
+      'mmlu':{'gemma-3-4b-it':59.6,'qwen3-4b':70.0,'phi-4-mini-3.8b':67.3,'claude-sonnet-4.6':'n/a'},
+      'gsm8k':{'gemma-3-4b-it':88.1,'qwen3-4b':87.3,'phi-4-mini-3.8b':88.6,'claude-sonnet-4.6':'n/a'},
+      'hellaswag':{'gemma-3-4b-it':77.2,'qwen3-4b':'n/a','phi-4-mini-3.8b':'n/a','claude-sonnet-4.6':'n/a'},
+      'winogrande':{'gemma-3-4b-it':71.9,'qwen3-4b':'n/a','phi-4-mini-3.8b':'n/a','claude-sonnet-4.6':'n/a'}}
+_NOTE_2026='NOTE: ARC/HellaSwag/Winogrande saturate hard in 2026 — frontier vendors stopped reporting them. Modern leaderboards: MMLU-Pro · GPQA-Diamond · MATH-500 · HumanEval+ · SWE-Bench-Verified · LiveBench.'
 def leaderboard(adam_scores:Dict[str,float],adam_label:str='Adam (this run)')->str:
     suites=[s for s in ('arc','mmlu','gsm8k','hellaswag','winogrande') if s in _REF]
     rows=[adam_label]+sorted({m for s in suites for m in _REF[s]})
     hdr='| Model | '+' | '.join(s.upper() for s in suites)+' |'
     sep='|'+'---|'*(len(suites)+1)
-    lines=['Leaderboard (accuracy %, published references — verify against current cards):',hdr,sep]
+    lines=['Leaderboard (accuracy %, published references — verify against current cards):',_NOTE_2026,hdr,sep]
     def cell(model,s):
         if model==adam_label:v=adam_scores.get(s);return f'{v}' if v is not None else 'n/a'
         return f"{_REF[s].get(model,'n/a')}"
@@ -130,12 +131,12 @@ def render_chart(adam_scores:Dict[str,float],out_path:str,adam_label:str='Adam')
     try:import matplotlib;matplotlib.use('Agg');import matplotlib.pyplot as plt
     except Exception as e:return {'rendered':False,'reason':f'matplotlib unavailable: {e}'}
     suites=[s for s in ('arc','mmlu','gsm8k','hellaswag','winogrande') if s in adam_scores or s in _REF]
-    models=[adam_label,'gemma-2-2b','llama-3.1-8b','gpt-4o']
+    models=[adam_label,'gemma-3-4b-it','qwen3-4b','phi-4-mini-3.8b']
     import numpy as np
     x=np.arange(len(suites));w=0.2
     fig,ax=plt.subplots(figsize=(11,5))
     for i,m in enumerate(models):
-        vals=[(adam_scores.get(s,0) if m==adam_label else _REF.get(s,{}).get(m,0)) for s in suites]
+        vals=[(adam_scores.get(s,0) if m==adam_label else (_REF.get(s,{}).get(m,0) if isinstance(_REF.get(s,{}).get(m,0),(int,float)) else 0)) for s in suites]
         ax.bar(x+(i-1.5)*w,vals,w,label=m)
     ax.set_xticks(x);ax.set_xticklabels([s.upper() for s in suites]);ax.set_ylabel('accuracy %');ax.set_ylim(0,100)
     ax.set_title('Adam vs reference models — leaderboard benchmarks');ax.legend();fig.tight_layout()
