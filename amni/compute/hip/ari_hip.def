@@ -19,6 +19,9 @@ ari_rg_gemv_fused
 ari_rg_gemv_fused_offset
 ari_rgba_gemv_fused
 ari_gemv_rgba_fp16
+ari_gemv_rgba_bf16
+ari_tex_matmul_bf16
+ari_tex_matmul_fp8
 ari_gemv_rgba16_fp16
 ari_gemv_ternary_fp16
 ari_gemv_rtier_fp16

@@ -36,7 +36,7 @@ class StreamingChatService:
             if ct.exists():
                 try:self.tok.chat_template=ct.read_text(encoding='utf-8');print(f'[StreamingChatService] loaded chat_template.jinja sidecar from {ct}',flush=True)
                 except Exception as _e:print(f'[StreamingChatService] WARN: failed to load chat_template.jinja sidecar: {_e}',flush=True)
-            else:print(f'[StreamingChatService] WARN: tokenizer has no chat_template AND no chat_template.jinja next to it at {model_path}. apply_chat_template() will fail. Re-pull the bake: snapshot_download(repo_id="amnibro/gemma-4-E2B-it-gf17", local_dir="<bake_dir>")',flush=True)
+            else:print(f'[StreamingChatService] WARN: tokenizer has no chat_template AND no chat_template.jinja next to it at {model_path}. apply_chat_template() will fail. Re-pull the bake: snapshot_download(repo_id="amnibro/granite41-3b-gf17", local_dir="<bake_dir>")',flush=True)
         cfg=AutoConfig.from_pretrained(model_path)
         archs=tuple(getattr(cfg,'architectures',None) or [])
         is_gdn=any(a in _GDN_ARCHS for a in archs)
@@ -114,16 +114,22 @@ class StreamingChatService:
         new_ids=ids[0,enc.input_ids.shape[1]:]
         return self.tok.decode(new_ids,skip_special_tokens=True),int(new_ids.shape[0])
     def generate_stream(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0):
-        from transformers import TextIteratorStreamer
-        from threading import Thread
+        from transformers import TextIteratorStreamer,StoppingCriteria,StoppingCriteriaList
+        from threading import Thread,Event
         enc=self.tok(prompt,return_tensors='pt').to(self.device)
         streamer=TextIteratorStreamer(self.tok,skip_prompt=True,skip_special_tokens=True,timeout=300.0)
-        gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,eos_token_id=self.tok.eos_token_id,streamer=streamer)
+        stop_event=Event()
+        class _StopOnEvent(StoppingCriteria):
+            def __call__(self,input_ids,scores,**kw):return stop_event.is_set()
+        gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,eos_token_id=self.tok.eos_token_id,streamer=streamer,stopping_criteria=StoppingCriteriaList([_StopOnEvent()]))
         t=Thread(target=self._safe_generate,args=(gen_kw,))
         t.daemon=True;t.start()
-        for chunk in streamer:
-            if chunk:yield chunk
-        t.join(timeout=5.0)
+        try:
+            for chunk in streamer:
+                if chunk:yield chunk
+        finally:
+            stop_event.set()
+            t.join(timeout=5.0)
     def _safe_generate(self,gen_kw):
         try:
             with torch.no_grad():self.model.generate(**gen_kw)
@@ -187,7 +193,7 @@ class StreamingChatService:
         sys_text='\n'.join(sys_parts) if sys_parts else None
         msgs=[]
         if sys_text:msgs.append({'role':'system','content':sys_text})
-        for u,a in (history or [])[-12:]:
+        for u,a in (history or [])[-int(os.environ.get('AMNI_HISTORY_TURNS','12')):]:
             msgs.append({'role':'user','content':u})
             msgs.append({'role':'assistant','content':a})
         msgs.append({'role':'user','content':user_msg})

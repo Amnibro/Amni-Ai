@@ -5,7 +5,7 @@ from pathlib import Path
 from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST
 def _add_common_adam(p):
     cfg=load_config()
-    default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17')
+    default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'granite41_3b_gf17')
     default_model=cfg.get('model') or cfg.get('bake') or default_bake
     p.add_argument('--bake',default=os.environ.get('AMNI_BAKE',default_bake))
     p.add_argument('--model',default=os.environ.get('AMNI_MODEL',default_model))
@@ -18,12 +18,12 @@ def cmd_init(args):
     print(f'Detected bake: {cfg.get("bake") or "(none)"}',flush=True)
     print(f'Detected model: {cfg.get("model") or "(none)"}',flush=True)
     if not args.skip_model and not cfg.get('bake'):
-        if args.non_interactive or _ask('Download Gemma-4 E2B GF(17) bake from HF (~20 GB, one-time)?'):
+        if args.non_interactive or _ask('Download Granite-4.1-3B GF(17) bake from HF (~13 GB, one-time)?'):
             b=download_bake(cfg)
             if b:cfg['bake']=str(b)
     if cfg.get('bake') and bake_has_runtime_metadata(cfg.get('bake')):
         cfg['model']=str(cfg['bake'])
-        print(f'[init] runtime model dir = bake dir ({cfg["bake"]}) — Adam ships as a self-contained GF(17) artifact; no upstream Gemma 4 download needed.',flush=True)
+        print(f'[init] runtime model dir = bake dir ({cfg["bake"]}) — Adam ships as a self-contained GF(17) artifact; no upstream download needed.',flush=True)
     ensure_dirs(cfg)
     cfg['first_run_done']=True
     save_config(cfg)

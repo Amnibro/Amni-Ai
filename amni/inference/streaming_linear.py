@@ -3,7 +3,7 @@ from pathlib import Path
 from collections import OrderedDict
 _ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(_ROOT))
-from amni.compute.reffelt4 import decode_rgba4_to_fp16
+from amni.compute.reffelt4 import decode_rgba4_to_fp16,decode_rgba16_quad_to_fp16
 _HIP_OPT_IN=os.environ.get('AMNI_HIP_GEMV_ON','0')=='1'
 _HIP=None
 _HIP_ENG=None
@@ -32,6 +32,7 @@ class TensorRegistry:
         self._pinned_keys=set();self._inflight={};self._last_use={}
         self._prefetch_stream=torch.cuda.Stream() if enable_prefetch and device.startswith('cuda') and torch.cuda.is_available() else None
         self._is_gf17=self.manifest.get('reffelt_scheme')=='gf17_digit_planes'
+        self._is_rgba16q=self.manifest.get('reffelt_scheme')=='rgba16_quad'
         self._residual_overlay_count=0
         self.active_subjects=('global',)
     def _mmap_for(self,key):
@@ -39,6 +40,15 @@ class TensorRegistry:
             e=self.manifest['tensors'][key]
             self._mmaps[key]=np.memmap(self.bake_dir/e['ptex_path'],dtype=np.uint8,mode='r',shape=(e['page_h'],e['page_w'],4))
         return self._mmaps[key]
+    def _mmap_u16(self,key):
+        if key not in self._mmaps:
+            e=self.manifest['tensors'][key]
+            self._mmaps[key]=np.memmap(self.bake_dir/e['ptex_path'],dtype=np.uint16,mode='r',shape=(e['page_h'],e['page_w'],4))
+        return self._mmaps[key]
+    def _decode_rgba16q_to_torch(self,key,target_shape):
+        e=self.manifest['tensors'][key];mm=self._mmap_u16(key);nw=int(np.prod(target_shape))
+        flat_fp16=decode_rgba16_quad_to_fp16(mm,nw);src_dtype=e['source_dtype'];t=torch.from_numpy(flat_fp16.copy())
+        return t.reshape(target_shape).to(self.device) if src_dtype=='float16' else t.view(_torch_dtype_from_str(src_dtype)).reshape(target_shape).to(self.device)
     def _mmap_gf17(self,key):
         if key not in self._gf17_mmaps:
             e=self.manifest['tensors'][key]
@@ -176,6 +186,22 @@ class TensorRegistry:
             if (isinstance(k,tuple) and k[0]==key) or k==key:self._residual_mmaps.pop(k,None)
         import gc;gc.collect()
     def pin(self,key):self._pinned_keys.add(key)
+    def manifest_total_bytes(self):
+        db={'float16':2,'bfloat16':2,'float32':4,'uint16':2,'int8':1}
+        return sum(int(np.prod(e['shape']))*db.get(e.get('source_dtype','float16'),2) for e in self.manifest['tensors'].values())
+    def autosize_budget(self,cap_bytes=None,headroom=1.05):
+        b=int(self.manifest_total_bytes()*headroom);self.budget=min(b,int(cap_bytes)) if cap_bytes else b;return self.budget
+    def pin_hot(self,patterns=('embed_tokens','lm_head','model.norm','layers.0.')):
+        hot=[k for k in self.manifest['tensors'] if any(p in k for p in patterns)]
+        for k in hot:self.pin(k)
+        return hot
+    def warmup(self):
+        for k in self.manifest['tensors']:
+            try:self.get_full(k)
+            except Exception:pass
+        return self.stats()
+    def thrash_per_token(self,tokens=1):return self._evict_count/max(1,tokens)
+    def drop_resident(self,key):self._lru.pop(key,None);self._sizes.pop(key,None)
     def note_use(self,key):
         if not self.device.startswith('cuda') or not torch.cuda.is_available():return
         evt=torch.cuda.Event();evt.record(torch.cuda.current_stream())
@@ -187,6 +213,7 @@ class TensorRegistry:
         if key not in self.manifest['tensors']:return
         e=self.manifest['tensors'][key]
         if self._is_gf17:flat_fp16=self._decode_gf17_to_fp16(key)
+        elif self._is_rgba16q:flat_fp16=decode_rgba16_quad_to_fp16(self._mmap_u16(key),int(np.prod(e['shape'])))
         else:
             mm=self._mmap_for(key)
             n=int(e['n_pixels'])
@@ -211,6 +238,7 @@ class TensorRegistry:
             return t
         e=self.manifest['tensors'][key]
         if self._is_gf17:t=self._decode_gf17_to_torch(key,e['shape'])
+        elif self._is_rgba16q:t=self._decode_rgba16q_to_torch(key,e['shape'])
         else:
             mm=self._mmap_for(key)
             n=int(e['n_pixels'])
@@ -223,6 +251,12 @@ class TensorRegistry:
         return t
     def get_rows(self,key,row_indices):
         e=self.manifest['tensors'][key]
+        if self._is_rgba16q:
+            cols=int(e['shape'][-1]);ri=np.asarray(row_indices,dtype=np.int64)
+            flat=np.ascontiguousarray(self._mmap_u16(key)).reshape(-1)[:int(np.prod(e['shape']))].view(np.float16).reshape(-1,cols)
+            t=torch.from_numpy(np.ascontiguousarray(flat[ri]).copy());src_dtype=e['source_dtype']
+            if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
+            return t.reshape(ri.shape[0],cols).to(self.device)
         if self._is_gf17:
             flat_fp16=self._decode_gf17_rows_to_fp16(key,row_indices)
             n_rows=len(row_indices) if hasattr(row_indices,'__len__') else int(row_indices.shape[0])
@@ -231,15 +265,15 @@ class TensorRegistry:
             t=torch.from_numpy(flat_fp16.copy())
             if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
             return t.reshape(n_rows,cols).to(self.device)
-        mm=self._mmap_for(key)
-        rows_rgba=np.ascontiguousarray(mm[np.asarray(row_indices,dtype=np.int64)])
-        n_rows=rows_rgba.shape[0];cols=int(e['shape'][-1])
-        upe=int(e.get('u16_per_elem',1))
+        mm=self._mmap_for(key);ri=np.asarray(row_indices,dtype=np.int64)
+        cols=int(e['shape'][-1])*int(e.get('u16_per_elem',1))
+        gather=(ri[:,None]*cols+np.arange(cols,dtype=np.int64)[None,:]).reshape(-1)
+        rows_rgba=np.ascontiguousarray(mm.reshape(-1,4)[gather])
         flat_fp16=decode_rgba4_to_fp16(rows_rgba.reshape(-1,4))
         src_dtype=e['source_dtype']
         t=torch.from_numpy(flat_fp16.copy())
         if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
-        return t.reshape(n_rows,cols).to(self.device)
+        return t.reshape(ri.shape[0],int(e['shape'][-1])).to(self.device)
     def _evict_if_over_budget(self,protect=None):
         if sum(self._sizes.values())<=self.budget:return
         evicted_any=False
@@ -268,7 +302,7 @@ class StreamingLinear(nn.Module):
         self.registry=registry;self.weight_key=weight_key;self.bias_key=bias_key
         self.prefetch_keys=prefetch_keys or []
         self._bias_cached=registry.get_full(bias_key) if bias_key and bias_key in registry.manifest['tensors'] else None
-        self._hip_tex=None;self._hip_NK=None;self._hip_skip=False
+        self._hip_tex=None;self._hip_NK=None;self._hip_skip=False;self._dropped=False
     def _try_bind_hip(self,w):
         if self._hip_skip or self._hip_tex is not None:return
         eng_mod=_hip_engine()
@@ -294,6 +328,20 @@ class StreamingLinear(nn.Module):
             self._hip_skip=True
             self._hip_page=None
     def forward(self,x):
+        if self._hip_tex is not None and x.dtype in (torch.float16,torch.bfloat16) and x.is_cuda:
+            N,K=self._hip_NK
+            xs=x.shape
+            tokens=int(np.prod(xs[:-1]))
+            if tokens==1 and xs[-1]==K:
+                in_dtype=x.dtype
+                xv=(x.to(torch.float16) if in_dtype==torch.bfloat16 else x).contiguous().view(-1)
+                y=torch.empty(N,dtype=torch.float16,device=x.device)
+                self._hip_lib.ari_gemv_rgba16_fp16(_ct.c_void_p(int(xv.view(torch.uint16).data_ptr())),self._hip_tex.idx,_ct.c_void_p(int(y.view(torch.uint16).data_ptr())),N,K)
+                if self._bias_cached is not None:y=y+(self._bias_cached.to(torch.float16) if self._bias_cached.dtype!=torch.float16 else self._bias_cached)
+                if in_dtype==torch.bfloat16:y=y.to(torch.bfloat16)
+                if not self._dropped:self.registry.drop_resident(self.weight_key);self._dropped=True
+                self.registry.note_use(self.weight_key)
+                return y.view(*xs[:-1],N)
         for k in self.prefetch_keys:self.registry.schedule_prefetch(k)
         w=self.registry.get_full(self.weight_key)
         if not self._hip_skip and self._hip_tex is None:self._try_bind_hip(w)

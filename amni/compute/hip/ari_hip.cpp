@@ -404,6 +404,53 @@ __global__ void k_gemv_rgba_fp16(const uint16_t*__restrict__ x,hipTextureObject_
     for(int s=BLK/2;s>0;s>>=1){if(tid<s)red[tid]+=red[tid+s];__syncthreads();}
     if(tid==0)y[n]=f32_to_fp16b(red[0]);
 }
+__device__ __forceinline__ float bf16d_from_rgba(uchar4 p){uint16_t bits=(uint16_t)p.x+(uint16_t)p.y*17u+(uint16_t)p.z*289u+(uint16_t)p.w*4913u;return bf16b_to_f32(bits);}
+__global__ void k_gemv_rgba_bf16(const uint16_t*__restrict__ x,hipTextureObject_t W_tex,int W_tw,uint16_t*__restrict__ y,int N,int K){
+    __shared__ float red[BLK];
+    int tid=threadIdx.x,n=blockIdx.x;
+    float acc=0.f;
+    for(int k=tid;k<K;k+=BLK){
+        int fi=n*K+k,px=fi%W_tw,py=fi/W_tw;
+        float w=bf16d_from_rgba(tex2D<uchar4>(W_tex,px,py));
+        acc+=w*bf16b_to_f32(x[k]);
+    }
+    red[tid]=acc;
+    __syncthreads();
+    for(int s=BLK/2;s>0;s>>=1){if(tid<s)red[tid]+=red[tid+s];__syncthreads();}
+    if(tid==0)y[n]=f32_to_bf16b(red[0]);
+}
+__global__ void k_bf16_tex_matmul_t(const uint16_t*__restrict__ A,hipTextureObject_t W_tex,int tex_w,uint16_t*__restrict__ C,int M,int K,int N){
+    __shared__ float As[TILE][TILE],Ws[TILE][TILE];
+    int row=blockIdx.y*TILE+threadIdx.y,col=blockIdx.x*TILE+threadIdx.x;
+    float acc=0.f;
+    int nt=(K+TILE-1)/TILE;
+    for(int t=0;t<nt;t++){
+        int ak=t*TILE+threadIdx.x,wk=t*TILE+threadIdx.y;
+        As[threadIdx.y][threadIdx.x]=(row<M&&ak<K)?bf16b_to_f32(A[row*K+ak]):0.f;
+        if(col<N&&wk<K){int fi=col*K+wk,px=fi%tex_w,py=fi/tex_w;Ws[threadIdx.y][threadIdx.x]=bf16d_from_rgba(tex2D<uchar4>(W_tex,px,py));}
+        else Ws[threadIdx.y][threadIdx.x]=0.f;
+        __syncthreads();
+        for(int k=0;k<TILE;k++)acc+=As[threadIdx.y][k]*Ws[k][threadIdx.x];
+        __syncthreads();
+    }
+    if(row<M&&col<N)C[row*N+col]=f32_to_bf16b(acc);
+}
+__global__ void k_fp8_tex_matmul_t(const uint16_t*__restrict__ A,hipTextureObject_t W_tex,int tex_w,const float*__restrict__ lut,uint16_t*__restrict__ C,int M,int K,int N){
+    __shared__ float As[TILE][TILE],Ws[TILE][TILE];
+    int row=blockIdx.y*TILE+threadIdx.y,col=blockIdx.x*TILE+threadIdx.x;
+    float acc=0.f;
+    int nt=(K+TILE-1)/TILE;
+    for(int t=0;t<nt;t++){
+        int ak=t*TILE+threadIdx.x,wk=t*TILE+threadIdx.y;
+        As[threadIdx.y][threadIdx.x]=(row<M&&ak<K)?bf16b_to_f32(A[row*K+ak]):0.f;
+        if(col<N&&wk<K){int fi=col*K+wk,pix=fi>>2,ch=fi&3,px=pix%tex_w,py=pix/tex_w;uchar4 p=tex2D<uchar4>(W_tex,px,py);unsigned char b=ch==0?p.x:ch==1?p.y:ch==2?p.z:p.w;Ws[threadIdx.y][threadIdx.x]=lut[b];}
+        else Ws[threadIdx.y][threadIdx.x]=0.f;
+        __syncthreads();
+        for(int k=0;k<TILE;k++)acc+=As[threadIdx.y][k]*Ws[k][threadIdx.x];
+        __syncthreads();
+    }
+    if(row<M&&col<N)C[row*N+col]=f32_to_bf16b(acc);
+}
 __global__ void k_gemv_ternary_fp16(const uint16_t*__restrict__ x,hipTextureObject_t W_tex,int W_tw,uint16_t*__restrict__ y,int N,int K){
     __shared__ float red[BLK];
     int tid=threadIdx.x,n=blockIdx.x;
@@ -717,6 +764,23 @@ int ari_rgba_gemv_fused(const void*x,int f_idx,const void*r_lut,const void*g_lut
 int ari_gemv_rgba_fp16(const void*x,int W_idx,void*y,int N,int K){
     if(W_idx<0||W_idx>=g_ntex)return-1;
     k_gemv_rgba_fp16<<<N,BLK>>>((const uint16_t*)x,g_tex[W_idx].tex,g_tex[W_idx].w,(uint16_t*)y,N,K);
+    return 0;
+}
+int ari_gemv_rgba_bf16(const void*x,int W_idx,void*y,int N,int K){
+    if(W_idx<0||W_idx>=g_ntex)return-1;
+    k_gemv_rgba_bf16<<<N,BLK>>>((const uint16_t*)x,g_tex[W_idx].tex,g_tex[W_idx].w,(uint16_t*)y,N,K);
+    return 0;
+}
+int ari_tex_matmul_bf16(const void*A,int tex_idx,void*C,int M,int K,int N){
+    if(tex_idx<0||tex_idx>=g_ntex)return-1;
+    dim3 bl(TILE,TILE),gr((N+TILE-1)/TILE,(M+TILE-1)/TILE);
+    k_bf16_tex_matmul_t<<<gr,bl>>>((const uint16_t*)A,g_tex[tex_idx].tex,g_tex[tex_idx].w,(uint16_t*)C,M,K,N);
+    return 0;
+}
+int ari_tex_matmul_fp8(const void*A,int tex_idx,const void*lut_dev,void*C,int M,int K,int N){
+    if(tex_idx<0||tex_idx>=g_ntex)return-1;
+    dim3 bl(TILE,TILE),gr((N+TILE-1)/TILE,(M+TILE-1)/TILE);
+    k_fp8_tex_matmul_t<<<gr,bl>>>((const uint16_t*)A,g_tex[tex_idx].tex,g_tex[tex_idx].w,(const float*)lut_dev,(uint16_t*)C,M,K,N);
     return 0;
 }
 int ari_gemv_rgba16_fp16(const void*x,int W_idx,void*y,int N,int K){

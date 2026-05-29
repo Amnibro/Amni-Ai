@@ -16,8 +16,10 @@ def _resolve_amni_home()->str:
     return str(HOME/'.amni-ai')
 CONFIG_DIR=Path(_resolve_amni_home())
 CONFIG_FILE=CONFIG_DIR/'config.json'
-DEFAULT_HF_REPO='amnibro/gemma-4-E2B-it-gf17'
-DEFAULT_BASE_REPO='google/gemma-2-2b-it'
+DEFAULT_HF_REPO='amnibro/granite41-3b-gf17'
+DEFAULT_BASE_REPO='ibm-granite/granite-4.1-3b'
+_LEGACY_BAKE_REPOS={'amnibro/gemma-4-E2B-it-gf17'}
+_LEGACY_BAKE_DIRS={'gemma4_e2b_it_gf17','gemma-4-E2B-it'}
 DEFAULT_PORT=7700
 DEFAULT_HOST='127.0.0.1'
 _DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
@@ -25,9 +27,9 @@ def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
 def _candidate_bake_paths():
-    return _extra_candidates('AMNI_BAKE_PATHS')+[CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17',Path('./bakes/gemma4_e2b_it_gf17'),Path.home()/'amni-bakes'/'gemma4_e2b_it_gf17',Path.home()/'.amni-ai'/'bakes'/'gemma4_e2b_it_gf17']
+    return _extra_candidates('AMNI_BAKE_PATHS')+[CONFIG_DIR/'bakes'/'granite41_3b_gf17',Path('./bakes/granite41_3b_gf17'),Path.home()/'amni-bakes'/'granite41_3b_gf17',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_gf17']
 def _candidate_model_paths():
-    return _extra_candidates('AMNI_MODEL_PATHS')+[CONFIG_DIR/'models'/'gemma-4-E2B-it',Path('./models/gemma-4-E2B-it'),Path.home()/'amni-models'/'gemma-4-E2B-it',Path.home()/'.amni-ai'/'models'/'gemma-4-E2B-it']
+    return _extra_candidates('AMNI_MODEL_PATHS')+[CONFIG_DIR/'models'/'granite-4.1-3b',Path('./models/granite-4.1-3b'),Path.home()/'amni-models'/'granite-4.1-3b',Path.home()/'.amni-ai'/'models'/'granite-4.1-3b']
 def detect_bake()->Optional[Path]:
     for p in _candidate_bake_paths():
         if p.exists() and (p/'manifest.json').exists() and (p/'config.json').exists() and (p/'tokenizer.json').exists():return p
@@ -46,6 +48,9 @@ def load_config()->Dict[str,Any]:
             saved=json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
             saved={k:v for k,v in saved.items() if k in _DEFAULTS}
             cfg.update(saved)
+            if cfg.get('hf_bake_repo') in _LEGACY_BAKE_REPOS:cfg['hf_bake_repo']=DEFAULT_HF_REPO
+            if cfg.get('bake') and Path(cfg['bake']).name in _LEGACY_BAKE_DIRS:cfg['bake']=None
+            if cfg.get('model') and Path(cfg['model']).name in _LEGACY_BAKE_DIRS:cfg['model']=None
         except Exception as e:print(f'[bootstrap] config parse failed: {e}',flush=True)
     if cfg.get('bake') and not (Path(cfg['bake']).exists() and (Path(cfg['bake'])/'manifest.json').exists()):cfg['bake']=None
     if cfg.get('model') and not (Path(cfg['model']).exists() and (Path(cfg['model'])/'config.json').exists()):cfg['model']=None
@@ -80,7 +85,7 @@ def ensure_dirs(cfg:Dict[str,Any]):
         if not v:continue
         Path(v).parent.mkdir(parents=True,exist_ok=True)
 def download_bake(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
-    target=Path(cfg.get('bake') or (CONFIG_DIR/'bakes'/'gemma4_e2b_it_gf17'))
+    target=Path(cfg.get('bake') or (CONFIG_DIR/'bakes'/'granite41_3b_gf17'))
     if target.exists() and (target/'manifest.json').exists() and not force:
         print(f'[bootstrap] bake already at {target}',flush=True);return target
     try:from huggingface_hub import snapshot_download
@@ -93,7 +98,7 @@ def download_bake(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
         print(f'[bootstrap] bake ready at {target}',flush=True);return target
     except Exception as e:
         print(f'[bootstrap] HF bake download failed ({type(e).__name__}: {str(e)[:160]})',flush=True)
-        print(f'[bootstrap] Adam ships as a self-contained GF(17) bake — there is no fallback to upstream Gemma 4 weights for public installs.',flush=True)
+        print(f'[bootstrap] Adam ships as a self-contained GF(17) bake — there is no fallback to upstream base weights for public installs.',flush=True)
         print(f'[bootstrap] Retry: check network, then re-run `amni init`. If the bake repo "{repo}" is unreachable, file an issue at https://github.com/Amnibro/Amni-Ai/issues',flush=True)
         return None
 def generate_bake_local(cfg:Dict[str,Any],target:Path,force:bool=False)->Optional[Path]:
@@ -123,7 +128,7 @@ def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     if bake and bake_has_runtime_metadata(bake) and not force:
         print(f'[bootstrap] base-model download skipped — prebuilt bake at {bake} already ships tokenizer.json + config.json (sufficient for streaming runtime)',flush=True)
         return Path(bake)
-    target=Path(cfg.get('model') or (CONFIG_DIR/'models'/'gemma-4-E2B-it'))
+    target=Path(cfg.get('model') or (CONFIG_DIR/'models'/'granite-4.1-3b'))
     if target.exists() and (target/'config.json').exists() and not force:
         print(f'[bootstrap] base model already at {target}',flush=True);return target
     try:from huggingface_hub import snapshot_download

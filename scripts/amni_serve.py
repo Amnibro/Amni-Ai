@@ -208,6 +208,8 @@ def main():
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
     from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge
+    try:from amni.serve import trace_endpoints
+    except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=not args.web_restricted)
@@ -293,7 +295,7 @@ def main():
                 yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_ag_persona_name,"agentic":True})}\n\n'
                 _final_answer='';_n_steps=0
                 try:
-                    for _ev in run_goal_stream(agent,skills,req.message,max_steps=8,timeout_s=240):
+                    for _ev in run_goal_stream(agent,skills,req.message,max_steps=int(os.environ.get('AMNI_AGENTIC_MAX_STEPS','8')),timeout_s=float(os.environ.get('AMNI_AGENTIC_TIMEOUT_S','240'))):
                         yield f'event: agentic_{_ev["event"]}\ndata: {_json.dumps(_ev)}\n\n'
                         if _ev.get('event')=='final':_final_answer=_ev.get('answer','') or '';_n_steps=_ev.get('n_steps',0)
                 except Exception as _ge:yield f'event: error\ndata: {_json.dumps(f"agentic loop failed: {_ge}")}\n\n'
@@ -350,13 +352,14 @@ def main():
             apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam'
             if _profile_authoritative or _memory_recall:apply_cot=False
             from amni.serve.conversation import detect_personal as _dp
-            history_pairs=conv.history_pairs(n=12) if len(conv.turns)>1 else []
+            _hist_n=int(os.environ.get('AMNI_HISTORY_TURNS','12'))
+            history_pairs=conv.history_pairs(n=_hist_n) if len(conv.turns)>1 else []
             _skip_atlas=_profile_authoritative or _memory_recall or (_intent_label=='introspection') or (_intent_label=='math_calc')
             atlas_recall=[] if _skip_atlas else (agent.atlas.recall(req.message,session_id=conv.session_id,k=3,include_global=True) if getattr(agent,'atlas',None) is not None else [])
             for r in atlas_recall:
                 pair=(r.get('user',''),r.get('assistant',''))
                 if pair[0] and pair[1] and pair not in history_pairs:history_pairs=[pair]+history_pairs
-            history_pairs=history_pairs[-12:]
+            history_pairs=history_pairs[-_hist_n:]
             user_facts=agent._extract_user_facts(conv,extra_user_msgs=[r.get('user','') for r in atlas_recall],profile_only=(_intent_label=='profile_about_me')) if hasattr(agent,'_extract_user_facts') else []
             is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
             sl=getattr(adam,'sem_lut',None)
@@ -405,12 +408,13 @@ def main():
             expects_final=apply_cot and isinstance(scaffold,str) and 'FINAL:' in scaffold
             yield f'event: meta\ndata: {_json.dumps({"cot":apply_cot,"category":category,"history_n":len(history_pairs),"facts_n":len(user_facts),"is_private":is_private,"buffering":expects_final})}\n\n'
             _msg_l=req.message.lower();_is_code_q=bool(re.search(r"\b(?:rust|wasm|cargo|javascript|node\.?js|typescript|python|go(?:lang)?|c\+\+|cpp|c#|csharp|java|kotlin|swift|ruby|php|bash|sql|haskell|elixir|zig|ktor|websocket|server|client|implement|function|class|interface|struct|trait|module|library|framework|api|endpoint|sdk|build|setup|configure|deploy)\b",_msg_l))
-            max_new=int(160+300*(persona.length if persona else 0.5))+(1400 if (apply_cot and category=="code") else (700 if apply_cot else 0))+(600 if (_is_code_q and not apply_cot) else 0)
+            max_new=int(os.environ.get('AMNI_MAX_NEW_TOKENS','4096'))
             full=[];_bump('cot_generations') if apply_cot else None
             in_final=not expects_final;buf='';seen_final=False;_buf_start=time.time();_last_ping=time.time();_drift_stop=False;_final_buf=''
             _DRIFT_MARKERS=('Thinking Process','thought\n','\nThinking','**Self-','*(Self-','**Analyze Request','1. RESTATE:','1.  RESTATE:','1. **Analyze','**Recall Persona','**Determine Strategy','Self-Correction','\n[Looked','[Looked','[Search performed','[Search completed','[Search done','[Search results','[Presenting','[Current weather data','[Result of search','[The system returns','(Outputting the result','(Search returns','(Result of search','(Waiting for search','(Assuming the search')
+            _genstream=adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True)
             try:
-                for chunk in adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True):
+                for chunk in _genstream:
                     full.append(chunk)
                     if in_final:
                         _final_buf+=chunk
@@ -426,14 +430,21 @@ def main():
                             _drift_stop=True;break
                         else:yield f'event: token\ndata: {_json.dumps(chunk)}\n\n'
                     else:
-                        buf+=chunk;_now=time.time()
+                        _now=time.time();_pre_len=len(buf);buf+=chunk
                         idx=buf.upper().find('FINAL:')
                         if idx>=0:
+                            _r=buf[_pre_len:idx]
+                            if _r:yield f'event: reasoning\ndata: {_json.dumps(_r)}\n\n'
                             after=buf[idx+6:].lstrip(' :\t\n')
                             if after:yield f'event: token\ndata: {_json.dumps(after)}\n\n';_final_buf=after
                             in_final=True;seen_final=True;buf=''
-                        elif (_now-_last_ping)>3:yield f'event: thinking\ndata: {_json.dumps({"buf_chars":len(buf),"elapsed":round(_now-_buf_start,1)})}\n\n';_last_ping=_now
+                        else:
+                            yield f'event: reasoning\ndata: {_json.dumps(chunk)}\n\n'
+                            if (_now-_last_ping)>3:yield f'event: thinking\ndata: {_json.dumps({"buf_chars":len(buf),"elapsed":round(_now-_buf_start,1)})}\n\n';_last_ping=_now
             except Exception as e:yield f'event: error\ndata: {_json.dumps(str(e))}\n\n';return
+            finally:
+                try:_genstream.close()
+                except Exception:pass
             if not in_final and buf.strip():
                 _b=buf;_LAST_SCAFFOLD_MARKERS=('\nFINAL:','\nFinal:','\nfinal:','\n6. FINAL','\n5. FINAL','\nREFINE','\nMEDIUM:','\nLARGE:','\nSMALL:','\nCRITIQUE:','\nFIRST SHOT:','\nKNOWNS','\nRESTATE','\nAPPROACH','\nCLARIFY','\nCODE:','\nTESTS:','\nNOTES:')
                 _last_idx=-1
@@ -465,7 +476,7 @@ def main():
                             _bump('multi_block_stitched')
                             yield f'event: multi_block\ndata: {_json.dumps({"blocks":len(blocks),"runnable":len(runnable),"stitched_chars":len(snippet)})}\n\n'
                         try:
-                            run_r=skills.call('run_python',{'code':snippet,'timeout':8},ctx={'adam':adam})
+                            run_r=skills.call('run_python',{'code':snippet,'timeout':int(os.environ.get('AMNI_SANDBOX_TIMEOUT_S','8'))},ctx={'adam':adam})
                             if run_r.ok and not run_r.output.get('error'):
                                 so=(run_r.output.get('stdout') or '').strip()
                                 se=(run_r.output.get('stderr') or '').strip()
@@ -965,6 +976,7 @@ def main():
     vision_endpoints.mount(app,agent)
     voice_endpoints.mount(app,agent)
     amni_chat_bridge.mount(app,agent)
+    trace_endpoints.mount(app,agent) if trace_endpoints is not None else None
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
     print(f'[amni_serve]   Jarvis UI:     http://{args.host}:{args.port}/jarvis  (neon + widgets + voice)',flush=True)
