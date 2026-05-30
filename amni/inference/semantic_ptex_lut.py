@@ -54,9 +54,18 @@ class SemanticPTEXLUT:
         return self.encoder
     def add(self,question:str,answer:str):
         self._raw.append((question,answer))
+    def purge_indices(self,indices):
+        idx=set(int(i) for i in indices)
+        n=len(self._raw)
+        self._raw=[p for i,p in enumerate(self._raw) if i not in idx]
+        self._cells={}
+        if self._raw:self.fit()
+        return n-len(self._raw)
     def fit(self):
         enc=self._ensure_encoder()
-        qs=[q for q,_ in self._raw]
+        raw=list(self._raw)
+        if not raw:return
+        qs=[q for q,_ in raw]
         embs=enc(qs)
         self._stored_embs=embs
         centered=embs-embs.mean(axis=0)
@@ -66,10 +75,10 @@ class SemanticPTEXLUT:
         proj=embs@self._pca_Vt.T
         self._cmin=proj.min(axis=0);self._cmax=proj.max(axis=0)
         span=self._cmax-self._cmin+1e-6
-        for i,(q,a) in enumerate(self._raw):
+        for i,(q,a) in enumerate(raw):
             cell=tuple(int(c) for c in np.clip(((proj[i]-self._cmin)/span*self.grid).astype(int),0,self.grid-1))
             if cell not in self._cells:self._cells[cell]={'q':q,'a':a,'idx':i}
-        if self.routing=='kmeans' and len(self._raw)>=self.k_clusters:
+        if self.routing=='kmeans' and len(raw)>=self.k_clusters:
             self._centroids,assignments=_kmeans(self._stored_embs,self.k_clusters)
             self._cluster_embs=[None]*self.k_clusters
             self._cluster_ans=[None]*self.k_clusters

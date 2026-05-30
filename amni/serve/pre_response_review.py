@@ -51,11 +51,18 @@ def review(message:str,agent=None,max_errors:int=3,max_lessons:int=1)->Dict[str,
         from amni.serve.coding_ledger import recall as _crecall
         return _crecall(message,k=3)
     items['coding_attempts']=_safe(_coding,[])
+    def _corrections():
+        bus=getattr(agent,'memory_bus',None) if agent is not None else None
+        gf=bus.grounding_fact(message) if bus is not None else None
+        return [gf] if gf else []
+    items['corrections']=_safe(_corrections,[])
     brief=build_brief(qn,qtags,items)
     return {'nonce':qn,'digits':_rt.decompose(qn),'tags':qtags,'brief':brief,'items':items}
 def build_brief(qn:int,qtags:List[str],items:Dict[str,Any])->str:
     digits=_rt.decompose(qn)
     lines=[]
+    cor=items.get('corrections') or []
+    if cor and cor[0]:lines.append(cor[0])
     lk=items.get('leaks') or {}
     if lk.get('total',0)>0:
         lines.append(f"AVOID: emit only the final answer — no internal reasoning, 'Thinking Process', step labels, or [bracketed] tool narration ({lk.get('total')} past leak(s) on record).")

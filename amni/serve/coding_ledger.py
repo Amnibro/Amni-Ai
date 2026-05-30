@@ -3,11 +3,13 @@ Every coding attempt records task -> approach -> outcome -> errors/debug -> less
 data/coding_attempts.jsonl AND committed to a PTEX file (lessons/coding_attempts_ptex). Before a retry,
 recall() surfaces prior attempts on the same task (Reffelt-nonce + tag match) so Adam sees exactly what failed
 last time and why — then changes approach. This is the self-learning loop for the software-engineer north star."""
-import time,json,uuid,threading,re
+import time,json,uuid,threading,re,os
 from pathlib import Path
 from typing import Dict,Any,List,Optional
 from amni.serve import reffelt_tag as _rt
 _LOCK=threading.Lock()
+_FED_MAX_ENTRIES=int(os.environ.get('AMNI_FED_MAX_ENTRIES','500'))
+_FED_MAX_LESSON_BYTES=int(os.environ.get('AMNI_FED_MAX_LESSON_BYTES','20000'))
 def _repo_root()->Path:return Path(__file__).resolve().parents[2]
 def _ledger_path()->Path:
     p=_repo_root()/'data'/'coding_attempts.jsonl';p.parent.mkdir(parents=True,exist_ok=True);return p
@@ -140,12 +142,21 @@ def federation_import(entries:List[Dict[str,Any]],source:str='peer')->Dict[str,A
     never count as first-party attempts). Re-scrubbed on the way in — peers aren't trusted blindly. Idempotent (nonce+lesson dedupe)."""
     try:from amni.serve.pii_egress import scrub as _scrub
     except Exception:_scrub=lambda t,**k:t
+    try:from amni.serve.federated import verify_incoming as _verify
+    except Exception:_verify=None
     existing=set((r.get('nonce'),(r.get('lesson') or '').lower()) for r in _read_all())
-    added=0;skipped=0;lines=[]
-    for e in (entries or []):
+    added=0;skipped=0;rejected_unsafe=0;oversize=0;lines=[]
+    _all=entries or [];capped=max(0,len(_all)-_FED_MAX_ENTRIES) if isinstance(_all,list) else 0
+    for e in (_all[:_FED_MAX_ENTRIES] if isinstance(_all,list) else []):
         if not isinstance(e,dict):skipped+=1;continue
-        lesson=(e.get('lesson') or '').strip();tags=e.get('tags') if isinstance(e.get('tags'),list) else []
+        lesson=(e.get('lesson') or '').strip();tags=(e.get('tags') if isinstance(e.get('tags'),list) else [])[:16]
         if not lesson:skipped+=1;continue
+        if len(lesson)>_FED_MAX_LESSON_BYTES:oversize+=1;continue
+        if _verify is not None:
+            _ok,_sq,_sa,_reasons=_verify('federated lesson',lesson)
+            if not _ok:rejected_unsafe+=1;continue
+            lesson=(_sa or '').strip()
+            if not lesson:skipped+=1;continue
         lesson=_defederate_paths(_scrub(lesson,source='federation_import'))[:300]
         nonce=e.get('nonce') if isinstance(e.get('nonce'),int) else _rt.nonce(tags or _rt.salient_tags(lesson))
         key=(nonce,lesson.lower())
@@ -158,8 +169,8 @@ def federation_import(entries:List[Dict[str,Any]],source:str='peer')->Dict[str,A
             with _LOCK:
                 with _ledger_path().open('a',encoding='utf-8') as fh:
                     for r in lines:fh.write(json.dumps(r,ensure_ascii=False)+'\n')
-        except Exception as ex:return {'imported':0,'skipped':skipped,'error':str(ex)}
-    return {'imported':added,'skipped':skipped,'source':source}
+        except Exception as ex:return {'imported':0,'skipped':skipped,'rejected_unsafe':rejected_unsafe,'oversize':oversize,'capped':capped,'error':str(ex)}
+    return {'imported':added,'skipped':skipped,'rejected_unsafe':rejected_unsafe,'oversize':oversize,'capped':capped,'source':source}
 def stats()->Dict[str,Any]:
     rows=_read_all()
     fed=sum(1 for r in rows if r.get('federated'));own=[r for r in rows if not r.get('federated')]

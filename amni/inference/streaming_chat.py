@@ -107,6 +107,12 @@ class StreamingChatService:
                 self.registry.pin(embed_key)
                 self.registry.get_full(embed_key)
         m.eval();self.model=m;self.device=device;self.n_chained=n_chained;self.is_gdn=is_gdn;self.architectures=archs
+        if device in ('cuda','xpu') and os.environ.get('AMNI_RESIDENCY','1')=='1':
+            try:
+                cap=int(torch.cuda.get_device_properties(0).total_memory*float(os.environ.get('AMNI_RESIDENCY_FRAC','0.82'))) if device=='cuda' else None
+                self.registry.autosize_budget(cap_bytes=cap);self.registry.pin_hot();self.registry.warmup()
+                print(f'[residency] working set pinned + warmed (budget={getattr(self.registry,"budget",0)//(1024*1024)}MB) — decode resident, no thrash',flush=True)
+            except Exception as _e:print(f'[residency] warmup skipped ({type(_e).__name__}: {_e}) — running unpinned',flush=True)
         self._block_bank=None
         if os.environ.get('AMNI_BLOCK_SPEC','1')=='1' and not is_gdn and any('Granite' in a for a in archs):
             try:

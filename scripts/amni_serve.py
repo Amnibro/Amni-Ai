@@ -203,6 +203,10 @@ def main():
         from fastapi import FastAPI,Request,HTTPException
         from pydantic import BaseModel
         from typing import Optional,List
+        from amni.serve.rate_limit import from_env as _rl_from_env,client_key as _rl_key
+        from amni.serve.code_safety import scrub_egress as _egress,scrub_secrets as _secrets
+        _RL_TEACH=_rl_from_env('teach',30);_RL_CHAT=_rl_from_env('chat',60)
+        _MAX_INPUT_CHARS=int(os.environ.get('AMNI_MAX_INPUT_CHARS','100000'))
         import uvicorn
     except ImportError:
         print('[amni_serve] missing fastapi/uvicorn. Install: pip install fastapi uvicorn pydantic',flush=True)
@@ -210,7 +214,7 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge
+    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web
     try:from amni.serve import trace_endpoints
     except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
@@ -247,6 +251,21 @@ def main():
     scope='UNRESTRICTED (all drives)' if args.unrestricted_files else f'roots={[str(r) for r in skills.roots]}'
     print(f'[amni_serve] Agent ready: skills={[s["name"] for s in agent.list_skills()]} {scope} sessions={len(store.list_sessions())}',flush=True)
     app=FastAPI(title='Amni-Ai Adam',version='6.0.0')
+    if os.environ.get('AMNI_SCRUB_EGRESS','1').lower() not in ('0','false','no'):
+        from fastapi.responses import JSONResponse as _JR
+        @app.exception_handler(Exception)
+        async def _scrub_unhandled(request,exc):
+            try:
+                from amni.serve.code_safety import scrub_egress as _se
+                msg=_se(f'{type(exc).__name__}: {exc}')[:400]
+            except Exception:msg='internal error'
+            return _JR(status_code=500,content={'error':msg,'note':'host paths/secrets scrubbed from error responses'})
+        @app.exception_handler(HTTPException)
+        async def _scrub_http_exc(request,exc):
+            d=exc.detail
+            try:d=_egress(d) if isinstance(d,str) else d
+            except Exception:pass
+            return _JR(status_code=exc.status_code,content={'detail':d},headers=getattr(exc,'headers',None))
     if args.cors:
         from fastapi.middleware.cors import CORSMiddleware
         app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=True,allow_methods=['*'],allow_headers=['*'])
@@ -269,12 +288,16 @@ def main():
     def _bump(k,n=1):_iter_counters[k]=_iter_counters.get(k,0)+n
     @app.post('/chat')
     def chat(req:ChatRequest):
+        if len(req.message or '')>_MAX_INPUT_CHARS:raise HTTPException(status_code=413,detail=f'message too large ({len(req.message)} chars > {_MAX_INPUT_CHARS}); split it up')
         if req.client_lat is not None:agent._client_lat=req.client_lat
         if req.client_lon is not None:agent._client_lon=req.client_lon
         try:return agent.chat(req.message,session_id=req.session_id,use_skills=req.use_skills,writeback=req.writeback)
         finally:agent._client_lat=None;agent._client_lon=None
     @app.post('/chat/stream')
     async def chat_stream(req:ChatRequest,request:Request):
+        _ok,_rl=_RL_CHAT.allow(_rl_key(request))
+        if not _ok:raise HTTPException(status_code=429,detail=f"rate limit: max {_rl['limit']}/{int(_rl['window_s'])}s — retry in {_rl['retry_after_s']}s")
+        if len(req.message or '')>_MAX_INPUT_CHARS:raise HTTPException(status_code=413,detail=f'message too large ({len(req.message)} chars > {_MAX_INPUT_CHARS}); split it up')
         from fastapi.responses import StreamingResponse
         import json as _json
         from amni.serve.agent import _needs_cot,_pick_cot
@@ -414,11 +437,14 @@ def main():
             max_new=int(os.environ.get('AMNI_MAX_NEW_TOKENS','4096'))
             full=[];_bump('cot_generations') if apply_cot else None
             in_final=not expects_final;buf='';seen_final=False;_buf_start=time.time();_last_ping=time.time();_drift_stop=False;_final_buf=''
+            _max_out=int(os.environ.get('AMNI_MAX_OUTPUT_BYTES',str(512*1024)));_out_bytes=0
             _DRIFT_MARKERS=('Thinking Process','thought\n','\nThinking','**Self-','*(Self-','**Analyze Request','1. RESTATE:','1.  RESTATE:','1. **Analyze','**Recall Persona','**Determine Strategy','Self-Correction','\n[Looked','[Looked','[Search performed','[Search completed','[Search done','[Search results','[Presenting','[Current weather data','[Result of search','[The system returns','(Outputting the result','(Search returns','(Result of search','(Waiting for search','(Assuming the search')
             _genstream=adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True)
             try:
                 for chunk in _genstream:
-                    full.append(chunk)
+                    full.append(chunk);_out_bytes+=len(chunk.encode('utf-8') if isinstance(chunk,str) else chunk)
+                    if _out_bytes>_max_out:
+                        yield f'event: truncated\ndata: {_json.dumps({"reason":"output byte cap reached","limit_bytes":_max_out})}\n\n';_drift_stop=True;break
                     if in_final:
                         _final_buf+=chunk
                         _drift_idx=-1
@@ -437,14 +463,14 @@ def main():
                         idx=buf.upper().find('FINAL:')
                         if idx>=0:
                             _r=buf[_pre_len:idx]
-                            if _r:yield f'event: reasoning\ndata: {_json.dumps(_r)}\n\n'
+                            if _r:yield f'event: reasoning\ndata: {_json.dumps(_secrets(_r))}\n\n'
                             after=buf[idx+6:].lstrip(' :\t\n')
                             if after:yield f'event: token\ndata: {_json.dumps(after)}\n\n';_final_buf=after
                             in_final=True;seen_final=True;buf=''
                         else:
-                            yield f'event: reasoning\ndata: {_json.dumps(chunk)}\n\n'
+                            yield f'event: reasoning\ndata: {_json.dumps(_secrets(chunk))}\n\n'
                             if (_now-_last_ping)>3:yield f'event: thinking\ndata: {_json.dumps({"buf_chars":len(buf),"elapsed":round(_now-_buf_start,1)})}\n\n';_last_ping=_now
-            except Exception as e:yield f'event: error\ndata: {_json.dumps(str(e))}\n\n';return
+            except Exception as e:yield f'event: error\ndata: {_json.dumps(_egress(str(e)))}\n\n';return
             finally:
                 try:_genstream.close()
                 except Exception:pass
@@ -472,6 +498,22 @@ def main():
                 if blocks:
                     bad=_validate_python(blocks)
                     if bad:yield f'event: validate\ndata: {_json.dumps({"syntax_errors":len(bad)})}\n\n'
+                    try:
+                        from amni.serve.self_debug import review as _review,debug_report as _dbgrep
+                        _allcode='\n\n'.join(blocks)
+                        _rev=_review(_allcode)
+                        if not _rev['clean']:
+                            yield f'event: debug\ndata: {_json.dumps({"lint":len(_rev["lint"]),"runtime":len(_rev["runtime"]),"func":_rev.get("func")})}\n\n'
+                            _pr=_perturb_retry(adam,skills,sys_p,_allcode,_dbgrep(_allcode),req.message,max_steps=2,emit=lambda d:None)
+                            if _pr.get('success') and _pr.get('code') and _review(_pr['code'])['clean']:
+                                final=(final.replace(_allcode,_pr['code']) if _allcode in final else final+f"\n\n```python\n{_pr['code']}\n```")
+                                blocks=_extract_python_blocks(final)
+                                final+='\n\n**[Self-debug fixed it before posting — now passes lint + edge-case probes]**'
+                                yield f'event: debug\ndata: {_json.dumps({"fixed":True})}\n\n'
+                            else:
+                                final+=f"\n\n**[Self-debug flags — review before use]**\n```\n{_dbgrep(_allcode)[:600]}\n```"
+                                yield f'event: debug\ndata: {_json.dumps({"fixed":False})}\n\n'
+                    except Exception as _de:print(f'[serve] self-debug step error: {_de}',flush=True)
                     runnable=[b for b in blocks if ('print(' in b or 'if __name__' in b)]
                     if runnable:
                         snippet=('\n\n'.join(blocks) if len(blocks)>1 else runnable[-1])
@@ -543,7 +585,7 @@ def main():
                                         yield f'event: perturb\ndata: {_json.dumps({"final":True,"success":False,"steps":len(pr.get("history",[]))})}\n\n'
                             elif run_r.ok and run_r.output.get('error'):
                                 yield f'event: exec\ndata: {_json.dumps({"error":run_r.output["error"]})}\n\n'
-                        except Exception as e:yield f'event: exec\ndata: {_json.dumps({"error":str(e)})}\n\n'
+                        except Exception as e:yield f'event: exec\ndata: {_json.dumps({"error":_egress(str(e))})}\n\n'
             _introspect_no_web=(_intent_label in ('greeting','introspection')) or bool(_INTROSPECT_NO_WEB_RE.search(req.message))
             _needs_fresh_info=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message))
             if (not is_private) and skills.has('web') and not _memory_recall and not _profile_authoritative and not _introspect_no_web and not _pre_web_supplemented and (raw_final or final) and _UNCERTAIN_RE.search(raw_final or final or ''):
@@ -565,7 +607,7 @@ def main():
                             final=(final or '')+_supplement
                             yield f'event: web_supplement_done\ndata: {_json.dumps({"chars":len(_web_pretty),"sources_n":len(_web_srcs)})}\n\n'
                         else:yield f'event: web_supplement_skipped\ndata: {_json.dumps({"reason":"no useful content","ans_len":len(_web_ans or ""),"sources_n":len(_web_srcs or [])})}\n\n'
-                    except Exception as _we:yield f'event: web_supplement_error\ndata: {_json.dumps({"msg":str(_we)[:200]})}\n\n'
+                    except Exception as _we:yield f'event: web_supplement_error\ndata: {_json.dumps({"msg":_egress(str(_we))[:200]})}\n\n'
             conv.append('assistant',final,{'tier':tier_final,'persona':persona_name,'category':category,'is_private':is_private})
             if getattr(agent,'atlas',None) is not None and final and final.strip():
                 try:agent.atlas.record(conv.session_id,req.message,final,is_personal=is_private)
@@ -578,7 +620,24 @@ def main():
     @app.post('/ask')
     def ask(req:AskRequest):return adam.ask(req.query,writeback=req.writeback)
     @app.post('/teach')
-    def teach(req:TeachRequest):return adam.teach(req.question,req.answer)
+    def teach(req:TeachRequest,request:Request):
+        _ok,_rl=_RL_TEACH.allow(_rl_key(request))
+        if not _ok:raise HTTPException(status_code=429,detail=f"rate limit: max {_rl['limit']}/{int(_rl['window_s'])}s — retry in {_rl['retry_after_s']}s")
+        if len(req.question or '')+len(req.answer or '')>_MAX_INPUT_CHARS:raise HTTPException(status_code=413,detail=f'teach payload too large (>{_MAX_INPUT_CHARS} chars)')
+        try:
+            from amni.serve.conversation import detect_personal as _dp
+            if _dp(req.question) or _dp(req.answer):
+                return {'taught':False,'rejected':'personal/PII detected — lessons are PTEX-stored and federation-eligible, so personal data must not enter. Keep it in a local session instead.'}
+        except Exception:pass
+        _bus=getattr(agent,'memory_bus',None)
+        if _bus is not None:
+            try:
+                _r=_bus.record_learning(req.question,req.answer,kind='fact',provenance='user:teach',exactness='exact')
+                _base=adam.teach(req.question,req.answer)
+                if isinstance(_base,dict):_base['memory_bus']=_r
+                return _base
+            except Exception as _te:print(f'[teach] bus.record_learning failed, fell back to teach: {_te}',flush=True)
+        return adam.teach(req.question,req.answer)
     class CompleteReq(BaseModel):
         prefix:str
         suffix:Optional[str]=''
@@ -588,6 +647,7 @@ def main():
     @app.post('/complete')
     def complete(req:CompleteReq):
         if not req.prefix:raise HTTPException(status_code=400,detail='missing prefix')
+        if len(req.prefix or '')+len(req.suffix or '')>_MAX_INPUT_CHARS:raise HTTPException(status_code=413,detail=f'completion payload too large (>{_MAX_INPUT_CHARS} chars)')
         _lang=(req.language or '').lower()
         _hint='completing code' if any(c in req.prefix for c in ('{','(','def ','fn ','function ','class ','import ','use ','#include')) else 'completing text'
         sys_p=f'You are a code/text completion engine. Continue the user\'s text NATURALLY. Output ONLY the continuation — no explanation, no markdown fence, no preamble. Stop at a natural boundary (end of statement/expression/sentence). Target language: {_lang or "auto-detect"}.'
@@ -663,7 +723,7 @@ def main():
                 result['voice_used']=(req.voice or _persona_voice)
                 if audio:result['audio_base64']=_b64.b64encode(audio).decode('ascii');result['audio_bytes']=len(audio)
                 else:result['tts_error']='no audio produced'
-            except Exception as e:result['tts_error']=str(e)[:200]
+            except Exception as e:result['tts_error']=_egress(str(e))[:200]
         return result
     @app.get('/stats')
     def stats():
@@ -685,9 +745,16 @@ def main():
     from fastapi.responses import HTMLResponse,FileResponse
     _HUD_PATH=Path(__file__).resolve().parent.parent/'docs'/'hud'/'index.html'
     @app.get('/',response_class=HTMLResponse)
-    def root_hud():
+    def root_unified():
+        try:return HTMLResponse(unified_web.page())
+        except Exception as _ue:
+            print(f'[amni_serve] unified UI failed ({_ue}), falling back to HUD',flush=True)
+            if _HUD_PATH.exists():return HTMLResponse(_HUD_PATH.read_text(encoding='utf-8'))
+            return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>UI unavailable: {_ue}</p></body></html>',status_code=200)
+    @app.get('/hud',response_class=HTMLResponse)
+    def root_hud_explicit():
         if _HUD_PATH.exists():return HTMLResponse(_HUD_PATH.read_text(encoding='utf-8'))
-        return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p><p>Endpoints: <a href="/health" style="color:#00d4ff">/health</a> · <a href="/skills" style="color:#00d4ff">/skills</a> · <a href="/sessions" style="color:#00d4ff">/sessions</a></p></body></html>',status_code=200)
+        return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p></body></html>',status_code=200)
     @app.get('/healthz')
     def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':'6.9.3','warmup':_warmup_state}
     @app.get('/workdir')
@@ -760,8 +827,8 @@ def main():
             if torch.cuda.is_available():
                 _gpu={'cuda_or_rocm':True,'device_count':torch.cuda.device_count(),'device_name':torch.cuda.get_device_name(0),'mem_alloc_gb':round(torch.cuda.memory_allocated(0)/(1024**3),2),'mem_reserved_gb':round(torch.cuda.memory_reserved(0)/(1024**3),2)}
             else:_gpu={'cuda_or_rocm':False}
-        except Exception as e:_gpu={'error':str(e)[:200]}
-        return {'status':'ok','version':'6.9.3','adam':{'lessons_n':len(adam.sem_lut._raw),'sessions_n':len(store._active) if hasattr(store,'_active') else 0,'svc_boot_s':round(adam.stats().get('svc_boot_s',0),1)},'skills':{'count':len(skills.list_skills()),'names':sorted(s['name'] for s in skills.list_skills())},'voice':{'tts_backend':_tb(),'stt_backend':_sb(),'wake_words_available':_ww()},'gpu':_gpu,'workdir':str(skills.workdir),'personas_known':[p.name for p in personas.list_known()]}
+        except Exception as e:_gpu={'error':_egress(str(e))[:200]}
+        return {'status':'ok','version':'6.9.3','adam':{'lessons_n':len(adam.sem_lut._raw),'sessions_n':len(store._active) if hasattr(store,'_active') else 0,'svc_boot_s':round(adam.stats().get('svc_boot_s',0),1)},'skills':{'count':len(skills.list_skills()),'names':sorted(s['name'] for s in skills.list_skills())},'voice':{'tts_backend':_tb(),'stt_backend':_sb(),'wake_words_available':_ww()},'gpu':_gpu,'workdir':_egress(str(skills.workdir)),'personas_known':[p.name for p in personas.list_known()]}
     @app.get('/skills')
     def list_skills():return {'skills':skills.list_skills()}
     @app.post('/skills/{name}')
@@ -769,6 +836,13 @@ def main():
         r=skills.call(name,req.args,ctx={'adam':adam,'agent':agent,'personas':personas,'store':store,'conv':None,'coach_atlas':getattr(agent,'coach_atlas',None),'personal_atlas':getattr(agent,'personal_atlas',None),'scheduler':getattr(agent,'scheduler',None),'learning_daemon':getattr(agent,'learning_daemon',None),'knowledge_graph':getattr(agent,'knowledge_graph',None),'task_registry':getattr(agent,'task_registry',None),'vision':getattr(agent,'vision',None),'file_watcher':getattr(agent,'file_watcher',None)})
         if not r.ok:raise HTTPException(status_code=400,detail=r.to_dict())
         return r.to_dict()
+    import re as _re_sid
+    _SID_RE=_re_sid.compile(r'^[A-Za-z0-9_-]{1,128}$')
+    def _session_fp(sid):
+        if not _SID_RE.match(sid or ''):raise HTTPException(status_code=400,detail='invalid session id')
+        root=Path(store.root).resolve();fp=(root/f'{sid}.jsonl').resolve()
+        if not (root in fp.parents):raise HTTPException(status_code=400,detail='invalid session id')
+        return fp
     @app.get('/sessions')
     def sessions(enrich:bool=True,limit:int=30):
         raw=store.list_sessions()
@@ -796,7 +870,7 @@ def main():
     @app.get('/sessions/{sid}')
     def get_session(sid:str,limit:int=200):
         import json as _j
-        fp=Path(store.root)/f'{sid}.jsonl'
+        fp=_session_fp(sid)
         if not fp.exists():raise HTTPException(status_code=404,detail=f'session {sid!r} not found')
         try:
             lines=fp.read_text(encoding='utf-8').strip().splitlines()[-limit:]
@@ -804,15 +878,17 @@ def main():
             for ln in lines:
                 try:turns.append(_j.loads(ln))
                 except Exception:pass
-            return {'session_id':sid,'turns_n':len(turns),'turns':turns,'path':str(fp)}
+            return {'session_id':sid,'turns_n':len(turns),'turns':turns,'path':_egress(str(fp))}
         except Exception as e:raise HTTPException(status_code=500,detail=f'read failed: {e}')
     @app.delete('/sessions/{sid}')
-    def del_session(sid:str):return {'deleted':store.delete(sid)}
+    def del_session(sid:str):
+        _session_fp(sid)
+        return {'deleted':store.delete(sid)}
     @app.get('/sessions/{sid}/export.md')
     def export_session_md(sid:str,limit:int=500):
         from fastapi.responses import PlainTextResponse
         import json as _j,datetime as _dt
-        fp=Path(store.root)/f'{sid}.jsonl'
+        fp=_session_fp(sid)
         if not fp.exists():raise HTTPException(status_code=404,detail=f'session {sid!r} not found')
         try:
             lines=fp.read_text(encoding='utf-8').strip().splitlines()[-limit:]
@@ -974,6 +1050,7 @@ def main():
     mcp.mount(app,agent)
     web.mount(app)
     jarvis_web.mount(app)
+    unified_web.mount(app)
     memory_endpoints.mount(app,agent)
     task_endpoints.mount(app,agent)
     vision_endpoints.mount(app,agent)

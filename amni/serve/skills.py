@@ -7,8 +7,14 @@ import os,re,ast,json,time,string,subprocess,shlex
 from pathlib import Path
 from dataclasses import dataclass,asdict,field
 from typing import Callable,Dict,Any,Optional,List
-_SHELL_ALLOW={'ls','dir','cat','type','pwd','cd','git','python','pip','where','which','echo','head','tail','wc','find'}
+_SHELL_ALLOW={'ls','dir','cat','type','pwd','cd','git','python','python3','py','pip','pip3','where','which','echo','head','tail','wc','find'}
 _SHELL_BLOCK_ARGS={'rm','del','rmdir','rd','format','mkfs','dd','shutdown','reboot','kill','taskkill','--force','-rf','-f'}
+_SHELL_META=re.compile(r'[;&|<>`$\n\r]')
+_SHELL_WINENV=re.compile(r'%\w+%')
+_PY_BASES={'python','python3','py'}
+_PIP_BASES={'pip','pip3'}
+_PY_SAFE_FLAGS={'--version','-v','--help','-h'}
+_PIP_SAFE_SUB={'list','show','freeze','check'}
 _TEXT_EXT={'.txt','.md','.markdown','.rst','.py','.js','.ts','.tsx','.jsx','.html','.htm','.css','.json','.yaml','.yml','.toml','.ini','.cfg','.csv','.tsv','.log','.sh','.ps1','.bat','.c','.h','.cpp','.hpp','.cs','.go','.rs','.java','.kt','.swift','.rb','.php','.lua','.r','.sql','.tex','.bib','.xml','.svg','.gitignore','.dockerignore','.env','.example'}
 def _enumerate_drives():
     return [Path(f'{d}:/') for d in string.ascii_uppercase if Path(f'{d}:/').exists()] if os.name=='nt' else [Path('/')]
@@ -62,27 +68,54 @@ class SkillRegistry:
         self._audit(name,args,r);return r
     def _audit(self,name:str,args:Dict,r:SkillResult):
         if not self.audit_log:return
-        rec={'ts':time.time(),'skill':name,'args':{k:str(v)[:500] for k,v in args.items()},'ok':r.ok,'error':r.error,'elapsed_ms':r.elapsed_ms}
+        try:from amni.serve.code_safety import scrub_egress as _se
+        except Exception:_se=lambda x:x
+        rec={'ts':time.time(),'skill':name,'args':{k:_se(str(v)[:500]) for k,v in args.items()},'ok':r.ok,'error':_se(r.error or ''),'elapsed_ms':r.elapsed_ms}
         try:
             with open(self.audit_log,'a',encoding='utf-8') as f:f.write(json.dumps(rec)+'\n')
         except Exception:pass
     def _in_workdir(self,p:str)->bool:return self._in_allowed_roots(p)
     def _in_allowed_roots(self,p:str)->bool:
-        try:rp=Path(p).resolve();return any(str(rp).startswith(str(r)) for r in self.roots)
+        try:
+            rp=Path(p).resolve()
+            for r in self.roots:
+                rr=Path(r).resolve()
+                if rp==rr:return True
+                try:
+                    if rp.is_relative_to(rr):return True
+                except AttributeError:
+                    try:
+                        if os.path.commonpath([str(rp),str(rr)])==str(rr):return True
+                    except Exception:pass
+            return False
         except Exception:return False
+_SECRET_NAMES={'.env','.netrc','.pgpass','.htpasswd','credentials','.git-credentials','id_rsa','id_dsa','id_ecdsa','id_ed25519','.npmrc','.pypirc','.dockercfg','.boto'}
+_SECRET_EXTS={'.pem','.key','.pfx','.p12','.keystore','.jks','.ppk'}
+def _is_secret_file(path)->bool:
+    pp=Path(path);n=pp.name.lower()
+    return (n in _SECRET_NAMES) or n.startswith('.env') or (pp.suffix.lower() in _SECRET_EXTS)
+def _secret_blocked(path)->bool:
+    return _is_secret_file(path) and os.environ.get('AMNI_ALLOW_SECRET_FILES','0')!='1'
 def _gate_path(args,ctx,reg:'SkillRegistry')->Optional[str]:
     p=args.get('path')
     if not p:return 'missing path arg'
     if not reg._in_allowed_roots(p):return f'path outside allowed roots ({len(reg.roots)} configured): {p}'
+    if _secret_blocked(p):return f'refused: {Path(p).name!r} looks like a secret/credential file — set AMNI_ALLOW_SECRET_FILES=1 to override'
     return None
 def _gate_shell(args,ctx,reg:'SkillRegistry')->Optional[str]:
     cmd=args.get('cmd','')
     if not cmd:return 'missing cmd arg'
+    if _SHELL_META.search(cmd) or _SHELL_WINENV.search(cmd):return 'shell metacharacters not allowed (no chaining ; | & / redirect < > / substitution $() ` / env-expansion $VAR %VAR%)'
     try:parts=shlex.split(cmd,posix=False)
     except Exception:return 'unparseable cmd'
     if not parts:return 'empty cmd'
     base=parts[0].lower().split('\\')[-1].split('/')[-1].removesuffix('.exe')
     if base not in _SHELL_ALLOW:return f'command not in allowlist: {base}'
+    if os.environ.get('AMNI_SHELL_ALLOW_EXEC','0')!='1':
+        if base in _PY_BASES and not (parts[1:] and {a.lower() for a in parts[1:]}<=_PY_SAFE_FLAGS):return 'python via shell is limited to --version/--help — use the sandboxed run_python skill to execute code (set AMNI_SHELL_ALLOW_EXEC=1 to override)'
+        if base in _PIP_BASES:
+            _sub=next((a.lower() for a in parts[1:] if not a.startswith('-')),'')
+            if _sub not in _PIP_SAFE_SUB and not ({a.lower() for a in parts[1:]}<=_PY_SAFE_FLAGS):return 'pip via shell is limited to read-only subcommands (list/show/freeze/check); install/uninstall/download run arbitrary setup code (set AMNI_SHELL_ALLOW_EXEC=1 to override)'
     for p in parts[1:]:
         if p.lower() in _SHELL_BLOCK_ARGS:return f'blocked arg: {p}'
         if '..' in p or p.startswith('/') or (len(p)>1 and p[1]==':'):
@@ -249,6 +282,8 @@ def _skill_code_edit(args,ctx,reg):
     return {'path':str(p),'replacements':src.count(find) if count==0 else min(count,src.count(find)),'ext':p.suffix.lstrip('.') or 'txt','change':_file_change_stats(src,new),'verification':verify_edit(str(p),new,op='edit')}
 def _skill_shell(args,ctx,reg):
     from amni.serve.shell_audit import log_shell_run
+    _g=_gate_shell(args,ctx,reg)
+    if _g:return {'error':f'blocked: {_g}','cmd':args.get('cmd','')}
     cmd=args['cmd'];timeout=int(args.get('timeout',15));t0=time.time()
     r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
     dur=round(time.time()-t0,3)
@@ -637,17 +672,13 @@ def _skill_run_python(args,ctx,reg):
     timeout=int(args.get('timeout',8))
     if not code:return {'error':'no code provided'}
     if _DANGEROUS_PYTHON.search(code):return {'error':'rejected: code contains potentially dangerous operations (filesystem mutation, network, exec/eval, subprocess)'}
-    import tempfile,sys as _sys
-    f=tempfile.NamedTemporaryFile(mode='w',suffix='.py',delete=False,encoding='utf-8')
-    try:
-        f.write(code);f.close()
-        r=subprocess.run([_sys.executable,f.name],capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
-        return {'stdout':r.stdout[:6000],'stderr':r.stderr[:2000],'returncode':r.returncode,'timed_out':False}
-    except subprocess.TimeoutExpired as e:return {'stdout':(e.stdout or b'')[:6000].decode('utf-8','replace'),'stderr':f'(killed after {timeout}s timeout)','returncode':None,'timed_out':True}
-    except Exception as e:return {'error':f'{type(e).__name__}: {e}'}
-    finally:
-        try:os.unlink(f.name)
-        except Exception:pass
+    try:from amni.serve.self_debug import run_in_sandbox as _sbx
+    except Exception:_sbx=None
+    if _sbx is None:return {'error':'sandbox unavailable'}
+    res=_sbx(code,timeout=timeout)
+    if res.get('blocked'):return {'error':'rejected (AST danger scan): '+', '.join(sorted({d['rule'] for d in res.get('dangers',[])})),'dangers':res.get('dangers',[])[:6]}
+    if not res.get('ran'):return {'error':res.get('error','sandbox failed to run')}
+    return {'stdout':(res.get('stdout') or '')[:6000],'stderr':(res.get('stderr') or '')[:2000],'returncode':res.get('returncode'),'timed_out':bool(res.get('timed_out')),'killed':res.get('killed'),'capped':bool(res.get('capped'))}
 def _extract_synthetic_q(filename:str,chunk:str)->str:
     h=re.search(r'^#+\s+(.+?)$',chunk,re.MULTILINE)
     if h:return f'What does "{h.group(1).strip()}" describe in {filename}?'
@@ -676,6 +707,7 @@ def _iter_files(root:Path,glob:str,max_files:int,exts:Optional[set])->List[Path]
     for p in root.rglob(glob):
         if not p.is_file():continue
         if exts is not None and p.suffix.lower() not in exts:continue
+        if _secret_blocked(p):continue
         if p.stat().st_size>2_000_000:continue
         out.append(p)
         if len(out)>=max_files:break
@@ -698,6 +730,11 @@ def _skill_scan(args,ctx,reg):
         except Exception as e:errors.append({'file':str(f),'error':str(e)});continue
         chunks=_chunk_text(txt,max_chars=1500)
         for i,ch in enumerate(chunks):
+            try:
+                from amni.serve.federated import scrub_pii as _sp
+                from amni.serve.code_safety import sanitize_ingest as _si
+                ch=_si(_sp(ch)[0])[0]
+            except Exception:pass
             q=None
             if distill:
                 try:
@@ -948,7 +985,7 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     reg.register('prune_sessions',_skill_prune_sessions,desc='Delete old session jsonl files. Keeps N most-recent; only deletes >older_than_days old. Args: {older_than_days?=30, keep_n?=50, dry_run?=false}.',schema={'older_than_days':'int?','keep_n':'int?','dry_run':'bool?'})
     reg.register('tts',_skill_tts,desc='Text-to-speech. Returns WAV audio (base64) or writes to out_path. Backends auto-detect: piper > pyttsx3 (Windows SAPI / espeak). Args: {text, out_path?, backend?, voice?, list_voices?}.',schema={'text':'str','out_path':'str?','backend':'str?','voice':'str?','list_voices':'bool?'})
     reg.register('stt',_skill_stt,desc='Speech-to-text. Accepts path (workdir-scoped WAV) or audio_base64. Backends: faster-whisper (recommended) > vosk. Args: {path? | audio_base64?, model_size?, backend?}.',schema={'path':'str?','audio_base64':'str?','model_size':'str?','backend':'str?'})
-    reg.register('run_python',_skill_run_python,desc='Execute a Python snippet in a sandboxed subprocess (workdir-confined, timeout-bounded). Rejects dangerous ops (network, fs-mutation, subprocess, exec/eval). Returns stdout/stderr/returncode. Args: {code, timeout?}',schema={'code':'str','timeout':'int?'})
+    reg.register('run_python',_skill_run_python,desc='Execute a Python snippet in a hardened sandbox: isolated `python -I -B`, stripped env (no secrets), throwaway temp cwd, CPU/mem/output caps, and network egress disabled. AST + regex danger-scan rejects fs-mutation/subprocess/exec/eval/network. For pure computation, not file/workdir access. Returns stdout/stderr/returncode. Args: {code, timeout?}',schema={'code':'str','timeout':'int?'})
     reg.register('scan',_skill_scan,gate=_gate_path,desc=f'Walk path (file or dir + glob), chunk text, teach each chunk to Adam. Args: {{path, glob?, max_files?, max_chars_per_file?, distill?, only_text?}}',schema={'path':'str','glob':'str?','max_files':'int?','max_chars_per_file':'int?','distill':'bool?','only_text':'bool?'})
     def _skill_chain(args,ctx,reg_):
         steps=args.get('steps') or [];max_steps=int(args.get('max_steps',8))

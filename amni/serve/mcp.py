@@ -1,7 +1,8 @@
 """Minimal MCP-style HTTP transport — exposes Adam as a tool source for any MCP client (Claude Code, Cursor, IDE plugins).
 JSON-RPC 2.0 over POST /mcp. Implements: initialize, tools/list, tools/call, resources/list, prompts/list.
 Tools exposed: ask_adam, scan_directory, mem_search, file_read, calc, time, plus every registered skill."""
-import time
+import time,os
+_MCP_MAX_ARG_CHARS=int(os.environ.get('AMNI_MAX_INPUT_CHARS','100000'))
 def _tool_defs(agent):
     base=[{'name':'ask_adam','description':'Ask Adam a question. Routes through full tier pipeline (LUT cache, semantic match, tier3 cold-solve). Persistent learning enabled.','inputSchema':{'type':'object','properties':{'question':{'type':'string'},'persona':{'type':'string','description':'Optional persona name (rikku, yoda, mentor, etc, or any custom name — Adam will web-learn unknowns).'}},'required':['question']}},
           {'name':'mem_search','description':"Search Adam's persistent lesson bank with semantic + flat-cosine fallback. Returns top-K (question, answer, score) hits.",'inputSchema':{'type':'object','properties':{'query':{'type':'string'},'k':{'type':'integer','default':3}},'required':['query']}},
@@ -41,6 +42,8 @@ def _call_tool(agent,name,args):
 def mount(app,agent):
     from fastapi import Request
     from fastapi.responses import JSONResponse
+    from amni.serve.rate_limit import from_env as _rl_from_env,client_key as _rl_key
+    _RL_MCP=_rl_from_env('mcp',120)
     @app.post('/mcp')
     async def mcp(req:Request):
         try:body=await req.json()
@@ -50,7 +53,10 @@ def mount(app,agent):
             return {'jsonrpc':'2.0','id':rpc_id,'result':{'protocolVersion':'2025-06-18','serverInfo':{'name':'amni-ai-adam','version':'6.9.3'},'capabilities':{'tools':{'listChanged':False},'resources':{'subscribe':False,'listChanged':False},'prompts':{'listChanged':False}}}}
         if method=='tools/list':return {'jsonrpc':'2.0','id':rpc_id,'result':{'tools':_tool_defs(agent)}}
         if method=='tools/call':
+            _ok,_rl=_RL_MCP.allow(_rl_key(req))
+            if not _ok:return {'jsonrpc':'2.0','id':rpc_id,'result':{'content':[{'type':'text','text':f"error: rate limit {_rl['limit']}/{int(_rl['window_s'])}s — retry in {_rl['retry_after_s']}s"}],'isError':True}}
             name=params.get('name','');args=params.get('arguments',{})
+            if len(str(args))>_MCP_MAX_ARG_CHARS:return {'jsonrpc':'2.0','id':rpc_id,'result':{'content':[{'type':'text','text':f'error: arguments too large (>{_MCP_MAX_ARG_CHARS} chars)'}],'isError':True}}
             try:out=_call_tool(agent,name,args);return {'jsonrpc':'2.0','id':rpc_id,'result':{'content':[{'type':'text','text':str(out)}],'isError':False,'_raw':out}}
             except Exception as e:return {'jsonrpc':'2.0','id':rpc_id,'result':{'content':[{'type':'text','text':f'error: {e}'}],'isError':True}}
         if method=='resources/list':

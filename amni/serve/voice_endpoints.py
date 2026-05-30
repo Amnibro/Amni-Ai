@@ -28,6 +28,7 @@ def mount(app,agent):
         body=await req.json()
         text=(body.get('text') or '').strip()
         if not text:raise HTTPException(400,'need text')
+        if len(text)>100000:raise HTTPException(413,'text too large')
         voice=body.get('voice')
         backend=body.get('backend')
         tid=task_reg.register('voice_speak',label=f'TTS ({len(text)} chars)') if task_reg else None
@@ -57,6 +58,8 @@ def mount(app,agent):
         body=await req.json()
         b64=body.get('audio_base64') or body.get('base64')
         if not b64:raise HTTPException(400,'need audio_base64')
+        from amni.serve.code_safety import b64_within_limit
+        if not b64_within_limit(b64):raise HTTPException(413,'audio too large')
         try:base64.b64decode(b64.split(',',1)[-1] if ',' in b64 else b64,validate=True)
         except Exception as e:raise HTTPException(400,f'base64 decode: {e}')
         b64_clean=b64.split(',',1)[-1] if ',' in b64 else b64

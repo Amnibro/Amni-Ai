@@ -92,10 +92,13 @@ _COT_REASONING=('Reasoning question — use this structure:\n'
                 '3. CHAIN: build the answer step by step, naming each inferential leap.\n'
                 '4. COUNTER: what is the strongest objection to your reasoning? does it hold up?\n'
                 '5. FINAL: the answer + your confidence level + what would change your mind.\n')
+_FACT_LOOKUP_RE=re.compile(r'^\s*(?:what(?:\'s| is| are| was)|who(?:\'s| is| are| was)|when(?:\'s| is| was)|where(?:\'s| is)|which|tell me (?:the|what|who)|give me the|how many)\b',re.IGNORECASE)
+_NONCODE_CODE_PHRASE=re.compile(r'\b(?:zip|area|postal|promo|coupon|discount|gift|access|error|status|country|dialing|barcode|qr|pin|cheat|redeem|activation|product|reference|booking|confirmation|tracking|swift|routing|morse|color|colour|secret|vault|launch)\s+code\b',re.IGNORECASE)
 def _pick_cot(category:str,message:str)->str:
     m=message.lower()
+    _factlookup=bool(_FACT_LOOKUP_RE.match(message)) or bool(_NONCODE_CODE_PHRASE.search(message))
     if any(k in m for k in (' debug','debugging','bug','why is my','why does my','why won','not working','broken','error','crash','hang','leak','slow','flak')):return _COT_DEBUG
-    if category=='code' or any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function','make me code','give me code','generate code','create code','make code')):return _make_code_cot(_detect_code_lang(message))
+    if not _factlookup and (category=='code' or any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function','make me code','give me code','generate code','create code','make code'))):return _make_code_cot(_detect_code_lang(message))
     if any(k in m for k in ('design a','design the','architect','how would you build','how to build a','scale to','system to handle','rate limit','queue','pipeline architecture')):return _COT_DESIGN
     if any(k in m for k in ('solve for','calculate','compute the','equation','derivative','integral','probability','optimize','minimize','maximize','prove that','theorem','formula for')):return _COT_MATH
     if category=='reasoning':return _COT_REASONING
@@ -114,6 +117,31 @@ def _extract_asserts(text:str)->List[str]:
         s=m.group(1).strip().rstrip(';,.')
         if s and len(s)<240 and s not in out:out.append(s)
     return out
+_BOXED_RE=re.compile(r'\\boxed\{([^}]+)\}')
+_ANSWER_IS_RE=re.compile(r'(?:answer(?:\s+is)?|equals?|result(?:\s+is)?|=)\s*:?\s*\$?(-?\d[\d,]*\.?\d*)',re.IGNORECASE)
+_NUM_RE=re.compile(r'-?\d[\d,]*\.?\d*')
+def _extract_final_number(text:str)->Optional[str]:
+    if not text:return None
+    m=_BOXED_RE.search(text)
+    if m:
+        inner=_NUM_RE.search(m.group(1))
+        if inner:return inner.group(0).replace(',','')
+    ms=list(_ANSWER_IS_RE.finditer(text))
+    if ms:return ms[-1].group(1).replace(',','')
+    nums=_NUM_RE.findall(text)
+    return nums[-1].replace(',','') if nums else None
+def _math_self_consistency(gen_fn,k:int=5)->Tuple[Optional[str],List[str],float]:
+    from collections import Counter
+    outs=[];keys=[]
+    for _ in range(max(1,k)):
+        try:o=gen_fn() or ''
+        except Exception:o=''
+        outs.append(o)
+        kk=_extract_final_number(o)
+        if kk is not None:keys.append(kk)
+    if not keys:return None,outs,0.0
+    win,n=Counter(keys).most_common(1)[0]
+    return win,outs,round(n/len(keys),3)
 _ASSERT_ARG_RE=re.compile(r'\(([^)]*)\)')
 _BOUND_RE=re.compile(r'(?:\b(?:0|1|None|True|False)\b|""|\'\'|\[\s*\]|\{\s*\}|\(\s*\)|"[a-zA-Z0-9]"|\'[a-zA-Z0-9]\')')
 _NEG_RE=re.compile(r'-\d|None|invalid|TypeError|ValueError|raises')
@@ -276,6 +304,15 @@ class AmniAgent:
             _ld_disabled=bool(_os_env.environ.get('AMNI_NO_LEARNING_DAEMON'))
             self.learning_daemon=LearningDaemon(adam=self.adam,skill_registry=self.skills,coach_atlas=self.coach_atlas,start_thread=not _ld_disabled,config={'enabled':not _ld_disabled})
         except Exception as e:print(f'[AmniAgent] LearningDaemon init failed (24/7 learning disabled): {e}',flush=True);self.learning_daemon=None
+        try:
+            from amni.serve.memory_bus import MemoryBus
+            _al=getattr(self.adam,'adam',None);_lut=getattr(_al,'lut',None)
+            _lroot=getattr(_lut,'root',None);_ledger=str(_lroot.parent/'corrections.jsonl') if _lroot is not None else 'data/corrections.jsonl'
+            self.memory_bus=MemoryBus(adam=self.adam,answer_lut=_lut,sem_lut=getattr(self.adam,'sem_lut',None),kb=getattr(_al,'lessons_kb',None),learning_atlas=getattr(getattr(self,'learning_daemon',None),'learning_atlas',None),ledger_path=_ledger)
+            try:self.adam.bus=self.memory_bus
+            except Exception:pass
+            print('[AmniAgent] MemoryBus online — closed-loop memory (correction-capture + instant ATEX recall)',flush=True)
+        except Exception as e:print(f'[AmniAgent] MemoryBus init failed (closed-loop memory disabled): {e}',flush=True);self.memory_bus=None
         try:
             from amni.storage.knowledge_graph import KnowledgeGraph
             self.knowledge_graph=KnowledgeGraph()
@@ -483,6 +520,17 @@ class AmniAgent:
         m=_WEB_RE.search(msg)
         if m and self.skills.has('web'):return ('web',{'query':msg})
         return None
+    def _extract_correction(self,prev_q,prev_a,message):
+        try:
+            prompt=f'Prior question: {prev_q}\nMy previous answer: {prev_a}\nUser now says: {message}\nIs the user correcting my previous answer? If yes, give the corrected answer. Output ONLY JSON: {{"is_correction": true or false, "corrected_answer": "one-sentence correct answer or empty"}}'
+            r=self.adam.chat_persona(prompt,system='You are a strict JSON extractor. Output ONLY a JSON object, no prose.',max_new_tokens=160,do_sample=False)
+            ans=(r.get('answer') or '') if isinstance(r,dict) else str(r or '')
+            import json as _j,re as _re
+            m=_re.search(r'\{.*\}',ans,_re.DOTALL)
+            if not m:return None
+            o=_j.loads(m.group(0))
+            return (o.get('corrected_answer') or '').strip() if o.get('is_correction') and (o.get('corrected_answer') or '').strip() else None
+        except Exception:return None
     def chat(self,message:str,session_id:Optional[str]=None,use_skills:bool=True,writeback:bool=True)->Dict[str,Any]:
         t0=time.time()
         conv=self.store.get(session_id)
@@ -490,6 +538,21 @@ class AmniAgent:
         if getattr(self,'learning_daemon',None) is not None:
             try:self.learning_daemon.signal_user_activity()
             except Exception:pass
+        try:
+            bus=getattr(self,'memory_bus',None);turns=getattr(conv,'turns',None) or []
+            if bus is not None and len(turns)>=3 and turns[-2].get('role')=='assistant':
+                from amni.storage.conversation_notes import ConversationNotes
+                if ConversationNotes.is_correction(message):
+                    pq,pa=turns[-3].get('content',''),turns[-2].get('content','')
+                    cor=self._extract_correction(pq,pa,message) if (pq and pa) else None
+                    if cor:
+                        _r=bus.record_learning(pq,cor,kind="correction",provenance="user:the maintainer",exactness="exact",supersedes=pa)
+                        print(f'[AmniAgent] correction captured (stored={_r.get("stored")} recall_ok={_r.get("recall_ok")} homes={_r.get("homes")}) -> {cor[:80]}',flush=True)
+                        if not _r.get('recall_ok'):print(f'[AmniAgent] WARN correction verify-after-write did not confirm; wrong answer still suppressed via ledger',flush=True)
+                    elif pa:
+                        try:bus.suppress(pa,reason='correction_detected_no_extract',q=pq);print(f'[AmniAgent] correction detected but answer not extractable — suppressed prior answer so it cannot recur',flush=True)
+                        except Exception as _se:print(f'[AmniAgent] suppression fallback failed: {_se}',flush=True)
+        except Exception as _ce:print(f'[AmniAgent] correction-capture skipped: {_ce}',flush=True)
         confirmed_clarification=None
         if self.personal_atlas is not None:
             try:confirmed_clarification=self.personal_atlas.try_parse_pending_reply(message)
@@ -537,10 +600,15 @@ class AmniAgent:
             conv.append('assistant',wrapped,{'tier':used_tier,'skill_calls':skill_calls,'tokens':0,'persona':persona.name,'category':cat})
             return {'answer':wrapped,'tier':used_tier,'tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':cat}
         if _INTROSPECT_RE.search(message):
-            ans=self._introspect_answer(persona=persona)
+            _bus=getattr(self,'memory_bus',None);_cv=None
+            if _bus is not None:
+                try:_rv,_rh,_rc=_bus.recall(message);_cv=_rv if (_rv is not None and _rh=='tier0_atex_override') else None
+                except Exception:_cv=None
+            ans=_cv if _cv is not None else self._introspect_answer(persona=persona)
             wrapped=tone_atlas.wrap(ans,'introspect',persona,seed=message)
-            conv.append('assistant',wrapped,{'tier':'tier0_introspect','skill_calls':skill_calls,'tokens':0,'persona':persona.name,'category':'introspect'})
-            return {'answer':wrapped,'tier':'tier0_introspect','tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'introspect'}
+            _tier='tier0_atex_canonical' if _cv is not None else 'tier0_introspect'
+            conv.append('assistant',wrapped,{'tier':_tier,'skill_calls':skill_calls,'tokens':0,'persona':persona.name,'category':'introspect'})
+            return {'answer':wrapped,'tier':_tier,'tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'introspect'}
         history_pairs=conv.history_pairs(n=12) if len(conv.turns)>1 else []
         atlas_recall=self.atlas.recall(message,session_id=conv.session_id,k=3,include_global=True) if self.atlas is not None else []
         for r in atlas_recall:
@@ -548,6 +616,10 @@ class AmniAgent:
             if pair not in history_pairs:history_pairs=[pair]+history_pairs
         history_pairs=history_pairs[-12:]
         user_facts=self._extract_user_facts(conv,extra_user_msgs=[r.get('user','') for r in atlas_recall])
+        try:
+            _bus=getattr(self,'memory_bus',None);_gf=_bus.grounding_fact(message) if _bus is not None else None
+            if _gf:user_facts=[_gf]+list(user_facts)
+        except Exception:pass
         is_private=detect_personal(message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
         category=tone_atlas.classify_intent(message)
         raw_ans='';tier='?';tokens=0
@@ -580,10 +652,18 @@ class AmniAgent:
             except Exception:pass
             if apply_cot:sys_p=f'{sys_p}\n\n{cot_scaffold}'
             cot_extra=1400 if (apply_cot and cot_tag=='code') else (700 if apply_cot else 0)
-            _is_code=bool(_CODE_LANG_RE.search(message) or any(k in message.lower() for k in ('write','implement','function','how do i','example','code','setup','config','server')))
+            _is_code=bool(not (_FACT_LOOKUP_RE.match(message) or _NONCODE_CODE_PHRASE.search(message)) and (_CODE_LANG_RE.search(message) or any(k in message.lower() for k in ('write','implement','function','how do i','example','code','setup','config','server'))))
             _code_extra=600 if _is_code and not apply_cot else 0
-            r=self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=int(160+300*persona.length)+cot_extra+_code_extra,do_sample=True)
-            raw_ans=r.get('answer') or '';tier=r.get('tier','tier_persona')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=r.get('tokens',0)
+            _mnt=int(160+300*persona.length)+cot_extra+_code_extra
+            _sck=int(os.environ.get('AMNI_MATH_SC_K','5'))
+            if apply_cot and cot_tag=='math' and _sck>1 and not is_private:
+                _gen=lambda:(self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=_mnt,do_sample=True).get('answer') or '')
+                _win,_outs,_agree=_math_self_consistency(_gen,k=_sck)
+                _pick=next((o for o in _outs if _win is not None and _extract_final_number(o)==_win),_outs[-1] if _outs else '')
+                raw_ans=_pick;tier=f'tier_persona_cot_math_sc{_sck}'+(f'_agree{int(_agree*100)}' if _win is not None else '_novote');tokens=0
+            else:
+                r=self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=_mnt,do_sample=True)
+                raw_ans=r.get('answer') or '';tier=r.get('tier','tier_persona')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=r.get('tokens',0)
             if apply_cot and cot_tag=='code' and raw_ans:
                 blocks=_extract_python_blocks(raw_ans)
                 if blocks:
@@ -632,9 +712,10 @@ class AmniAgent:
                                             ok_promote,promo_reason=_should_promote(snippet,asserts,div_score)
                                             if ok_promote:
                                                 try:
-                                                    tr=self.adam.teach(message,raw_ans[:2000])
+                                                    _b=getattr(self,'memory_bus',None)
+                                                    tr=_b.record_learning(message,raw_ans[:2000],kind='skill_lesson',provenance='adam:self-verified',exactness='semantic') if _b is not None else self.adam.teach(message,raw_ans[:2000])
                                                     tier+='_promoted'
-                                                    skill_calls.append({'skill':'promote_lesson','args':{'reason':promo_reason},'result':{'lessons_n':tr.get('lessons_n',0)}})
+                                                    skill_calls.append({'skill':'promote_lesson','args':{'reason':promo_reason},'result':(tr if isinstance(tr,dict) else {})})
                                                 except Exception:pass
                                             else:
                                                 tier+='_quality_gated'
@@ -906,4 +987,8 @@ class AmniAgent:
         s=self.adam.stats() if hasattr(self.adam,'stats') else {}
         s['skills']=[sk['name'] for sk in self.list_skills()]
         s['sessions_n']=len(self.store.list_sessions())
+        mb=getattr(self,'memory_bus',None)
+        if mb is not None and hasattr(mb,'stats'):
+            try:s['memory_bus']=mb.stats()
+            except Exception:pass
         return s

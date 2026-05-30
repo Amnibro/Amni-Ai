@@ -20,6 +20,10 @@ def _call_adam(adam,agent,system:str,pairs:List,user_msg:str,tools:Optional[List
             conv=agent.store.get(session_id) if hasattr(agent,'store') else None
             if conv is not None:facts=agent._extract_user_facts(conv) or []
     except Exception:pass
+    try:
+        _bus=getattr(agent,'memory_bus',None) if agent is not None else None;_gf=_bus.grounding_fact(user_msg) if _bus is not None else None
+        if _gf:facts=[_gf]+list(facts)
+    except Exception:pass
     is_private=False
     try:
         from amni.serve.conversation import detect_personal as _dp
@@ -68,6 +72,8 @@ def _stream_chunks(comp_id:str,model:str,gen_iter,session_id:str,code_atlas,inte
     return _agen()
 def mount(app,adam,agent,code_atlas=None):
     from fastapi import Request,HTTPException
+    from amni.serve.rate_limit import from_env as _rlf,client_key as _rlk
+    _RL_V1=_rlf('v1',60)
     from fastapi.responses import StreamingResponse,JSONResponse
     @app.get('/v1/models')
     def v1_models():return models_list()
@@ -77,8 +83,13 @@ def mount(app,adam,agent,code_atlas=None):
         raise HTTPException(status_code=404,detail=f'unknown model {model_id}')
     @app.post('/v1/chat/completions')
     async def v1_chat(req:Request):
+        _ok,_rl=_RL_V1.allow(_rlk(req))
+        if not _ok:raise HTTPException(status_code=429,detail=f"rate limit {_rl['limit']}/{int(_rl['window_s'])}s — retry in {_rl['retry_after_s']}s")
         body=await req.json()
         messages=body.get('messages',[]) or []
+        _maxc=int(os.environ.get('AMNI_MAX_INPUT_CHARS','100000'))
+        _tot=sum(len(str(m.get('content') or '')) for m in messages if isinstance(m,dict))
+        if len(messages)>2000 or _tot>_maxc:raise HTTPException(status_code=413,detail=f'request too large (content {_tot} chars > {_maxc}, or too many messages)')
         tools=body.get('tools') or []
         is_stream=bool(body.get('stream',False))
         model=body.get('model',_MODEL_NAME)

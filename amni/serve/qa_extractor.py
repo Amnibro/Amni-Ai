@@ -48,10 +48,10 @@ def extract_qa_batch(adam,chunks:List[str],max_pairs_per_chunk:int=5)->List[Dict
     return out
 def teach_qa_pairs(adam,pairs:List[Dict[str,Any]],source:str='',learning_atlas=None)->Dict[str,Any]:
     if adam is None or not hasattr(adam,'teach'):return {'taught':0,'verified_after':0}
-    taught=0;verified=0
+    taught=0;verified=0;_bus=getattr(adam,'bus',None)
     for p in pairs:
         q=p['q'];a=p['a']
-        try:adam.teach(q,a);taught+=1
+        try:(_bus.record_learning(q,a,kind='fact',provenance='adam:ingest',exactness='semantic') if _bus is not None else adam.teach(q,a));taught+=1
         except Exception:continue
         if learning_atlas is not None:
             try:
