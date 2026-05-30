@@ -19,6 +19,7 @@ class PTEXBlockBank:
         self._rgba=[];self._toks=[];self._sig2off={};self._sig2ctx={};self._stats={}
         self.proposed_steps=0;self.accepted_tokens=0;self.max_toks=int(os.environ.get('AMNI_BLOCK_MAXTOK','2000000'))
         self._dirty=0;self._flush_every=int(os.environ.get('AMNI_BLOCK_FLUSH','256'));self.persist=os.environ.get('AMNI_BLOCK_PERSIST','1')=='1' and bool(bank_dir)
+        self._min_tries=int(os.environ.get('AMNI_BLOCK_MINTRIES','20'));self._min_ratio=float(os.environ.get('AMNI_BLOCK_MINRATIO','0.10'))
         if self.persist:
             try:self.load()
             except Exception as e:print(f'[block-spec] bank load skipped: {e}',flush=True)
@@ -48,6 +49,7 @@ class PTEXBlockBank:
         return added
     def save(self):
         if not self.bank_dir:return False
+        self.prune()
         d=Path(self.bank_dir);d.mkdir(parents=True,exist_ok=True)
         rgba=np.concatenate(self._rgba,axis=0) if self._rgba else np.zeros((0,4),dtype=np.uint8)
         n_px=int(rgba.shape[0]);pw=4096;h=max((n_px+pw-1)//pw,1)
@@ -68,14 +70,21 @@ class PTEXBlockBank:
         for row in meta.get('sigs',[]):
             s,o,l,ctx,pr,ac=row;s=int(s);self._sig2off[s]=(int(o),int(l));self._sig2ctx[s]=tuple(int(c) for c in ctx);self._stats[s]=[int(pr),int(ac)]
         return True
+    def expected_gain_ok(self,sig):
+        pr,ac=self._stats.get(sig,(0,0))
+        return pr<self._min_tries or (ac/pr if pr else 1.0)>=self._min_ratio
     def lookup(self,tail):
         L=len(tail)
         for H in self.h_sizes:
             if H>=L or H<self.min_h:continue
             ctx=tuple(tail[-H:]);sig=fnv1a64(ctx);off=self._sig2off.get(sig)
-            if off is not None and self._sig2ctx.get(sig)==ctx:
+            if off is not None and self._sig2ctx.get(sig)==ctx and self.expected_gain_ok(sig):
                 o,ln=off;return sig,self._toks[o:o+ln]
         return None
+    def prune(self):
+        drop=[s for s,(pr,ac) in list(self._stats.items()) if pr>=self._min_tries and (ac/pr if pr else 1.0)<self._min_ratio and s in self._sig2off]
+        for s in drop:self._sig2off.pop(s,None);self._sig2ctx.pop(s,None);self._stats.pop(s,None)
+        return len(drop)
     def record_propose(self,sig,n):
         self.proposed_steps+=1;st=self._stats.setdefault(sig,[0,0]);st[0]+=int(n)
     def record_accept(self,sig,n):
