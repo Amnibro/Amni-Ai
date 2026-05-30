@@ -535,6 +535,19 @@ body.theme-min #netcanvas{opacity:.22}
 body.theme-min #nebula{opacity:.4}
 body.theme-min #frame,body.theme-min #corner-tr,body.theme-min #corner-bl{display:none}
 body.theme-min #adam-core{opacity:.6}
+#cmd-menu{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(2,5,12,.6);backdrop-filter:blur(3px)}
+#cmd-menu.show{display:flex}
+.cm-box{width:min(520px,92vw);max-height:72vh;display:flex;flex-direction:column;background:var(--glass);border:1px solid rgba(var(--c-rgb),.35);border-radius:8px;box-shadow:0 0 40px rgba(var(--c-rgb),.18);overflow:hidden;backdrop-filter:blur(10px)}
+.cm-head{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid rgba(var(--c-rgb),.18);font-size:11px;letter-spacing:.12em;color:var(--cyan)}
+.cm-close{cursor:pointer;color:var(--mute);font-size:10px;letter-spacing:.1em}
+.cm-close:hover{color:var(--cyan)}
+.cm-list{overflow-y:auto;padding:6px}
+.cm-group{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);padding:10px 10px 4px}
+.cm-row{display:flex;align-items:baseline;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer;transition:background .12s}
+.cm-row:hover{background:rgba(var(--c-rgb),.1)}
+.cm-cmd{color:var(--fg);font-size:12px;min-width:130px;font-weight:500}
+.cm-hint{color:var(--mute);font-size:10px}
+.qc-menu{border-color:rgba(var(--c-rgb),.5)!important}
 .math-fail{color:var(--err);font-family:JetBrains Mono,monospace;text-decoration:underline dotted}
 .mermaid-pending{margin:10px 0;padding:10px 14px;background:rgba(var(--c-rgb),.04);border:1px solid rgba(var(--c-rgb),.2);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--mute);white-space:pre-wrap;overflow:auto;max-width:100%}
 .mermaid-pending.mermaid-rendered{padding:14px;background:rgba(var(--c-rgb),.05);border-color:var(--cyan);box-shadow:0 0 14px rgba(var(--c-rgb),.18)}
@@ -965,6 +978,8 @@ body.theme-min #adam-core{opacity:.6}
   </div></div>
   <div id="quick-bar" class="qb-collapsed">
     <button class="qchip qb-toggle" onclick="toggleQuickBar()" title="Show example prompts"><span class="ico">⋯</span><span id="qb-toggle-label">EXAMPLES</span></button>
+    <button class="qchip qb-item qc-menu" onclick="toggleCmdMenu()" title="All modes & commands — click, no typing needed"><span class="ico">≡</span>MENU</button>
+    <button class="qchip qb-item" onclick="cycleTheme()" oncontextmenu="event.preventDefault();togglePersonaPanel();return false" title="Cycle theme (right-click → full picker)"><span class="ico">🎨</span>THEME</button>
     <button class="qchip qb-item" onclick="_qcAsk(&quot;what's my local weather and forecast for today and this week?&quot;)"><span class="ico">🌤</span>WEATHER</button>
     <button class="qchip qb-item" onclick="_qcAsk('Show me current system stats')"><span class="ico">📊</span>SYSTEM</button>
     <button class="qchip qb-item" onclick="_qcAsk('git status')"><span class="ico">⎇</span>GIT</button>
@@ -1236,6 +1251,7 @@ body.theme-min #adam-core{opacity:.6}
   <div id="se-body"><div class="se-empty">loading…</div></div>
 </div>
 <div id="chat-search"><div class="cs-row"><input type="text" id="cs-input" placeholder="search chat… (case-insensitive substring)" autocomplete="off"><span class="cs-count" id="cs-count">0/0</span><button class="cs-btn" onclick="_csPrev()" title="Previous match (Shift+Enter)">↑</button><button class="cs-btn" onclick="_csNext()" title="Next match (Enter)">↓</button><button class="cs-btn" onclick="closeChatSearch()" title="Close (Esc)">✕</button></div><div class="cs-help">Ctrl+K to open · Enter / ↑↓ to navigate · Esc to close · empty query restores all bubbles</div></div>
+<div id="cmd-menu" onclick="if(event.target===this)toggleCmdMenu(false)"><div class="cm-box"><div class="cm-head"><span>◆ MENU — modes &amp; commands</span><span class="cm-close" onclick="toggleCmdMenu(false)">CLOSE</span></div><div id="cmd-menu-list" class="cm-list"></div></div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
 <div id="toast-stack"></div>
 <div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE OR TEXT FILE FOR ADAM</div></div>
@@ -1865,6 +1881,12 @@ function _slashAcAccept(cmd){
 }
 function _slashAcClose(){_slashAcOpen=false;_slashAcRender()}
 input.addEventListener('input',_slashAcUpdate);
+function cycleTheme(){const ks=Object.keys(THEMES);const cur=localStorage.getItem(THEME_KEY)||'jarvis';const nx=ks[(ks.indexOf(cur)+1)%ks.length];applyTheme(nx);try{_showToast({id:'theme_'+nx,level:'success',source:'THEME',title:THEMES[nx].label+' theme',age_s:0})}catch(_){}}
+let _cmdMenuOpen=false;
+function toggleCmdMenu(force){_cmdMenuOpen=(typeof force==='boolean')?force:!_cmdMenuOpen;const el=document.getElementById('cmd-menu');if(!el)return;if(_cmdMenuOpen)_renderCmdMenu();el.classList.toggle('show',_cmdMenuOpen)}
+function _menuRun(cmd){toggleCmdMenu(false);_slashAcAccept(cmd)}
+async function _openPeer(){try{const r=await fetch('/launch/peer',{method:'POST'});const j=await r.json();const url=(j&&j.url)||'http://localhost:3000';if(j&&j.ok){try{_showToast({id:'peer',level:'success',source:'LAUNCH',title:'Amni-Code starting…',body:'opening '+url,age_s:0})}catch(_){}setTimeout(()=>window.open(url,'_blank'),1600)}else{try{_showToast({id:'peer',level:'warn',source:'LAUNCH',title:'Amni-Code not launched',body:(j&&j.error)||'opening URL anyway',age_s:0})}catch(_){}window.open(url,'_blank')}}catch(e){window.open('http://localhost:3000','_blank')}}
+function _renderCmdMenu(){const body=document.getElementById('cmd-menu-list');if(!body)return;const cur=localStorage.getItem(THEME_KEY)||'jarvis';const modes=[{label:'🎨 Theme',hint:'cycle palette — now: '+THEMES[cur].label,act:'toggleCmdMenu(false);cycleTheme()'},{label:'🔊 Voice Out',hint:'speak replies aloud (TTS)',act:'toggleCmdMenu(false);toggleVoiceOut()'},{label:'🛠 Tools drawer',hint:'voice · gesture · coach · export',act:'toggleCmdMenu(false);toggleToolsDrawer()'},{label:'⚙ Settings panel',hint:'personas · voices · themes · pace',act:'toggleCmdMenu(false);togglePersonaPanel()'},{label:'↗ Open Amni-Code',hint:'launch the granite-powered coding IDE',act:'toggleCmdMenu(false);_openPeer()'}];const mh='<div class="cm-group">MODES &amp; PANELS</div>'+modes.map(m=>`<div class="cm-row" onclick="${m.act}"><span class="cm-cmd">${m.label}</span><span class="cm-hint">${esc(m.hint)}</span></div>`).join('');const ch='<div class="cm-group">COMMANDS — click to run, no typing</div>'+_SLASH_COMMANDS.map(c=>`<div class="cm-row" onclick="_menuRun('${c.cmd}')"><span class="cm-cmd">/${esc(c.cmd)}</span><span class="cm-hint">${esc(c.hint)}</span></div>`).join('');body.innerHTML=mh+ch}
 const _GEO_CACHE_KEY='amni_jarvis_geo_cache';let _geoCache=null;
 (function(){try{const j=JSON.parse(localStorage.getItem(_GEO_CACHE_KEY)||'null');if(j&&typeof j.lat==='number'&&typeof j.lon==='number'&&Date.now()-(j.ts||0)<3600000)_geoCache=j}catch{}})();
 function _resolveLocalLocation(){
@@ -4059,6 +4081,23 @@ def mount(app):
     if _assets.exists():app.mount('/assets',StaticFiles(directory=str(_assets)),name='amni_assets')
     @app.get('/jarvis',response_class=HTMLResponse)
     def jarvis():return HTMLResponse(content=_HTML)
+    @app.post('/launch/peer')
+    def _launch_peer(app_name:str='amni-code'):
+        import subprocess,sys,os
+        root=_AP(__file__).resolve().parents[2]
+        peer=_AP(os.environ.get('AMNI_CODE_DIR') or (root.parent/'Amni-Code'))
+        url='http://localhost:3000'
+        if not peer.exists():return {'ok':False,'error':f'Amni-Code not found at {peer} (set AMNI_CODE_DIR)','url':url}
+        cands=[peer/'target'/'release'/'amni.exe',peer/'target'/'release'/'amni',peer/'run.bat',peer/'amni-launcher.cmd']
+        exe=next((c for c in cands if c.exists()),None)
+        if exe is None:return {'ok':False,'error':'no built binary or launcher found — run `cargo build --release` in Amni-Code','url':url}
+        try:
+            _win=sys.platform.startswith('win')
+            _flags=(getattr(subprocess,'DETACHED_PROCESS',0)|getattr(subprocess,'CREATE_NEW_PROCESS_GROUP',0)) if _win else 0
+            _cmd=['cmd','/c',str(exe)] if (_win and exe.suffix.lower() in ('.bat','.cmd')) else [str(exe)]
+            subprocess.Popen(_cmd,cwd=str(peer),creationflags=_flags,start_new_session=(not _win),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            return {'ok':True,'launched':str(exe),'url':url}
+        except Exception as _le:return {'ok':False,'error':str(_le),'url':url}
     @app.get('/notifications')
     def _notifs(limit:int=20,include_read:bool=False):
         from amni.serve.notifications import list_active,stats
