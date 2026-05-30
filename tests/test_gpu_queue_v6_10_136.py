@@ -44,6 +44,10 @@ def test_streaming_chat_uses_queue():
     assert 'from amni.inference.gpu_queue import' in src
     assert 'GPU_QUEUE.submit_async' in src,'streaming generation must run on the GPU worker, not its own thread'
     assert 'run_on_gpu' in src,'blocking generate paths must route through the queue'
-def test_embedder_uses_queue():
-    src=(Path(__file__).resolve().parents[1]/'amni/inference/semantic_ptex_lut.py').read_text(encoding='utf-8')
-    assert 'run_on_gpu' in src,'the background embedder must serialize through the same GPU queue'
+def test_embedders_pinned_off_gpu():
+    """Small embedding models must default to CPU so they never race the inference GPU (the real crash cause)."""
+    sp=(Path(__file__).resolve().parents[1]/'amni/inference/semantic_ptex_lut.py').read_text(encoding='utf-8')
+    assert "os.environ.get('AMNI_EMBED_DEVICE','cpu')" in sp,'MiniLM embedder must pin to CPU by default'
+    assert 'run_on_gpu' not in sp,'CPU embedder must not block the GPU worker'
+    cos=(Path(__file__).resolve().parents[1]/'amni/inference/embedding_cosine_retriever.py').read_text(encoding='utf-8')
+    assert 'AMNI_EMBED_DEVICE' in cos,'cosine retriever must honor the same CPU pin'

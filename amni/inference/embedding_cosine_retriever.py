@@ -12,7 +12,8 @@ class EmbeddingCosineRetriever:
         self.kb=KnowledgeBase(kb_root)
         self.kb_root=Path(kb_root)
         self.model_name=model_name
-        self.device=device
+        import os as _os
+        self.device=_os.environ.get('AMNI_EMBED_DEVICE',device)
         self._model=None
         self._cache_path=self.kb_root/'_emb_cache.npz'
         self._meta_path=self.kb_root/'_emb_cache_meta.json'

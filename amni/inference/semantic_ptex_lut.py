@@ -34,23 +34,20 @@ class SemanticPTEXLUT:
         self._centroids=None;self._cluster_embs=[];self._cluster_ans=[];self._cluster_indices=[]
     def _ensure_encoder(self):
         if self.encoder is not None:return self.encoder
-        import torch
+        import os,torch
         from transformers import AutoTokenizer,AutoModel
         name='sentence-transformers/all-MiniLM-L6-v2'
-        dev='cuda' if torch.cuda.is_available() else 'cpu'
+        dev=os.environ.get('AMNI_EMBED_DEVICE','cpu')
         tok=AutoTokenizer.from_pretrained(name)
         mdl=AutoModel.from_pretrained(name).eval().to(dev)
-        from amni.inference.gpu_queue import run_on_gpu
         def enc(texts):
             e=tok(texts,padding=True,truncation=True,max_length=256,return_tensors='pt')
-            def _job():
-                ee={k:v.to(dev) for k,v in e.items()}
-                with torch.no_grad():o=mdl(**ee)
-                h=o.last_hidden_state;mask=ee['attention_mask'].unsqueeze(-1).float()
-                p=(h*mask).sum(1)/mask.sum(1).clamp(min=1e-6)
-                p=torch.nn.functional.normalize(p,p=2,dim=1)
-                return p.cpu().numpy().astype('float32')
-            return run_on_gpu(_job)
+            e={k:v.to(dev) for k,v in e.items()}
+            with torch.no_grad():o=mdl(**e)
+            h=o.last_hidden_state;mask=e['attention_mask'].unsqueeze(-1).float()
+            p=(h*mask).sum(1)/mask.sum(1).clamp(min=1e-6)
+            p=torch.nn.functional.normalize(p,p=2,dim=1)
+            return p.cpu().numpy().astype('float32')
         try:_=enc(['warmup'])
         except Exception:pass
         self.encoder=enc
