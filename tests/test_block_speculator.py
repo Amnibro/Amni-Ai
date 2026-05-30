@@ -19,6 +19,16 @@ def test_bank_lookup_roundtrip():
     b.add_sequence(seq)
     hit=b.lookup([10,20,30,40])
     assert hit is not None and hit[1][0]==50
+def test_prune_and_gate():
+    from amni.inference.block_speculator import PTEXBlockBank,fnv1a64
+    b=PTEXBlockBank(None,None,h_sizes=(4,),k_max=8,min_h=3)
+    b._min_tries=16;b._min_ratio=0.5
+    b.add_sequence([1,2,3,4,5,6,7,8,9,10,11,12])
+    sig=fnv1a64((1,2,3,4))
+    assert b.expected_gain_ok(sig) and b.lookup([0,1,2,3,4]) is not None
+    b.record_propose(sig,8);b.record_propose(sig,8);b.record_accept(sig,1)
+    assert not b.expected_gain_ok(sig) and b.lookup([0,1,2,3,4]) is None
+    assert b.prune()>=1 and sig not in b._sig2off
 def test_persistence_roundtrip():
     import tempfile,shutil
     from amni.inference.block_speculator import PTEXBlockBank
@@ -64,5 +74,6 @@ if __name__=='__main__':
     test_codec_roundtrip_full_vocab();print('codec OK')
     test_fnv_stable();print('fnv OK')
     test_bank_lookup_roundtrip();print('bank OK')
+    test_prune_and_gate();print('prune+gate OK')
     test_persistence_roundtrip();print('persistence OK')
     test_exactness_and_acceptance()
