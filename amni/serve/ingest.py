@@ -11,15 +11,13 @@ _MIN_CHUNK_CHARS=80
 _MAX_CHUNKS_PER_URL=24
 def _safe_fetch(url:str,timeout:float=8.0,max_bytes:int=2_000_000)->Tuple[Optional[str],Optional[str]]:
     try:
-        req=urllib.request.Request(url,headers={'User-Agent':'Amni-Ai/6.9.10 (educational ingest)','Accept':'text/html,application/xhtml+xml,*/*;q=0.6'})
-        with urllib.request.urlopen(req,timeout=timeout) as r:
-            raw=r.read(max_bytes)
-            ct=r.headers.get('content-type','')
-            enc='utf-8'
-            for tok in ct.split(';'):
-                if 'charset=' in tok:enc=tok.split('charset=',1)[1].strip().lower()
-            try:return raw.decode(enc,errors='ignore'),ct
-            except Exception:return raw.decode('utf-8',errors='ignore'),ct
+        from amni.serve.code_safety import safe_urlopen
+        raw,ct=safe_urlopen(url,timeout=timeout,max_bytes=max_bytes,headers={'User-Agent':'Amni-Ai/6.9.10 (educational ingest)','Accept':'text/html,application/xhtml+xml,*/*;q=0.6'})
+        enc='utf-8'
+        for tok in (ct or '').split(';'):
+            if 'charset=' in tok:enc=tok.split('charset=',1)[1].strip().lower()
+        try:return raw.decode(enc,errors='ignore'),ct
+        except Exception:return raw.decode('utf-8',errors='ignore'),ct
     except Exception as e:return None,f'fetch_error: {type(e).__name__}: {e}'
 def _strip_html_fallback(html:str)->str:
     if not html:return ''
@@ -99,6 +97,7 @@ def _ingest_pdf(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     try:
         from pathlib import Path as _P
         p=_P(path)
+        if hasattr(reg,'_in_allowed_roots') and not reg._in_allowed_roots(str(p)):return {'error':'path outside allowed roots'}
         if not p.exists():return {'error':f'pdf not found: {path}'}
         try:from pypdf import PdfReader
         except ImportError:

@@ -6,10 +6,16 @@ from typing import List,Dict,Any,Optional,Tuple
 _CAP=1000
 _PII_MARKERS=re.compile(r"\b(?:my\s+(?:name|email|e-?mail|phone|address|password|favorite|birthday|family|wife|husband|kid|son|daughter|partner|company|employer|salary|ssn|work\s+number|home\s+number|cell)|i\s+(?:am\s+(?:called|named)|live\s+at|work\s+at|am\s+from)|call\s+me|i'?m\s+a\s+(?:doctor|nurse|teacher|engineer|lawyer|programmer)|email:\s*\S+@\S+|phone:?\s*\+?\d)",re.IGNORECASE)
 _PII_NAME=re.compile(r"(?:(?i:\bnamed)\s+[A-Z][A-Za-z]+\b)|(?:(?i:\bthis\s+is)\s+[A-Z][A-Za-z]{2,}(?:\s+[A-Z][A-Za-z]+)?(?:\s+(?:speaking|here|calling))?\b)|(?:(?i:\b(?:mr|mrs|ms|dr|prof|mister|missus|doctor|professor))\.?\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?\b)")
-_PII_HARD=re.compile(r"\b[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}\b|\+?\d{1,3}[ -.]?\(?\d{3}\)?[ -.]?\d{3}[ -.]?\d{4}\b|\b\d{3}[ -.]\d{3}[ -.]\d{4}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{16}\b|\b(?:\d{4}[ -]?){3}\d{4}\b|sk-[A-Za-z0-9_-]{20,}|(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{16,}|gh[pousr]_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|AIza[\w-]{35}|xox[bopa]-[A-Za-z0-9-]{20,}")
+_PII_HARD=re.compile(r"\b[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}\b|(?<![\d.])\+?\d{1,3}[ -.]?\(?\d{3}\)?[ -.]?\d{3}[ -.]?\d{4}(?!\d)|\b\d{3}[ -.]\d{3}[ -.]\d{4}\b|sk-[A-Za-z0-9_-]{20,}|(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{16,}|gh[pousr]_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|AIza[\w-]{35}|xox[bopa]-[A-Za-z0-9-]{20,}")
+def _struct_pii(text):
+    try:from amni.serve.federated import _scrub_cc,_scrub_ssn
+    except Exception:return False
+    return bool(_scrub_cc(text)[1] or _scrub_ssn(text)[1])
+_PII_ADDRESS=re.compile(r"\b\d{1,5}\s+(?:[A-Z][a-zA-Z]+\.?\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle|Hwy|Highway|Pkwy|Parkway|Sq|Square)\b\.?(?:,?\s*(?:Apt|Suite|Ste|Unit|#)\s*\w+)?",re.IGNORECASE)
+_PII_SOFT=re.compile(r"\b(?:date\s+of\s+birth|my\s+(?:dob|age|username|user\s*name|handle|github|gitlab|twitter|x\s+handle|instagram|insta|discord|telegram|tiktok|snapchat|linkedin|license|passport|account\s+(?:number|no)|routing\s+number|card\s+number|iban|maiden\s+name|home\s+town|hometown|pet'?s?\s+name|mother'?s?\s+maiden)|\bdob\s*[:=]|born\s+(?:on|in)\s+(?:\d|[A-Z][a-z]+\s+\d)|i'?m\s+\d{1,3}\s+years?\s+old|i\s+am\s+\d{1,3}\s+years?\s+old|driver'?s?\s+licen[cs]e|passport\s+(?:no\.?|number|#)|\bzip\s*(?:code)?\s*[:=]?\s*\d{5}|\b\d{5}(?:-\d{4})?\s*,?\s*(?:USA|United States)\b)",re.IGNORECASE)
 def detect_personal(text:str)->bool:
     if not text:return False
-    return bool(_PII_MARKERS.search(text) or _PII_NAME.search(text) or _PII_HARD.search(text))
+    return bool(_PII_MARKERS.search(text) or _PII_NAME.search(text) or _PII_HARD.search(text) or _PII_ADDRESS.search(text) or _PII_SOFT.search(text) or _struct_pii(text))
 class Conversation:
     def __init__(self,session_id:str,path:Path):
         self.session_id=session_id;self.path=path;self.turns:List[Dict[str,Any]]=[]

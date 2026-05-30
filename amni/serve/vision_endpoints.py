@@ -32,6 +32,8 @@ def mount(app,agent):
         body=await req.json()
         b64=body.get('image_base64') or body.get('base64')
         if not b64:raise HTTPException(400,'need image_base64')
+        from amni.serve.code_safety import b64_within_limit
+        if not b64_within_limit(b64):raise HTTPException(413,'image too large')
         try:image_bytes=base64.b64decode(b64.split(',',1)[-1] if ',' in b64 else b64)
         except Exception as e:raise HTTPException(400,f'base64 decode: {e}')
         return _run_describe(image_bytes,question='')
@@ -43,6 +45,8 @@ def mount(app,agent):
         question=(body.get('question') or '').strip()
         if not b64:raise HTTPException(400,'need image_base64')
         if not question:raise HTTPException(400,'need question')
+        from amni.serve.code_safety import b64_within_limit
+        if not b64_within_limit(b64):raise HTTPException(413,'image too large')
         try:image_bytes=base64.b64decode(b64.split(',',1)[-1] if ',' in b64 else b64)
         except Exception as e:raise HTTPException(400,f'base64 decode: {e}')
         return _run_describe(image_bytes,question=question)

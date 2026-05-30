@@ -37,8 +37,25 @@ class Adam:
                 _mode='UNRESTRICTED (any domain)' if self.web_unrestricted else f'{len(self.crawler_plugin.crawler.allow)} trusted domains'
                 print(f'[Adam] crawler plugin enabled ({_mode})',flush=True)
             except Exception as e:print(f'[Adam] crawler init failed (web-learn will fallback): {e}',flush=True)
-        if self.lessons_path.exists():
-            try:self.sem_lut=SemanticPTEXLUT.load(str(self.lessons_path).removesuffix('.npz'))
+        _routed=os.environ.get('AMNI_ROUTED_LESSONS','').lower() in ('1','true','yes')
+        _base=str(self.lessons_path).removesuffix('.npz')
+        if _routed:
+            from amni.inference.routed_lessons import RoutedSemanticLUT
+            _packroot=str(self.lessons_path.parent/'lesson_packs')
+            try:
+                if Path(_base+'.map.json').exists():
+                    self.sem_lut=RoutedSemanticLUT.load(_base)
+                elif self.lessons_path.exists():
+                    _flat=SemanticPTEXLUT.load(_base)
+                    print(f'[Adam] migrating {len(_flat._raw)} lessons -> routed map-PTEX store (one-time)...',flush=True)
+                    self.sem_lut=RoutedSemanticLUT.from_flat(_flat,root=_packroot);self.sem_lut.save(_base)
+                    print(f'[Adam] routed store ready: {self.sem_lut.stats()}',flush=True)
+                else:self.sem_lut=RoutedSemanticLUT(grid=64,pca_dim=8,root=_packroot)
+            except Exception as e:
+                print(f'[Adam] routed lessons init failed, falling back to flat: {e}',flush=True)
+                self.sem_lut=SemanticPTEXLUT(grid=64,pca_dim=8)
+        elif self.lessons_path.exists():
+            try:self.sem_lut=SemanticPTEXLUT.load(_base)
             except Exception as e:
                 print(f'[Adam] failed to load lessons from {self.lessons_path}: {e}',flush=True)
                 self.sem_lut=SemanticPTEXLUT(grid=64,pca_dim=8)
@@ -73,8 +90,8 @@ class Adam:
         return {'lessons_n':len(self.sem_lut._raw),'auto_margin':self.sem_lut.auto_margin() if len(self.sem_lut._raw)>0 else None,'tier_counts':dict(self.adam._tier_counts),'token_counts':dict(self.adam._token_counts),'svc_boot_s':round(self.svc_boot_s,1)}
     def teach(self,q:str,a:str):
         self.sem_lut.add(q,a)
-        self.sem_lut.fit()
-        self.save_lessons()
+        try:self.sem_lut.fit();self.save_lessons()
+        except Exception as _fe:print(f'[teach] fit/save deferred (lesson still queued): {_fe}',flush=True)
         return {'lessons_n':len(self.sem_lut._raw)}
     def _persona_cache_key(self,system:str,message:str,history:Optional[List[Tuple[str,str]]],facts:Optional[List[str]])->str:
         h=hashlib.blake2b(digest_size=8)
@@ -82,27 +99,53 @@ class Adam:
         for f in (facts or []):h.update(f.encode('utf-8','ignore'));h.update(b'\x1d')
         return f'PERSONA::{system[:80]}::{h.hexdigest()}::{message}'
     def chat_persona_stream(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True,history:Optional[List[Tuple[str,str]]]=None,facts:Optional[List[str]]=None,is_private:bool=False):
+        bus=getattr(self,'bus',None)
+        if bus is not None and not is_private:
+            try:v,home,c=bus.recall(message)
+            except Exception:v,home=None,''
+            if v is not None and home=='tier0_atex_override':
+                for chunk in [v[i:i+24] for i in range(0,len(v),24)]:yield chunk
+                return
         ckey=self._persona_cache_key(system,message,history,facts)
         cached=self.adam.lut.lookup(ckey) if (hasattr(self.adam,'lut') and not is_private) else None
-        if cached is not None:
+        if cached is not None and not (bus is not None and bus.is_suppressed(cached.get('a',''))):
             ans=cached.get('a','')
             for chunk in [ans[i:i+24] for i in range(0,len(ans),24)]:yield chunk
             return
+        sl=getattr(self,'sem_lut',None)
+        if sl is not None and not is_private and getattr(sl,'_raw',None):
+            try:hit=sl.lookup_soft(message,k=1,cos_gate=float(os.environ.get('AMNI_RECALL_DIRECT_GATE','0.90')),margin=0.04)
+            except Exception:hit=None
+            if hit and not (bus is not None and bus.is_suppressed(hit)):
+                for chunk in [hit[i:i+24] for i in range(0,len(hit),24)]:yield chunk
+                return
         if self.svc is None:
             why=(self.runtime_error or 'StreamingChatService was None at server boot — check the server logs for the underlying exception')[:400]
             msg=f'[Adam streaming chat unavailable — the GF(17) backend failed to initialize at boot. Reason: {why}. Diagnostic: `python -c "from amni.runtime import fetch; fetch()"`. Most common cause: prebuilt amni_kernels .pyd is Python-version-specific (cp313 currently). Rebuild via `cd amni_kernels && pip install maturin && maturin develop --release`, then restart the server.]'
             for chunk in [msg[i:i+48] for i in range(0,len(msg),48)]:yield chunk
             return
         try:
-            for chunk in self.svc.chat_stream(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0):yield chunk
+            for chunk in self.svc.chat_stream(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=int(os.environ.get('AMNI_PERSONA_KB_TOPK','4'))):yield chunk
         except Exception as e:yield f'[stream error: {e}]'
     def chat_persona(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True,history:Optional[List[Tuple[str,str]]]=None,facts:Optional[List[str]]=None,is_private:bool=False)->Dict[str,Any]:
         t0=time.time()
+        bus=getattr(self,'bus',None)
+        if bus is not None and not is_private:
+            try:
+                v,home,c=bus.recall(message)
+                if v is not None and home=='tier0_atex_override':return {'answer':v,'tier':home,'tokens':0,'wall_s':round(time.time()-t0,3)}
+            except Exception:pass
         ckey=self._persona_cache_key(system,message,history,facts)
         cached=self.adam.lut.lookup(ckey) if (hasattr(self.adam,'lut') and not is_private) else None
-        if cached is not None:return {'answer':cached.get('a'),'tier':'tier1_persona_lut','tokens':0,'wall_s':round(time.time()-t0,3)}
+        if cached is not None and not (bus is not None and bus.is_suppressed(cached.get('a',''))):return {'answer':cached.get('a'),'tier':'tier1_persona_lut','tokens':0,'wall_s':round(time.time()-t0,3)}
+        sl=getattr(self,'sem_lut',None)
+        if sl is not None and not is_private and getattr(sl,'_raw',None):
+            try:
+                hit=sl.lookup_soft(message,k=1,cos_gate=float(os.environ.get('AMNI_RECALL_DIRECT_GATE','0.90')),margin=0.04)
+                if hit and not (bus is not None and bus.is_suppressed(hit)):return {'answer':hit,'tier':'tier1_sem_lut','tokens':0,'wall_s':round(time.time()-t0,3)}
+            except Exception:pass
         if self.svc is None:return {'answer':None,'error':f'runtime not installed: {self.runtime_error}','tier':'runtime_missing','tokens':0,'wall_s':round(time.time()-t0,3)}
-        try:resp,n=self.svc.chat(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=0)
+        try:resp,n=self.svc.chat(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=int(os.environ.get('AMNI_PERSONA_KB_TOPK','4')))
         except Exception as e:return {'answer':None,'error':str(e),'tier':'persona_error','tokens':0,'wall_s':round(time.time()-t0,3)}
         ans=(resp or '').strip()
         try:

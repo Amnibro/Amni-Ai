@@ -21,12 +21,14 @@ def ingest_with_consensus(adam,question:str,answer:str,source:str,learning_atlas
     if sem_lut is None and adam is not None:sem_lut=getattr(adam,'sem_lut',None)
     existing=find_match(sem_lut,question) if sem_lut is not None else None
     if existing is None:
-        if adam is not None and hasattr(adam,'teach'):
-            try:adam.teach(question,answer)
+        _bus=getattr(adam,'bus',None) if adam is not None else None
+        _rec=None
+        if _bus is not None or (adam is not None and hasattr(adam,'teach')):
+            try:_rec=_bus.record_learning(question,answer,kind='fact',provenance='adam:daemon-learned',exactness='semantic') if _bus is not None else adam.teach(question,answer)
             except Exception as e:return {'outcome':'teach_failed','error':str(e)[:200]}
-        if learning_atlas is not None:meta=learning_atlas.record(question,answer,source=source,kind='qa_extract')
-        else:meta=None
-        return {'outcome':'new','q':question[:120],'meta':meta}
+        meta=None
+        if learning_atlas is not None and _bus is None:meta=learning_atlas.record(question,answer,source=source,kind='qa_extract')
+        return {'outcome':'new','q':question[:120],'meta':meta,'rec':(_rec if isinstance(_rec,dict) else None)}
     a_match=_jaccard(existing['a'],answer)
     if a_match>=0.5:
         if learning_atlas is not None:meta=learning_atlas.record(existing['q'],existing['a'],source=source,kind='reinforce')

@@ -35,8 +35,15 @@ async def chat_stream(agent,messages:List[Dict[str,str]],session_id:Optional[str
         yield json.dumps({'model':model,'created_at':ts,'message':{'role':'assistant','content':answer[i:i+chunk_size]},'done':False})+'\n'
     yield json.dumps({'model':model,'created_at':ts,'message':{'role':'assistant','content':''},'done':True,'done_reason':'stop','total_duration':int(r.get('wall_s',0)*1e9),'eval_count':r.get('tokens',0),'amni_tier':r.get('tier'),'amni_skill_calls':r.get('skill_calls',[]),'session_id':r.get('session_id')})+'\n'
 def mount(app,agent):
-    from fastapi import Request
+    from fastapi import Request,HTTPException
     from fastapi.responses import StreamingResponse,JSONResponse
+    from amni.serve.rate_limit import from_env as _rlf,client_key as _rlk
+    import os as _os
+    _RL=_rlf('ollama',60);_MAXC=int(_os.environ.get('AMNI_MAX_INPUT_CHARS','100000'));_MAXEMB=int(_os.environ.get('AMNI_MAX_EMBED_BATCH','512'))
+    def _guard(req,text):
+        ok,info=_RL.allow(_rlk(req))
+        if not ok:raise HTTPException(status_code=429,detail=f"rate limit {info['limit']}/{int(info['window_s'])}s — retry in {info['retry_after_s']}s")
+        if len(text or '')>_MAXC:raise HTTPException(status_code=413,detail=f'input too large (>{_MAXC} chars)')
     @app.get('/api/tags')
     def tags():return tags_response(agent)
     @app.post('/api/show')
@@ -48,6 +55,7 @@ def mount(app,agent):
         body=await req.json()
         stream=bool(body.get('stream',False))
         prompt=body.get('prompt','')
+        _guard(req,prompt)
         sid=body.get('session_id') or body.get('context_id')
         model=body.get('model','adam:granite-gf17')
         if not stream:return generate_response(agent,prompt,session_id=sid,model=model)
@@ -63,6 +71,7 @@ def mount(app,agent):
         body=await req.json()
         stream=bool(body.get('stream',False))
         messages=body.get('messages',[])
+        _guard(req,''.join(str(m.get('content') or '') for m in messages if isinstance(m,dict)))
         sid=body.get('session_id') or body.get('context_id')
         model=body.get('model','adam:granite-gf17')
         if not stream:return chat_response(agent,messages,session_id=sid,model=model)
@@ -74,6 +83,9 @@ def mount(app,agent):
         body=await req.json()
         text=body.get('input') or body.get('prompt') or ''
         if isinstance(text,str):text=[text]
+        if not isinstance(text,list):raise HTTPException(status_code=400,detail='input must be a string or list')
+        if len(text)>_MAXEMB:raise HTTPException(status_code=413,detail=f'too many embedding inputs ({len(text)} > {_MAXEMB})')
+        _guard(req,''.join(str(t) for t in text))
         try:
             if agent.adam.sem_lut is not None and hasattr(agent.adam.sem_lut,'_encoder'):
                 enc=agent.adam.sem_lut._encoder
