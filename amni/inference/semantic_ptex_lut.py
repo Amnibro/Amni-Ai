@@ -40,14 +40,17 @@ class SemanticPTEXLUT:
         dev='cuda' if torch.cuda.is_available() else 'cpu'
         tok=AutoTokenizer.from_pretrained(name)
         mdl=AutoModel.from_pretrained(name).eval().to(dev)
+        from amni.inference.gpu_queue import run_on_gpu
         def enc(texts):
             e=tok(texts,padding=True,truncation=True,max_length=256,return_tensors='pt')
-            e={k:v.to(dev) for k,v in e.items()}
-            with torch.no_grad():o=mdl(**e)
-            h=o.last_hidden_state;mask=e['attention_mask'].unsqueeze(-1).float()
-            p=(h*mask).sum(1)/mask.sum(1).clamp(min=1e-6)
-            p=torch.nn.functional.normalize(p,p=2,dim=1)
-            return p.cpu().numpy().astype('float32')
+            def _job():
+                ee={k:v.to(dev) for k,v in e.items()}
+                with torch.no_grad():o=mdl(**ee)
+                h=o.last_hidden_state;mask=ee['attention_mask'].unsqueeze(-1).float()
+                p=(h*mask).sum(1)/mask.sum(1).clamp(min=1e-6)
+                p=torch.nn.functional.normalize(p,p=2,dim=1)
+                return p.cpu().numpy().astype('float32')
+            return run_on_gpu(_job)
         try:_=enc(['warmup'])
         except Exception:pass
         self.encoder=enc

@@ -1,6 +1,19 @@
 import numpy as np
 from amni.compute.ternary5 import pack_ternary5_page,unpack_ternary5_signed,TRIT_PACK
 REFFELT_K4=(1,17,289,4913)
+REFFELT_K8=(1,17,289,4913,83521,1419857,24137569,410338673)
+_K8=np.array(REFFELT_K8,dtype=np.uint64)
+def encode_ids_to_rgba2(ids):
+    a=np.ascontiguousarray(ids,dtype=np.uint64).reshape(-1)
+    d=np.stack([((a//k)%17).astype(np.uint8) for k in REFFELT_K8],axis=-1)
+    return d.reshape(-1,4)
+def decode_rgba2_to_ids(rgba,n_ids=None):
+    p=np.ascontiguousarray(rgba,dtype=np.uint8).reshape(-1,8).astype(np.uint64)
+    vals=(p*_K8[None,:]).sum(axis=1).astype(np.int64)
+    return vals if n_ids is None else vals[:n_ids]
+def roundtrip_check_ids(ids):
+    a=np.ascontiguousarray(ids,dtype=np.int64).reshape(-1)
+    return np.array_equal(a,decode_rgba2_to_ids(encode_ids_to_rgba2(a),a.size))
 def encode_fp16_to_rgba4(w):
     a=np.ascontiguousarray(w,dtype=np.float16).view(np.uint16).reshape(-1).astype(np.uint32)
     r=(a%17).astype(np.uint8);g=((a//17)%17).astype(np.uint8);b=((a//289)%17).astype(np.uint8);al=((a//4913)%17).astype(np.uint8)

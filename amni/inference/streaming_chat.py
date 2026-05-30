@@ -107,33 +107,86 @@ class StreamingChatService:
                 self.registry.pin(embed_key)
                 self.registry.get_full(embed_key)
         m.eval();self.model=m;self.device=device;self.n_chained=n_chained;self.is_gdn=is_gdn;self.architectures=archs
-    def generate_text(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0):
-        enc=self.tok(prompt,return_tensors='pt').to(self.device)
-        with torch.no_grad():
-            ids=self.model.generate(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id)
-        new_ids=ids[0,enc.input_ids.shape[1]:]
-        return self.tok.decode(new_ids,skip_special_tokens=True),int(new_ids.shape[0])
+        self._block_bank=None
+        if os.environ.get('AMNI_BLOCK_SPEC','1')=='1' and not is_gdn and any('Granite' in a for a in archs):
+            try:
+                os.environ['AMNI_HIP_GEMV_ON']='0'
+                from amni.inference.block_speculator import PTEXBlockBank,PTEXBlockCandidateGenerator
+                bdir=os.environ.get('AMNI_BLOCK_BANK')
+                if not bdir:
+                    try:
+                        from amni.bootstrap import load_config
+                        bdir=load_config().get('block_bank')
+                    except Exception:bdir=None
+                bdir=bdir or str(_ROOT/'experiences'/'adam_block_bank')
+                self._block_bank=PTEXBlockBank(bdir,self.tok)
+                vsz=self.model.config.get_text_config().vocab_size if hasattr(self.model.config,'get_text_config') else self.model.config.vocab_size
+                self.model.generation_config.amni_block_spec=True
+                _orig_cg=self.model._get_candidate_generator
+                _bank=self._block_bank
+                def _patched_cg(generation_config,input_ids,inputs_tensor,logits_processor,model_kwargs,assistant_model=None,target_tokenizer=None,assistant_tokenizer=None):
+                    return PTEXBlockCandidateGenerator(bank=_bank,eos_token_id=generation_config._eos_token_tensor,num_output_tokens=generation_config.prompt_lookup_num_tokens,max_matching_ngram_size=generation_config.max_matching_ngram_size or 2,max_length=generation_config.max_length,logits_processor=logits_processor,vocab_size=vsz) if (generation_config.prompt_lookup_num_tokens is not None and getattr(generation_config,'amni_block_spec',False) and not generation_config.do_sample) else _orig_cg(generation_config,input_ids,inputs_tensor,logits_processor,model_kwargs,assistant_model=assistant_model,target_tokenizer=target_tokenizer,assistant_tokenizer=assistant_tokenizer)
+                self.model._get_candidate_generator=_patched_cg
+                print(f'[block-spec] ADAM-SPEC active (K={os.environ.get("AMNI_BLOCK_K","12")}, bank={bdir}, gemv forced off)',flush=True)
+            except Exception as _e:
+                self._block_bank=None;print(f'[block-spec] install failed, falling back to stock path: {_e}',flush=True)
+    def generate_text(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0,prompt_lookup=int(os.environ.get('AMNI_PROMPT_LOOKUP','10') or 0)):
+        from amni.inference.gpu_queue import run_on_gpu
+        enc_cpu=self.tok(prompt,return_tensors='pt')
+        bspec=getattr(self,'_block_bank',None) is not None and not do_sample
+        K=int(os.environ.get('AMNI_BLOCK_K','12')) if bspec else prompt_lookup
+        def _job():
+            enc=enc_cpu.to(self.device)
+            gk=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id)
+            if K>0:gk['prompt_lookup_num_tokens']=K
+            with torch.no_grad():
+                try:ids=self.model.generate(**gk)
+                except Exception:gk.pop('prompt_lookup_num_tokens',None);ids=self.model.generate(**gk)
+            new_ids=ids[0,enc.input_ids.shape[1]:]
+            if bspec:
+                try:self._block_bank.add_sequence(ids[0].tolist());self._block_bank.flush()
+                except Exception:pass
+            return self.tok.decode(new_ids,skip_special_tokens=True),int(new_ids.shape[0])
+        return run_on_gpu(_job)
     def generate_stream(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0):
         from transformers import TextIteratorStreamer,StoppingCriteria,StoppingCriteriaList
-        from threading import Thread,Event
-        enc=self.tok(prompt,return_tensors='pt').to(self.device)
+        from threading import Event
+        from amni.inference.gpu_queue import GPU_QUEUE
+        enc_cpu=self.tok(prompt,return_tensors='pt')
         streamer=TextIteratorStreamer(self.tok,skip_prompt=True,skip_special_tokens=True,timeout=300.0)
         stop_event=Event()
         class _StopOnEvent(StoppingCriteria):
             def __call__(self,input_ids,scores,**kw):return stop_event.is_set()
-        gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,eos_token_id=self.tok.eos_token_id,streamer=streamer,stopping_criteria=StoppingCriteriaList([_StopOnEvent()]))
-        t=Thread(target=self._safe_generate,args=(gen_kw,))
-        t.daemon=True;t.start()
+        bspec=getattr(self,'_block_bank',None) is not None and not do_sample
+        self._last_gen_ids=None
+        def _job():
+            enc=enc_cpu.to(self.device)
+            gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,eos_token_id=self.tok.eos_token_id,streamer=streamer,stopping_criteria=StoppingCriteriaList([_StopOnEvent()]))
+            if bspec:gen_kw['prompt_lookup_num_tokens']=int(os.environ.get('AMNI_BLOCK_K','12'))
+            self._safe_generate(gen_kw)
+        done=GPU_QUEUE.submit_async(_job)
         try:
             for chunk in streamer:
                 if chunk:yield chunk
         finally:
             stop_event.set()
-            t.join(timeout=5.0)
+            done.wait(timeout=5.0)
+            if bspec and getattr(self,'_last_gen_ids',None) is not None:
+                try:self._block_bank.add_sequence(self._last_gen_ids[0].tolist());self._block_bank.flush()
+                except Exception:pass
     def _safe_generate(self,gen_kw):
         try:
-            with torch.no_grad():self.model.generate(**gen_kw)
-        except Exception as e:print(f'[streaming_chat] generate_stream worker error: {e}',flush=True)
+            with torch.no_grad():out=self.model.generate(**gen_kw)
+            self._last_gen_ids=out
+        except Exception as e:
+            self._last_gen_ids=None
+            if 'prompt_lookup_num_tokens' in gen_kw:
+                try:
+                    gen_kw.pop('prompt_lookup_num_tokens',None)
+                    with torch.no_grad():self._last_gen_ids=self.model.generate(**gen_kw)
+                    return
+                except Exception:pass
+            print(f'[streaming_chat] generate_stream worker error: {e}',flush=True)
     def chat_stream(self,user_msg,system=None,history=None,facts=None,max_new_tokens=120,do_sample=False,kb_top_k=0,kb_max_chars_per=600):
         kb_block=self._kb_context(user_msg,kb_top_k,kb_max_chars_per) if kb_top_k>0 else None
         prompt=self._build_prompt(user_msg,system,history,facts,kb_block=kb_block)
@@ -199,12 +252,16 @@ class StreamingChatService:
         msgs.append({'role':'user','content':user_msg})
         return self.tok.apply_chat_template(msgs,tokenize=False,add_generation_prompt=True)
     def _next_token_top_prob(self,prompt):
-        enc=self.tok(prompt,return_tensors='pt').to(self.device)
-        with torch.no_grad():
-            out=self.model(input_ids=enc.input_ids,attention_mask=enc.attention_mask)
-        logits=out.logits[0,-1].float()
-        probs=torch.softmax(logits,dim=-1)
-        return float(probs.max().item())
+        from amni.inference.gpu_queue import run_on_gpu
+        enc_cpu=self.tok(prompt,return_tensors='pt')
+        def _job():
+            enc=enc_cpu.to(self.device)
+            with torch.no_grad():
+                out=self.model(input_ids=enc.input_ids,attention_mask=enc.attention_mask)
+            logits=out.logits[0,-1].float()
+            probs=torch.softmax(logits,dim=-1)
+            return float(probs.max().item())
+        return run_on_gpu(_job)
     def attach_session_writer(self,session_root,confidence_threshold=0.6):
         from amni.learning.session_atex_writer import SessionATEXWriter
         self._session_writer=SessionATEXWriter(session_root,confidence_threshold=confidence_threshold)

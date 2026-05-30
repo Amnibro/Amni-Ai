@@ -22,7 +22,7 @@ _LEGACY_BAKE_REPOS={'amnibro/gemma-4-E2B-it-gf17'}
 _LEGACY_BAKE_DIRS={'gemma4_e2b_it_gf17','gemma-4-E2B-it'}
 DEFAULT_PORT=7700
 DEFAULT_HOST='127.0.0.1'
-_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
+_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'block_bank':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
 def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
@@ -67,6 +67,7 @@ def load_config()->Dict[str,Any]:
     if not cfg.get('lut_root'):cfg['lut_root']=_pick('experiences/adam_lut',str(cdir/'experiences'/'adam_lut'))
     if not cfg.get('conv_root'):cfg['conv_root']=_pick('experiences/conversations',str(cdir/'experiences'/'conversations'))
     if not cfg.get('persona_bank'):cfg['persona_bank']=_pick('experiences/personas.json',str(cdir/'experiences'/'personas.json'))
+    if not cfg.get('block_bank'):cfg['block_bank']=_pick('experiences/adam_block_bank',str(cdir/'experiences'/'adam_block_bank'))
     if not cfg.get('audit_log'):cfg['audit_log']=_pick('logs/agent_skill_calls.jsonl',str(cdir/'logs'/'agent_skill_calls.jsonl'))
     if not cfg.get('workdir'):cfg['workdir']=str(cwd)
     return cfg
