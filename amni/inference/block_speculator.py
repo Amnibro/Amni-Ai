@@ -17,34 +17,27 @@ class PTEXBlockBank:
         self.bank_dir=bank_dir;self.tok=tok;self.h_sizes=tuple(sorted(h_sizes,reverse=True));self.min_h=min_h
         self.k_max=int(os.environ.get('AMNI_BLOCK_K','12')) if k_max is None else k_max
         self._rgba=[];self._toks=[];self._sig2off={};self._sig2ctx={};self._stats={}
-        self.proposed_steps=0;self.accepted_tokens=0;self.max_toks=int(os.environ.get('AMNI_BLOCK_MAXTOK','2000000'))
+        self.proposed_steps=0;self.accepted_tokens=0;self.max_toks=int(os.environ.get('AMNI_BLOCK_MAXTOK','2000000'));self.max_sigs=int(os.environ.get('AMNI_BLOCK_MAXSIGS','3000000'))
         self._dirty=0;self._flush_every=int(os.environ.get('AMNI_BLOCK_FLUSH','256'));self.persist=os.environ.get('AMNI_BLOCK_PERSIST','1')=='1' and bool(bank_dir)
         self._min_tries=int(os.environ.get('AMNI_BLOCK_MINTRIES','20'));self._min_ratio=float(os.environ.get('AMNI_BLOCK_MINRATIO','0.10'))
         if self.persist:
             try:self.load()
             except Exception as e:print(f'[block-spec] bank load skipped: {e}',flush=True)
-    def _store(self,block):
-        if not block:return None
-        arr=np.asarray(block,dtype=np.int64)
-        rgba=encode_ids_to_rgba2(arr.astype(np.uint64))
-        dec=decode_rgba2_to_ids(rgba,arr.size)
-        off=len(self._toks)
-        self._rgba.append(rgba);self._toks.extend(int(v) for v in dec.tolist())
-        return off,arr.size
     def add_sequence(self,tokens):
-        if len(self._toks)>=self.max_toks:return 0
-        n=len(tokens);added=0
+        if len(self._toks)>=self.max_toks or len(self._sig2off)>=self.max_sigs:return 0
+        n=len(tokens)
+        if n<=self.min_h:return 0
+        arr=np.asarray(tokens,dtype=np.int64);rgba=encode_ids_to_rgba2(arr.astype(np.uint64));dec=decode_rgba2_to_ids(rgba,arr.size)
+        base=len(self._toks);self._rgba.append(rgba);self._toks.extend(int(v) for v in dec.tolist());added=0
         for i in range(self.min_h,n):
-            block=tokens[i:i+self.k_max]
-            if len(block)<1:continue
-            stored=None
+            ln=min(self.k_max,n-i)
+            if ln<1:continue
             for H in self.h_sizes:
                 if H>i or H<self.min_h:continue
+                if len(self._sig2off)>=self.max_sigs:break
                 ctx=tuple(tokens[i-H:i]);sig=fnv1a64(ctx)
                 if sig in self._sig2off and self._sig2ctx.get(sig)==ctx:continue
-                stored=stored or self._store(block)
-                if stored is None:break
-                self._sig2off[sig]=stored;self._sig2ctx[sig]=ctx;self._stats.setdefault(sig,[0,0]);added+=1
+                self._sig2off[sig]=(base+i,ln);self._sig2ctx[sig]=ctx;self._stats.setdefault(sig,[0,0]);added+=1
         self._dirty+=added
         return added
     def save(self):
