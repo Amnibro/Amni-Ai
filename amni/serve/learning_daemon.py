@@ -5,7 +5,7 @@
   4. Spaced repetition (default every 6h):     re-verify cells unused >30d
   5. Stats roll-up:                            facts/hr, dedup ratio, consensus pct, queue depth
 Yields when user is actively chatting (last_user_activity_ts updated by agent). HTTP endpoint /learning/stats exposes counters."""
-import time,threading,queue,traceback,re,json
+import os,time,threading,queue,traceback,re,json
 from typing import Dict,Any,Optional,List
 from concurrent.futures import ThreadPoolExecutor
 import urllib.request,urllib.parse
@@ -17,6 +17,7 @@ class LearningDaemon:
         from amni.storage.learning_atlas import LearningAtlas
         self.learning_atlas=learning_atlas or LearningAtlas()
         self.config={**_DEFAULT_CONFIG,**(config or {})}
+        if os.environ.get('AMNI_NO_DAEMON','').lower() in ('1','true','yes'):self.config['enabled']=False
         self._stop=threading.Event()
         self._tick_lock=threading.Lock()
         self._task_queue:queue.Queue=queue.Queue(maxsize=self.config['max_queue'])

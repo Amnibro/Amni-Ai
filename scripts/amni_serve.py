@@ -16,6 +16,9 @@ Usage:
   Then point Open WebUI at http://localhost:8001 or open http://localhost:8001 in a browser.
 """
 import os,sys,argparse,time,socket,subprocess,signal,json,re
+_cpu_cap=os.environ.get('AMNI_CPU_THREADS') or str(max(4,(os.cpu_count() or 8)//2))
+os.environ['AMNI_CPU_THREADS']=_cpu_cap
+for _v in ('OMP_NUM_THREADS','MKL_NUM_THREADS','OPENBLAS_NUM_THREADS','NUMEXPR_NUM_THREADS'):os.environ.setdefault(_v,_cpu_cap)
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 def _kill_stale_probes():
