@@ -1,5 +1,18 @@
 # Amni-Ai Changelog
 
+## v6.11.2 — WIP finalize: ship the polished in-progress features (2026-05-29)
+
+Finalized + shipped the uncommitted work, each verified (py_compile + imports resolve; no model loads — a live server was running). A polish Workflow (8 agents, run `wf_d41935c8-ec9`) gave per-group ship/defer verdicts; shipped the complete + low-risk groups, deferred the rest honestly.
+
+- **HIP-race fix (v6.10.136), soak-validated** — GPU queue + MiniLM embedders pinned to CPU (`AMNI_EMBED_DEVICE`), CPU-thread cap in `amni_serve` (`AMNI_CPU_THREADS`→OMP/MKL/…), `AMNI_NO_DAEMON` kill-switch. 30s concurrent inference + `/teach` → 0 HIP errors / 0 crashes.
+- **GF17 distillation primitives** (`amni/training/distill_targets.py` + `lattice_reg.py`) — top-k KL targets + straight-through lattice quantizer toward an enumerable residual stream (the distill path).
+- **Amni-Chat integration** — vendored client + relay + Adam text-DM bridge (client kept byte-identical to canonical).
+- **Offline-first KaTeX + command palette** (v6.10.134/135) — vendored KaTeX renders math offline; ≡ MENU makes every command clickable.
+- **Block-spec prune/gate + seed baker** — `expected_gain_ok` gate skips chronically-rejected blocks (tightens never-slower); `scripts/seed_block_bank.py` bakes a warm bank from a corpus.
+- **Resonance fast-path util** — standalone GF17 approximate-compute codebook util (distinct from the dead-for-OOM cache), 3/3 tests.
+
+**Deferred (honestly, not shipped):** the eval harness (`modern_bench`) has correctness bugs — GPQA-Diamond answer always at index 0 (always-'A'), gsm8k/arc advertised but unscored, and `bench_parent` still defaults to the pre-swap Gemma parent; wrong eval numbers are worse than a crash, so it needs the shuffle + loader + parent-repoint fixes first. The six `conv3x3_wmma_*` engines are an experimental kernel tournament (near-duplicate, unwired) — keep the iter15 winner (`2x4_f32_db`, opt. `8x4`) + route `_sync` through the GPU queue before promoting.
+
 ## v6.10.136 — Single-thread GPU queue (fixes HIP "unspecified launch failure") (2026-05-29)
 
 Live test found coding/inference crashing with `HIP error: unspecified launch failure`, after which **all** generation returned empty (poisoned HIP context). Traced to **concurrency, not ROCm** (HIP is fine for Azno + the Adam WebUI on the same rig): the background LearningDaemon/CodeAtlas ran a `sentence-transformers/all-MiniLM-L6-v2` embedding forward (`semantic_ptex_lut.py:50`) **on the same GPU, from a different thread, while inference was live** — and `generate_stream` itself spawned its *own* thread for `model.generate`. Two PyTorch models launching kernels concurrently on one context → crash. (Switching to rocBLAS wouldn't help — it's a thread race, not a BLAS bug; the custom ARI gemv is already `AMNI_HIP_GEMV_ON=0` by default.)
