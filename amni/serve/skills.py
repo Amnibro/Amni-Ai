@@ -96,6 +96,19 @@ def _is_secret_file(path)->bool:
     return (n in _SECRET_NAMES) or n.startswith('.env') or (pp.suffix.lower() in _SECRET_EXTS)
 def _secret_blocked(path)->bool:
     return _is_secret_file(path) and os.environ.get('AMNI_ALLOW_SECRET_FILES','0')!='1'
+def _law_protected(path)->bool:
+    if os.environ.get('AMNI_ALLOW_LAW_EDIT','0')=='1':return False
+    p=Path(path);n=p.name.lower();parent=p.parent.name.lower()
+    return (n=='asimov.py' and parent in ('a1','inference')) or (n=='integrity.py' and parent=='learning')
+_SECURITY_CORE={'code_safety.py','federated.py','pii_egress.py'}
+def _security_protected(path)->bool:
+    if os.environ.get('AMNI_ALLOW_SECURITY_EDIT','0')=='1':return False
+    p=Path(path)
+    return p.name.lower() in _SECURITY_CORE and p.parent.name.lower()=='serve'
+def _write_protected(path):
+    if _law_protected(path):return 'Asimov/integrity law file'
+    if _security_protected(path):return 'core security-enforcement module'
+    return None
 def _gate_path(args,ctx,reg:'SkillRegistry')->Optional[str]:
     p=args.get('path')
     if not p:return 'missing path arg'
@@ -124,6 +137,8 @@ def _gate_shell(args,ctx,reg:'SkillRegistry')->Optional[str]:
 def _gate_code_edit(args,ctx,reg:'SkillRegistry')->Optional[str]:
     g=_gate_path(args,ctx,reg)
     if g:return g
+    _wp=_write_protected(args.get('path',''))
+    if _wp:return f'refused: {_wp} is write-protected (set AMNI_ALLOW_LAW_EDIT/AMNI_ALLOW_SECURITY_EDIT=1 to override)'
     if not args.get('find') or args.get('replace') is None:return 'missing find/replace'
     return None
 def _skill_time(args,ctx,reg):return {'iso':time.strftime('%Y-%m-%dT%H:%M:%S'),'epoch':int(time.time())}
@@ -189,7 +204,12 @@ def _skill_web(args,ctx,reg):
     q=_scrub_pii_from_query(q_raw,agent=agent)
     try:
         ans,sources,n=adam.adam.crawler.crawl_and_distill(q,subject=None,letter_only=False)
-        return {'answer':ans,'sources':sources[:5],'tokens':n,'query_used':q,'pii_scrubbed':q!=q_raw}
+        _sani=False
+        try:
+            from amni.serve.code_safety import sanitize_ingest as _si
+            ans,_f=_si(ans or '');_sani=bool(_f)
+        except Exception:pass
+        return {'answer':ans,'sources':sources[:5],'tokens':n,'query_used':q,'pii_scrubbed':q!=q_raw,'sanitized':_sani}
     except Exception as e:return {'error':str(e),'query_used':q}
 def _skill_find(args,ctx,reg):
     """Fast substring/regex search across the workdir. Returns top N hits as file:line + snippet."""
@@ -263,6 +283,8 @@ def _unified_diff(before_lines,after_lines,max_lines:int=40):
     return '\n'.join(raw)
 def _skill_file_write(args,ctx,reg):
     from amni.serve.edit_verifier import verify_edit
+    _wp=_write_protected(args.get('path',''))
+    if _wp:return {'error':f'refused: {_wp} is write-protected (set AMNI_ALLOW_LAW_EDIT/AMNI_ALLOW_SECURITY_EDIT=1 to override)'}
     p=Path(args['path']);content=args.get('content','')
     existed=p.exists();before=p.read_text(encoding='utf-8',errors='ignore') if existed else ''
     p.parent.mkdir(parents=True,exist_ok=True)
@@ -409,7 +431,7 @@ def _skill_export_session(args,ctx,reg):
     out_path=args.get('out_path')
     if out_path:
         gate_res=_gate_path({'path':out_path},ctx,reg)
-        if gate_res and gate_res.get('error'):return gate_res
+        if gate_res:return {'error':gate_res}
         Path(out_path).write_text(out_text,encoding='utf-8')
         return {'session_id':sid,'turns':len(turns),'format':fmt,'path':out_path,'bytes':len(out_text)}
     return {'session_id':sid,'turns':len(turns),'format':fmt,'content':out_text[:8000],'truncated':len(out_text)>8000}
@@ -524,7 +546,7 @@ def _skill_tts(args,ctx,reg):
     out_path=args.get('out_path')
     if out_path:
         gate_res=_gate_path({'path':out_path},ctx,reg)
-        if gate_res and gate_res.get('error'):return gate_res
+        if gate_res:return {'error':gate_res}
         Path(out_path).write_bytes(audio)
         return {'path':out_path,'bytes':len(audio),'backend':tts_backend(),'voice_used':_voice}
     import base64
@@ -535,7 +557,7 @@ def _skill_stt(args,ctx,reg):
     audio=None
     if args.get('path'):
         gate_res=_gate_path({'path':args['path']},ctx,reg)
-        if gate_res and gate_res.get('error'):return gate_res
+        if gate_res:return {'error':gate_res}
         try:audio=Path(args['path']).read_bytes()
         except Exception as e:return {'error':f'read failed: {e}'}
     elif args.get('audio_base64'):
@@ -622,7 +644,12 @@ def _skill_project_info(args,ctx,reg):
             ch=r2.stdout.strip().splitlines();info['git']['dirty_files']=len(ch);info['git']['changes_preview']=ch[:10]
     except Exception:pass
     return info
-def _gate_diff(args,ctx,reg):return _gate_path(args,ctx,reg)
+def _gate_diff(args,ctx,reg):
+    g=_gate_path(args,ctx,reg)
+    if g:return g
+    _wp=_write_protected(args.get('path',''))
+    if _wp:return f'refused: {_wp} is write-protected (set AMNI_ALLOW_LAW_EDIT/AMNI_ALLOW_SECURITY_EDIT=1 to override)'
+    return None
 def _skill_code_diff(args,ctx,reg):
     path=args.get('path');diff=args.get('diff') or args.get('patch')
     if not path:return {'error':'missing path'}

@@ -249,6 +249,19 @@ class LearningDaemon:
                 queue_notification('warn','security',f'Quarantined {removed} polluted lesson(s)',f'issues: {res.get("by_issue",{})}',ttl_s=600.0)
             except Exception:pass
             print(f'[LearningDaemon] security audit: quarantined {removed} polluted lesson(s) {res.get("by_issue",{})}',flush=True)
+        try:
+            from amni.serve.source_integrity import verify_source_integrity
+            _si=verify_source_integrity()
+            res['source_integrity_ok']=_si['ok']
+            if not _si['ok']:
+                self.counters['source_tamper_alerts']=self.counters.get('source_tamper_alerts',0)+1
+                _bad=(_si.get('mismatches') or [])+(_si.get('missing') or [])
+                try:
+                    from amni.serve.notifications import queue_notification
+                    queue_notification('warn','security',f'Source-integrity check FAILED on {len(_bad)} protected file(s)',f'tampered/missing: {_bad}',ttl_s=900.0)
+                except Exception:pass
+                print(f'[LearningDaemon] SOURCE-INTEGRITY ALERT — law/security source changed: {_bad}',flush=True)
+        except Exception:pass
         return res
     def run_sleep_pass(self)->Dict[str,Any]:
         from amni.serve.sleep_consolidator import sleep_pass
