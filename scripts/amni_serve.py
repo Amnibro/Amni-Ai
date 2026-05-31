@@ -270,6 +270,30 @@ def main():
     if args.cors:
         from fastapi.middleware.cors import CORSMiddleware
         app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=True,allow_methods=['*'],allow_headers=['*'])
+    _AUTH_TOKEN=(os.environ.get('AMNI_AUTH_TOKEN') or '').strip()
+    if not _AUTH_TOKEN:
+        _atf=(os.environ.get('AMNI_AUTH_TOKEN_FILE') or '').strip()
+        if _atf and Path(_atf).exists():
+            try:_AUTH_TOKEN=Path(_atf).read_text(encoding='utf-8').strip()
+            except Exception:_AUTH_TOKEN=''
+    if _AUTH_TOKEN:
+        import hmac as _hmac
+        from fastapi.responses import JSONResponse as _AuthJR
+        _AUTH_OPEN={'/','/unified','/jarvis','/hud','/healthz','/manifest.webmanifest','/sw.js','/favicon.ico'}
+        _AUTH_OPEN_PFX=('/assets/','/icons/')
+        @app.middleware('http')
+        async def _auth_gate(request,call_next):
+            p=request.url.path
+            if request.method=='OPTIONS' or p in _AUTH_OPEN or any(p.startswith(x) for x in _AUTH_OPEN_PFX):return await call_next(request)
+            t=request.headers.get('x-amni-token','')
+            if not t:
+                _h=request.headers.get('authorization','')
+                if _h[:7].lower()=='bearer ':t=_h[7:].strip()
+            if not t:t=request.query_params.get('token','') or request.cookies.get('amni_token','')
+            if t and _hmac.compare_digest(t,_AUTH_TOKEN):return await call_next(request)
+            return _AuthJR(status_code=401,content={'error':'unauthorized','auth_required':True,'hint':'Adam access token required (X-Amni-Token header, ?token=, or amni_token cookie).'})
+        print('[amni_serve] AUTH GATE ON — token required for everything but the app shell + /healthz',flush=True)
+    else:print('[amni_serve] auth gate OFF — set AMNI_AUTH_TOKEN before exposing Adam beyond localhost (it can run shell/file/PC ops)',flush=True)
     class ChatRequest(BaseModel):
         message:str
         session_id:Optional[str]=None
@@ -771,7 +795,16 @@ def main():
         if _HUD_PATH.exists():return HTMLResponse(_HUD_PATH.read_text(encoding='utf-8'))
         return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p></body></html>',status_code=200)
     @app.get('/healthz')
-    def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state}
+    def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state,'auth_required':bool(_AUTH_TOKEN)}
+    @app.get('/manifest.webmanifest')
+    def _pwa_manifest():
+        from fastapi.responses import JSONResponse as _MJR
+        return _MJR(content={'name':'Adam — Amni-Ai','short_name':'Adam','description':'GF(17) texture-native AI — persistent learning, agentic skills.','start_url':'/unified','scope':'/','display':'standalone','background_color':'#040711','theme_color':'#040711','orientation':'any','icons':[{'src':'/assets/icons/adam-192.png','sizes':'192x192','type':'image/png','purpose':'any maskable'},{'src':'/assets/icons/adam-512.png','sizes':'512x512','type':'image/png','purpose':'any maskable'}]},media_type='application/manifest+json')
+    @app.get('/sw.js')
+    def _pwa_sw():
+        from fastapi.responses import Response as _SWResp
+        js="const C='adam-shell-v1';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin)return;if(/\\.(png|svg|ico|css|js|woff2?|ttf)$/i.test(u.pathname)){e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(resp=>{try{if(resp&&resp.ok)c.put(e.request,resp.clone())}catch(_){}return resp}))))}});"
+        return _SWResp(content=js,media_type='application/javascript')
     _REPO_ROOT=str(Path(__file__).resolve().parents[1])
     def _git(*a,timeout=30):
         import subprocess as _sp
