@@ -2,7 +2,7 @@
 Calls /v1/chat/completions (widget-aware OpenAI compat) so amni_widgets[] cards render inline next to chat bubbles. Voice in (Web Speech API) + voice out (speechSynthesis). Tactical-overlay aesthetic.
 Mount: jarvis_web.mount(app) — adds GET /jarvis."""
 _HTML=r"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#040711"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Adam"><link rel="apple-touch-icon" href="/assets/icons/adam-192.png">
 <title>Adam — Jarvis Mode</title>
 <link rel="stylesheet" href="/assets/katex/katex.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css'">
 <script defer src="/assets/katex/katex.min.js" onload="window._katexReady=true;window._rerenderPendingMath&&window._rerenderPendingMath()" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';s.defer=true;s.onload=function(){window._katexReady=true;window._rerenderPendingMath&&window._rerenderPendingMath()};document.head.appendChild(s)"></script>
@@ -1280,6 +1280,16 @@ body.theme-min #adam-core{opacity:.6}
   <div class="wp-list" id="wp-list"><div class="wp-empty">loading…</div></div>
 </div>
 <script>
+(function(){
+  try{var u=new URL(location.href);var qt=u.searchParams.get('token');if(qt){try{localStorage.setItem('amni_token',qt)}catch(_){}u.searchParams.delete('token');try{history.replaceState(null,'',u.pathname+(u.search||'')+u.hash)}catch(_){}}}catch(_){}
+  var _F=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    init=init||{};
+    try{var url=(typeof input==='string')?input:((input&&input.url)||'');if(url.charAt(0)==='/'||url.indexOf(location.origin)===0){var t='';try{t=localStorage.getItem('amni_token')||''}catch(_){}if(t){var hh=new Headers((init&&init.headers)||(typeof input!=='string'&&input&&input.headers)||{});if(!hh.has('X-Amni-Token'))hh.set('X-Amni-Token',t);init.headers=hh}}}catch(_){}
+    return _F(input,init).then(function(r){if(r&&r.status===401){try{r.clone().json().then(function(j){if(j&&j.auth_required&&!window._amniTokPrompting){window._amniTokPrompting=true;var nt=window.prompt('Adam access token (set on the server via AMNI_AUTH_TOKEN):','');window._amniTokPrompting=false;if(nt){try{localStorage.setItem('amni_token',nt.trim())}catch(_){}location.reload()}}}).catch(function(){})}catch(_){}}return r});
+  };
+  try{if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})})}catch(_){}
+})();
 const SKEY='amni_jarvis_session',VKEY='amni_jarvis_voiceout';
 window._TC={c:'0,229,255',m:'255,43,214',g:'255,224,102',hexC:'#00e5ff',hexG:'#ffd770'};
 const THEME_KEY='amni_jarvis_theme';
