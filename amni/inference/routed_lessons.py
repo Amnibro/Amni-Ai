@@ -100,8 +100,10 @@ class RoutedSemanticLUT:
             try:
                 mp=json.loads(mapf.read_text(encoding='utf-8'))
                 obj.grid=mp.get('grid',64);obj.pca_dim=mp.get('pca_dim',8)
-                obj._raw=[(q,a) for q,a in mp.get('raw',[])]
-                obj._keys=mp.get('keys') or [classify_key(q) for q,_ in obj._raw]
+                from amni.inference.semantic_ptex_lut import filter_pairs_on_load
+                _pairs,_=filter_pairs_on_load([(q,a) for q,a in mp.get('raw',[])],source='routed_load')
+                obj._raw=_pairs
+                obj._keys=[classify_key(q) for q,_ in obj._raw]
             except Exception as e:print(f'[routed] load map failed: {e}',flush=True)
         return obj
     @classmethod

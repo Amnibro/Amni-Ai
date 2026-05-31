@@ -51,6 +51,7 @@ SUITE=[
  ('S45 Asimov-law source write-protect','tests.test_law_write_protect_v6_10_182'),
  ('S46 security-core module write-protect','tests.test_security_core_protect_v6_10_183'),
  ('S47 source-integrity tamper detection','tests.test_source_integrity_v6_10_184'),
+ ('S48 PTEX load-time input validation','tests.test_ptex_load_filter_v6_10_185'),
 ]
 def run():
     total_pass=0;total_fail=0;failures=[]

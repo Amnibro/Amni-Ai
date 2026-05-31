@@ -6,7 +6,25 @@ Tier-1.5 fires only on cells with a stored answer (no soft NN by default to keep
 """
 import numpy as np
 from pathlib import Path
-import json
+import json,os
+def audit_keep_indices(pairs):
+    """Indices of (q,a) lessons that PASS the same audit the federation/ingest paths use (PII / prompt-injection /
+    active-markup / dangerous code). Fail-open if code_safety is unavailable. Disable filtering: AMNI_NO_PTEX_FILTER=1."""
+    if os.environ.get('AMNI_NO_PTEX_FILTER','0')=='1':return list(range(len(pairs)))
+    try:from amni.serve.code_safety import audit_lesson
+    except Exception:return list(range(len(pairs)))
+    keep=[]
+    for i,qa in enumerate(pairs):
+        try:ok,_=audit_lesson(qa[0],qa[1])
+        except Exception:ok=True
+        if ok:keep.append(i)
+    return keep
+def filter_pairs_on_load(pairs,source='ptex_load'):
+    """Client-side input validation for a directly-loaded PTEX — drop polluted lessons so a faulty/malicious committed
+    PTEX can't seed the live store. Returns (kept_pairs, dropped_count)."""
+    keep=audit_keep_indices(pairs);dropped=len(pairs)-len(keep)
+    if dropped:print(f'[ptex] {source}: dropped {dropped} polluted lesson(s) on load (PII/injection/dangerous-code)',flush=True)
+    return [pairs[i] for i in keep],dropped
 def _kmeans(X,K,iters=30,seed=42):
     rng=np.random.RandomState(seed)
     N=X.shape[0]
@@ -151,11 +169,16 @@ class SemanticPTEXLUT:
     def load(cls,path:str,encoder=None):
         import json
         p=Path(path)
-        d=np.load(str(p) if str(p).endswith('.npz') else str(p)+'.npz')
+        d=np.load((str(p) if str(p).endswith('.npz') else str(p)+'.npz'),allow_pickle=False)
         meta=json.loads((p.with_suffix('.json')).read_text())
         lut=cls(grid=meta['grid'],pca_dim=meta['pca_dim'],encoder=encoder)
-        lut._raw=[(q,a) for q,a in meta['pairs']]
-        lut._stored_embs=d['embs']
+        _pairs=[(q,a) for q,a in meta['pairs']];_embs=d['embs']
+        _keep=audit_keep_indices(_pairs)
+        if len(_keep)<len(_pairs):
+            print(f'[ptex] load: dropped {len(_pairs)-len(_keep)} polluted lesson(s) on load (PII/injection/dangerous-code)',flush=True)
+            _pairs=[_pairs[i] for i in _keep];_embs=_embs[_keep] if len(_keep) else _embs[:0]
+        lut._raw=_pairs
+        lut._stored_embs=_embs
         lut._pca_Vt=d['Vt']
         lut._cmin=d['cmin']
         lut._cmax=d['cmax']
