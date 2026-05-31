@@ -47,11 +47,16 @@ PYTHONUTF8=1 python tests/run_security_suite.py
 ### Network (SSRF)
 - `code_safety.ssrf_check` / `safe_urlopen`: http/https only (`file://` refused), resolve-and-block private/loopback/link-local/reserved/metadata IPs, **pin** the resolved IP for the connection (no DNS-rebinding) keeping SNI/cert via the real hostname, and follow redirects **manually** re-checking every hop. Every outbound fetch (crawl, ingest, federation pull, DDG search) routes through it. [S21, S22, S23, S24]
 
+### Integrity / tamper resistance
+- **Weights** — `learning/integrity.py` records + verifies sha256 of every asimov/foundation/ascension `.gf17` tensor (fail-fast `IntegrityError` on mismatch). **Axiom text** — `a1/asimov.py` `_AXIOM_INTEGRITY` sha256-checks at layer init.
+- **Guardrail source** — the Asimov law source (`inference/asimov.py`, `a1/asimov.py`) and the integrity checker (`learning/integrity.py`) are **write-protected** against `code_edit`/`file_write`/`code_diff` (so the self-improvement loop or an MCP client can't rewrite the laws or disable the checker); readable but not writable, override `AMNI_ALLOW_LAW_EDIT=1`. [S45]
+
 ### Availability (DoS)
 - Input size caps (HTTP 413) on `/chat`, `/chat/stream`, `/teach`, `/complete`, `/v1/chat/completions` (sums across messages), and base64/text caps on vision/voice. Output byte cap on `/chat/stream`. Per-key sliding-window rate limit on `/chat` + `/teach`. Federation-import entry/size caps. [S10, S16, S28, S31, S32, S27]
 
 ## Notable real vulnerabilities found & fixed (not just hypothetical)
-- **Path-traversal arbitrary file read** — file-skill prefix-bypass (S15), session-endpoint `sid` (`../../etc/passwd`) read/delete (S29), ungated `ingest_pdf` local-path read (S30).
+- **Path-traversal arbitrary file read** — file-skill prefix-bypass (S15), session-endpoint `sid` (`../../etc/passwd`) read/delete (S29), ungated `ingest_pdf` local-path read (S30), ungated `vision` image-path read (S43).
+- **Arbitrary file WRITE** — `/admin/trace/dump_raws` wrote a client-supplied `path` with no containment → overwrite any file on disk (S42); fixed with root-containment + `.npz`/`.npy` suffix restriction.
 - **Shell command injection** — gate validated a `shlex`-tokenized view but executed the raw string with `shell=True` (S19); `python -c`/`pip install` unsandboxed-exec bypass (S20).
 - **SSRF** — crawler had no guard against `169.254.169.254`/loopback/`file://`, plus redirect-SSRF and DNS-rebinding windows (S21–S24).
 - **Secret/PII persistence** — full `os.environ` leaked into the `run_python` child (S18); raw command output + skill args written verbatim to on-disk logs (S33).

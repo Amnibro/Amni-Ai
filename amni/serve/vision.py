@@ -93,6 +93,7 @@ def describe_image_skill(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any
         try:
             from pathlib import Path
             p=Path(image_path)
+            if reg is not None and hasattr(reg,'_in_allowed_roots') and not reg._in_allowed_roots(str(p)):return {'error':'path outside allowed roots'}
             if not p.exists():return {'error':f'file not found: {image_path}'}
             image_bytes=p.read_bytes()
         except Exception as e:return {'error':f'file read failed: {e}'}

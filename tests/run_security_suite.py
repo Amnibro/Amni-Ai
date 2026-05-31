@@ -45,6 +45,12 @@ SUITE=[
  ('S39 MCP tools/call rate-limit','tests.test_mcp_rate_limit_v6_10_176'),
  ('S40 /v1 + ollama-compat rate-limit + cap','tests.test_compat_rate_limit_v6_10_177'),
  ('S41 embed-batch cap (/api/embed)','tests.test_embed_batch_cap_v6_10_178'),
+ ('S42 trace dump_raws arbitrary-write fix','tests.test_trace_dump_path_v6_10_179'),
+ ('S43 path-param sweep (vision read + out_path gate)','tests.test_path_param_sweep_v6_10_180'),
+ ('S44 web-skill result sanitize','tests.test_web_result_sanitize_v6_10_181'),
+ ('S45 Asimov-law source write-protect','tests.test_law_write_protect_v6_10_182'),
+ ('S46 security-core module write-protect','tests.test_security_core_protect_v6_10_183'),
+ ('S47 source-integrity tamper detection','tests.test_source_integrity_v6_10_184'),
 ]
 def run():
     total_pass=0;total_fail=0;failures=[]

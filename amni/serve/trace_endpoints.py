@@ -47,4 +47,16 @@ def mount(app,agent):
     @app.post('/admin/trace/dump_raws')
     async def dump_raws(req:Request):
         body=await req.json()
-        return th.dump_raws(path=body.get('path','eval_reports/trace_raws.npz'))
+        from pathlib import Path as _P
+        import os as _os
+        root=_P(__file__).resolve().parents[2]
+        raw=body.get('path','eval_reports/trace_raws.npz')
+        cand=_P(raw)
+        fp=(cand if cand.is_absolute() else root/cand).resolve()
+        try:inside=fp.is_relative_to(root)
+        except AttributeError:
+            try:inside=_os.path.commonpath([str(fp),str(root)])==str(root)
+            except Exception:inside=False
+        if not inside:return {'status':'error','reason':'path outside project root'}
+        if fp.suffix.lower() not in ('.npz','.npy'):return {'status':'error','reason':'dump path must end .npz/.npy'}
+        return th.dump_raws(path=str(fp))
