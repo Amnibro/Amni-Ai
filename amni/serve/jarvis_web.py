@@ -937,7 +937,7 @@ body.theme-min #adam-core{opacity:.6}
 <div id="frame"></div><div id="corner-tr"></div><div id="corner-bl"></div><div id="scanline"></div>
 <div id="app">
   <header>
-    <div class="title">A D A M ▸ JARVIS</div>
+    <div class="title">A D A M</div>
     <div class="surfnav">
       <button class="surfbtn active" onclick="document.getElementById('input')&&document.getElementById('input').focus()" title="Jarvis HUD — you are here">⚡ Jarvis</button>
       <button class="surfbtn" onclick="_openPeer()" title="Open the Amni-Code IDE (:3000)">⌨ Code</button>
@@ -1296,7 +1296,8 @@ let sid=localStorage.getItem(SKEY)||'';
 let voiceOut=localStorage.getItem(VKEY)==='1';
 let recog=null,recoOn=false;
 const log=document.getElementById('log'),input=document.getElementById('input'),send_btn=document.getElementById('send'),lessonPill=document.getElementById('lesson-pill'),personaPill=document.getElementById('persona-pill');
-function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function _netHint(e){const m=(e&&e.message)||String(e||'');return /failed to fetch|networkerror|load failed|fetch failed/i.test(m)?'connection dropped or Adam is still warming up — give it a moment and try again':m}
 const _MATH_PLACEHOLDERS=[];
 function _stashMath(latex,display){
   const idx=_MATH_PLACEHOLDERS.length;_MATH_PLACEHOLDERS.push({latex,display});
@@ -1313,6 +1314,7 @@ function _restoreMath(html){
   });
 }
 function md(src){
+  src=String(src==null?'':src);
   src=src.replace(/\$\$([^$\n][^$]*?)\$\$/g,(_,l)=>_stashMath(l.trim(),true));
   src=src.replace(/\$([^$\n][^$\n]*?)\$/g,(_,l)=>{const t=l.trim();if(/^\s*$/.test(t)||!/[a-zA-Z\\^_{}\d]/.test(t))return '$'+l+'$';if(/\s/.test(t)&&!/[\\^_{}]/.test(t))return '$'+l+'$';return _stashMath(t,false)});
   src=esc(src);
@@ -1662,7 +1664,7 @@ async function _pollSessionsList(){
       const turns=s.turns_n||0;const first=esc(s.first_msg||'(no messages)');
       return `<div class="${cls}" onclick="_spLoadSession('${safeId}')"><div class="sp-row1"><span class="sp-sid">${esc((s.session_id||'?').slice(-12))}</span><span class="sp-turns">${turns} turn${turns===1?'':'s'}</span><span class="sp-age">${_spHumanAge(s.updated_ts)}</span></div><div class="sp-first">${first}</div><button class="sp-del" onclick="event.stopPropagation();_spDeleteSession('${safeId}')" title="Delete this session">✕</button></div>`
     }).join('');
-  }catch(e){list.innerHTML='<div class="sp-empty">load error: '+esc(e.message)+'</div>'}
+  }catch(e){list.innerHTML='<div class="sp-empty">'+esc(_netHint(e))+'</div>'}
 }
 function toggleSessionsPanel(){_spPanelOpen=!_spPanelOpen;const p=document.getElementById('sessions-panel');p.classList.toggle('show',_spPanelOpen);['persona-panel','learn-panel','tests-panel','shell-panel','coach-panel'].forEach(id=>{const el=document.getElementById(id);if(_spPanelOpen&&el&&el.classList.contains('show'))el.classList.remove('show')});if(_spPanelOpen){_personaPanelOpen=false;_ldPanelOpen=false;_tpPanelOpen=false;_shPanelOpen=false;_coachPanelOpen=false;document.getElementById('coach-toggle').classList.remove('on');_pollSessionsList()}}
 async function _spLoadSession(targetSid){
@@ -2122,7 +2124,7 @@ async function send(){
   }catch(err){
     if(reasonEl){reasonEl.classList.remove('open');reasonEl.classList.add('done')}
     if(err&&err.name==='AbortError'){bot.bubble.classList.remove('thinking');if(!acc)bot.bubble.textContent='(stopped)'}
-    else{bot.bubble.classList.remove('thinking');bot.bubble.textContent='Error: '+err.message}
+    else{bot.bubble.classList.remove('thinking');bot.bubble.textContent=_netHint(err)}
   }
   _streamAbort=null;_setSendButtonState(false);
   input.focus();log.scrollTop=log.scrollHeight;
@@ -2261,8 +2263,8 @@ async function _personaLearnNew(){
   try{
     const r=await fetch('/persona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,session_id:sid,learn_via_web:true})});
     const j=await r.json();
-    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;personaPill.textContent='persona '+_selectedPersona;await _loadPersonas();_renderPersonaPanel();bubble('bot','Learned **'+esc(_selectedPersona)+'** — '+esc(j.persona.description||''),'<span class="badge persona">'+esc(_selectedPersona)+'</span>')}
-    else bubble('bot','Learn failed: '+(esc(j.error||JSON.stringify(j))),'<span class="badge err">err</span>')
+    if(r.ok&&j.persona){_selectedPersona=j.persona.name;localStorage.setItem(PERSONA_KEY,_selectedPersona);personaName=_selectedPersona;try{personaPill.textContent='persona '+_selectedPersona;await _loadPersonas();_renderPersonaPanel()}catch(_){}bubble('bot','Learned **'+esc(_selectedPersona)+'** — '+esc(j.persona.description||''),'<span class="badge persona">'+esc(_selectedPersona)+'</span>')}
+    else bubble('bot','Learn failed: '+esc(j.error||j.detail||JSON.stringify(j)),'<span class="badge err">err</span>')
   }catch(e){bubble('bot','Learn error: '+esc(e.message),'<span class="badge err">err</span>')}
 }
 function _pickVoice(v){_selectedVoice=v;localStorage.setItem(VOICE_KEY,v);_renderPersonaPanel();if(v)bubble('bot','TTS voice set to **'+esc(v)+'**','<span class="badge">voice</span>')}
@@ -2959,7 +2961,7 @@ async function _skillFailuresShow(){
     const ackBtn=unacked>0?`<button class="se-btn" onclick="_skillFailuresAck()" style="margin-top:8px">✓ MARK ALL ACKED (${unacked} new)</button>`:'';
     const head=`<div style="font-size:9.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase;margin-bottom:6px">◆ RECENT SKILL FAILURES · ${stats.total||0} TOTAL · ${unacked} UNACKED</div>`;
     bubble('bot',head+rows+ackBtn,'<span class="badge err">diag</span>');
-  }catch(e){bubble('bot','Skill failures fetch failed: '+esc(String(e)),'<span class="badge err">diag</span>')}
+  }catch(e){bubble('bot','Skill failures: '+esc(_netHint(e)),'<span class="badge err">diag</span>')}
 }
 async function _skillFailuresAck(){
   try{

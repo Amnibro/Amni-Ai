@@ -33,12 +33,48 @@ def _ask(prompt:str)->bool:
     try:r=input(f'  {prompt} [Y/n] ').strip().lower()
     except EOFError:return False
     return r in ('','y','yes')
-def _open_browser_delayed(url:str,delay:float=2.5):
+def _wait_ready(url:str,timeout:float=300.0)->bool:
+    import urllib.request
+    hz=url.rstrip('/')+'/healthz';t0=time.time()
+    while time.time()-t0<timeout:
+        try:
+            with urllib.request.urlopen(hz,timeout=4) as r:
+                if r.status==200:return True
+        except Exception:pass
+        time.sleep(1.5)
+    return False
+def _find_chromium():
+    import shutil
+    cands=[os.environ.get('AMNI_BROWSER',''),
+           r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+           r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+           r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+           r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+           shutil.which('chrome'),shutil.which('chromium'),shutil.which('msedge'),
+           '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+           shutil.which('google-chrome'),shutil.which('chromium-browser')]
+    for c in cands:
+        if c and Path(c).exists():return c
+    return None
+def _open_browser_when_ready(url:str,app_window:bool=False):
+    import subprocess,tempfile
     def _go():
-        time.sleep(delay)
+        ok=_wait_ready(url)
+        if not ok:print(f'[serve] browser auto-open skipped — server not ready in time. Open {url} manually.',flush=True);return
+        if app_window:
+            exe=_find_chromium()
+            if exe:
+                prof=str(Path(tempfile.gettempdir())/'amni_adam_app')
+                try:
+                    subprocess.Popen([exe,f'--app={url}',f'--user-data-dir={prof}','--window-size=1280,860','--no-first-run','--no-default-browser-check'])
+                    print(f'[serve] opened Adam in a standalone app window ({Path(exe).name}).',flush=True);return
+                except Exception as e:print(f'[serve] app-window launch failed ({e}); falling back to browser tab.',flush=True)
+            else:print('[serve] no Chrome/Edge found for --app-window; opening a normal browser tab.',flush=True)
         try:webbrowser.open(url)
         except Exception:pass
     threading.Thread(target=_go,daemon=True).start()
+def _open_browser_delayed(url:str,delay:float=2.5):
+    _open_browser_when_ready(url,app_window=False)
 def _print_serve_banner(host:str,port:int,workdir:str=''):
     base=f'http://{host}:{port}' if host not in ('0.0.0.0','::') else f'http://localhost:{port}'
     enc=(getattr(sys.stdout,'encoding','') or '').lower()
@@ -84,7 +120,8 @@ def cmd_serve(args):
     if args.cors:sys.argv.append('--cors')
     if args.default_persona:sys.argv+=['--default-persona',args.default_persona]
     if args.no_persona:sys.argv.append('--no-persona')
-    if getattr(args,'open_browser',False):_open_browser_delayed(f'http://{args.host}:{args.port}/')
+    _aw=getattr(args,'app_window',False)
+    if getattr(args,'open_browser',False) or _aw:_open_browser_when_ready(f'http://{args.host}:{args.port}/',app_window=_aw)
     _print_serve_banner(args.host,args.port,workdir=getattr(args,'workdir','') or '')
     from scripts import amni_serve
     amni_serve.main()
@@ -983,7 +1020,8 @@ def main():
     s.add_argument('--root',action='append',default=[]);s.add_argument('--unrestricted-files',action='store_true')
     s.add_argument('--seed',action='store_true');s.add_argument('--cors',action='store_true')
     s.add_argument('--default-persona',default=None);s.add_argument('--no-persona',action='store_true')
-    s.add_argument('--open-browser',action='store_true',help='Auto-open browser tab on launch')
+    s.add_argument('--open-browser',action='store_true',help='Auto-open a browser tab once the server is ready (waits for warmup)')
+    s.add_argument('--app-window',action='store_true',help='Open Adam in a standalone chromeless desktop window (Chrome/Edge --app) once ready')
     s.set_defaults(func=cmd_serve)
     co=sub.add_parser('code',help='Project-aware coding mode: workdir=cwd, mentor persona, file-tree UI, browser auto-opens')
     _add_common_adam(co)
