@@ -2,6 +2,7 @@
 JSON-RPC 2.0 over POST /mcp. Implements: initialize, tools/list, tools/call, resources/list, prompts/list.
 Tools exposed: ask_adam, scan_directory, mem_search, file_read, calc, time, plus every registered skill."""
 import time,os
+from amni import APP_VERSION
 _MCP_MAX_ARG_CHARS=int(os.environ.get('AMNI_MAX_INPUT_CHARS','100000'))
 def _tool_defs(agent):
     base=[{'name':'ask_adam','description':'Ask Adam a question. Routes through full tier pipeline (LUT cache, semantic match, tier3 cold-solve). Persistent learning enabled.','inputSchema':{'type':'object','properties':{'question':{'type':'string'},'persona':{'type':'string','description':'Optional persona name (rikku, yoda, mentor, etc, or any custom name — Adam will web-learn unknowns).'}},'required':['question']}},
@@ -50,7 +51,7 @@ def mount(app,agent):
         except Exception:return JSONResponse(status_code=400,content={'jsonrpc':'2.0','error':{'code':-32700,'message':'parse error'},'id':None})
         method=body.get('method');rpc_id=body.get('id');params=body.get('params') or {}
         if method=='initialize':
-            return {'jsonrpc':'2.0','id':rpc_id,'result':{'protocolVersion':'2025-06-18','serverInfo':{'name':'amni-ai-adam','version':'6.9.3'},'capabilities':{'tools':{'listChanged':False},'resources':{'subscribe':False,'listChanged':False},'prompts':{'listChanged':False}}}}
+            return {'jsonrpc':'2.0','id':rpc_id,'result':{'protocolVersion':'2025-06-18','serverInfo':{'name':'amni-ai-adam','version':APP_VERSION},'capabilities':{'tools':{'listChanged':False},'resources':{'subscribe':False,'listChanged':False},'prompts':{'listChanged':False}}}}
         if method=='tools/list':return {'jsonrpc':'2.0','id':rpc_id,'result':{'tools':_tool_defs(agent)}}
         if method=='tools/call':
             _ok,_rl=_RL_MCP.allow(_rl_key(req))
@@ -66,4 +67,4 @@ def mount(app,agent):
         if method=='ping':return {'jsonrpc':'2.0','id':rpc_id,'result':{}}
         return {'jsonrpc':'2.0','id':rpc_id,'error':{'code':-32601,'message':f'method not found: {method}'}}
     @app.get('/mcp')
-    def mcp_info():return {'name':'amni-ai-adam','version':'6.9.3','transport':'http-jsonrpc','endpoint':'/mcp','client_config_example':{'mcpServers':{'amni-ai':{'url':'http://localhost:11434/mcp','transport':'http'}}}}
+    def mcp_info():return {'name':'amni-ai-adam','version':APP_VERSION,'transport':'http-jsonrpc','endpoint':'/mcp','client_config_example':{'mcpServers':{'amni-ai':{'url':'http://localhost:11434/mcp','transport':'http'}}}}

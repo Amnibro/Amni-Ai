@@ -74,6 +74,7 @@ def _gpu_bootstrap():
     if non_target and total>1:os.environ.setdefault('HIP_VISIBLE_DEVICES',str(chosen_idx))
     print(f'[amni_serve] GPU bootstrap: idx={chosen_idx} arch={arch} name={best.get("name")} vram={best.get("mem",0)//(1024**3)}GB override={ver or "auto"}',flush=True)
 _gpu_bootstrap()
+from amni import APP_VERSION
 from amni.bootstrap import load_config,DEFAULT_PORT,DEFAULT_HOST
 from amni.storage.conversation_notes import ConversationNotes
 from amni.serve.agentic import run_goal_stream,is_build_request
@@ -276,6 +277,7 @@ def main():
         writeback:bool=True
         client_lat:Optional[float]=None
         client_lon:Optional[float]=None
+        persona:Optional[str]=None
     class AskRequest(BaseModel):
         query:str
         writeback:bool=True
@@ -315,6 +317,11 @@ def main():
                     _users_before=[t for t in _prior[:-1] if t.get('role')=='user']
                     prior_q=(_users_before[-1].get('content') or '') if _users_before else ''
             conv.append('user',req.message)
+            if req.persona and agent.use_persona:
+                try:
+                    _reqp=req.persona.strip().lower()
+                    if _reqp and agent.personas.has(_reqp) and agent.personas._session_persona.get(conv.session_id)!=_reqp:agent.personas.assign_session(conv.session_id,_reqp)
+                except Exception as _pae:print(f'[amni_serve] persona assign failed: {_pae}',flush=True)
             if is_build_request(req.message):
                 _ag_persona=agent.personas.for_session(conv.session_id) if agent.use_persona else None
                 _ag_persona_name=_ag_persona.name if _ag_persona else 'Adam'
@@ -356,6 +363,13 @@ def main():
                         for ch in [_wrapped[i:i+48] for i in range(0,len(_wrapped),48)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
                         conv.append('assistant',_wrapped,{'tier':f'tier0_skill_{_sname}','persona':_sk_persona_name,'category':_sk_cat,'skill':_sname})
                         yield f'event: done\ndata: {_json.dumps({"tier":f"tier0_skill_{_sname}","wall_s":round(time.time()-t0,3),"persona":_sk_persona_name})}\n\n';return
+                    else:
+                        _err=str(getattr(_sr,'error','') or 'no data returned')
+                        _emsg=f"I tried the **{_sname}** skill but it couldn't return live data ({_err}). I won't make up values — please retry, or check the STATUS panel's skill-failures."
+                        yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_sk_persona_name,"skill":_sname,"skill_error":True})}\n\n'
+                        for ch in [_emsg[i:i+48] for i in range(0,len(_emsg),48)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
+                        conv.append('assistant',_emsg,{'tier':f'tier0_skill_{_sname}_failed','persona':_sk_persona_name,'category':'factual','skill':_sname})
+                        yield f'event: done\ndata: {_json.dumps({"tier":f"tier0_skill_{_sname}_failed","wall_s":round(time.time()-t0,3)})}\n\n';return
                 except Exception as _se:print(f'[amni_serve] /chat/stream skill {_sname} failed: {_se}',flush=True)
             persona=agent.personas.for_session(conv.session_id) if agent.use_persona else None
             persona_name=persona.name if persona else 'Adam'
@@ -387,6 +401,7 @@ def main():
                 if pair[0] and pair[1] and pair not in history_pairs:history_pairs=[pair]+history_pairs
             history_pairs=history_pairs[-_hist_n:]
             user_facts=agent._extract_user_facts(conv,extra_user_msgs=[r.get('user','') for r in atlas_recall],profile_only=(_intent_label=='profile_about_me')) if hasattr(agent,'_extract_user_facts') else []
+            user_facts=['The current local date and time is '+time.strftime('%A, %B %d, %Y at %I:%M %p',time.localtime())+'. Use this exact value for any date, time, "today", "now", or current-year reasoning — never guess or invent a date. For live system stats (CPU/memory/disk) or weather, rely on the tool widgets, never fabricate numbers.']+user_facts
             is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
             sl=getattr(adam,'sem_lut',None)
             _has_correction=False
@@ -756,7 +771,38 @@ def main():
         if _HUD_PATH.exists():return HTMLResponse(_HUD_PATH.read_text(encoding='utf-8'))
         return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p></body></html>',status_code=200)
     @app.get('/healthz')
-    def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':'6.9.3','warmup':_warmup_state}
+    def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state}
+    _REPO_ROOT=str(Path(__file__).resolve().parents[1])
+    def _git(*a,timeout=30):
+        import subprocess as _sp
+        try:return _sp.run(['git','-C',_REPO_ROOT,*a],capture_output=True,text=True,timeout=timeout)
+        except Exception:return None
+    @app.get('/update/check')
+    def _update_check():
+        head=_git('rev-parse','--abbrev-ref','HEAD')
+        if head is None or head.returncode!=0:return {'ok':False,'error':'not a git repo or git unavailable','version':APP_VERSION}
+        branch=(head.stdout or '').strip() or 'HEAD'
+        fetch=_git('fetch','--quiet','origin',branch,timeout=45)
+        cur=_git('rev-parse','HEAD');rem=_git('rev-parse',f'origin/{branch}')
+        cur_sha=(cur.stdout or '').strip()[:9] if cur else '';rem_sha=(rem.stdout or '').strip()[:9] if rem else ''
+        behind=_git('rev-list','--count',f'HEAD..origin/{branch}');ahead=_git('rev-list','--count',f'origin/{branch}..HEAD')
+        nb=int((behind.stdout or '0').strip() or 0) if (behind and behind.returncode==0) else 0
+        na=int((ahead.stdout or '0').strip() or 0) if (ahead and ahead.returncode==0) else 0
+        log=_git('log','--oneline','-5',f'HEAD..origin/{branch}');dirty=_git('status','--porcelain')
+        return {'ok':True,'branch':branch,'behind':nb,'ahead':na,'current':cur_sha,'remote':rem_sha,'update_available':nb>0,'dirty':bool((dirty.stdout or '').strip()) if dirty else False,'incoming':[l for l in (log.stdout or '').splitlines() if l][:5],'fetch_ok':bool(fetch and fetch.returncode==0),'version':APP_VERSION}
+    @app.post('/update/apply')
+    def _update_apply():
+        head=_git('rev-parse','--abbrev-ref','HEAD')
+        if head is None or head.returncode!=0:return {'ok':False,'error':'not a git repo or git unavailable'}
+        branch=(head.stdout or '').strip() or 'main'
+        dirty=_git('status','--porcelain')
+        if dirty and (dirty.stdout or '').strip():return {'ok':False,'error':'working tree has uncommitted local changes — commit or stash them first','dirty':True,'changes':[l for l in (dirty.stdout or '').splitlines()][:20]}
+        pull=_git('pull','--ff-only','origin',branch,timeout=120)
+        if pull is None:return {'ok':False,'error':'git pull failed to run'}
+        out=((pull.stdout or '')+(pull.stderr or '')).strip()
+        if pull.returncode!=0:return {'ok':False,'error':out[:500] or 'git pull failed'}
+        new=_git('rev-parse','HEAD');new_sha=(new.stdout or '').strip()[:9] if new else ''
+        return {'ok':True,'pulled':True,'branch':branch,'new':new_sha,'output':out[:500],'restart_required':True,'message':'Update applied. Restart Adam to load the new version.'}
     @app.get('/workdir')
     def workdir():
         wd=str(skills.workdir) if hasattr(skills,'workdir') else ''
