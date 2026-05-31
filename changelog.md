@@ -1,5 +1,28 @@
 # Amni-Ai Changelog
 
+## v6.11.18 — Standalone app window + warmup-aware auto-open + double-click launchers (2026-05-30)
+
+Launching Adam outside the Mission Control smart button was rough: `--open-browser` opened a tab after a hardcoded 2.5 s, long before the GF(17) bake finishes loading (~40 s+), so it hit a dead page and looked broken — and there was no standalone-window option at all. Fixed both in `amni/cli.py`:
+
+- **Warmup-aware auto-open** — replaced the blind `_open_browser_delayed` with `_open_browser_when_ready`, which polls `/healthz` (up to 5 min, then a graceful "open it manually" message) and only opens once Adam actually answers. No more dead-page-on-launch.
+- **`--app-window` flag → standalone desktop window** — opens Adam in a chromeless Chrome/Edge `--app=` window (no tabs, no address bar; feels native) via `_find_chromium()` (checks `AMNI_BROWSER`, Chrome, Edge, PATH, macOS/Linux paths), with a dedicated `--user-data-dir` and 1280×860 default size. Zero new dependencies — uses the browser already installed; falls back to a normal tab if no Chromium is found.
+- **Double-click launchers** — new `adam.bat` (Windows) / `adam.sh` (Mac/Linux): activate the local `.venv` if present, then `serve --app-window`. No terminal, no smart button needed.
+
+Verified end-to-end: launched `serve --app-window` on a test port, server ready in ~48 s, log confirmed `opened Adam in a standalone app window (chrome.exe)`, and a live `--app` Chrome window process loaded the unified UI. Files: `amni/cli.py` (+`--app-window` arg), `adam.bat`, `adam.sh`. py_compile clean.
+
+## v6.11.17 — Unified UI bug sweep: header, z-index, persona learn, warmup-resilient fetches (2026-05-30)
+
+Seven reported defects on the `/unified` surface, fixed across `amni/serve/jarvis_web.py` (engine HTML/JS) + `amni/serve/unified_web.py` (skin/boot). Backups: `backups/{jarvis_web,unified_web}.py.v6.10.135.bak`.
+
+1. **"JARVIS" dropped from the header title** — `jarvis_web.py` header now reads `A D A M` (was `A D A M ▸ JARVIS`). Jarvis mode still reachable via the composer toggle + rail.
+2. **Stray "A" logo removed** — deleted the `#u-rail .u-logo` element creation in `unified_web._BOOT` + its dead CSS rule; rail gets `padding-top:14px` so the first nav no longer hugs the top.
+3. **Z-index hierarchy fixed** (the "main window in front of panels" + "bottom panels behind the status bar" bugs). The unified chrome was stacked *above* the engine's overlays (rail 60 / statusbar 55 / composer 42 vs panels 8–17). New scoped scale under `body.u-on`: chrome `#u-rail`/`#u-statusbar` → 40, `#composer` → 24, all `div[id$="-panel"]` + `#tools-drawer`/`#task-tray`/`#toast-stack` → 85 `!important`, modals (`#cmd-menu`/`#kbd-overlay`/`#gesture-tour`/`#train-modal`/`#chat-search`/`.slash-ac`) → 120. Panels now sit above chat + chrome; the bottom bar no longer clips bottom-anchored panels.
+4. **Persona list stuck on "loading…"** — root cause: the boot pre-render fired once at a fixed 500 ms, *during* the ~40 s GF(17) warmup, so `/personas` hadn't answered yet and nothing re-rendered. New `_uLoadPersona(tries)` retries with backoff **and** re-fires from the loader's `reveal()` (warmup-done), so the list always populates.
+5. **Persona web-learn error** (`(s || "").replace is not a function`) — the learn *succeeded server-side* (verified: `/persona` returns clean string fields); the client crashed while re-rendering the panel (a contenteditable edit field that only appears post-learn triggers an injected-script throw). Fixed by wrapping the post-success UI refresh in `try/catch` in `_personaLearnNew` (the "Learned **X**" bubble now always shows), and hardening `esc()` → `String(s==null?'':s)` and `md()` → `String(src==null?'':src)` so a non-string can never throw from the renderers.
+6. **"failed to fetch" on SKILLS / CHATS / WEATHER** — diagnosed as transient, not a missing route: every endpoint (`/personas`, `/sessions`, `/memory/skill-failures`, `/chat/stream`) returns 200 in ms even *under concurrent load with an active chat stream* (the event loop is never blocked). The failures were the page fetching before warmup completed (or a stale page after a dev restart). Added `_netHint(e)` which converts network-level errors into "connection dropped or Adam is still warming up — give it a moment and try again", wired into `_skillFailuresShow`, `_pollSessionsList`, and `send()` so warmup/restart hiccups read as a friendly retry prompt instead of a raw `TypeError`.
+
+Verified by booting the server headless on :7755, confirming all endpoints 200 (idle + during stream), the learn flow returns a valid persona, and the rendered `/unified` page contains all ten fix markers. Test-created persona + temp logs cleaned up.
+
 ## v6.11.16 — Verify-before-answer made default for math (self-consistency in the live path) (2026-05-30)
 
 the maintainer confirmed the verify→correct→suppress feedback loop "was supposed to be default." It already runs live for **code** (generate → `_validate_python` → `_run_with_tests` → promote, with `_perturb_retry` on failure — the `run_tests_ok_promoted` chain proven in the live drill). The gap, per the unfathomable-analysis (the ONE highest-leverage move): the loop only fired for code-CoT — non-code verifiable tasks generated once and stopped. The offline `bench_code_selfcorrect.py` loop (real-error feedback, lifted HumanEval+ 80%→86.7%) and `modern_bench.self_consistency(k=5)` existed but never reached the runtime.
