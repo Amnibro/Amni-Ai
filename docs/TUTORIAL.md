@@ -6,13 +6,13 @@ A walkthrough of what makes Adam different from a typical chat model. By the end
 - Seen a query go from 180s (cold generate) → 80ms (lesson cache hit)
 - Hit the harm-intent screen with a phrased jailbreak
 
-Assumes you've finished [`INSTALL.md`](INSTALL.md). Server is running at `http://127.0.0.1:8001/`.
+Assumes you've finished [`INSTALL.md`](INSTALL.md). Server is running at `http://127.0.0.1:7700/`.
 
 ---
 
 ## 1. Open the chat
 
-Browser → `http://127.0.0.1:8001/`. You get a single-pane chat with the **Mentor** persona by default (calm, professional, mid-length responses).
+Browser → `http://127.0.0.1:7700/`. A loading screen shows while Adam warms the GF(17) weights, then the unified UI appears — chat with the **Rikku** persona by default.
 
 Type: `Hey, what's up?`
 
@@ -110,7 +110,7 @@ Benign queries pass through unaffected — the layers have measured zero false-p
 
 ## 7. Inspect the stats
 
-Click the engine-drawer icon in the topbar (or `curl http://127.0.0.1:8001/stats`). You'll see:
+Click the engine-drawer icon in the topbar (or `curl http://127.0.0.1:7700/stats`). You'll see:
 
 ```json
 {
