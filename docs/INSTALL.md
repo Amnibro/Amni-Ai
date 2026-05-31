@@ -8,7 +8,7 @@ Adam runs locally on your machine. The public clone is a complete, working insta
 
 | Use | VRAM | RAM | Disk |
 |---|---|---|---|
-| Adam only (Gemma-4 E2B GF17) | 4 GB | 8 GB | **~20 GB** (5 GB transferred via hf-xet dedup) |
+| Adam only (Granite-3B GF17) | 4 GB | 8 GB | **~20 GB** on disk (~5 GB transferred via hf-xet dedup) |
 | Adam + web-crawler tier | 8 GB | 16 GB | ~25 GB |
 | CPU-only fallback | 0 | 16 GB | ~20 GB |
 
@@ -74,7 +74,7 @@ The GUI installer is a thin pywebview wrapper (~5 MB, auto-installed on first ru
 ```bash
 git clone https://github.com/Amnibro/Amni-Ai
 cd Amni-Ai
-python install.py               # auto-downloads Gemma-4 E2B GF(17) bake from HuggingFace (~20 GB, one-time)
+python install.py               # auto-downloads the Granite-3B GF(17) bake from HuggingFace (one-time)
 ```
 
 `install.py` handles **everything**: venv creation, vendor-correct PyTorch (CUDA / ROCm / CPU auto-detect), pip install of dependencies, optional Rust toolchain + amni_kernels native build, first-run bake download from HuggingFace, then launches the server and opens your browser at `http://127.0.0.1:11434/`. You do **not** need to manually create a venv or `pip install -r requirements.txt` first.
@@ -97,13 +97,13 @@ Start Adam on the standard Ollama port (replace 11434 if you've changed it):
 python scripts/amni_serve.py --seed --cors --port 11434
 ```
 
-Now point your Ollama client at `http://127.0.0.1:11434`. Adam shows up as `adam:e2b-gf17` plus common aliases (`llama3`, `qwen`, `mistral`) so clients with hardcoded model names still resolve.
+Now point your Ollama client at `http://127.0.0.1:11434`. Adam shows up as `adam:granite-gf17` plus common aliases (`llama3.1`, `qwen2.5`, `gpt-4`) so clients with hardcoded model names still resolve.
 
 ### Open WebUI
 
 1. Install Open WebUI: `pip install open-webui && open-webui serve`
 2. Open `http://localhost:8080`, go to **Settings → Connections → Ollama API**, set base URL to `http://127.0.0.1:11434`
-3. Refresh model list — `adam:e2b-gf17` appears. Select it.
+3. Refresh model list — `adam:granite-gf17` appears. Select it.
 4. Chat normally. CoT scaffolds, self-tests, lesson promotion all fire — you'll see badges in Adam's responses (when using the native UI; Open WebUI shows the rendered text).
 
 ### Continue.dev (VS Code)
@@ -114,7 +114,7 @@ In your VS Code settings.json:
 "continue.models": [{
   "title": "Adam",
   "provider": "ollama",
-  "model": "adam:e2b-gf17",
+  "model": "adam:granite-gf17",
   "apiBase": "http://127.0.0.1:11434"
 }]
 ```
@@ -125,7 +125,7 @@ Hit `Ctrl+L`, ask Adam to refactor a function. The sandbox auto-runs and validat
 
 ```python
 from langchain_ollama import ChatOllama
-adam = ChatOllama(base_url="http://127.0.0.1:11434", model="adam:e2b-gf17")
+adam = ChatOllama(base_url="http://127.0.0.1:11434", model="adam:granite-gf17")
 print(adam.invoke("Write a Python function that returns the Nth Fibonacci number.").content)
 ```
 
@@ -185,11 +185,11 @@ Three quick smoke tests after install:
 
 ```bash
 # 1. Health check
-curl http://127.0.0.1:8001/healthz
+curl http://127.0.0.1:7700/healthz
 # {"status":"ok","lessons_n":1792,"skills_n":11,"version":"6.0.0"}
 
 # 2. Single-turn chat
-curl -X POST http://127.0.0.1:8001/chat \
+curl -X POST http://127.0.0.1:7700/chat \
   -H "Content-Type: application/json" \
   -d '{"message":"What is the capital of France?"}'
 
@@ -207,7 +207,7 @@ The third test asks Adam to write a function, runs the function in a sandbox, va
 
 **`CUDA out of memory` or `HIP out of memory`** — set `AMNI_BUDGET_MB=3000` in your environment before launch. Adam will stream more aggressively from disk. Sub-3GB means you'll feel it on long responses.
 
-**Port 8001 already in use** — pass `--port <N>` to `amni_serve.py`. The Ollama drop-in path uses 11434 by default if you launch Ollama-compatible.
+**Port 7700 already in use** — pass `--port <N>` to `amni_serve.py`. The Ollama drop-in path uses 11434 by default if you launch Ollama-compatible.
 
 **No GPU detected** — Adam falls back to CPU automatically but inference drops to ~1 tok/s. Install ROCm (AMD) or CUDA (NVIDIA) drivers + matching PyTorch wheel from [pytorch.org](https://pytorch.org/get-started/locally/).
 
