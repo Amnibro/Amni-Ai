@@ -5,7 +5,7 @@ _HTML=r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Adam — Jarvis Mode</title>
 <link rel="stylesheet" href="/assets/katex/katex.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css'">
-<script defer src="/assets/katex/katex.min.js" onload="window._katexReady=true" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';s.defer=true;s.onload=function(){window._katexReady=true};document.head.appendChild(s)"></script>
+<script defer src="/assets/katex/katex.min.js" onload="window._katexReady=true;window._rerenderPendingMath&&window._rerenderPendingMath()" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';s.defer=true;s.onload=function(){window._katexReady=true;window._rerenderPendingMath&&window._rerenderPendingMath()};document.head.appendChild(s)"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js" onload="window._prismCoreReady=true"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js" onload="if(window.Prism&&window.Prism.plugins&&window.Prism.plugins.autoloader){window.Prism.plugins.autoloader.languages_path='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/';}window._prismReady=true"></script>
@@ -337,6 +337,10 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #send:disabled{opacity:.3;cursor:wait}
 #voiceout-toggle{padding:0 14px;height:46px;border:1px solid rgba(var(--c-rgb),.3);background:rgba(var(--c-rgb),.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #voiceout-toggle.on{color:var(--gold);border-color:var(--gold);background:rgba(255,215,112,.08)}
+.md-table{border-collapse:collapse;margin:9px 0;font-size:12px;max-width:100%;display:block;overflow-x:auto}
+.md-table th,.md-table td{border:1px solid rgba(var(--c-rgb,0,229,255),.22);padding:5px 10px;text-align:left;vertical-align:top}
+.md-table th{background:rgba(var(--c-rgb,0,229,255),.10);font-weight:600;white-space:nowrap}
+.md-table tbody tr:nth-child(even) td{background:rgba(var(--c-rgb,0,229,255),.045)}
 .sidehint{position:fixed;bottom:14px;left:36px;font-size:9px;color:var(--mute);letter-spacing:.2em;z-index:3;pointer-events:none;opacity:.6}
 #wd-pill{position:fixed;bottom:14px;right:36px;font-size:9px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-family:JetBrains Mono,monospace;z-index:5;padding:3px 9px;border:1px solid rgba(var(--c-rgb),.18);background:rgba(var(--panel-rgb,8,14,28),.65);border-radius:99px;cursor:pointer;backdrop-filter:blur(6px);transition:all .15s;display:none}
 #wd-pill.show{display:inline-block}
@@ -766,14 +770,14 @@ body.theme-min #adam-core{opacity:.6}
 #cam-panel .custom-row .cg-act{color:var(--mute);font-size:8px;letter-spacing:.05em}
 #cam-panel .custom-row .cg-del{color:var(--err);cursor:pointer;padding:0 4px;border-radius:2px;border:1px solid transparent}
 #cam-panel .custom-row .cg-del:hover{border-color:var(--err);background:rgba(255,91,91,.1)}
-#pose-panel{position:fixed;top:60px;right:24px;width:268px;z-index:9;display:none;border:1px solid rgba(var(--g-rgb),.45);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.92);box-shadow:0 0 22px rgba(var(--g-rgb),.2);overflow:hidden}
-#pose-panel.show{display:block}
+#pose-panel{position:fixed;top:60px;right:24px;width:268px;z-index:9;display:none;border:1px solid rgba(var(--g-rgb),.45);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.92);box-shadow:0 0 22px rgba(var(--g-rgb),.2);overflow:hidden;resize:both;min-width:220px;min-height:280px;max-width:92vw;max-height:90vh}
+#pose-panel.show{display:flex;flex-direction:column}
 #pose-panel .pc-head{padding:5px 10px;background:rgba(var(--g-rgb),.09);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:#ffe066;text-shadow:0 0 4px #ffe066;display:flex;align-items:center;justify-content:space-between}
 #pose-panel .pc-head .dot{width:6px;height:6px;border-radius:50%;background:var(--mute);transition:background .2s}
 #pose-panel.live .pc-head .dot{background:var(--ok);box-shadow:0 0 6px var(--ok);animation:pulse 1.6s ease-in-out infinite}
 #pose-panel .pc-close{cursor:pointer;color:var(--mute);padding:0 6px;border:1px solid rgba(var(--g-rgb),.25);border-radius:2px;font-size:9px}
 #pose-panel .pc-close:hover{color:var(--err);border-color:var(--err)}
-#pose-stage{position:relative;width:268px;height:201px;background:#03060d}
+#pose-stage{position:relative;width:100%;flex:1;min-height:200px;background:#03060d}
 #pose-video,#pose-landmarks{position:absolute;inset:0;width:100%;height:100%}
 #pose-video{transform:scaleX(-1);object-fit:cover}
 #pose-panel .pc-controls{padding:6px 8px;display:flex;gap:6px;align-items:center;border-top:1px solid rgba(var(--g-rgb),.16)}
@@ -1005,7 +1009,7 @@ body.theme-min #adam-core{opacity:.6}
   <div id="composer">
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
     <div id="input-shell"><textarea id="input" placeholder="Speak or type… (/help for commands)" autofocus></textarea></div>
-    <button id="jarvis-toggle" type="button" onclick="toggleJarvisMode()" title="Engage Jarvis mode — convo + wake + gesture + voice all on">JARVIS</button>
+    <button id="jarvis-toggle" type="button" onclick="toggleJarvisMode()" title="Engage hands-free mode — convo + wake + gesture + voice all on">HANDS FREE</button>
     <button id="tools-toggle" type="button" onclick="toggleToolsDrawer()" title="Open tools drawer (voice, gesture, coach, export, etc)">TOOLS</button>
     <button id="send" onclick="send()">TRANSMIT</button>
   </div>
@@ -1313,6 +1317,9 @@ function _restoreMath(html){
     return `<span class="${cls}" data-latex="${esc(e.latex)}" data-display="${e.display?'1':'0'}">${e.display?'$$':'$'}${esc(e.latex)}${e.display?'$$':'$'}</span>`;
   });
 }
+function _mdCells(l){return l.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(function(c){return c.trim()})}
+function _mdIsSep(l){if(l.indexOf('-')<0)return false;var c=l.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(function(x){return x.trim()});return c.length>=2&&c.every(function(x){return /^:?-{1,}:?$/.test(x)})}
+function _mdTables(s){var lines=s.split('\n'),out=[],i=0,inPre=false;while(i<lines.length){var ln=lines[i];if(inPre){out.push(ln);if(ln.indexOf('</pre>')>=0)inPre=false;i++;continue}if(ln.indexOf('<pre')>=0&&ln.indexOf('</pre>')<0){inPre=true;out.push(ln);i++;continue}if(i+1<lines.length&&ln.indexOf('|')>=0&&_mdIsSep(lines[i+1])){var head=_mdCells(ln),al=_mdCells(lines[i+1]).map(function(c){var L=c.charAt(0)===':',R=c.charAt(c.length-1)===':';return L&&R?'center':R?'right':L?'left':''});i+=2;var rows=[];while(i<lines.length&&lines[i].indexOf('|')>=0&&lines[i].trim()!==''&&!_mdIsSep(lines[i])){rows.push(_mdCells(lines[i]));i++}var t='<table class="md-table"><thead><tr>'+head.map(function(h,j){return '<th'+(al[j]?' style="text-align:'+al[j]+'"':'')+'>'+h+'</th>'}).join('')+'</tr></thead><tbody>'+rows.map(function(r){return '<tr>'+r.map(function(c,j){return '<td'+(al[j]?' style="text-align:'+al[j]+'"':'')+'>'+(c||'')+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table>';out.push(t)}else{out.push(ln);i++}}return out.join('\n')}
 function md(src){
   src=String(src==null?'':src);
   src=src.replace(/\$\$([^$\n][^$]*?)\$\$/g,(_,l)=>_stashMath(l.trim(),true));
@@ -1328,8 +1335,10 @@ function md(src){
   src=src.replace(/\[([^\]]+)\]\(((?:https?:\/\/|\/)[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
   src=src.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)(?=[\s.,!?)]|$)/g,'$1<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$2</a>');
   src=src.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
-  src=src.replace(/^###\s+(.+)$/gm,'<strong>$1</strong>').replace(/^##\s+(.+)$/gm,'<strong>$1</strong>');
+  src=src.replace(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/gm,'<strong>$1</strong>').replace(/^\s{0,3}#{1,6}\s*$/gm,'');
+  src=_mdTables(src);
   src=src.replace(/\n\n+/g,'<br><br>').replace(/\n/g,'<br>');
+  src=src.replace(/(<\/table>)<br><br>/g,'$1').replace(/(<\/table>)<br>/g,'$1').replace(/<br><br>(<table)/g,'$1').replace(/<br>(<table)/g,'$1');
   src=_restoreMath(src);
   return src;
 }
@@ -1826,16 +1835,19 @@ function _typeTick(ts){
     _typeRAF=requestAnimationFrame(_typeTick);
   }else{
     _typeRAF=null;
-    const fn=_typeOnDone;_typeOnDone=null;_typeBot=null;
+    const _tb=_typeBot;const fn=_typeOnDone;_typeOnDone=null;_typeBot=null;
+    if(_tb){try{_rerenderPendingMath()}catch(_){}try{_rehighlightCode(_tb.bubble)}catch(_){}try{_rerenderPendingMermaid()}catch(_){}}
     if(typeof fn==='function')try{fn()}catch(_){}
   }
 }
 function _typePush(chunk){_typePending+=chunk;if(!_typeRAF&&_typeBot)_typeRAF=requestAnimationFrame(_typeTick)}
 function _typeFlushAll(){
   if(_typeRAF){cancelAnimationFrame(_typeRAF);_typeRAF=null}
-  if(_typeBot){try{_typeBot.bubble.innerHTML=md(_typePending);_smartScroll()}catch(_){}}
+  const _tb=_typeBot;
+  if(_tb){try{_tb.bubble.innerHTML=md(_typePending);_smartScroll()}catch(_){}}
   _typeShown=_typePending.length;
   const fn=_typeOnDone;_typeOnDone=null;_typeBot=null;
+  if(_tb){try{_rerenderPendingMath()}catch(_){}try{_rehighlightCode(_tb.bubble)}catch(_){}try{_rerenderPendingMermaid()}catch(_){}}
   if(typeof fn==='function')try{fn()}catch(_){}
 }
 function _setSendButtonState(streaming){
@@ -1856,7 +1868,8 @@ const _SLASH_COMMANDS=[
   {cmd:'sessions',hint:'open sessions browser'},
   {cmd:'tools',hint:'toggle the TOOLS drawer'},
   {cmd:'status',hint:'toggle the STATUS panel'},
-  {cmd:'jarvis',hint:'engage/disengage Jarvis mode'},
+  {cmd:'handsfree',hint:'engage/disengage hands-free mode'},
+  {cmd:'update',hint:'check for + apply git updates'},
   {cmd:'find',hint:'find <query> in workdir'},
   {cmd:'search',hint:'web search anytime (e.g. /search rust async)'},
   {cmd:'pace',hint:'set stream cps (10-2000)'},
@@ -1899,9 +1912,23 @@ function cycleTheme(){const ks=Object.keys(THEMES);const cur=localStorage.getIte
 let _cmdMenuOpen=false;
 function toggleCmdMenu(force){_cmdMenuOpen=(typeof force==='boolean')?force:!_cmdMenuOpen;const el=document.getElementById('cmd-menu');if(!el)return;if(_cmdMenuOpen)_renderCmdMenu();el.classList.toggle('show',_cmdMenuOpen)}
 function _menuRun(cmd){toggleCmdMenu(false);_slashAcAccept(cmd)}
-async function _openPeer(){try{const r=await fetch('/launch/peer',{method:'POST'});const j=await r.json();const url=(j&&j.url)||'http://localhost:3000';if(j&&j.ok){try{_showToast({id:'peer',level:'success',source:'LAUNCH',title:'Amni-Code starting…',body:'opening '+url,age_s:0})}catch(_){}setTimeout(()=>window.open(url,'_blank'),1600)}else{try{_showToast({id:'peer',level:'warn',source:'LAUNCH',title:'Amni-Code not launched',body:(j&&j.error)||'opening URL anyway',age_s:0})}catch(_){}window.open(url,'_blank')}}catch(e){window.open('http://localhost:3000','_blank')}}
+async function _openPeer(){try{const r=await fetch('/launch/peer',{method:'POST'});const j=await r.json();const url=(j&&j.url)||'http://localhost:3000';if(j&&j.ok){try{_showToast({id:'peer',level:'success',source:'LAUNCH',title:'Amni-Code launching…',body:'standalone window opening — '+((j&&j.launched)||url),age_s:0})}catch(_){}}else{try{_showToast({id:'peer',level:'warn',source:'LAUNCH',title:'Amni-Code standalone not found',body:((j&&j.error)||'opening in a browser tab instead'),age_s:0})}catch(_){}window.open(url,'_blank')}}catch(e){window.open('http://localhost:3000','_blank')}}
+async function _checkUpdate(){
+  try{_showToast({id:'upd',level:'info',source:'UPDATE',title:'Checking for updates…',body:'git fetch origin',age_s:0})}catch(_){}
+  let j;try{j=await(await fetch('/update/check')).json()}catch(e){try{_showToast({id:'upd',level:'warn',source:'UPDATE',title:'Update check failed',body:String(e&&e.message||e),age_s:0})}catch(_){}return}
+  if(!j||!j.ok){bubble('bot','Couldn\'t check for updates: '+esc((j&&j.error)||'unknown')+'. (Adam must be running from a git checkout with a remote.)','<span class="badge err">update</span>');return}
+  if(!j.update_available){bubble('bot','✅ **Adam is up to date** — on `'+esc(j.branch)+'` at `'+esc(j.current)+'`'+(j.ahead?(' · '+j.ahead+' local commit'+(j.ahead===1?'':'s')+' ahead of origin'):'')+'.','<span class="badge">update</span>');try{_showToast({id:'upd',level:'success',source:'UPDATE',title:'Up to date',body:j.branch+' @ '+j.current,age_s:0})}catch(_){}return}
+  const inc=(j.incoming||[]).slice(0,5).map(esc).join('\n');
+  bubble('bot','**Update available** — '+j.behind+' new commit'+(j.behind===1?'':'s')+' on `'+esc(j.branch)+'`.'+(j.dirty?' ⚠ You have **uncommitted local changes** — commit or stash them before updating.':'')+(inc?'\n\n```\n'+inc+'\n```':''),'<span class="badge">update</span>');
+  if(j.dirty)return;
+  if(!confirm('Pull '+j.behind+' update'+(j.behind===1?'':'s')+' on "'+j.branch+'"?\n\nApplies now; Adam needs a restart afterward to load it.'))return;
+  try{_showToast({id:'upd',level:'info',source:'UPDATE',title:'Updating…',body:'git pull --ff-only',age_s:0})}catch(_){}
+  let a;try{a=await(await fetch('/update/apply',{method:'POST'})).json()}catch(e){bubble('bot','Update failed to run: '+esc(String(e&&e.message||e)),'<span class="badge err">update</span>');return}
+  if(a&&a.ok){bubble('bot','✅ **Updated to** `'+esc(a.new)+'` on `'+esc(a.branch)+'`. '+esc(a.message||'Restart Adam to apply.')+'\n\n**Close this window and relaunch Adam** (or restart it from Mission Control) to load the new version.','<span class="badge">update</span>');try{_showToast({id:'upd',level:'success',source:'UPDATE',title:'Update applied — restart Adam',body:'now at '+a.new,age_s:0})}catch(_){}}
+  else{bubble('bot','⚠ Update failed: '+esc((a&&a.error)||'unknown')+((a&&a.changes&&a.changes.length)?('\n\nLocal changes blocking update:\n```\n'+a.changes.map(esc).join('\n')+'\n```'):''),'<span class="badge err">update</span>')}
+}
 function _showCliInfo(){try{_showToast({id:'cli',level:'success',source:'CLI',title:'Adam terminal CLI',body:'Run  amni chat  in a terminal (or: python -m amni.cli). Inside chat, prefix ! to run a shell command.',age_s:0})}catch(_){alert('Adam CLI: run "amni chat" in a terminal (or "python -m amni.cli").')}}
-function _renderCmdMenu(){const body=document.getElementById('cmd-menu-list');if(!body)return;const cur=localStorage.getItem(THEME_KEY)||'jarvis';const modes=[{label:'🎨 Theme',hint:'cycle palette — now: '+THEMES[cur].label,act:'toggleCmdMenu(false);cycleTheme()'},{label:'🔊 Voice Out',hint:'speak replies aloud (TTS)',act:'toggleCmdMenu(false);toggleVoiceOut()'},{label:'🛠 Tools drawer',hint:'voice · gesture · coach · export',act:'toggleCmdMenu(false);toggleToolsDrawer()'},{label:'⚙ Settings panel',hint:'personas · voices · themes · pace',act:'toggleCmdMenu(false);togglePersonaPanel()'},{label:'↗ Open Amni-Code',hint:'launch the granite-powered coding IDE',act:'toggleCmdMenu(false);_openPeer()'}];const mh='<div class="cm-group">MODES &amp; PANELS</div>'+modes.map(m=>`<div class="cm-row" onclick="${m.act}"><span class="cm-cmd">${m.label}</span><span class="cm-hint">${esc(m.hint)}</span></div>`).join('');const ch='<div class="cm-group">COMMANDS — click to run, no typing</div>'+_SLASH_COMMANDS.map(c=>`<div class="cm-row" onclick="_menuRun('${c.cmd}')"><span class="cm-cmd">/${esc(c.cmd)}</span><span class="cm-hint">${esc(c.hint)}</span></div>`).join('');body.innerHTML=mh+ch}
+function _renderCmdMenu(){const body=document.getElementById('cmd-menu-list');if(!body)return;const cur=localStorage.getItem(THEME_KEY)||'jarvis';const modes=[{label:'🎨 Theme',hint:'cycle palette — now: '+THEMES[cur].label,act:'toggleCmdMenu(false);cycleTheme()'},{label:'🔊 Voice Out',hint:'speak replies aloud (TTS)',act:'toggleCmdMenu(false);toggleVoiceOut()'},{label:'🛠 Tools drawer',hint:'voice · gesture · coach · export',act:'toggleCmdMenu(false);toggleToolsDrawer()'},{label:'⚙ Settings panel',hint:'personas · voices · themes · pace',act:'toggleCmdMenu(false);togglePersonaPanel()'},{label:'↗ Open Amni-Code',hint:'launch the granite-powered coding IDE',act:'toggleCmdMenu(false);_openPeer()'},{label:'⬆ Check for updates',hint:'git fetch + pull new versions from the UI',act:'toggleCmdMenu(false);_checkUpdate()'}];const mh='<div class="cm-group">MODES &amp; PANELS</div>'+modes.map(m=>`<div class="cm-row" onclick="${m.act}"><span class="cm-cmd">${m.label}</span><span class="cm-hint">${esc(m.hint)}</span></div>`).join('');const ch='<div class="cm-group">COMMANDS — click to run, no typing</div>'+_SLASH_COMMANDS.map(c=>`<div class="cm-row" onclick="_menuRun('${c.cmd}')"><span class="cm-cmd">/${esc(c.cmd)}</span><span class="cm-hint">${esc(c.hint)}</span></div>`).join('');body.innerHTML=mh+ch}
 const _GEO_CACHE_KEY='amni_jarvis_geo_cache';let _geoCache=null;
 (function(){try{const j=JSON.parse(localStorage.getItem(_GEO_CACHE_KEY)||'null');if(j&&typeof j.lat==='number'&&typeof j.lon==='number'&&Date.now()-(j.ts||0)<3600000)_geoCache=j}catch{}})();
 function _resolveLocalLocation(){
@@ -1954,7 +1981,8 @@ function _handleSlashCommand(text){
   if(cmd==='sessions'){toggleSessionsPanel();return true}
   if(cmd==='tools'){toggleToolsDrawer();return true}
   if(cmd==='status'){toggleStatusPanel();return true}
-  if(cmd==='jarvis'){toggleJarvisMode();return true}
+  if(cmd==='jarvis'||cmd==='handsfree'){toggleJarvisMode();return true}
+  if(cmd==='update'||cmd==='updates'){_checkUpdate();return true}
   if(cmd==='find'){if(!arg){bubble('bot','Usage: `/find <query>` — searches your workdir.','<span class="badge">cmd</span>');return true}input.value='find "'+arg.replace(/"/g,'\\"')+'"';return false}
   if(cmd==='search'){if(!arg){bubble('bot','Usage: `/search <query>` — web search anytime, no matter the context.','<span class="badge">cmd</span>');return true}_runWebSearch(arg);return true}
   if(cmd==='pace'){const n=parseInt(arg,10);if(isFinite(n)){_paceSliderChange(n);bubble('bot','Stream pace set to **'+n+' cps**.','<span class="badge">cmd</span>')}else{bubble('bot','Usage: `/pace <cps>` (10-2000). Current: **'+_typeSpeedCps()+' cps**.','<span class="badge">cmd</span>')}return true}
@@ -2069,6 +2097,8 @@ async function send(){
   try{
     const body=sid?{message:text,session_id:sid}:{message:text};
     if(_geoCoords){body.client_lat=_geoCoords.lat;body.client_lon=_geoCoords.lon}
+    const _pp=((typeof _selectedPersona!=='undefined'&&_selectedPersona)||(typeof personaName!=='undefined'&&personaName)||'');
+    if(_pp)body.persona=_pp;
     const resp=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:_streamAbort.signal});
     if(!resp.body){throw new Error('streaming not supported by browser')}
     const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';
@@ -2141,7 +2171,7 @@ async function probeVoiceBackends(){
 probeVoiceBackends();
 const PERSONA_KEY='amni_jarvis_persona',VOICE_KEY='amni_jarvis_voice';
 let _selectedPersona=localStorage.getItem(PERSONA_KEY)||'';
-let _selectedVoice=localStorage.getItem(VOICE_KEY)||'';
+let _selectedVoice=localStorage.getItem(VOICE_KEY)||'';if(_selectedVoice==='[object Object]'||_selectedVoice==='undefined'||_selectedVoice==='null'){_selectedVoice='';try{localStorage.removeItem(VOICE_KEY)}catch(_){}}
 let _personaPanelOpen=false,_knownPersonas=[],_availableVoices=[];
 async function _loadPersonas(){
   try{const j=await(await fetch('/personas')).json();_knownPersonas=j.known||j.list||(Array.isArray(j)?j:[]);if(!Array.isArray(_knownPersonas))_knownPersonas=[]}
@@ -2171,8 +2201,11 @@ function _renderPersonaPanel(){
   if(_availableVoices.length===0){voices.innerHTML='<div class="pp-empty">no piper voices · install via <code style="color:var(--cyan)">pip install piper-tts</code> + download a voice</div>'}
   else{
     voices.innerHTML='<div class="pp-row'+(!_selectedVoice?' active':'')+'" onclick="_pickVoice(\'\')"><span class="nm">auto (persona default)</span></div>'+_availableVoices.map(v=>{
-      const active=(v===_selectedVoice);
-      return `<div class="pp-row${active?' active':''}" onclick="_pickVoice('${esc(v).replace(/'/g,"\\\\'")}')"><span class="nm" style="font-family:Consolas,monospace;font-size:10px">${esc(v)}</span></div>`;
+      const vid=(v&&typeof v==='object')?String(v.id||v.alias||v.name||''):String(v);
+      const lbl=(v&&typeof v==='object')?String(v.label||v.name||v.id||'voice'):String(v);
+      const sub=(v&&typeof v==='object'&&v.name&&v.name!==lbl)?String(v.name):'';
+      const active=(vid===_selectedVoice);
+      return `<div class="pp-row${active?' active':''}" onclick="_pickVoice('${esc(vid).replace(/'/g,"\\\\'")}')"><span class="nm">${esc(lbl)}</span>${sub?' <span style="color:var(--mute);font-size:9px;font-family:Consolas,monospace">'+esc(sub)+'</span>':''}</div>`;
     }).join('');
   }
 }
@@ -3004,14 +3037,14 @@ function toggleJarvisMode(){
     if(!convoOn)try{toggleConvo()}catch(_){}
     if(!gestureOn)try{toggleGesture()}catch(_){}
     setTimeout(setBtn,200);
-    bubble('bot','**Jarvis mode engaged.** Convo + gesture + voice online — just talk, or wave to me. (Tap WAKE in TOOLS if you want it to require "Adam, …" first.)','<span class="badge">jarvis</span>');
+    bubble('bot','**Hands-free mode engaged.** Convo + gesture + voice online — just talk, or wave to me. (Tap WAKE in TOOLS if you want it to require "Adam, …" first.)','<span class="badge">hands-free</span>');
   }else{
     if(convoOn)try{toggleConvo()}catch(_){}
     if(gestureOn)try{toggleGesture()}catch(_){}
     if(wakeOn)try{toggleWake()}catch(_){}
     if(voiceOut)try{toggleVoiceOut()}catch(_){}
     setTimeout(setBtn,200);
-    bubble('bot','**Jarvis mode disengaged.** Back to manual.','<span class="badge">jarvis</span>');
+    bubble('bot','**Hands-free mode disengaged.** Back to manual.','<span class="badge">hands-free</span>');
   }
   setBtn();
 }
@@ -3541,7 +3574,7 @@ async function _poseStopSession(silent){
     const s=await(await fetch('/vision/pose/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})})).json();
     if(!silent&&s&&!s.error){
       const issues=(s.common_issues||[]).map(i=>i.msg).join('; ');
-      bubble('bot',md('**'+(s.label||'Workout')+' done!** '+s.reps+' reps · '+s.good_reps+' clean ('+s.clean_rate_pct+'%) · peak depth '+(s.peak_depth==null?'—':Math.round(s.peak_depth)+'°')+' · '+s.duration_s+'s.'+(issues?'\n\nWatch next time: '+issues:'\n\nClean form — nice work!')),'<span class="badge">coach</span>');
+      bubble('bot','**'+(s.label||'Workout')+' done!** '+s.reps+' reps · '+s.good_reps+' clean ('+s.clean_rate_pct+'%) · peak depth '+(s.peak_depth==null?'—':Math.round(s.peak_depth)+'°')+' · '+s.duration_s+'s.'+(issues?'\n\nWatch next time: '+issues:'\n\nClean form — nice work!'),'<span class="badge">coach</span>');
     }
   }catch(e){if(!silent)bubble('bot','Coach summary failed: '+esc(e.message),'<span class="badge err">coach</span>')}
 }

@@ -21,9 +21,16 @@ def _geocode(query:str)->Optional[Dict[str,Any]]:
     r=results[0]
     return {'lat':r.get('latitude'),'lon':r.get('longitude'),'name':r.get('name'),'country':r.get('country'),'tz':r.get('timezone')}
 _WEATHER_CODE_DESC={0:'clear sky',1:'mainly clear',2:'partly cloudy',3:'overcast',45:'foggy',48:'rime fog',51:'light drizzle',53:'moderate drizzle',55:'dense drizzle',61:'light rain',63:'moderate rain',65:'heavy rain',71:'light snow',73:'moderate snow',75:'heavy snow',77:'snow grains',80:'rain showers',81:'heavy showers',82:'violent showers',85:'snow showers',86:'heavy snow showers',95:'thunderstorm',96:'thunderstorm with hail',99:'severe thunderstorm with hail'}
+def _ip_geo()->Optional[Dict[str,Any]]:
+    j=_safe_get('http://ip-api.com/json/?fields=status,lat,lon,city,regionName,country',timeout=4.0)
+    if not j or j.get('_error') or j.get('status')!='success' or j.get('lat') is None:return None
+    return {'lat':j.get('lat'),'lon':j.get('lon'),'name':', '.join([x for x in (j.get('city'),j.get('regionName')) if x]) or j.get('country') or 'your area','tz':'auto'}
 def fetch_weather(location:str='',lat:Optional[float]=None,lon:Optional[float]=None)->Dict[str,Any]:
+    if (lat is None or lon is None) and (not location or location=='__need_geolocation__'):
+        g=_ip_geo()
+        if g:lat=g['lat'];lon=g['lon'];location=g.get('name') or ''
     if lat is None or lon is None:
-        if not location:return {'_error':'need location or lat/lon'}
+        if not location or location=='__need_geolocation__':return {'_error':'could not determine your location — allow location access in the PERMISSIONS panel, or ask "weather in <city>"'}
         g=_geocode(location)
         if not g:return {'_error':f'location "{location}" not found'}
         lat=g['lat'];lon=g['lon'];loc_name=f"{g.get('name','?')}, {g.get('country','')}".strip(', ');tz=g.get('tz','auto')
