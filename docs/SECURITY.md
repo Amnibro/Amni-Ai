@@ -30,6 +30,7 @@ PYTHONUTF8=1 python tests/run_security_suite.py
 - **Detection** — `conversation.detect_personal`: markers + names + addresses + soft-PII (DOB/handles/passport/etc.) **plus structural** Luhn-valid credit cards and checksum-valid SSNs (phrasing-independent; kills false positives that would drop legit lessons). [S2, S17]
 - **Scrubbing** — `federated.scrub_pii` (emails/phones/keys/paths/UUID + structural cc/ssn); `pii_egress.scrub` is the choke-point for web/crawl/news egress (patterns + the user's own PersonalAtlas tokens). [S3, S11]
 - **Ingest parity** — crawl (`_ingest_one_url`), federation (`federation_import`), and the `scan` skill all run `scrub_pii` + `sanitize_ingest` at intake, so raw secrets never reach the local store. [S3, S6, S25, S35]
+- **PTEX load filter** — `SemanticPTEXLUT.load` / `RoutedSemanticLUT.load` audit every `(q,a)` pair (PII/injection/markup/dangerous-code) and drop polluted ones at load, so a faulty/malicious *committed* PTEX can't seed the live store; `np.load(allow_pickle=False)` blocks deserialization-RCE via a crafted `.npz`. [S48]
 - **Egress** — `scrub_egress` on uncaught errors, `HTTPException` details, streamed SSE error events, returned error dicts, `/health`/`/stats` workdir; on-disk audit logs (shell history, skill calls) scrubbed before write; `scrub_secrets` (keys+homedir, answer-safe) on the live reasoning stream. [S11, S14, S33, S34]
 - **Write gate** — manual `/teach` rejects `detect_personal` content (the one ungated path into the PTEX). [S4]
 
