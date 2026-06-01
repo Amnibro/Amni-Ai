@@ -376,8 +376,6 @@ if(!localStorage.getItem(WKEY))setTimeout(showWizard,800);
 def mount(app):
     from fastapi.responses import HTMLResponse,Response
     from pathlib import Path as _P
-    @app.get('/',response_class=HTMLResponse)
-    def index():return HTMLResponse(content=_HTML)
     @app.get('/favicon.ico')
     def favicon():return Response(status_code=204)
     _HUD_PATH=_P(__file__).resolve().parents[2]/'docs'/'hud'/'index.html'

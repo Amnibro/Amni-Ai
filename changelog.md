@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.32 — Removed the dead duplicate `/` route in web.py (shadowed by root_unified) so root always serves the unified UI unambiguously. Explains why pre-v6.11.15 builds default to the HUD — updating flips root to unified. (2026-06-01)
+
 - v6.11.31 — VRAM auto-toggle LIVE: fresh `amni init` now picks the bake by VRAM (≤~11GB → Gemma-4-E2B revived as the low-VRAM tier, else Granite-3B); un-deprecated the E2B bake. Only fires when no bake is configured, so existing installs are untouched. (Granite-4.1-1.7B GF(17) bake to replace E2B = a later dedicated-GPU task.) (2026-06-01)
 
 - v6.11.30 — VRAM-aware bake tiers (`bootstrap.recommend_bake_tier`) + launch-time LOW-VRAM warning: detect VRAM, warn loudly when the configured bake overflows the card (e.g. 8GB 3060 Ti + 3B bake = VRAM-full thrash → 15-min gens + high CPU) and name the best-fit tier. Framework ready; auto-switch pending a published low-VRAM granite bake (only deprecated gemma-E2B is small enough today). (2026-06-01)
