@@ -46,16 +46,49 @@ body.u-on #u-rail,body.u-on #u-statusbar{z-index:40}
 body.u-on #composer{z-index:24}
 body.u-on div[id$="-panel"],body.u-on #tools-drawer,body.u-on #task-tray,body.u-on #toast-stack{z-index:85!important}
 body.u-on #cmd-menu,body.u-on #kbd-overlay,body.u-on #gesture-tour,body.u-on #train-modal,body.u-on #chat-search,body.u-on .slash-ac{z-index:120!important}
+#u-hamburger{display:none}
+#u-scrim{display:none}
+@media(max-width:768px){
+body.u-on{--u-rail:0px;overflow-x:hidden}
+body.u-on #app{margin-left:0}
+body.u-on header{padding-left:50px}
+#u-rail{transform:translateX(-110%);transition:transform .25s ease;width:80px;z-index:130}
+body.u-rail-open #u-rail{transform:translateX(0);box-shadow:0 0 44px rgba(0,0,0,.7)}
+#u-hamburger{display:flex;position:fixed;top:9px;left:9px;z-index:140;width:42px;height:42px;border-radius:11px;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(var(--panel-rgb,10,18,36),.94);border:1px solid rgba(var(--c-rgb,0,229,255),.35);cursor:pointer;backdrop-filter:blur(6px)}
+#u-hamburger span{width:20px;height:2px;border-radius:2px;background:var(--cyan,#00e5ff);transition:transform .2s,opacity .2s}
+body.u-rail-open #u-hamburger span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+body.u-rail-open #u-hamburger span:nth-child(2){opacity:0}
+body.u-rail-open #u-hamburger span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+#u-scrim{display:block;position:fixed;inset:0;z-index:125;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s}
+body.u-rail-open #u-scrim{opacity:1;pointer-events:auto}
+body.u-on #u-statusbar{left:0;font-size:8px;letter-spacing:.02em;padding:0 8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+body.u-on #u-statusbar .u-st{padding:0 8px}
+body.u-on .bubble{max-width:88vw}
+body.u-on .msg{max-width:100%}
+body.u-on .bubble pre,body.u-on .md-table{max-width:100%;overflow-x:auto}
+body.u-on #log{padding:16px 12px}
+body.u-on .welcome{padding:30px 14px}
+body.u-on .welcome .examples{grid-template-columns:1fr;max-width:100%;margin-top:16px}
+body.u-on .welcome #welcome-tagline,body.u-on .welcome h2{overflow-wrap:break-word;word-break:break-word}
+body.u-on #task-tray{width:94vw}
+body.u-on #task-tray:not(.show){display:none}
+body.u-on #u-statusbar{height:auto;min-height:var(--u-bar);padding-bottom:env(safe-area-inset-bottom,0px)}
+body.u-on #app{margin-bottom:calc(var(--u-bar) + env(safe-area-inset-bottom,0px))}
+body.u-on #input-shell{min-width:0}
+body.u-on #composer{gap:7px;padding:9px 12px}
+}
 </style>"""
 _BOOT=r"""<script id="unified-boot">(function(){try{
 var B=document.body;B.classList.add('u-on');
 function el(t,a,h){var e=document.createElement(t);if(a)for(var k in a)e.setAttribute(k,a[k]);if(h!=null)e.innerHTML=h;return e;}
 var rail=el('div',{id:'u-rail'});
 var navs=[['JARVIS','⚡',function(){var i=document.getElementById('input');i&&i.focus();}],['CODE','⌨',function(){try{_openPeer();}catch(e){window.open('http://127.0.0.1:3000','_blank');}}],['CLI','▤',function(){try{_showCliInfo();}catch(e){}}],['HUD','◈',function(){location.href='/hud';}],['VOICE','🔊',function(){try{toggleToolsDrawer();}catch(e){}}],['CHATS','☷',function(){try{toggleSessionsPanel();}catch(e){try{toggleStatusPanel();}catch(_){}}}],['SKILLS','⚙',function(){try{toggleStatusPanel();}catch(e){}}],['WEATHER','🌤',function(){try{(typeof _qcAsk==='function'?_qcAsk:quick)("what's my local weather and forecast for today and this week?");}catch(e){}}],['MENU','≡',function(){try{toggleCmdMenu();}catch(e){}}]];
-navs.forEach(function(n,i){var b=el('div',{class:'u-nav'+(i===0?' active':''),title:n[0]},'<span class="ic">'+n[1]+'</span><span class="lb">'+n[0]+'</span>');b.onclick=function(){rail.querySelectorAll('.u-nav').forEach(function(x){x.classList.remove('active');});b.classList.add('active');n[2]();};rail.appendChild(b);});
+navs.forEach(function(n,i){var b=el('div',{class:'u-nav'+(i===0?' active':''),title:n[0]},'<span class="ic">'+n[1]+'</span><span class="lb">'+n[0]+'</span>');b.onclick=function(){rail.querySelectorAll('.u-nav').forEach(function(x){x.classList.remove('active');});b.classList.add('active');n[2]();B.classList.remove('u-rail-open');};rail.appendChild(b);});
 rail.appendChild(el('div',{class:'u-spacer'}));
-var theme=el('div',{class:'u-nav',title:'Persona + theme'},'<span class="ic">◐</span><span class="lb">THEME</span>');theme.onclick=function(){try{togglePersonaPanel();}catch(e){}};rail.appendChild(theme);
+var theme=el('div',{class:'u-nav',title:'Persona + theme'},'<span class="ic">◐</span><span class="lb">THEME</span>');theme.onclick=function(){try{togglePersonaPanel();}catch(e){}B.classList.remove('u-rail-open');};rail.appendChild(theme);
 B.appendChild(rail);
+var burger=el('div',{id:'u-hamburger',title:'Menu'},'<span></span><span></span><span></span>');burger.setAttribute('aria-label','Menu');burger.onclick=function(){B.classList.toggle('u-rail-open');};B.appendChild(burger);
+var scrim=el('div',{id:'u-scrim'});scrim.onclick=function(){B.classList.remove('u-rail-open');};B.appendChild(scrim);
 var bar=el('div',{id:'u-statusbar'});
 bar.innerHTML='<span class="u-st"><span class="led"></span>GF(17) <b id="u-ver">online</b></span><span class="u-st">lessons <b id="u-lessons">—</b></span><span class="u-st">skills <b id="u-skills">—</b></span><span class="u-st">tts <b id="u-tts">—</b></span><span class="u-st">gpu <b id="u-gpu">—</b></span><span class="u-st">recall <b id="u-recall">—</b></span>';
 B.appendChild(bar);

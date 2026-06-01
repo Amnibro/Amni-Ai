@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.23 — Mobile reflow (hamburger + full-width chat + 1-col examples + hidden empty task-tray) + Phase-0 prefill telemetry (/perf/prefill) + bugfixes: agent.py missing `import os` (math-CoT NameError), persona "I can't browse" denial, web-query context loss (2026-05-31)
+
 - v6.11.22 — Adam on your phone: installable PWA (manifest/sw/icons) + token auth gate (AMNI_AUTH_TOKEN) + Cloudflare tunnel launcher (scripts/tunnel.py) + MOBILE.md (2026-05-31)
 
 - v6.11.21 — KaTeX renders on every message, TTS voice list fixed, no-hallucinate skill failures (2026-05-31)

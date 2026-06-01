@@ -1,7 +1,15 @@
-import os,sys,torch
+import os,sys,torch,time,json
 os.environ.setdefault('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL','1')
 from pathlib import Path
 _ROOT=Path(__file__).resolve().parents[2]
+_PERF_ON=os.environ.get('AMNI_PERF_TELEMETRY','1').lower() not in ('0','false','no')
+_PERF_PATH=_ROOT/'experiences'/'perf'/'prefill_telemetry.jsonl'
+def _perf_record(d):
+    if not _PERF_ON:return
+    try:
+        _PERF_PATH.parent.mkdir(parents=True,exist_ok=True)
+        with open(_PERF_PATH,'a',encoding='utf-8') as f:f.write(json.dumps(d)+'\n')
+    except Exception:pass
 sys.path.insert(0,str(_ROOT))
 _IMPORT_ERROR=None
 try:
@@ -153,7 +161,9 @@ class StreamingChatService:
                 try:self._block_bank.add_sequence(ids[0].tolist());self._block_bank.flush()
                 except Exception:pass
             return self.tok.decode(new_ids,skip_special_tokens=True),int(new_ids.shape[0])
-        return run_on_gpu(_job)
+        _pt=int(enc_cpu.input_ids.shape[1]);_t0=time.time();_r=run_on_gpu(_job)
+        _perf_record({'ts':time.time(),'mode':'text','prompt_tokens':_pt,'new_tokens':(_r[1] if isinstance(_r,tuple) else None),'gen_ms':round((time.time()-_t0)*1000,1),'sampled':bool(do_sample)})
+        return _r
     def generate_stream(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0):
         from transformers import TextIteratorStreamer,StoppingCriteria,StoppingCriteriaList
         from threading import Event
@@ -170,16 +180,23 @@ class StreamingChatService:
             gen_kw=dict(input_ids=enc.input_ids,attention_mask=enc.attention_mask,max_new_tokens=max_new_tokens,do_sample=do_sample,temperature=temperature if do_sample else 1.0,pad_token_id=self.tok.pad_token_id,eos_token_id=self.tok.eos_token_id,streamer=streamer,stopping_criteria=StoppingCriteriaList([_StopOnEvent()]))
             if bspec:gen_kw['prompt_lookup_num_tokens']=int(os.environ.get('AMNI_BLOCK_K','12'))
             self._safe_generate(gen_kw)
+        _pt=int(enc_cpu.input_ids.shape[1]);_t0=time.time();_ttft=None
         done=GPU_QUEUE.submit_async(_job)
         try:
             for chunk in streamer:
-                if chunk:yield chunk
+                if chunk:
+                    if _ttft is None:_ttft=round((time.time()-_t0)*1000,1)
+                    yield chunk
         finally:
             stop_event.set()
             done.wait(timeout=5.0)
             if bspec and getattr(self,'_last_gen_ids',None) is not None:
                 try:self._block_bank.add_sequence(self._last_gen_ids[0].tolist());self._block_bank.flush()
                 except Exception:pass
+            try:
+                _nt=int(self._last_gen_ids.shape[1]-_pt) if getattr(self,'_last_gen_ids',None) is not None else None
+                _perf_record({'ts':time.time(),'mode':'stream','prompt_tokens':_pt,'new_tokens':_nt,'ttft_ms':_ttft,'gen_ms':round((time.time()-_t0)*1000,1),'sampled':bool(do_sample)})
+            except Exception:pass
     def _safe_generate(self,gen_kw):
         try:
             with torch.no_grad():out=self.model.generate(**gen_kw)

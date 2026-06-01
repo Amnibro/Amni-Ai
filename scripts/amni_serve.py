@@ -96,11 +96,13 @@ def _strip_tool_announce(text):
 _VAGUE_WEB_RE=re.compile(r"\b(?:on\s+the\s+web|online|out\s+there|what'?s\s+new|news|latest|current\s+events|anything\s+(?:exciting|new|interesting|happening))\b",re.IGNORECASE)
 _PROPER_NOUN_RE=re.compile(r"\b([A-Z][a-zA-Z]+(?:[\s\-][A-Z][a-zA-Z]+)*(?:\s+(?:NY|CA|TX|FL|UK|USA|US))?)\b")
 _LOCAL_INTENT_RE=re.compile(r"\b(?:near\s+me|nearby|around\s+(?:here|me)|local|in\s+my\s+area|in\s+the\s+area|events?|things\s+to\s+do|restaurants?|stores?|shops?|attractions?|family[- ]friendly|kid[- ]friendly|child[- ]friendly|weather|forecast)\b",re.IGNORECASE)
+_RESEARCH_WEB_RE=re.compile(r"\b(?:find|get|look\s*up|search\s+for|pull\s*up|show\s+me|are\s+there\s+any|any)\b[^.?!]{0,40}\b(?:sources?|citations?|references?|proof|evidence|articles?|studies|papers?)\b|\b(?:confirm|verify|fact[-\s]?check|double[-\s]?check)\s+(?:this|that|it|the\b)|\bsources?\s+(?:for|confirming|that\s+confirm|to\s+(?:confirm|back))\b",re.IGNORECASE)
+_REF_WEB_RE=re.compile(r"\b(?:this|that|it|the\s+above|the\s+same|same\s+thing|earlier|confirm(?:ing|s)?|verify(?:ing)?)\b",re.IGNORECASE)
 def _enrich_web_query(user_msg,conv,profile):
     q=(user_msg or '').strip()
     if not q:return q
     q=re.sub(r'^(?:use\s+|please\s+)?(?:web|search|google)(?:\s+skill)?\s*[:]\s*','',q,flags=re.IGNORECASE)
-    needs_context=len(q.split())<6 or bool(_VAGUE_WEB_RE.search(q)) or bool(_LOCAL_INTENT_RE.search(q))
+    needs_context=len(q.split())<6 or bool(_VAGUE_WEB_RE.search(q)) or bool(_LOCAL_INTENT_RE.search(q)) or bool(_REF_WEB_RE.search(q))
     if not needs_context:return q[:200]
     extras=[]
     try:
@@ -432,7 +434,7 @@ def main():
             _persona_query=bool(persona and persona.name and persona.name.lower() in req.message.lower() and len(req.message.split())>=3)
             _pre_web_supplemented=False
             try:
-                _is_fresh=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message))
+                _is_fresh=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message)) or bool(_RESEARCH_WEB_RE.search(req.message))
                 _is_introsp=(_intent_label in ('greeting','introspection')) or bool(_INTROSPECT_NO_WEB_RE.search(req.message))
                 if (not is_private) and skills.has('web') and _is_fresh and not _is_introsp:
                     _enriched_pre=_enrich_web_query(req.message,conv,getattr(agent,'profile',None))
@@ -626,7 +628,7 @@ def main():
                                 yield f'event: exec\ndata: {_json.dumps({"error":run_r.output["error"]})}\n\n'
                         except Exception as e:yield f'event: exec\ndata: {_json.dumps({"error":_egress(str(e))})}\n\n'
             _introspect_no_web=(_intent_label in ('greeting','introspection')) or bool(_INTROSPECT_NO_WEB_RE.search(req.message))
-            _needs_fresh_info=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message))
+            _needs_fresh_info=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message)) or bool(_RESEARCH_WEB_RE.search(req.message))
             if (not is_private) and skills.has('web') and not _memory_recall and not _profile_authoritative and not _introspect_no_web and not _pre_web_supplemented and (raw_final or final) and _UNCERTAIN_RE.search(raw_final or final or ''):
                 _enriched_q=_enrich_web_query(req.message,conv,getattr(agent,'profile',None))
                 if len(_enriched_q.split())<4:
@@ -836,6 +838,24 @@ def main():
         if pull.returncode!=0:return {'ok':False,'error':out[:500] or 'git pull failed'}
         new=_git('rev-parse','HEAD');new_sha=(new.stdout or '').strip()[:9] if new else ''
         return {'ok':True,'pulled':True,'branch':branch,'new':new_sha,'output':out[:500],'restart_required':True,'message':'Update applied. Restart Adam to load the new version.'}
+    @app.get('/perf/prefill')
+    def _perf_prefill(n:int=3000):
+        import json as _pj
+        from pathlib import Path as _PP
+        f=_PP(_REPO_ROOT)/'experiences'/'perf'/'prefill_telemetry.jsonl'
+        recs=[]
+        try:
+            if f.exists():
+                for ln in f.read_text(encoding='utf-8').splitlines()[-max(1,n):]:
+                    try:recs.append(_pj.loads(ln))
+                    except Exception:pass
+        except Exception:pass
+        def _agg(key):
+            vals=sorted(r[key] for r in recs if isinstance(r.get(key),(int,float)))
+            if not vals:return None
+            return {'n':len(vals),'avg':round(sum(vals)/len(vals),1),'p50':vals[len(vals)//2],'p95':vals[min(len(vals)-1,int(len(vals)*0.95))],'max':vals[-1]}
+        lh=_iter_counters.get('lut_hits',0);cg=_iter_counters.get('cot_generations',0)
+        return {'samples':len(recs),'prompt_tokens':_agg('prompt_tokens'),'ttft_ms':_agg('ttft_ms'),'gen_ms':_agg('gen_ms'),'new_tokens':_agg('new_tokens'),'counters':{'lut_hits':lh,'cot_generations':cg,'lut_hit_rate_pct':round(100*lh/max(1,lh+cg),1)},'note':'prompt_tokens = prefill size re-paid every cot turn; ttft_ms ~= prefill latency'}
     @app.get('/workdir')
     def workdir():
         wd=str(skills.workdir) if hasattr(skills,'workdir') else ''

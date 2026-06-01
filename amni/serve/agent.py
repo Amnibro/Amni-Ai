@@ -1,7 +1,7 @@
 """AmniAgent — wraps Adam with skill dispatch + multi-turn conversation.
 Flow: receive user msg → detect skill intent (regex first, Adam classifier fallback) → run skill if matched → synthesize via Adam → persist turn.
 Backend stays multifunctional; frontend just sees `{answer, tier, tokens, skill_calls, session_id}`."""
-import re,time,json,ast
+import os,re,time,json,ast
 from pathlib import Path
 from typing import Optional,Dict,Any,List,Tuple
 from amni.serve.skills import SkillRegistry,default_registry
