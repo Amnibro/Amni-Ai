@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.27 — Conceptual "how do you calculate/compute/solve X" no longer mis-routes to the calc skill (now requires a real arithmetic expression) → hits the streaming CoT path: LIVE token streaming restored (151 tok @ ~57ms vs a 27s all-at-once skill dump) + no truncation (full 4096 budget, clean endings); also render `\(…\)`/`\[…\]` LaTeX delimiters (were showing literal) (2026-06-01)
+
 - v6.11.26 — Fix: mobile sidebar nav taps did nothing — the scrim rendered above the rail (mobile `#u-rail{z-index:130}` lost on specificity to `body.u-on #u-rail{z-index:40}`, so taps hit the scrim + closed the menu); raised rail above scrim + iOS flex-child pointer-events guard (2026-06-01)
 
 - v6.11.25 — Mobile/tablet composer: input+send on row 1, secondary buttons row 2 (phone, via flex-break); task-tray no longer overlaps the composer at any width (was hiding the input on tablet); daily kickoff stops re-nagging the stale "N edits awaiting review" (only shows newly-pending) (2026-06-01)
