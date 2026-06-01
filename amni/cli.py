@@ -2,7 +2,7 @@
 Mirrors Amni-Prism's CLI shape so installing both packages gives a coherent toolset."""
 import argparse,sys,os,json,time,webbrowser,threading
 from pathlib import Path
-from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST
+from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST,detect_vram_gb,recommend_bake_tier
 def _add_common_adam(p):
     cfg=load_config()
     default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'granite41_3b_gf17')
@@ -18,7 +18,10 @@ def cmd_init(args):
     print(f'Detected bake: {cfg.get("bake") or "(none)"}',flush=True)
     print(f'Detected model: {cfg.get("model") or "(none)"}',flush=True)
     if not args.skip_model and not cfg.get('bake'):
-        if args.non_interactive or _ask('Download Granite-4.1-3B GF(17) bake from HF (~13 GB, one-time)?'):
+        _vram=detect_vram_gb();_tier=recommend_bake_tier(_vram)
+        cfg['hf_bake_repo']=_tier[1];cfg['bake']=str(CONFIG_DIR/'bakes'/_tier[2])
+        print(f'[init] {(str(_vram)+" GB" if _vram else "no/unknown")} VRAM -> selecting {_tier[3]} bake ({_tier[1]}, ~{_tier[4]} GB resident)',flush=True)
+        if args.non_interactive or _ask(f'Download {_tier[3]} GF(17) bake from HF (one-time)?'):
             b=download_bake(cfg)
             if b:cfg['bake']=str(b)
     if cfg.get('bake') and bake_has_runtime_metadata(cfg.get('bake')):
