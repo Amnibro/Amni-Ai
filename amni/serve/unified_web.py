@@ -54,8 +54,9 @@ body.u-on #cmd-menu,body.u-on #kbd-overlay,body.u-on #gesture-tour,body.u-on #tr
 body.u-on{--u-rail:0px;overflow-x:hidden}
 body.u-on #app{margin-left:0}
 body.u-on header{padding-left:50px}
-#u-rail{transform:translateX(-110%);transition:transform .25s ease;width:80px;z-index:130}
-body.u-rail-open #u-rail{transform:translateX(0);box-shadow:0 0 44px rgba(0,0,0,.7)}
+body.u-on #u-rail{transform:translateX(-110%);transition:transform .25s ease;width:80px;z-index:130}
+body.u-on.u-rail-open #u-rail{transform:translateX(0);box-shadow:0 0 44px rgba(0,0,0,.7);z-index:130}
+body.u-on #u-rail .u-nav>*{pointer-events:none}
 #u-hamburger{display:flex;position:fixed;top:9px;left:9px;z-index:140;width:42px;height:42px;border-radius:11px;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(var(--panel-rgb,10,18,36),.94);border:1px solid rgba(var(--c-rgb,0,229,255),.35);cursor:pointer;backdrop-filter:blur(6px)}
 #u-hamburger span{width:20px;height:2px;border-radius:2px;background:var(--cyan,#00e5ff);transition:transform .2s,opacity .2s}
 body.u-rail-open #u-hamburger span:nth-child(1){transform:translateY(6px) rotate(45deg)}
