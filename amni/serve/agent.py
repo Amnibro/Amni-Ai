@@ -487,7 +487,8 @@ class AmniAgent:
         m=_CALC_RE.search(msg)
         if m:
             ex=_EXPR_EXTRACT.search(msg)
-            return ('calc',{'expr':ex.group(1) if ex else msg})
+            if ex or _CALC_EXPR_RE.search(msg):
+                return ('calc',{'expr':ex.group(1) if ex else msg})
         m=_FILE_READ_RE.search(msg)
         if m and self.skills.has('file_read'):return ('file_read',{'path':m.group(1)})
         m=_FILE_WRITE_RE.search(msg)
