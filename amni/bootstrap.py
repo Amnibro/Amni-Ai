@@ -18,8 +18,8 @@ CONFIG_DIR=Path(_resolve_amni_home())
 CONFIG_FILE=CONFIG_DIR/'config.json'
 DEFAULT_HF_REPO='amnibro/granite41-3b-gf17'
 DEFAULT_BASE_REPO='ibm-granite/granite-4.1-3b'
-_LEGACY_BAKE_REPOS={'amnibro/gemma-4-E2B-it-gf17'}
-_LEGACY_BAKE_DIRS={'gemma4_e2b_it_gf17','gemma-4-E2B-it'}
+_LEGACY_BAKE_REPOS=set()
+_LEGACY_BAKE_DIRS=set()
 BAKE_TIERS=[(11.0,'amnibro/granite41-3b-gf17','granite41_3b_gf17','Granite-4.1-3B',7.5),(0.0,'amnibro/gemma-4-E2B-it-gf17','gemma4_e2b_it_gf17','Gemma-4-E2B',3.8)]
 def detect_vram_gb():
     try:
