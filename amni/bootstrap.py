@@ -20,6 +20,23 @@ DEFAULT_HF_REPO='amnibro/granite41-3b-gf17'
 DEFAULT_BASE_REPO='ibm-granite/granite-4.1-3b'
 _LEGACY_BAKE_REPOS={'amnibro/gemma-4-E2B-it-gf17'}
 _LEGACY_BAKE_DIRS={'gemma4_e2b_it_gf17','gemma-4-E2B-it'}
+BAKE_TIERS=[(11.0,'amnibro/granite41-3b-gf17','granite41_3b_gf17','Granite-4.1-3B',7.5),(0.0,'amnibro/gemma-4-E2B-it-gf17','gemma4_e2b_it_gf17','Gemma-4-E2B',3.8)]
+def detect_vram_gb():
+    try:
+        import torch
+        if torch.cuda.is_available():return round(torch.cuda.get_device_properties(0).total_memory/(1024**3),1)
+    except Exception:pass
+    return None
+def recommend_bake_tier(vram_gb):
+    if vram_gb is None:return BAKE_TIERS[-1]
+    for t in BAKE_TIERS:
+        if vram_gb>=t[0]:return t
+    return BAKE_TIERS[-1]
+def bake_tier_for_dir(bake_dir):
+    n=Path(bake_dir).name.lower() if bake_dir else ''
+    for t in BAKE_TIERS:
+        if t[2].lower() in n:return t
+    return None
 DEFAULT_PORT=7700
 DEFAULT_HOST='127.0.0.1'
 _DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'block_bank':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
