@@ -164,6 +164,23 @@ class StreamingChatService:
         _pt=int(enc_cpu.input_ids.shape[1]);_t0=time.time();_r=run_on_gpu(_job)
         _perf_record({'ts':time.time(),'mode':'text','prompt_tokens':_pt,'new_tokens':(_r[1] if isinstance(_r,tuple) else None),'gen_ms':round((time.time()-_t0)*1000,1),'sampled':bool(do_sample)})
         return _r
+    def kv_selftest(self,max_new_tokens=24):
+        from amni.inference.gpu_queue import run_on_gpu
+        prompt=self._build_prompt('Name the first 5 prime numbers, comma separated.','You are a precise, terse assistant.',None,None,kb_block=None)
+        def _job():
+            enc=self.tok(prompt,return_tensors='pt').to(self.device);ids=enc.input_ids;am=enc.attention_mask;N=int(ids.shape[1])
+            with torch.no_grad():base=self.model.generate(input_ids=ids,attention_mask=am,max_new_tokens=max_new_tokens,do_sample=False,pad_token_id=self.tok.pad_token_id)
+            base_new=base[0,N:]
+            try:
+                t0=time.time()
+                with torch.no_grad():pre=self.model(input_ids=ids[:,:N-1],attention_mask=am[:,:N-1],use_cache=True)
+                with torch.no_grad():cached=self.model.generate(input_ids=ids,attention_mask=am,past_key_values=pre.past_key_values,max_new_tokens=max_new_tokens,do_sample=False,pad_token_id=self.tok.pad_token_id)
+                cached_new=cached[0,N:]
+                ok=bool(torch.equal(base_new.cpu(),cached_new.cpu()))
+                return {'supported':True,'bit_exact':ok,'prompt_tokens':N,'cached_ms':round((time.time()-t0)*1000,1),'base':self.tok.decode(base_new,skip_special_tokens=True),'cached':self.tok.decode(cached_new,skip_special_tokens=True)}
+            except Exception as e:
+                return {'supported':False,'error':f'{type(e).__name__}: {e}'[:300],'prompt_tokens':N,'base':self.tok.decode(base_new,skip_special_tokens=True)}
+        return run_on_gpu(_job)
     def generate_stream(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0):
         from transformers import TextIteratorStreamer,StoppingCriteria,StoppingCriteriaList
         from threading import Event

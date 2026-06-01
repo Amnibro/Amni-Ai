@@ -76,6 +76,12 @@ body.u-on #u-statusbar{height:auto;min-height:var(--u-bar);padding-bottom:env(sa
 body.u-on #app{margin-bottom:calc(var(--u-bar) + env(safe-area-inset-bottom,0px))}
 body.u-on #input-shell{min-width:0}
 body.u-on #composer{gap:7px;padding:9px 12px}
+html,body.u-on,body.u-on #app,body.u-on #log,body.u-on .welcome,body.u-on #composer{max-width:100vw;box-sizing:border-box}
+body.u-on .welcome h2{letter-spacing:.12em;font-size:12px;word-break:break-word}
+body.u-on .welcome #welcome-tagline,body.u-on .welcome #welcome-persona-stamp{letter-spacing:.03em}
+body.u-on .welcome,body.u-on .welcome *,body.u-on .bubble,body.u-on .msg{overflow-wrap:anywhere;word-break:break-word}
+body.u-on .title{letter-spacing:.06em;font-size:15px}
+body.u-on #toast-stack{max-width:92vw;right:8px}
 }
 </style>"""
 _BOOT=r"""<script id="unified-boot">(function(){try{
