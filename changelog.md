@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.25 — Mobile/tablet composer: input+send on row 1, secondary buttons row 2 (phone, via flex-break); task-tray no longer overlaps the composer at any width (was hiding the input on tablet); daily kickoff stops re-nagging the stale "N edits awaiting review" (only shows newly-pending) (2026-06-01)
+
 - v6.11.24 — Phase-1 KV groundwork: **bit-exact KV-prefix reuse VALIDATED** on the GF(17) streaming model via `/perf/kv_verify` (supported+bit_exact, zero generation-path change) + mobile stretch clamp (letter-spacing/break-anywhere/box-sizing/toast clamp) (2026-05-31)
 
 - v6.11.23 — Mobile reflow (hamburger + full-width chat + 1-col examples + hidden empty task-tray) + Phase-0 prefill telemetry (/perf/prefill) + bugfixes: agent.py missing `import os` (math-CoT NameError), persona "I can't browse" denial, web-query context loss (2026-05-31)

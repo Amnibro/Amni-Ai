@@ -2360,9 +2360,11 @@ async function _dailyKickoff(){
     const dg=await digestR.json();const reviews=(reviewsR&&reviewsR.ok)?(await reviewsR.json()).reviews||[]:[];
     const personaName=((personaR&&personaR.ok)?(await personaR.json()).default:'')||'neutral';
     const facts=(dg.learning||{}).facts_today||0;const errs=(dg.shell||{}).errors_today||0;const pending=(dg.verifier||{}).pending||0;const streak=(dg.coach||{}).streak_days||0;const today_active=(dg.coach||{}).today_active;
+    const _kickPrevPending=parseInt(localStorage.getItem('amni_jarvis_kickoff_pending')||'0',10);try{localStorage.setItem('amni_jarvis_kickoff_pending',String(pending))}catch(_){}
+    const _newPending=Math.max(0,pending-_kickPrevPending);
     const parts=[];
     if(reviews.length)parts.push(reviews.length+' coach card'+(reviews.length===1?'':'s')+' due for review');
-    if(pending)parts.push(pending+' edit'+(pending===1?'':'s')+' awaiting your review');
+    if(_newPending)parts.push(_newPending+' new edit'+(_newPending===1?'':'s')+' awaiting your review');
     if(errs)parts.push(errs+' shell error'+(errs===1?'':'s')+' overnight');
     if(facts)parts.push(facts+' new fact'+(facts===1?'':'s')+' learned via daemon');
     if(streak>0&&!today_active)parts.push('your '+streak+'-day coach streak is at stake — practice once today to keep it');

@@ -45,6 +45,8 @@ body.u-on #log{position:relative;z-index:5}
 body.u-on #u-rail,body.u-on #u-statusbar{z-index:40}
 body.u-on #composer{z-index:24}
 body.u-on div[id$="-panel"],body.u-on #tools-drawer,body.u-on #task-tray,body.u-on #toast-stack{z-index:85!important}
+body.u-on #task-tray:not(.show){visibility:hidden;pointer-events:none}
+.u-cbreak{display:none}
 body.u-on #cmd-menu,body.u-on #kbd-overlay,body.u-on #gesture-tour,body.u-on #train-modal,body.u-on #chat-search,body.u-on .slash-ac{z-index:120!important}
 #u-hamburger{display:none}
 #u-scrim{display:none}
@@ -82,6 +84,13 @@ body.u-on .welcome #welcome-tagline,body.u-on .welcome #welcome-persona-stamp{le
 body.u-on .welcome,body.u-on .welcome *,body.u-on .bubble,body.u-on .msg{overflow-wrap:anywhere;word-break:break-word}
 body.u-on .title{letter-spacing:.06em;font-size:15px}
 body.u-on #toast-stack{max-width:92vw;right:8px}
+body.u-on #composer{flex-wrap:wrap;row-gap:8px}
+body.u-on #input-shell{order:1;flex:1 1 auto;min-width:0}
+body.u-on #send{order:2;flex:0 0 auto}
+body.u-on .u-cbreak{display:block;order:3;flex:0 0 100%;width:100%;height:0;margin:0;padding:0;border:0}
+body.u-on #mic-shell{order:4}
+body.u-on #jarvis-toggle{order:5;flex:1 1 auto}
+body.u-on #tools-toggle{order:6;flex:1 1 auto}
 }
 </style>"""
 _BOOT=r"""<script id="unified-boot">(function(){try{
@@ -95,6 +104,7 @@ var theme=el('div',{class:'u-nav',title:'Persona + theme'},'<span class="ic">◐
 B.appendChild(rail);
 var burger=el('div',{id:'u-hamburger',title:'Menu'},'<span></span><span></span><span></span>');burger.setAttribute('aria-label','Menu');burger.onclick=function(){B.classList.toggle('u-rail-open');};B.appendChild(burger);
 var scrim=el('div',{id:'u-scrim'});scrim.onclick=function(){B.classList.remove('u-rail-open');};B.appendChild(scrim);
+try{var _cmp=document.getElementById('composer');if(_cmp&&!_cmp.querySelector('.u-cbreak'))_cmp.appendChild(el('div',{class:'u-cbreak'}));}catch(e){}
 var bar=el('div',{id:'u-statusbar'});
 bar.innerHTML='<span class="u-st"><span class="led"></span>GF(17) <b id="u-ver">online</b></span><span class="u-st">lessons <b id="u-lessons">—</b></span><span class="u-st">skills <b id="u-skills">—</b></span><span class="u-st">tts <b id="u-tts">—</b></span><span class="u-st">gpu <b id="u-gpu">—</b></span><span class="u-st">recall <b id="u-recall">—</b></span>';
 B.appendChild(bar);
