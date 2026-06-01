@@ -480,6 +480,11 @@ def main():
             in_final=not expects_final;buf='';seen_final=False;_buf_start=time.time();_last_ping=time.time();_drift_stop=False;_final_buf=''
             _max_out=int(os.environ.get('AMNI_MAX_OUTPUT_BYTES',str(512*1024)));_out_bytes=0
             _DRIFT_MARKERS=('Thinking Process','thought\n','\nThinking','**Self-','*(Self-','**Analyze Request','1. RESTATE:','1.  RESTATE:','1. **Analyze','**Recall Persona','**Determine Strategy','Self-Correction','\n[Looked','[Looked','[Search performed','[Search completed','[Search done','[Search results','[Presenting','[Current weather data','[Result of search','[The system returns','(Outputting the result','(Search returns','(Result of search','(Waiting for search','(Assuming the search')
+            try:
+                import json as _ppj
+                _ppf=Path(_REPO_ROOT)/'experiences'/'perf'/'pipeline_telemetry.jsonl';_ppf.parent.mkdir(parents=True,exist_ok=True)
+                with open(_ppf,'a',encoding='utf-8') as _ppfh:_ppfh.write(_ppj.dumps({'ts':time.time(),'to_gen_ms':round((time.time()-t0)*1000,1),'facts_n':len(user_facts),'hist_n':len(history_pairs),'pre_web':bool(_pre_web_supplemented),'cot':bool(apply_cot),'cat':category})+'\n')
+            except Exception:pass
             _genstream=adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True)
             try:
                 for chunk in _genstream:
@@ -856,6 +861,22 @@ def main():
             return {'n':len(vals),'avg':round(sum(vals)/len(vals),1),'p50':vals[len(vals)//2],'p95':vals[min(len(vals)-1,int(len(vals)*0.95))],'max':vals[-1]}
         lh=_iter_counters.get('lut_hits',0);cg=_iter_counters.get('cot_generations',0)
         return {'samples':len(recs),'prompt_tokens':_agg('prompt_tokens'),'ttft_ms':_agg('ttft_ms'),'gen_ms':_agg('gen_ms'),'new_tokens':_agg('new_tokens'),'counters':{'lut_hits':lh,'cot_generations':cg,'lut_hit_rate_pct':round(100*lh/max(1,lh+cg),1)},'note':'prompt_tokens = prefill size re-paid every cot turn; ttft_ms ~= prefill latency'}
+    @app.get('/perf/pipeline')
+    def _perf_pipeline_agg(n:int=2000):
+        import json as _pj
+        from pathlib import Path as _PP
+        f=_PP(_REPO_ROOT)/'experiences'/'perf'/'pipeline_telemetry.jsonl';recs=[]
+        try:
+            if f.exists():
+                for ln in f.read_text(encoding='utf-8').splitlines()[-max(1,n):]:
+                    try:recs.append(_pj.loads(ln))
+                    except Exception:pass
+        except Exception:pass
+        def _agg(key):
+            vals=sorted(r[key] for r in recs if isinstance(r.get(key),(int,float)))
+            if not vals:return None
+            return {'n':len(vals),'avg':round(sum(vals)/len(vals),1),'p50':vals[len(vals)//2],'p95':vals[min(len(vals)-1,int(len(vals)*0.95))],'max':vals[-1]}
+        return {'samples':len(recs),'to_gen_ms':_agg('to_gen_ms'),'with_pre_web':sum(1 for r in recs if r.get('pre_web')),'note':'to_gen_ms = full pre-generation pipeline (recall/facts/skill/intent/LUT) before the model is even called; compare to ttft_ms in /perf/prefill'}
     @app.get('/perf/kv_verify')
     def _kv_verify():
         if getattr(adam,'svc',None) is None:return {'error':'runtime not loaded'}

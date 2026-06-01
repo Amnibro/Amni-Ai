@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.29 — Perf loop iter 1: pipeline-stage telemetry (`/perf/pipeline`). FINDING: the pre-generation pipeline (recall/facts/intent-screen/intent-clf/LUT) took ~9.6s before the model is even called (no web) — THAT's the TTFT bottleneck, not prefill (~52ms) or weight-swap (none, fully resident). Next: per-stage breakdown to pinpoint. (2026-06-01)
+
 - v6.11.28 — KV-prefix measurement (`/perf/kv_prefix`): bit-exact reuse confirmed (97.6% reusable) but warm prefill of 1682 tokens saves only ~52ms → prefill is NOT the TTFT bottleneck (weight-streaming is); Phase-1/2 prefix-KV cache shelved as low-value. Measure-first win. (2026-06-01)
 
 - v6.11.27 — Conceptual "how do you calculate/compute/solve X" no longer mis-routes to the calc skill (now requires a real arithmetic expression) → hits the streaming CoT path: LIVE token streaming restored (151 tok @ ~57ms vs a 27s all-at-once skill dump) + no truncation (full 4096 budget, clean endings); also render `\(…\)`/`\[…\]` LaTeX delimiters (were showing literal) (2026-06-01)
