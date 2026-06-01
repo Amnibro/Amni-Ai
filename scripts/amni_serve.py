@@ -861,6 +861,17 @@ def main():
         if getattr(adam,'svc',None) is None:return {'error':'runtime not loaded'}
         try:return adam.svc.kv_selftest()
         except Exception as _ke:return {'error':f'{type(_ke).__name__}: {_ke}'[:300]}
+    @app.get('/perf/kv_prefix')
+    def _kv_prefix():
+        if getattr(adam,'svc',None) is None:return {'error':'runtime not loaded'}
+        try:
+            import time as _kt
+            _p=agent.personas.get('rikku') if agent.use_persona else None
+            _sysp=_p.system_prompt('') if _p else 'You are a helpful assistant.'
+            _f1=['The current local date and time is '+_kt.strftime('%A, %B %d, %Y at %I:%M %p',_kt.localtime())+'.']
+            _f2=['The current local date and time is '+_kt.strftime('%A, %B %d, %Y at %I:%M:%S %p',_kt.localtime())+'.']
+            return adam.svc.kv_prefix_compare(_sysp,'What is the capital of France?','And roughly what is its population?',facts1=_f1,facts2=_f2)
+        except Exception as _ke:return {'error':f'{type(_ke).__name__}: {_ke}'[:300]}
     @app.get('/workdir')
     def workdir():
         wd=str(skills.workdir) if hasattr(skills,'workdir') else ''
