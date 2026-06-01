@@ -112,6 +112,13 @@ def cmd_serve(args):
         cfg=load_config()
         if cfg.get('bake'):args.bake=cfg['bake']
         if cfg.get('model'):args.model=cfg['model']
+    try:
+        from amni.bootstrap import detect_vram_gb,recommend_bake_tier,bake_tier_for_dir
+        _vram=detect_vram_gb();_cur=bake_tier_for_dir(args.bake);_rec=recommend_bake_tier(_vram)
+        if _vram is not None and _cur and _cur[4]>_vram*0.92:
+            print(f'\n[!] LOW-VRAM WARNING: {_vram} GB VRAM detected, but bake "{_cur[3]}" needs ~{_cur[4]} GB resident — it will overflow VRAM and THRASH (very slow generation, high CPU, GPU pinned near 100%).',flush=True)
+            print(f'    Best fit for {_vram} GB is {_rec[3]}. Switch: set AMNI_BAKE (or config hf_bake_repo={_rec[1]}, bake dir {_rec[2]}) then re-run `amni init`.\n',flush=True)
+    except Exception:pass
     sys.argv=['amni_serve.py','--port',str(args.port),'--host',args.host,'--bake',args.bake,'--model',args.model,'--lessons',args.lessons,'--lut-root',args.lut_root,'--conv-root',args.conv_root,'--audit-log',args.audit_log,'--persona-bank',args.persona_bank]
     if args.workdir:sys.argv+=['--workdir',args.workdir]
     for r in (args.root or []):sys.argv+=['--root',r]
