@@ -181,6 +181,25 @@ class StreamingChatService:
             except Exception as e:
                 return {'supported':False,'error':f'{type(e).__name__}: {e}'[:300],'prompt_tokens':N,'base':self.tok.decode(base_new,skip_special_tokens=True)}
         return run_on_gpu(_job)
+    def kv_prefix_compare(self,system,user1,user2,facts1=None,facts2=None,max_new_tokens=40):
+        from amni.inference.gpu_queue import run_on_gpu
+        p1=self._build_prompt(user1,system,None,facts1,kb_block=None)
+        p2=self._build_prompt(user2,system,[(user1,'(noted)')],facts2,kb_block=None)
+        def _job():
+            e2=self.tok(p2,return_tensors='pt').to(self.device);ids2=e2.input_ids;am2=e2.attention_mask;N=int(ids2.shape[1])
+            ids1=self.tok(p1,return_tensors='pt').input_ids[0];b=ids2[0].cpu();n=min(ids1.shape[0],b.shape[0]);L=0
+            while L<n and int(ids1[L])==int(b[L]):L+=1
+            tb=time.time()
+            with torch.no_grad():base=self.model.generate(input_ids=ids2,attention_mask=am2,max_new_tokens=max_new_tokens,do_sample=False,pad_token_id=self.tok.pad_token_id)
+            base_ms=round((time.time()-tb)*1000,0);base_new=base[0,N:]
+            if L<8:return {'ok':False,'reason':'common prefix too short','reused_prefix_tokens':L,'p2_tokens':N}
+            with torch.no_grad():pre=self.model(input_ids=ids2[:,:L],attention_mask=am2[:,:L],use_cache=True)
+            tc=time.time()
+            with torch.no_grad():cached=self.model.generate(input_ids=ids2,attention_mask=am2,past_key_values=pre.past_key_values,max_new_tokens=max_new_tokens,do_sample=False,pad_token_id=self.tok.pad_token_id)
+            cached_ms=round((time.time()-tc)*1000,0);cached_new=cached[0,N:]
+            ok=bool(torch.equal(base_new.cpu(),cached_new.cpu()))
+            return {'bit_exact':ok,'p2_tokens':N,'reused_prefix_tokens':L,'reused_pct':round(100*L/N,1),'baseline_gen_ms':base_ms,'reuse_gen_ms':cached_ms,'prefill_saved_ms':round(base_ms-cached_ms,0)}
+        return run_on_gpu(_job)
     def generate_stream(self,prompt,max_new_tokens=80,do_sample=False,temperature=1.0):
         from transformers import TextIteratorStreamer,StoppingCriteria,StoppingCriteriaList
         from threading import Event
