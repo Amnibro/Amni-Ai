@@ -856,6 +856,11 @@ def main():
             return {'n':len(vals),'avg':round(sum(vals)/len(vals),1),'p50':vals[len(vals)//2],'p95':vals[min(len(vals)-1,int(len(vals)*0.95))],'max':vals[-1]}
         lh=_iter_counters.get('lut_hits',0);cg=_iter_counters.get('cot_generations',0)
         return {'samples':len(recs),'prompt_tokens':_agg('prompt_tokens'),'ttft_ms':_agg('ttft_ms'),'gen_ms':_agg('gen_ms'),'new_tokens':_agg('new_tokens'),'counters':{'lut_hits':lh,'cot_generations':cg,'lut_hit_rate_pct':round(100*lh/max(1,lh+cg),1)},'note':'prompt_tokens = prefill size re-paid every cot turn; ttft_ms ~= prefill latency'}
+    @app.get('/perf/kv_verify')
+    def _kv_verify():
+        if getattr(adam,'svc',None) is None:return {'error':'runtime not loaded'}
+        try:return adam.svc.kv_selftest()
+        except Exception as _ke:return {'error':f'{type(_ke).__name__}: {_ke}'[:300]}
     @app.get('/workdir')
     def workdir():
         wd=str(skills.workdir) if hasattr(skills,'workdir') else ''
