@@ -197,20 +197,18 @@ _clone_probe/
 /_calcbug.py
 /adam_qr.png
 
-# Dev-only — NOT needed to run Adam (kept local; repo ships only runtime + thin README)
-scripts/autonomous_coder.py
-scripts/installer_server.py
-scripts/palette_bake_proto.py
-scripts/bake_fp16_to_rgba16.py
-scripts/palette_vram_validate.py
-scripts/haven_task_driver.py
-scripts/e2b_diag.py
-scripts/e2b_direct_test.py
-tests/_critique_probe.py
-tests/_critique_exec_probe.py
-docs/adam_autonomy_hardening.md
-docs/ac_*.md
-docs/adam_autonomous_haven_watchlog.md
-docs/haven_autonomous_evidence.md
-docs/haven_goal.txt
+# === FULL SLIM-DOWN (Anthony 2026-06-04): public repo ships ONLY what RUNS Adam ===
+# Runtime = amni/ + amni_kernels/ + pyproject + requirements + install/launch scripts
+# + scripts/amni_serve.py + README/LICENSE/changelog. Everything below is kept LOCAL
+# (tests, docs, examples, editor extensions, bench/dev scripts, bench/KB data fixtures,
+# standalone utilities, autonomous-coder harness + its sandboxes/probes).
+tests/
+docs/
+examples/
+extensions/
+data/
 intt_explore/
+/gf17_translator.py
+/MOBILE.md
+scripts/*
+!scripts/amni_serve.py
