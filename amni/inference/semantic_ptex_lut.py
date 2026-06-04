@@ -84,7 +84,12 @@ class SemanticPTEXLUT:
         raw=list(self._raw)
         if not raw:return
         qs=[q for q,_ in raw]
-        embs=enc(qs)
+        _cache=getattr(self,'_emb_by_q',None)
+        if _cache is None:_cache={};self._emb_by_q=_cache
+        _new=[q for q in qs if q not in _cache]
+        if _new:
+            for _q,_e in zip(_new,enc(_new)):_cache[_q]=_e
+        embs=np.asarray([_cache[q] for q in qs],dtype='float32')
         self._stored_embs=embs
         centered=embs-embs.mean(axis=0)
         self._pca_mean=embs.mean(axis=0)

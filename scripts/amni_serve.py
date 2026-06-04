@@ -237,11 +237,11 @@ def main():
         _intent_clf._ensure_embedded()
         print(f'[amni_serve] intent classifier ready (embedder={_enc is not None})',flush=True)
     except Exception as _ie:print(f'[amni_serve] intent classifier init failed: {_ie}',flush=True);_intent_clf=None
-    _warmup_state={'done':False,'wall_s':None,'error':None}
+    _warmup_state={'done':False,'wall_s':None,'error':None,'coding':False}
     if not os.environ.get('AMNI_NO_WARMUP'):
         import threading as _th
         def _bg_warmup():
-            _w0=time.time();print('[amni_serve] background warmup (compiles ROCm/CUDA kernels, ~10-30s)...',flush=True)
+            _w0=time.time();print('[amni_serve] background warmup (compiles ROCm/CUDA kernels + coding tools, ~10-30s)...',flush=True)
             try:
                 _ = adam.ask('hi',writeback=False)
                 _warmup_state['wall_s']=round(time.time()-_w0,1);_warmup_state['done']=True
@@ -249,8 +249,18 @@ def main():
             except Exception as _we:
                 _warmup_state['error']=str(_we)[:200];_warmup_state['done']=True
                 print(f'[amni_serve] warmup failed (non-fatal): {_we}',flush=True)
+            try:
+                _se=getattr(adam,'sem_lut',None)
+                if _se is not None:
+                    if hasattr(_se,'_ensure_encoder'):_se._ensure_encoder()
+                    if hasattr(_se,'fit'):
+                        try:_se.fit()
+                        except Exception:pass
+                print('[amni_serve] coding warmup done (embedder + lesson-embedding cache primed — first scan/distill is now incremental-fast)',flush=True)
+            except Exception as _ce:print(f'[amni_serve] coding warmup failed (non-fatal): {_ce}',flush=True)
+            _warmup_state['coding']=True
         _th.Thread(target=_bg_warmup,daemon=True).start()
-    else:_warmup_state['done']=True
+    else:_warmup_state['done']=True;_warmup_state['coding']=True
     skills=default_registry(workdir=args.workdir,roots=args.root,audit_log=args.audit_log,unrestricted=args.unrestricted_files)
     store=ConversationStore(root=args.conv_root)
     personas=PersonaStore(adam=adam,bank_path=args.persona_bank)
