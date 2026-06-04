@@ -21,6 +21,23 @@ DEFAULT_BASE_REPO='ibm-granite/granite-4.1-3b'
 _LEGACY_BAKE_REPOS=set()
 _LEGACY_BAKE_DIRS=set()
 BAKE_TIERS=[(11.0,'amnibro/granite41-3b-gf17','granite41_3b_gf17','Granite-4.1-3B',7.5),(0.0,'amnibro/gemma-4-E2B-it-gf17','gemma4_e2b_it_gf17','Gemma-4-E2B',3.8)]
+_IGPU_ARCH={'gfx1103','gfx1150','gfx1151','gfx1152','gfx90c','gfx1035','gfx1036','gfx1037','gfx1010'}
+def _is_igpu(d):
+    n=(d.get('name') or '').lower();a=d.get('arch') or ''
+    return a in _IGPU_ARCH or ('graphics' in n and not any(t in n for t in ('rx ','radeon pro','instinct',' mi','w7','w6','w5')))
+def pin_discrete_gpu():
+    if os.environ.get('HIP_VISIBLE_DEVICES') is not None or os.environ.get('CUDA_VISIBLE_DEVICES') is not None or os.environ.get('AMNI_NO_GPU_PIN'):return None
+    import subprocess
+    probe='import torch,json;print(json.dumps([{"i":i,"name":torch.cuda.get_device_name(i),"arch":(getattr(torch.cuda.get_device_properties(i),"gcnArchName","") or "").split(":")[0],"mem":int(torch.cuda.get_device_properties(i).total_memory)} for i in range(torch.cuda.device_count())] if torch.cuda.is_available() else []))'
+    try:info=json.loads((subprocess.run([sys.executable,'-c',probe],capture_output=True,text=True,timeout=120).stdout or '').strip().splitlines()[-1])
+    except Exception:return None
+    if len(info)<2:return None
+    disc=[d for d in info if (d.get('arch') or '').startswith('gfx') and not _is_igpu(d)]
+    pool=disc or [d for d in info if (d.get('arch') or '').startswith('gfx')] or info
+    best=max(pool,key=lambda d:d.get('mem',0))
+    os.environ['HIP_VISIBLE_DEVICES']=str(best['i'])
+    print(f"[gpu-pin] {len(info)} GPUs detected; pinning discrete -> HIP_VISIBLE_DEVICES={best['i']} ({best.get('name')}, {best.get('mem',0)//(1024**3)}GB). iGPU(s) hidden so weights load into dedicated VRAM, not system RAM.",flush=True)
+    return best['i']
 def detect_vram_gb():
     try:
         import torch
@@ -39,7 +56,7 @@ def bake_tier_for_dir(bake_dir):
     return None
 DEFAULT_PORT=7700
 DEFAULT_HOST='127.0.0.1'
-_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'block_bank':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000}
+_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'block_bank':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000,'granite_ready':False}
 def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
@@ -62,9 +79,15 @@ def load_config()->Dict[str,Any]:
     cfg=dict(_DEFAULTS)
     if CONFIG_FILE.exists():
         try:
-            saved=json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
+            saved=json.loads(CONFIG_FILE.read_text(encoding='utf-8-sig'))
             saved={k:v for k,v in saved.items() if k in _DEFAULTS}
             cfg.update(saved)
+            _gr={'amnibro/gemma-4-E2B-it-gf17'};_gd={'gemma4_e2b_it_gf17','gemma-4-E2B-it'}
+            _isg=(cfg.get('hf_bake_repo') in _gr) or bool(cfg.get('bake') and Path(cfg['bake']).name in _gd) or bool(cfg.get('model') and Path(cfg['model']).name in _gd)
+            if _isg and cfg.get('granite_ready',False) and (detect_vram_gb() or 0.0)>=11.0:
+                if cfg.get('hf_bake_repo') in _gr:cfg['hf_bake_repo']=DEFAULT_HF_REPO
+                if cfg.get('bake') and Path(cfg['bake']).name in _gd:cfg['bake']=None
+                if cfg.get('model') and Path(cfg['model']).name in _gd:cfg['model']=None
             if cfg.get('hf_bake_repo') in _LEGACY_BAKE_REPOS:cfg['hf_bake_repo']=DEFAULT_HF_REPO
             if cfg.get('bake') and Path(cfg['bake']).name in _LEGACY_BAKE_DIRS:cfg['bake']=None
             if cfg.get('model') and Path(cfg['model']).name in _LEGACY_BAKE_DIRS:cfg['model']=None

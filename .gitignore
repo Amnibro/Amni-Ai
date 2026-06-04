@@ -185,3 +185,14 @@ data/*.json
 json/
 tests/*.log
 *.bak_pre_fp8
+
+# Autonomous-coder sandboxes — third-party clones (ancsemi/Haven = GPL) + clone probes, never ship
+_haven_ref/
+haven_task_sandbox/
+haven_task_sandbox_C/
+_clone_probe/
+# root-level session scratch / probe dumps / identity QR (never ship)
+/_*.json
+/_*.txt
+/_calcbug.py
+/adam_qr.png

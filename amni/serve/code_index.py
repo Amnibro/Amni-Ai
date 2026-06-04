@@ -61,16 +61,16 @@ def _summary(text:str,lang:str)->str:
             c=s.lstrip('/#*  ').strip()
             if len(c)>8:return c[:160]
     return ''
-def _extract_symbols(text:str,lang:str,cap:int=80)->List[str]:
+def _extract_symbols(text:str,lang:str,cap:int=80):
     pats=_SYM.get(lang) or []
-    out=[];seen=set()
+    out=[];seen=set();lines={}
     for pat in pats:
         for m in pat.finditer(text):
             sym=m.group(1)
             if sym and sym not in seen and not sym.startswith('_'):
-                seen.add(sym);out.append(sym)
-                if len(out)>=cap:return out
-    return out
+                seen.add(sym);out.append(sym);lines[sym]=text.count('\n',0,m.start())+1
+                if len(out)>=cap:return out,lines
+    return out,lines
 def build_index(root:Optional[str]=None,max_files:int=6000,max_bytes:int=500000,ptex:bool=True,encoder=None)->Dict[str,Any]:
     base=Path(root).expanduser() if root else _repo_root()
     if not base.exists():return {'error':f'root not found: {base}'}
@@ -88,8 +88,8 @@ def build_index(root:Optional[str]=None,max_files:int=6000,max_bytes:int=500000,
             except Exception:skipped+=1;continue
             rel=(str(fp.relative_to(base)) if str(fp).startswith(str(base)) else str(fp)).replace('\\','/')
             lang=_aliases.get(lang,lang)
-            syms=_extract_symbols(text,lang)
-            files[rel]={'lang':lang,'lines':text.count('\n')+1,'symbols':syms,'summary':_summary(text,lang),'bytes':fp.stat().st_size}
+            syms,slines=_extract_symbols(text,lang)
+            files[rel]={'lang':lang,'lines':text.count('\n')+1,'symbols':syms,'sym_lines':slines,'summary':_summary(text,lang),'bytes':fp.stat().st_size}
             langs[lang]=langs.get(lang,0)+1;n_sym+=len(syms);scanned+=1
             if scanned>=max_files:break
         if scanned>=max_files:break
@@ -113,7 +113,7 @@ def query(term:str,limit:int=25)->Dict[str,Any]:
     for path,info in (idx.get('files') or {}).items():
         if tl in path.lower():file_hits.append({'path':path,'lang':info.get('lang'),'lines':info.get('lines'),'summary':info.get('summary','')})
         for s in info.get('symbols') or []:
-            if tl in s.lower():sym_hits.append({'symbol':s,'path':path,'lang':info.get('lang')})
+            if tl in s.lower():sym_hits.append({'symbol':s,'path':path,'line':(info.get('sym_lines') or {}).get(s),'lang':info.get('lang')})
     sym_hits.sort(key=lambda h:(h['symbol'].lower()!=tl,len(h['symbol'])))
     return {'query':term,'symbols':sym_hits[:limit],'files':file_hits[:limit],'n_symbol_hits':len(sym_hits),'n_file_hits':len(file_hits),'root':idx.get('root')}
 def file_info(path:str)->Dict[str,Any]:

@@ -160,7 +160,7 @@ def fetch_git_status(workdir:Optional[str]=None)->Dict[str,Any]:
     except Exception:pass
     return {'workdir':cwd,'branch':branch,'dirty_n':len(dirty),'dirty_sample':[ln[:60] for ln in dirty[:6]],'recent_commits':log.splitlines()[:5],'remote':remote[:120],'ahead':ahead,'behind':behind,'ts':time.time()}
 def make_widget_envelope(widget_type:str,data:Dict[str,Any],title:str='',icon:str='')->Dict[str,Any]:
-    return {'type':widget_type,'data':data,'title':title or widget_type.title(),'icon':icon or ''}
+    return {'type':widget_type,'data':({k:v for k,v in data.items() if k!='widget'} if isinstance(data,dict) else data),'title':title or widget_type.title(),'icon':icon or ''}
 def make_widget_fence(widget_type:str,data:Dict[str,Any],title:str='',icon:str='')->str:
     env=make_widget_envelope(widget_type,data,title,icon)
     return '```widget\n'+json.dumps(env,default=str)+'\n```'

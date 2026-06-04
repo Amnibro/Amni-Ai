@@ -2,7 +2,7 @@
 Mirrors Amni-Prism's CLI shape so installing both packages gives a coherent toolset."""
 import argparse,sys,os,json,time,webbrowser,threading
 from pathlib import Path
-from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST,detect_vram_gb,recommend_bake_tier
+from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST,detect_vram_gb,recommend_bake_tier,pin_discrete_gpu
 def _add_common_adam(p):
     cfg=load_config()
     default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'granite41_3b_gf17')
@@ -107,6 +107,7 @@ def _print_serve_banner(host:str,port:int,workdir:str=''):
         ascii_lines=['' if not l.strip() else l.encode('ascii','replace').decode('ascii') for l in lines]
         print('\n'.join(ascii_lines),flush=True)
 def cmd_serve(args):
+    pin_discrete_gpu()
     cfg=load_config()
     if is_first_run() and not (Path(args.bake).exists() or Path(cfg.get('bake') or '').exists()):
         print('[serve] First run detected — running `amni init` first.',flush=True)
@@ -115,6 +116,9 @@ def cmd_serve(args):
         cfg=load_config()
         if cfg.get('bake'):args.bake=cfg['bake']
         if cfg.get('model'):args.model=cfg['model']
+    if not os.environ.get('AMNI_BAKE') and cfg.get('bake') and bake_has_runtime_metadata(cfg.get('bake')):args.bake=cfg['bake']
+    if bake_has_runtime_metadata(args.bake):args.model=args.bake
+    elif not os.environ.get('AMNI_MODEL') and cfg.get('model'):args.model=cfg['model']
     try:
         from amni.bootstrap import detect_vram_gb,recommend_bake_tier,bake_tier_for_dir
         _vram=detect_vram_gb();_cur=bake_tier_for_dir(args.bake);_rec=recommend_bake_tier(_vram)

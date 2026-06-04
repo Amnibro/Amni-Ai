@@ -74,10 +74,17 @@ class SkillRegistry:
         try:
             with open(self.audit_log,'a',encoding='utf-8') as f:f.write(json.dumps(rec)+'\n')
         except Exception:pass
+    def _abs(self,p):
+        pp=Path(p)
+        a=pp if pp.is_absolute() else self.workdir/pp
+        if not a.exists() and ' ' in str(p):
+            ds=str(p).replace(' ','');dsp=Path(ds) if Path(ds).is_absolute() else self.workdir/ds
+            if dsp.exists():return dsp
+        return a
     def _in_workdir(self,p:str)->bool:return self._in_allowed_roots(p)
     def _in_allowed_roots(self,p:str)->bool:
         try:
-            rp=Path(p).resolve()
+            rp=self._abs(p).resolve()
             for r in self.roots:
                 rr=Path(r).resolve()
                 if rp==rr:return True
@@ -123,7 +130,8 @@ def _gate_shell(args,ctx,reg:'SkillRegistry')->Optional[str]:
     except Exception:return 'unparseable cmd'
     if not parts:return 'empty cmd'
     base=parts[0].lower().split('\\')[-1].split('/')[-1].removesuffix('.exe')
-    if base not in _SHELL_ALLOW:return f'command not in allowlist: {base}'
+    _extra={x.strip().lower() for x in os.environ.get('AMNI_SHELL_EXTRA_ALLOW','').split(',') if x.strip()}
+    if base not in _SHELL_ALLOW and base not in _extra:return f'command not in allowlist: {base}'
     if os.environ.get('AMNI_SHELL_ALLOW_EXEC','0')!='1':
         if base in _PY_BASES and not (parts[1:] and {a.lower() for a in parts[1:]}<=_PY_SAFE_FLAGS):return 'python via shell is limited to --version/--help — use the sandboxed run_python skill to execute code (set AMNI_SHELL_ALLOW_EXEC=1 to override)'
         if base in _PIP_BASES:
@@ -257,9 +265,16 @@ def _skill_find(args,ctx,reg):
         if len(hits)>=max_hits:break
     return {'query':query,'regex':use_regex,'case_sensitive':case_sensitive,'glob':glob_pat or None,'hits':hits,'n_hits':len(hits),'files_scanned':files_scanned,'truncated':len(hits)>=max_hits and total_matches>=max_hits}
 def _skill_file_read(args,ctx,reg):
-    p=args['path'];max_bytes=int(args.get('max_bytes',65536))
-    _offset=int(args.get('offset',0));_limit=int(args.get('limit',0));_line_offset=int(args.get('line_offset',0));_line_limit=int(args.get('line_limit',0))
-    raw=Path(p).read_text(encoding='utf-8',errors='replace')
+    p=args['path'];max_bytes=int(args.get('max_bytes',65536));_pp=reg._abs(p)
+    if _pp.is_dir():
+        ents=sorted([e for e in _pp.iterdir()],key=lambda e:(e.is_file(),e.name.lower()))
+        exts={}
+        for e in ents:
+            if e.is_file():k=(e.suffix.lower() or '<none>');exts[k]=exts.get(k,0)+1
+        listing=[{'name':e.name,'kind':'dir' if e.is_dir() else 'file','ext':(e.suffix.lstrip('.') if e.is_file() else ''),'bytes':(e.stat().st_size if e.is_file() else 0)} for e in ents[:500]]
+        return {'path':str(_pp),'is_dir':True,'entry_count':len(ents),'n_dirs':sum(1 for e in ents if e.is_dir()),'n_files':sum(1 for e in ents if e.is_file()),'ext_summary':dict(sorted(exts.items(),key=lambda kv:-kv[1])),'entries':listing}
+    _offset=int(args.get('offset',0));_limit=int(args.get('limit',0));_line_offset=int(args.get('line_offset',args.get('line_0ffset',args.get('lineoffset',args.get('start_line',0)))));_line_limit=int(args.get('line_limit',args.get('line_1imit',args.get('lines',0))))
+    raw=_pp.read_text(encoding='utf-8',errors='replace')
     if _line_offset or _line_limit:
         lines=raw.splitlines(keepends=True)
         sliced=lines[_line_offset:_line_offset+_line_limit] if _line_limit else lines[_line_offset:]
@@ -285,7 +300,7 @@ def _skill_file_write(args,ctx,reg):
     from amni.serve.edit_verifier import verify_edit
     _wp=_write_protected(args.get('path',''))
     if _wp:return {'error':f'refused: {_wp} is write-protected (set AMNI_ALLOW_LAW_EDIT/AMNI_ALLOW_SECURITY_EDIT=1 to override)'}
-    p=Path(args['path']);content=args.get('content','')
+    p=reg._abs(args['path']);content=args.get('content','')
     existed=p.exists();before=p.read_text(encoding='utf-8',errors='ignore') if existed else ''
     p.parent.mkdir(parents=True,exist_ok=True)
     p.write_text(content,encoding='utf-8')
@@ -293,9 +308,13 @@ def _skill_file_write(args,ctx,reg):
     return {'path':str(p),'bytes_written':len(content),'ext':p.suffix.lstrip('.') or 'txt','created':not existed,'change':_file_change_stats(before,content),'verification':verify_edit(str(p),content,op=op)}
 def _skill_code_edit(args,ctx,reg):
     from amni.serve.edit_verifier import verify_edit
-    p=Path(args['path']);find=args['find'];replace=args['replace'];count=int(args.get('count',1))
+    p=reg._abs(args['path']);find=args['find'];replace=args['replace'];count=int(args.get('count',1))
     src=p.read_text(encoding='utf-8')
     if find not in src:return {'error':'find string not present','path':str(p)}
+    _fi=src.find(find);_aft=src[_fi+len(find):_fi+len(find)+1];_bef=src[_fi-1:_fi] if _fi>0 else ''
+    _isw=lambda c:bool(c) and (c.isalnum() or c=='_')
+    if _isw(find[-1:]) and _isw(_aft):return {'error':f'refused: your find ends mid-identifier — "...{find[-22:]}" is immediately followed in the file by "{_aft}", so applying it would split/duplicate a word and corrupt the code. Extend your find to end at a clean word boundary (include the whole identifier).','path':str(p)}
+    if _isw(find[:1]) and _isw(_bef):return {'error':f'refused: your find begins mid-identifier (preceded by "{_bef}"). Start your find at a clean word boundary.','path':str(p)}
     new=src.replace(find,replace,count) if count>0 else src.replace(find,replace)
     if p.suffix=='.py':
         try:ast.parse(new)
@@ -481,7 +500,7 @@ def _skill_parse_error(args,ctx,reg):
 def _skill_auto_import(args,ctx,reg):
     path=args.get('path')
     if not path:return {'error':'missing path'}
-    p=Path(path)
+    p=reg._abs(path)
     if not p.exists():return {'error':f'file not found: {path}'}
     if p.suffix.lower()!='.py':return {'error':'only .py supported currently'}
     src=p.read_text(encoding='utf-8')
@@ -511,7 +530,7 @@ def _skill_format_code(args,ctx,reg):
     import shutil as _sh
     path=args.get('path')
     if not path:return {'error':'missing path'}
-    p=Path(path)
+    p=reg._abs(path)
     if not p.exists():return {'error':f'file does not exist: {path}'}
     ext=p.suffix.lower()
     if ext not in _FORMATTERS:return {'skipped':True,'reason':f'no formatter for {ext}'}
@@ -654,7 +673,7 @@ def _skill_code_diff(args,ctx,reg):
     path=args.get('path');diff=args.get('diff') or args.get('patch')
     if not path:return {'error':'missing path'}
     if not diff:return {'error':'missing diff/patch (unified diff format with @@ hunks)'}
-    p=Path(path)
+    p=reg._abs(path)
     if not p.exists():return {'error':f'file does not exist: {path}'}
     try:src=p.read_text(encoding='utf-8')
     except Exception as e:return {'error':f'read failed: {e}'}
@@ -744,7 +763,7 @@ def _skill_scan(args,ctx,reg):
     if adam is None:return {'error':'scan requires Adam (no ctx adam)'}
     p=args.get('path')
     if not p:return {'error':'missing path arg'}
-    root=Path(p).resolve()
+    root=reg._abs(p).resolve()
     if not root.exists():return {'error':f'path not found: {p}'}
     glob=args.get('glob','**/*');max_files=int(args.get('max_files',50));max_chars_per_file=int(args.get('max_chars_per_file',8000));distill=bool(args.get('distill',False));only_text=bool(args.get('only_text',True))
     exts=_TEXT_EXT if only_text else None
