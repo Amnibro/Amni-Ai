@@ -1187,7 +1187,7 @@ body.theme-min #adam-core{opacity:.6}
 </div>
 <div id="gesture-tour">
   <h3>◆ HAND GESTURES READY</h3>
-  <div class="tour-intro">Adam tracks your hand at 60 fps via MediaPipe. Hold a gesture in front of the camera and Adam will act. Six built-in gestures shown below — and you can teach Adam new ones too.</div>
+  <div class="tour-intro">Adam tracks your hand at 60 fps via MediaPipe. Hold a gesture steady for about half a second (a little bar fills to confirm) and Adam will act — a brief or accidental pose won't trigger anything. Six built-in gestures shown below — and you can teach Adam new ones too.</div>
   <div class="gesture-grid">
     <div class="g-card"><div class="g-emoji">🤏</div><div class="g-name">PINCH</div><div class="g-action">toggle voice output</div></div>
     <div class="g-card"><div class="g-emoji">✊</div><div class="g-name">FIST</div><div class="g-action">clear the chat</div></div>
@@ -3304,6 +3304,7 @@ window.addEventListener('resize',resize);resize();tick();
 let gestureOn=false,hands=null,camStream=null,lastGesture='',lastGestureAt=0,frameTimes=[],camRAF=null;
 const GKEY='amni_jarvis_gesture';
 const GESTURE_COOLDOWN_MS=900;
+const GESTURE_DWELL_MS=550;let _gPending='',_gPendingSince=0;
 const _flash=document.getElementById('gesture-flash'),_readout=document.getElementById('gesture-readout'),_camPanel=document.getElementById('cam-panel'),_camVideo=document.getElementById('cam-video'),_camLm=document.getElementById('cam-landmarks'),_gToggle=document.getElementById('gesture-toggle');
 function _dist(a,b){const dx=a.x-b.x,dy=a.y-b.y,dz=(a.z||0)-(b.z||0);return Math.sqrt(dx*dx+dy*dy+dz*dz)}
 function _fingerExtended(lm,tipIdx,pipIdx,mcpIdx){return _dist(lm[tipIdx],lm[0])>_dist(lm[pipIdx],lm[0])&&_dist(lm[tipIdx],lm[mcpIdx])>0.06}
@@ -3470,9 +3471,15 @@ function _onHandsResults(res){
   _readout.textContent=g==='unknown'?'—':(custom?('★ '+custom.gesture.name.toUpperCase()):g.replace('_',' ').toUpperCase());
   const now=performance.now();frameTimes.push(now);if(frameTimes.length>30)frameTimes.shift();
   if(frameTimes.length>=2){const fps=Math.round(1000*(frameTimes.length-1)/(frameTimes[frameTimes.length-1]-frameTimes[0]));document.getElementById('cam-fps').textContent=fps+' fps'}
-  if(g!=='unknown'&&g!==lastGesture&&(now-lastGestureAt)>GESTURE_COOLDOWN_MS){
-    lastGesture=g;lastGestureAt=now;_flashGesture(custom?custom.gesture.name:g);if(custom)applyCustomAction(custom.gesture);else applyGestureAction(g);
-  }else if(g==='unknown'){lastGesture=''}
+  if(g==='unknown'){lastGesture='';_gPending=''}
+  else{
+    if(g!==_gPending){_gPending=g;_gPendingSince=now}
+    const _held=now-_gPendingSince;
+    if(g!==lastGesture&&(now-lastGestureAt)>GESTURE_COOLDOWN_MS){
+      if(_held>=GESTURE_DWELL_MS){lastGesture=g;lastGestureAt=now;_flashGesture(custom?custom.gesture.name:g);if(custom)applyCustomAction(custom.gesture);else applyGestureAction(g)}
+      else{const _b=Math.max(0,Math.min(5,Math.round(_held/GESTURE_DWELL_MS*5)));_readout.textContent=(custom?('★ '+custom.gesture.name.toUpperCase()):g.replace('_',' ').toUpperCase())+'  '+'▰'.repeat(_b)+'▱'.repeat(5-_b)}
+    }
+  }
 }
 async function _loadMediaPipe(){
   if(window.Hands)return true;
