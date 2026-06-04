@@ -152,6 +152,24 @@ def _func_names(src):
 def _synth_roundtrip(names,n,mod,samples=48):
     arr='['+','.join(names)+']'
     return ("\nimport numpy as _np\n_fns=%s\n_n,_m=%d,%d\n_ok=False\nfor _f in _fns:\n for _g in _fns:\n  if _f is _g:continue\n  _good=True\n  for _t in range(%d):\n   _x=[int(_v) for _v in _np.random.randint(0,_m,_n)]\n   try:\n    _y=_g(_f(_x));_rr=_y.tolist() if hasattr(_y,'tolist') else list(_y);_rr=[int(_v)%%_m for _v in _rr]\n   except Exception:\n    _good=False;break\n   if _rr!=[_v%%_m for _v in _x]:_good=False;break\n  if _good:_ok=True;break\n if _ok:break\nassert _ok,'no forward/inverse pair round-trips over GF(%d) length-%d'\nprint('ROUNDTRIP_OK')\n")%(arr,n,mod,samples,mod,n)
+def _find_existing_test(skills,art_rel):
+    import os
+    try:p=str(skills._abs(art_rel) if hasattr(skills,'_abs') else art_rel)
+    except Exception:return ''
+    d=os.path.dirname(p);stem=os.path.splitext(os.path.basename(p))[0]
+    if stem.startswith('test_') or stem.endswith('_test'):return ''
+    for c in (os.path.join(d,'test_'+stem+'.py'),os.path.join(d,stem+'_test.py'),os.path.join(d,'tests','test_'+stem+'.py'),os.path.join(os.path.dirname(d),'tests','test_'+stem+'.py')):
+        if os.path.isfile(c):return c
+    try:
+        for fn in sorted(os.listdir(d)):
+            if fn.endswith('.py') and (fn.startswith('test_') or fn.endswith('_test.py')):
+                try:
+                    if re.search(r'\b'+re.escape(stem)+r'\b',open(os.path.join(d,fn),encoding='utf-8',errors='ignore').read()):return os.path.join(d,fn)
+                except Exception:pass
+    except Exception:pass
+    return ''
+def _strip_self_import(src,stem):
+    return re.sub(r'(?m)^[ \t]*(?:from[ \t]+%s[ \t]+import[ \t].*|import[ \t]+%s(?:[ \t].*|))$'%(re.escape(stem),re.escape(stem)),'',src or '')
 def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,plan_prompt=None,ask_cb=None):
     t0=time.time();_PT=plan_prompt or _PLAN_PROMPT
     _gfm=re.findall(r'\b[A-Za-z0-9_][A-Za-z0-9_./-]*\.(?:py|pyw|js|mjs|cjs|ts|tsx|jsx|rs|go|cpp|cc|c|java|rb|md|json|txt|html|css)\b',goal or '')
@@ -212,6 +230,14 @@ def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,p
         _test=str(_cv.get('test') or '').strip();_tres='none';_failmsg='';_exec='none'
         if _art and _ispy and skills.has('run_python'):
             _cands=[];_fnames=_func_names(_art);_authoritative=False
+            _exist=_find_existing_test(skills,_last_artifact)
+            if _exist:
+                try:
+                    import os as _os2;_astem=_os2.path.splitext(_os2.path.basename(str(_last_artifact)))[0]
+                    _exsrc=_strip_self_import(open(_exist,encoding='utf-8',errors='ignore').read(),_astem)
+                    if _exsrc.strip():_cands.append((_neutralize_main(_art)+'\n'+_exsrc,True))
+                    yield {'event':'critique_existing_test','step':i+1,'test_file':_os2.path.basename(_exist)}
+                except Exception:pass
             if _invkw and len(_fnames)>=2:
                 _n,_m=_parse_nmod(goal+' '+' '.join(_pinned));_cands.append((_neutralize_main(_art)+_synth_roundtrip(_fnames,_n,_m),True))
             if _test:_cands.append((_art+'\n'+_test,False))

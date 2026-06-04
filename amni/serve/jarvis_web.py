@@ -4144,7 +4144,7 @@ async function memForgetProfile(factSnippet){
     refreshMemory();
   }catch(e){console.warn('forget fail',e)}
 }
-</script></body></html>"""
+</script><script>(function(){var n=0;function poll(){if(++n>40)return;fetch('/healthz').then(function(r){return r.json()}).then(function(j){var w=(j&&j.warmup)||{},p=document.getElementById('_codewarm');if(w.coding){if(p)p.remove();return}if(!p){p=document.createElement('div');p.id='_codewarm';p.style.cssText='position:fixed;bottom:14px;right:14px;z-index:9999;font:12px system-ui,sans-serif;color:var(--text2,#8aa);background:var(--panel,#0b1322);border:1px solid var(--border,#1b2b44);border-radius:14px;padding:6px 12px;opacity:.85;box-shadow:0 2px 10px rgba(0,0,0,.3);display:flex;align-items:center;gap:7px';p.innerHTML='<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent,#00e5ff);animation:_cwp 1.1s ease-in-out infinite"></span>warming up coding tools…';var st=document.createElement('style');st.textContent='@keyframes _cwp{0%,100%{opacity:.35}50%{opacity:1}}';document.head.appendChild(st);document.body.appendChild(p)}setTimeout(poll,2500)}).catch(function(){setTimeout(poll,4000)})}if(document.readyState!=='loading')poll();else document.addEventListener('DOMContentLoaded',poll)})();</script></body></html>"""
 def mount(app):
     from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
