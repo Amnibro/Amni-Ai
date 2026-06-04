@@ -201,7 +201,7 @@ def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,p
         _ispy=str(_last_artifact).lower().endswith(('.py','.pyw'))
         _invkw=any(k in (goal or '').lower() for k in ('inverse','reversible','roundtrip','round-trip','round trip','bit-exact','bit exact','recovers','lossless'))
         yield {'event':'critique_start','step':i+1,'artifact':_last_artifact or '(answer only)'}
-        _testreq=('\n\nALSO provide an executable "test": a few lines of Python that — ASSUMING the code above is ALREADY defined in scope (do NOT re-import or redefine it) — ASSERT the key correctness property on several concrete inputs and raise AssertionError if it fails. Do NOT hand-compute expected outputs; assert STRUCTURAL properties'+(' — specifically that the inverse recovers the input: for many random length-4 vectors x with values 0..16, assert that applying the forward then the inverse returns x exactly.' if _invkw else ' (e.g. compare against a slow reference computed inside the test).')) if (_art and _ispy) else ''
+        _testreq=('\n\nALSO provide an executable "test" (assume the code above is ALREADY defined in scope; do NOT re-import or redefine it). Make the test ROBUST so a WRONG test cannot mislead us:\n- Do NOT assert hardcoded magic numbers you worked out in your head — that is the #1 source of wrong tests. Instead assert STRUCTURAL/RELATIONAL properties, or compare against an INDEPENDENT reference you compute INSIDE the test from the requirement.'+(' Specifically: for many random length-4 vectors x of values 0..16, assert that applying the forward then the inverse returns x exactly.' if _invkw else ' Example: for average() assert `average([k]*n)==k` (structural) or `average(xs)==sum(xs)/len(xs)` (reference) rather than `average([2,4,6])==4` (hand-computed, easy to get wrong).')+'\n- Cover SEVERAL inputs including an edge case; raise AssertionError on mismatch.') if (_art and _ispy) else ''
         _cp='You are reviewing your OWN finished work with a SKEPTICAL, adversarial eye. Do NOT be agreeable — your job is to FIND faults, not praise. You are a 3B model: do NOT trust your own hand-arithmetic, trust the executable test.\n\nORIGINAL GOAL:\n'+goal+(('\n\nPINNED FACTS the user gave you — the code MUST match these EXACT constants/values. If it uses anything different, that ALONE makes it FAULTY:\n- '+'\n- '.join(_pinned)) if _pinned else '')+'\n\nYOUR PROPOSED FINAL ANSWER:\n'+str(answer)[:800]+(('\n\nThe actual file you produced ('+_last_artifact+'):\n```\n'+_art+'\n```') if _art else '')+'\n\nWork log:\n'+_trace_for_prompt(steps,_compact,_since)[:1000]+'\n\nCritically examine the work against the goal: wrong logic/constants, missing pieces the goal demanded, unhandled cases, or claims not backed by a real run.'+_testreq+'\nOutput ONE JSON line:\n{"acceptable": true or false, "fault":"<single most important concrete defect, empty if none>", "fix":"<the ONE specific next action to fix it, empty if none>", "test":"<executable python asserting the key property, empty if not applicable>"}'
         try:_cr,_=_s.chat(_cp,system='You are a strict adversarial reviewer of your own work. Default to skepticism. Prefer an executable test over hand-tracing. Output ONLY the JSON line.',max_new_tokens=520,do_sample=False,kb_top_k=0)
         except Exception:_cr=None
@@ -209,24 +209,38 @@ def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,p
         if _cv is None:return None
         _acc=_cv.get('acceptable');_acc=(_acc is True) or (str(_acc).strip().lower() in ('true','yes','1','ok','acceptable','accept'))
         _fault=str(_cv.get('fault') or '')[:400];_fix=str(_cv.get('fix') or '')[:400]
-        _test=str(_cv.get('test') or '').strip();_tres='none';_failmsg=''
+        _test=str(_cv.get('test') or '').strip();_tres='none';_failmsg='';_exec='none'
         if _art and _ispy and skills.has('run_python'):
-            _cands=[];_fnames=_func_names(_art)
+            _cands=[];_fnames=_func_names(_art);_authoritative=False
             if _invkw and len(_fnames)>=2:
-                _n,_m=_parse_nmod(goal+' '+' '.join(_pinned));_cands.append(_neutralize_main(_art)+_synth_roundtrip(_fnames,_n,_m))
-            if _test:_cands.append(_art+'\n'+_test)
-            for _code in _cands:
+                _n,_m=_parse_nmod(goal+' '+' '.join(_pinned));_cands.append((_neutralize_main(_art)+_synth_roundtrip(_fnames,_n,_m),True))
+            if _test:_cands.append((_art+'\n'+_test,False))
+            for _code,_auth in _cands:
                 try:
                     _tr=skills.call('run_python',{'code':_code,'timeout':int(os.environ.get('AMNI_PYRUN_TIMEOUT','25'))},ctx={'adam':_cax,'agent':adam})
                     _to=_tr.output if _tr.ok else {'error':str(_tr.error)}
                     if isinstance(_to,dict):
                         _trc=_to.get('returncode');_r=('timeout' if (_to.get('timed_out') or _to.get('killed')) else ('blocked' if _to.get('error') else ('pass' if _trc==0 else 'fail')))
-                        if _r in ('pass','fail'):_tres=_r;_failmsg=(str(_to.get('stderr') or 'assertion failed').strip().splitlines() or ['fail'])[-1][:240];break
+                        if _r in ('pass','fail'):_tres=_r;_authoritative=_auth;_failmsg=(str(_to.get('stderr') or 'assertion failed').strip().splitlines() or ['fail'])[-1][:240];break
                 except Exception:_tres='error'
-            if _tres=='fail':_acc=False;_fault='executable self-check FAILED — '+(_failmsg or 'assertion failed');_fix=_fix or 'fix the code so the invariant round-trip test passes (do not weaken the test)'
-            elif _tres=='pass' and not _fault:_acc=True
-        _v={'acceptable':_acc,'fault':_fault,'fix':_fix,'test':_tres}
-        yield {'event':'critique','step':i+1,'acceptable':_acc,'fault':_fault,'fix':_fix,'test':_tres}
+            if _tres=='pass':_exec='pass'
+            elif _tres=='fail' and _authoritative:_exec='fail'
+            elif _tres=='fail' and not _authoritative:
+                _ap='You are auditing whether a TEST is correct. You have NOT seen the implementation — judge the TEST ALONE. Independently work out, step by step, what the expected values SHOULD be from the requirement, then decide if the test asserts the right thing.\n\nREQUIREMENT:\n'+goal+(('\n\nKnown facts (authoritative):\n- '+'\n- '.join(_pinned)) if _pinned else '')+'\n\nThe test below FAILED ('+(_failmsg or '')[:160]+'):\n```python\n'+_test[:1400]+'\n```\n\nIs the TEST itself correct (right assertions + right expected values + no bug IN THE TEST)? Output ONE JSON line:\n{"test_valid": true or false, "reason":"<one sentence>"}'
+                _tv=None
+                try:
+                    _ar,_=_s.chat(_ap,system='You audit a test for correctness IN ISOLATION, recomputing expected values yourself. Output ONLY the JSON line.',max_new_tokens=240,do_sample=False,kb_top_k=0)
+                    _av=_parse_step(_ar or '')
+                    if _av is not None:
+                        _tvr=_av.get('test_valid');_tv=((_tvr is True) or (str(_tvr).strip().lower() in ('true','yes','1','valid'))) if _tvr is not None else None
+                except Exception:_tv=None
+                yield {'event':'critique_test_audit','step':i+1,'test_valid':_tv}
+                if _tv is True:_exec='fail'
+        if _exec=='pass':_acc=True;_fault=''
+        elif _exec=='fail':_acc=False;_fault=_fault or ('executable check FAILED — '+(_failmsg or 'assertion failed'));_fix=_fix or 'fix the code so the check passes'
+        else:_acc=True
+        _v={'acceptable':_acc,'fault':_fault,'fix':_fix,'test':_tres,'exec':_exec}
+        yield {'event':'critique','step':i+1,'acceptable':_acc,'fault':_fault,'fix':_fix,'test':_tres,'exec':_exec}
         return _v
     for i in range(max_steps):
         if time.time()-t0>timeout_s:yield {'event':'timeout','wall_s':round(time.time()-t0,2)};return
@@ -425,10 +439,13 @@ def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,p
     yield {'event':'max_steps_reached','n_steps':len(steps),'wall_s':round(time.time()-t0,2)}
 _BUILD_RE=re.compile(r"\b(?:build|create|make|implement|develop|write|generate|scaffold|set\s+up|give\s+me)\s+(?:(?:me|a|an|the|some|us|out)\s+){0,3}(?:(?:rust|python|js|javascript|ts|typescript|go|c\+\+|rust|wasm|web)\s+)?(?:script|program|game|app|application|web(?:\s*app|site|page)?|tool|cli|api|server|library|module|class|function|component|system|project|module|package|crate|file|code|snippet|example|implementation)\b",re.IGNORECASE)
 _FILE_EXT_RE=re.compile(r'\b\w+\.(?:py|rs|js|ts|cpp|cc|c|h|hpp|go|java|rb|sh|html|css|json|yaml|yml|toml|md|txt|cfg|conf|ini)\b',re.IGNORECASE)
+_FIX_VERB_RE=re.compile(r"\b(?:fix|debug|diagnose|repair|solve|resolve|troubleshoot|patch|refactor|reproduce|trace|review|audit|inspect|investigate|check|look\s+(?:at|into|through)|go\s+through|figure\s+out|work\s+out|clean\s+up|optimi[sz]e|profile)\b",re.IGNORECASE)
+_CODE_OBJ_RE=re.compile(r"\b(?:bugs?|issues?|errors?|crash(?:es|ing|ed)?|exceptions?|tracebacks?|stack\s*traces?|failing|failures?|broken|regressions?|tests?|folders?|director(?:y|ies)|repos?(?:itor(?:y|ies))?|codebases?|code\s*base|code|projects?|modules?|packages?|scripts?|programs?|apps?|applications?|functions?|methods?|classes|files?|imports?|dependenc(?:y|ies)|builds?|compil(?:e|es|ing|ation)|lint(?:er|ing)?|runtime|typos?|warnings?)\b",re.IGNORECASE)
 def is_build_request(text:str)->bool:
     if not text:return False
     if _BUILD_RE.search(text):return True
     if len(set(m.lower() for m in _FILE_EXT_RE.findall(text)))>=2 and re.search(r"\b(?:create|make|write|build|generate|implement|add)\b",text,re.IGNORECASE):return True
+    if _FIX_VERB_RE.search(text) and (_CODE_OBJ_RE.search(text) or _FILE_EXT_RE.search(text)):return True
     return False
 def run_goal(adam,skills,goal:str,max_steps:int=5,timeout_s:float=180.0)->Dict[str,Any]:
     t0=time.time()
