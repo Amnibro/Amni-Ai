@@ -18,6 +18,7 @@ _TIME_RE=re.compile(r"\b(?:what(?:'s|\s+is)?\s+the\s+(?:time|date|day(?:\s+of\s+
 _WEB_RE=re.compile(r"\b(?:(?:use\s+|please\s+)?(?:web|search|google)(?:\s+skill)?[\s:]+|google|find\s+online|news|latest|search\s+(?:online|the\s+web|google)|look\s+up|on\s+the\s+web|what'?s\s+(?:on|new\s+in)\s+the\s+web|what'?s\s+(?:new|happening)\s+(?:in|on|with|around)|current\s+events|find\s+(?:me\s+)?(?:something|info|articles?)|tell\s+me\s+about\s+\w+\s+(?:news|today|currently))",re.IGNORECASE)
 _MEM_RE=re.compile(r'\b(?:search\s+(?:my\s+|your\s+|adam\'?s?\s+|the\s+)?(?:memory|lessons|knowledge|bank|lesson\s+bank)|recall|what\s+do\s+(?:you|adam)\s+know\s+about|find\s+(?:in\s+)?(?:my\s+|your\s+|the\s+)?(?:memory|lessons|bank|notes|knowledge)|remember\s+about|look(?:up|\s+up)\s+(?:in\s+)?(?:my\s+|your\s+|the\s+)?(?:memory|bank|lessons|knowledge)|check\s+(?:your\s+|my\s+|adam\'?s?\s+)?(?:memory|lessons|notes|bank|knowledge))\s*(?:for|about)?\s*[:?]?\s*(.*)?$',re.IGNORECASE)
 _FILE_READ_RE=re.compile(r'\b(?:read|open|show|cat|display)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
+_DIR_READ_RE=re.compile(r"\b(?:read|list|show|open|browse|explore|scan\s+through|look\s+(?:in|at|through)|ls|dir|what(?:'s|\s+is)?\s+in|what\s+kind\s+of\s+files?\s+(?:are\s+)?in)\s+(?:me\s+)?(?:the\s+)?(?:contents?\s+of\s+)?(?:directory|folder|dir|path)\s+[\'\"`]?(.+?)[\'\"`]?(?:\s+and\s+\b.*)?\s*$",re.IGNORECASE)
 _FILE_WRITE_RE=re.compile(r'\b(?:write|save|create)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?([^`\n]+)`?',re.IGNORECASE)
 _CODE_RE=re.compile(r'\b(?:edit|patch|replace|change)\s+.*\bin\b\s+[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
@@ -92,14 +93,26 @@ _COT_REASONING=('Reasoning question — use this structure:\n'
                 '3. CHAIN: build the answer step by step, naming each inferential leap.\n'
                 '4. COUNTER: what is the strongest objection to your reasoning? does it hold up?\n'
                 '5. FINAL: the answer + your confidence level + what would change your mind.\n')
+_COT_EXPLAIN=('Explain-it question — teach, do not just answer:\n'
+              '1. DIRECT ANSWER: lead with the core answer in one or two plain sentences.\n'
+              '2. WHY / HOW IT WORKS: explain the mechanism or reasoning in accessible, friendly language.\n'
+              '3. CONCRETE EXAMPLE: give one worked example, number, or analogy that makes it click.\n'
+              '4. KEY RULE (optional): state the formula or rule plainly and say when it applies.\n'
+              'Be warm and clear, not terse. Give a satisfying explanation, never a bare one-liner or a lone formula.\n')
+_EXPLAIN_RE=re.compile(r"\b(?:explain|how\s+(?:do|does|would|can|should)\s+(?:you|i|we|it|one)|how\s+is\s+\w+\s+(?:calculated|computed|done|made|derived|found|measured)|walk\s+me\s+through|teach\s+me|help\s+me\s+understand|what\s+is\s+the\s+(?:formula|equation|relationship|difference|intuition|idea|point|meaning)|describe\s+how|in\s+(?:simple|plain|layman'?s?)\s+terms|eli5|why\s+(?:do|does|is|are|would)|what\s+does\s+it\s+mean|how\s+come)\b",re.IGNORECASE)
+_HAS_CONCRETE_CALC_RE=re.compile(r"\d+(?:\.\d+)?\s*[+\-*/^]\s*\d|\bsolve\s+for\b|=\s*\?|\bfind\s+(?:the\s+)?(?:value|result|answer)\b|\bcompute\s+\d")
 _FACT_LOOKUP_RE=re.compile(r'^\s*(?:what(?:\'s| is| are| was)|who(?:\'s| is| are| was)|when(?:\'s| is| was)|where(?:\'s| is)|which|tell me (?:the|what|who)|give me the|how many)\b',re.IGNORECASE)
 _NONCODE_CODE_PHRASE=re.compile(r'\b(?:zip|area|postal|promo|coupon|discount|gift|access|error|status|country|dialing|barcode|qr|pin|cheat|redeem|activation|product|reference|booking|confirmation|tracking|swift|routing|morse|color|colour|secret|vault|launch)\s+code\b',re.IGNORECASE)
 def _pick_cot(category:str,message:str)->str:
     m=message.lower()
     _factlookup=bool(_FACT_LOOKUP_RE.match(message)) or bool(_NONCODE_CODE_PHRASE.search(message))
+    _explain=bool(_EXPLAIN_RE.search(message)) and not bool(_HAS_CONCRETE_CALC_RE.search(message))
+    _codephrase=not _factlookup and any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function','make me code','give me code','generate code','create code','make code'))
     if any(k in m for k in (' debug','debugging','bug','why is my','why does my','why won','not working','broken','error','crash','hang','leak','slow','flak')):return _COT_DEBUG
-    if not _factlookup and (category=='code' or any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function','make me code','give me code','generate code','create code','make code'))):return _make_code_cot(_detect_code_lang(message))
+    if _codephrase:return _make_code_cot(_detect_code_lang(message))
     if any(k in m for k in ('design a','design the','architect','how would you build','how to build a','scale to','system to handle','rate limit','queue','pipeline architecture')):return _COT_DESIGN
+    if _explain:return _COT_EXPLAIN
+    if not _factlookup and category=='code':return _make_code_cot(_detect_code_lang(message))
     if any(k in m for k in ('solve for','calculate','compute the','equation','derivative','integral','probability','optimize','minimize','maximize','prove that','theorem','formula for')):return _COT_MATH
     if category=='reasoning':return _COT_REASONING
     return _COT_GENERIC
@@ -489,6 +502,10 @@ class AmniAgent:
             ex=_EXPR_EXTRACT.search(msg)
             if ex or _CALC_EXPR_RE.search(msg):
                 return ('calc',{'expr':ex.group(1) if ex else msg})
+        m=_DIR_READ_RE.search(msg)
+        if m and self.skills.has('file_read'):
+            _dp=m.group(1).strip().strip('\'"`').rstrip('.,!? ')
+            if _dp and (len(_dp)>2):return ('file_read',{'path':_dp})
         m=_FILE_READ_RE.search(msg)
         if m and self.skills.has('file_read'):return ('file_read',{'path':m.group(1)})
         m=_FILE_WRITE_RE.search(msg)
@@ -898,7 +915,16 @@ class AmniAgent:
                 lines.append(f'\n- `{p}:{ln}`  →  {sn}')
             if out.get('truncated'):lines.append(f'\n_(truncated to {len(hits)} hits — refine the query for more)_')
             return '\n'.join(lines)
-        if name=='file_read':return f'```\n{out.get("content","")}\n```\n({out.get("bytes")} bytes from {out.get("path")})'
+        if name=='file_read':
+            if out.get('is_dir'):
+                es=out.get('ext_summary') or {};ents=out.get('entries') or []
+                kinds=', '.join(f'{v}× {k}' for k,v in es.items()) if es else 'no files'
+                lines=[f'**`{out.get("path")}`** — {out.get("entry_count",0)} entries ({out.get("n_dirs",0)} folders, {out.get("n_files",0)} files).',f'\nFile types: {kinds}.' if es else '',f'\n\nContents:']
+                for e in ents[:60]:
+                    lines.append(f'\n- {"📁 " if e.get("kind")=="dir" else ""}`{e.get("name")}`'+("" if e.get('kind')=='dir' else f'  ({e.get("bytes",0)} bytes)'))
+                if len(ents)>60:lines.append(f'\n_(+{len(ents)-60} more)_')
+                return ''.join(lines)
+            return f'```\n{out.get("content","")}\n```\n({out.get("bytes")} bytes from {out.get("path")})'
         if name=='file_write':
             ch=out.get('change') or {};v=out.get('verification') or {};op='create' if out.get('created') else 'overwrite'
             verified=v.get('verified');issues=v.get('issues') or [];suggested=v.get('suggested_tests') or []
@@ -969,6 +995,12 @@ class AmniAgent:
             if ct:return f'Right now I am learning about **{ct}** ({cph or "working"}). Daemon has been up {uh}h, learned {new} new facts across {urls} sources, currently {fph}/h. Queue depth {qd}.'
             if not en:return f'Daemon is paused. {new} facts learned in {uh}h of uptime ({fph}/h average). Queue depth {qd}.'
             return f'Daemon idle, waiting for the next curiosity tick. {new} facts learned in {uh}h ({fph}/h average). Queue depth {qd}.'
+        if name=='system_stats':
+            g=out;up_h=round((g.get('uptime_s',0) or 0)/3600,1)
+            return (f"Here's your system right now: CPU **{g.get('cpu_pct','?')}%** across {g.get('cpu_count','?')} cores, RAM **{g.get('mem_used_gb','?')}/{g.get('mem_total_gb','?')} GB** ({g.get('mem_pct','?')}%), disk **{g.get('disk_used_gb','?')}/{g.get('disk_total_gb','?')} GB** ({g.get('disk_pct','?')}% full), GPU {g.get('gpu_name','?')} ({g.get('gpu_vram_used_gb','?')}/{g.get('gpu_vram_total_gb','?')} GB VRAM). Up {up_h}h on {g.get('hostname','?')}.")
+        if isinstance(out,dict) and 'widget' in out:
+            _wd=out.get('widget') or {};_t=str(_wd.get('title') or name).strip()
+            return out.get('summary') or out.get('text') or out.get('message') or f'Pulled your {_t.lower()} — details are in the panel above.'
         return json.dumps(out,default=str)[:1000]
     def _introspect_answer(self,persona:Optional[Persona]=None)->str:
         skills=[s['name'] for s in self.list_skills()]

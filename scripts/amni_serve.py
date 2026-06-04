@@ -58,7 +58,13 @@ def _gpu_bootstrap():
     ver=fam.get(arch)
     os.environ.setdefault('PYTORCH_ROCM_ARCH',arch)
     if ver:os.environ.setdefault('HSA_OVERRIDE_GFX_VERSION',ver)
-    for k,v in (('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL','1'),('HIP_FORCE_DEV_KERNARG','1'),('GPU_MAX_HW_QUEUES','8')):os.environ.setdefault(k,v)
+    for k,v in (('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL','1'),('HIP_FORCE_DEV_KERNARG','1'),('GPU_MAX_HW_QUEUES','8'),('MIOPEN_FIND_MODE','2'),('MIOPEN_FIND_ENFORCE','NONE')):os.environ.setdefault(k,v)
+    _mio=os.path.join(os.path.expanduser('~'),'.miopen');_tri=os.path.join(os.path.expanduser('~'),'.triton')
+    for _p in (_mio,_tri):
+        try:os.makedirs(_p,exist_ok=True)
+        except Exception:pass
+    for k,v in (('MIOPEN_USER_DB_PATH',_mio),('MIOPEN_CUSTOM_CACHE_DIR',_mio),('TRITON_CACHE_DIR',_tri)):os.environ.setdefault(k,v)
+    print(f'[amni_serve] kernel caches: MIOPEN_USER_DB_PATH={_mio} TRITON_CACHE_DIR={_tri} (persistent — compiles amortize across runs)',flush=True)
     if sys.platform=='win32':
         rocm_root=os.environ.get('HIP_PATH') or os.environ.get('ROCM_PATH')
         if not rocm_root:
@@ -217,7 +223,7 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web
+    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web,model_installer
     try:from amni.serve import trace_endpoints
     except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
@@ -400,6 +406,7 @@ def main():
             persona=agent.personas.for_session(conv.session_id) if agent.use_persona else None
             persona_name=persona.name if persona else 'Adam'
             yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":persona_name})}\n\n'
+            yield f'event: status\ndata: {_json.dumps({"stage":"understanding"})}\n\n'
             try:
                 from amni.a1.semantic_intent import screen as _sem_screen
                 _blk,_cat,_cos,_refmsg=_sem_screen(req.message)
@@ -438,6 +445,7 @@ def main():
                 _is_introsp=(_intent_label in ('greeting','introspection')) or bool(_INTROSPECT_NO_WEB_RE.search(req.message))
                 if (not is_private) and skills.has('web') and _is_fresh and not _is_introsp:
                     _enriched_pre=_enrich_web_query(req.message,conv,getattr(agent,'profile',None))
+                    yield f'event: status\ndata: {_json.dumps({"stage":"web"})}\n\n'
                     yield f'event: web_lookup\ndata: {_json.dumps({"trigger":"pre_fetch","query":_enriched_pre[:200],"enriched_from":req.message[:80]})}\n\n'
                     _pre_web_r=skills.call('web',{'query':_enriched_pre},ctx={'adam':adam})
                     if _pre_web_r.ok and _pre_web_r.output:
@@ -485,6 +493,7 @@ def main():
                 _ppf=Path(_REPO_ROOT)/'experiences'/'perf'/'pipeline_telemetry.jsonl';_ppf.parent.mkdir(parents=True,exist_ok=True)
                 with open(_ppf,'a',encoding='utf-8') as _ppfh:_ppfh.write(_ppj.dumps({'ts':time.time(),'to_gen_ms':round((time.time()-t0)*1000,1),'facts_n':len(user_facts),'hist_n':len(history_pairs),'pre_web':bool(_pre_web_supplemented),'cot':bool(apply_cot),'cat':category})+'\n')
             except Exception:pass
+            yield f'event: status\ndata: {_json.dumps({"stage":"reasoning" if apply_cot else "writing"})}\n\n'
             _genstream=adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True)
             try:
                 for chunk in _genstream:
@@ -1192,6 +1201,7 @@ def main():
     vision_endpoints.mount(app,agent)
     voice_endpoints.mount(app,agent)
     amni_chat_bridge.mount(app,agent)
+    model_installer.mount(app)
     trace_endpoints.mount(app,agent) if trace_endpoints is not None else None
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)

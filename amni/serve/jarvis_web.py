@@ -2128,6 +2128,7 @@ async function send(){
         try{
           if(etype==='token'){
             const chunk=JSON.parse(edata);
+            if(bot._st){clearInterval(bot._st);bot._st=null}
             if(reasonEl&&reasonEl.classList.contains('open')){reasonEl.classList.remove('open');reasonEl.classList.add('done')}
             if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}
             acc+=chunk;_typePush(chunk);
@@ -2137,7 +2138,12 @@ async function send(){
             if(!reasonEl){bot.bubble.classList.remove('thinking');bot.bubble.textContent='';reasonEl=document.createElement('div');reasonEl.className='reasoning open';reasonEl.innerHTML='<div class="reasoning-head" onclick="this.parentElement.classList.toggle(\'open\')"><span class="reasoning-dot"></span>thinking<span class="reasoning-toggle">▾</span></div><div class="reasoning-body"></div>';bot.msg.insertBefore(reasonEl,bot.bubble)}
             const rb=reasonEl.querySelector('.reasoning-body');rb.textContent=reasonText;rb.scrollTop=rb.scrollHeight;_smartScroll();
           }else if(etype==='thinking'){
-            if(!reasonEl&&bot.bubble.classList.contains('thinking')){try{const tm=JSON.parse(edata);bot.bubble.textContent='thinking… '+(tm.elapsed||0)+'s'}catch(_){}}
+            if(!bot._st&&!reasonEl&&bot.bubble.classList.contains('thinking')){try{const tm=JSON.parse(edata);bot.bubble.textContent='thinking… '+(tm.elapsed||0)+'s'}catch(_){}}
+          }else if(etype==='status'){
+            try{var _stg=JSON.parse(edata).stage;
+              window._SF||(window._SF={understanding:["Rao! lemme get my head around this…","figuring out what you need…","okay, processing your ask…","reading between the lines…"],recall:["rummaging through my memory…","checking what I remember…","digging through my notes…"],web:["hitting the web for the latest…","looking that up online…","scouring the net for you…","chasing down sources…"],reasoning:["thinking it through, step by step…","working out the logic…","reasoning it out… almost there","turning it over in my head…"],writing:["okay, here it comes!","putting it together…","writing it up…"]});
+              if(bot.bubble.classList.contains('thinking')){var _F=window._SF[_stg]||window._SF.understanding,_si=0;var _show=function(){if(bot.bubble.classList.contains('thinking'))bot.bubble.innerHTML='<span style="color:var(--mute);font-style:italic">'+_F[_si%_F.length]+'</span>';_si++};if(bot._st)clearInterval(bot._st);_show();bot._st=setInterval(_show,2600)}
+            }catch(_){}
           }else if(etype==='meta'){
             const m=JSON.parse(edata);
             if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}
@@ -2153,6 +2159,7 @@ async function send(){
       }
     }
     _typeFlushAll();
+    if(bot._st){clearInterval(bot._st);bot._st=null}
     bot.bubble.classList.remove('thinking');
     if(reasonEl){reasonEl.classList.remove('open');reasonEl.classList.add('done')}
     if(!acc)bot.bubble.textContent=aborted?'(stopped before any tokens arrived)':'(empty response)';

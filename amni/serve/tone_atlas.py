@@ -57,7 +57,7 @@ _INTENT_PATTERNS=[(re.compile(r'^\s*(?:hi|hey|hello|yo|howdy|sup|good\s+(?:morni
 def classify_intent(message:str,skill_used:Optional[str]=None,had_error:bool=False)->str:
     if had_error:return 'error'
     if skill_used:
-        return {'time':'time_result','calc':'calc_result','file_read':'file_result','file_write':'file_result','code_edit':'file_result','scan':'scan_result','mem':'factual','web':'factual','shell':'file_result'}.get(skill_used,'factual')
+        return {'time':'time_result','time_card':'time_result','calc':'calc_result','file_read':'file_result','file_write':'file_result','code_edit':'file_result','scan':'scan_result','mem':'factual','web':'factual','shell':'file_result','system_stats':'file_result','disk_widget':'file_result','weather':'file_result','news':'factual','stock':'file_result','git':'file_result','git_status':'file_result','find':'file_result','code_index':'file_result'}.get(skill_used,'factual')
     for pat,cat in _INTENT_PATTERNS:
         if pat.search(message):return cat
     return 'unknown'
@@ -115,12 +115,18 @@ def _strip_thinking_process(text:str)->str:
         if t2:t=t2
     except Exception:pass
     return t or text
+_LEADINS=('here','so,','so ','okay','ok ','sure','your ','it\'s','its ','the ','that','this','right','yes','no,','got ','well','hmm','easy','aww','oac','rao','glad','done','boom','quick','let me','indeed','result','computed','equals','comes out','noted','acknowledged','understood')
+_STRUCT_RE=re.compile(r'^\s*(?:#{1,6}\s|[-*]\s|>\s|\||\d+\.\s|```|📁|🗂)')
 def wrap(answer:str,category:str,persona,seed:str='')->str:
     answer=_strip_thinking_process(answer)
+    a=answer.strip()
+    structured=bool(_STRUCT_RE.match(a)) or ('\n' in a) or ('```' in a)
+    long_ans=len(a)>180
+    leads=any(a.lower().startswith(w) for w in _LEADINS)
     op=sample_opener(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
     cl=sample_closer(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
     parts=[]
-    if op and not answer.lower().startswith(op.lower()[:6]):parts.append(op)
-    parts.append(answer.strip())
-    if cl and not answer.rstrip().endswith(cl.rstrip()):parts.append(cl)
+    if op and not leads and not (structured and category not in ('greeting','introspect')) and not a[:8].lower().startswith(op.lower()[:6]):parts.append(op)
+    parts.append(a)
+    if cl and not structured and not long_ans and not a.rstrip().endswith(cl.rstrip()):parts.append(cl)
     return ' '.join(p for p in parts if p).strip()
