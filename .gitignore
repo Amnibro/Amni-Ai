@@ -196,3 +196,21 @@ _clone_probe/
 /_*.txt
 /_calcbug.py
 /adam_qr.png
+
+# Dev-only — NOT needed to run Adam (kept local; repo ships only runtime + thin README)
+scripts/autonomous_coder.py
+scripts/installer_server.py
+scripts/palette_bake_proto.py
+scripts/bake_fp16_to_rgba16.py
+scripts/palette_vram_validate.py
+scripts/haven_task_driver.py
+scripts/e2b_diag.py
+scripts/e2b_direct_test.py
+tests/_critique_probe.py
+tests/_critique_exec_probe.py
+docs/adam_autonomy_hardening.md
+docs/ac_*.md
+docs/adam_autonomous_haven_watchlog.md
+docs/haven_autonomous_evidence.md
+docs/haven_goal.txt
+intt_explore/
