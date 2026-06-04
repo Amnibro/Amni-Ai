@@ -208,6 +208,7 @@ examples/
 extensions/
 data/
 intt_explore/
+_iftest/
 /gf17_translator.py
 /MOBILE.md
 scripts/*
