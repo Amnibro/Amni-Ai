@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.54 — UX: surface more silently-dropped chat-stream events (same class as the agentic bug). The UI now handles: `truncated` → a "truncated" badge so you know the reply hit the output cap and was cut off (was invisible — you'd think a half-answer was complete); `exec` → renders the stdout/stderr/exit code when Adam RUNS the code it wrote (the "runs its own code" feature was invisible); `web_lookup`/`web_supplement_done`/`_error` → a "🌐 web N" badge when an answer was augmented with web sources. (2026-06-04)
+
 - v6.11.53 — UX: surface stream errors instead of silently dropping them. The chat handler had no `error`/`agentic_error` branch, so a server-side failure left the user staring at a spinner with no feedback. Now an error renders in the bubble (or as a step in the agentic work-log) in the theme error color. (2026-06-04)
 
 - v6.11.52 — UX: render the agentic/coding loop in the chat UI. The interface had no handler for `agentic_*` stream events, so coding requests ("check my folder and fix the bug") showed a spinner then "(empty response)" — the agent worked invisibly and its answer was dropped. Now a live, collapsible work-log shows each tool as a friendly step (🗂️ scanning… → 📖 reading… → ✏️ editing… → ✅ verified → 🧐 double-checking), the final answer actually renders, and the header collapses to "Adam worked through N steps". Also: web-research source lists now show clean domain names (full URL on hover) instead of raw URLs. (2026-06-04)
