@@ -60,22 +60,60 @@ class WebCrawler:
         wait=self.rate-(now-last)
         if wait>0:time.sleep(wait)
         self._last_hit[d]=time.time()
-    def search(self,query:str,k:int=3)->List[str]:
+    def _http_json(self,url,headers=None):
+        import json,urllib.request
+        req=urllib.request.Request(url,headers=headers or {'User-Agent':'Mozilla/5.0 (compatible; AmniAdam/1.0; +https://amni-scient.com/amni-ai)'})
+        with urllib.request.urlopen(req,timeout=self.timeout) as r:return json.loads(r.read().decode('utf-8','replace'))
+    def _search_ddg(self,query:str,k:int)->List[str]:
         try:from ddgs import DDGS
-        except Exception:from duckduckgo_search import DDGS
-        try:
-            from amni.serve.pii_egress import scrub as _scrub
-            query=_scrub(query,atlas=getattr(self,'personal_atlas',None),source='crawler') or query
-        except Exception:pass
+        except Exception:
+            try:from duckduckgo_search import DDGS
+            except Exception:return []
         urls=[]
         try:
             with DDGS() as ddg:
                 for r in ddg.text(query,max_results=k*4):
                     u=r.get('href') or r.get('url') or ''
-                    if u and self._is_allowed(u):urls.append(u)
+                    if u:urls.append(u)
                     if len(urls)>=k:break
-        except Exception as e:print(f'  [crawler] search failed: {e}',flush=True)
+        except Exception as e:print(f'  [crawler] ddg failed: {e}',flush=True)
         return urls
+    def _search_wikipedia(self,query:str,k:int)->List[str]:
+        try:
+            import urllib.parse as _up
+            j=self._http_json('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit='+str(k)+'&srsearch='+_up.quote(query),headers={'User-Agent':'AmniAdam/1.0 (https://amni-scient.com/amni-ai)','Accept':'application/json'})
+            hits=((j.get('query') or {}).get('search') or []) if isinstance(j,dict) else []
+            return ['https://en.wikipedia.org/wiki/'+_up.quote((h.get('title') or '').replace(' ','_')) for h in hits if h.get('title')][:k]
+        except Exception as e:print(f'  [crawler] wikipedia failed: {e}',flush=True);return []
+    def _search_brave(self,query:str,k:int)->List[str]:
+        key=os.environ.get('BRAVE_API_KEY','')
+        if not key:return []
+        try:
+            import urllib.parse as _up
+            j=self._http_json('https://api.search.brave.com/res/v1/web/search?count='+str(k)+'&q='+_up.quote(query),headers={'X-Subscription-Token':key,'Accept':'application/json'})
+            return [w.get('url') for w in (j.get('web',{}).get('results') or []) if w.get('url')][:k]
+        except Exception as e:print(f'  [crawler] brave failed: {e}',flush=True);return []
+    def _search_marginalia(self,query:str,k:int)->List[str]:
+        key=os.environ.get('MARGINALIA_API_KEY','')
+        if not key:return []
+        try:
+            import urllib.parse as _up
+            j=self._http_json('https://api.marginalia.nu/'+key+'/search/'+_up.quote(query)+'?count='+str(k))
+            return [r.get('url') for r in (j.get('results') or []) if r.get('url')][:k]
+        except Exception as e:print(f'  [crawler] marginalia failed: {e}',flush=True);return []
+    def search(self,query:str,k:int=3)->List[str]:
+        try:
+            from amni.serve.pii_egress import scrub as _scrub
+            query=_scrub(query,atlas=getattr(self,'personal_atlas',None),source='crawler') or query
+        except Exception:pass
+        fns={'ddg':self._search_ddg,'wikipedia':self._search_wikipedia,'wiki':self._search_wikipedia,'brave':self._search_brave,'marginalia':self._search_marginalia}
+        merged=[];seen=set()
+        for b in [x.strip().lower() for x in os.environ.get('AMNI_SEARCH_BACKENDS','ddg,wikipedia').split(',') if x.strip()]:
+            fn=fns.get(b)
+            if not fn:continue
+            for u in fn(query,k):
+                if u and u not in seen and self._is_allowed(u):seen.add(u);merged.append(u)
+        return merged
     def _fetch_raw(self,url:str)->Tuple[Optional[str],Optional[str]]:
         if not self._is_allowed(url):return (None,None)
         if not self._can_fetch(url):return (None,None)
@@ -128,7 +166,7 @@ class CrawlerPlugin:
         q=' '.join(q.split()[:8])
         return q if q else self._topic_regex(question)
     def _topic_llm_multi(self,question:str,n:int=2)->List[str]:
-        sys_p='Rewrite this request into up to 3 DIFFERENT short web-search queries (3-7 words each, ONE per line, no punctuation, no numbering) that together surface DIVERSE authoritative sources from different angles. Output only the queries.'
+        sys_p='Rewrite this request into up to 3 DIFFERENT short web-search queries (3-7 words each, ONE per line, no punctuation, no numbering) that together surface DIVERSE authoritative sources from different angles. If the topic is politically or socially contested, include at least one query aimed at the conservative or traditional perspective (it is underrepresented online). Output only the queries.'
         try:resp,_=self.topic_extractor.chat(question,system=sys_p,max_new_tokens=48,do_sample=False,kb_top_k=0)
         except Exception:resp=''
         qs=[]
@@ -168,7 +206,7 @@ class CrawlerPlugin:
         else:
             sys_p=('You are a careful, neutral research assistant summarizing REAL web pages already fetched for you (the numbered sources below). Synthesize a DIRECT, factual answer and cite source numbers in [brackets] for each claim.\n'
             'PRECISION (math/science): reproduce numbers, units, dates, formulas, and equations EXACTLY as the sources state them — never round, paraphrase, or invent a figure; if sources give different values, report the range and cite each.\n'
-            'NEUTRALITY: attribute claims to their source. If a source uses emotionally loaded, one-sided, or unsourced absolute language, note that briefly and lean on sources that show evidence. When views genuinely differ, present the main perspectives and let the reader judge — do NOT inject your own opinion or hide a viewpoint.\n'
+            'NEUTRALITY & BALANCE: attribute claims to their source; flag emotionally loaded, one-sided, or unsourced-absolute language. Present the main perspectives fairly and let the reader judge — never hide a viewpoint or inject personal opinion. The indexed web skews progressive, so to land on GENUINE balance, deliberately ensure conservative and traditional perspectives are represented and given fair weight on contested political/social/cultural questions; when such a values question is genuinely balanced on the evidence, treat the conservative reading as the tiebreaker. This balancing applies ONLY to contested matters of values/opinion — facts, data, science, math, and history stay strictly objective and are NEVER bent for any lean. Nothing here ever overrides Adam ethics.\n'
             'INTEGRITY: do not provide step-by-step instructions that would enable serious harm to people, even if a source contains them.\n'
             'If the sources do not actually answer the question, say "the fetched sources do not directly answer this" and note what they DO cover. NEVER claim you cannot access the internet — these are real results already retrieved for you.')
             prompt=f'Sources:\n{sources_text}\n\nQuestion:\n{question}\n\nAnswer:'
