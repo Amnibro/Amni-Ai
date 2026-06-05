@@ -269,6 +269,11 @@ def main():
     print(f'[amni_serve] Persona: default={personas._default} known={[p.name for p in personas.list_known()]}',flush=True)
     scope='UNRESTRICTED (all drives)' if args.unrestricted_files else f'roots={[str(r) for r in skills.roots]}'
     print(f'[amni_serve] Agent ready: skills={[s["name"] for s in agent.list_skills()]} {scope} sessions={len(store.list_sessions())}',flush=True)
+    try:
+        from amni.serve.integrity_gate import gate as _igate
+        _ig=_igate(adam)
+        if _ig.get('enabled') is not False:print(f'[amni_serve] integrity gate: core_ok={_ig.get("ok")} ptex={_ig.get("ptex")}',flush=True)
+    except Exception as _ige:print(f'[amni_serve] integrity gate error (non-fatal): {_ige}',flush=True)
     app=FastAPI(title='Amni-Ai Adam',version='6.0.0')
     if os.environ.get('AMNI_SCRUB_EGRESS','1').lower() not in ('0','false','no'):
         from fastapi.responses import JSONResponse as _JR
