@@ -535,6 +535,15 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 @keyframes rpulse{0%,100%{opacity:.3}50%{opacity:1}}
 .reasoning-body{display:none;padding:0 10px 8px 10px;max-height:200px;overflow-y:auto;white-space:pre-wrap;color:var(--mute);font-family:Consolas,monospace;font-size:11px;line-height:1.45}
 .reasoning.open .reasoning-body{display:block}
+.reasoning.agentic{border-left-color:var(--cyan);background:rgba(var(--c-rgb),.05)}
+.reasoning.agentic .reasoning-head{color:var(--cyan)}
+.reasoning.agentic.done .reasoning-dot{animation:none;background:var(--cyan)}
+.agentic-steps{display:flex;flex-direction:column;gap:3px;white-space:normal;font-family:inherit}
+.ag-step{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--fg);line-height:1.5;animation:agIn .18s ease-out}
+.ag-step .ag-ic{flex:0 0 auto;width:17px;text-align:center}
+.ag-step .ag-txt{flex:1;min-width:0;word-break:break-word}
+.ag-step .ag-dim{opacity:.7;font-style:italic}
+@keyframes agIn{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
 .pp-themes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .th-sw{display:flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid;border-radius:5px;cursor:pointer;transition:transform .12s,box-shadow .12s;overflow:hidden}
 .th-sw:hover{transform:translateY(-1px)}
@@ -1967,7 +1976,7 @@ async function _runWebSearch(query){
     else{
       const ans=out.answer||'(no answer distilled)';const srcs=out.sources||[];
       let html=md(ans);
-      if(srcs.length){html+='<div class="meta" style="margin-top:6px"><b>Sources:</b><br>'+srcs.slice(0,5).map((s,i)=>(i+1)+'. <a href="'+esc(s)+'" target="_blank" rel="noopener">'+esc(s)+'</a>').join('<br>')+'</div>'}
+      if(srcs.length){html+='<div class="meta" style="margin-top:6px"><b>Sources:</b><br>'+srcs.slice(0,5).map((s,i)=>{var d=s;try{d=new URL(s).hostname.replace(/^www\./,'')}catch(_){}return (i+1)+'. <a href="'+esc(s)+'" target="_blank" rel="noopener" title="'+esc(s)+'">'+esc(d)+'</a>'}).join('<br>')+'</div>'}
       if(out.pii_scrubbed)html+='<div class="meta" style="margin-top:4px"><span class="badge">PII scrubbed before send</span></div>';
       botB.innerHTML=html;
     }
@@ -2098,7 +2107,7 @@ async function send(){
   input.value='';input.style.height='auto';
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
-  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];let aborted=false;let reasonEl=null;let reasonText='';
+  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];let aborted=false;let reasonEl=null;let reasonText='';let agenticEl=null;
   _streamAbort=new AbortController();
   _setSendButtonState(true);
   _typeStart(bot,null);
@@ -2152,6 +2161,46 @@ async function send(){
             if(m.category)category=m.category;
           }else if(etype==='widget'){
             try{widgets.push(JSON.parse(edata))}catch{}
+          }else if(etype.startsWith('agentic_')){
+            let d={};try{d=JSON.parse(edata)}catch(_){}
+            const sub=etype.slice(8);
+            if(!agenticEl){
+              if(bot._st){clearInterval(bot._st);bot._st=null}
+              bot.bubble.classList.remove('thinking');bot.bubble.textContent='';
+              agenticEl=document.createElement('div');agenticEl.className='reasoning agentic open';
+              agenticEl.innerHTML='<div class="reasoning-head" onclick="this.parentElement.classList.toggle(\'open\')"><span class="reasoning-dot"></span><span class="ag-title">Adam is working…</span><span class="reasoning-toggle">▾</span></div><div class="reasoning-body agentic-steps"></div>';
+              bot.msg.insertBefore(agenticEl,bot.bubble);
+            }
+            const sb=agenticEl.querySelector('.agentic-steps');
+            const addStep=(t)=>{const r=document.createElement('div');r.className='ag-step';r.innerHTML=t;sb.appendChild(r);sb.scrollTop=sb.scrollHeight;_smartScroll()};
+            if(sub==='step_start'){
+              const tl=d.tool||'';const a=d.args||{};
+              const ic=({find:'🔎',code_index:'🔎',scan:'🗂️',file_read:'📖',code_edit:'✏️',code_diff:'✏️',file_write:'📝',test_run:'🧪',shell:'⌨️',web:'🌐',mem:'🧠',project_info:'📋',parse_error:'🐞',git:'🔀'})[tl]||'🔧';
+              let lbl=tl;
+              if(tl==='file_read')lbl='reading '+(a.path||'');
+              else if(tl==='scan')lbl='scanning '+(a.path||'');
+              else if(tl==='find'||tl==='code_index')lbl='searching for '+(a.query||a.term||'');
+              else if(tl==='code_edit'||tl==='code_diff')lbl='editing '+(a.path||'');
+              else if(tl==='file_write')lbl='writing '+(a.path||'');
+              else if(tl==='shell')lbl='running: '+String(a.cmd||'').slice(0,48);
+              else if(tl==='web')lbl='web search: '+(a.query||'');
+              else if(tl==='test_run')lbl='running the tests';
+              addStep('<span class="ag-ic">'+ic+'</span><span class="ag-txt">'+esc(String(lbl)).slice(0,96)+'</span>');
+            }
+            else if(sub==='auto_verify')addStep('<span class="ag-ic">'+(d.ok?'✅':'⚠️')+'</span><span class="ag-txt">'+(d.ok?'verified it works':'verify failed — fixing it')+'</span>');
+            else if(sub==='critique_start')addStep('<span class="ag-ic">🧐</span><span class="ag-txt">double-checking the result…</span>');
+            else if(sub==='critique'&&d.acceptable===false)addStep('<span class="ag-ic">↩️</span><span class="ag-txt">caught an issue, fixing: '+esc(String(d.fault||'')).slice(0,72)+'</span>');
+            else if(sub==='force_write')addStep('<span class="ag-ic">✍️</span><span class="ag-txt">writing the file now</span>');
+            else if(sub==='file_proliferation')addStep('<span class="ag-ic">🗂️</span><span class="ag-txt">consolidating to one file</span>');
+            else if(sub==='help_request')addStep('<span class="ag-ic">🙋</span><span class="ag-txt">'+esc(String(d.question||'')).slice(0,96)+'</span>');
+            else if(sub==='thought'&&d.thought)addStep('<span class="ag-ic">💭</span><span class="ag-txt ag-dim">'+esc(String(d.thought)).slice(0,96)+'</span>');
+            else if(sub==='no_progress_stop')addStep('<span class="ag-ic">🛑</span><span class="ag-txt">stopping — could not make further progress</span>');
+            else if(sub==='final'){
+              if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}
+              const _a=d.answer||'';acc=_a;_typePush(_a);
+              agenticEl.classList.remove('open');agenticEl.classList.add('done');
+              const tt=agenticEl.querySelector('.ag-title');if(tt)tt.textContent='Adam worked through '+(d.n_steps||sb.children.length)+' step'+((d.n_steps||sb.children.length)===1?'':'s');
+            }
           }else if(etype==='done'){
             const d=JSON.parse(edata);tier=d.tier||tier;wall=d.wall_s||'';
           }
