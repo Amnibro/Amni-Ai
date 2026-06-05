@@ -544,6 +544,10 @@ mark.cs-hit.current{background:rgba(0,255,156,.4);box-shadow:0 0 8px rgba(0,255,
 .ag-step .ag-txt{flex:1;min-width:0;word-break:break-word}
 .ag-step .ag-dim{opacity:.7;font-style:italic}
 @keyframes agIn{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+.exec-out{margin:6px 0;border-left:2px solid rgba(var(--c-rgb),.4);background:rgba(0,0,0,.25);border-radius:0 4px 4px 0;overflow:hidden}
+.exec-head{padding:4px 10px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
+.exec-out pre{margin:0;padding:6px 10px;font-family:Consolas,monospace;font-size:11px;white-space:pre-wrap;color:var(--fg);max-height:240px;overflow:auto}
+.exec-out pre.exec-err{color:#ff9b9b}
 .pp-themes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .th-sw{display:flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid;border-radius:5px;cursor:pointer;transition:transform .12s,box-shadow .12s;overflow:hidden}
 .th-sw:hover{transform:translateY(-1px)}
@@ -2107,7 +2111,7 @@ async function send(){
   input.value='';input.style.height='auto';
   bubble('user',text);
   const bot=bubble('bot','...');bot.bubble.classList.add('thinking');
-  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];let aborted=false;let reasonEl=null;let reasonText='';let agenticEl=null;
+  let acc='';let tier='?';let wall='';let persona='';let category='';let widgets=[];let aborted=false;let reasonEl=null;let reasonText='';let agenticEl=null;let truncated=false;let webSup=null;
   _streamAbort=new AbortController();
   _setSendButtonState(true);
   _typeStart(bot,null);
@@ -2202,6 +2206,16 @@ async function send(){
               agenticEl.classList.remove('open');agenticEl.classList.add('done');
               const tt=agenticEl.querySelector('.ag-title');if(tt)tt.textContent='Adam worked through '+(d.n_steps||sb.children.length)+' step'+((d.n_steps||sb.children.length)===1?'':'s');
             }
+          }else if(etype==='truncated'){truncated=true;
+          }else if(etype==='web_lookup'){webSup=webSup||{};webSup.looked=true;
+          }else if(etype==='web_supplement_done'){try{const w=JSON.parse(edata);webSup={ok:true,n:w.sources_n||0}}catch(_){}
+          }else if(etype==='web_supplement_error'){webSup={ok:false};
+          }else if(etype==='exec'){
+            let x={};try{x=JSON.parse(edata)}catch(_){}
+            const ex=document.createElement('div');ex.className='exec-out';
+            if(x.error){ex.innerHTML='<div class="exec-head">⚙ ran the code — error</div><pre class="exec-err">'+esc(String(x.error)).slice(0,800)+'</pre>'}
+            else{ex.innerHTML='<div class="exec-head">⚙ ran the code → '+(x.timed_out?'timed out':('exit '+(x.returncode!=null?x.returncode:'?')))+'</div>'+(x.stdout?'<pre>'+esc(String(x.stdout)).slice(0,1200)+'</pre>':'')+(x.stderr?'<pre class="exec-err">'+esc(String(x.stderr)).slice(0,800)+'</pre>':'')}
+            bot.msg.appendChild(ex);_smartScroll();
           }else if(etype==='error'){
             let em=edata;try{em=JSON.parse(edata)}catch(_){}
             if(bot._st){clearInterval(bot._st);bot._st=null}
@@ -2224,7 +2238,7 @@ async function send(){
     const metaEl=document.createElement('div');metaEl.className='meta';
     const approxTok=acc?Math.max(1,Math.round(acc.length/4)):0;
     const tokLabel=approxTok>=1000?(approxTok/1000).toFixed(1)+'k':String(approxTok);
-    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${approxTok?`<span class="badge tok" title="~${approxTok} tokens (estimated 4 chars/token)">~${tokLabel} tok</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}${aborted?'<span class="badge err">stopped</span>':''}`;
+    metaEl.innerHTML=`<span class="badge">${esc(tier)}</span>${wall?`<span>${wall}s</span>`:''}${approxTok?`<span class="badge tok" title="~${approxTok} tokens (estimated 4 chars/token)">~${tokLabel} tok</span>`:''}${persona?`<span class="badge persona">${esc(persona)}</span>`:''}${widgets.length?`<span class="badge">${widgets.length} widget(s)</span>`:''}${aborted?'<span class="badge err">stopped</span>':''}${truncated?'<span class="badge err" title="response hit the output cap and was cut off">truncated</span>':''}${webSup&&webSup.ok?`<span class="badge" title="answer augmented with ${webSup.n||0} web source(s)">🌐 web${webSup.n?' '+webSup.n:''}</span>`:''}`;
     bot.msg.appendChild(metaEl);
     if(voiceOut&&acc&&!aborted)speak(acc);
   }catch(err){
