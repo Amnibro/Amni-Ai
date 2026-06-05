@@ -37,6 +37,13 @@ class WebCrawler:
             if a.startswith('.') and (d.endswith(a) or d==a[1:]):return True
             if d==a or d.endswith('.'+a):return True
         return False
+    def _is_trusted(self,url:str)->bool:
+        d=self._domain(url)
+        if not d:return False
+        for a in _DEFAULT_ALLOW:
+            if a.startswith('.') and (d.endswith(a) or d==a[1:]):return True
+            if d==a or d.endswith('.'+a):return True
+        return False
     def _can_fetch(self,url:str)->bool:
         if not self.respect_robots:return True
         if self._is_allowed(url):return True
@@ -77,7 +84,7 @@ class WebCrawler:
         try:
             html=trafilatura.fetch_url(url,no_ssl=False)
             if not html:return (None,None)
-            text=trafilatura.extract(html,include_comments=False,include_tables=False,no_fallback=False)
+            text=trafilatura.extract(html,include_comments=False,include_tables=True,include_formatting=True,no_fallback=False)
             return (html,(text[:self.max_chars] if text else None))
         except Exception as e:print(f'  [crawler] fetch failed for {url[:60]}: {e}',flush=True);return (None,None)
     def fetch(self,url:str)->Optional[str]:
@@ -89,7 +96,9 @@ class WebCrawler:
         for u in urls:
             html,text=self._fetch_raw(u)
             if not text:continue
-            qy=_quality_score(html,text,self._min_text);best.append((qy,u,text))
+            qy=_quality_score(html,text,self._min_text)
+            if self._is_trusted(u) and len(text)>=self._min_text:qy=max(qy,0.5)
+            best.append((qy,u,text))
             if qy<self._min_quality:continue
             d=self._domain(u)
             if diverse and d in seen:continue
@@ -157,7 +166,11 @@ class CrawlerPlugin:
             prompt=f'Sources:\n{sources_text}\n\nQuestion:\n{question}\n\nAnswer (single letter):'
             mx=4
         else:
-            sys_p='You are a careful research assistant summarizing REAL web pages already fetched for you (the numbered sources below). Synthesize a DIRECT, factual answer to the question. Cite source numbers in [brackets] for each claim. Prefer concrete facts, figures, and primary/authoritative statements over marketing or vague language. If the sources disagree, say so and give both sides. If the sources do not actually answer the question, say "the fetched sources do not directly answer this" and briefly note what they DO cover. NEVER say you cannot access the internet — these are real results already retrieved for you.'
+            sys_p=('You are a careful, neutral research assistant summarizing REAL web pages already fetched for you (the numbered sources below). Synthesize a DIRECT, factual answer and cite source numbers in [brackets] for each claim.\n'
+            'PRECISION (math/science): reproduce numbers, units, dates, formulas, and equations EXACTLY as the sources state them — never round, paraphrase, or invent a figure; if sources give different values, report the range and cite each.\n'
+            'NEUTRALITY: attribute claims to their source. If a source uses emotionally loaded, one-sided, or unsourced absolute language, note that briefly and lean on sources that show evidence. When views genuinely differ, present the main perspectives and let the reader judge — do NOT inject your own opinion or hide a viewpoint.\n'
+            'INTEGRITY: do not provide step-by-step instructions that would enable serious harm to people, even if a source contains them.\n'
+            'If the sources do not actually answer the question, say "the fetched sources do not directly answer this" and note what they DO cover. NEVER claim you cannot access the internet — these are real results already retrieved for you.')
             prompt=f'Sources:\n{sources_text}\n\nQuestion:\n{question}\n\nAnswer:'
             mx=self.distill_max
         try:ans,n=self.distiller.chat(prompt,system=sys_p,max_new_tokens=mx,do_sample=False,kb_top_k=0)
