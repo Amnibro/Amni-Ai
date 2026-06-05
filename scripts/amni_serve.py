@@ -438,6 +438,8 @@ def main():
             except Exception:pass
             category=tone_atlas.classify_intent(req.message)
             _intent_label,_intent_conf=((_route['intent'],_route.get('confidence',0.0)) if _route else (_intent_clf.classify(req.message) if _intent_clf else ('unknown',0.0)))
+            if _route and _route.get('ambiguous') and not _route.get('is_skill') and _route.get('alt_intent')=='needs_fresh_info' and not _NEEDS_FRESH_INFO_RE.search(req.message):
+                yield f'event: disambiguate\ndata: {_json.dumps({"reason":"I answered from what I know — want me to check the web for the latest instead?","options":[{"label":"\U0001F310 Search the web","send":"search the web for: "+req.message[:200]}]})}\n\n'
             _profile_authoritative=(_intent_label=='profile_about_me') or bool(_PROFILE_AUTHORITATIVE_RE.search(req.message))
             _memory_recall=(_intent_label=='memory_recall') or bool(_MEMORY_RECALL_RE.search(req.message))
             apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam'
