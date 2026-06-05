@@ -2,6 +2,8 @@
 
 One line per release; full detail in git history.
 
+- v6.11.55 — Personal trainer (`pose_coach`) expanded 4→11 exercises + two new modes. Added **lunge** & **bent-over row** (rep), an **INVERT mode** for extend-at-top lifts (**overhead press, lateral raise, glute bridge** — the rep machine is now direction-agnostic with full range-of-motion scoring), and a **HOLD / isometric mode** (**plank, wall-sit**) that times how long you hold correct form and breaks the hold on form failure (tracks best + total hold). `list_exercises` now reports each mode (rep/extend/hold) and no longer KeyErrors on hold exercises. Validated: flex + invert rep counting, hold timing, no regressions. (2026-06-04)
+
 - v6.11.54 — UX: surface more silently-dropped chat-stream events (same class as the agentic bug). The UI now handles: `truncated` → a "truncated" badge so you know the reply hit the output cap and was cut off (was invisible — you'd think a half-answer was complete); `exec` → renders the stdout/stderr/exit code when Adam RUNS the code it wrote (the "runs its own code" feature was invisible); `web_lookup`/`web_supplement_done`/`_error` → a "🌐 web N" badge when an answer was augmented with web sources. (2026-06-04)
 
 - v6.11.53 — UX: surface stream errors instead of silently dropping them. The chat handler had no `error`/`agentic_error` branch, so a server-side failure left the user staring at a spinner with no feedback. Now an error renders in the bubble (or as a step in the agentic work-log) in the theme error color. (2026-06-04)
