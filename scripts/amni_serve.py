@@ -364,12 +364,15 @@ def main():
                     _users_before=[t for t in _prior[:-1] if t.get('role')=='user']
                     prior_q=(_users_before[-1].get('content') or '') if _users_before else ''
             conv.append('user',req.message)
+            _route=None
+            try:_route=_intent_clf.route(req.message) if _intent_clf else None
+            except Exception:_route=None
             if req.persona and agent.use_persona:
                 try:
                     _reqp=req.persona.strip().lower()
                     if _reqp and agent.personas.has(_reqp) and agent.personas._session_persona.get(conv.session_id)!=_reqp:agent.personas.assign_session(conv.session_id,_reqp)
                 except Exception as _pae:print(f'[amni_serve] persona assign failed: {_pae}',flush=True)
-            if is_build_request(req.message):
+            if is_build_request(req.message) or (_route and _route.get('is_skill') and _route.get('intent')=='build_request'):
                 _ag_persona=agent.personas.for_session(conv.session_id) if agent.use_persona else None
                 _ag_persona_name=_ag_persona.name if _ag_persona else 'Adam'
                 yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_ag_persona_name,"agentic":True})}\n\n'
@@ -434,7 +437,7 @@ def main():
                     return
             except Exception:pass
             category=tone_atlas.classify_intent(req.message)
-            _intent_label,_intent_conf=(_intent_clf.classify(req.message) if _intent_clf else ('unknown',0.0))
+            _intent_label,_intent_conf=((_route['intent'],_route.get('confidence',0.0)) if _route else (_intent_clf.classify(req.message) if _intent_clf else ('unknown',0.0)))
             _profile_authoritative=(_intent_label=='profile_about_me') or bool(_PROFILE_AUTHORITATIVE_RE.search(req.message))
             _memory_recall=(_intent_label=='memory_recall') or bool(_MEMORY_RECALL_RE.search(req.message))
             apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam'
