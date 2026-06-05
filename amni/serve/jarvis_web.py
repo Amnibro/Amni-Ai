@@ -2195,12 +2195,20 @@ async function send(){
             else if(sub==='help_request')addStep('<span class="ag-ic">🙋</span><span class="ag-txt">'+esc(String(d.question||'')).slice(0,96)+'</span>');
             else if(sub==='thought'&&d.thought)addStep('<span class="ag-ic">💭</span><span class="ag-txt ag-dim">'+esc(String(d.thought)).slice(0,96)+'</span>');
             else if(sub==='no_progress_stop')addStep('<span class="ag-ic">🛑</span><span class="ag-txt">stopping — could not make further progress</span>');
+            else if(sub==='error')addStep('<span class="ag-ic">⚠️</span><span class="ag-txt" style="color:var(--err,#ff7b7b)">'+esc(String(d.msg||d.error||edata))+'</span>');
             else if(sub==='final'){
               if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}
               const _a=d.answer||'';acc=_a;_typePush(_a);
               agenticEl.classList.remove('open');agenticEl.classList.add('done');
               const tt=agenticEl.querySelector('.ag-title');if(tt)tt.textContent='Adam worked through '+(d.n_steps||sb.children.length)+' step'+((d.n_steps||sb.children.length)===1?'':'s');
             }
+          }else if(etype==='error'){
+            let em=edata;try{em=JSON.parse(edata)}catch(_){}
+            if(bot._st){clearInterval(bot._st);bot._st=null}
+            bot.bubble.classList.remove('thinking');
+            const msg='⚠️ '+String((em&&em.message)||(em&&em.error)||em);
+            if(!acc){bot.bubble.innerHTML='<span style="color:var(--err,#ff7b7b)">'+esc(msg)+'</span>';}
+            else{const en=document.createElement('div');en.className='meta';en.style.color='var(--err,#ff7b7b)';en.textContent=msg;bot.msg.appendChild(en)}
           }else if(etype==='done'){
             const d=JSON.parse(edata);tier=d.tier||tier;wall=d.wall_s||'';
           }
