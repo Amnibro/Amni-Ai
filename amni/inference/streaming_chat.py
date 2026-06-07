@@ -52,13 +52,16 @@ class StreamingChatService:
             from amni.inference import triton_gdn_patch
             triton_gdn_patch.apply()
         text_cfg=cfg.text_config if hasattr(cfg,'text_config') else cfg
-        try:text_cfg._attn_implementation='eager'
+        _ai=os.environ.get('AMNI_ATTN','eager')
+        try:text_cfg._attn_implementation=_ai
         except Exception:pass
-        with init_empty_weights():m=AutoModelForCausalLM.from_config(text_cfg,attn_implementation='eager')
+        with init_empty_weights():m=AutoModelForCausalLM.from_config(text_cfg,attn_implementation=_ai)
         m=m.to(dtype=torch.bfloat16)
         if is_gdn:
             from amni.inference import triton_gdn_patch
             triton_gdn_patch.reattach_to_model(m)
+        budget_mb=int(os.environ.get('AMNI_BUDGET_MB',budget_mb))
+        enable_prefetch=enable_prefetch and os.environ.get('AMNI_PREFETCH','1')=='1'
         self.registry=TensorRegistry(bake_dir,budget_mb*1024*1024,device,enable_prefetch=enable_prefetch)
         ts=self.registry.manifest['tensors']
         for o in list(ts.keys()):
