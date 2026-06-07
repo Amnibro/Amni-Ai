@@ -33,6 +33,7 @@ class TensorRegistry:
         self._prefetch_stream=torch.cuda.Stream() if enable_prefetch and device.startswith('cuda') and torch.cuda.is_available() else None
         self._is_gf17=self.manifest.get('reffelt_scheme')=='gf17_digit_planes'
         self._is_rgba16q=self.manifest.get('reffelt_scheme')=='rgba16_quad'
+        self._is_palette=self.manifest.get('reffelt_scheme')=='palette'
         self._residual_overlay_count=0
         self.active_subjects=('global',)
     def _mmap_for(self,key):
@@ -178,6 +179,36 @@ class TensorRegistry:
         src_dtype=e['source_dtype']
         t=torch.from_numpy(flat_fp16.copy())
         return (t.reshape(target_shape).to(self.device) if src_dtype=='float16' else t.view(_torch_dtype_from_str(src_dtype)).reshape(target_shape).to(self.device))
+    def _decode_palette_to_fp16(self,key):
+        e=self.manifest['tensors'][key];K=int(e['K']);b=int(e['idx_bits']);n=int(e['n'])
+        raw=np.memmap(self.bake_dir/e['palette_path'],dtype=np.uint8,mode='r')
+        pal=np.ascontiguousarray(raw[:K*2]).view('<u2')
+        packed=raw[K*2:]
+        out=np.empty(n,dtype=np.uint16);CH=8_000_000;woff=0;boff=0;w=np.arange(b,dtype=np.uint32)
+        while woff<n:
+            m=min(CH,n-woff);nb=(m*b+7)//8
+            cb=np.ascontiguousarray(packed[boff:boff+nb])
+            bits=np.unpackbits(cb)[:m*b].reshape(m,b).astype(np.uint32)
+            idx=(bits*(1<<w)).sum(1)
+            out[woff:woff+m]=pal[idx]
+            woff+=m;boff+=nb;del bits,idx,cb
+        del raw;return out.view(np.float16)
+    def _decode_palette_to_torch(self,key,target_shape):
+        e=self.manifest['tensors'][key];K=int(e['K']);b=int(e['idx_bits']);n=int(e['n']);sd=e['source_dtype'];dev=self.device
+        if not (isinstance(dev,str) and dev.startswith('cuda') and torch.cuda.is_available()):
+            flat=self._decode_palette_to_fp16(key);t=torch.from_numpy(flat.copy())
+            return (t.reshape(target_shape).to(dev) if sd=='float16' else t.view(_torch_dtype_from_str(sd)).reshape(target_shape).to(dev))
+        raw=np.memmap(self.bake_dir/e['palette_path'],dtype=np.uint8,mode='r')
+        pal=torch.from_numpy(np.ascontiguousarray(raw[:K*2]).view('<u2').astype(np.int32)).to(dev)
+        packed=raw[K*2:];sh=torch.arange(7,-1,-1,device=dev,dtype=torch.int32);w=(torch.ones((),dtype=torch.int32,device=dev)<<torch.arange(b,device=dev,dtype=torch.int32))
+        out=torch.empty(n,dtype=torch.int16,device=dev);CH=8_000_000;woff=0;boff=0
+        while woff<n:
+            m=min(CH,n-woff);nb=(m*b+7)//8
+            pk=torch.from_numpy(np.ascontiguousarray(packed[boff:boff+nb]).copy()).to(dev).to(torch.int32)
+            bits=((pk.unsqueeze(1)>>sh)&1).reshape(-1)[:m*b].reshape(m,b)
+            idx=(bits*w).sum(1).to(torch.long);out[woff:woff+m]=pal[idx].to(torch.int16)
+            woff+=m;boff+=nb;del pk,bits,idx
+        del raw;return out.view(torch.float16 if sd=='float16' else _torch_dtype_from_str(sd)).reshape(target_shape)
     def invalidate(self,key):
         if key in self._lru:del self._lru[key]
         if key in self._sizes:del self._sizes[key]
@@ -213,6 +244,7 @@ class TensorRegistry:
         if key not in self.manifest['tensors']:return
         e=self.manifest['tensors'][key]
         if self._is_gf17:flat_fp16=self._decode_gf17_to_fp16(key)
+        elif self._is_palette:flat_fp16=self._decode_palette_to_fp16(key)
         elif self._is_rgba16q:flat_fp16=decode_rgba16_quad_to_fp16(self._mmap_u16(key),int(np.prod(e['shape'])))
         else:
             mm=self._mmap_for(key)
@@ -238,6 +270,7 @@ class TensorRegistry:
             return t
         e=self.manifest['tensors'][key]
         if self._is_gf17:t=self._decode_gf17_to_torch(key,e['shape'])
+        elif self._is_palette:t=self._decode_palette_to_torch(key,e['shape'])
         elif self._is_rgba16q:t=self._decode_rgba16q_to_torch(key,e['shape'])
         else:
             mm=self._mmap_for(key)
@@ -265,6 +298,10 @@ class TensorRegistry:
             t=torch.from_numpy(flat_fp16.copy())
             if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
             return t.reshape(n_rows,cols).to(self.device)
+        if self._is_palette:
+            full=self.get_full(key)
+            ri=torch.as_tensor(np.asarray(row_indices,dtype=np.int64),device=full.device,dtype=torch.long)
+            return (full if full.dim()==2 else full.reshape(-1,int(e['shape'][-1])))[ri]
         mm=self._mmap_for(key);ri=np.asarray(row_indices,dtype=np.int64)
         cols=int(e['shape'][-1])*int(e.get('u16_per_elem',1))
         gather=(ri[:,None]*cols+np.arange(cols,dtype=np.int64)[None,:]).reshape(-1)
@@ -439,7 +476,8 @@ def swap_modules(model,registry,verbose=False,lmhead_tile_rows=4096):
 def materialize_remaining_params(model,registry,device='cuda',verbose=False):
     from accelerate.utils import set_module_tensor_to_device
     manifest=registry.manifest['tensors']
-    materialized=0;skipped=0
+    materialized=0;skipped=0;mismatches=[]
+    _pshape={n:tuple(p.shape) for n,p in model.named_parameters()}
     for name,param in list(model.named_parameters()):
         if name not in manifest:
             skipped+=1
@@ -447,6 +485,7 @@ def materialize_remaining_params(model,registry,device='cuda',verbose=False):
             continue
         e=manifest[name]
         if registry._is_gf17:flat_fp16=registry._decode_gf17_to_fp16(name)
+        elif registry._is_palette:flat_fp16=registry._decode_palette_to_fp16(name)
         else:
             mm=registry._mmap_for(name)
             n=int(e['n_pixels'])
@@ -454,8 +493,14 @@ def materialize_remaining_params(model,registry,device='cuda',verbose=False):
         t=torch.from_numpy(flat_fp16.copy())
         src_dtype=e['source_dtype']
         if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
-        t=t.reshape(e['shape'])
+        try:t=t.reshape(e['shape'])
+        except Exception as _re:print(f'  [materialize RESHAPE-FAIL] {name}: cannot reshape {t.numel()} elems to {e["shape"]}: {_re}',flush=True);mismatches.append((name,'reshape',e['shape']));continue
+        want=_pshape.get(name)
+        if want is not None and tuple(t.shape)!=want:
+            if len(mismatches)<=25:print(f'  [materialize MISMATCH] {name}: baked {tuple(t.shape)} vs model {want}',flush=True)
+            mismatches.append((name,tuple(t.shape),want));continue
         set_module_tensor_to_device(model,name,device,value=t)
         materialized+=1
         if verbose:print(f'  MATERIALIZE {name} shape={e["shape"]}')
-    return {'materialized':materialized,'skipped':skipped}
+    if mismatches:print(f'  [materialize] DONE materialized={materialized} skipped_nomanifest={skipped} MISMATCHES={len(mismatches)}',flush=True)
+    return {'materialized':materialized,'skipped':skipped,'mismatches':len(mismatches)}

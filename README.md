@@ -36,6 +36,19 @@ Browser → **http://127.0.0.1:7700/** — a loading screen shows while Adam war
 
 **[Full install guide →](docs/INSTALL.md)** · **[Tutorial: first 30 min →](docs/TUTORIAL.md)** · **[Landing page →](https://example.com/amni-ai)**
 
+### Faster + RAM-light (v6.12.0): palette-GF(17) bakes & acceleration
+
+Adam now loads the **palette-GF(17) bake** format (bit-exact, cossim = 1.0, ~1.6 B/wt) with a **GPU-native palette decode** that keeps weights VRAM-resident, so system RAM stays free. Tuning knobs (env):
+
+- `AMNI_BUDGET_MB=<MB>` — VRAM LRU budget; size it to hold the model so weights decode **once** (no re-decode thrash). e.g. `11000` for a 3B.
+- `AMNI_BLOCK_SPEC=1` — block-spec speculative decoding (**default on** for Granite): up to **10–11× single-stream** on repeated/learned queries, **~4–5×** on summarize/extract — lossless (target verifies every token); the block bank self-improves as Adam runs.
+- Batched requests are **compute-bound** → ~52× aggregate throughput on a 3B (great for the crawler / multi-user).
+- `AMNI_ATTN=eager|sdpa`, `AMNI_PREFETCH=1` (keep on — overlaps weight movement with compute).
+
+```bash
+AMNI_BUDGET_MB=11000 python scripts/amni_serve.py --bake <palette_bake_dir> --port 7700
+```
+
 ---
 
 ## What's in this repo
