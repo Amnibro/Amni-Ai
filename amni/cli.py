@@ -5,7 +5,7 @@ from pathlib import Path
 from amni.bootstrap import load_config,save_config,ensure_dirs,download_bake,download_base_model,detect_bake,detect_model,bake_has_runtime_metadata,CONFIG_DIR,CONFIG_FILE,is_first_run,mark_first_run_done,DEFAULT_PORT,DEFAULT_HOST,detect_vram_gb,recommend_bake_tier,pin_discrete_gpu
 def _add_common_adam(p):
     cfg=load_config()
-    default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'granite41_3b_gf17')
+    default_bake=cfg.get('bake') or str(CONFIG_DIR/'bakes'/'granite41_3b_palette')
     default_model=cfg.get('model') or cfg.get('bake') or default_bake
     p.add_argument('--bake',default=os.environ.get('AMNI_BAKE',default_bake))
     p.add_argument('--model',default=os.environ.get('AMNI_MODEL',default_model))
