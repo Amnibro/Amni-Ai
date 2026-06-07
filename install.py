@@ -166,7 +166,7 @@ def main():
     ap=argparse.ArgumentParser(description='Adam one-shot installer',formatter_class=argparse.RawDescriptionHelpFormatter,epilog=__doc__)
     ap.add_argument('--no-launch',action='store_true',help='Set up but do not start the server')
     ap.add_argument('--skip-model',action='store_true',help='Skip model download (the GF(17) Granite-3B bake)')
-    ap.add_argument('--bake-dir',default=None,help='Custom path for the bake (default: <home>/bakes/granite41_3b_gf17)')
+    ap.add_argument('--bake-dir',default=None,help='Custom path for the bake (default: <home>/bakes/granite41_3b_palette)')
     ap.add_argument('--home',default=None,help='Custom config home for EVERYTHING — bakes, lessons, conversations (default: ~/.amni-ai)')
     ap.add_argument('--port',type=int,default=DEFAULT_PORT)
     ap.add_argument('--persona',default='alfred',help='Default persona (alfred=loyal-butler default; override with rikku/yoda/mentor/etc)')

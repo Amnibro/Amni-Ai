@@ -16,11 +16,11 @@ def _resolve_amni_home()->str:
     return str(HOME/'.amni-ai')
 CONFIG_DIR=Path(_resolve_amni_home())
 CONFIG_FILE=CONFIG_DIR/'config.json'
-DEFAULT_HF_REPO='amnibro/granite41-3b-gf17'
+DEFAULT_HF_REPO='amnibro/granite41-3b-palette'
 DEFAULT_BASE_REPO='ibm-granite/granite-4.1-3b'
 _LEGACY_BAKE_REPOS=set()
 _LEGACY_BAKE_DIRS=set()
-BAKE_TIERS=[(11.0,'amnibro/granite41-3b-gf17','granite41_3b_gf17','Granite-4.1-3B',7.5),(0.0,'amnibro/gemma-4-E2B-it-gf17','gemma4_e2b_it_gf17','Gemma-4-E2B',3.8)]
+BAKE_TIERS=[(8.0,'amnibro/granite41-3b-palette','granite41_3b_palette','Granite-4.1-3B (palette, RAM-light)',5.2),(0.0,'amnibro/gemma-4-E2B-it-gf17','gemma4_e2b_it_gf17','Gemma-4-E2B',3.8)]
 _IGPU_ARCH={'gfx1103','gfx1150','gfx1151','gfx1152','gfx90c','gfx1035','gfx1036','gfx1037','gfx1010'}
 def _is_igpu(d):
     n=(d.get('name') or '').lower();a=d.get('arch') or ''
@@ -61,7 +61,7 @@ def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
 def _candidate_bake_paths():
-    return _extra_candidates('AMNI_BAKE_PATHS')+[CONFIG_DIR/'bakes'/'granite41_3b_gf17',Path('./bakes/granite41_3b_gf17'),Path.home()/'amni-bakes'/'granite41_3b_gf17',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_gf17']
+    return _extra_candidates('AMNI_BAKE_PATHS')+[CONFIG_DIR/'bakes'/'granite41_3b_palette',Path('./bakes/granite41_3b_palette'),Path.home()/'amni-bakes'/'granite41_3b_palette',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_palette',CONFIG_DIR/'bakes'/'granite41_3b_gf17',Path('./bakes/granite41_3b_gf17'),Path.home()/'amni-bakes'/'granite41_3b_gf17',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_gf17']
 def _candidate_model_paths():
     return _extra_candidates('AMNI_MODEL_PATHS')+[CONFIG_DIR/'models'/'granite-4.1-3b',Path('./models/granite-4.1-3b'),Path.home()/'amni-models'/'granite-4.1-3b',Path.home()/'.amni-ai'/'models'/'granite-4.1-3b']
 def detect_bake()->Optional[Path]:
@@ -126,7 +126,7 @@ def ensure_dirs(cfg:Dict[str,Any]):
         if not v:continue
         Path(v).parent.mkdir(parents=True,exist_ok=True)
 def download_bake(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
-    target=Path(cfg.get('bake') or (CONFIG_DIR/'bakes'/'granite41_3b_gf17'))
+    target=Path(cfg.get('bake') or (CONFIG_DIR/'bakes'/'granite41_3b_palette'))
     if target.exists() and (target/'manifest.json').exists() and not force:
         print(f'[bootstrap] bake already at {target}',flush=True);return target
     try:from huggingface_hub import snapshot_download

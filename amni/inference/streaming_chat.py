@@ -44,7 +44,7 @@ class StreamingChatService:
             if ct.exists():
                 try:self.tok.chat_template=ct.read_text(encoding='utf-8');print(f'[StreamingChatService] loaded chat_template.jinja sidecar from {ct}',flush=True)
                 except Exception as _e:print(f'[StreamingChatService] WARN: failed to load chat_template.jinja sidecar: {_e}',flush=True)
-            else:print(f'[StreamingChatService] WARN: tokenizer has no chat_template AND no chat_template.jinja next to it at {model_path}. apply_chat_template() will fail. Re-pull the bake: snapshot_download(repo_id="amnibro/granite41-3b-gf17", local_dir="<bake_dir>")',flush=True)
+            else:print(f'[StreamingChatService] WARN: tokenizer has no chat_template AND no chat_template.jinja next to it at {model_path}. apply_chat_template() will fail. Re-pull the bake: snapshot_download(repo_id="amnibro/granite41-3b-palette", local_dir="<bake_dir>")',flush=True)
         cfg=AutoConfig.from_pretrained(model_path)
         archs=tuple(getattr(cfg,'architectures',None) or [])
         is_gdn=any(a in _GDN_ARCHS for a in archs)
