@@ -20,7 +20,7 @@ _MEM_RE=re.compile(r'\b(?:search\s+(?:my\s+|your\s+|adam\'?s?\s+|the\s+)?(?:memo
 _FILE_READ_RE=re.compile(r'\b(?:read|open|show|cat|display)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _DIR_READ_RE=re.compile(r"\b(?:read|list|show|open|browse|explore|scan\s+through|look\s+(?:in|at|through)|ls|dir|what(?:'s|\s+is)?\s+in|what\s+kind\s+of\s+files?\s+(?:are\s+)?in)\s+(?:me\s+)?(?:the\s+)?(?:contents?\s+of\s+)?(?:directory|folder|dir|path)\s+[\'\"`]?(.+?)[\'\"`]?(?:\s+and\s+\b.*)?\s*$",re.IGNORECASE)
 _FILE_WRITE_RE=re.compile(r'\b(?:write|save|create)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
-_SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?([^`\n]+)`?',re.IGNORECASE)
+_SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?(?!\s*(?:the|it|this|that|these|those|a|an|my|your|our|them|again|once|now|tests?|files?|scripts?|code|programs?|asserts?|everything|all)\b)([^`\n]+)`?',re.IGNORECASE)
 _CODE_RE=re.compile(r'\b(?:edit|patch|replace|change)\s+.*\bin\b\s+[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _SCAN_RE=re.compile(r'\b(?:use\s+)?(?:scan|ingest|study|learn\s+from|index|absorb)(?:\s+skill)?[\s:]+(?:(?:the|a|this|that|file|files|directory|directories|folder|folders|dir|path|contents?\s+of)\s+)*[\'"`]?([\w\-./:\\\\*?]+)[\'"`]?',re.IGNORECASE)
 _EXPR_EXTRACT=re.compile(r'([\d.]+(?:\s*(?:[+\-*/^x×]|times|plus|minus|over|divided\s+by)\s*[\d.]+)+)',re.IGNORECASE)
@@ -428,10 +428,13 @@ class AmniAgent:
                 return ('web',{'query':_q or msg})
         _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('weather'):return ('weather',{'location':_m.group(1).strip(' ?.,!')})
-        if self.skills.has('weather') and re.search(r"\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:here|now|today|outside)|forecast\s+(?:for\s+today|today|this\s+week)?)\b",msg,re.IGNORECASE):
+        _wx_local=re.search(r"\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:here|now|today|outside|right\s+now|tomorrow|this\s+(?:morning|afternoon|evening|week))|forecast\s+(?:for\s+)?(?:today|tomorrow|this\s+week|now)|is\s+it\s+(?:going\s+to\s+|gonna\s+)?(?:rain|snow)|do\s+i\s+need\s+(?:a\s+jacket|an\s+umbrella))\b",msg,re.IGNORECASE)
+        _wx_bare=re.search(r"^\s*(?:hey\s+)?(?:adam[,\s]+)?(?:so\s+)?(?:what(?:'s|\s+is|\s+are)?|how(?:'s|\s+is)?|hows)\s+(?:the\s+)?weather(?:\s+(?:like|today|now|outside|here|right\s+now))?\s*[?.!]*\s*$",msg,re.IGNORECASE) or re.fullmatch(r"\s*weather\s*[?.!]*\s*",msg,re.IGNORECASE)
+        if self.skills.has('weather') and (_wx_local or _wx_bare):
             _lat=getattr(self,'_client_lat',None);_lon=getattr(self,'_client_lon',None)
             if _lat is not None and _lon is not None:return ('weather',{'lat':float(_lat),'lon':float(_lon)})
-            return ('weather',{'location':'__need_geolocation__'})
+            _prof=getattr(self,'profile',None);_loc=((_prof.data.get('location') or '').strip() if (_prof is not None and hasattr(_prof,'data')) else '')
+            return ('weather',{'location':_loc or '__need_geolocation__'})
         if re.search(r"\bsystem\s+stats?\b|\b(?:cpu|ram|memory|disk)\s+(?:usage|stats?|status)\b|\bhow'?s\s+my\s+(?:system|computer|machine)\b",msg,re.IGNORECASE) and self.skills.has('system_stats'):return ('system_stats',{})
         _m=re.search(r"\b(?:top\s+)?news(?:\s+about|\s+on|\s+regarding)?\s+([\w\s\-]{2,60})\??$|\bwhat'?s\s+(?:happening|new)\s+(?:in|with|about)\s+([\w\s\-]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('news'):return ('news',{'query':(_m.group(1) or _m.group(2) or '').strip(' ?.,!')})
@@ -490,6 +493,9 @@ class AmniAgent:
         if self.skills.has('pose_coach'):
             if re.search(r"\b(?:what\s+exercises|which\s+exercises|exercises\s+can\s+you\s+coach|what\s+can\s+you\s+coach|coach(?:able)?\s+exercises|physical\s+therapy\s+(?:exercises|options))\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'exercises'})
             if re.search(r"\b(?:my|show\s+my|exercise|workout|pt|pose)\s+(?:coach|history|sessions?)\b|\b(?:coach|workout)\s+history\b",msg,re.IGNORECASE):return ('pose_coach',{'action':'history'})
+        if self.skills.has('define'):
+            _m=re.search(r"(?i)^what\s+does\s+(?:the\s+word\s+)?[\"']?([a-zA-Z][a-zA-Z\-]{2,30})[\"']?\s+mean\s*\??\.?$",msg) or re.search(r"^(?:define|definition\s+of)\s+[\"']?([a-z][a-z\-]{2,30})[\"']?\s*\??\.?$",msg)
+            if _m:return ('define',{'word':_m.group(1).strip()})
         if self.skills.has('find'):
             _m=re.search(r"^(?:please\s+)?(?:find|grep|search\s+for|search|locate|show\s+me\s+where)\s+(?:for\s+)?[\"'`]([^\"'`]{2,160})[\"'`](?:\s+in\s+(?:my\s+)?(?:code|repo|project|files))?\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('find',{'query':_m.group(1).strip()})
@@ -497,6 +503,44 @@ class AmniAgent:
             if _m:tok=_m.group(1).strip(' .?');return ('find',{'query':tok}) if tok else None
             _m=re.search(r"^(?:show\s+me\s+(?:the\s+)?code\s+for\s+|find\s+the\s+function\s+|where(?:'s|\s+is)\s+function\s+|find\s+function\s+)([\w_]{2,80})\s*\(?\)?\s*\.?\s*$",msg,re.IGNORECASE)
             if _m:return ('find',{'query':'def '+_m.group(1).strip(),'regex':False})
+        if self.skills.has('units'):
+            _m=re.search(r"(?i)^(?:convert\s+|how\s+(?:many|much)\s+(?:[a-z]+\s+)?(?:is|are|in)\s+)?(-?\d+\.?\d*)\s*([a-zA-Z°/]{1,12})\s+(?:to|in|into|as)\s+([a-zA-Z°/]{1,12})\s*\??\.?$",msg)
+            if _m and not _m.group(2).isdigit():return ('units',{'query':f'{_m.group(1)} {_m.group(2)} to {_m.group(3)}'})
+        if self.skills.has('chem'):
+            _m=re.search(r"(?i)\b(?:molar\s+mass|molecular\s+(?:weight|mass)|formula\s+(?:weight|mass))\s+(?:of\s+)?([A-Za-z0-9().\[\]·]{2,40})",msg)
+            if _m:return ('chem',{'formula':_m.group(1).strip(' .?')})
+        if self.skills.has('translate'):
+            _m=re.search(r"(?i)^translate\s+[\"']?(.+?)[\"']?\s+(?:in)?to\s+([a-zA-Z]{2,12})\s*\.?$",msg)
+            if _m:
+                _lg={'spanish':'es','french':'fr','german':'de','japanese':'ja','italian':'it','portuguese':'pt','chinese':'zh','russian':'ru','korean':'ko','english':'en','dutch':'nl','arabic':'ar','hindi':'hi'}
+                return ('translate',{'text':_m.group(1).strip('"\' '),'to':_lg.get(_m.group(2).lower(),_m.group(2).lower()[:2])})
+        if self.skills.has('quote'):
+            _m=re.search(r"(?i)\b(?:price\s+of|how\s+much\s+is)\s+(?:a\s+|an\s+)?(bitcoin|btc|ethereum|eth|solana|sol|dogecoin|doge|cardano|ada|xrp|ripple|litecoin|ltc|bnb)\b",msg) or re.search(r"(?i)^(bitcoin|btc|ethereum|eth|solana|sol|doge|ada|xrp|ltc)\s+price\b",msg)
+            if _m:return ('quote',{'symbol':_m.group(1).lower(),'kind':'crypto'})
+            _m=re.search(r"(?i)\b(\d+\.?\d*)?\s*(usd|eur|gbp|jpy|cad|aud|chf|cny|inr|mxn|brl|nzd|sek|nok)\s+(?:to|in)\s+(usd|eur|gbp|jpy|cad|aud|chf|cny|inr|mxn|brl|nzd|sek|nok)\b",msg)
+            if _m:return ('quote',{'symbol':f'{_m.group(2)} {_m.group(3)}','amount':float(_m.group(1) or 1)})
+        if self.skills.has('numtheory'):
+            _m=re.search(r"(?i)\bis\s+(\d{1,18})\s+(?:a\s+)?prime\b",msg)
+            if _m:return ('numtheory',{'op':'isprime','n':int(_m.group(1))})
+            _m=re.search(r"(?i)^(?:prime\s+)?factor(?:ize|s|ization)?\s+(?:of\s+)?(\d{1,18})\b",msg)
+            if _m:return ('numtheory',{'op':'factorize','n':int(_m.group(1))})
+        if self.skills.has('calendar'):
+            _m=re.search(r"(?i)\bis\s+(\d{4})\s+a\s+leap\s+year",msg)
+            if _m:return ('calendar',{'op':'leap_year','year':int(_m.group(1))})
+            _m=re.search(r"(?i)\bwhat\s+day\s+of\s+the\s+week\s+(?:is|was|will)\s+(?:it\s+)?(?:on\s+)?([\w\s,\-/]+?)\s*\??\.?$",msg)
+            if _m:return ('calendar',{'op':'weekday','date':_m.group(1).strip(' ?.')})
+        if self.skills.has('datetime'):
+            _m=re.search(r"(?i)\b(?:how\s+many\s+)?days?\s+(?:between|from)\s+(.+?)\s+(?:and|to|until)\s+(.+?)\s*\??\.?$",msg)
+            if _m:return ('datetime',{'action':'diff','a':_m.group(1).strip(),'b':_m.group(2).strip()})
+        if self.skills.has('roman'):
+            _m=re.search(r"(?i)^(\d{1,4})\s+(?:in|as|to)\s+roman(?:\s+numerals?)?\s*\??$",msg) or re.search(r"(?i)^roman\s+numerals?\s+(?:for|of)\s+(\d{1,4})\b",msg)
+            if _m:return ('roman',{'value':_m.group(1)})
+        if self.skills.has('password') and re.search(r"(?i)\b(?:generate|create|make|give\s+me|need|want)\s+(?:a\s+)?(?:new\s+|random\s+|secure\s+|strong\s+)*password\b",msg):return ('password',{})
+        if self.skills.has('codec'):
+            _m=re.search(r"(?i)\b(sha256|sha1|sha512|md5)\s+(?:hash\s+)?(?:of\s+)?[\"'](.+?)[\"']",msg)
+            if _m:return ('codec',{'op':'hash','algo':_m.group(1).lower(),'text':_m.group(2)})
+            _m=re.search(r"(?i)\bbase64\s+(encode|decode)\s+[\"'](.+?)[\"']",msg)
+            if _m:return ('codec',{'op':'base64_encode' if _m.group(1).lower()=='encode' else 'base64_decode','text':_m.group(2)})
         m=_CALC_RE.search(msg)
         if m:
             ex=_EXPR_EXTRACT.search(msg)
@@ -591,7 +635,13 @@ class AmniAgent:
         skill_answer:Optional[str]=None
         used_tier='tier0_skill' if use_skills else None
         if use_skills:
-            det=self._detect_skill(message)
+            det=None
+            try:
+                from amni.serve.agentic import is_build_request as _isbuild
+                if self.skills.has('codegen') and _isbuild(message) and re.search(r'\.(?:py|js|ts|rs|go|java|rb|cpp|cc|c|sh|html|css|json)\b',message,re.IGNORECASE):det=('codegen',{'goal':message})
+                elif self.skills.has('goal') and _isbuild(message):det=('goal',{'goal':message})
+            except Exception:det=None
+            if det is None:det=self._detect_skill(message)
             if det is not None:
                 name,args=det
                 r=self.skills.call(name,args,ctx={'adam':self.adam,'agent':self,'conv':conv,'store':self.store,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None),'file_watcher':getattr(self,'file_watcher',None)})
@@ -998,9 +1048,14 @@ class AmniAgent:
         if name=='system_stats':
             g=out;up_h=round((g.get('uptime_s',0) or 0)/3600,1)
             return (f"Here's your system right now: CPU **{g.get('cpu_pct','?')}%** across {g.get('cpu_count','?')} cores, RAM **{g.get('mem_used_gb','?')}/{g.get('mem_total_gb','?')} GB** ({g.get('mem_pct','?')}%), disk **{g.get('disk_used_gb','?')}/{g.get('disk_total_gb','?')} GB** ({g.get('disk_pct','?')}% full), GPU {g.get('gpu_name','?')} ({g.get('gpu_vram_used_gb','?')}/{g.get('gpu_vram_total_gb','?')} GB VRAM). Up {up_h}h on {g.get('hostname','?')}.")
+        if name=='weather' and isinstance(out,dict) and (out.get('error') or out.get('_error')):
+            return f"I couldn't pull live weather — {out.get('error') or out.get('_error')}. Try asking \"weather in <your city>\" and I'll grab it right away."
+        if name=='weather' and isinstance(out,dict) and out.get('temp_c') is not None:
+            g=out;_t=g.get('temp_c');_hi=g.get('high_c');_lo=g.get('low_c');_rnd=lambda v:(round(v) if isinstance(v,(int,float)) else '?')
+            return f"Right now in **{g.get('location','your area')}** it's **{_rnd(_t)}°C** and {g.get('description','—')}. High {_rnd(_hi)}° / low {_rnd(_lo)}°, humidity {g.get('humidity_pct','?')}%, wind {g.get('wind_kmh','?')} km/h. (Live card just above.)"
         if isinstance(out,dict) and 'widget' in out:
             _wd=out.get('widget') or {};_t=str(_wd.get('title') or name).strip()
-            return out.get('summary') or out.get('text') or out.get('message') or f'Pulled your {_t.lower()} — details are in the panel above.'
+            return out.get('summary') or out.get('text') or out.get('message') or f'Pulled your {_t.lower()} — details are in the card above.'
         return json.dumps(out,default=str)[:1000]
     def _introspect_answer(self,persona:Optional[Persona]=None)->str:
         skills=[s['name'] for s in self.list_skills()]

@@ -16,8 +16,10 @@ _DIFFICULTY_LABEL={1:'introductory (one-fact recall)',2:'basic (definition + sim
 _GEN_Q_PROMPT=(
     'Generate ONE single test question about the topic "{TOPIC}" at difficulty {DLABEL}.\n'
     'AVOID these recently-asked questions (do not repeat or paraphrase): {RECENT}\n\n'
-    'Output ONLY this JSON object, no prose:\n'
-    '{"question":"<the question, one line, ends with ?>", "model_answer":"<a concise correct answer, 1-3 sentences>", "hint":"<a non-revealing nudge, one short sentence>"}'
+    'Output EXACTLY these three labeled lines and nothing else (no JSON, no prose):\n'
+    'QUESTION: <the question, one line, ends with ?>\n'
+    'MODEL_ANSWER: <a concise correct answer, 1-3 sentences>\n'
+    'HINT: <a non-revealing nudge, one short sentence>'
 )
 _GRADE_PROMPT=(
     'You are grading a student\'s answer to this question:\n'
@@ -30,28 +32,51 @@ _GRADE_PROMPT=(
     '- 50-69:  partially correct or vague.\n'
     '- 30-49:  some related content but mostly wrong.\n'
     '- 0-29:   wrong, blank, or irrelevant.\n\n'
-    'Output ONLY this JSON object:\n'
-    '{"score":0-100, "feedback":"<one or two sentences for the student>", "correct_facts":["..."], "missing_facts":["..."]}'
+    'Output EXACTLY these four labeled lines and nothing else (no JSON, no prose). Separate multiple facts with ";":\n'
+    'SCORE: <integer 0-100>\n'
+    'FEEDBACK: <one or two sentences for the student>\n'
+    'CORRECT_FACTS: <fact; fact>\n'
+    'MISSING_FACTS: <fact; fact>'
 )
 def _extract_json(text:str)->Optional[Dict[str,Any]]:
     if not text:return None
+    try:
+        from amni.serve.agentic import _parse_step
+        _r=_parse_step(text)
+        if isinstance(_r,dict) and _r:return _r
+    except Exception:pass
     m=_JSON_OBJ_RE.search(text)
     raw=m.group(0) if m else text.strip()
     try:return json.loads(raw)
     except Exception:pass
     try:return json.loads(raw.replace("'",'"'))
-    except Exception:return None
+    except Exception:pass
+    return _parse_labeled(text)
+def _parse_labeled(text:str)->Optional[Dict[str,Any]]:
+    d={};cur=None
+    for ln in (text or '').splitlines():
+        m=re.match(r'\s*([A-Za-z][A-Za-z_ ]{1,24}?)\s*[:=]\s*(.*)$',ln)
+        if m:
+            k=m.group(1).strip().lower().replace(' ','_');v=m.group(2).strip();cur=k
+            if k in ('correct_facts','missing_facts'):d[k]=[x.strip() for x in re.split(r'[;|]| - ',v) if x.strip()]
+            elif k=='score':_n=re.search(r'\d+',v);d[k]=int(_n.group(0)) if _n else 50
+            else:d[k]=v
+        elif cur and ln.strip():
+            if isinstance(d.get(cur),list):d[cur].append(ln.strip())
+            elif isinstance(d.get(cur),str):d[cur]=(d[cur]+' '+ln.strip()).strip()
+    return d or None
 def _call_adam_json(adam,prompt:str,max_new_tokens:int=400)->Optional[Dict[str,Any]]:
     if adam is None or not hasattr(adam,'chat_persona'):return None
-    try:r=adam.chat_persona(prompt,system='You are a strict JSON-only generator. Output a single JSON object. No prose, no markdown fences.',max_new_tokens=max_new_tokens,do_sample=False)
+    try:r=adam.chat_persona(prompt,system='You output ONLY the exact labeled lines the user specifies (KEY: value), one per line, nothing else — no prose, no JSON, no markdown.',max_new_tokens=max_new_tokens,do_sample=False)
     except Exception:return None
     ans=(r or {}).get('answer','') if isinstance(r,dict) else ''
     return _extract_json(ans)
 _GEN_MA_PROMPT=(
     'You are reviewing a flashcard. Provide ONLY the correct answer to the question, in 1-3 concise sentences.\n'
     'QUESTION: {Q}\n\n'
-    'Output ONLY this JSON object:\n'
-    '{"model_answer":"<concise correct answer>", "hint":"<a non-revealing nudge for the student>"}'
+    'Output EXACTLY these two labeled lines and nothing else (no JSON, no prose):\n'
+    'MODEL_ANSWER: <concise correct answer>\n'
+    'HINT: <a non-revealing nudge for the student>'
 )
 def _gen_model_answer(adam,question:str)->Dict[str,str]:
     """Cheap LLM call: given a question (e.g. a v6.10.47 review-queue card), produce a model answer + hint so the grader has ground truth."""
@@ -80,6 +105,11 @@ def _widget_envelope(session,mastery,question,feedback=None):
 def coach_skill(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     atlas=ctx.get('coach_atlas') if ctx else None
     adam=ctx.get('adam') if ctx else None
+    if atlas is None:
+        try:
+            atlas=CoachAtlas(root='experiences/coach_atlas');_ag=ctx.get('agent') if ctx else None
+            if _ag is not None:_ag.coach_atlas=atlas
+        except Exception:pass
     if atlas is None:return {'error':'CoachAtlas not initialized in agent context'}
     if adam is None:return {'error':'Adam not in skill context'}
     action=(args.get('action') or '').strip().lower()

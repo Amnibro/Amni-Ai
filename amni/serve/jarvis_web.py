@@ -609,7 +609,7 @@ body.theme-min #adam-core{opacity:.6}
 #gesture-tour button.gt-act:hover{background:rgba(var(--c-rgb),.18)}
 #gesture-tour button.gt-act.primary{border-color:var(--cyan);background:rgba(var(--c-rgb),.15)}
 #gesture-tour .tour-hint{font-size:10px;color:var(--mute);letter-spacing:.05em;flex:1;text-align:center;font-style:italic}
-#adam-core{position:fixed;top:18px;right:24px;width:60px;height:60px;z-index:8;cursor:pointer;opacity:.85;transition:opacity .25s, transform .25s}
+#adam-core{position:fixed;top:64px;right:20px;width:52px;height:52px;z-index:6;cursor:pointer;opacity:.85;transition:opacity .25s, transform .25s}
 #adam-core:hover{opacity:1;transform:scale(1.08)}
 #adam-core.hidden{display:none}
 #adam-core.collapsed{transform:scale(0.5);opacity:.55}
@@ -725,8 +725,8 @@ body.theme-min #adam-core{opacity:.6}
 #learn-panel .lp-queue-row{display:flex;gap:6px;margin-top:6px}
 #learn-panel .lp-queue-row input{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,156,.2);color:var(--fg);padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px}
 #learn-panel .lp-queue-row input:focus{outline:none;border-color:#00ff9c}
-#task-tray{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(140%);width:min(560px,92vw);z-index:8;border:1px solid rgba(var(--c-rgb),.3);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.95);box-shadow:0 0 24px rgba(var(--c-rgb),.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:30vh;overflow-y:auto}
-#task-tray.show{transform:translateX(-50%) translateY(0)}
+#task-tray{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(140%);width:min(560px,92vw);z-index:13;opacity:0;visibility:hidden;pointer-events:none;border:1px solid rgba(var(--c-rgb),.3);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.95);box-shadow:0 0 24px rgba(var(--c-rgb),.18);transition:transform .25s ease-out;backdrop-filter:blur(6px);max-height:30vh;overflow-y:auto}
+#task-tray.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;pointer-events:auto}
 #task-tray .tray-head{padding:6px 12px;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);border-bottom:1px solid rgba(var(--c-rgb),.15);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:rgba(var(--panel-rgb,8,14,28),.95)}
 #task-tray .tray-head .dot{width:5px;height:5px;border-radius:50%;background:var(--ok);box-shadow:0 0 5px var(--ok);animation:pulse 1.6s ease-in-out infinite}
 #task-tray .tray-head .ct{margin-left:auto;color:var(--mute);font-size:9px}
@@ -740,7 +740,7 @@ body.theme-min #adam-core{opacity:.6}
 .task-row .cancel{background:transparent;border:1px solid rgba(255,85,119,.4);color:var(--err);font-family:inherit;font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;letter-spacing:.15em}
 .task-row .cancel:hover{background:rgba(255,85,119,.1)}
 .task-row.cancelling .cancel{opacity:.4;cursor:wait}
-#mem-panel{position:fixed;top:60px;right:-440px;width:420px;height:calc(100vh - 140px);z-index:9;border:1px solid rgba(var(--c-rgb),.35);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.92);box-shadow:0 0 28px rgba(var(--c-rgb),.2);overflow-y:auto;transition:right .25s ease-out;backdrop-filter:blur(8px)}
+#mem-panel{position:fixed;top:60px;right:-440px;width:420px;height:calc(100vh - 140px);z-index:13;border:1px solid rgba(var(--c-rgb),.35);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.92);box-shadow:0 0 28px rgba(var(--c-rgb),.2);overflow-y:auto;transition:right .25s ease-out;backdrop-filter:blur(8px)}
 #mem-panel.show{right:24px}
 #mem-panel::-webkit-scrollbar{width:5px}
 #mem-panel::-webkit-scrollbar-thumb{background:rgba(var(--c-rgb),.3);border-radius:3px}
@@ -769,7 +769,7 @@ body.theme-min #adam-core{opacity:.6}
 #mem-panel .empty{color:var(--mute);font-style:italic;text-align:center;padding:14px;font-size:10px}
 #mem-toggle{padding:0 12px;height:46px;border:1px solid rgba(var(--c-rgb),.3);background:rgba(var(--c-rgb),.03);color:var(--mute);font-family:inherit;font-size:10px;letter-spacing:.2em;cursor:pointer;border-radius:4px}
 #mem-toggle.on{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.08);box-shadow:0 0 12px rgba(var(--c-rgb),.3)}
-#cam-panel{position:fixed;top:60px;right:24px;width:200px;z-index:8;display:none;border:1px solid rgba(var(--c-rgb),.4);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.85);box-shadow:0 0 18px rgba(var(--c-rgb),.18);overflow:hidden}
+#cam-panel{position:fixed;top:60px;right:24px;width:200px;z-index:13;display:none;border:1px solid rgba(var(--c-rgb),.4);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.85);box-shadow:0 0 18px rgba(var(--c-rgb),.18);overflow:hidden}
 #cam-panel.show{display:block}
 #cam-panel .cam-head{padding:5px 10px;background:rgba(var(--c-rgb),.08);font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 4px var(--cyan);display:flex;align-items:center;justify-content:space-between}
 #cam-panel .cam-head .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);animation:pulse 1.6s ease-in-out infinite}
@@ -787,7 +787,7 @@ body.theme-min #adam-core{opacity:.6}
 #cam-panel .custom-row .cg-act{color:var(--mute);font-size:8px;letter-spacing:.05em}
 #cam-panel .custom-row .cg-del{color:var(--err);cursor:pointer;padding:0 4px;border-radius:2px;border:1px solid transparent}
 #cam-panel .custom-row .cg-del:hover{border-color:var(--err);background:rgba(255,91,91,.1)}
-#pose-panel{position:fixed;top:60px;right:24px;width:268px;z-index:9;display:none;border:1px solid rgba(var(--g-rgb),.45);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.92);box-shadow:0 0 22px rgba(var(--g-rgb),.2);overflow:hidden;resize:both;min-width:220px;min-height:280px;max-width:92vw;max-height:90vh}
+#pose-panel{position:fixed;top:60px;right:24px;width:268px;z-index:13;display:none;border:1px solid rgba(var(--g-rgb),.45);border-radius:4px;background:rgba(var(--panel-rgb,8,14,28),.92);box-shadow:0 0 22px rgba(var(--g-rgb),.2);overflow:hidden;resize:both;min-width:220px;min-height:280px;max-width:92vw;max-height:90vh}
 #pose-panel.show{display:flex;flex-direction:column}
 #pose-panel .pc-head{padding:5px 10px;background:rgba(var(--g-rgb),.09);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:#ffe066;text-shadow:0 0 4px #ffe066;display:flex;align-items:center;justify-content:space-between}
 #pose-panel .pc-head .dot{width:6px;height:6px;border-radius:50%;background:var(--mute);transition:background .2s}
@@ -951,7 +951,7 @@ body.theme-min #adam-core{opacity:.6}
 .drop-overlay .label{font-size:24px;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 16px var(--cyan)}
 .gesture-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;letter-spacing:.3em;color:var(--magenta);text-shadow:0 0 24px var(--magenta);pointer-events:none;z-index:9;opacity:0;transition:opacity .3s}
 .gesture-flash.show{opacity:1}
-@media(max-width:760px){.status .pill{display:none}.title{font-size:16px}#app{padding:18px 16px}#cam-panel{width:140px;top:50px;right:14px}}
+@media(max-width:760px){.status .pill{display:none}.title{font-size:16px}#app{padding:12px 10px;gap:10px}#log{padding:14px 14px;gap:14px}#cam-panel{width:140px;top:50px;right:14px}#composer{flex-wrap:wrap;gap:8px}#input-shell{flex:1 1 60%;order:1;min-width:0}#send{order:2;flex:0 0 auto;padding:0 16px;letter-spacing:.14em;font-size:10px}#mic-shell{order:3;width:42px;height:42px;font-size:16px}#jarvis-toggle{order:4;flex:1;min-width:78px;padding:9px 6px;letter-spacing:.08em;font-size:10px}#tools-toggle{order:5;flex:1;min-width:64px;padding:9px 6px;letter-spacing:.1em;font-size:10px}#quick-bar{padding:4px 8px 0;gap:5px}.qchip-hint{display:none}}
 </style></head><body>
 <div id="nebula"></div>
 <canvas id="netcanvas"></canvas>
@@ -1033,6 +1033,15 @@ body.theme-min #adam-core{opacity:.6}
 </div>
 <div id="tools-drawer" class="td-hidden">
   <div class="td-head"><span>◆ TOOLS</span><span class="td-close" onclick="toggleToolsDrawer()">CLOSE</span></div>
+  <div class="td-section">
+    <div class="td-label">MODEL MODE — <span id="mode-cur" style="color:var(--cyan);letter-spacing:.12em">default</span></div>
+    <div class="td-grid">
+      <button class="td-btn" id="mode-default" type="button" onclick="setMode('default')" title="Lossless palette — bit-exact (cossim=1.0) to fp16, ~19% smaller. Safest, full quality.">DEFAULT</button>
+      <button class="td-btn" id="mode-quick" type="button" onclick="setMode('quick')" title="Native 8-bit — ~half size, near-fp16 (100% short / 97% reasoning, clean long-form).">QUICK</button>
+      <button class="td-btn" id="mode-turbo" type="button" onclick="setMode('turbo')" title="Nested 4-bit — smallest + fastest. WARNING: long-form can loop ~16-18% (runtime anti-loop guard mitigates).">TURBO</button>
+    </div>
+    <div id="mode-note" style="font-size:9px;color:var(--mute);margin-top:6px;letter-spacing:.04em;line-height:1.45"></div>
+  </div>
   <div class="td-section">
     <div class="td-label">VOICE &amp; CONVO</div>
     <div class="td-grid">
@@ -1659,8 +1668,10 @@ function _pcCancel(token){_pcAction(token,'cancel')}
 function appendWidgets(msgEl,widgets){
   if(!widgets||!widgets.length)return;
   const wrap=document.createElement('div');wrap.className='widgets';
-  for(const w of widgets){wrap.appendChild(renderWidget(w))}
-  msgEl.appendChild(wrap);log.scrollTop=log.scrollHeight;
+  for(const w of widgets){try{wrap.appendChild(renderWidget(w))}catch(e){const d=document.createElement('div');d.className='widget error';d.textContent='widget render error: '+(e&&e.message||e);wrap.appendChild(d)}}
+  const bub=msgEl.querySelector('.bubble');
+  if(bub)msgEl.insertBefore(wrap,bub);else msgEl.appendChild(wrap);
+  log.scrollTop=log.scrollHeight;
 }
 function quick(t){input.value=t;send()}
 function _qcAsk(t){input.value=t;send()}
@@ -2272,6 +2283,7 @@ async function probeVoiceBackends(){
 }
 probeVoiceBackends();
 const PERSONA_KEY='amni_jarvis_persona',VOICE_KEY='amni_jarvis_voice';
+var personaName=window.personaName||'';
 let _selectedPersona=localStorage.getItem(PERSONA_KEY)||'';
 let _selectedVoice=localStorage.getItem(VOICE_KEY)||'';if(_selectedVoice==='[object Object]'||_selectedVoice==='undefined'||_selectedVoice==='null'){_selectedVoice='';try{localStorage.removeItem(VOICE_KEY)}catch(_){}}
 let _personaPanelOpen=false,_knownPersonas=[],_availableVoices=[];
@@ -3015,9 +3027,13 @@ async function _coachSyncStatus(){if(!_coachSid)return;const res=await _coachCal
 document.addEventListener('keydown',e=>{if(_coachPanelOpen&&e.ctrlKey&&e.key==='Enter'&&document.activeElement&&document.activeElement.id==='cp-answer'){e.preventDefault();_coachAnswer()}});
 function toggleVoiceOut(){voiceOut=!voiceOut;localStorage.setItem(VKEY,voiceOut?'1':'0');const el=document.getElementById('voiceout-toggle');el.classList.toggle('on',voiceOut)}
 let _toolsDrawerOpen=false;
+async function loadMode(){try{const r=await fetch('/api/mode');const j=await r.json();_applyMode(j.current,j.modes)}catch(e){}}
+function _applyMode(cur,modes){const c=document.getElementById('mode-cur');if(c)c.textContent=cur;['default','quick','turbo'].forEach(m=>{const b=document.getElementById('mode-'+m);if(b)b.classList.toggle('on',m===cur)});const mn=document.getElementById('mode-note');const mv=(modes||[]).find(x=>x.mode===cur);if(mn)mn.innerHTML=mv?((mv.warn?('<span style="color:var(--gold)">⚠ '+esc(mv.warn)+'</span>'):esc(mv.scorecard))+(mv.ready===false?' <span style="color:var(--mute)">(bake not installed yet)</span>':'')):''}
+async function setMode(m){try{const r=await fetch('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})});const j=await r.json();if(!j.ok){try{_showToast({id:'mode',level:'warn',source:'MODE',title:'Mode switch failed',body:(j&&j.error)||'',age_s:0})}catch(_){}return}await loadMode();const lvl=j.warn?'warn':'success';const body=(j.applied==='live'?'switched live, no reload':((j.note||'saved')))+(j.warn?(' — '+j.warn):'');try{_showToast({id:'mode',level:lvl,source:'MODE',title:'Mode → '+m.toUpperCase(),body:body,age_s:0})}catch(_){}}catch(e){}}
 function toggleToolsDrawer(force){
   const open=(typeof force==='boolean')?force:!_toolsDrawerOpen;
   _toolsDrawerOpen=open;
+  if(open){try{loadMode()}catch(_){}}
   const el=document.getElementById('tools-drawer');if(el)el.classList.toggle('show',open);
   const btn=document.getElementById('tools-toggle');if(btn)btn.classList.toggle('on',open);
 }
@@ -4100,7 +4116,7 @@ async function _streamReplyWithTTS(text,opts){
     tokMeter.textContent=`${rate>=10?rate.toFixed(0):rate.toFixed(1)} tok/s · ${tokCount} tok · ${sec.toFixed(1)}s`;
   }
   _stopAllTTS();const _myGen=_ttsGen;
-  let acc='',spoken='',ttsQueue=[],ttsPlaying=false;
+  let acc='',spoken='',ttsQueue=[],ttsPlaying=false,widgets=[];
   const _SENT_RE=/([.!?…][\s"')\]\}]*)/;
   async function _flushTTS(chunk){
     if(!chunk||!chunk.trim())return;
@@ -4144,10 +4160,12 @@ async function _streamReplyWithTTS(text,opts){
         try{
           if(etype==='token'){const chunk=JSON.parse(edata);if(bot.bubble.classList.contains('thinking')){bot.bubble.classList.remove('thinking');bot.bubble.textContent=''}acc+=chunk;tokCount+=Math.max(1,Math.ceil(chunk.length/4));_updateTokMeter();bot.bubble.innerHTML=md(acc);_consumeSentence();log.scrollTop=log.scrollHeight;if(typeof _corePulse==='function'&&performance.now()-_coreLastToken>180){_coreLastToken=performance.now();_corePulse()}}
           else if(etype==='meta'){const m=JSON.parse(edata);if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}}
+          else if(etype==='widget'){try{widgets.push(JSON.parse(edata))}catch(_){}}
           else if(etype==='done'){const tail=acc.slice(spoken.length);if(tail.trim()){spoken=acc;_flushTTS(tail)};_updateTokMeter(true);tokMeter.classList.add('done');setTimeout(()=>{tokMeter.classList.add('fade')},2500);setTimeout(()=>{try{tokMeter.remove()}catch{}},3800)}
         }catch(p){}
       }
     }
+    if(widgets.length){try{appendWidgets(bot.msg,widgets)}catch(_){}}
   }catch(e){bot.bubble.classList.remove('thinking');bot.bubble.textContent='stream error: '+e.message;try{tokMeter.remove()}catch{};if(convoOn)_setConvoState('listening')}
 }
 async function _convoStreamSend(text){return _streamReplyWithTTS(text,{createBubbles:true})}
@@ -4242,7 +4260,7 @@ def mount(app):
     _assets=_AP(__file__).resolve().parent/'assets'
     if _assets.exists():app.mount('/assets',StaticFiles(directory=str(_assets)),name='amni_assets')
     @app.get('/jarvis',response_class=HTMLResponse)
-    def jarvis():return HTMLResponse(content=_HTML)
+    def jarvis():return HTMLResponse(content=_HTML,headers={'Cache-Control':'no-store, no-cache, must-revalidate','Pragma':'no-cache','Expires':'0'})
     @app.post('/launch/peer')
     def _launch_peer(app_name:str='amni-code'):
         import subprocess,sys,os

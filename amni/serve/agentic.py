@@ -17,7 +17,13 @@ CRITICAL behavior rules:
 - If you have ANY useful research data, switch to BUILDING (file_write the implementation) rather than searching again.
 - If a tool returns an error, DO NOT retry with the same args. Switch tool or change args.
 - When the goal is met (or no further progress is possible), output {{"final":"..."}}.
-- file_write requires both path and content. code_edit requires path AND (find,replace) OR (code).
+- file_write / code_edit: put ONLY the path (plus find/replace for code_edit) in the JSON args — do NOT put the file body inside the JSON. Immediately AFTER the JSON line, write the COMPLETE file content in ONE fenced code block. This avoids all JSON-escaping errors. Example:
+  {{"tool":"file_write","args":{{"path":"foo.py"}}}}
+  ```python
+  def foo():
+      return 1
+  ```
+  Write real newlines and quotes normally inside the fence — never escape them, never truncate.
 - run_python is sandboxed and blocks filesystem mutation, network, exec, subprocess; for file ops use file_write/shell.
 - PATHS: all file_write/code_edit/scan/file_read paths must be RELATIVE to the workdir (e.g., "src/lib.rs", "Cargo.toml"). NEVER use absolute paths like "/" or "C:\\". The scan tool defaults to scanning the current workdir if no path given.
 - The user's chosen language/framework is non-negotiable. If they asked for Rust, output Rust. Never substitute Python or any other language.
@@ -29,12 +35,25 @@ Goal: {goal}
 {trace}
 Next step (single JSON line):'''
 def _lenient_json_repair(s:str)->str:
+    s=re.sub(r'\\x([0-9a-fA-F]{2})',r'\\u00\1',s)
+    s=re.sub(r'\\(?![\\/"bfnrtu]|u[0-9a-fA-F]{4})',r'\\\\',s)
     s=re.sub(r'"(\w+):"([^"]*?)"','"\\1":"\\2"',s)
     s=re.sub(r'"(\w+):"','"\\1":',s)
     s=re.sub(r'([{,]\s*)([a-zA-Z_]\w*)\s*:','\\1"\\2":',s)
     s=re.sub(r',(\s*[}\]])','\\1',s)
     s=s.replace("True","true").replace("False","false").replace("None","null")
     return s
+def _escape_ctrl_in_strings(s:str)->str:
+    out=[];in_str=False;esc=False
+    for c in s:
+        if esc:out.append(c);esc=False;continue
+        if c=='\\':out.append(c);esc=True;continue
+        if c=='"':in_str=not in_str;out.append(c);continue
+        if in_str:
+            o=ord(c)
+            out.append('\\n' if c=='\n' else '\\r' if c=='\r' else '\\t' if c=='\t' else '' if o<0x20 else c)
+        else:out.append(c)
+    return ''.join(out)
 def _parse_step(text:str)->Optional[Dict]:
     if not text:return None
     t=text.strip()
@@ -63,7 +82,8 @@ def _parse_step(text:str)->Optional[Dict]:
     m=re.search(r'\{[^{}]*"(?:tool|final)"[^{}]*(?:\{[^}]*\})?[^{}]*\}',t)
     if m and m.group(0) not in candidates:candidates.append(m.group(0))
     for candidate in candidates:
-        for attempt in (candidate,candidate.replace("'",'"'),_lenient_json_repair(candidate),_lenient_json_repair(candidate.replace("'",'"'))):
+        _ec=_escape_ctrl_in_strings(candidate)
+        for attempt in (candidate,_ec,candidate.replace("'",'"'),_lenient_json_repair(candidate),_lenient_json_repair(_ec),_lenient_json_repair(candidate.replace("'",'"')),_escape_ctrl_in_strings(_lenient_json_repair(candidate))):
             try:
                 result=json.loads(attempt)
                 if isinstance(result,dict):return result
@@ -303,7 +323,7 @@ def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,p
             if svc is None:yield {'event':'error','msg':'no svc available'};return
             _is_codegen=any(k in (goal or '').lower() for k in ('code','game','script','program','app','rust','python','javascript','typescript','go ','c++','cpp','java','rb','php','wasm','file_write','create','build','make','implement','generate','write a'))
             _planner_budget=int(os.environ.get('AMNI_PLANNER_BUDGET') or (2400 if _is_codegen else 400))
-            resp,n=svc.chat(prompt,system='You are a precise planning agent. Output ONLY JSON. If the JSON content contains code, output the COMPLETE code — never truncate.',max_new_tokens=_planner_budget,do_sample=False,kb_top_k=0)
+            resp,n=svc.chat(prompt,system='You are a precise planning agent. Output ONE JSON tool-call line. For file_write/code_edit, put ONLY the path in the JSON, then the COMPLETE file body in a fenced code block right after — write code normally in the fence, never escape or truncate it.',max_new_tokens=_planner_budget,do_sample=False,kb_top_k=0)
         except Exception as e:yield {'event':'error','msg':f'plan call failed: {e}'};return
         plan=_parse_step(resp or '')
         if plan is None:
@@ -327,6 +347,12 @@ def run_goal_stream(adam,skills,goal:str,max_steps:int=8,timeout_s:float=240.0,p
                 yield {'event':'critique_reject','step':i+1,'round':_crit_rounds,'fault':_cv['fault']};continue
             yield {'event':'final','step':i+1,'answer':plan['final'],'n_steps':len(steps),'wall_s':round(time.time()-t0,2)};return
         tname=plan.get('tool','');targs=plan.get('args',{}) or {}
+        if str(tname).lower() in ('file_write','code_edit','code_diff') and isinstance(targs,dict) and not str(targs.get('content') or targs.get('code') or '').strip():
+            _fb=re.search(r'```[A-Za-z0-9_+.\-]*\r?\n(.*?)```',resp or '',re.DOTALL)
+            if _fb:
+                _code=_fb.group(1);_code=_code[:-1] if _code.endswith('\n') else _code
+                targs['code' if str(tname).lower() in ('code_edit','code_diff') else 'content']=_code
+                plan['args']=targs;yield {'event':'fence_extracted','step':i+1,'tool':tname,'chars':len(_code)}
         if str(tname).lower() in ('final','finish','done','complete','submit'):
             _fa=(targs.get('final') or targs.get('answer') or plan.get('final') or (next((str(v) for v in targs.values() if v),'') if isinstance(targs,dict) else str(targs)) or 'done')
             if _edited and not _verified and not _vnudge:
@@ -504,5 +530,63 @@ def _skill_goal(args,ctx,reg):
     if not g:return {'error':'missing goal'}
     if adam is None:return {'error':'goal skill needs adam in ctx'}
     return run_goal(adam,reg,g,max_steps=int(args.get('max_steps',5)),timeout_s=float(args.get('timeout_s',180)))
+def _extract_goal_path(goal):
+    m=re.search(r'\b([\w\-]+(?:[/\\][\w\-]+)*\.(?:py|js|ts|rs|go|java|rb|cpp|cc|c|sh|html|css|json|txt|md))\b',goal or '')
+    return m.group(1).replace('\\','/') if m else 'solution.py'
+def run_codegen(adam,skills,goal,max_attempts=4):
+    t0=time.time();svc=getattr(getattr(adam,'adam',None),'svc',None) or getattr(adam,'svc',None)
+    if svc is None:return {'error':'no svc'}
+    path=_extract_goal_path(goal);ctx={'adam':adam,'agent':adam};prep={}
+    try:
+        from amni.serve import coding_runner as _cr
+        prep=_cr.prepare(goal,agent=adam,max_attempts=max_attempts)
+    except Exception:prep={}
+    run_id=prep.get('run_id');prior=str(prep.get('context','') or '');steps=[];err='';code='';success=False
+    for att in range(1,max_attempts+1):
+        gp=(f'You are writing the COMPLETE contents of the file {path}.\nTASK: {goal}\n'+(prior+'\n' if att==1 else '')+(f'Your previous version of {path} FAILED when run. Here is the exact error:\n{err[:700]}\nFix THAT specific error and return the FULL corrected file.\n' if err else '')+'Keep it MINIMAL and correct: implement exactly what the task asks, no extra/unrequested methods. Use 4-space indentation only, never tabs. Use plain ASCII identifiers. Do NOT use open()/file I/O, network, subprocess, exec or eval — pure in-memory logic plus the asserts only. Output ONLY ONE fenced code block containing the entire file — real newlines and quotes, never escaped, never truncated, no prose outside the fence.')
+        try:resp,_=svc.chat(gp,system='You write complete, minimal, runnable code files with no syntax errors. Use full, consistent identifier names everywhere. Output ONLY a single fenced code block.',max_new_tokens=1800,do_sample=(att>1),kb_top_k=0)
+        except Exception as e:return {'error':f'gen failed: {e}','file':path,'final':f'Code generation failed: {e}'}
+        fb=re.search(r'```[A-Za-z0-9_+.\-]*\r?\n(.*?)```',resp or '',re.DOTALL)
+        code=(fb.group(1) if fb else (resp or '')).rstrip('\n').replace(' ',' ').replace('﻿','').expandtabs(4)
+        code=''.join(c for c in code if c in '\n\t' or (ord(c)>=32 and not (0x200b<=ord(c)<=0x200f) and not (0x202a<=ord(c)<=0x202e) and ord(c)!=0x2060))
+        if not code.strip():steps.append({'attempt':att,'error':'empty code'});err='model produced no code';continue
+        w=skills.call('file_write',{'path':path,'content':code},ctx=ctx)
+        if not getattr(w,'ok',False):steps.append({'attempt':att,'error':f'write failed: {getattr(w,"error","?")}'});err=str(getattr(w,'error',''));continue
+        if path.endswith('.py'):
+            import ast as _ast
+            try:_ast.parse(code)
+            except SyntaxError as _se:
+                steps.append({'attempt':att,'wrote':path,'ok':False,'stderr':f'SyntaxError line {_se.lineno}: {_se.msg}'})
+                err=f'SyntaxError at line {_se.lineno}: {_se.msg}. The bad line is: {(_se.text or "").strip()!r}. Fix ONLY this syntax error and return the full corrected file.';continue
+        def _rp(c):
+            _r=skills.call('run_python',{'code':c,'timeout':int(os.environ.get('AMNI_PYRUN_TIMEOUT','25'))},ctx=ctx)
+            _o=_r.output if isinstance(getattr(_r,'output',None),dict) else {}
+            return getattr(_r,'ok',False),str(_o.get('stdout','') or ''),str(_o.get('stderr','') or _o.get('error','') or getattr(_r,'error','') or '')
+        rok,so,se=_rp(code)
+        for _fx in range(3):
+            _nm=re.search(r"name '(\w+)' is not defined\. Did you mean: '(\w+)'",se)
+            if not _nm:break
+            _nc=re.sub(r'\b'+re.escape(_nm.group(1))+r'\b',_nm.group(2),code)
+            if _nc==code:break
+            code=_nc;skills.call('file_write',{'path':path,'content':code},ctx=ctx)
+            steps.append({'attempt':att,'auto_fix':f'{_nm.group(1)}->{_nm.group(2)}'});rok,so,se=_rp(code)
+        _bad=any(k in (se+so) for k in ('Traceback','Error','error:','Exception','assert','exited'))
+        ok=rok and not se.strip() and not _bad
+        steps.append({'attempt':att,'wrote':path,'ok':ok,'stderr':(se or so)[:300]})
+        if ok:success=True;err='';break
+        err=(se or so or 'run produced no output and did not confirm the asserts passed')[:700]
+    try:
+        if run_id:
+            from amni.serve import coding_runner as _cr
+            _cr.complete(run_id,success=success,outcome=('ran clean'if success else err[:200]),errors=([err[:200]]if err else None),lesson=(f'{path}: '+('verified working'if success else 'fix: '+err[:120])),approach='fenced-codegen deterministic loop',files=[path],agent=adam)
+    except Exception:pass
+    ans=(f'Done — wrote {path} and it runs clean after {len(steps)} attempt(s); the asserts pass.' if success else f'Wrote {path} but it still fails after {len(steps)} attempt(s). Last error: {err[:240]}')
+    return {'goal':goal,'file':path,'success':success,'attempts':len(steps),'steps':steps,'final':ans,'wall_s':round(time.time()-t0,2)}
+def _skill_codegen(args,ctx,reg):
+    adam=ctx.get('adam');g=args.get('goal') or args.get('task') or ''
+    if not g:return {'error':'missing goal'}
+    if adam is None:return {'error':'codegen needs adam in ctx'}
+    return run_codegen(adam,reg,g,max_attempts=int(args.get('max_attempts',4)))
 def register(reg):
     reg.register('goal',_skill_goal,desc='Achieve a multi-step goal: Adam plans tool sequence, executes each step, returns final answer + trace. Args: {goal, max_steps?, timeout_s?}',schema={'goal':'str','max_steps':'int?','timeout_s':'float?'})
+    reg.register('codegen',_skill_codegen,desc='Autonomously write a code FILE and make it run: generate complete file -> write -> run -> on failure feed the error back and rewrite, up to max_attempts -> bank the lesson. Args: {goal, max_attempts?}',schema={'goal':'str','max_attempts':'int?'})
