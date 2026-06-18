@@ -2,7 +2,9 @@
 
 One line per release; full detail in git history.
 
+- v6.15.0 — Reasoning densification system: diverse-address additive gated lossless deposits (cos=1.0 bit-exact, removable) lift held MMLU-Pro **+10.7pp** (35.0→45.7%, n=420, ~4.5σ, 14 subjects, ratchet-clean); GF(17)-native top-1 nonce router + null-route floor (interference ∝ address separability — distinct-address subjects deposit cleanly, no ratchet); pages persist via `GatedPageBank.save/load` and `adam.py` auto-loads `bakes/reasoning_pages.pt` at init = ships live; continuous-compounding loop (`densify_continue`: load prior→train fresh study→ratchet up→save cumulative) PROVEN to start where it left off and climb (+4.4pp/session); GPQA-Diamond confirmed a 3B reasoning-capacity wall (flat at chance — frontier-scale, not tuning). (2026-06-18)
 - v6.14.7 — Gated stacked weight-learning PROVEN on 3B: runtime nonce-addressed low-rank pages (the `deposit_gated` recipe) give additive stacking, ZERO regression, exact removability, real recall; conversation 4/4 + coding 4/4 + benchmark all PASS; productionized as `amni/learning/gated_pages.py` + `Adam.teach_weight`. (2026-06-17)
+- v6.14.8 — Legal docs cleanup: NOTICE corrected to current IBM Granite 4.1 3B (Apache 2.0, ibm-granite source, stale Gemma/Google references removed); added root PRIVACY.md (local-only storage, PII gates, Amni-Chat E2EE relay details, federation rules, voice hygiene); workflow followed (arch scan + checklist_legal_cleanup_v6.14.8.md + guardian_council + backups). (2026-06-17)
 - v6.14.6 — Bake-densify Phase 1: additive fp16-real tile-swap into the live rgba4 GF17 bake (`amni/learning/bake_densify.py`) — tier-guarded, k-invariant (never drop k), reversible; CPU roundtrip tests green. (2026-06-17)
 - v6.14.3 — Persona voice reference cloning: `tts.py` xtts clone path when a user-supplied reference wav is present; refs private. (2026-06-15)
 - v6.14.4 — Voice data exclusion & copyright hygiene: `.gitignore` voices/refs, personal-use-only disclaimers, confirmed no clips tracked. (2026-06-15)
@@ -271,7 +273,7 @@ One line per release; full detail in git history.
 - v6.8.30 — Knowledge Preload: 265k lossless code-knowledge records (2026-05-16)
 - v6.8.iter34 — End-to-end install verify + crawler standalone (2026-05-17)
 - v6.8.iter33 — pyproject.toml license fix (PEP 639) (2026-05-17)
-- v6.8.iter32 — Fresh-clone install test (the 3 methods on example.com) (2026-05-17)
+- v6.8.iter32 — Fresh-clone install test (the 3 methods on amni-scient.com) (2026-05-17)
 - v6.8.iter31 — Upload Gemma-4 GF17 bake to HF amnibro/gemma-4-E2B-it-gf17 (2026-05-17)
 - v6.8.iter30 — Local bake generation (no HF dependency for the bake) (2026-05-17)
 - v6.8.iter29 — Deployable: reverse iter21 protection, ship complete working source (2026-05-17)
