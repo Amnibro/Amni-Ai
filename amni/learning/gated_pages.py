@@ -5,20 +5,21 @@ import torch,torch.nn as nn,torch.nn.functional as F
 GENERIC=["The capital of France is Paris.","Water is made of hydrogen and oxygen.","Two plus two equals four.","The sun rises in the east.","A dog is a kind of animal.","The novel explores themes of love and loss.","Photosynthesis converts sunlight into energy.","Newton described the laws of motion.","The weather today is sunny and warm.","DNA carries genetic information.","Shakespeare wrote many famous plays.","The ocean covers most of the planet."]
 class _GatedMLP(nn.Module):
     def __init__(s,mlp,hs,tau,sharp):
-        super().__init__();s.base=mlp;s.hs=hs;s.tau=tau;s.sharp=sharp;s.pg=nn.ParameterList();s.keys=[];s.mus=[];s.on=[];s.force=[];s.lg=[];s.slot=[];s.last=None
+        super().__init__();s.base=mlp;s.hs=hs;s.tau=tau;s.sharp=sharp;s.pg=nn.ParameterList();s.keys=[];s.mus=[];s.on=[];s.force=[];s.lg=[];s.slot=[];s.gw=[];s.gb=[];s.hard=False;s.router=False;s.last=None
         for p in s.base.parameters():p.requires_grad_(False)
-    def add(s,key,muv,r,slot=None):
+    def add(s,key,muv,r,slot=None,gw=None,gb=None):
         A=nn.Parameter(torch.zeros(r,s.hs,device=key.device,dtype=torch.float32));B=nn.Parameter(torch.randn(s.hs,r,device=key.device,dtype=torch.float32)*1e-3)
-        s.pg.append(A);s.pg.append(B);s.keys.append(key);s.mus.append(muv);s.on.append(True);s.force.append(False);s.lg.append(0.0);s.slot.append(slot);return len(s.keys)-1
+        s.pg.append(A);s.pg.append(B);s.keys.append(key);s.mus.append(muv);s.on.append(True);s.force.append(False);s.lg.append(0.0);s.slot.append(slot);s.gw.append(gw);s.gb.append(gb);return len(s.keys)-1
+    def _cos(s,xf,j):return F.cosine_similarity(xf-s.mus[j],s.keys[j].expand_as(xf),dim=-1)
     def forward(s,x):
-        s.last=x.detach();y=s.base(x);xf=x.float()
+        s.last=x.detach();y=s.base(x);xf=x.float();rj=[j for j in range(len(s.keys)) if s.on[j] and not s.force[j]];win=torch.stack([s._cos(xf,j) for j in rj],-1).argmax(-1) if s.router and rj else None
         for j in range(len(s.keys)):
             if s.on[j]:
                 c=(xf@s.pg[2*j].t())@s.pg[2*j+1].t()
                 if s.slot[j] is not None:c=c*s.slot[j]
                 if s.force[j]:y=y+c.to(y.dtype)
                 else:
-                    g=torch.sigmoid((F.cosine_similarity(xf-s.mus[j],s.keys[j].expand_as(xf),dim=-1)-s.tau)*s.sharp).unsqueeze(-1);s.lg[j]=float(g.mean());y=y+(g*c).to(y.dtype)
+                    g=((win==rj.index(j)).float() if win is not None else ((s._cos(xf,j)>s.tau).float() if s.hard else torch.sigmoid((s._cos(xf,j)-s.tau)*s.sharp))).unsqueeze(-1);s.lg[j]=float(g.mean());y=y+(g*c).to(y.dtype)
         return y
 class GatedPageBank:
     def __init__(s,model,tok,layers=None,r=16,tau=0.28,sharp=22):
@@ -113,6 +114,30 @@ class GatedPageBank:
             loss=la+lam*ls;opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(la) if it else float(la)
         s.model.eval()
         for li in s.layers:s.mods[li].force[idx[li]]=False
+        for p in ps:p.requires_grad_(False)
+        s.domains[name]=idx;return lf
+    def add_domain_trained_gate(s,name,prompts,targets,offprompts,keys,muv,steps=1500,lr=1e-4,gsteps=400,glr=0.05,maxlen=448):
+        def feats(plist):
+            acc={li:[] for li in s.layers}
+            for p in plist:
+                with torch.no_grad():s.model(s.tok(p,return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device))
+                for li in s.layers:acc[li].append(s.mods[li].last.float().mean(1).squeeze(0))
+            return {li:torch.stack(acc[li],0) for li in s.layers}
+        pos=feats(prompts[:130]);neg=feats(offprompts[:130]);gw={};gb={}
+        for li in s.layers:
+            X=torch.cat([pos[li],neg[li]],0);Y=torch.cat([torch.ones(pos[li].shape[0]),torch.zeros(neg[li].shape[0])]).to(X.device)
+            w=torch.zeros(X.shape[1],device=X.device,requires_grad=True);b=torch.zeros(1,device=X.device,requires_grad=True);go=torch.optim.Adam([w,b],lr=glr,weight_decay=2e-2)
+            for _ in range(gsteps):
+                l=F.binary_cross_entropy_with_logits(X@w+b,Y);go.zero_grad();l.backward();go.step()
+            gw[li]=w.detach();gb[li]=b.detach()
+        idx={li:s.mods[li].add(keys[li],muv[li],s.r,None,gw[li],gb[li]) for li in s.layers}
+        ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
+        for p in ps:p.requires_grad_(True)
+        opt=torch.optim.Adam(ps,lr=lr);s.model.train();lf=0.0;n=len(prompts)
+        for it in range(steps):
+            j=it%n;e=s.tok(prompts[j],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device);tgt=torch.tensor([int(targets[j])],device=s.model.device)
+            loss=F.cross_entropy(s.model(e).logits[0,-1:],tgt);opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(loss) if it else float(loss)
+        s.model.eval()
         for p in ps:p.requires_grad_(False)
         s.domains[name]=idx;return lf
     def gate_rate(s,name,prompts,maxlen=448):
