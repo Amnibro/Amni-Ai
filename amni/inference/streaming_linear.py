@@ -34,6 +34,7 @@ class TensorRegistry:
         self._is_gf17=self.manifest.get('reffelt_scheme')=='gf17_digit_planes'
         self._is_rgba16q=self.manifest.get('reffelt_scheme')=='rgba16_quad'
         self._is_palette=self.manifest.get('reffelt_scheme')=='palette'
+        self._is_tilepack=self.manifest.get('scheme')=='tile_bitpack'
         self._residual_overlay_count=0
         self.active_subjects=('global',)
     def _mmap_for(self,key):
@@ -50,6 +51,9 @@ class TensorRegistry:
         e=self.manifest['tensors'][key];mm=self._mmap_u16(key);nw=int(np.prod(target_shape))
         flat_fp16=decode_rgba16_quad_to_fp16(mm,nw);src_dtype=e['source_dtype'];t=torch.from_numpy(flat_fp16.copy())
         return t.reshape(target_shape).to(self.device) if src_dtype=='float16' else t.view(_torch_dtype_from_str(src_dtype)).reshape(target_shape).to(self.device)
+    def _decode_tilepack_to_torch(self,key,target_shape):
+        from amni.inference.tilepack import load_tilepack
+        return load_tilepack(self.bake_dir,self.manifest['tensors'][key]).reshape(target_shape).to(self.device)
     def _mmap_gf17(self,key):
         if key not in self._gf17_mmaps:
             e=self.manifest['tensors'][key]
@@ -272,6 +276,7 @@ class TensorRegistry:
         if self._is_gf17:t=self._decode_gf17_to_torch(key,e['shape'])
         elif self._is_palette:t=self._decode_palette_to_torch(key,e['shape'])
         elif self._is_rgba16q:t=self._decode_rgba16q_to_torch(key,e['shape'])
+        elif self._is_tilepack:t=self._decode_tilepack_to_torch(key,e['shape'])
         else:
             mm=self._mmap_for(key)
             n=int(e['n_pixels'])
@@ -298,7 +303,7 @@ class TensorRegistry:
             t=torch.from_numpy(flat_fp16.copy())
             if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
             return t.reshape(n_rows,cols).to(self.device)
-        if self._is_palette:
+        if self._is_palette or self._is_tilepack:
             full=self.get_full(key)
             ri=torch.as_tensor(np.asarray(row_indices,dtype=np.int64),device=full.device,dtype=torch.long)
             return (full if full.dim()==2 else full.reshape(-1,int(e['shape'][-1])))[ri]
