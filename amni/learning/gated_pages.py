@@ -5,17 +5,20 @@ import torch,torch.nn as nn,torch.nn.functional as F
 GENERIC=["The capital of France is Paris.","Water is made of hydrogen and oxygen.","Two plus two equals four.","The sun rises in the east.","A dog is a kind of animal.","The novel explores themes of love and loss.","Photosynthesis converts sunlight into energy.","Newton described the laws of motion.","The weather today is sunny and warm.","DNA carries genetic information.","Shakespeare wrote many famous plays.","The ocean covers most of the planet."]
 class _GatedMLP(nn.Module):
     def __init__(s,mlp,hs,tau,sharp):
-        super().__init__();s.base=mlp;s.hs=hs;s.tau=tau;s.sharp=sharp;s.pg=nn.ParameterList();s.keys=[];s.mus=[];s.on=[];s.force=[];s.last=None
+        super().__init__();s.base=mlp;s.hs=hs;s.tau=tau;s.sharp=sharp;s.pg=nn.ParameterList();s.keys=[];s.mus=[];s.on=[];s.force=[];s.lg=[];s.slot=[];s.last=None
         for p in s.base.parameters():p.requires_grad_(False)
-    def add(s,key,muv,r):
+    def add(s,key,muv,r,slot=None):
         A=nn.Parameter(torch.zeros(r,s.hs,device=key.device,dtype=torch.float32));B=nn.Parameter(torch.randn(s.hs,r,device=key.device,dtype=torch.float32)*1e-3)
-        s.pg.append(A);s.pg.append(B);s.keys.append(key);s.mus.append(muv);s.on.append(True);s.force.append(False);return len(s.keys)-1
+        s.pg.append(A);s.pg.append(B);s.keys.append(key);s.mus.append(muv);s.on.append(True);s.force.append(False);s.lg.append(0.0);s.slot.append(slot);return len(s.keys)-1
     def forward(s,x):
         s.last=x.detach();y=s.base(x);xf=x.float()
         for j in range(len(s.keys)):
             if s.on[j]:
                 c=(xf@s.pg[2*j].t())@s.pg[2*j+1].t()
-                y=y+c.to(y.dtype) if s.force[j] else y+(torch.sigmoid((F.cosine_similarity(xf-s.mus[j],s.keys[j].expand_as(xf),dim=-1)-s.tau)*s.sharp).unsqueeze(-1)*c).to(y.dtype)
+                if s.slot[j] is not None:c=c*s.slot[j]
+                if s.force[j]:y=y+c.to(y.dtype)
+                else:
+                    g=torch.sigmoid((F.cosine_similarity(xf-s.mus[j],s.keys[j].expand_as(xf),dim=-1)-s.tau)*s.sharp).unsqueeze(-1);s.lg[j]=float(g.mean());y=y+(g*c).to(y.dtype)
         return y
 class GatedPageBank:
     def __init__(s,model,tok,layers=None,r=16,tau=0.28,sharp=22):
@@ -66,6 +69,58 @@ class GatedPageBank:
         for li in s.layers:s.mods[li].force[idx[li]]=False
         for p in ps:p.requires_grad_(False)
         s.domains[name]=idx;return lf
+    def add_domain_keyed(s,name,prompts,targets,keys,muv,steps=1800,lr=1e-4,maxlen=448):
+        idx={li:s.mods[li].add(keys[li],muv[li],s.r) for li in s.layers}
+        ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
+        for p in ps:p.requires_grad_(True)
+        for li in s.layers:s.mods[li].force[idx[li]]=True
+        opt=torch.optim.Adam(ps,lr=lr);s.model.train();lf=0.0;n=len(prompts)
+        for it in range(steps):
+            j=it%n;e=s.tok(prompts[j],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device);tgt=torch.tensor([int(targets[j])],device=s.model.device)
+            loss=F.cross_entropy(s.model(e).logits[0,-1:],tgt);opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(loss) if it else float(loss)
+        s.model.eval()
+        for li in s.layers:s.mods[li].force[idx[li]]=False
+        for p in ps:p.requires_grad_(False)
+        s.domains[name]=idx;return lf
+    def add_domain_disjoint(s,name,prompts,targets,keys,muv,slot,steps=1800,lr=1e-4,maxlen=448):
+        idx={li:s.mods[li].add(keys[li],muv[li],s.r,slot) for li in s.layers}
+        ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
+        for p in ps:p.requires_grad_(True)
+        for li in s.layers:s.mods[li].force[idx[li]]=True
+        opt=torch.optim.Adam(ps,lr=lr);s.model.train();lf=0.0;n=len(prompts)
+        for it in range(steps):
+            j=it%n;e=s.tok(prompts[j],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device);tgt=torch.tensor([int(targets[j])],device=s.model.device)
+            loss=F.cross_entropy(s.model(e).logits[0,-1:],tgt);opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(loss) if it else float(loss)
+        s.model.eval()
+        for li in s.layers:s.mods[li].force[idx[li]]=False
+        for p in ps:p.requires_grad_(False)
+        s.domains[name]=idx;return lf
+    def add_domain_silenced(s,name,prompts,targets,offprompts,keys,muv,steps=1400,lr=1e-4,lam=3.0,maxlen=448):
+        idx={li:s.mods[li].add(keys[li],muv[li],s.r) for li in s.layers}
+        ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
+        for p in ps:p.requires_grad_(True)
+        opt=torch.optim.Adam(ps,lr=lr);s.model.train();lf=0.0;n=len(prompts);no=len(offprompts)
+        for it in range(steps):
+            for li in s.layers:s.mods[li].force[idx[li]]=True
+            j=it%n;e=s.tok(prompts[j],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device);tgt=torch.tensor([int(targets[j])],device=s.model.device)
+            la=F.cross_entropy(s.model(e).logits[0,-1:],tgt)
+            for li in s.layers:s.mods[li].force[idx[li]]=False
+            k=it%no;eo=s.tok(offprompts[k],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device)
+            for li in s.layers:s.mods[li].on[idx[li]]=False
+            with torch.no_grad():base=s.model(eo).logits[0,-1].detach()
+            for li in s.layers:s.mods[li].on[idx[li]]=True
+            ls=F.mse_loss(s.model(eo).logits[0,-1],base)
+            loss=la+lam*ls;opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(la) if it else float(la)
+        s.model.eval()
+        for li in s.layers:s.mods[li].force[idx[li]]=False
+        for p in ps:p.requires_grad_(False)
+        s.domains[name]=idx;return lf
+    def gate_rate(s,name,prompts,maxlen=448):
+        idx=s.domains[name];tot=0.0
+        for p in prompts:
+            with torch.no_grad():s.model(s.tok(p,return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device))
+            tot+=sum(s.mods[li].lg[idx[li]] for li in s.layers)/len(s.layers)
+        return tot/max(1,len(prompts))
     def set_domain(s,name,on):
         for li,j in s.domains.get(name,{}).items():s.mods[li].on[j]=on
     def gen(s,prompt,max_new_tokens=12):
