@@ -88,11 +88,21 @@ class Adam:
         self.sem_lut.save(str(self.lessons_path).removesuffix('.npz'))
     def stats(self)->Dict[str,Any]:
         return {'lessons_n':len(self.sem_lut._raw),'auto_margin':self.sem_lut.auto_margin() if len(self.sem_lut._raw)>0 else None,'tier_counts':dict(self.adam._tier_counts),'token_counts':dict(self.adam._token_counts),'svc_boot_s':round(self.svc_boot_s,1)}
-    def teach(self,q:str,a:str):
-        self.sem_lut.add(q,a)
+    def teach(self,q:str,a:str,source:str=''):
+        self.sem_lut.add(q,a,source=source)
         try:self.sem_lut.fit();self.save_lessons()
         except Exception as _fe:print(f'[teach] fit/save deferred (lesson still queued): {_fe}',flush=True)
         return {'lessons_n':len(self.sem_lut._raw)}
+    def _ensure_gated_bank(self):
+        gb=getattr(self,'gated_bank',None)
+        if gb is None:
+            if self.svc is None or getattr(self.svc,'model',None) is None:raise RuntimeError('gated weight-learning needs the streaming model loaded')
+            from amni.learning.gated_pages import GatedPageBank
+            self.gated_bank=GatedPageBank(self.svc.model,self.svc.tok)
+        return self.gated_bank
+    def teach_weight(self,domain:str,facts:List[str],steps:int=420,lr:float=3e-4)->Dict[str,Any]:
+        loss=self._ensure_gated_bank().add_domain(domain,list(facts),steps=steps,lr=lr)
+        return {'domain':domain,'pages':len(facts),'final_loss':round(loss,3),'domains':list(self.gated_bank.domains)}
     def _persona_cache_key(self,system:str,message:str,history:Optional[List[Tuple[str,str]]],facts:Optional[List[str]])->str:
         h=hashlib.blake2b(digest_size=8)
         for u,a in (history or []):h.update(u.encode('utf-8','ignore'));h.update(b'\x1f');h.update(a.encode('utf-8','ignore'));h.update(b'\x1e')
