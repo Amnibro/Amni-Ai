@@ -97,8 +97,13 @@ class Adam:
         gb=getattr(self,'gated_bank',None)
         if gb is None:
             if self.svc is None or getattr(self.svc,'model',None) is None:raise RuntimeError('gated weight-learning needs the streaming model loaded')
+            import os as _os
             from amni.learning.gated_pages import GatedPageBank
-            self.gated_bank=GatedPageBank(self.svc.model,self.svc.tok)
+            self.gated_bank=GatedPageBank(self.svc.model,self.svc.tok,layers=list(range(16,40,2)),r=24,tau=0.28,sharp=22)
+            rp=_os.path.join('bakes','reasoning_pages.pt')
+            if _os.path.exists(rp):
+                try:print(f'[gated] loaded {self.gated_bank.load(rp)} reasoning domains from {rp} — reasoning densification live',flush=True)
+                except Exception as _re:print(f'[gated] reasoning-pages load skipped: {_re}',flush=True)
         return self.gated_bank
     def teach_weight(self,domain:str,facts:List[str],steps:int=420,lr:float=3e-4)->Dict[str,Any]:
         loss=self._ensure_gated_bank().add_domain(domain,list(facts),steps=steps,lr=lr)

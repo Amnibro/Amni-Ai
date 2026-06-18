@@ -155,7 +155,8 @@ class GatedPageBank:
         torch.save(st,path);return path
     def load(s,path):
         st=torch.load(path,map_location='cpu');dev=s.model.device;s.domains=st['domains']
-        for li in s.layers:
+        for li in st['layers']:
+            if li not in s.mods:continue
             for A,B,key,mu,slot in st['pages'][li]:
                 idx=s.mods[li].add(key.to(dev),mu.to(dev),s.r,(slot.to(dev) if slot is not None else None))
                 with torch.no_grad():s.mods[li].pg[2*idx].copy_(A.to(dev));s.mods[li].pg[2*idx+1].copy_(B.to(dev))
