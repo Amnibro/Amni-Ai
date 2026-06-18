@@ -150,6 +150,16 @@ class GatedPageBank:
         return tot/max(1,len(prompts))
     def set_domain(s,name,on):
         for li,j in s.domains.get(name,{}).items():s.mods[li].on[j]=on
+    def save(s,path):
+        st={'layers':s.layers,'r':s.r,'domains':s.domains,'pages':{li:[(s.mods[li].pg[2*j].detach().cpu(),s.mods[li].pg[2*j+1].detach().cpu(),s.mods[li].keys[j].cpu(),s.mods[li].mus[j].cpu(),(s.mods[li].slot[j].cpu() if s.mods[li].slot[j] is not None else None)) for j in range(len(s.mods[li].keys))] for li in s.layers}}
+        torch.save(st,path);return path
+    def load(s,path):
+        st=torch.load(path,map_location='cpu');dev=s.model.device;s.domains=st['domains']
+        for li in s.layers:
+            for A,B,key,mu,slot in st['pages'][li]:
+                idx=s.mods[li].add(key.to(dev),mu.to(dev),s.r,(slot.to(dev) if slot is not None else None))
+                with torch.no_grad():s.mods[li].pg[2*idx].copy_(A.to(dev));s.mods[li].pg[2*idx+1].copy_(B.to(dev))
+        return len(s.domains)
     def gen(s,prompt,max_new_tokens=12):
         e=s._ids(prompt)
         with torch.no_grad():o=s.model.generate(input_ids=e,max_new_tokens=max_new_tokens,do_sample=False,pad_token_id=s.tok.eos_token_id,use_cache=True)
