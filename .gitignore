@@ -186,6 +186,16 @@ json/
 tests/*.log
 *.bak_pre_fp8
 
+# Voice reference audio for persona TTS cloning (user-supplied, frequently copyrighted performances e.g. game character voices).
+# These must remain strictly local/personal. The prepare script writes only to ~/.amni/voices/refs/.
+# Even if a user drops clips inside the tree, never let them enter commits.
+voices/refs/
+**/*rikku*.wav
+**/*voice*clip*.wav
+**/*battle*line*.wav
+**/*tara*.wav
+**/*strong*.wav
+
 # Autonomous-coder sandboxes — third-party clones (ancsemi/Haven = GPL) + clone probes, never ship
 _haven_ref/
 haven_task_sandbox/
@@ -213,3 +223,14 @@ _iftest/
 /MOBILE.md
 scripts/*
 !scripts/amni_serve.py
+
+# Root-level run/diagnostic output + scratch/runtime dumps (local only, never ship)
+/*.log
+/*.err
+/*.pt
+/m1.txt
+/queue_rot.ps1
+/diag_*.json
+/src/
+exports/
+lessons/
