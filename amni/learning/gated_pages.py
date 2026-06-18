@@ -5,14 +5,16 @@ import torch,torch.nn as nn,torch.nn.functional as F
 GENERIC=["The capital of France is Paris.","Water is made of hydrogen and oxygen.","Two plus two equals four.","The sun rises in the east.","A dog is a kind of animal.","The novel explores themes of love and loss.","Photosynthesis converts sunlight into energy.","Newton described the laws of motion.","The weather today is sunny and warm.","DNA carries genetic information.","Shakespeare wrote many famous plays.","The ocean covers most of the planet."]
 class _GatedMLP(nn.Module):
     def __init__(s,mlp,hs,tau,sharp):
-        super().__init__();s.base=mlp;s.hs=hs;s.tau=tau;s.sharp=sharp;s.pg=nn.ParameterList();s.keys=[];s.mus=[];s.on=[];s.force=[];s.lg=[];s.slot=[];s.gw=[];s.gb=[];s.hard=False;s.router=False;s.last=None
+        super().__init__();s.base=mlp;s.hs=hs;s.tau=tau;s.sharp=sharp;s.pg=nn.ParameterList();s.keys=[];s.mus=[];s.on=[];s.force=[];s.lg=[];s.slot=[];s.gw=[];s.gb=[];s.hard=False;s.router=False;s.floor=None;s.last=None
         for p in s.base.parameters():p.requires_grad_(False)
     def add(s,key,muv,r,slot=None,gw=None,gb=None):
         A=nn.Parameter(torch.zeros(r,s.hs,device=key.device,dtype=torch.float32));B=nn.Parameter(torch.randn(s.hs,r,device=key.device,dtype=torch.float32)*1e-3)
         s.pg.append(A);s.pg.append(B);s.keys.append(key);s.mus.append(muv);s.on.append(True);s.force.append(False);s.lg.append(0.0);s.slot.append(slot);s.gw.append(gw);s.gb.append(gb);return len(s.keys)-1
     def _cos(s,xf,j):return F.cosine_similarity(xf-s.mus[j],s.keys[j].expand_as(xf),dim=-1)
     def forward(s,x):
-        s.last=x.detach();y=s.base(x);xf=x.float();rj=[j for j in range(len(s.keys)) if s.on[j] and not s.force[j]];win=torch.stack([s._cos(xf,j) for j in rj],-1).argmax(-1) if s.router and rj else None
+        s.last=x.detach();y=s.base(x);xf=x.float();rj=[j for j in range(len(s.keys)) if s.on[j] and not s.force[j]];win=None
+        if s.router and rj:
+            S=torch.stack([s._cos(xf,j) for j in rj],-1);win=S.argmax(-1);win=torch.where(S.max(-1).values>=s.floor,win,torch.full_like(win,-1)) if s.floor is not None else win
         for j in range(len(s.keys)):
             if s.on[j]:
                 c=(xf@s.pg[2*j].t())@s.pg[2*j+1].t()
