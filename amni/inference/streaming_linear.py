@@ -30,11 +30,11 @@ class TensorRegistry:
         self._gf17_mmaps={};self._residual_mmaps={}
         self._fetch_count=0;self._evict_count=0;self._bytes_loaded=0;self._prefetch_hits=0
         self._pinned_keys=set();self._inflight={};self._last_use={}
-        self._prefetch_stream=torch.cuda.Stream() if enable_prefetch and device.startswith('cuda') and torch.cuda.is_available() else None
         self._is_gf17=self.manifest.get('reffelt_scheme')=='gf17_digit_planes'
         self._is_rgba16q=self.manifest.get('reffelt_scheme')=='rgba16_quad'
         self._is_palette=self.manifest.get('reffelt_scheme')=='palette'
         self._is_tilepack=self.manifest.get('scheme')=='tile_bitpack'
+        self._prefetch_stream=torch.cuda.Stream() if enable_prefetch and not self._is_tilepack and device.startswith('cuda') and torch.cuda.is_available() else None
         self._residual_overlay_count=0
         self.active_subjects=('global',)
     def _mmap_for(self,key):
@@ -489,15 +489,18 @@ def materialize_remaining_params(model,registry,device='cuda',verbose=False):
             if verbose:print(f'  SKIP_NO_MANIFEST {name}')
             continue
         e=manifest[name]
-        if registry._is_gf17:flat_fp16=registry._decode_gf17_to_fp16(name)
-        elif registry._is_palette:flat_fp16=registry._decode_palette_to_fp16(name)
+        if registry._is_tilepack:
+            from amni.inference.tilepack import load_tilepack;t=load_tilepack(registry.bake_dir,e)
         else:
-            mm=registry._mmap_for(name)
-            n=int(e['n_pixels'])
-            flat_fp16=decode_rgba4_to_fp16(np.ascontiguousarray(mm.reshape(-1,4)[:n]))
-        t=torch.from_numpy(flat_fp16.copy())
-        src_dtype=e['source_dtype']
-        if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
+            if registry._is_gf17:flat_fp16=registry._decode_gf17_to_fp16(name)
+            elif registry._is_palette:flat_fp16=registry._decode_palette_to_fp16(name)
+            else:
+                mm=registry._mmap_for(name)
+                n=int(e['n_pixels'])
+                flat_fp16=decode_rgba4_to_fp16(np.ascontiguousarray(mm.reshape(-1,4)[:n]))
+            t=torch.from_numpy(flat_fp16.copy())
+            src_dtype=e['source_dtype']
+            if src_dtype!='float16':t=t.view(_torch_dtype_from_str(src_dtype))
         try:t=t.reshape(e['shape'])
         except Exception as _re:print(f'  [materialize RESHAPE-FAIL] {name}: cannot reshape {t.numel()} elems to {e["shape"]}: {_re}',flush=True);mismatches.append((name,'reshape',e['shape']));continue
         want=_pshape.get(name)
