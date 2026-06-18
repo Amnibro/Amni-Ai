@@ -47,6 +47,25 @@ class GatedPageBank:
         for li in s.layers:s.mods[li].force[idx[li]]=False
         for p in ps:p.requires_grad_(False)
         s.domains[name]=idx;return lf
+    def add_domain_supervised(s,name,prompts,targets,steps=900,lr=3e-4,maxlen=448):
+        if s.mu is None:s.mu=s._centroid(GENERIC)
+        acc={li:[] for li in s.layers}
+        for p in prompts[:200]:
+            with torch.no_grad():s.model(s.tok(p,return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device))
+            for li in s.layers:acc[li].append(s.mods[li].last.float().mean(1).squeeze(0))
+        kc={li:torch.stack(acc[li],0).mean(0) for li in s.layers}
+        idx={li:s.mods[li].add(F.normalize(kc[li]-s.mu[li],dim=0),s.mu[li],s.r) for li in s.layers}
+        ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
+        for p in ps:p.requires_grad_(True)
+        for li in s.layers:s.mods[li].force[idx[li]]=True
+        opt=torch.optim.Adam(ps,lr=lr);s.model.train();lf=0.0;n=len(prompts)
+        for it in range(steps):
+            j=it%n;e=s.tok(prompts[j],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device);tgt=torch.tensor([int(targets[j])],device=s.model.device)
+            loss=F.cross_entropy(s.model(e).logits[0,-1:],tgt);opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(loss) if it else float(loss)
+        s.model.eval()
+        for li in s.layers:s.mods[li].force[idx[li]]=False
+        for p in ps:p.requires_grad_(False)
+        s.domains[name]=idx;return lf
     def set_domain(s,name,on):
         for li,j in s.domains.get(name,{}).items():s.mods[li].on[j]=on
     def gen(s,prompt,max_new_tokens=12):
