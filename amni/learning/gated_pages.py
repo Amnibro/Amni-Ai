@@ -85,6 +85,19 @@ class GatedPageBank:
         for li in s.layers:s.mods[li].force[idx[li]]=False
         for p in ps:p.requires_grad_(False)
         s.domains[name]=idx;return lf
+    def add_domain_corrective(s,name,prompts,corr,wrong,keys,muv,steps=1200,lr=1e-4,margin=4.0,maxlen=448):
+        idx={li:s.mods[li].add(keys[li],muv[li],s.r) for li in s.layers}
+        ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
+        for p in ps:p.requires_grad_(True)
+        for li in s.layers:s.mods[li].force[idx[li]]=True
+        opt=torch.optim.Adam(ps,lr=lr);s.model.train();lf=0.0;n=len(prompts)
+        for it in range(steps):
+            j=it%n;e=s.tok(prompts[j],return_tensors='pt',truncation=True,max_length=maxlen).input_ids.to(s.model.device);lg=s.model(e).logits[0,-1]
+            loss=F.relu(margin-(lg[int(corr[j])]-lg[int(wrong[j])]));opt.zero_grad();loss.backward();torch.nn.utils.clip_grad_norm_(ps,1.0);opt.step();lf=0.98*lf+0.02*float(loss) if it else float(loss)
+        s.model.eval()
+        for li in s.layers:s.mods[li].force[idx[li]]=False
+        for p in ps:p.requires_grad_(False)
+        s.domains[name]=idx;return lf
     def add_domain_disjoint(s,name,prompts,targets,keys,muv,slot,steps=1800,lr=1e-4,maxlen=448):
         idx={li:s.mods[li].add(keys[li],muv[li],s.r,slot) for li in s.layers}
         ps=[s.mods[li].pg[2*idx[li]+i] for li in s.layers for i in (0,1)]
@@ -149,7 +162,8 @@ class GatedPageBank:
             tot+=sum(s.mods[li].lg[idx[li]] for li in s.layers)/len(s.layers)
         return tot/max(1,len(prompts))
     def set_domain(s,name,on):
-        for li,j in s.domains.get(name,{}).items():s.mods[li].on[j]=on
+        for li,j in s.domains.get(name,{}).items():
+            if li in s.mods:s.mods[li].on[j]=on
     def save(s,path):
         st={'layers':s.layers,'r':s.r,'domains':s.domains,'pages':{li:[(s.mods[li].pg[2*j].detach().cpu(),s.mods[li].pg[2*j+1].detach().cpu(),s.mods[li].keys[j].cpu(),s.mods[li].mus[j].cpu(),(s.mods[li].slot[j].cpu() if s.mods[li].slot[j] is not None else None)) for j in range(len(s.mods[li].keys))] for li in s.layers}}
         torch.save(st,path);return path
