@@ -38,7 +38,7 @@ class Nvfp4AtexChatService:
             except (AttributeError,KeyError):pass
         try:m.tie_weights()
         except Exception:pass
-        s.m=m;s.lm=m.model.language_model
+        s.m=m;s.model=m;s.lm=m.model.language_model
         gcp=bake+'/generation_config.json';e=s.tok.eos_token_id
         if os.path.exists(gcp):e=json.load(open(gcp)).get('eos_token_id',e)
         s.eos_ids=set(int(x) for x in (e if isinstance(e,list) else [e]) if x is not None)

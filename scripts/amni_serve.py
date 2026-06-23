@@ -241,6 +241,13 @@ def main():
     try:from amni.serve import trace_endpoints
     except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
+    if not os.environ.get('AMNI_NO_NVFP4'):
+        try:
+            from amni.adam import select_model_bake as _selbake
+            _nvb,_why=_selbake()
+            if _nvb:args.bake=_nvb;args.model=_nvb;print(f'[amni_serve] VRAM gate: serving NVFP4 12B as the model ({_why}) -> {_nvb}',flush=True)
+            else:print(f'[amni_serve] VRAM gate: keeping light bake ({_why}); NVFP4 12B not selected (set AMNI_NO_NVFP4=1 to force-skip)',flush=True)
+        except Exception as _se:print(f'[amni_serve] NVFP4 auto-select skipped: {_se}',flush=True)
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=not args.web_restricted)
     print(f'[amni_serve] Adam ready: {adam.stats()}',flush=True)

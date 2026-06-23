@@ -24,7 +24,13 @@ class Adam:
         t0=time.time()
         self.svc=None;self.svc_boot_s=0.0;self.runtime_error=None
         try:
-            self.svc=StreamingChatService(bake,model,budget_mb=budget_mb)
+            _mf=Path(bake)/'bake_manifest.json';_isnv=False
+            try:_isnv=str(json.load(open(_mf)).get('format','')).startswith('nvfp4') if _mf.exists() else False
+            except Exception:_isnv=False
+            if _isnv:
+                from amni.inference.nvfp4_atex_svc import Nvfp4AtexChatService
+                self.svc=Nvfp4AtexChatService(bake=bake,tok_src=model);print(f'[Adam] NVFP4-ATEX server model loaded: {bake}',flush=True)
+            else:self.svc=StreamingChatService(bake,model,budget_mb=budget_mb)
             self.svc_boot_s=time.time()-t0
         except Exception as e:
             self.runtime_error=str(e)
@@ -168,6 +174,13 @@ class Adam:
         except Exception:pass
         tier='tier_persona_hist' if history else 'tier_persona'
         return {'answer':ans,'tier':tier,'tokens':n,'wall_s':round(time.time()-t0,3),'is_private':is_private}
+def select_model_bake(prefer='bakes/gemma4_12b_nvfp4_atex',min_free_gb=14.0):
+    """Pick the NVFP4 12B as the server model only if it exists AND enough VRAM is free; else return (None,reason) so the caller keeps its lighter default bake. One server auto-fits the host: 16GB+ cards -> NVFP4 12B, smaller cards -> the light bake."""
+    if not (Path(prefer)/'bake_manifest.json').exists():return None,'nvfp4 bake absent'
+    try:
+        import torch;free,_=torch.cuda.mem_get_info();fg=free/1e9
+    except Exception as e:return None,f'no cuda ({str(e)[:40]})'
+    return (prefer,f'{fg:.1f}GB free >= {min_free_gb}') if fg>=min_free_gb else (None,f'only {fg:.1f}GB free (< {min_free_gb})')
 SEED_LESSONS=[
     ('What is 2 + 2?','4'),('What is 5 + 3?','8'),('What is 10 - 7?','3'),('What is 6 * 7?','42'),
     ('What is 9 * 8?','72'),('What is 100 / 4?','25'),('What is the square root of 81?','9'),
