@@ -68,7 +68,7 @@ class Nvfp4AtexChatService:
         msgs.append({'role':'user','content':c})
         prompt=s.tok.apply_chat_template(msgs,add_generation_prompt=True,tokenize=False)
         ids=s.tok(prompt,return_tensors='pt',add_special_tokens=False).input_ids.cuda()
-        return s._gen(ids,max_new_tokens,do_sample,no_repeat=kw.get('no_repeat',0))
+        return s._gen(ids,max_new_tokens,do_sample,temp=float(kw.get('temperature',0.7)),no_repeat=kw.get('no_repeat',0))
     def chat_stream(s,*a,**k):
         t,n=s.chat(*a,**k);yield t
 if __name__=='__main__':

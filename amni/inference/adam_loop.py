@@ -32,6 +32,11 @@ def _mcq_letter(text:str)->str:
         if m:return m.group(1).upper()
     m=re.findall(r'\b([A-J])\b',t)
     return m[-1].upper() if m else 'A'
+def _mcq_letter_strict(text:str)->str:
+    for pat in (r'answer is \(?([A-J])\)?',r'\\boxed\{\s*\(?([A-J])',r'final answer\s*:?\s*\(?([A-J])\)?'):
+        m=re.search(pat,text or '',re.I)
+        if m:return m.group(1).upper()
+    return ''
 class _LUTEmbedIndex:
     def __init__(self,encoder):
         self.encoder=encoder
@@ -59,10 +64,11 @@ class _LUTEmbedIndex:
             if len(out)>=k:break
         return out
 class AdamLoop:
-    def __init__(self,svc,tier3_svc=None,escalation_svc=None,relevance_svc=None,crawler_plugin=None,lut_root:str='experiences/adam_lut',kb_root:Optional[str]=None,letter_only:bool=True,tier2_cos_threshold:float=0.55,tier2_kb_top_k:int=2,tier3_cot_max_tokens:int=200,escalate_min_conf:float=0.55,relevance_threshold:float=0.55,use_concept_routing:bool=False,tier4_min_conf:float=0.40,always_crawl_fallback:bool=False,shape_sorter:bool=False,semantic_lut=None,semantic_margin:float=0.05,chord_sampler:bool=False,chord_n_frames:int=3,chord_min_conf:float=0.6,calc_tool:bool=False,mcq_max_tokens:int=1024,macro_cache=None):
+    def __init__(self,svc,tier3_svc=None,escalation_svc=None,relevance_svc=None,crawler_plugin=None,lut_root:str='experiences/adam_lut',kb_root:Optional[str]=None,letter_only:bool=True,tier2_cos_threshold:float=0.55,tier2_kb_top_k:int=2,tier3_cot_max_tokens:int=200,escalate_min_conf:float=0.55,relevance_threshold:float=0.55,use_concept_routing:bool=False,tier4_min_conf:float=0.40,always_crawl_fallback:bool=False,shape_sorter:bool=False,semantic_lut=None,semantic_margin:float=0.05,chord_sampler:bool=False,chord_n_frames:int=3,chord_min_conf:float=0.6,calc_tool:bool=False,mcq_max_tokens:int=1024,macro_cache=None,mcq_samples:int=1):
         self.svc=svc
         self.mcq_max_tokens=mcq_max_tokens
         self.macro_cache=macro_cache
+        self.mcq_samples=mcq_samples
         self.tier3_svc=tier3_svc or svc
         self.escalation_svc=escalation_svc
         self.relevance_svc=relevance_svc
@@ -315,9 +321,23 @@ class AdamLoop:
                 self._tier_counts['tier1_5_semantic']+=1;self._wall_counts['tier1_5_semantic']+=time.time()-t0
                 return sem,'tier1_5_semantic',0
         sys_p='You are an expert taking a multiple-choice exam. Think step by step, then end your response with "The answer is (X)." where X is the correct letter.'
-        try:cot,n=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
-        except Exception:cot,n='',0
-        ans=_mcq_letter(cot) if self.letter_only else cot
+        ksamp=max(1,getattr(self,'mcq_samples',1));n=0;cot=''
+        if ksamp<=1:
+            try:cot,n=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
+            except Exception:cot,n='',0
+            letter=_mcq_letter(cot)
+        else:
+            from collections import Counter as _C
+            votes=[];reps={};anchor=''
+            for _i in range(ksamp):
+                try:c,ni=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=(_i>0),temperature=0.6,kb_top_k=0)
+                except Exception:c,ni='',0
+                n+=ni;Lv=_mcq_letter_strict(c)
+                if _i==0:anchor=Lv or _mcq_letter(c);reps.setdefault(anchor,c)
+                if Lv:votes.append(Lv);reps.setdefault(Lv,c)
+            letter=(_C(votes).most_common(1)[0][0] if votes else anchor) or 'A'
+            cot=reps.get(letter,f'The answer is ({letter}).')
+        ans=letter if self.letter_only else cot
         self._tier_counts['tier3_cold']+=1;self._token_counts['tier3_cold']+=n;self._wall_counts['tier3_cold']+=time.time()-t0
         if writeback:
             try:

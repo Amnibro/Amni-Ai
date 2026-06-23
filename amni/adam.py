@@ -71,7 +71,7 @@ class Adam:
             for q,a in seed_lessons:self.sem_lut.add(q,a)
             self.sem_lut.fit()
             self.save_lessons()
-        self.adam=AdamLoop(self.svc,lut_root=self.lut_root,letter_only=False,tier3_cot_max_tokens=200,semantic_lut=self.sem_lut if len(self.sem_lut._raw)>0 else None,semantic_margin='auto',shape_sorter=True,chord_sampler=True,chord_n_frames=5,chord_min_conf=1.0,calc_tool=True,crawler_plugin=self.crawler_plugin)
+        self.adam=AdamLoop(self.svc,lut_root=self.lut_root,letter_only=False,tier3_cot_max_tokens=200,semantic_lut=self.sem_lut if len(self.sem_lut._raw)>0 else None,semantic_margin='auto',shape_sorter=True,chord_sampler=True,chord_n_frames=5,chord_min_conf=1.0,calc_tool=True,mcq_samples=int(os.environ.get('AMNI_MCQ_SAMPLES','5')),crawler_plugin=self.crawler_plugin)
         self._writeback_counter=0
         self._writeback_every=1
     def ask(self,query:str,writeback:bool=True)->Dict[str,Any]:
