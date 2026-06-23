@@ -116,7 +116,7 @@ def _enrich_web_query(user_msg,conv,profile):
             if t.get('role')=='assistant':
                 content=t.get('content') or ''
                 for nm in _PROPER_NOUN_RE.findall(content)[:5]:
-                    if nm.lower() not in q.lower() and nm.lower() not in ('I','You','Rao','Fryd','Oui','Oac','the maintainer') and nm not in extras:extras.append(nm)
+                    if nm.lower() not in q.lower() and nm.lower() not in ('I','You','Rao','Fryd','Oui','Oac','Anthony') and nm not in extras:extras.append(nm)
                 if extras:break
     except Exception:pass
     if profile is not None:
@@ -125,6 +125,20 @@ def _enrich_web_query(user_msg,conv,profile):
     if _VAGUE_WEB_RE.search(q) and not any(k in q.lower() for k in ('news','event')):extras.insert(0,'news current events')
     enriched=(' '.join(extras)+' '+q).strip() if extras else q
     return enriched[:200]
+_MISSION_START_RE=re.compile(r"^\s*(?:hey\s+adam[,\s]*)?(?:i\s+want\s+you\s+to|i'?d\s+like\s+you\s+to|i\s+need\s+you\s+to|go|please|can\s+you|could\s+you|would\s+you)\s+(?:go\s+)?(?:and\s+)?(?:learn|become|master|get\s+(?:much\s+)?better\s+at|study\s+up\s+on|train(?:\s+yourself)?)\b|^\s*(?:become|master|get\s+better\s+at|study\s+up\s+on|train\s+yourself)\b",re.IGNORECASE)
+_MISSION_BARE_RE=re.compile(r"^\s*(?:hey\s+adam[,\s]*)?(?:can\s+you\s+|please\s+|go\s+|i\s+want\s+you\s+to\s+)?(?:start\s+|go\s+)?learn(?:ing)?(?:\s+something(?:\s+new)?)?\s*[?.!]*\s*$",re.IGNORECASE)
+_MISSION_STOP_RE=re.compile(r"\bstop\s+learning\b|\b(?:stop|end|cancel|halt|quit|abort|finish)\s+(?:the\s+|your\s+)?(?:learning|mission|learning\s+mission|studying)\b",re.IGNORECASE)
+_MISSION_STATUS_RE=re.compile(r"\b(?:how(?:'?s|\s+is|\s+are|\s+goes)\s+(?:your\s+|the\s+|that\s+)?(?:learning|mission|studying|study)|learning\s+(?:status|progress|going)|mission\s+(?:status|progress)|what\s+are\s+you\s+learning|how\s+(?:much|far)\s+have\s+you\s+learned)\b",re.IGNORECASE)
+_MISSION_RESUME_RE=re.compile(r"\b(?:keep|continue|resume)\s+(?:learning|going|the\s+mission|studying)\b|\bgo\s+deeper\b|\blearn\s+(?:even\s+)?more\b",re.IGNORECASE)
+_MISSION_SPLIT_RE=re.compile(r"[,;]?\s*\b(?:stop(?:ping)?(?:\s+(?:once|when|after))?|until|till|once|when|after\s+you|and\s+(?:then\s+)?stop)\b\s+",re.IGNORECASE)
+def _parse_mission(text):
+    t=(text or '').strip().rstrip('?.! ')
+    parts=_MISSION_SPLIT_RE.split(t,maxsplit=1)
+    mission=parts[0].strip();stop=(parts[1].strip() if len(parts)>1 else '')
+    mission=re.sub(r"^(?:hey\s+adam[,\s]*|i\s+want\s+you\s+to\s+|i'?d\s+like\s+you\s+to\s+|i\s+need\s+you\s+to\s+|please\s+|go\s+|can\s+you\s+|could\s+you\s+|would\s+you\s+)+","",mission,flags=re.IGNORECASE).strip()
+    mission=re.sub(r"^(?:go\s+)?(?:and\s+)?(?:start\s+)?(?:learn(?:ing)?(?:\s+(?:to|about|how\s+to|to\s+be))?|become(?:\s+the)?(?:\s+(?:best|greatest|world'?s\s+best))?|master|get\s+(?:much\s+)?better\s+at|study\s+up\s+on|train(?:\s+yourself)?(?:\s+(?:on|to|to\s+be))?)\s+","",mission,flags=re.IGNORECASE).strip()
+    mission=re.sub(r"\s+(?:ever|please|for\s+me|on\s+your\s+own)$","",mission,flags=re.IGNORECASE).strip().rstrip(',. ')
+    return (mission or t),stop
 _PROFILE_AUTHORITATIVE_RE=re.compile(r"\b(?:what(?:'s|\s+is)\s+my\s+(?:name|location|address|job|role|title|occupation|workplace|favorite)|where\s+do\s+i\s+(?:live|work|reside)|who\s+am\s+i|where\s+am\s+i\s+(?:from|based|located)|what\s+do\s+i\s+(?:do|like|prefer)|do\s+you\s+(?:remember|know)\s+(?:my|where\s+i)|tell\s+me\s+(?:my|about\s+me))",re.IGNORECASE)
 _MEMORY_RECALL_RE=re.compile(r"\b(?:do\s+you\s+remember(?:\s+what|\s+we|\s+our)|what\s+(?:were|was)\s+we\s+(?:talking\s+about|discussing|just\s+saying)|what\s+did\s+we\s+(?:talk\s+about|discuss|cover|chat\s+about)|recall\s+our|last\s+time\s+we|what\s+(?:were|was)\s+(?:i|you)\s+saying|where\s+(?:were|did)\s+we\s+leave\s+off|continue\s+(?:our|where\s+we)|what\s+(?:were|was)\s+(?:we|i)\s+working\s+on)",re.IGNORECASE)
 _INTROSPECT_NO_WEB_RE=re.compile(r"\b(?:what\s+can\s+you\s+do|what\s+are\s+(?:your|adam'?s?)\s+(?:capabilities|abilities|skills|features|tools)|who\s+are\s+you|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+(?:yourself|adam)|how\s+do\s+you\s+(?:work|remember|learn)|list\s+(?:your\s+)?(?:skills|capabilities|tools)|hi\b|hello\b|hey\b|sup\b|yo\b|greetings|good\s+(?:morning|evening|afternoon|night)|thank(?:s|\s+you)|thx\b|how\s+are\s+you|how'?s\s+it\s+going)",re.IGNORECASE)
@@ -223,7 +237,7 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web,model_installer
+    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web,model_installer,mode_endpoints
     try:from amni.serve import trace_endpoints
     except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
@@ -372,7 +386,7 @@ def main():
                     _reqp=req.persona.strip().lower()
                     if _reqp and agent.personas.has(_reqp) and agent.personas._session_persona.get(conv.session_id)!=_reqp:agent.personas.assign_session(conv.session_id,_reqp)
                 except Exception as _pae:print(f'[amni_serve] persona assign failed: {_pae}',flush=True)
-            if is_build_request(req.message) or (_route and _route.get('is_skill') and _route.get('intent')=='build_request'):
+            if (is_build_request(req.message) or (_route and _route.get('is_skill') and _route.get('intent')=='build_request')) and not _MISSION_START_RE.search(req.message.strip()) and not _MISSION_BARE_RE.match(req.message.strip()):
                 _ag_persona=agent.personas.for_session(conv.session_id) if agent.use_persona else None
                 _ag_persona_name=_ag_persona.name if _ag_persona else 'Adam'
                 yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_ag_persona_name,"agentic":True})}\n\n'
@@ -389,6 +403,38 @@ def main():
                     except Exception as _re:print(f'[amni_serve] /chat/stream agentic atlas record failed: {_re}',flush=True)
                 yield f'event: done\ndata: {_json.dumps({"tier":"tier_agentic","wall_s":round(time.time()-t0,3),"n_steps":_n_steps})}\n\n'
                 return
+            _daemon=getattr(agent,'learning_daemon',None)
+            if _daemon is not None:
+                _mp=getattr(agent,'_mission_pending',None)
+                if _mp is None:_mp=set();agent._mission_pending=_mp
+                _persona_x=agent.personas.for_session(conv.session_id) if agent.use_persona else None
+                _pname_x=_persona_x.name if _persona_x else 'Adam'
+                _ml=req.message.strip();_mll=_ml.lower();_mtxt=None
+                if conv.session_id in _mp and _mll not in ('cancel','never mind','nevermind','stop','no','forget it'):
+                    _mp.discard(conv.session_id);_mt,_sc=_parse_mission(_ml);_r=_daemon.set_mission(_mt,stop_condition=_sc)
+                    _mtxt=((f"On it! \U0001F680 New mission: **master {_r['mission']}**"+(f" — I'll keep at it until {_r['stop_condition']}." if _r.get('stop_condition') else " — I'll keep going until you tell me to stop.")+f"\n\nI broke it into {len(_r.get('subtopics') or [])} starting subtopics ("+', '.join((_r.get('subtopics') or [])[:5])+"…) and I'm crawling the web on them right now, storing what I learn. Ask me **“how's your learning?”** anytime, or say **“stop learning”** to finish.") if _r.get('started') else f"Hmm, couldn't start that mission: {_r.get('error') or _r}")
+                elif conv.session_id in _mp:
+                    _mp.discard(conv.session_id);_mtxt="No worries — scrapped that. Say “learn” whenever you want to give me a mission."
+                elif _MISSION_STOP_RE.search(_mll):
+                    _r=_daemon.stop_mission();_mtxt=((f"Done! \U0001F3C1 Wrapped the **{_r['mission']}** mission: **{_r['facts_new']} new facts** across {_r['subtopics_covered']} subtopics in {round(_r['duration_s']/60,1)} min (self-rated confidence {_r['confidence']}%). It's all baked into my memory now — try me on it!") if _r.get('stopped') else f"{_r.get('error','No mission is running right now.')}")
+                elif _MISSION_STATUS_RE.search(_mll):
+                    _r=_daemon.mission_status();_mtxt=((f"\U0001F4DA Mission: **{_r['mission']}** — {_r['subtopics_covered']} subtopics studied (round {_r['rounds']}), **{_r['facts_new']} new facts** stored, currently on _{_r.get('current_topic') or 'queuing the next one'}_. Self-confidence {_r['confidence']}%."+(f" Still chasing: {', '.join(_r['gaps'][:3])}." if _r.get('gaps') else "")) if _r.get('active') else "I don't have a learning mission going right now — give me one! Like “learn to be a great Rust programmer, stop when you're confident you can one-shot code.”")
+                elif _MISSION_RESUME_RE.search(_mll) and _daemon.mission is not None:
+                    _r=_daemon.resume_mission();_mtxt=((f"Back at it! \U0001F4AA Pushing deeper on **{_r['mission']}**.") if _r.get('resumed') else f"{_r.get('error')}")
+                elif _MISSION_BARE_RE.match(_ml):
+                    _mp.add(conv.session_id);_mtxt="Oac! What would you like me to get really good at? Give me a **mission** and a **stopping point** — like _“become the best Python programmer, stop once you've mastered every function and can one-shot code.”_ I'll web-crawl and study on my own until I get there (or you say stop)."
+                elif _MISSION_START_RE.search(_ml) and len(_ml.split())>=4 and not _NEEDS_FRESH_INFO_RE.search(_mll):
+                    _mt,_sc=_parse_mission(_ml)
+                    if _mt and len(_mt)>=3 and (_daemon.mission is None or _daemon.mission.get('status')!='active'):
+                        _r=_daemon.set_mission(_mt,stop_condition=_sc)
+                        _mtxt=((f"On it! \U0001F680 New mission: **master {_r['mission']}**"+(f" — until {_r['stop_condition']}." if _r.get('stop_condition') else " — until you say stop.")+f"\n\nDecomposed into {len(_r.get('subtopics') or [])} subtopics ("+', '.join((_r.get('subtopics') or [])[:5])+"…); crawling now and storing facts. Say **“how's your learning?”** or **“stop learning”** anytime.") if _r.get('started') else None)
+                    elif _daemon.mission is not None and _daemon.mission.get('status')=='active':
+                        _mtxt=f"I'm already on a mission (**{_daemon.mission.get('text')}**). Say “stop learning” first if you want to switch."
+                if _mtxt:
+                    yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_pname_x,"skill":"learning_daemon"})}\n\n'
+                    for _ch in [_mtxt[i:i+48] for i in range(0,len(_mtxt),48)]:yield f'event: token\ndata: {_json.dumps(_ch)}\n\n'
+                    conv.append('assistant',_mtxt,{'tier':'tier0_skill_learning_mission','persona':_pname_x,'category':'skill'})
+                    yield f'event: done\ndata: {_json.dumps({"tier":"tier0_skill_learning_mission","wall_s":round(time.time()-t0,3),"persona":_pname_x})}\n\n';return
             if getattr(agent,'profile',None) is not None:
                 try:agent.profile.update_from_message(req.message)
                 except Exception as _pe:print(f'[amni_serve] /chat/stream profile update failed: {_pe}',flush=True)
@@ -410,6 +456,8 @@ def main():
                         _sk_cat=tone_atlas.classify_intent(req.message,skill_used=_sname) if hasattr(tone_atlas,'classify_intent') else 'factual'
                         _wrapped=tone_atlas.wrap(_formatted,_sk_cat,_sk_persona,seed=req.message) if _sk_persona and hasattr(tone_atlas,'wrap') else _formatted
                         yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_sk_persona_name,"skill":_sname,"category":_sk_cat})}\n\n'
+                        _wenv=_sr.output.get('widget') if isinstance(_sr.output,dict) else None
+                        if _wenv:yield f'event: widget\ndata: {_json.dumps(_wenv)}\n\n'
                         for ch in [_wrapped[i:i+48] for i in range(0,len(_wrapped),48)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
                         conv.append('assistant',_wrapped,{'tier':f'tier0_skill_{_sname}','persona':_sk_persona_name,'category':_sk_cat,'skill':_sname})
                         yield f'event: done\ndata: {_json.dumps({"tier":f"tier0_skill_{_sname}","wall_s":round(time.time()-t0,3),"persona":_sk_persona_name})}\n\n';return
@@ -467,8 +515,12 @@ def main():
                     _enriched_pre=_enrich_web_query(req.message,conv,getattr(agent,'profile',None))
                     yield f'event: status\ndata: {_json.dumps({"stage":"web"})}\n\n'
                     yield f'event: web_lookup\ndata: {_json.dumps({"trigger":"pre_fetch","query":_enriched_pre[:200],"enriched_from":req.message[:80]})}\n\n'
-                    _pre_web_r=skills.call('web',{'query':_enriched_pre},ctx={'adam':adam})
-                    if _pre_web_r.ok and _pre_web_r.output:
+                    import concurrent.futures as _cf
+                    _pre_web_r=None;_wex=_cf.ThreadPoolExecutor(max_workers=1)
+                    try:_pre_web_r=_wex.submit(skills.call,'web',{'query':_enriched_pre},ctx={'adam':adam}).result(timeout=float(os.environ.get('AMNI_WEB_PREFETCH_TIMEOUT','22')))
+                    except Exception:yield f'event: web_supplement_skipped\ndata: {_json.dumps({"reason":"web search slow/unavailable","phase":"pre_fetch"})}\n\n'
+                    finally:_wex.shutdown(wait=False)
+                    if _pre_web_r is not None and _pre_web_r.ok and _pre_web_r.output:
                         _pw_ans=(_pre_web_r.output.get('answer') or '').strip()
                         _pw_srcs=(_pre_web_r.output.get('sources') or [])[:3]
                         if _pw_ans and len(_pw_ans)>20:
@@ -486,6 +538,15 @@ def main():
                 eff=sl.auto_margin() if sl and hasattr(sl,'auto_margin') else 0.08
                 hit=sl.lookup_soft(req.message,margin=eff) if (sl and hasattr(sl,'lookup_soft') and not history_pairs and not is_private and not _has_correction and not _profile_authoritative and not _memory_recall and not _persona_query) else None
             except Exception:hit=None
+            if hit is None and sl is not None and hasattr(sl,'lookup_soft') and os.environ.get('AMNI_FEDERATION_ONDEMAND','1')!='0' and not is_private and not _memory_recall and not _profile_authoritative and not _persona_query:
+                try:
+                    import amni.serve.federation_store as _fstore
+                    _fr=_fstore.fetch_for_query(adam,req.message)
+                    if _fr.get('fetched') and _fr.get('merged_new',0)>0:
+                        yield f'event: status\ndata: {_json.dumps({"stage":"federation"})}\n\n'
+                        yield f'event: federation_fetch\ndata: {_json.dumps({"pack":_fr.get("id"),"merged":_fr.get("merged_new"),"lang":_fr.get("matched_lang")})}\n\n'
+                        hit=sl.lookup_soft(req.message,margin=eff)
+                except Exception as _fe:print(f'[amni_serve] federation on-demand skipped: {_fe}',flush=True)
             if hit:
                 _bump('lut_hits')
                 _hit_clean=hit;_ridx=hit.upper().rfind('FINAL:')
@@ -670,7 +731,10 @@ def main():
                 else:
                     yield f'event: web_lookup\ndata: {_json.dumps({"trigger":"uncertainty","query":_enriched_q[:200],"enriched_from":req.message[:80]})}\n\n'
                     try:
-                        _web_r=skills.call('web',{'query':_enriched_q},ctx={'adam':adam})
+                        import concurrent.futures as _cf2
+                        _wex2=_cf2.ThreadPoolExecutor(max_workers=1)
+                        try:_web_r=_wex2.submit(skills.call,'web',{'query':_enriched_q},ctx={'adam':adam}).result(timeout=float(os.environ.get('AMNI_WEB_SUPPLEMENT_TIMEOUT','22')))
+                        finally:_wex2.shutdown(wait=False)
                         _web_ans=(_web_r.output or {}).get('answer','') if _web_r.ok else ''
                         _web_srcs=(_web_r.output or {}).get('sources',[]) if _web_r.ok else []
                         _has_real_content=bool(_web_ans and _web_ans.strip() and len(_web_ans.strip())>20)
@@ -1217,12 +1281,17 @@ def main():
     jarvis_web.mount(app)
     unified_web.mount(app)
     memory_endpoints.mount(app,agent)
+    mode_endpoints.mount(app,adam)
     task_endpoints.mount(app,agent)
     vision_endpoints.mount(app,agent)
     voice_endpoints.mount(app,agent)
     amni_chat_bridge.mount(app,agent)
     model_installer.mount(app)
     trace_endpoints.mount(app,agent) if trace_endpoints is not None else None
+    try:
+        from amni.serve import guardian_service;guardian_service.mount(app,agent)
+        print(f'[amni_serve]   Guardian app:  http://{args.host}:{args.port}/guardian  (self-improve + dispatch & discussion, phone-ready)',flush=True)
+    except Exception as _ge:print(f'[amni_serve] guardian_service mount failed (non-fatal): {_ge}',flush=True)
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
     print(f'[amni_serve]   Jarvis UI:     http://{args.host}:{args.port}/jarvis  (neon + widgets + voice)',flush=True)

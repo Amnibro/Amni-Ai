@@ -2,15 +2,15 @@
 Tier 1: ADAPTIVE LUT — normalized exact-match (case/whitespace/contractions/punct), zero inference, instant.
 Tier 2: EMBED TEMPLATE — searches the LUT itself (Adam's own past answers) plus optional static KB; threshold tuned to ~0.55 from v5.5.152 measurements; refinement uses template structure as scaffold for the new constants.
 Tier 3: MINI-QWEN COLD-SOLVE — by default uses the same svc that was passed in, but if `tier3_svc` is provided uses that smaller model; if confidence falls below `escalate_min_conf` and `escalation_svc` is provided, retry on the bigger model.
-Tier 3.5: SHAPE-SORTER VERIFIER (v5.8.0, opt-in via `shape_sorter=True`) — back-substitute each MCQ option into the problem, ask the verifier PASS/FAIL, swap to the survivor if exactly one passes. the maintainer's "shape-sorter" hypothesis: bottleneck is application not capacity, so a small model that mis-substitutes still scores its own work correctly. Default OFF until validated.
+Tier 3.5: SHAPE-SORTER VERIFIER (v5.8.0, opt-in via `shape_sorter=True`) — back-substitute each MCQ option into the problem, ask the verifier PASS/FAIL, swap to the survivor if exactly one passes. Anthony's "shape-sorter" hypothesis: bottleneck is application not capacity, so a small model that mis-substitutes still scores its own work correctly. Default OFF until validated.
 Tier 4: WEB CRAWLER — uncertain-question DDG search + trafilatura extract + Gemma distill, written back as PTEX lesson.
 Cross-encoder option: pass `relevance_svc` and tier-2 candidates are filtered by yes/no relevance check before refinement.
 """
-import re,time,numpy as np
+import os,re,time,numpy as np
 from typing import Optional,Dict,Any,Tuple,List
 from amni.inference.answer_lut import AnswerLUT,_normalize_query
 _LETTER_RE=re.compile(r'\b([ABCD])\b')
-_PHYSICS_RE=re.compile(r'\b(?:kg|m/s|m/s\^?2|m/s²|joule|newton|watt|hertz|hz|pendulum|gravity|gravitational|friction|frictionless|momentum|kinetic|potential energy|wavelength|frequency|amplitude|voltage|ampere|ohm|capacitor|inductor|magnetic field|electric field|force|acceleration|velocity|tension|spring constant|specific heat|coefficient of)\b',re.IGNORECASE)
+_PHYSICS_RE=re.compile(r'\b(?:kg|m/s|m/s\^?2|m/s²|joule|newton|watt|hertz|hz|pendulum|gravity|gravitational|friction|frictionless|momentum|kinetic|potential energy|wavelength|frequency|amplitude|voltage|ampere|ohm|capacitor|inductor|magnetic field|electric field|force|acceleration|velocity|tension|spring constant|specific heat|coefficient of|telescope|microscope|lens|focal length|magnif|optic|refract|diffract|photon|photoelectr|electron volt|de broglie|nucleus|nuclei|radioact|half-life|isotope|capacitance|resistance|current|charge|coulomb|dipole|torque|angular|moment of inertia|density|pressure|thermal|heat of|work done|power|energy|wave|speed of light|index of refraction|electron|proton|orbit)\b',re.IGNORECASE)
 _CHEM_RE=re.compile(r'\b(?:mol|molarity|mole|aqueous|hydrogen|oxygen|atomic|isotope|reaction|electron|proton|neutron|valence|orbital|enthalpy|entropy|catalyst|reagent|covalent|ionic bond|pH|titration|stoichiometr)\b',re.IGNORECASE)
 _BIO_RE=re.compile(r'\b(?:gene|chromosome|protein|enzyme|cell|ribosome|mitochondri|DNA|RNA|allele|phenotype|genotype|species|ecosystem|photosynthesis|mitosis|meiosis|organism|tissue|organ|hormone|antibod)\b',re.IGNORECASE)
 _MATH_RE=re.compile(r'\b(?:equation|expression|polynomial|derivative|integral|matrix|vector|theorem|prove|simplif|factor|exponent|logarithm|sine|cosine|tangent|sin\(|cos\(|tan\(|x\^[0-9]|x\s*[+\-*/=]|f\(x\)|g\(x\)|y\s*=|slope|hypotenuse|triangle|circle|square root|sqrt|fraction|percent|ratio|geometr|algebra|calculus|how many|how much|sells|sold|costs?|total|revenue|discount|defective|produces|travels|miles per hour|mph|times as many)\b|[0-9]\s*[+\-*/]\s*[0-9]|=\s*[0-9]|\$\d|\d+\s*%',re.IGNORECASE)
@@ -22,6 +22,16 @@ def _select_subject(prompt:str)->Optional[str]:
     if _BIO_RE.search(prompt):return 'biology'
     if _MATH_RE.search(prompt):return 'math'
     return None
+_MCQ_RE=re.compile(r'(?m)^\s*([A-J])[.)]\s')
+def _is_mcq(prompt:str)->bool:
+    return len({m.group(1) for m in _MCQ_RE.finditer(prompt or '')})>=3
+def _mcq_letter(text:str)->str:
+    t=text or ''
+    for pat in (r'answer is \(?([A-J])\)?',r'\\boxed\{\s*\(?([A-J])',r'(?:final answer|answer)\s*:?\s*\(?([A-J])\)?'):
+        m=re.search(pat,t,re.I)
+        if m:return m.group(1).upper()
+    m=re.findall(r'\b([A-J])\b',t)
+    return m[-1].upper() if m else 'A'
 class _LUTEmbedIndex:
     def __init__(self,encoder):
         self.encoder=encoder
@@ -49,8 +59,10 @@ class _LUTEmbedIndex:
             if len(out)>=k:break
         return out
 class AdamLoop:
-    def __init__(self,svc,tier3_svc=None,escalation_svc=None,relevance_svc=None,crawler_plugin=None,lut_root:str='experiences/adam_lut',kb_root:Optional[str]=None,letter_only:bool=True,tier2_cos_threshold:float=0.55,tier2_kb_top_k:int=2,tier3_cot_max_tokens:int=200,escalate_min_conf:float=0.55,relevance_threshold:float=0.55,use_concept_routing:bool=False,tier4_min_conf:float=0.40,always_crawl_fallback:bool=False,shape_sorter:bool=False,semantic_lut=None,semantic_margin:float=0.05,chord_sampler:bool=False,chord_n_frames:int=3,chord_min_conf:float=0.6,calc_tool:bool=False):
+    def __init__(self,svc,tier3_svc=None,escalation_svc=None,relevance_svc=None,crawler_plugin=None,lut_root:str='experiences/adam_lut',kb_root:Optional[str]=None,letter_only:bool=True,tier2_cos_threshold:float=0.55,tier2_kb_top_k:int=2,tier3_cot_max_tokens:int=200,escalate_min_conf:float=0.55,relevance_threshold:float=0.55,use_concept_routing:bool=False,tier4_min_conf:float=0.40,always_crawl_fallback:bool=False,shape_sorter:bool=False,semantic_lut=None,semantic_margin:float=0.05,chord_sampler:bool=False,chord_n_frames:int=3,chord_min_conf:float=0.6,calc_tool:bool=False,mcq_max_tokens:int=1024,macro_cache=None):
         self.svc=svc
+        self.mcq_max_tokens=mcq_max_tokens
+        self.macro_cache=macro_cache
         self.tier3_svc=tier3_svc or svc
         self.escalation_svc=escalation_svc
         self.relevance_svc=relevance_svc
@@ -72,6 +84,7 @@ class AdamLoop:
         self.chord_n_frames=chord_n_frames
         self.chord_min_conf=chord_min_conf
         self.calc_tool=calc_tool
+        self.verify_loop=os.environ.get('AMNI_VERIFY_LOOP','').lower() in ('1','true','yes')
         self.kb_retriever=None
         self.lut_index=None
         self.lessons_kb=None
@@ -165,6 +178,46 @@ class AdamLoop:
         try:resp,n2=self.svc.chat(s2_prompt,system=s2_sys,max_new_tokens=4,do_sample=False,kb_top_k=0)
         except Exception:resp,n2='A',0
         return self._extract_letter(resp),nc+n2
+    def _verify_answer(self,prompt:str,ans:str)->bool:
+        a=(ans or '').strip()
+        if len(a)<2 or not re.search(r'\d',a) or re.match(r'^(the|a|an)\b[^0-9]*$',a,re.I):return False
+        vp=f"Problem: {prompt}\n\nProposed answer:\n{a[:400]}\n\nBe a SKEPTICAL checker. The answer MUST COMPUTE and explicitly STATE the final numeric result for the exact quantity asked. Merely setting up the formula, listing given values, or being cut off BEFORE computing the final number is INVALID — a correct method without a stated computed result is INVALID. If a definite final value IS stated: re-read what is asked, substitute it back and check arithmetically, check units, check any physical CONSTANT used (gravity g=9.8 m/s² — NEVER 9 or 9800), and sanity-check the MAGNITUDE (e.g. lifting a 100 kg object a few metres is thousands of joules, not millions — if the result is off by orders of magnitude or a wrong constant was used, respond INVALID). End with exactly 'VERDICT: VALID' or 'VERDICT: INVALID'."
+        try:v,_=self.tier3_svc.chat(vp,system='Find the error; default to INVALID if unsure.',max_new_tokens=self.tier3_max,do_sample=False,kb_top_k=0)
+        except Exception:return True
+        vu=(v or '').upper();seg=vu[vu.rfind('VERDICT'):] if 'VERDICT' in vu else vu[-30:]
+        return 'INVALID' not in seg
+    def _verify_refine(self,prompt:str,subject:Optional[str],ans:str)->Tuple[str,int]:
+        tot=0
+        for _ in range(2):
+            if self._verify_answer(prompt,ans):break
+            try:ins,ni=self.tier3_svc.chat(f"My answer to this problem was WRONG:\n{(ans or '')[:300]}\nProblem: {prompt}\nWhat specifically was wrong with my METHOD (wrong formula/setup/units/misread the question)? Name the fix in ONE sentence.",system='Diagnose the method error.',max_new_tokens=80,do_sample=False,kb_top_k=0)
+            except Exception:break
+            tot+=ni
+            try:ans,nr=self.tier3_svc.chat(f"Avoid this past mistake: {(ins or '')[:200]}\nSolve: {prompt}\nDo the arithmetic and end with the line 'ANSWER: <number> <unit>'.",max_new_tokens=max(self.tier3_max,180),do_sample=False,kb_top_k=0)
+            except Exception:break
+            tot+=nr
+        return ans,tot
+    def _final_num(self,text):
+        m=re.findall(r'ANSWER:\s*\$?\(?\s*([-+]?\d[\d,]*\.?\d*)',text or '',re.I)
+        cand=m[-1] if m else None
+        if cand is None:
+            nums=re.findall(r'[-+]?\d[\d,]*\.?\d*',(text or '').replace(',',''))
+            cand=nums[-1] if nums else None
+        try:return round(float(str(cand).replace(',','')),4) if cand is not None else None
+        except Exception:return None
+    def _consistency_solve(self,prompt:str,n:int=4)->Tuple[Optional[str],int]:
+        from collections import Counter
+        samples=[];tot=0
+        for _ in range(n):
+            try:a,na=self.tier3_svc.chat(f"Solve step by step. Copy the given NUMBERS from the problem EXACTLY (do not alter them). Do the arithmetic carefully and end with 'ANSWER: <number> <unit>'.\nProblem: {prompt}",max_new_tokens=max(self.tier3_max,200),do_sample=True,temperature=0.6,kb_top_k=0)
+            except Exception:continue
+            tot+=na;v=self._final_num(a)
+            if v is not None:samples.append((v,a))
+        if not samples:return None,tot
+        win=Counter(v for v,_ in samples).most_common(1)[0][0]
+        for v,a in samples:
+            if v==win:return a,tot
+        return None,tot
     def _tier37_calc_tool(self,prompt:str,subject:Optional[str])->Tuple[Optional[str],int]:
         import re as _re
         s1_sys='You are solving a word problem. Reason step by step. Identify what arithmetic computation is needed. Be concise.'
@@ -248,18 +301,45 @@ class AdamLoop:
         try:resp,n2=(self.escalation_svc or self.tier3_svc).chat(s2_prompt,system=s2_sys,max_new_tokens=4,do_sample=False,kb_top_k=0)
         except Exception:resp,n2='A',0
         return self._extract_letter(resp),nc+n2,confidence,escalated
-    def answer(self,prompt:str,writeback:bool=True)->Tuple[str,str,int]:
-        t0=time.time()
+    def _answer_mcq(self,prompt:str,writeback:bool,t0:float)->Tuple[str,str,int]:
         cached=self.lut.lookup(prompt)
         if cached is not None:
             self._tier_counts['tier1_lut']+=1;self._wall_counts['tier1_lut']+=time.time()-t0
             return cached['a'],'tier1_lut',0
         if self.semantic_lut is not None:
             try:
+                eff=self.semantic_lut.auto_margin() if self.semantic_margin=='auto' else self.semantic_margin
+                sem=self.semantic_lut.lookup_soft(prompt,margin=eff)
+            except Exception:sem=None
+            if sem is not None:
+                self._tier_counts['tier1_5_semantic']+=1;self._wall_counts['tier1_5_semantic']+=time.time()-t0
+                return sem,'tier1_5_semantic',0
+        sys_p='You are an expert taking a multiple-choice exam. Think step by step, then end your response with "The answer is (X)." where X is the correct letter.'
+        try:cot,n=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
+        except Exception:cot,n='',0
+        ans=_mcq_letter(cot) if self.letter_only else cot
+        self._tier_counts['tier3_cold']+=1;self._token_counts['tier3_cold']+=n;self._wall_counts['tier3_cold']+=time.time()-t0
+        if writeback:
+            try:
+                k=self.lut.store(prompt,ans,subject=_select_subject(prompt),source='tier3_cold_mcq',meta={'tokens':n})
+                if self.lut_index is not None:self.lut_index.add(k,prompt,ans)
+                if self.macro_cache is not None:self.macro_cache.intern(ans if isinstance(ans,str) else str(ans))
+            except Exception:pass
+        return ans,'tier3_cold',n
+    def answer(self,prompt:str,writeback:bool=True)->Tuple[str,str,int]:
+        t0=time.time()
+        if _is_mcq(prompt):return self._answer_mcq(prompt,writeback,t0)
+        vg=self.verify_loop and not self.letter_only and _select_subject(prompt) in ('math','physics','chemistry','engineering')
+        cached=self.lut.lookup(prompt)
+        if cached is not None and (not vg or self._verify_answer(prompt,cached['a'])):
+            self._tier_counts['tier1_lut']+=1;self._wall_counts['tier1_lut']+=time.time()-t0
+            return cached['a'],'tier1_lut',0
+        if self.semantic_lut is not None and not vg:
+            try:
                 eff_margin=self.semantic_lut.auto_margin() if self.semantic_margin=='auto' else self.semantic_margin
                 sem_ans=self.semantic_lut.lookup_soft(prompt,margin=eff_margin)
             except Exception:sem_ans=None
-            if sem_ans is not None:
+            if sem_ans is not None and (not vg or self._verify_answer(prompt,sem_ans)):
                 self._tier_counts['tier1_5_semantic']+=1;self._wall_counts['tier1_5_semantic']+=time.time()-t0
                 return sem_ans,'tier1_5_semantic',0
         subject=_select_subject(prompt)
@@ -312,19 +392,30 @@ class AdamLoop:
             return ans,'fallback_vanilla',n
         ans,n,conf,escalated=self._tier3_cold(prompt,subject)
         sorter_swapped=False;chord_used=False;calc_used=False;initial_ans=ans
+        if self.verify_loop and not self.letter_only and subject in ('math','physics','chemistry','engineering'):
+            cvans,cvn=self._consistency_solve(prompt);n+=cvn
+            if cvans is not None:ans=cvans;calc_used=True
         if self.shape_sorter and self.letter_only:
             swapped,sn=self._tier35_shape_sorter(prompt,ans,subject)
             n+=sn
             if swapped!=ans:ans=swapped;sorter_swapped=True
-        if self.calc_tool and not self.letter_only and subject=='math':
+        if self.calc_tool and not self.letter_only and not calc_used and subject in ('math','physics','chemistry','engineering'):
             calc_ans,cn=self._tier37_calc_tool(prompt,subject)
             n+=cn
-            if calc_ans is not None:ans=calc_ans;calc_used=True
+            if calc_ans is not None:
+                mnum=self._final_num(ans)
+                try:agree=mnum is None or abs(float(calc_ans)-mnum)<=1e-6*max(1.0,abs(mnum))
+                except Exception:agree=mnum is None
+                if agree:ans=calc_ans;calc_used=True
         if self.chord_sampler and not self.letter_only and not calc_used and conf<self.chord_min_conf:
             chord_ans,cn=self._tier36_chord_sample(prompt,ans,subject)
             n+=cn
             if chord_ans!=ans:ans=chord_ans;chord_used=True
-        if self.crawler is not None and conf<self.tier4_min_conf:
+        verify_used=False
+        if self.verify_loop and not self.letter_only and subject in ('math','physics','chemistry','engineering'):
+            ans2,vn=self._verify_refine(prompt,subject,ans);n+=vn
+            if ans2 and ans2!=ans:ans=ans2;verify_used=True
+        if self.crawler is not None and conf<self.tier4_min_conf and not (self.verify_loop and (calc_used or verify_used)):
             try:
                 crawl_ans,sources,cn=self.crawler.crawl_and_distill(prompt,subject=subject,letter_only=self.letter_only)
                 if crawl_ans:
@@ -336,10 +427,11 @@ class AdamLoop:
             except Exception as e:print(f'  [adam_loop] crawler escalation failed: {e}',flush=True)
         bucket='tier37_calc_tool' if calc_used else ('tier36_chord_sampler' if chord_used else ('tier35_shape_sorter' if sorter_swapped else ('tier3_escalated' if escalated else 'tier3_cold')))
         self._tier_counts[bucket]+=1;self._token_counts[bucket]+=n;self._wall_counts[bucket]+=time.time()-t0
-        if writeback:
+        if writeback and ((not vg) or self._verify_answer(prompt,ans)):
             k=self.lut.store(prompt,ans,subject=subject,source=bucket,meta={'tokens':n,'conf':conf,'escalated':escalated,'sorter_swap':sorter_swapped,'chord_used':chord_used,'initial':initial_ans})
             if self.lut_index is not None:self.lut_index.add(k,prompt,ans)
-            if self.semantic_lut is not None and bucket in ('tier37_calc_tool','tier36_chord_sampler','tier35_shape_sorter','tier3_escalated','tier3_cold'):
+            if self.macro_cache is not None:self.macro_cache.intern(ans if isinstance(ans,str) else str(ans))
+            if self.semantic_lut is not None and not vg and bucket in ('tier37_calc_tool','tier36_chord_sampler','tier35_shape_sorter','tier3_escalated','tier3_cold'):
                 try:self.semantic_lut.add(prompt,ans);self.semantic_lut.fit()
                 except Exception as e:print(f'  [adam_loop] semantic_lut writeback failed: {e}',flush=True)
         return ans,bucket,n
