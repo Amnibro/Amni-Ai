@@ -307,6 +307,24 @@ class AdamLoop:
         try:resp,n2=(self.escalation_svc or self.tier3_svc).chat(s2_prompt,system=s2_sys,max_new_tokens=4,do_sample=False,kb_top_k=0)
         except Exception:resp,n2='A',0
         return self._extract_letter(resp),nc+n2,confidence,escalated
+    def _mcq_solve_verify(self,prompt:str):
+        solve_sys='You are an expert. Solve this multiple-choice problem step by step, then end with "The answer is (X)." where X is the correct letter.'
+        chk_sys='You are a STRICT checker. Take the proposed option, substitute it back into the problem, and verify it satisfies EVERY stated condition/equation. Show the check briefly. Default to FAIL if it does not clearly hold. End with exactly "VERDICT: PASS" or "VERDICT: FAIL".'
+        n=0
+        try:cot,c=self.tier3_svc.chat(prompt,system=solve_sys,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
+        except Exception:cot,c='',0
+        n+=c;cand=_mcq_letter(cot);work=cot
+        for _ in range(2):
+            try:v,cv=self.tier3_svc.chat(f'Problem:\n{prompt}\n\nProposed answer: option ({cand}). Plug option ({cand}) back into the problem and check it satisfies every stated condition.',system=chk_sys,max_new_tokens=400,do_sample=False,kb_top_k=0)
+            except Exception:v,cv='',0
+            n+=cv;vu=(v or '').upper();seg=vu[vu.rfind('VERDICT'):] if 'VERDICT' in vu else vu[-24:]
+            if 'FAIL' not in seg:return cand,work,n,True
+            try:cot,c=self.tier3_svc.chat(f'Problem:\n{prompt}\n\nYour answer ({cand}) FAILED a substitution check:\n{(v or "")[-280:]}\nSolve again carefully, avoiding that mistake, and end with "The answer is (X)."',system=solve_sys,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
+            except Exception:cot,c='',0
+            n+=c;new=_mcq_letter(cot)
+            if not new or new==cand:break
+            cand=new;work=cot
+        return cand,work,n,False
     def _answer_mcq(self,prompt:str,writeback:bool,t0:float)->Tuple[str,str,int]:
         cached=self.lut.lookup(prompt)
         if cached is not None:
@@ -320,32 +338,27 @@ class AdamLoop:
             if sem is not None:
                 self._tier_counts['tier1_5_semantic']+=1;self._wall_counts['tier1_5_semantic']+=time.time()-t0
                 return sem,'tier1_5_semantic',0
-        sys_p='You are an expert taking a multiple-choice exam. Think step by step, then end your response with "The answer is (X)." where X is the correct letter.'
-        ksamp=max(1,getattr(self,'mcq_samples',1));n=0;cot=''
-        if ksamp<=1:
+        subj=_select_subject(prompt)
+        if subj in ('math','physics','chemistry','biology'):
+            letter,cot,n,verified=self._mcq_solve_verify(prompt)
+        else:
+            sys_p='You are an expert taking a multiple-choice exam. Think step by step, then end your response with "The answer is (X)." where X is the correct letter.'
             try:cot,n=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
             except Exception:cot,n='',0
-            letter=_mcq_letter(cot)
-        else:
-            from collections import Counter as _C
-            votes=[];reps={};anchor=''
-            for _i in range(ksamp):
-                try:c,ni=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=(_i>0),temperature=0.6,kb_top_k=0)
-                except Exception:c,ni='',0
-                n+=ni;Lv=_mcq_letter_strict(c)
-                if _i==0:anchor=Lv or _mcq_letter(c);reps.setdefault(anchor,c)
-                if Lv:votes.append(Lv);reps.setdefault(Lv,c)
-            letter=(_C(votes).most_common(1)[0][0] if votes else anchor) or 'A'
-            cot=reps.get(letter,f'The answer is ({letter}).')
+            letter=_mcq_letter(cot);verified=False
         ans=letter if self.letter_only else cot
+        tier='tier3_verify' if verified else 'tier3_cold'
         self._tier_counts['tier3_cold']+=1;self._token_counts['tier3_cold']+=n;self._wall_counts['tier3_cold']+=time.time()-t0
         if writeback:
             try:
-                k=self.lut.store(prompt,ans,subject=_select_subject(prompt),source='tier3_cold_mcq',meta={'tokens':n})
+                k=self.lut.store(prompt,ans,subject=subj,source=tier,meta={'tokens':n,'reasoning':(cot or '')[:600],'verified':verified})
                 if self.lut_index is not None:self.lut_index.add(k,prompt,ans)
+                if self.semantic_lut is not None:
+                    try:self.semantic_lut.add(prompt,ans);self.semantic_lut.fit()
+                    except Exception:pass
                 if self.macro_cache is not None:self.macro_cache.intern(ans if isinstance(ans,str) else str(ans))
             except Exception:pass
-        return ans,'tier3_cold',n
+        return ans,tier,n
     def answer(self,prompt:str,writeback:bool=True)->Tuple[str,str,int]:
         t0=time.time()
         if _is_mcq(prompt):return self._answer_mcq(prompt,writeback,t0)
