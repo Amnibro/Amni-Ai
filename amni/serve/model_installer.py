@@ -56,9 +56,55 @@ def install(repo:str,scheme:str='rgba4',model_name:Optional[str]=None)->Dict[str
     threading.Thread(target=_do_install,args=(job_id,repo,scheme,dest,out,model_name),daemon=True).start()
     return {'job_id':job_id,'repo':repo,'scheme':scheme,'phase':'queued','poll':f'/install/status/{job_id}'}
 def status(job_id:str)->Dict[str,Any]:return _JOBS.get(job_id) or {'error':'unknown job_id'}
+def detect_hardware()->Dict[str,Any]:
+    hw={'vram_gb':0.0,'ram_gb':0.0,'gpu':'CPU only','backend':'cpu'}
+    try:import psutil;hw['ram_gb']=round(psutil.virtual_memory().total/1e9,1)
+    except Exception:
+        try:hw['ram_gb']=round(os.sysconf('SC_PAGE_SIZE')*os.sysconf('SC_PHYS_PAGES')/1e9,1)
+        except Exception:pass
+    try:
+        import torch
+        if torch.cuda.is_available():
+            p=torch.cuda.get_device_properties(0);hw['vram_gb']=round(p.total_memory/1e9,1);hw['gpu']=p.name
+            hw['backend']='rocm' if getattr(torch.version,'hip',None) else 'cuda'
+    except Exception:pass
+    return hw
+_CATALOG=[
+    {'tier':'flagship','name':'Adam · Gemma-4-12B (NVFP4 lossless)','params':'12B','min_vram':12.5,'min_ram':16,'quality':'Best — MMLU-Pro 71%, coding 90→100% (self-correct); matches stock Gemma-4-12B','source':'AxionML/Gemma-4-12B-NVFP4','scheme':'nvfp4','bake':'bakes/gemma4_12b_nvfp4_atex'},
+    {'tier':'balanced','name':'Adam · Qwen3-4B','params':'4B','min_vram':5.5,'min_ram':10,'quality':'Strong reasoning for its size — great on 8GB cards','source':'Qwen/Qwen3-4B-Instruct-2507','scheme':'rgba4','bake':None},
+    {'tier':'light','name':'Adam · Granite-3B (GF17)','params':'3B','min_vram':3.0,'min_ram':8,'quality':'Solid + very light; fits small GPUs','source':'ibm-granite/granite-3.1-3b-a800m-instruct','scheme':'rgba4','bake':'bakes/granite41_3b_tilepack'},
+    {'tier':'cpu','name':'Adam · Granite-350M','params':'350M','min_vram':0.0,'min_ram':4,'quality':'Runs anywhere (CPU/iGPU); basic but always works','source':'ibm-granite/granite-3.1-1b-a400m-instruct','scheme':'rgba4','bake':None},
+]
+def advise(hw:Optional[Dict[str,Any]]=None,headroom_gb:float=1.8)->Dict[str,Any]:
+    hw=hw or detect_hardware()
+    usable=max(0.0,hw['vram_gb']-headroom_gb) if hw['vram_gb']>0 else 0.0
+    pick=None
+    for m in _CATALOG:
+        if m['tier']=='cpu':continue
+        if usable>=m['min_vram'] and hw['ram_gb']>=m['min_ram']*0.75:pick=m;break
+    if pick is None:pick=_CATALOG[-1]
+    nxt=next((m for m in reversed(_CATALOG) if m['min_vram']>pick['min_vram']),None)
+    if pick['tier']=='cpu':
+        why=f"No usable GPU detected (VRAM {hw['vram_gb']}GB) — running the CPU-friendly {pick['params']} model on your {hw['ram_gb']}GB RAM."
+    else:
+        why=f"Your {hw['gpu']} has {hw['vram_gb']}GB VRAM (~{usable:.1f}GB usable after a {headroom_gb}GB headroom for activations/KV). That fits the {pick['params']} {pick['tier']} model (needs ~{pick['min_vram']}GB)."
+        if nxt and usable<nxt['min_vram']:why+=f" The bigger {nxt['params']} tier needs ~{nxt['min_vram']}GB — more than your card has."
+        elif not nxt:why+=" That's the top tier — you can run the best Adam."
+    installed=bool(pick.get('bake')) and (_ROOT/pick['bake']/'bake_manifest.json').exists()
+    return {'hardware':hw,'recommended':pick,'why':why,'already_installed':installed,'next_tier_needs':(nxt['min_vram'] if nxt else None),'catalog':[{k:v for k,v in m.items() if k!='bake'} for m in _CATALOG]}
+def advise_install()->Dict[str,Any]:
+    a=advise();m=a['recommended']
+    if a['already_installed']:return {**a,'action':'ready','message':f"{m['name']} is already installed — just (re)start the server."}
+    if m['scheme']=='nvfp4':return {**a,'action':'manual','message':f"Fetch the flagship: download {m['source']} then bake with scripts/bake_nvfp4_atex.py (needs ~12GB free)."}
+    job=install(m['source'],scheme=m['scheme'],model_name=f"adam_{m['tier']}")
+    return {**a,'action':'installing','job':job}
 def mount(app):
     from fastapi import Query
     from fastapi.responses import HTMLResponse
+    @app.get('/advise')
+    def _advise():return advise()
+    @app.post('/advise/install')
+    def _advise_install():return advise_install()
     @app.get('/install/search')
     def _search(q:str=Query(''),limit:int=20):return search_hf(q,limit)
     @app.get('/install/inspect')
