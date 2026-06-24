@@ -37,6 +37,11 @@ def _mcq_letter_strict(text:str)->str:
         m=re.search(pat,text or '',re.I)
         if m:return m.group(1).upper()
     return ''
+def _parse_grades(text:str):
+    g={}
+    for m in re.finditer(r'\b([A-J])\s*[:=]\s*(\d{1,2}(?:\.\d+)?)',text or ''):
+        g[m.group(1).upper()]=float(m.group(2))
+    return g
 class _LUTEmbedIndex:
     def __init__(self,encoder):
         self.encoder=encoder
@@ -307,23 +312,25 @@ class AdamLoop:
         try:resp,n2=(self.escalation_svc or self.tier3_svc).chat(s2_prompt,system=s2_sys,max_new_tokens=4,do_sample=False,kb_top_k=0)
         except Exception:resp,n2='A',0
         return self._extract_letter(resp),nc+n2,confidence,escalated
-    def _mcq_solve_verify(self,prompt:str):
-        solve_sys='You are an expert. Solve this multiple-choice problem step by step, then end with "The answer is (X)." where X is the correct letter.'
-        chk_sys='You are a STRICT checker. Take the proposed option, substitute it back into the problem, and verify it satisfies EVERY stated condition/equation. Show the check briefly. Default to FAIL if it does not clearly hold. End with exactly "VERDICT: PASS" or "VERDICT: FAIL".'
+    def _mcq_solve_grade(self,prompt:str):
+        solve_sys='You are an expert. Solve step by step. Determine the expected answer — its value, units, and magnitude (the sane answer range) — then end with "The answer is (X)." where X is the correct letter.'
         n=0
         try:cot,c=self.tier3_svc.chat(prompt,system=solve_sys,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
         except Exception:cot,c='',0
         n+=c;cand=_mcq_letter(cot);work=cot
-        for _ in range(2):
-            try:v,cv=self.tier3_svc.chat(f'Problem:\n{prompt}\n\nProposed answer: option ({cand}). Plug option ({cand}) back into the problem and check it satisfies every stated condition.',system=chk_sys,max_new_tokens=400,do_sample=False,kb_top_k=0)
-            except Exception:v,cv='',0
-            n+=cv;vu=(v or '').upper();seg=vu[vu.rfind('VERDICT'):] if 'VERDICT' in vu else vu[-24:]
-            if 'FAIL' not in seg:return cand,work,n,True
-            try:cot,c=self.tier3_svc.chat(f'Problem:\n{prompt}\n\nYour answer ({cand}) FAILED a substitution check:\n{(v or "")[-280:]}\nSolve again carefully, avoiding that mistake, and end with "The answer is (X)."',system=solve_sys,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)
-            except Exception:cot,c='',0
-            n+=c;new=_mcq_letter(cot)
-            if not new or new==cand:break
-            cand=new;work=cot
+        probs={}
+        if hasattr(self.tier3_svc,'mcq_letter_probs'):
+            try:probs=self.tier3_svc.mcq_letter_probs(prompt,cot)
+            except Exception:probs={}
+        conf=probs.get(cand,0.0)
+        if conf>=getattr(self,'mcq_conf_gate',0.7):return cand,work,n,True
+        grade_sys='Grade how well EACH option fits. From the reasoning, the answer should be a specific value/magnitude/units (the sane answer space). Score every option 0-10 on fit to that expected answer (10=matches value+units, 0=wrong units/magnitude/absurd). Output ONLY the grades like "A:n B:n C:n".'
+        try:g,cg=self.tier3_svc.chat(f'Problem:\n{prompt}\n\nReasoning (with the expected answer):\n{cot[-500:]}',system=grade_sys,max_new_tokens=90,do_sample=False,kb_top_k=0)
+        except Exception:g,cg='',0
+        n+=cg;grades=_parse_grades(g)
+        if grades:
+            best=max(grades,key=lambda k:grades[k]+probs.get(k,0.0)*4.0)
+            return best,work,n,True
         return cand,work,n,False
     def _answer_mcq(self,prompt:str,writeback:bool,t0:float)->Tuple[str,str,int]:
         cached=self.lut.lookup(prompt)
@@ -340,7 +347,7 @@ class AdamLoop:
                 return sem,'tier1_5_semantic',0
         subj=_select_subject(prompt)
         if subj in ('math','physics','chemistry','biology'):
-            letter,cot,n,verified=self._mcq_solve_verify(prompt)
+            letter,cot,n,verified=self._mcq_solve_grade(prompt)
         else:
             sys_p='You are an expert taking a multiple-choice exam. Think step by step, then end your response with "The answer is (X)." where X is the correct letter.'
             try:cot,n=self.tier3_svc.chat(prompt,system=sys_p,max_new_tokens=self.mcq_max_tokens,do_sample=False,kb_top_k=0)

@@ -69,6 +69,20 @@ class Nvfp4AtexChatService:
         prompt=s.tok.apply_chat_template(msgs,add_generation_prompt=True,tokenize=False)
         ids=s.tok(prompt,return_tensors='pt',add_special_tokens=False).input_ids.cuda()
         return s._gen(ids,max_new_tokens,do_sample,temp=float(kw.get('temperature',0.7)),no_repeat=kw.get('no_repeat',0))
+    def mcq_letter_probs(s,prompt,reasoning='',n_opts=10):
+        idx=(reasoning or '').rfind('The answer is')
+        head=reasoning[:idx] if idx>=0 else (reasoning or '')
+        base=s.tok.apply_chat_template([{'role':'user','content':prompt}],add_generation_prompt=True,tokenize=False)
+        ids=s.tok(base+head+'The answer is (',return_tensors='pt',add_special_tokens=False).input_ids.cuda()
+        with torch.no_grad():
+            out=s.lm(input_ids=ids,use_cache=False)
+            p=torch.softmax(s.m.lm_head(out.last_hidden_state[:,-1:])[:,-1].float()[0],-1)
+        probs={}
+        for i in range(n_opts):
+            tid=s.tok.encode(chr(65+i),add_special_tokens=False)
+            if tid:probs[chr(65+i)]=float(p[tid[0]])
+        tot=sum(probs.values()) or 1.0
+        return {k:round(v/tot,4) for k,v in probs.items()}
     def chat_stream(s,*a,**k):
         t,n=s.chat(*a,**k);yield t
 if __name__=='__main__':
