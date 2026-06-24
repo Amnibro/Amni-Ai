@@ -194,6 +194,25 @@ def _free_port_if_occupied(host:str,port:int,kill_unsafe:bool=False):
             try:
                 if s.connect_ex((host,port))!=0:break
             finally:s.close()
+def _bake_usable(p):
+    if not p:return False
+    try:d=Path(p);return d.is_dir() and (d/'config.json').exists() and ((d/'manifest.json').exists() or (d/'bake_manifest.json').exists())
+    except Exception:return False
+def _discover_bake(preferred=None):
+    roots=[Path(preferred).parent] if preferred else []
+    roots+=[Path(e.strip()) for e in (os.environ.get('AMNI_BAKE_PATHS') or '').split(os.pathsep) if e.strip()]
+    roots+=[Path(__file__).resolve().parents[1]/'bakes',Path.cwd()/'bakes',Path.home()/'amni-bakes',Path.home()/'.amni-ai'/'bakes']
+    seen,found=set(),[]
+    for r in roots:
+        try:
+            rs=str(r)
+            if rs in seen or not r.is_dir():continue
+            seen.add(rs)
+            for sub in sorted(r.iterdir(),key=lambda x:x.name):
+                if _bake_usable(sub) and str(sub) not in found:found.append(str(sub))
+        except Exception:continue
+    light=[b for b in found if not any(k in Path(b).name.lower() for k in('nvfp4','12b'))]
+    return light[0] if light else(found[0] if found else None)
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--bake',default=_CFG.get('bake'))
@@ -215,12 +234,20 @@ def main():
     ap.add_argument('--default-persona',default=None,help='Default persona name (preset or learned). e.g. rikku, yoda, neutral')
     ap.add_argument('--no-persona',action='store_true',help='Disable persona layer entirely (raw Adam responses)')
     args=ap.parse_args()
-    if not args.bake or not Path(args.bake).exists() or not (Path(args.bake)/'manifest.json').exists():
-        print(f'[amni_serve] FATAL: no usable bake found.\n  Tried: {args.bake!r}\n  Run `python install.py` to fetch the GF(17) bake from Hugging Face, or pass --bake <path-to-bake-with-manifest.json> --model <path-to-model-dir>.\n  Config search order: $AMNI_HOME, ~/.amni-ai/last_install_home.txt pointer, ~/.amni-ai/config.json, then candidate dirs ($AMNI_BAKE_PATHS, CONFIG_DIR/bakes, ./bakes, ~/amni-bakes, ~/.amni-ai/bakes).',flush=True)
-        sys.exit(2)
+    if not _bake_usable(args.bake):
+        _disc=_discover_bake(args.bake)
+        if not _disc:
+            print(f'[amni_serve] FATAL: no usable bake found.\n  Tried: {args.bake!r} (auto-scanned $AMNI_BAKE_PATHS, <repo>/bakes, ./bakes, ~/amni-bakes, ~/.amni-ai/bakes — a usable bake dir needs config.json plus manifest.json or bake_manifest.json).\n  Run `python install.py` to fetch the GF(17) bake from Hugging Face, or pass --bake <bake-dir> --model <model-dir>.',flush=True)
+            sys.exit(2)
+        print(f'[amni_serve] configured bake {args.bake!r} unusable — auto-discovered usable bake: {_disc}',flush=True)
+        if not _bake_usable(args.model):args.model=_disc
+        args.bake=_disc
     if not args.model or not Path(args.model).exists() or not (Path(args.model)/'config.json').exists():
-        print(f'[amni_serve] FATAL: no usable model dir found.\n  Tried: {args.model!r}\n  The bake itself usually has config.json + tokenizer.json (the runtime can use --model <bake-path> as a fallback). If your bake has these files, pass --model {args.bake!r}.\n  Otherwise run `python install.py` to fetch the upstream model.',flush=True)
-        sys.exit(2)
+        if Path(args.bake).exists() and (Path(args.bake)/'config.json').exists():
+            print(f'[amni_serve] model dir unset/invalid — using bake as model: {args.bake}',flush=True);args.model=args.bake
+        else:
+            print(f'[amni_serve] FATAL: no usable model dir found.\n  Tried: {args.model!r}\n  The bake usually has config.json + tokenizer.json — pass --model {args.bake!r} if so, or run `python install.py`.',flush=True)
+            sys.exit(2)
     _free_port_if_occupied(args.host,args.port,kill_unsafe=args.force_port_kill)
     try:
         from fastapi import FastAPI,Request,HTTPException
@@ -1299,6 +1326,11 @@ def main():
         from amni.serve import guardian_service;guardian_service.mount(app,agent)
         print(f'[amni_serve]   Guardian app:  http://{args.host}:{args.port}/guardian  (self-improve + dispatch & discussion, phone-ready)',flush=True)
     except Exception as _ge:print(f'[amni_serve] guardian_service mount failed (non-fatal): {_ge}',flush=True)
+    try:
+        from amni.serve import agent_modes,mini_agents,code_review
+        agent_modes.mount(app,agent);mini_agents.mount(app,agent);code_review.mount(app,agent)
+        print(f'[amni_serve]   Niceties:      /agent/mode (plan|edit|autonomous) · /agents/{{panel,review,debate,decompose}} · /review/{{code,scan}}',flush=True)
+    except Exception as _ne:print(f'[amni_serve] niceties mount failed (non-fatal): {_ne}',flush=True)
     print(f'[amni_serve] serving on http://{args.host}:{args.port}',flush=True)
     print(f'[amni_serve]   browser UI:    http://{args.host}:{args.port}/',flush=True)
     print(f'[amni_serve]   Jarvis UI:     http://{args.host}:{args.port}/jarvis  (neon + widgets + voice)',flush=True)
