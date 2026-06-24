@@ -1,5 +1,9 @@
 """Quant-mode selector: GET/POST /api/mode — Default(lossless palette) / Quick(native 8-bit) / Turbo(nested 4-bit). Default<->others = model reload (restart Adam); Quick<->Turbo on a loaded nested map = live decode-switch (no reload). v6.12.5."""
-from amni.bootstrap import QUANT_VARIANTS,load_config,save_config,quant_variant
+from amni.bootstrap import load_config,save_config
+try:from amni.bootstrap import QUANT_VARIANTS,quant_variant
+except ImportError:
+    QUANT_VARIANTS=[{'key':'palette','repo':'amnibro/granite41-3b-palette','dir':'granite41_3b_palette','label':'Palette (default, RAM-light, lossless to fp16)','bpw':1.6,'scorecard':'bit-exact cossim=1.0 to fp16','warn':None,'ready':True},{'key':'native8','repo':'amnibro/granite41-3b-native8','dir':'granite41_3b_native8','label':'Native GF 8-bit (cleanest native QAT, cos=1-to-trained)','bpw':8.25,'scorecard':'vs fp16: short factual 100%, multi-step reasoning 97%, long-form coherent (looping ~6%)','warn':None,'ready':False},{'key':'nested4','repo':'amnibro/granite41-3b-nested4','dir':'granite41_3b_nested4','label':'Native GF 4-bit nested (smallest+fast: 4-bit fast path + 8-bit full read from ONE map)','bpw':4.16,'scorecard':'4-bit fast path vs fp16: short 100%, reasoning 97%, long-coverage 91%; full 8-bit read 100%/100%','warn':'DEGRADATION: the 4-bit fast path falls into repetition loops on long-form answers ~16-18% of the time (vs ~6% at 8-bit), and short factual is ~94-100% run-to-run. Short answers + reasoning hold up; for long-form or critical work prefer the native8 variant or read the full 8-bit tier of this map.','ready':False}]
+    def quant_variant(key):return next((v for v in QUANT_VARIANTS if v['key']==key),None)
 _MODE2KEY={'default':'palette','quick':'native8','turbo':'nested4'}
 _KEY2MODE={v:k for k,v in _MODE2KEY.items()}
 def _svc(adam):return getattr(adam,'svc',None)
