@@ -98,6 +98,41 @@ def advise_install()->Dict[str,Any]:
     if m['scheme']=='nvfp4':return {**a,'action':'manual','message':f"Fetch the flagship: download {m['source']} then bake with scripts/bake_nvfp4_atex.py (needs ~12GB free)."}
     job=install(m['source'],scheme=m['scheme'],model_name=f"adam_{m['tier']}")
     return {**a,'action':'installing','job':job}
+_BAKE_CATALOG=[
+    {'key':'gemma-e2b','repo':'amnibro/gemma-4-E2B-it-gf17','dir':'gemma4_e2b_it_gf17','label':'Gemma-4 E2B (tiny / CPU-friendly)','download_gb':3.0,'resident_gb':3.0,'min_vram':0.0,'min_ram':6,'speed':'Runs anywhere — CPU ok (~1 tok/s on CPU)','quality':'Basic but always works','ready':True},
+    {'key':'granite-3b','repo':'amnibro/granite41-3b-palette','dir':'granite41_3b_palette','label':'Granite-3B Palette (default, lossless)','download_gb':8.0,'resident_gb':4.0,'min_vram':4.0,'min_ram':8,'speed':'Fast on any 4GB+ GPU','quality':'Solid all-rounder — the default','ready':True},
+    {'key':'gemma-12b','repo':'amnibro/gemma-4-12b-nvfp4','dir':'gemma4_12b_nvfp4_atex','label':'Gemma-4-12B NVFP4 (flagship)','download_gb':13.0,'resident_gb':13.0,'min_vram':14.0,'min_ram':16,'speed':'Fast on 16GB+ GPUs','quality':'Best — MMLU-Pro 71%, coding 100% (self-correct)','ready':False},
+]
+def _bake_has_weights(dest):
+    p=Path(dest)
+    return (p/'bake_manifest.json').exists() or (p/'manifest.json').exists() or (p/'tensors').exists() or any(p.glob('*.palette')) or any(p.glob('*.ptex')) or any(p.glob('*.safetensors'))
+def _do_bake_download(job_id,repo,dest):
+    j=_JOBS[job_id]
+    try:
+        from huggingface_hub import snapshot_download
+        j['phase']='downloading';snapshot_download(repo_id=repo,local_dir=dest)
+        if not _bake_has_weights(dest):j['phase']='failed';j['error']='downloaded but no bake manifest/weights found';return
+        try:
+            from amni.bootstrap import load_config,save_config
+            cfg=load_config();cfg['bake']=dest;cfg['model']=dest;cfg['hf_bake_repo']=repo;save_config(cfg);j['config_saved']=True
+        except Exception as ce:j['config_saved']=False;j['config_error']=str(ce)[:100]
+        j['phase']='done';j['bake']=dest
+    except Exception as e:j['phase']='failed';j['error']=str(e)
+def download_bake_tier(key:str)->Dict[str,Any]:
+    cat=next((c for c in _BAKE_CATALOG if c['key']==key),None)
+    if cat is None:return {'error':f'unknown bake {key!r}; valid: {[c["key"] for c in _BAKE_CATALOG]}'}
+    if not cat.get('ready'):return {'error':f"{cat['label']} is not on HuggingFace yet — coming soon"}
+    dest=str(_ROOT/'bakes'/cat['dir']);job_id=f"bake_{cat['dir']}_{int(time.time())}"
+    _JOBS[job_id]={'job_id':job_id,'repo':cat['repo'],'dir':cat['dir'],'phase':'queued','bake':dest}
+    threading.Thread(target=_do_bake_download,args=(job_id,cat['repo'],dest),daemon=True).start()
+    return {'job_id':job_id,'repo':cat['repo'],'phase':'queued','poll':f'/install/status/{job_id}'}
+def bake_catalog_view()->Dict[str,Any]:
+    a=advise();hw=a['hardware'];out=[]
+    for c in _BAKE_CATALOG:
+        installed=(_ROOT/'bakes'/c['dir']/'bake_manifest.json').exists() or (_ROOT/'bakes'/c['dir']/'manifest.json').exists()
+        fit='green' if (c['min_vram']>0 and hw['vram_gb']>=c['min_vram']) else ('amber' if hw['ram_gb']>=c['min_ram'] else 'red')
+        out.append({**c,'fit':fit,'installed':bool(installed),'can_download':bool(c.get('ready')) and fit!='red'})
+    return {'hardware':hw,'recommended':(a.get('recommended') or {}).get('name'),'bakes':out}
 def mount(app):
     from fastapi import Query
     from fastapi.responses import HTMLResponse
@@ -105,6 +140,14 @@ def mount(app):
     def _advise():return advise()
     @app.post('/advise/install')
     def _advise_install():return advise_install()
+    @app.get('/install/catalog')
+    def _catalog():return bake_catalog_view()
+    @app.post('/install/bake')
+    def _bake(key:str=Query(...)):return download_bake_tier(key)
+    @app.get('/picker',response_class=HTMLResponse)
+    def _picker():return _PICKER_HTML
+    @app.get('/first-run',response_class=HTMLResponse)
+    def _firstrun():return _PICKER_HTML
     @app.get('/install/search')
     def _search(q:str=Query(''),limit:int=20):return search_hf(q,limit)
     @app.get('/install/inspect')
@@ -188,4 +231,56 @@ $('#go').onclick=search;$('#q').addEventListener('keydown',e=>{if(e.key==='Enter
 if(location.search.includes('demo')){(async()=>{$('#q').value='mamba';await search();const f=document.querySelector('.insp');if(f){const c=f.closest('.card');await inspect(f.dataset.i,c.dataset.repo)}})()}
 res.addEventListener('click',e=>{const ins=e.target.closest('.insp');if(ins){const c=ins.closest('.card');inspect(ins.dataset.i,c.dataset.repo);return}
  const dl=e.target.closest('.dl');if(dl){startInstall(dl.dataset.i,dl.dataset.repo,dl.dataset.warn==='1')}});
+</script></body></html>'''
+_PICKER_HTML=r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Adam - Choose your model</title>
+<style>
+:root{--bg:#070b14;--panel:#0e1626;--panel2:#131f33;--line:#1f2e47;--ink:#e8eef9;--dim:#8aa0c0;--accent:#ff8a3c;--accent2:#ffb070;--green:#34d399;--amber:#fbbf24;--red:#f87171}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#10203a 0,var(--bg) 60%);color:var(--ink);font:15px/1.5 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+.wrap{max-width:920px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:24px;margin:0 0 2px}h1 b{color:var(--accent)}
+.sub{color:var(--dim);margin:0 0 18px;font-size:13px}
+.hw{background:linear-gradient(180deg,var(--panel),#0b1322);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:18px;font-size:14px}
+.hw b{color:var(--accent2)}
+.card{background:linear-gradient(180deg,var(--panel),#0b1322);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;position:relative}
+.card.rec{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.rectag{position:absolute;top:-9px;right:14px;background:var(--accent);color:#1a0f06;font-size:11px;font-weight:700;border-radius:999px;padding:2px 10px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.title{font-weight:700;font-size:16px}.q{color:var(--dim);font-size:13px;margin:2px 0 8px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.b{font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid var(--line);color:var(--dim);background:var(--panel2)}
+.fit{font-weight:700}.fit.green{color:var(--green);border-color:var(--green)}.fit.amber{color:var(--amber);border-color:var(--amber)}.fit.red{color:var(--red);border-color:var(--red)}
+.speed{font-size:13px;color:var(--dim);margin-top:4px}
+button{font:inherit;cursor:pointer;border:none;border-radius:10px;padding:10px 18px;font-weight:700;background:linear-gradient(180deg,var(--accent2),var(--accent));color:#1a0f06;white-space:nowrap}
+button:disabled{opacity:.45;cursor:default;background:var(--panel2);color:var(--dim)}
+.job{margin-top:10px;font-size:13px;color:var(--accent2)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px;margin-right:6px}@keyframes s{to{transform:rotate(360deg)}}
+.empty{color:var(--dim);text-align:center;padding:40px}
+</style></head><body><div class="wrap">
+<h1><b>&#9889; Adam</b> - Choose your model</h1>
+<p class="sub">Pick the bake that fits your hardware. We detected your machine and highlight the best fit. You can change it later.</p>
+<div id="hw" class="hw"><span class="spin"></span>detecting hardware...</div>
+<div id="cards"><div class="empty"><span class="spin"></span>loading catalog...</div></div>
+</div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const FITLABEL={green:'✓ Fits your GPU',amber:'⚠ CPU / partial - slower',red:'✕ Needs more VRAM/RAM'};
+async function load(){let d;try{d=await(await fetch('/install/catalog')).json()}catch(e){$('#cards').innerHTML='<div class=empty>catalog failed</div>';return}
+ const h=d.hardware||{};$('#hw').innerHTML='<b>'+esc(h.gpu||'CPU')+'</b> &middot; VRAM <b>'+(h.vram_gb||0)+' GB</b> &middot; RAM <b>'+(h.ram_gb||0)+' GB</b>'+(d.recommended?' &nbsp;|&nbsp; Recommended: <b>'+esc(d.recommended)+'</b>':'');
+ const recName=d.recommended||'';
+ $('#cards').innerHTML=(d.bakes||[]).map(function(b){
+  const rec=recName&&b.label&&recName.indexOf(b.label.split(' (')[0])>=0;
+  const btn=b.installed?'<button disabled>Installed ✓</button>':(!b.ready?'<button disabled>Coming soon</button>':(b.fit==='red'?'<button disabled>Needs more VRAM</button>':'<button onclick="dl(\''+b.key+'\',this)">⬇ Download ('+b.download_gb+' GB)</button>'));
+  return '<div class="card'+(rec?' rec':'')+'">'+(rec?'<span class=rectag>RECOMMENDED</span>':'')+
+   '<div class=row><div><div class=title>'+esc(b.label)+'</div><div class=q>'+esc(b.quality)+'</div>'+
+   '<div class=badges><span class="b fit '+b.fit+'">'+FITLABEL[b.fit]+'</span><span class=b>⬇ '+b.download_gb+' GB download</span><span class=b>'+b.resident_gb+' GB resident</span></div>'+
+   '<div class=speed>'+esc(b.speed)+'</div></div><div>'+btn+'</div></div><div class=job id="j_'+b.key+'"></div></div>'}).join('');
+}
+async function dl(key,btn){btn.disabled=true;const jb=$('#j_'+key);jb.innerHTML='<span class=spin></span>starting...';
+ let d;try{d=await(await fetch('/install/bake?key='+encodeURIComponent(key),{method:'POST'})).json()}catch(e){jb.innerHTML='start failed';btn.disabled=false;return}
+ if(d.error){jb.innerHTML=esc(d.error);btn.disabled=false;return}poll(d.job_id,jb,btn)}
+async function poll(id,jb,btn){let d;try{d=await(await fetch('/install/status/'+id)).json()}catch(e){jb.innerHTML='status lost';return}
+ const p=d.phase||'?';if(p==='done'){jb.innerHTML='✓ Downloaded & set as your model - restart Adam to use it.';btn.textContent='Installed ✓';return}
+ if(p==='failed'){jb.innerHTML='✕ '+esc(d.error||'failed');btn.disabled=false;return}
+ jb.innerHTML='<span class=spin></span>'+esc(p)+'... (large download, please wait)';setTimeout(function(){poll(id,jb,btn)},1500)}
+load();
 </script></body></html>'''
