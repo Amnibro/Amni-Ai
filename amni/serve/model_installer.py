@@ -101,7 +101,7 @@ def advise_install()->Dict[str,Any]:
 _BAKE_CATALOG=[
     {'key':'gemma-e2b','repo':'amnibro/gemma-4-E2B-it-gf17','dir':'gemma4_e2b_it_gf17','label':'Gemma-4 E2B (tiny / CPU-friendly)','download_gb':3.0,'resident_gb':3.0,'min_vram':0.0,'min_ram':6,'speed':'Runs anywhere — CPU ok (~1 tok/s on CPU)','quality':'Basic but always works','ready':True},
     {'key':'granite-3b','repo':'amnibro/granite41-3b-palette','dir':'granite41_3b_palette','label':'Granite-3B Palette (default, lossless)','download_gb':8.0,'resident_gb':4.0,'min_vram':4.0,'min_ram':8,'speed':'Fast on any 4GB+ GPU','quality':'Solid all-rounder — the default','ready':True},
-    {'key':'gemma-12b','repo':'amnibro/gemma-4-12b-nvfp4','dir':'gemma4_12b_nvfp4_atex','label':'Gemma-4-12B NVFP4 (flagship)','download_gb':13.0,'resident_gb':13.0,'min_vram':14.0,'min_ram':16,'speed':'Fast on 16GB+ GPUs','quality':'Best — MMLU-Pro 71%, coding 100% (self-correct)','ready':False},
+    {'key':'gemma-12b','repo':'amnibro/gemma-4-12b-nvfp4','dir':'gemma4_12b_nvfp4_atex','label':'Gemma-4-12B NVFP4 (flagship)','download_gb':13.0,'resident_gb':13.0,'min_vram':14.0,'min_ram':16,'speed':'Fast on 16GB+ GPUs','quality':'Best — MMLU-Pro 71%, coding 100% (self-correct)','ready':True},
 ]
 def _bake_has_weights(dest):
     p=Path(dest)
