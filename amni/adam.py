@@ -24,13 +24,26 @@ class Adam:
         t0=time.time()
         self.svc=None;self.svc_boot_s=0.0;self.runtime_error=None
         try:
-            _mf=Path(bake)/'bake_manifest.json';_isnv=False
-            try:_isnv=str(json.load(open(_mf)).get('format','')).startswith('nvfp4') if _mf.exists() else False
-            except Exception:_isnv=False
+            _mf=Path(bake)/'bake_manifest.json';_man={}
+            try:_man=json.load(open(_mf)) if _mf.exists() else {}
+            except Exception:_man={}
+            _isnv=str(_man.get('format','')).startswith('nvfp4')
+            try:
+                import torch as _t;_freeg=(_t.cuda.mem_get_info()[0]/1e9) if _t.cuda.is_available() else 0.0
+            except Exception:_freeg=0.0
+            _atexdir=Path('bakes/granite41_3b_gf17_atex')
+            if (not _isnv) and ('gs' not in _man) and _atexdir.exists() and (_atexdir/'bake_manifest.json').exists() and _freeg>=5.0:
+                bake=str(_atexdir);model=str(_atexdir)
+                try:_man=json.load(open(_atexdir/'bake_manifest.json'))
+                except Exception:_man={}
+            _isatex=('gs' in _man) and any((t or {}).get('q')==1 for t in (_man.get('tensors',{}) or {}).values())
             if _isnv:
                 from amni.inference.nvfp4_atex_svc import Nvfp4AtexChatService
                 self.svc=Nvfp4AtexChatService(bake=bake,tok_src=model);print(f'[Adam] NVFP4-ATEX server model loaded: {bake}',flush=True)
-            else:self.svc=StreamingChatService(bake,model,budget_mb=budget_mb)
+            elif _isatex:
+                from amni.inference.granite_atex_svc import GraniteAtexChatService
+                self.svc=GraniteAtexChatService(bake=bake,tok_src=model);print(f'[Adam] int4-group ATEX GPU-resident model loaded ({_freeg:.1f}GB free): {bake}',flush=True)
+            else:self.svc=StreamingChatService(bake,model,budget_mb=budget_mb);print(f'[Adam] StreamingChatService (CPU/stream fallback): {bake}',flush=True)
             self.svc_boot_s=time.time()-t0
         except Exception as e:
             self.runtime_error=str(e)
