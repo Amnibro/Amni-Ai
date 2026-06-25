@@ -74,3 +74,18 @@ class MacroCodeEngine:
                 gen+=s._ntoks(raw[i]);i+=1
         tot=len(s._enc(code));passes=holes+gen
         return {'tot':tot,'known_pct':round(100*known/max(tot,1),1),'accepts':accepts,'holes':holes,'passes':passes,'speedup_est':round(tot/max(passes,1),2),'lib':len(s.struct)}
+    def build_draft_index(s,ngram=3,max_draft=24):
+        idx={}
+        for b in s.blocks:
+            t=s._enc(b)
+            for i in range(len(t)-ngram):
+                k=tuple(t[i:i+ngram])
+                if k not in idx:idx[k]=t[i+ngram:i+ngram+max_draft]
+        return idx
+    def save_lib(s,root):s.intern_all();s.cache.save(root);return s.cache.stats()
+    def load_lib(s,root):
+        s.cache.load(root)
+        for mid in list(s.cache._pages):
+            t=s.cache.expand(mid)
+            if t and t not in s.blocks:s.blocks[t]=99
+        return len(s.blocks)

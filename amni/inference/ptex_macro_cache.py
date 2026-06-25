@@ -33,6 +33,17 @@ class PtexMacroCache:
         os.makedirs(root,exist_ok=True)
         for mid,page in s._pages.items():np.save(os.path.join(root,f'macro_{mid}.npy'),page)
         np.save(os.path.join(root,'_meta.npy'),np.array([(mid,s._meta[mid]['n']) for mid in s._pages],dtype=np.int64))
+    def load(s,root):
+        mp=os.path.join(root,'_meta.npy')
+        if not os.path.exists(mp):return 0
+        n=0
+        for mid,ntok in np.load(mp):
+            p=os.path.join(root,f'macro_{int(mid)}.npy')
+            if os.path.exists(p):
+                s._pages[int(mid)]=np.load(p);s._meta[int(mid)]={'n':int(ntok)};s._next=max(s._next,int(mid)+1)
+                if s.tok is not None:s._index[s.expand(int(mid))]=int(mid)
+                n+=1
+        return n
 if __name__=='__main__':
     from transformers import AutoTokenizer
     tok=AutoTokenizer.from_pretrained('bakes/gemma4_12b_nvfp4_atex')
