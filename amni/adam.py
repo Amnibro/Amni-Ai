@@ -71,7 +71,7 @@ class Adam:
             for q,a in seed_lessons:self.sem_lut.add(q,a)
             self.sem_lut.fit()
             self.save_lessons()
-        self.adam=AdamLoop(self.svc,lut_root=self.lut_root,letter_only=False,tier3_cot_max_tokens=200,semantic_lut=self.sem_lut if len(self.sem_lut._raw)>0 else None,semantic_margin='auto',shape_sorter=True,chord_sampler=True,chord_n_frames=5,chord_min_conf=1.0,calc_tool=True,mcq_samples=int(os.environ.get('AMNI_MCQ_SAMPLES','5')),crawler_plugin=self.crawler_plugin)
+        self.adam=AdamLoop(self.svc,lut_root=self.lut_root,letter_only=False,tier3_cot_max_tokens=200,semantic_lut=self.sem_lut if len(self.sem_lut._raw)>0 else None,semantic_margin='auto',shape_sorter=True,chord_sampler=True,chord_n_frames=5,chord_min_conf=0.6,calc_tool=True,mcq_samples=int(os.environ.get('AMNI_MCQ_SAMPLES','5')),crawler_plugin=self.crawler_plugin)
         self._writeback_counter=0
         self._writeback_every=1
     def ask(self,query:str,writeback:bool=True)->Dict[str,Any]:
@@ -174,13 +174,17 @@ class Adam:
         except Exception:pass
         tier='tier_persona_hist' if history else 'tier_persona'
         return {'answer':ans,'tier':tier,'tokens':n,'wall_s':round(time.time()-t0,3),'is_private':is_private}
-def select_model_bake(prefer='bakes/gemma4_12b_nvfp4_atex',min_free_gb=14.0):
-    """Pick the NVFP4 12B as the server model only if it exists AND enough VRAM is free; else return (None,reason) so the caller keeps its lighter default bake. One server auto-fits the host: 16GB+ cards -> NVFP4 12B, smaller cards -> the light bake."""
-    if not (Path(prefer)/'bake_manifest.json').exists():return None,'nvfp4 bake absent'
+_UPGRADE_TIERS=[('bakes/gemma4_12b_nvfp4_atex',14.0,'NVFP4-12B'),('bakes/qwen3_4b_tilepack',7.0,'Qwen3-4B')]
+def select_model_bake(prefer='bakes/gemma4_12b_nvfp4_atex',min_free_gb=14.0,tiers=None):
+    """VRAM-aware tiered pick. Reads CURRENTLY-FREE VRAM (mem_get_info) so it adapts to whatever else is using the GPU right now, then returns the largest INSTALLED upgrade bake that fits with headroom; (None,reason) means nothing bigger fits so the caller keeps its configured light/CPU default. One server auto-fits both the card AND the moment's GPU load (e.g. busy from another job -> smaller model)."""
+    cands=tiers if tiers is not None else (([(prefer,min_free_gb,'preferred')]+_UPGRADE_TIERS) if prefer else list(_UPGRADE_TIERS))
+    seen=set();cands=[c for c in cands if not (c[0] in seen or seen.add(c[0]))]
     try:
         import torch;free,_=torch.cuda.mem_get_info();fg=free/1e9
-    except Exception as e:return None,f'no cuda ({str(e)[:40]})'
-    return (prefer,f'{fg:.1f}GB free >= {min_free_gb}') if fg>=min_free_gb else (None,f'only {fg:.1f}GB free (< {min_free_gb})')
+    except Exception as e:return None,f'no GPU ({str(e)[:38]}) -> light/CPU default'
+    fits=[(p,n,nm) for p,n,nm in cands if (Path(p)/'bake_manifest.json').exists() and fg>=n]
+    if fits:p,n,nm=max(fits,key=lambda t:t[1]);return p,f'{nm} fits ({fg:.1f}GB free >= {n}GB need, usage-aware)'
+    return None,f'only {fg:.1f}GB free -> no upgrade bake fits, keeping light/CPU default'
 SEED_LESSONS=[
     ('What is 2 + 2?','4'),('What is 5 + 3?','8'),('What is 10 - 7?','3'),('What is 6 * 7?','42'),
     ('What is 9 * 8?','72'),('What is 100 / 4?','25'),('What is the square root of 81?','9'),
