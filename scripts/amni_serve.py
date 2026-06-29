@@ -264,7 +264,7 @@ def main():
     from amni.adam import Adam,SEED_LESSONS
     from amni.serve import AmniAgent,ConversationStore,PersonaStore
     from amni.serve.skills import default_registry
-    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web,model_installer,mode_endpoints
+    from amni.serve import ollama_compat,web,mcp,openai_compat,jarvis_web,memory_endpoints,task_endpoints,vision_endpoints,voice_endpoints,amni_chat_bridge,unified_web,model_installer,mode_endpoints,delve_endpoints
     try:from amni.serve import trace_endpoints
     except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
@@ -1317,6 +1317,8 @@ def main():
     memory_endpoints.mount(app,agent)
     mode_endpoints.mount(app,adam)
     task_endpoints.mount(app,agent)
+    try:delve_endpoints.mount(app,agent,adam)
+    except Exception as _de:print(f'[amni_serve] Amni-Delve mount failed (non-fatal): {_de}',flush=True)
     vision_endpoints.mount(app,agent)
     voice_endpoints.mount(app,agent)
     amni_chat_bridge.mount(app,agent)
