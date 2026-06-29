@@ -7,7 +7,7 @@ def _e2m1(c):
 @triton.jit
 def _nvfp4_gemv(c_ptr,s_ptr,x_ptr,y_ptr,ws2,OUT:tl.constexpr,INN:tl.constexpr,NG:tl.constexpr,HALF:tl.constexpr,ROWS:tl.constexpr):
     pid=tl.program_id(0);rows=pid*ROWS+tl.arange(0,ROWS);rm=rows<OUT
-    k=tl.arange(0,8);acc=tl.zeros((ROWS,),dtype=tl.float32)
+    k=tl.arange(0,8);acc=tl.zeros((ROWS,8),dtype=tl.float32)
     for g in range(0,NG):
         bcol=8*g+k;bm=bcol<HALF
         b=tl.load(c_ptr+rows[:,None]*HALF+bcol[None,:],mask=rm[:,None]&bm[None,:],other=0).to(tl.int32)
@@ -15,14 +15,15 @@ def _nvfp4_gemv(c_ptr,s_ptr,x_ptr,y_ptr,ws2,OUT:tl.constexpr,INN:tl.constexpr,NG
         ie=16*g+2*k;io=ie+1
         xe=tl.load(x_ptr+ie,mask=ie<INN,other=0.0).to(tl.float32)
         xo=tl.load(x_ptr+io,mask=io<INN,other=0.0).to(tl.float32)
-        gsum=tl.sum(vlo*xe[None,:]+vhi*xo[None,:],axis=1)
         sc=tl.load(s_ptr+rows*NG+g,mask=rm,other=0.0).to(tl.float32)*ws2
-        acc+=gsum*sc
-    tl.store(y_ptr+rows,acc.to(tl.float16),mask=rm)
-def nvfp4_gemv(codes,scale,ws2,x,y=None,ROWS=8):
+        acc+=sc[:,None]*(vlo*xe[None,:]+vhi*xo[None,:])
+    y=tl.sum(acc,axis=1);tl.store(y_ptr+rows,y.to(tl.float16),mask=rm)
+def nvfp4_gemv(codes,scale,ws2,x,y=None,ROWS=None):
     out,half=codes.shape;ng=scale.shape[1];inn=half*2
     if y is None:y=torch.empty(out,device=x.device,dtype=torch.float16)
-    _nvfp4_gemv[((out+ROWS-1)//ROWS,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=ROWS)
+    if ROWS is not None:_nvfp4_gemv[((out+ROWS-1)//ROWS,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=ROWS)
+    elif out>inn:_nvfp4_gemv[((out+7)//8,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=8,num_warps=4)
+    else:_nvfp4_gemv[((out+31)//32,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=32)
     return y
 @triton.jit
 def _nvfp4_gemm(c_ptr,s_ptr,x_ptr,y_ptr,ws2,M,OUT:tl.constexpr,INN:tl.constexpr,NG:tl.constexpr,HALF:tl.constexpr,BM:tl.constexpr,BN:tl.constexpr):
@@ -45,6 +46,52 @@ def nvfp4_gemm(codes,scale,ws2,x,BM=16,BN=64):
     y=torch.empty(M,out,device=x.device,dtype=torch.float16)
     _nvfp4_gemm[((M+BM-1)//BM,(out+BN-1)//BN)](codes,scale,x,y,float(ws2),M,OUT=out,INN=inn,NG=ng,HALF=half,BM=BM,BN=BN)
     return y
+@triton.jit
+def _nvfp4_dq(c_ptr,s_ptr,w_ptr,ws2,OUT,HALF:tl.constexpr,NG:tl.constexpr,INN:tl.constexpr,BR:tl.constexpr,BH:tl.constexpr):
+    pr=tl.program_id(0);ph=tl.program_id(1)
+    rows=pr*BR+tl.arange(0,BR);cols=ph*BH+tl.arange(0,BH);rm=rows<OUT;cm=cols<HALF
+    b=tl.load(c_ptr+rows[:,None]*HALF+cols[None,:],mask=rm[:,None]&cm[None,:],other=0).to(tl.int32)
+    vlo=_e2m1(b&0xF);vhi=_e2m1((b>>4)&0xF);g=cols//8
+    sc=tl.load(s_ptr+rows[:,None]*NG+g[None,:],mask=rm[:,None]&cm[None,:],other=0.0).to(tl.float32)*ws2
+    tl.store(w_ptr+rows[:,None]*INN+2*cols[None,:],(vlo*sc).to(tl.bfloat16),mask=rm[:,None]&cm[None,:])
+    tl.store(w_ptr+rows[:,None]*INN+(2*cols[None,:]+1),(vhi*sc).to(tl.bfloat16),mask=rm[:,None]&cm[None,:])
+_PFS={}
+def nvfp4_prefill(codes,scale,ws2,x,BR=16,BH=128):
+    out,half=codes.shape;ng=scale.shape[1];inn=half*2;need=out*inn;dev=codes.device
+    buf=_PFS.get(dev)
+    if buf is None or buf.numel()<need:buf=torch.empty(need,device=dev,dtype=torch.bfloat16);_PFS[dev]=buf
+    W=buf[:need].view(out,inn)
+    _nvfp4_dq[((out+BR-1)//BR,(half+BH-1)//BH)](codes,scale,W,float(ws2),out,HALF=half,NG=ng,INN=inn,BR=BR,BH=BH)
+    return torch.matmul(x,W.t())
+@triton.jit
+def _nvfp4_fused(c,s,x,y,ws2,M,OUT:tl.constexpr,K:tl.constexpr,NG:tl.constexpr,HALF:tl.constexpr,BM:tl.constexpr,BN:tl.constexpr,BG:tl.constexpr):
+    pm=tl.program_id(0);pn=tl.program_id(1)
+    rm=pm*BM+tl.arange(0,BM);rn=pn*BN+tl.arange(0,BN);mm=rm<M;nm=rn<OUT
+    acc=tl.zeros((BM,BN),tl.float32)
+    for g0 in range(0,NG,BG):
+        kb=8*g0+tl.arange(0,8*BG);kbm=kb<HALF
+        b=tl.load(c+rn[None,:]*HALF+kb[:,None],mask=nm[None,:]&kbm[:,None],other=0).to(tl.int32)
+        gg=kb//8;sc=tl.load(s+rn[None,:]*NG+gg[:,None],mask=nm[None,:]&kbm[:,None],other=0.0)*ws2
+        vlo=(_e2m1(b&0xF)*sc).to(tl.bfloat16);vhi=(_e2m1((b>>4)&0xF)*sc).to(tl.bfloat16)
+        ke=2*kb;ko=2*kb+1
+        xe=tl.load(x+rm[:,None]*K+ke[None,:],mask=mm[:,None]&(ke[None,:]<K),other=0.0)
+        xo=tl.load(x+rm[:,None]*K+ko[None,:],mask=mm[:,None]&(ko[None,:]<K),other=0.0)
+        acc+=tl.dot(xe,vlo)+tl.dot(xo,vhi)
+    tl.store(y+rm[:,None]*OUT+rn[None,:],acc.to(tl.bfloat16),mask=mm[:,None]&nm[None,:])
+def nvfp4_fused(codes,scale,ws2,x,BM=64,BN=64,BG=4):
+    OUT,HALF=codes.shape;K=HALF*2;NG=scale.shape[1];M=x.shape[0]
+    y=torch.empty(M,OUT,device=x.device,dtype=torch.bfloat16)
+    _nvfp4_fused[((M+BM-1)//BM,(OUT+BN-1)//BN)](codes,scale,x,y,float(ws2),M,OUT=OUT,K=K,NG=NG,HALF=HALF,BM=BM,BN=BN,BG=BG)
+    return y
+_DQE={}
+def nvfp4_dequant(codes,scale,ws2):
+    dev=codes.device
+    if dev not in _DQE:_DQE[dev]=torch.tensor([0.,0.5,1.,1.5,2.,3.,4.,6.],device=dev,dtype=torch.float16)
+    E=_DQE[dev];lo=codes&0xF;hi=codes>>4
+    one=torch.tensor(1.,device=dev,dtype=torch.float16);neg=torch.tensor(-1.,device=dev,dtype=torch.float16)
+    vlo=E[(lo&7).long()]*torch.where(lo>=8,neg,one);vhi=E[(hi&7).long()]*torch.where(hi>=8,neg,one)
+    nib=torch.stack([vlo,vhi],-1).reshape(codes.shape[0],-1)
+    return nib*(scale.to(torch.float16)*float(ws2)).repeat_interleave(16,1)
 def _ref_decode(codes,scale,ws2):
     out,half=codes.shape;lo=(codes&0xF).int();hi=((codes>>4)&0xF).int()
     E=torch.tensor([0.,0.5,1.,1.5,2.,3.,4.,6.],device=codes.device)
