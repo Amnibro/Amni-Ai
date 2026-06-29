@@ -36,16 +36,16 @@ def int4grp_gemm(codes,scale,x,GS=128,BM=32,BN=64):
 @triton.jit
 def _i4p_gemv(c_ptr,s_ptr,x_ptr,y_ptr,OUT,INN:tl.constexpr,HALF:tl.constexpr,NG:tl.constexpr,HG:tl.constexpr,ROWS:tl.constexpr):
     pid=tl.program_id(0);rows=pid*ROWS+tl.arange(0,ROWS);rm=rows<OUT
-    acc=tl.zeros((ROWS,),dtype=tl.float32);k=tl.arange(0,HG)
+    k=tl.arange(0,HG);acc=tl.zeros((ROWS,HG),dtype=tl.float32)
     for g in range(0,NG):
         bc=g*HG+k;bm=bc<HALF
         b=tl.load(c_ptr+rows[:,None]*HALF+bc[None,:],mask=rm[:,None]&bm[None,:],other=136).to(tl.int32)
         lo=(b&0xF).to(tl.float32)-8.0;hi=((b>>4)&0xF).to(tl.float32)-8.0
         ie=2*bc;io=2*bc+1
         xe=tl.load(x_ptr+ie,mask=ie<INN,other=0.0).to(tl.float32);xo=tl.load(x_ptr+io,mask=io<INN,other=0.0).to(tl.float32)
-        gsum=tl.sum(lo*xe[None,:]+hi*xo[None,:],axis=1)
-        sc=tl.load(s_ptr+rows*NG+g,mask=rm,other=0.0).to(tl.float32);acc+=gsum*sc
-    tl.store(y_ptr+rows,acc.to(tl.float16),mask=rm)
+        sc=tl.load(s_ptr+rows*NG+g,mask=rm,other=0.0).to(tl.float32)
+        acc+=sc[:,None]*(lo*xe[None,:]+hi*xo[None,:])
+    y=tl.sum(acc,axis=1);tl.store(y_ptr+rows,y.to(tl.float16),mask=rm)
 def int4grp_gemv_packed(packed,scale,x,y=None,GS=128):
     out,half=packed.shape;ng=scale.shape[1];inn=half*2
     if y is None:y=torch.empty(out,device=x.device,dtype=torch.float16)
