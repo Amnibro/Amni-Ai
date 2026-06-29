@@ -1,9 +1,8 @@
 import torch,triton,triton.language as tl
 @triton.jit
 def _e2m1(c):
-    s=tl.where(c>=8,-1.0,1.0);m=c&7
-    v=tl.where(m==0,0.0,tl.where(m==1,0.5,tl.where(m==2,1.0,tl.where(m==3,1.5,tl.where(m==4,2.0,tl.where(m==5,3.0,tl.where(m==6,4.0,6.0)))))))
-    return s*v
+    s=tl.where(c>=8,-1.0,1.0);m=c&7;e=m>>1;mant=(m&1).to(tl.float32)
+    return s*tl.where(e==0,0.5*mant,(1.0+0.5*mant)*tl.exp2((e-1).to(tl.float32)))
 @triton.jit
 def _nvfp4_gemv(c_ptr,s_ptr,x_ptr,y_ptr,ws2,OUT:tl.constexpr,INN:tl.constexpr,NG:tl.constexpr,HALF:tl.constexpr,ROWS:tl.constexpr):
     pid=tl.program_id(0);rows=pid*ROWS+tl.arange(0,ROWS);rm=rows<OUT
@@ -22,8 +21,8 @@ def nvfp4_gemv(codes,scale,ws2,x,y=None,ROWS=None):
     out,half=codes.shape;ng=scale.shape[1];inn=half*2
     if y is None:y=torch.empty(out,device=x.device,dtype=torch.float16)
     if ROWS is not None:_nvfp4_gemv[((out+ROWS-1)//ROWS,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=ROWS)
-    elif out>inn:_nvfp4_gemv[((out+7)//8,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=8,num_warps=4)
-    else:_nvfp4_gemv[((out+31)//32,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=32)
+    elif out>inn:_nvfp4_gemv[((out+7)//8,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=8,num_warps=2,num_stages=2)
+    else:_nvfp4_gemv[((out+31)//32,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=32,num_warps=4,num_stages=2)
     return y
 @triton.jit
 def _nvfp4_gemm(c_ptr,s_ptr,x_ptr,y_ptr,ws2,M,OUT:tl.constexpr,INN:tl.constexpr,NG:tl.constexpr,HALF:tl.constexpr,BM:tl.constexpr,BN:tl.constexpr):
