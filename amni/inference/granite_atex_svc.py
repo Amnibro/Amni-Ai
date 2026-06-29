@@ -4,13 +4,19 @@ sys.path.insert(0,'.');os.environ.setdefault('PYTORCH_HIP_ALLOC_CONF','expandabl
 from transformers import AutoConfig,AutoTokenizer,AutoModelForCausalLM
 from accelerate import init_empty_weights
 from safetensors import safe_open
-from amni.inference.int4_group_gemv import int4grp_gemv,int4grp_gemm
+from amni.inference.int4_group_gemv import int4grp_gemv,int4grp_gemm,int4grp_gemv_packed,int4grp_gemm_packed
 GS=128
 class AtexLin(nn.Module):
-    def __init__(s,codes,scale,inf,out):
-        super().__init__();s.register_buffer('codes',codes.reshape(out,-1)[:,:inf].contiguous());s.register_buffer('scale',scale);s.inf=inf;s.out=out;s.register_buffer('_y',torch.empty(out,device=codes.device,dtype=torch.float16))
+    def __init__(s,codes,scale,inf,out,packed=False):
+        super().__init__();s.packed=packed
+        s.register_buffer('codes',codes.contiguous() if packed else codes.reshape(out,-1)[:,:inf].contiguous())
+        s.register_buffer('scale',scale);s.inf=inf;s.out=out;s.register_buffer('_y',torch.empty(out,device=codes.device,dtype=torch.float16))
     def forward(s,x):
         flat=x.reshape(-1,x.shape[-1])
+        if s.packed:
+            if flat.shape[0]==1:
+                int4grp_gemv_packed(s.codes,s.scale,flat[0].half(),y=s._y);return s._y.reshape(*x.shape[:-1],s.out).to(x.dtype)
+            return int4grp_gemm_packed(s.codes,s.scale,flat.half()).reshape(*x.shape[:-1],s.out).to(x.dtype)
         if flat.shape[0]==1:
             int4grp_gemv(s.codes,s.scale,flat[0].half(),y=s._y);return s._y.reshape(*x.shape[:-1],s.out).to(x.dtype)
         return int4grp_gemm(s.codes,s.scale,flat.half()).reshape(*x.shape[:-1],s.out).to(x.dtype)
@@ -32,7 +38,7 @@ class GraniteAtexChatService:
             try:
                 if info['q']==1:
                     codes=g(k+'.codes').cuda();scale=g(k+'.scale').cuda();p2,mn=par(k[:-len('.weight')])
-                    setattr(p2,mn,AtexLin(codes,scale,info['inf'],info['shape'][0]).cuda())
+                    setattr(p2,mn,AtexLin(codes,scale,info['inf'],info['shape'][0],packed=man.get('packed',False)).cuda())
                 else:
                     p2,a=par(k);tt=g(k);tt=tt.to(torch.bfloat16).cuda() if tt.is_floating_point() else tt.cuda()
                     if a in p2._parameters and p2._parameters[a] is not None:p2._parameters[a]=nn.Parameter(tt,requires_grad=False)

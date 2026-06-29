@@ -33,6 +33,44 @@ def int4grp_gemm(codes,scale,x,GS=128,BM=32,BN=64):
     y=torch.empty(M,out,device=x.device,dtype=torch.float16)
     _int4grp_gemm[((M+BM-1)//BM,(out+BN-1)//BN)](codes,scale,x,y,M,OUT=out,INN=inn,NG=ng,GS=GS,BM=BM,BN=BN)
     return y
+@triton.jit
+def _i4p_gemv(c_ptr,s_ptr,x_ptr,y_ptr,OUT,INN:tl.constexpr,HALF:tl.constexpr,NG:tl.constexpr,HG:tl.constexpr,ROWS:tl.constexpr):
+    pid=tl.program_id(0);rows=pid*ROWS+tl.arange(0,ROWS);rm=rows<OUT
+    acc=tl.zeros((ROWS,),dtype=tl.float32);k=tl.arange(0,HG)
+    for g in range(0,NG):
+        bc=g*HG+k;bm=bc<HALF
+        b=tl.load(c_ptr+rows[:,None]*HALF+bc[None,:],mask=rm[:,None]&bm[None,:],other=136).to(tl.int32)
+        lo=(b&0xF).to(tl.float32)-8.0;hi=((b>>4)&0xF).to(tl.float32)-8.0
+        ie=2*bc;io=2*bc+1
+        xe=tl.load(x_ptr+ie,mask=ie<INN,other=0.0).to(tl.float32);xo=tl.load(x_ptr+io,mask=io<INN,other=0.0).to(tl.float32)
+        gsum=tl.sum(lo*xe[None,:]+hi*xo[None,:],axis=1)
+        sc=tl.load(s_ptr+rows*NG+g,mask=rm,other=0.0).to(tl.float32);acc+=gsum*sc
+    tl.store(y_ptr+rows,acc.to(tl.float16),mask=rm)
+def int4grp_gemv_packed(packed,scale,x,y=None,GS=128):
+    out,half=packed.shape;ng=scale.shape[1];inn=half*2
+    if y is None:y=torch.empty(out,device=x.device,dtype=torch.float16)
+    if out>inn:_i4p_gemv[((out+7)//8,)](packed,scale,x,y,out,INN=inn,HALF=half,NG=ng,HG=GS//2,ROWS=8,num_warps=4)
+    else:_i4p_gemv[((out+31)//32,)](packed,scale,x,y,out,INN=inn,HALF=half,NG=ng,HG=GS//2,ROWS=32)
+    return y
+@triton.jit
+def _i4p_gemm(c_ptr,s_ptr,x_ptr,y_ptr,M,OUT,INN:tl.constexpr,HALF:tl.constexpr,NG:tl.constexpr,HG:tl.constexpr,BM:tl.constexpr,BN:tl.constexpr):
+    pm=tl.program_id(0);pn=tl.program_id(1)
+    rm=pm*BM+tl.arange(0,BM);rn=pn*BN+tl.arange(0,BN);mm=rm<M;nm=rn<OUT
+    acc=tl.zeros((BM,BN),dtype=tl.float32);k=tl.arange(0,HG)
+    for g in range(0,NG):
+        bc=g*HG+k;bm=bc<HALF
+        b=tl.load(c_ptr+bc[:,None]+rn[None,:]*HALF,mask=bm[:,None]&nm[None,:],other=136).to(tl.int32)
+        lo=(b&0xF).to(tl.float32)-8.0;hi=((b>>4)&0xF).to(tl.float32)-8.0
+        sc=tl.load(s_ptr+rn*NG+g,mask=nm,other=0.0).to(tl.float32)
+        ie=2*bc;io=2*bc+1
+        xe=tl.load(x_ptr+rm[:,None]*INN+ie[None,:],mask=mm[:,None]&(ie[None,:]<INN),other=0.0).to(tl.float32)
+        xo=tl.load(x_ptr+rm[:,None]*INN+io[None,:],mask=mm[:,None]&(io[None,:]<INN),other=0.0).to(tl.float32)
+        acc+=tl.dot(xe,lo*sc[None,:])+tl.dot(xo,hi*sc[None,:])
+    tl.store(y_ptr+rm[:,None]*OUT+rn[None,:],acc.to(tl.float16),mask=mm[:,None]&nm[None,:])
+def int4grp_gemm_packed(packed,scale,x,GS=128,BM=32,BN=64):
+    out,half=packed.shape;ng=scale.shape[1];M=x.shape[0]
+    y=torch.empty(M,out,device=x.device,dtype=torch.float16)
+    _i4p_gemm[((M+BM-1)//BM,(out+BN-1)//BN)](packed,scale,x,y,M,OUT=out,INN=half*2,HALF=half,NG=ng,HG=GS//2,BM=BM,BN=BN);return y
 if __name__=='__main__':
     import torch.nn.functional as F
     torch.manual_seed(0);out,inn,GS=4096,2560,128
