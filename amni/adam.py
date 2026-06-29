@@ -187,8 +187,8 @@ class Adam:
         except Exception:pass
         tier='tier_persona_hist' if history else 'tier_persona'
         return {'answer':ans,'tier':tier,'tokens':n,'wall_s':round(time.time()-t0,3),'is_private':is_private}
-_UPGRADE_TIERS=[('bakes/granite41_8b_gf17_atex',11.0,'Granite-4.1-8B'),('bakes/qwen3_4b_tilepack',7.0,'Qwen3-4B')]
-def select_model_bake(prefer='bakes/granite41_8b_gf17_atex',min_free_gb=11.0,tiers=None):
+_UPGRADE_TIERS=[('bakes/gemma4_12b_nvfp4_atex',13.0,'Gemma-4-12B-NVFP4'),('bakes/granite41_8b_gf17_atex',11.0,'Granite-4.1-8B'),('bakes/qwen3_4b_tilepack',7.0,'Qwen3-4B')]
+def select_model_bake(prefer='bakes/gemma4_12b_nvfp4_atex',min_free_gb=13.0,tiers=None):
     """VRAM-aware tiered pick. Reads CURRENTLY-FREE VRAM (mem_get_info) so it adapts to whatever else is using the GPU right now, then returns the largest INSTALLED upgrade bake that fits with headroom; (None,reason) means nothing bigger fits so the caller keeps its configured light/CPU default. One server auto-fits both the card AND the moment's GPU load (e.g. busy from another job -> smaller model)."""
     cands=tiers if tiers is not None else (([(prefer,min_free_gb,'preferred')]+_UPGRADE_TIERS) if prefer else list(_UPGRADE_TIERS))
     seen=set();cands=[c for c in cands if not (c[0] in seen or seen.add(c[0]))]
