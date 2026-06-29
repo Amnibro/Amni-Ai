@@ -40,6 +40,9 @@ class GraniteAtexChatService:
             except (AttributeError,KeyError):pass
         try:m.tie_weights()
         except Exception:pass
+        for mod in m.modules():
+            for nm,buf in list(mod._buffers.items()):
+                if buf is not None and buf.device.type=='cpu':mod._buffers[nm]=buf.cuda()
         s.m=m;s.model=m;s.lm=m.model
         gcp=bake+'/generation_config.json';e=s.tok.eos_token_id
         if os.path.exists(gcp):e=json.load(open(gcp)).get('eos_token_id',e)
