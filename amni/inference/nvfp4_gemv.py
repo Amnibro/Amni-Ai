@@ -1,4 +1,4 @@
-import torch,triton,triton.language as tl
+import torch,triton,triton.language as tl,ctypes,os
 @triton.jit
 def _e2m1(c):
     s=tl.where(c>=8,-1.0,1.0);m=c&7;e=m>>1;mant=(m&1).to(tl.float32)
@@ -17,9 +17,34 @@ def _nvfp4_gemv(c_ptr,s_ptr,x_ptr,y_ptr,ws2,OUT:tl.constexpr,INN:tl.constexpr,NG
         sc=tl.load(s_ptr+rows*NG+g,mask=rm,other=0.0).to(tl.float32)*ws2
         acc+=sc[:,None]*(vlo*xe[None,:]+vhi*xo[None,:])
     y=tl.sum(acc,axis=1);tl.store(y_ptr+rows,y.to(tl.float16),mask=rm)
+_HIP={'fn':None,'lut':None,'tried':False}
+def _hip():
+    if _HIP['tried']:return _HIP['fn']
+    _HIP['tried']=True
+    if os.environ.get('AMNI_NVFP4_HIP','0')!='1':return None
+    try:
+        base=os.path.dirname(os.path.dirname(torch.__file__))
+        for d in('_rocm_sdk_devel','_rocm_sdk_core'):
+            for sub in('bin','lib'):
+                p=os.path.join(base,d,sub)
+                if os.path.isdir(p):
+                    try:os.add_dll_directory(p)
+                    except Exception:pass
+        lib=ctypes.CDLL(os.path.join(os.path.dirname(__file__),'nvfp4hip.dll'))
+        f=lib.launch_nvfp4_gemv;f.restype=None
+        f.argtypes=[ctypes.c_void_p]*5+[ctypes.c_float,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_void_p]
+        E=[0.,0.5,1.,1.5,2.,3.,4.,6.]
+        _HIP['lut']=torch.tensor([E[n&7]*(-1. if n>=8 else 1.) for n in range(16)],device='cuda',dtype=torch.float32)
+        _HIP['fn']=f
+    except Exception:_HIP['fn']=None
+    return _HIP['fn']
 def nvfp4_gemv(codes,scale,ws2,x,y=None,ROWS=None):
     out,half=codes.shape;ng=scale.shape[1];inn=half*2
     if y is None:y=torch.empty(out,device=x.device,dtype=torch.float16)
+    f=_hip() if(ROWS is None and half%16==0) else None
+    if f is not None:
+        xc=x if x.is_contiguous() else x.contiguous()
+        f(codes.data_ptr(),scale.data_ptr(),xc.data_ptr(),y.data_ptr(),_HIP['lut'].data_ptr(),ctypes.c_float(float(ws2)),out,half,ng,ctypes.c_void_p(torch.cuda.current_stream().cuda_stream));return y
     if ROWS is not None:_nvfp4_gemv[((out+ROWS-1)//ROWS,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=ROWS)
     elif out>inn:_nvfp4_gemv[((out+7)//8,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=8,num_warps=2,num_stages=2)
     else:_nvfp4_gemv[((out+31)//32,)](codes,scale,x,y,float(ws2),OUT=out,INN=inn,NG=ng,HALF=half,ROWS=32,num_warps=4,num_stages=2)
