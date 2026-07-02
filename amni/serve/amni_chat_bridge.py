@@ -33,15 +33,43 @@ def handle_message(text:str,from_user:str='peer',conversation_id:str='',agent=No
     if len(text)>int(_STATE['max_in_chars']):text=text[:int(_STATE['max_in_chars'])]
     peer=(conversation_id or from_user or 'peer')[:80]
     if not _rate_ok(peer):return {'error':'rate limited','retry_after_s':60}
+    try:
+        from amni.serve.skills import chart_command as _chartcmd,_render_azno_charts as _renderchart
+        _cc=_chartcmd(text)
+    except Exception:_cc=None
+    if _cc:
+        try:_r=_renderchart(_cc[0],_cc[1],want_options=_cc[2])
+        except Exception:_r={'ok':False}
+        if _r.get('ok'):
+            if agent is not None and hasattr(agent,'_active_sym'):agent._active_sym['amnichat:'+peer]=(_cc[0],_cc[1])
+            _cap=('🧮 '+_r['summary']) if _r.get('summary') else f"📈 {_cc[0]} • {_cc[1]}"
+            return {'reply':_cap[:int(_STATE['max_reply_chars'])],'images':_r.get('images') or [],'from':'azno','conversation_id':peer,'tier':'skill:chart'}
+    try:
+        from amni.serve.skills import options_command as _optcmd,_fmt_options as _optfmt,_skill_options as _optsk
+        _oc=_optcmd(text)
+    except Exception:_oc=None
+    if _oc:
+        if agent is not None and hasattr(agent,'_active_sym'):agent._active_sym['amnichat:'+peer]=(_oc[0],_oc[1])
+        return {'reply':_optfmt(_optsk({'ticker':_oc[0],'tf':_oc[1]},{},None)),'from':'azno','conversation_id':peer,'tier':'skill:options'}
     if agent is None:return {'error':'agent unavailable'}
     sid='amnichat:'+peer
     try:
-        r=agent.chat(text,session_id=sid)
+        r=agent.chat(text,session_id=sid,brief=True)
     except Exception as e:return {'error':f'agent error: {e}'}
     reply=(r.get('answer') or '').strip() if isinstance(r,dict) else str(r)
     reply=_scrub_owner_pii(reply,agent)
     if len(reply)>int(_STATE['max_reply_chars']):reply=reply[:int(_STATE['max_reply_chars'])].rstrip()+'…'
-    return {'reply':reply,'from':'adam','conversation_id':peer,'tier':r.get('tier') if isinstance(r,dict) else None,'persona':r.get('persona') if isinstance(r,dict) else None}
+    imgs=[]
+    try:
+        from amni.serve.widgets import render_weather_card as _wxcard
+        for _sc in ((r.get('skill_calls') or []) if isinstance(r,dict) else []):
+            _o=(_sc.get('result') or {}).get('output') if isinstance(_sc.get('result'),dict) else None
+            if _sc.get('skill')=='weather' and isinstance(_o,dict) and _o.get('temp_c') is not None:
+                _p=_wxcard(_o)
+                if _p:imgs.append(_p);break
+    except Exception:pass
+    base={'reply':reply,'from':'adam','conversation_id':peer,'tier':r.get('tier') if isinstance(r,dict) else None,'persona':r.get('persona') if isinstance(r,dict) else None}
+    return {**base,'images':imgs} if imgs else base
 def mount(app,agent):
     from fastapi import Request,HTTPException
     @app.get('/bridge/amni-chat/status')

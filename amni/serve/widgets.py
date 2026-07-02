@@ -1,6 +1,6 @@
 """Widget data fetchers — pure data, no rendering. Each fn returns a dict ready for widget_protocol envelope.
 Skills wrap these and emit fenced ```widget JSON blocks for the frontend to render."""
-import time,os,socket,subprocess,json,re
+import time,os,socket,subprocess,json,re,math
 from typing import Dict,Any,Optional,List
 def _safe_get(url:str,timeout:float=4.0,headers:Optional[Dict[str,str]]=None)->Optional[Dict[str,Any]]:
     try:
@@ -14,34 +14,93 @@ def _safe_get(url:str,timeout:float=4.0,headers:Optional[Dict[str,str]]=None)->O
     except Exception as e:return {'_error':str(e)[:200]}
 def _geocode(query:str)->Optional[Dict[str,Any]]:
     if not query:return None
-    j=_safe_get(f'https://geocoding-api.open-meteo.com/v1/search?name={query}&count=1&language=en&format=json',timeout=4.0)
-    if not j or j.get('_error'):return None
-    results=j.get('results') or []
-    if not results:return None
-    r=results[0]
-    return {'lat':r.get('latitude'),'lon':r.get('longitude'),'name':r.get('name'),'country':r.get('country'),'tz':r.get('timezone')}
+    from urllib.parse import quote
+    q=query.strip();toks=q.split();cands=[q]
+    parts=[p.strip() for p in re.split(r'[,/]',q) if p.strip()]
+    if parts and parts[0]!=q:cands.append(parts[0])
+    if len(toks)>=2 and toks[-1].isalpha() and len(toks[-1])==2:cands.append(' '.join(toks[:-1]))
+    if toks and toks[0] not in cands:cands.append(toks[0])
+    seen=set()
+    for c in cands:
+        cl=c.lower().strip()
+        if not cl or cl in seen:continue
+        seen.add(cl)
+        j=_safe_get(f'https://geocoding-api.open-meteo.com/v1/search?name={quote(c)}&count=1&language=en&format=json',timeout=4.0)
+        if not j or j.get('_error'):continue
+        results=j.get('results') or []
+        if not results:continue
+        r=results[0]
+        return {'lat':r.get('latitude'),'lon':r.get('longitude'),'name':r.get('name'),'country':r.get('country'),'admin1':r.get('admin1'),'cc':r.get('country_code'),'tz':r.get('timezone')}
+    return None
+_US_ST={'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA','colorado':'CO','connecticut':'CT','delaware':'DE','district of columbia':'DC','florida':'FL','georgia':'GA','hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD','massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO','montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT','virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY'}
+def _us_st(n:Optional[str])->str:return _US_ST.get((n or '').strip().lower(),(n or '').strip())
 _WEATHER_CODE_DESC={0:'clear sky',1:'mainly clear',2:'partly cloudy',3:'overcast',45:'foggy',48:'rime fog',51:'light drizzle',53:'moderate drizzle',55:'dense drizzle',61:'light rain',63:'moderate rain',65:'heavy rain',71:'light snow',73:'moderate snow',75:'heavy snow',77:'snow grains',80:'rain showers',81:'heavy showers',82:'violent showers',85:'snow showers',86:'heavy snow showers',95:'thunderstorm',96:'thunderstorm with hail',99:'severe thunderstorm with hail'}
 def _ip_geo()->Optional[Dict[str,Any]]:
-    j=_safe_get('http://ip-api.com/json/?fields=status,lat,lon,city,regionName,country',timeout=4.0)
+    j=_safe_get('http://ip-api.com/json/?fields=status,lat,lon,city,regionName,country,countryCode',timeout=4.0)
     if not j or j.get('_error') or j.get('status')!='success' or j.get('lat') is None:return None
-    return {'lat':j.get('lat'),'lon':j.get('lon'),'name':', '.join([x for x in (j.get('city'),j.get('regionName')) if x]) or j.get('country') or 'your area','tz':'auto'}
+    return {'lat':j.get('lat'),'lon':j.get('lon'),'city':j.get('city'),'region':j.get('regionName'),'cc':j.get('countryCode'),'name':', '.join([x for x in (j.get('city'),j.get('regionName')) if x]) or j.get('country') or 'your area','tz':'auto'}
 def fetch_weather(location:str='',lat:Optional[float]=None,lon:Optional[float]=None)->Dict[str,Any]:
+    cc='';loc_name=''
     if (lat is None or lon is None) and (not location or location=='__need_geolocation__'):
         g=_ip_geo()
-        if g:lat=g['lat'];lon=g['lon'];location=g.get('name') or ''
+        if g:lat=g['lat'];lon=g['lon'];cc=(g.get('cc') or '').upper();loc_name=f"{g.get('city')}, {_us_st(g.get('region'))}" if cc=='US' and g.get('city') and g.get('region') else (g.get('name') or '')
     if lat is None or lon is None:
         if not location or location=='__need_geolocation__':return {'_error':'could not determine your location — allow location access in the PERMISSIONS panel, or ask "weather in <city>"'}
         g=_geocode(location)
         if not g:return {'_error':f'location "{location}" not found'}
-        lat=g['lat'];lon=g['lon'];loc_name=f"{g.get('name','?')}, {g.get('country','')}".strip(', ');tz=g.get('tz','auto')
-    else:loc_name=location or f'{lat:.2f},{lon:.2f}';tz='auto'
+        lat=g['lat'];lon=g['lon'];cc=(g.get('cc') or '').upper();loc_name=f"{g.get('name','?')}, {_us_st(g.get('admin1'))}" if cc=='US' and g.get('admin1') else f"{g.get('name','?')}, {g.get('country','')}".strip(', ');tz=g.get('tz','auto')
+    else:loc_name=loc_name or location or f'{lat:.2f},{lon:.2f}';tz='auto'
     url=f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone={tz}&forecast_days=1'
     j=_safe_get(url,timeout=5.0)
     if not j or j.get('_error'):return {'_error':j.get('_error','weather fetch failed') if j else 'weather fetch failed'}
     cur=j.get('current') or {};daily=j.get('daily') or {}
     code=int(cur.get('weather_code') or 0);desc=_WEATHER_CODE_DESC.get(code,f'code {code}')
     hi_list=daily.get('temperature_2m_max') or [];lo_list=daily.get('temperature_2m_min') or []
-    return {'location':loc_name,'temp_c':cur.get('temperature_2m'),'humidity_pct':cur.get('relative_humidity_2m'),'wind_kmh':cur.get('wind_speed_10m'),'description':desc,'weather_code':code,'high_c':hi_list[0] if hi_list else None,'low_c':lo_list[0] if lo_list else None,'tz':j.get('timezone'),'ts':time.time()}
+    units='imperial' if (cc in ('US','LR','MM') or (not cc and (os.environ.get('AMNI_UNITS') or 'imperial').lower()!='metric')) else 'metric'
+    _t=cur.get('temperature_2m');_hi=hi_list[0] if hi_list else None;_lo=lo_list[0] if lo_list else None;_w=cur.get('wind_speed_10m')
+    _f=lambda c:None if c is None else round(c*1.8+32,1)
+    return {'location':loc_name,'temp_c':_t,'humidity_pct':cur.get('relative_humidity_2m'),'wind_kmh':_w,'description':desc,'weather_code':code,'high_c':_hi,'low_c':_lo,'temp_f':_f(_t),'high_f':_f(_hi),'low_f':_f(_lo),'wind_mph':None if _w is None else round(_w/1.609344,1),'units':units,'cc':cc,'tz':j.get('timezone'),'ts':time.time()}
+def _wx_icon(dr,x:int,y:int,s:int,code:int)->None:
+    sun=code in (0,1);cloudy=code in (2,3,45,48) or code>=51
+    if sun:
+        cx,cy,r=x+s//2,y+s//2,s//3
+        for a in range(8):
+            dx,dy=math.cos(a*math.pi/4),math.sin(a*math.pi/4)
+            dr.line([(cx+dx*(r+9),cy+dy*(r+9)),(cx+dx*(r+22),cy+dy*(r+22))],fill=(255,205,60),width=6)
+        dr.ellipse([cx-r,cy-r,cx+r,cy+r],fill=(255,205,60))
+    if code==2:dr.ellipse([x+s*0.05,y+s*0.05,x+s*0.55,y+s*0.55],fill=(255,205,60))
+    if cloudy:
+        dr.ellipse([x,y+s*0.34,x+s*0.60,y+s*0.74],fill=(150,160,175))
+        dr.ellipse([x+s*0.28,y+s*0.20,x+s*0.95,y+s*0.64],fill=(172,182,197))
+        dr.rectangle([x+s*0.10,y+s*0.48,x+s*0.86,y+s*0.68],fill=(165,175,190))
+    if 51<=code<=67 or 80<=code<=82:
+        for i in range(4):dr.line([(x+s*0.20+i*s*0.18,y+s*0.76),(x+s*0.13+i*s*0.18,y+s*0.95)],fill=(90,170,255),width=5)
+    if 71<=code<=77 or 85<=code<=86:
+        for i in range(4):dr.ellipse([x+s*0.16+i*s*0.18,y+s*0.82,x+s*0.16+i*s*0.18+9,y+s*0.91],fill=(240,245,250))
+    if code>=95:dr.polygon([(x+s*0.50,y+s*0.62),(x+s*0.32,y+s*0.90),(x+s*0.46,y+s*0.90),(x+s*0.36,y+s*1.08),(x+s*0.64,y+s*0.80),(x+s*0.50,y+s*0.80),(x+s*0.60,y+s*0.62)],fill=(255,205,60))
+    if code in (45,48):
+        for i in range(3):dr.line([(x+s*0.05,y+s*0.82+i*10),(x+s*0.90,y+s*0.82+i*10)],fill=(140,150,160),width=4)
+def render_weather_card(d:Dict[str,Any])->Optional[str]:
+    try:
+        from PIL import Image,ImageDraw,ImageFont
+        W,H=760,400;img=Image.new('RGB',(W,H),(13,17,23));dr=ImageDraw.Draw(img)
+        for i in range(H):dr.line([(0,i),(W,i)],fill=(13+int(9*i/H),17+int(13*i/H),23+int(20*i/H)))
+        try:f_big=ImageFont.truetype('C:/Windows/Fonts/seguisb.ttf',104);f_h=ImageFont.truetype('C:/Windows/Fonts/seguisb.ttf',34);f_m=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',25);f_s=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',19)
+        except Exception:f_big=f_h=f_m=f_s=ImageFont.load_default()
+        imp=d.get('units')=='imperial';code=int(d.get('weather_code') or 0)
+        t=d.get('temp_f') if imp else d.get('temp_c');hi=d.get('high_f') if imp else d.get('high_c');lo=d.get('low_f') if imp else d.get('low_c');wv=d.get('wind_mph') if imp else d.get('wind_kmh')
+        rnd=lambda v:'?' if not isinstance(v,(int,float)) else str(int(round(float(v))))
+        dr.text((40,32),str(d.get('location','—')),font=f_h,fill=(235,240,245))
+        dr.text((42,82),time.strftime('%A · %b %d · %I:%M %p').replace(' 0',' '),font=f_s,fill=(140,150,160))
+        dr.text((34,118),f"{rnd(t)}°{'F' if imp else 'C'}",font=f_big,fill=(0,255,157))
+        alt=f"{rnd(d.get('temp_c') if imp else d.get('temp_f'))}°{'C' if imp else 'F'}"
+        dr.text((44,252),f"{str(d.get('description','—')).capitalize()}  ·  {alt}",font=f_m,fill=(200,210,220))
+        _wx_icon(dr,W-206,52,132,code)
+        for x,(lab,val) in zip([40,222,408,588],[('HIGH',f"{rnd(hi)}°"),('LOW',f"{rnd(lo)}°"),('HUMIDITY',f"{d.get('humidity_pct','?')}%"),('WIND',f"{'?' if wv is None else wv} {'mph' if imp else 'km/h'}")]):
+            dr.text((x,318),lab,font=f_s,fill=(115,125,135));dr.text((x,344),val,font=f_h,fill=(235,240,245))
+        outd=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'json','charts');os.makedirs(outd,exist_ok=True)
+        p=os.path.join(outd,f'wx_{int(time.time())}.png');img.save(p);return p
+    except Exception:return None
 def fetch_system_stats()->Dict[str,Any]:
     out={'ts':time.time(),'hostname':socket.gethostname(),'platform':os.name}
     try:

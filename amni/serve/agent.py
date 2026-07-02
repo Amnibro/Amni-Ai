@@ -289,6 +289,7 @@ class AmniAgent:
         self.store=store or ConversationStore()
         self.personas=personas or PersonaStore(adam=adam)
         self.use_persona=use_persona
+        self._active_sym={}
         try:self.atlas=atlas or ConversationAtlas(root=atlas_root,encoder=getattr(getattr(adam,'sem_lut',None),'encoder',None))
         except Exception as e:print(f'[AmniAgent] ConversationAtlas init failed (recall disabled): {e}',flush=True);self.atlas=None
         try:self.profile=LocalProfile(profile_path,fact_re=_USER_FACT_RE)
@@ -427,8 +428,10 @@ class AmniAgent:
                 _q=_m.group(1).strip(' ?.,!')
                 return ('web',{'query':_q or msg})
         _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
-        if _m and self.skills.has('weather'):return ('weather',{'location':_m.group(1).strip(' ?.,!')})
-        _wx_local=re.search(r"\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:here|now|today|outside|right\s+now|tomorrow|this\s+(?:morning|afternoon|evening|week))|forecast\s+(?:for\s+)?(?:today|tomorrow|this\s+week|now)|is\s+it\s+(?:going\s+to\s+|gonna\s+)?(?:rain|snow)|do\s+i\s+need\s+(?:a\s+jacket|an\s+umbrella))\b",msg,re.IGNORECASE)
+        if _m and self.skills.has('weather'):
+            _loc=re.sub(r"\b(?:right\s+now|today|tonight|tomorrow|now|later|currently|this\s+(?:morning|afternoon|evening|week|weekend))\b","",_m.group(1),flags=re.IGNORECASE).strip(' ?.,!')
+            if _loc:return ('weather',{'location':_loc})
+        _wx_local=re.search(r"\b(?:my\s+(?:local\s+)?weather|local\s+weather|weather\s+(?:for\s+|like\s+)?(?:here|now|today|tonight|outside|right\s+now|tomorrow|this\s+(?:morning|afternoon|evening|week|weekend))|forecast\s+(?:for\s+)?(?:today|tomorrow|this\s+week|now)|is\s+it\s+(?:going\s+to\s+|gonna\s+)?(?:rain|snow)|do\s+i\s+need\s+(?:a\s+jacket|an\s+umbrella))\b",msg,re.IGNORECASE)
         _wx_bare=re.search(r"^\s*(?:hey\s+)?(?:adam[,\s]+)?(?:so\s+)?(?:what(?:'s|\s+is|\s+are)?|how(?:'s|\s+is)?|hows)\s+(?:the\s+)?weather(?:\s+(?:like|today|now|outside|here|right\s+now))?\s*[?.!]*\s*$",msg,re.IGNORECASE) or re.fullmatch(r"\s*weather\s*[?.!]*\s*",msg,re.IGNORECASE)
         if self.skills.has('weather') and (_wx_local or _wx_bare):
             _lat=getattr(self,'_client_lat',None);_lon=getattr(self,'_client_lon',None)
@@ -593,7 +596,69 @@ class AmniAgent:
             o=_j.loads(m.group(0))
             return (o.get('corrected_answer') or '').strip() if o.get('is_correction') and (o.get('corrected_answer') or '').strip() else None
         except Exception:return None
-    def chat(self,message:str,session_id:Optional[str]=None,use_skills:bool=True,writeback:bool=True)->Dict[str,Any]:
+    def _trading_turn(self,message,conv,brief,t0):
+        from amni.serve.skills import options_command as _optcmd,chart_command as _chcmd,_extract_ticker as _extk,_fmt_options as _optfmt,_CHART_STOP as _stop
+        sid=conv.session_id;persona=self.personas.for_session(sid) if self.use_persona else _PERSONA_PRESETS['neutral']
+        _oc=_optcmd(message);_ch=_chcmd(message);active=self._active_sym.get(sid)
+        _tr=re.search(r"(?i)\b(buy|sell|bull|bear|bullish|bearish|calls?|puts?|option|opt|opts|signal|reversal|p-?term|target|entry|exit|position|long|longer|short|trade|trading|strike|expiry|spread|hit-?rate|swing|leaps?|scalp|intraday|weekly|chart|plot|graph|ticker|stocks?|shares?|azno|invest|market|price\s+action|overview)\b",message)
+        _dollar=re.search(r"\$([A-Za-z]{1,5})\b",message)
+        _follow=bool(active) and bool(re.search(r"(?i)\b(it|this|that|now|look|looking|think|thoughts?|hows?|what\s+about|still|update|moving|move|worth|enter|good|bad)\b",message))
+        if not (_oc or _ch or _tr or _dollar or _follow):return None
+        want_chart=bool(_ch) or bool(re.search(r"(?i)\b(chart|plot|graph|show\s+me|pull\s+up|send)\b",message))
+        _overview=bool(re.search(r"(?i)\b(overview|all\s+(?:the\s+)?(?:time\s?frames?|tfs?|horizons?)|multi[\s-]?(?:tf|time|frame)|across\s+(?:time|frames?|horizons?)|short\s+and\s+long|full\s+picture|every\s+time\s?frame|big\s+picture)\b",message))
+        _et=_extk(message);_up=next((w for w in re.findall(r"\b([A-Z]{2,5})\b",message) if w.lower() not in _stop),None);tk=None
+        if _dollar:tk=_dollar.group(1).upper()
+        elif _up:tk=_up
+        elif _oc:tk=_oc[0]
+        elif _ch and _ch[0]:tk=_ch[0]
+        elif _tr and _et:tk=_et
+        elif active:tk=active[0]
+        elif _et:tk=_et
+        if not tk:
+            _ask=tone_atlas.wrap("Which ticker are you eyeing? Send me a symbol like TSLA or NVDA and I'll pull the Azno read.",'introspect',persona,seed=message)
+            conv.append('assistant',_ask,{'tier':'tier0_azno_ask','persona':persona.name})
+            return {'answer':_ask,'tier':'tier0_azno_ask','tokens':0,'session_id':sid,'skill_calls':[],'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'trading'}
+        _tfx=re.search(r"(?i)\b(\d+)\s?(m|min|h|hr|hour|d|day)\b",message);_etf=None
+        if _tfx:
+            _cand=_tfx.group(1)+{'m':'m','min':'m','h':'h','hr':'h','hour':'h','d':'d','day':'d'}[_tfx.group(2).lower()]
+            _etf=_cand if _cand in ('1m','5m','15m','30m','1h','4h','6h','1d') else None
+        if _etf is None and re.search(r"(?i)\b(daily|swing|longer|long[\s-]?term|position\s+trade|week|weekly|7\s?d|days?\s+out|hold|brother|leaps?)\b",message):_etf='1d'
+        if _etf is None and re.search(r"(?i)\b(hourly|scalp|intraday|day\s?trade|0\s?dte|same\s?day|quick|today)\b",message):_etf='1h'
+        tf=_etf or (active[1] if (isinstance(active,tuple) and not _overview) else '1d')
+        self._active_sym[sid]=(tk,tf);calls=[];imgs=[];_sig={}
+        if _overview and self.skills.has('options'):
+            _reads=[]
+            for _t in ('1h','4h','1d'):
+                _r=self.skills.call('options',{'ticker':tk,'tf':_t},ctx={'adam':self.adam,'agent':self})
+                calls.append({'skill':'options','args':{'ticker':tk,'tf':_t},'result':_r.to_dict()})
+                _reads.append(f"[{_t}] {_optfmt(_r.output if _r.ok else {'ok':False,'error':_r.error})}")
+            facts=[f"Azno multi-timeframe overview for {tk} — 1h=intraday, 4h=short swing, 1d=multi-day (the horizon whose option expiries fit 7-day-plus trades):"]+_reads
+            sys_p=persona.system_prompt(message)+f"\n\nYou (Adam) just read {tk} across THREE horizons via Amni's Azno P-term reversal engine: 1h (intraday), 4h (short swing), and 1d (multi-day — the read whose expiries match 7-day-plus options). Give a conversational OVERVIEW: what each horizon is saying, where they agree or diverge, and which has the cleanest setup right now. Call out the 1d read specifically for longer-dated options. Weave the numbers in naturally, never a raw table. If a horizon has no fresh signal, say so briefly. End with a short 'not financial advice, at your own risk' note. Warm and concise."
+            _tier='tier0_azno_overview'
+        else:
+            if want_chart and self.skills.has('chart'):
+                _cr=self.skills.call('chart',{'ticker':tk,'tf':tf,'options':True},ctx={'adam':self.adam,'agent':self})
+                calls.append({'skill':'chart','args':{'ticker':tk,'tf':tf},'result':_cr.to_dict()})
+                if _cr.ok:imgs=list((_cr.output or {}).get('images') or [])
+            if self.skills.has('options'):
+                _r=self.skills.call('options',{'ticker':tk,'tf':tf},ctx={'adam':self.adam,'agent':self})
+                calls.append({'skill':'options','args':{'ticker':tk,'tf':tf},'result':_r.to_dict()})
+                _sig=_r.output if _r.ok else {'ok':False,'error':_r.error}
+            facts=[f"Azno P-term read for {tk} {tf}: {_optfmt(_sig)}"]
+            if isinstance(_sig,dict) and _sig.get('ok'):facts.append(f"signal_data: price=${_sig.get('price')}, signal={_sig.get('signal')}, verdict={_sig.get('verdict')}, target_dte={_sig.get('target_dte')}, backtest_hit_rate={(_sig.get('history') or {}).get('win_rate')}, avg_swing_pct={(_sig.get('history') or {}).get('avg_swing_pct')}, options_idea={_sig.get('example')}")
+            sys_p=persona.system_prompt(message)+f"\n\nYou (Adam) read live market signals through Amni's Azno P-term reversal engine. The user is discussing {tk} on the {tf} timeframe ({'multi-day — its expiries fit 7-day-plus options' if tf=='1d' else 'shorter-dated'}). Using ONLY the Azno read in the facts, reply CONVERSATIONALLY: explain the signal, its direction and conviction, the options idea and its expiry if there is one, and what to watch — weave the numbers in naturally, never dump a raw table. If there is no fresh reversal, say so plainly and offer another ticker or timeframe. End with a short 'not financial advice, at your own risk' note. Warm and concise."
+            _tier='tier0_azno_convo'
+        _mnt=int(os.environ.get('AMNI_CHAT_BRIEF_TOKENS','260')) if brief else (460 if _overview else 340);ans='';_tok=0
+        try:
+            _rr=self.adam.chat_persona(message,system=sys_p,history=conv.history_pairs(n=6) if len(conv.turns)>1 else [],facts=facts,is_private=False,max_new_tokens=_mnt,do_sample=True)
+            ans=(_rr.get('answer') or '').strip();_tok=_rr.get('tokens',0)
+        except Exception as _e:print(f'[AmniAgent] azno synth failed: {_e}',flush=True)
+        if not ans:ans=('\n'.join(facts[1:]) if _overview else _optfmt(_sig))
+        conv.append('assistant',ans,{'tier':_tier,'skill_calls':calls,'persona':persona.name})
+        out={'answer':ans,'tier':_tier,'tokens':_tok,'session_id':sid,'skill_calls':calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'trading'}
+        if imgs:out['images']=imgs
+        return out
+    def chat(self,message:str,session_id:Optional[str]=None,use_skills:bool=True,writeback:bool=True,brief:bool=False)->Dict[str,Any]:
         t0=time.time()
         conv=self.store.get(session_id)
         conv.append('user',message)
@@ -608,7 +673,7 @@ class AmniAgent:
                     pq,pa=turns[-3].get('content',''),turns[-2].get('content','')
                     cor=self._extract_correction(pq,pa,message) if (pq and pa) else None
                     if cor:
-                        _r=bus.record_learning(pq,cor,kind="correction",provenance="user:the maintainer",exactness="exact",supersedes=pa)
+                        _r=bus.record_learning(pq,cor,kind="correction",provenance="user:Anthony",exactness="exact",supersedes=pa)
                         print(f'[AmniAgent] correction captured (stored={_r.get("stored")} recall_ok={_r.get("recall_ok")} homes={_r.get("homes")}) -> {cor[:80]}',flush=True)
                         if not _r.get('recall_ok'):print(f'[AmniAgent] WARN correction verify-after-write did not confirm; wrong answer still suppressed via ledger',flush=True)
                     elif pa:
@@ -619,7 +684,7 @@ class AmniAgent:
         if self.personal_atlas is not None:
             try:confirmed_clarification=self.personal_atlas.try_parse_pending_reply(message)
             except Exception as _ce:print(f'[AmniAgent] personal_atlas try_parse_pending_reply failed: {_ce}',flush=True)
-            try:self.personal_atlas.enqueue(message,session_id=conv.session_id)
+            try:self.personal_atlas.enqueue(message,session_id=conv.session_id) if detect_personal(message) else None
             except Exception as _qe:print(f'[AmniAgent] personal_atlas enqueue failed: {_qe}',flush=True)
         if self.profile is not None:
             try:self.profile.update_from_message(message)
@@ -631,6 +696,11 @@ class AmniAgent:
                 conv.append('assistant',msg_refusal,{'tier':f'tier_intent_block_{cat}','blocked':True,'cos':round(cos,3)})
                 return {'answer':msg_refusal,'tier':f'tier_intent_block_{cat}','tokens':0,'session_id':conv.session_id,'skill_calls':[{'skill':'semantic_intent','args':{'cat':cat,'cos':round(cos,3)},'result':{'blocked':True}}],'wall_s':round(time.time()-t0,3),'blocked':True}
         except Exception:pass
+        if use_skills:
+            try:
+                _tt=self._trading_turn(message,conv,brief,t0)
+                if _tt is not None:return _tt
+            except Exception as _te:print(f'[AmniAgent] trading_turn failed: {_te}',flush=True)
         skill_calls:List[Dict[str,Any]]=[]
         skill_answer:Optional[str]=None
         used_tier='tier0_skill' if use_skills else None
@@ -705,7 +775,7 @@ class AmniAgent:
                     c=lut.lookup(message)
                     if c and isinstance(c,dict) and c.get('a'):raw_ans=c['a'];tier='tier1_lut';tokens=0
                 except Exception:pass
-        apply_cot=_needs_cot(category,message)
+        apply_cot=_needs_cot(category,message) and not brief
         cot_scaffold=_pick_cot(category,message) if apply_cot else ''
         cot_tag={'_COT_CODE':'code','_COT_MATH':'math','_COT_DEBUG':'debug','_COT_DESIGN':'design','_COT_REASONING':'reasoning'}.get(_pick_cot(category,message).split('\n')[0],'generic') if apply_cot else ''
         if apply_cot:
@@ -723,6 +793,7 @@ class AmniAgent:
             _is_code=bool(not (_FACT_LOOKUP_RE.match(message) or _NONCODE_CODE_PHRASE.search(message)) and (_CODE_LANG_RE.search(message) or any(k in message.lower() for k in ('write','implement','function','how do i','example','code','setup','config','server'))))
             _code_extra=600 if _is_code and not apply_cot else 0
             _mnt=int(160+300*persona.length)+cot_extra+_code_extra
+            if brief:_mnt=min(_mnt,int(os.environ.get('AMNI_CHAT_BRIEF_TOKENS','200')))
             _sck=int(os.environ.get('AMNI_MATH_SC_K','5'))
             if apply_cot and cot_tag=='math' and _sck>1 and not is_private:
                 _gen=lambda:(self.adam.chat_persona(message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=_mnt,do_sample=True).get('answer') or '')
@@ -818,10 +889,10 @@ class AmniAgent:
             raw_ans=fb.get('answer') or '';tier=fb.get('tier','?')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=fb.get('tokens',0)
         wrapped=tone_atlas.wrap(raw_ans,category,persona,seed=message)
         if skill_answer and skill_answer.startswith('(skill'):wrapped=f'{skill_answer}\n{wrapped}'
-        if confirmed_clarification and confirmed_clarification.get('confirmed'):
+        if is_private and confirmed_clarification and confirmed_clarification.get('confirmed'):
             _cc='confidential' if confirmed_clarification.get('is_confidential') else 'public'
             wrapped=f"Got it — marking that {_cc}. {wrapped}"
-        if self.personal_atlas is not None:
+        if self.personal_atlas is not None and is_private:
             try:
                 pending=self.personal_atlas.next_clarification_to_ask()
                 if pending:wrapped=f"{wrapped}\n\n{self.personal_atlas.build_clarification_question(pending)}"
@@ -1013,7 +1084,7 @@ class AmniAgent:
                 sk=r.get('skill','?');ok=r.get('ok');marker='✓' if ok else '✗'
                 inner_out=r.get('output') or {}
                 if sk=='file_write' and isinstance(inner_out,dict):summary=f'wrote {inner_out.get("bytes_written",0)}b to {inner_out.get("path","?")}'
-                elif sk=='weather' and isinstance(inner_out,dict):summary=f'{inner_out.get("temp_c","?")}°C in {inner_out.get("location","?")}'
+                elif sk=='weather' and isinstance(inner_out,dict):summary=f'{inner_out.get("temp_f","?")}°F in {inner_out.get("location","?")}' if inner_out.get('units')=='imperial' else f'{inner_out.get("temp_c","?")}°C in {inner_out.get("location","?")}'
                 elif sk=='calc' and isinstance(inner_out,dict):summary=f'value={inner_out.get("value","?")}'
                 elif sk=='time' and isinstance(inner_out,dict):summary=str(inner_out.get('iso','?'))
                 elif r.get('error'):summary=f'error: {r["error"]}'
@@ -1051,8 +1122,9 @@ class AmniAgent:
         if name=='weather' and isinstance(out,dict) and (out.get('error') or out.get('_error')):
             return f"I couldn't pull live weather — {out.get('error') or out.get('_error')}. Try asking \"weather in <your city>\" and I'll grab it right away."
         if name=='weather' and isinstance(out,dict) and out.get('temp_c') is not None:
-            g=out;_t=g.get('temp_c');_hi=g.get('high_c');_lo=g.get('low_c');_rnd=lambda v:(round(v) if isinstance(v,(int,float)) else '?')
-            return f"Right now in **{g.get('location','your area')}** it's **{_rnd(_t)}°C** and {g.get('description','—')}. High {_rnd(_hi)}° / low {_rnd(_lo)}°, humidity {g.get('humidity_pct','?')}%, wind {g.get('wind_kmh','?')} km/h. (Live card just above.)"
+            g=out;_imp=g.get('units')=='imperial';_t=g.get('temp_f') if _imp else g.get('temp_c');_hi=g.get('high_f') if _imp else g.get('high_c');_lo=g.get('low_f') if _imp else g.get('low_c');_wv=g.get('wind_mph') if _imp else g.get('wind_kmh');_rnd=lambda v:(round(v) if isinstance(v,(int,float)) else '?')
+            _alt=f" ({_rnd(g.get('temp_c'))}°C)" if _imp else ''
+            return f"Right now in **{g.get('location','your area')}** it's **{_rnd(_t)}°{'F' if _imp else 'C'}**{_alt} and {g.get('description','—')}. High {_rnd(_hi)}° / low {_rnd(_lo)}°, humidity {g.get('humidity_pct','?')}%, wind {_wv if _wv is not None else '?'} {'mph' if _imp else 'km/h'}."
         if isinstance(out,dict) and 'widget' in out:
             _wd=out.get('widget') or {};_t=str(_wd.get('title') or name).strip()
             return out.get('summary') or out.get('text') or out.get('message') or f'Pulled your {_t.lower()} — details are in the card above.'
