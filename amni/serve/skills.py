@@ -3,7 +3,7 @@ Built-ins: time, calc, mem, web, file_read, file_write, code_edit, shell, scan.
 Asimov gating: every call passes through `_gate(args, ctx)` returning rejection reason or None.
 calc / web / mem are thin aliases over Adam's existing tiers — file_*/shell/code_edit/scan are I/O primitives.
 v6.1.0: file gates use a roots LIST instead of single workdir. `unrestricted=True` adds drive roots so Adam reaches any file."""
-import os,re,ast,json,time,string,subprocess,shlex
+import os,re,ast,json,time,string,subprocess,shlex,math
 from pathlib import Path
 from dataclasses import dataclass,asdict,field
 from typing import Callable,Dict,Any,Optional,List
@@ -150,14 +150,43 @@ def _gate_code_edit(args,ctx,reg:'SkillRegistry')->Optional[str]:
     if not args.get('find') or args.get('replace') is None:return 'missing find/replace'
     return None
 def _skill_time(args,ctx,reg):return {'iso':time.strftime('%Y-%m-%dT%H:%M:%S'),'epoch':int(time.time())}
-_WORD_OPS={'plus':'+','minus':'-','times':'*','x':'*','×':'*','over':'/','divided by':'/','to the power of':'**','to the power':'**'}
+_WORD_OPS={'divided by':'/','to the power of':'**','to the power':'**','plus':'+','minus':'-','times':'*','multiplied by':'*','over':'/'}
+def _norm_math(e:str)->str:
+    e=re.sub(r'(?i)\b(\d+\.?\d*)\s*(?:percent|%)\s+of\s+(\d+\.?\d*)','(\\1/100*\\2)',e)
+    e=re.sub(r'(\d+\.?\d*)\s*%','(\\1/100)',e)
+    for w,sym in _WORD_OPS.items():e=re.sub(r'\b'+re.escape(w)+r'\b',sym,e,flags=re.IGNORECASE)
+    e=re.sub(r'(\d)\s*[x×]\s*(?=\d)','\\1*',e)
+    return e
 def _try_python_eval(expr:str)->Optional[float]:
-    e=expr.strip().lower()
-    for w,sym in _WORD_OPS.items():e=e.replace(w,sym)
+    e=_norm_math(expr.strip().lower())
+    if '=' in e or re.search(r'[a-z]',e):return None
     e=re.sub(r'[^0-9+\-*/().\s%]','',e)
     if not e.strip() or not re.search(r'[\d]',e):return None
     if not re.search(r'[+\-*/%]',e):return None
     try:v=eval(e,{'__builtins__':{}},{});return float(v) if isinstance(v,(int,float)) else None
+    except Exception:return None
+_CALC_VERBS={'solve':'solve','expand':'expand','factor':'factor','simplify':'simplify','derivative':'diff','differentiate':'diff','diff':'diff','integrate':'integrate','integral':'integrate'}
+def _sympy_calc(expr:str)->Optional[str]:
+    try:import sympy as sp
+    except Exception:return None
+    el=expr.lower();e=_norm_math(expr.strip())
+    e=re.sub(r'(?i)\b(what\s+is|whats|compute|calculate|evaluate|the\s+value\s+of|find)\b','',e).strip(' ?.')
+    verb=next((v for k,v in _CALC_VERBS.items() if re.search(r'\b'+k+r'\b',el)),None)
+    try:
+        if verb:
+            body=re.sub(r'(?i)\b('+'|'.join(_CALC_VERBS)+r')\b','',e).strip(' ?=.')
+            if verb=='solve':
+                lhs,_,rhs=body.partition('=');eq=sp.Eq(sp.sympify(lhs),sp.sympify(rhs)) if rhs.strip() else sp.sympify(body);sol=sp.solve(eq);return str(sol)
+            if verb=='diff':
+                parts=[p.strip() for p in body.split(',')];f=sp.sympify(parts[0]);v=sp.Symbol(parts[1]) if len(parts)>1 else (sorted(f.free_symbols,key=str)[0] if f.free_symbols else sp.Symbol('x'));return str(sp.diff(f,v))
+            if verb=='integrate':
+                parts=[p.strip() for p in body.split(',')];f=sp.sympify(parts[0]);v=sp.Symbol(parts[1]) if len(parts)>1 else (sorted(f.free_symbols,key=str)[0] if f.free_symbols else sp.Symbol('x'));return str(sp.integrate(f,v))
+            return str(getattr(sp,verb)(sp.sympify(body)))
+        if '=' in e and re.search(r'[a-zA-Z]',e):
+            lhs,_,rhs=e.partition('=');return str(sp.solve(sp.Eq(sp.sympify(lhs),sp.sympify(rhs))))
+        val=sp.sympify(e)
+        if val.free_symbols:return str(val)
+        f=float(sp.N(val));return str(int(f)) if f==int(f) else str(round(f,8))
     except Exception:return None
 def _skill_calc(args,ctx,reg):
     adam=ctx.get('adam')
@@ -167,9 +196,526 @@ def _skill_calc(args,ctx,reg):
     if fast is not None:
         out=int(fast) if fast==int(fast) else round(fast,8)
         return {'value':str(out),'tier':'fast_eval','tokens':0}
+    sym=_sympy_calc(expr)
+    if sym is not None:return {'value':sym,'tier':'sympy','tokens':0}
     if adam is None:return {'error':'symbolic expr requires Adam: '+expr}
     r=adam.ask(f'Compute: {expr}',writeback=False)
     return {'value':r.get('answer'),'tier':r.get('tier'),'tokens':r.get('tokens')}
+_UNITS={'length':{'m':1,'km':1000,'cm':.01,'mm':.001,'um':1e-6,'nm':1e-9,'mi':1609.344,'mile':1609.344,'yd':.9144,'ft':.3048,'in':.0254,'inch':.0254,'nmi':1852,'ly':9.4607e15,'au':1.496e11},'mass':{'kg':1,'g':.001,'mg':1e-6,'ug':1e-9,'lb':.45359237,'oz':.028349523,'t':1000,'tonne':1000,'st':6.35029,'ton':1000},'time':{'s':1,'ms':.001,'us':1e-6,'min':60,'h':3600,'hr':3600,'day':86400,'week':604800,'year':31557600,'yr':31557600},'data':{'b':1,'byte':1,'kb':1e3,'mb':1e6,'gb':1e9,'tb':1e12,'pb':1e15,'kib':1024,'mib':1048576,'gib':1073741824,'tib':1.0995e12,'bit':.125},'energy':{'j':1,'kj':1000,'mj':1e6,'cal':4.184,'kcal':4184,'wh':3600,'kwh':3.6e6,'ev':1.602176634e-19,'btu':1055.06},'power':{'w':1,'kw':1000,'mw':1e6,'hp':745.7},'pressure':{'pa':1,'kpa':1000,'mpa':1e6,'bar':1e5,'mbar':100,'atm':101325,'psi':6894.757,'mmhg':133.322,'torr':133.322},'volume':{'l':1,'ml':.001,'m3':1000,'cm3':.001,'gal':3.785412,'qt':.946353,'pt':.473176,'cup':.236588,'floz':.0295735,'tbsp':.0147868,'tsp':.00492892},'speed':{'mps':1,'kmh':.2777778,'mph':.44704,'kn':.514444,'knot':.514444,'fps':.3048},'area':{'m2':1,'km2':1e6,'cm2':1e-4,'mm2':1e-6,'ft2':.092903,'in2':.00064516,'acre':4046.856,'ha':10000,'mi2':2589988},'angle':{'rad':1,'deg':math.pi/180,'grad':math.pi/200,'arcmin':math.pi/10800,'arcsec':math.pi/648000},'frequency':{'hz':1,'khz':1e3,'mhz':1e6,'ghz':1e9},'force':{'n':1,'kn':1000,'lbf':4.448222,'dyn':1e-5},'data_rate':{'bps':1,'kbps':1e3,'mbps':1e6,'gbps':1e9}}
+_UAL={'meter':'m','meters':'m','metre':'m','kilometers':'km','kilometres':'km','kilometer':'km','centimeter':'cm','centimeters':'cm','millimeter':'mm','millimeters':'mm','miles':'mi','feet':'ft','foot':'ft','inches':'in','yard':'yd','yards':'yd','kilogram':'kg','kilograms':'kg','kilo':'kg','kilos':'kg','gram':'g','grams':'g','grammes':'g','pound':'lb','pounds':'lb','lbs':'lb','ounce':'oz','ounces':'oz','seconds':'s','sec':'s','secs':'s','second':'s','minute':'min','minutes':'min','mins':'min','hours':'h','hour':'h','days':'day','weeks':'week','years':'year','celsius':'c','centigrade':'c','fahrenheit':'f','kelvin':'k','degc':'c','degf':'f','bytes':'b','kilobytes':'kb','megabytes':'mb','gigabytes':'gb','terabytes':'tb','bits':'bit','liter':'l','litre':'l','liters':'l','litres':'l','milliliter':'ml','milliliters':'ml','gallon':'gal','gallons':'gal','quart':'qt','pint':'pt','calorie':'cal','calories':'cal','kilocalorie':'kcal','joule':'j','joules':'j','watt':'w','watts':'w','kilowatt':'kw','pascal':'pa','pascals':'pa','atmosphere':'atm','atmospheres':'atm','degree':'deg','degrees':'deg','radian':'rad','radians':'rad','hertz':'hz','newton':'n','newtons':'n','kph':'kmh','mihr':'mph'}
+def _temp_to(v,fr,to):
+    fr,to=fr.lower(),to.lower();k={'c':v+273.15,'f':(v-32)*5/9+273.15,'k':v}.get(fr)
+    if k is None:return None
+    return {'c':k-273.15,'f':(k-273.15)*9/5+32,'k':k}.get(to)
+def _skill_units(args,ctx,reg):
+    q=(args.get('query') or '').strip();v=args.get('value');fr=args.get('from');to=args.get('to')
+    if q and v is None:
+        m=re.match(r'(?i)^\s*(-?\d+\.?\d*)\s*([a-z°/0-9]+)\s*(?:to|in|->|as)\s*([a-z°/0-9]+)\s*$',q.replace('°',' deg').replace('  ',' '))
+        if m:v,fr,to=float(m.group(1)),m.group(2),m.group(3)
+    if v is None or not fr or not to:return {'error':'need value, from, to (or query "10 km to miles")'}
+    norm=lambda u:_UAL.get(str(u).strip().lower(),str(u).strip().lower())
+    fr,to=norm(fr),norm(to)
+    if fr in('c','f','k') or to in('c','f','k'):
+        r=_temp_to(float(v),fr,to);return {'value':round(r,6),'from':fr,'to':to,'unit':to} if r is not None else {'error':'temperature units are c/f/k'}
+    for cat,tbl in _UNITS.items():
+        if fr in tbl and to in tbl:
+            r=float(v)*tbl[fr]/tbl[to];return {'value':round(r,10),'from':fr,'to':to,'category':cat}
+    return {'error':f'unknown or mismatched units: {fr} -> {to}'}
+def _skill_datetime(args,ctx,reg):
+    from datetime import datetime,timedelta
+    try:from dateutil import parser as dp,relativedelta as rd
+    except Exception:dp=None
+    act=(args.get('action') or '').lower();q=args.get('query','')
+    P=lambda s:dp.parse(str(s)) if dp else datetime.fromisoformat(str(s))
+    try:
+        if not act and q:
+            mb=re.search(r'(?i)between\s+(.+?)\s+and\s+(.+)',q);ma=re.search(r'(?i)(\d+)\s*(day|week|month|year|hour|minute)s?\s*(?:from|after|before|ago)\s*(.+)?',q)
+            if mb:act,args['a'],args['b']='diff',mb.group(1),mb.group(2)
+            elif ma:act='add';args['date']=(ma.group(3) or 'today').strip();sign=-1 if re.search(r'(?i)before|ago',q) else 1;args[ma.group(2)+'s' if ma.group(2) in('day','week','hour','minute') else ma.group(2)]=sign*int(ma.group(1))
+            else:act='parse';args['date']=q
+        if act=='diff':
+            a,b=P(args['a'] if str(args.get('a','')).lower()!='today' else datetime.now().isoformat()),P(args['b'] if str(args.get('b','')).lower()!='today' else datetime.now().isoformat());d=abs((b-a).total_seconds())
+            return {'days':round(d/86400,4),'seconds':int(d),'human':f'{int(d//86400)} days, {int(d%86400//3600)} hours'}
+        if act=='add':
+            base=datetime.now() if str(args.get('date','today')).lower() in('today','now','') else P(args['date'])
+            base=base+timedelta(days=args.get('days',0) or 0,weeks=args.get('weeks',0) or 0,hours=args.get('hours',0) or 0,minutes=args.get('minutes',0) or 0)
+            if dp and (args.get('months') or args.get('years')):base=base+rd.relativedelta(months=args.get('months',0) or 0,years=args.get('years',0) or 0)
+            return {'result':base.isoformat(timespec='seconds'),'weekday':base.strftime('%A'),'date':base.strftime('%Y-%m-%d')}
+        d=P(args['date']) if args.get('date') and str(args['date']).lower() not in('today','now') else datetime.now()
+        return {'iso':d.isoformat(timespec='seconds'),'weekday':d.strftime('%A'),'date':d.strftime('%Y-%m-%d'),'time':d.strftime('%H:%M:%S'),'day_of_year':int(d.strftime('%j'))}
+    except Exception as e:return {'error':f'datetime: {e}'}
+_CONST={'c':(299792458,'m/s','speed of light'),'g':(9.80665,'m/s^2','standard gravity'),'G':(6.67430e-11,'m^3/kg/s^2','gravitational constant'),'h':(6.62607015e-34,'J*s','Planck'),'hbar':(1.054571817e-34,'J*s','reduced Planck'),'k_B':(1.380649e-23,'J/K','Boltzmann'),'N_A':(6.02214076e23,'1/mol','Avogadro'),'R':(8.314462618,'J/mol/K','gas constant'),'F':(96485.33212,'C/mol','Faraday'),'e':(1.602176634e-19,'C','elementary charge'),'epsilon_0':(8.8541878128e-12,'F/m','vacuum permittivity'),'m_e':(9.1093837015e-31,'kg','electron mass'),'m_p':(1.67262192369e-27,'kg','proton mass'),'sigma':(5.670374419e-8,'W/m^2/K^4','Stefan-Boltzmann'),'atm':(101325,'Pa','standard atmosphere')}
+_EQ={'ohms_law':('V = I * R','voltage = current * resistance'),'power_electrical':('P = V * I','also P = I^2 * R = V^2 / R'),'ideal_gas':('P * V = n * R * T','ideal gas law'),'nernst':('E = E0 - (R * T / (n * F)) * ln(Q)','electrode potential; F=Faraday, n=electrons, Q=reaction quotient'),'faraday_electrolysis':('m = (Q * M) / (n * F)','mass deposited; Q=charge, M=molar mass, n=electrons'),'newton_second':('F = m * a','force'),'kinetic_energy':('KE = 0.5 * m * v^2',''),'grav_pe':('PE = m * g * h',''),'kinematics_v':('v = u + a * t',''),'kinematics_s':('s = u*t + 0.5*a*t^2',''),'coulomb':('F = k * q1 * q2 / r^2','k = 8.9875e9'),'density':('rho = m / V',''),'molarity':('M = n / V','mol per liter'),'ph':('pH = -log10([H+])',''),'arrhenius':('k = A * exp(-Ea / (R * T))','reaction rate'),'compound_interest':('A = P * (1 + r/n)^(n*t)',''),'ohm_power':('P = I^2 * R',''),'hookes_law':('F = -k * x','spring'),'half_life':('N = N0 * (1/2)^(t/T)','')}
+_ELEM={'h':('Hydrogen',1,1.008),'he':('Helium',2,4.0026),'li':('Lithium',3,6.94),'c':('Carbon',6,12.011),'n':('Nitrogen',7,14.007),'o':('Oxygen',8,15.999),'f':('Fluorine',9,18.998),'na':('Sodium',11,22.990),'mg':('Magnesium',12,24.305),'al':('Aluminium',13,26.982),'si':('Silicon',14,28.085),'p':('Phosphorus',15,30.974),'s':('Sulfur',16,32.06),'cl':('Chlorine',17,35.45),'k':('Potassium',19,39.098),'ca':('Calcium',20,40.078),'fe':('Iron',26,55.845),'cu':('Copper',29,63.546),'zn':('Zinc',30,65.38),'ag':('Silver',47,107.868),'au':('Gold',79,196.967),'pb':('Lead',82,207.2)}
+def _skill_formula(args,ctx,reg):
+    q=str(args.get('query') or args.get('name') or '').strip();ql=q.lower()
+    if q in _CONST:v,u,d=_CONST[q];return {'constant':q,'value':v,'unit':u,'description':d}
+    el=_ELEM.get(ql) or next((v for kk,v in _ELEM.items() if v[0].lower()==ql),None)
+    if el:return {'element':el[0],'atomic_number':el[1],'atomic_mass':el[2]}
+    key=ql.replace(' ','_').replace("'",'')
+    if key in _EQ:f,d=_EQ[key];return {'equation':key,'formula':f,'note':d}
+    if len(ql)>=3:
+        for k,(v,u,d) in _CONST.items():
+            if ql in d.lower():return {'constant':k,'value':v,'unit':u,'description':d}
+        hits={k:v[0] for k,v in _EQ.items() if ql in k or ql in v[1].lower()}
+        if hits:return {'matches':hits}
+    return {'constants':list(_CONST),'equations':list(_EQ),'hint':'query a constant (c,R,F,N_A,k_B...), equation (nernst,ideal_gas,ohms_law,arrhenius...), or element (Fe,Cu,O...)'}
+def _skill_codec(args,ctx,reg):
+    import base64,hashlib,uuid,urllib.parse,json as _j
+    op=(args.get('op') or '').lower();t=args.get('text','');
+    try:
+        if op in('base64_encode','b64'):return {'result':base64.b64encode(str(t).encode()).decode()}
+        if op in('base64_decode','b64d'):return {'result':base64.b64decode(str(t)).decode('utf-8','replace')}
+        if op=='hex_encode':return {'result':str(t).encode().hex()}
+        if op=='hex_decode':return {'result':bytes.fromhex(str(t)).decode('utf-8','replace')}
+        if op=='url_encode':return {'result':urllib.parse.quote(str(t))}
+        if op=='url_decode':return {'result':urllib.parse.unquote(str(t))}
+        if op=='hash':a=(args.get('algo') or 'sha256').lower();return {'algo':a,'result':hashlib.new(a,str(t).encode()).hexdigest()}
+        if op=='uuid':return {'result':str(uuid.uuid4())}
+        if op in('json_pretty','json'):return {'result':_j.dumps(_j.loads(t) if isinstance(t,str) else t,indent=2,sort_keys=bool(args.get('sort')))}
+        if op=='json_minify':return {'result':_j.dumps(_j.loads(t),separators=(',',':'))}
+        if op=='json_validate':
+            try:_j.loads(t);return {'valid':True}
+            except Exception as e:return {'valid':False,'error':str(e)}
+        if op=='regex':
+            pat=args.get('pattern','');return {'matches':re.findall(pat,str(t))}
+        if op=='base':
+            frm=int(args.get('from_base',10));to=int(args.get('to_base',16));n=int(str(t).strip(),frm)
+            return {'result':{2:bin,8:oct,16:hex}.get(to,lambda x:str(x))(n) if to in(2,8,16) else _to_base(n,to),'decimal':n}
+        if op=='bitwise':
+            a,b=int(args.get('a',0)),int(args.get('b',0));o=args.get('bitop','and')
+            return {'result':{'and':a&b,'or':a|b,'xor':a^b,'shl':a<<b,'shr':a>>b,'not':~a}.get(o)}
+        if op=='hmac':
+            import hmac as _h;key=str(args.get('key','')).encode();a=(args.get('algo') or 'sha256').lower();return {'algo':a,'result':_h.new(key,str(t).encode(),a).hexdigest()}
+        if op=='crc32':
+            import zlib;return {'result':format(zlib.crc32(str(t).encode())&0xffffffff,'08x')}
+        return {'error':'op one of: base64_encode/decode, hex_encode/decode, url_encode/decode, hash, hmac, crc32, uuid, json_pretty/minify/validate, regex, base, bitwise'}
+    except Exception as e:return {'error':f'codec: {e}'}
+def _to_base(n,b):
+    if n==0:return '0'
+    dig='0123456789abcdefghijklmnopqrstuvwxyz';s='';neg=n<0;n=abs(n)
+    while n:s=dig[n%b]+s;n//=b
+    return ('-' if neg else '')+s
+def _skill_stats(args,ctx,reg):
+    import statistics as st
+    nums=args.get('numbers');data=args.get('data')
+    if nums is None and data:nums=[float(x) for x in re.findall(r'-?\d+\.?\d*',str(data))]
+    if not nums:
+        x=args.get('x');y=args.get('y')
+        if x and y:
+            try:
+                import numpy as np;x=np.array(x,float);y=np.array(y,float);m,b=np.polyfit(x,y,1);r=float(np.corrcoef(x,y)[0,1])
+                return {'slope':round(float(m),6),'intercept':round(float(b),6),'correlation':round(r,6),'fit':f'y = {m:.4g}*x + {b:.4g}'}
+            except Exception as e:return {'error':f'fit: {e}'}
+        return {'error':'need numbers:[...] or data:"1,2,3" (or x:[],y:[] for linear fit)'}
+    nums=[float(n) for n in nums]
+    try:
+        return {'count':len(nums),'sum':round(sum(nums),8),'mean':round(st.mean(nums),8),'median':st.median(nums),'mode':(st.mode(nums) if len(set(nums))<len(nums) else None),'stdev':(round(st.pstdev(nums),8)),'variance':round(st.pvariance(nums),8),'min':min(nums),'max':max(nums),'range':round(max(nums)-min(nums),8)}
+    except Exception as e:return {'error':f'stats: {e}'}
+_MASS={'H':1.008,'He':4.0026,'Li':6.94,'Be':9.0122,'B':10.81,'C':12.011,'N':14.007,'O':15.999,'F':18.998,'Ne':20.18,'Na':22.99,'Mg':24.305,'Al':26.982,'Si':28.085,'P':30.974,'S':32.06,'Cl':35.45,'Ar':39.95,'K':39.098,'Ca':40.078,'Sc':44.956,'Ti':47.867,'V':50.942,'Cr':51.996,'Mn':54.938,'Fe':55.845,'Co':58.933,'Ni':58.693,'Cu':63.546,'Zn':65.38,'Ga':69.723,'Ge':72.63,'As':74.922,'Se':78.971,'Br':79.904,'Kr':83.798,'Rb':85.468,'Sr':87.62,'Y':88.906,'Zr':91.224,'Nb':92.906,'Mo':95.95,'Tc':98,'Ru':101.07,'Rh':102.91,'Pd':106.42,'Ag':107.868,'Cd':112.41,'In':114.82,'Sn':118.71,'Sb':121.76,'Te':127.6,'I':126.9,'Xe':131.29,'Cs':132.91,'Ba':137.33,'La':138.91,'Ce':140.12,'Pr':140.91,'Nd':144.24,'Pm':145,'Sm':150.36,'Eu':151.96,'Gd':157.25,'Tb':158.93,'Dy':162.5,'Ho':164.93,'Er':167.26,'Tm':168.93,'Yb':173.05,'Lu':174.97,'Hf':178.49,'Ta':180.95,'W':183.84,'Re':186.21,'Os':190.23,'Ir':192.22,'Pt':195.08,'Au':196.97,'Hg':200.59,'Tl':204.38,'Pb':207.2,'Bi':208.98,'Po':209,'At':210,'Rn':222,'Fr':223,'Ra':226,'Ac':227,'Th':232.04,'Pa':231.04,'U':238.03,'Np':237,'Pu':244}
+def _parse_formula(f):
+    f=str(f).replace('·','.').replace('*','.').replace(' ','');total={}
+    def parse(s):
+        i=0;c={}
+        while i<len(s):
+            if s[i]=='(' or s[i]=='[':
+                depth=1;j=i+1
+                while j<len(s) and depth:depth+=(s[j] in '([')-(s[j] in ')]');j+=1
+                inner=parse(s[i+1:j-1]);m=re.match(r'\d+',s[j:]);mult=int(m.group()) if m else 1
+                for k,v in inner.items():c[k]=c.get(k,0)+v*mult
+                i=j+(len(m.group()) if m else 0)
+            elif s[i].isupper():
+                m=re.match(r'[A-Z][a-z]?',s[i:]);sym=m.group();i+=len(sym);n=re.match(r'\d+',s[i:]);cnt=int(n.group()) if n else 1;i+=len(n.group()) if n else 0;c[sym]=c.get(sym,0)+cnt
+            else:i+=1
+        return c
+    for part in f.split('.'):
+        if not part:continue
+        mh=re.match(r'^(\d+)(.+)',part);mult=1
+        if mh:mult=int(mh.group(1));part=mh.group(2)
+        for k,v in parse(part).items():total[k]=total.get(k,0)+v*mult
+    return total
+def _skill_chem(args,ctx,reg):
+    f=args.get('formula') or args.get('query','')
+    try:
+        comp=_parse_formula(f);bad=[s for s in comp if s not in _MASS]
+        if bad:return {'error':'unknown element(s): '+','.join(bad)}
+        if not comp:return {'error':'no formula parsed (try H2O, NaCl, C6H12O6, CuSO4.5H2O)'}
+        mm=sum(_MASS[s]*c for s,c in comp.items())
+        return {'formula':f,'molar_mass':round(mm,4),'unit':'g/mol','composition':comp,'percent_by_mass':{s:round(_MASS[s]*c/mm*100,2) for s,c in comp.items()}}
+    except Exception as e:return {'error':f'chem: {e}'}
+def _skill_finance(args,ctx,reg):
+    op=(args.get('op') or '').lower();g=lambda k,d=None:float(args[k]) if k in args and args[k] is not None else d
+    try:
+        if op in('compound','compound_interest','fv'):
+            P=g('principal',0) or g('present_value',0);r=g('rate')/100;n=g('n',12);t=g('years');A=P*(1+r/n)**(n*t);return {'future_value':round(A,2),'interest':round(A-P,2)}
+        if op in('loan','mortgage','payment'):
+            P=g('principal');r=g('rate')/100/12;n=g('years')*12;pay=(P*r/(1-(1+r)**-n)) if r else P/n;return {'monthly_payment':round(pay,2),'total_paid':round(pay*n,2),'total_interest':round(pay*n-P,2)}
+        if op in('pct_change','change','roi'):
+            a=g('from') or g('begin') or g('cost');b=g('to') or g('end') or g('value');return {'percent_change':round((b-a)/a*100,4)}
+        if op=='cagr':
+            b=g('begin') or g('from');e=g('end') or g('to');y=g('years');return {'cagr_percent':round(((e/b)**(1/y)-1)*100,4)}
+        if op in('pv','present_value'):
+            FV=g('future_value');r=g('rate')/100;t=g('years');return {'present_value':round(FV/(1+r)**t,2)}
+        return {'error':'op: compound|loan|pct_change|cagr|pv'}
+    except Exception as e:return {'error':f'finance: {e} (check args)'}
+def _skill_password(args,ctx,reg):
+    import secrets,string as _s
+    n=max(4,min(256,int(args.get('length',20))));kind=(args.get('kind') or 'strong').lower()
+    if kind=='token':return {'token':secrets.token_urlsafe(n)}
+    if kind=='hextoken':return {'token':secrets.token_hex(n)}
+    pool={'strong':_s.ascii_letters+_s.digits+'!@#$%^&*-_=+?','alnum':_s.ascii_letters+_s.digits,'hex':'0123456789abcdef','pin':_s.digits,'letters':_s.ascii_letters}.get(kind,_s.ascii_letters+_s.digits+'!@#$%^&*-_=+?')
+    return {'password':''.join(secrets.choice(pool) for _ in range(n)),'length':n,'kind':kind}
+def _skill_color(args,ctx,reg):
+    import colorsys;c=str(args.get('color') or args.get('query','')).strip()
+    try:
+        if args.get('r') is not None:r,g,b=int(args['r']),int(args['g']),int(args['b'])
+        else:
+            h=c.lstrip('#');rgb=re.findall(r'\d+',c)
+            if re.match(r'^[0-9a-fA-F]{6}$',h):r,g,b=int(h[0:2],16),int(h[2:4],16),int(h[4:6],16)
+            elif len(rgb)>=3:r,g,b=int(rgb[0]),int(rgb[1]),int(rgb[2])
+            else:return {'error':'give hex (#1e90ff) or rgb (30,144,255) or r,g,b'}
+        hl,ll,sl=colorsys.rgb_to_hls(r/255,g/255,b/255)
+        lum=0.2126*r/255+0.7152*g/255+0.0722*b/255
+        return {'hex':'#%02x%02x%02x'%(r,g,b),'rgb':[r,g,b],'hsl':[round(hl*360),round(sl*100),round(ll*100)],'luminance':round(lum,3),'on_color':'black' if lum>.5 else 'white'}
+    except Exception as e:return {'error':f'color: {e}'}
+def _skill_geo(args,ctx,reg):
+    try:
+        la1,lo1,la2,lo2=[math.radians(float(args[k])) for k in ('lat1','lon1','lat2','lon2')]
+        R=6371.0088;a=math.sin((la2-la1)/2)**2+math.cos(la1)*math.cos(la2)*math.sin((lo2-lo1)/2)**2;d=2*R*math.asin(math.sqrt(a))
+        br=(math.degrees(math.atan2(math.sin(lo2-lo1)*math.cos(la2),math.cos(la1)*math.sin(la2)-math.sin(la1)*math.cos(la2)*math.cos(lo2-lo1)))+360)%360
+        return {'distance_km':round(d,3),'distance_mi':round(d*0.621371,3),'bearing_deg':round(br,1)}
+    except Exception as e:return {'error':'need lat1,lon1,lat2,lon2'}
+def _skill_net(args,ctx,reg):
+    import ipaddress;q=str(args.get('query') or args.get('cidr') or args.get('ip','')).strip()
+    try:
+        if '/' in q:
+            net=ipaddress.ip_network(q,strict=False);hosts=net.num_addresses
+            return {'network':str(net.network_address),'broadcast':str(getattr(net,'broadcast_address','')),'netmask':str(net.netmask),'prefix':net.prefixlen,'num_addresses':hosts,'usable_hosts':max(0,hosts-2) if net.version==4 else hosts,'version':net.version}
+        ip=ipaddress.ip_address(q)
+        return {'ip':str(ip),'version':ip.version,'is_private':ip.is_private,'is_global':ip.is_global,'is_loopback':ip.is_loopback,'reverse_dns':ip.reverse_pointer}
+    except Exception as e:return {'error':f'net: {e} (give an IP or CIDR like 192.168.1.0/24)'}
+def _skill_text(args,ctx,reg):
+    import codecs;op=(args.get('op') or 'stats').lower();t=str(args.get('text',''))
+    try:
+        if op in('stats','count'):return {'chars':len(t),'chars_no_spaces':len(t.replace(' ','')),'words':len(t.split()),'lines':t.count('\n')+1 if t else 0,'sentences':len(re.findall(r'[.!?]+',t))}
+        if op=='upper':return {'result':t.upper()}
+        if op=='lower':return {'result':t.lower()}
+        if op=='title':return {'result':t.title()}
+        if op=='capitalize':return {'result':t.capitalize()}
+        if op=='reverse':return {'result':t[::-1]}
+        if op=='slug':return {'result':re.sub(r'[^a-z0-9]+','-',t.lower()).strip('-')}
+        if op=='rot13':return {'result':codecs.encode(t,'rot_13')}
+        if op in('snake',):return {'result':re.sub(r'[\s\-]+','_',t.strip().lower())}
+        if op in('camel',):
+            parts=re.split(r'[\s_\-]+',t.strip());return {'result':parts[0].lower()+''.join(w.capitalize() for w in parts[1:])}
+        return {'error':'op: stats|upper|lower|title|capitalize|reverse|slug|rot13|snake|camel'}
+    except Exception as e:return {'error':f'text: {e}'}
+def _skill_random(args,ctx,reg):
+    import secrets,random as _r;op=(args.get('op') or 'int').lower();items=args.get('items') or []
+    try:
+        if op=='dice':n=max(1,int(args.get('n',1)));s=max(2,int(args.get('sides',6)));rolls=[secrets.randbelow(s)+1 for _ in range(n)];return {'rolls':rolls,'total':sum(rolls)}
+        if op=='coin':return {'result':'heads' if secrets.randbelow(2) else 'tails'}
+        if op in('int','number'):lo=int(args.get('min',1));hi=int(args.get('max',100));return {'result':secrets.randbelow(hi-lo+1)+lo}
+        if op in('pick','choice'):return {'result':items[secrets.randbelow(len(items))]} if items else {'error':'need items'}
+        if op=='shuffle':x=list(items);_r.SystemRandom().shuffle(x);return {'result':x}
+        if op=='sample':k=min(int(args.get('k',1)),len(items));return {'result':_r.SystemRandom().sample(items,k)} if items else {'error':'need items'}
+        if op=='uuid':import uuid;return {'result':str(uuid.uuid4())}
+        return {'error':'op: dice|coin|int|pick|shuffle|sample|uuid'}
+    except Exception as e:return {'error':f'random: {e}'}
+def _skill_solve(args,ctx,reg):
+    import sympy as sp
+    raw=str(args.get('equation') or args.get('name') or args.get('query','')).strip()
+    knowns=args.get('values') or {};target=args.get('solve_for') or args.get('for')
+    eqstr=(_EQ[raw.lower()][0] if raw.lower() in _EQ else raw).replace('^','**')
+    if '=' not in eqstr:return {'error':'need an equation with = , or a named one: '+', '.join(list(_EQ)[:8])}
+    try:
+        _fns={'ln','log','exp','sin','cos','tan','sqrt','asin','acos','atan','pi','abs'}
+        _loc={n:sp.Symbol(n) for n in set(re.findall(r'[A-Za-z_]\w*',eqstr)) if n not in _fns}
+        lhs,_,rhs=eqstr.partition('=');eq=sp.Eq(sp.sympify(lhs,locals=_loc),sp.sympify(rhs,locals=_loc))
+        subs={sp.Symbol(k):float(v) for k,v in knowns.items()}
+        for cn,(cv,_,_) in _CONST.items():
+            s=sp.Symbol(cn)
+            if s in eq.free_symbols and cn not in knowns:subs[s]=cv
+        eq2=eq.subs(subs);unk=sorted(eq2.free_symbols,key=str)
+        if target:tgt=sp.Symbol(target)
+        elif len(unk)==1:tgt=unk[0]
+        else:return {'error':'specify solve_for; unknowns: '+','.join(map(str,unk))}
+        sol=sp.solve(eq2,tgt);vals=[]
+        for s in sol:
+            try:vals.append(round(float(sp.N(s)),6) if not s.free_symbols else str(s))
+            except Exception:vals.append(str(s))
+        return {'equation':eqstr,'solve_for':str(tgt),'solution':(vals[0] if len(vals)==1 else vals),'used':{str(k):v for k,v in subs.items()}}
+    except Exception as e:return {'error':f'solve: {e}'}
+def _skill_roman(args,ctx,reg):
+    v=str(args.get('value') or args.get('query','')).strip().upper()
+    RR=[(1000,'M'),(900,'CM'),(500,'D'),(400,'CD'),(100,'C'),(90,'XC'),(50,'L'),(40,'XL'),(10,'X'),(9,'IX'),(5,'V'),(4,'IV'),(1,'I')]
+    try:
+        if v.lstrip('-').isdigit():
+            n=int(v);out=''
+            for val,sym in RR:
+                while n>=val:out+=sym;n-=val
+            return {'roman':out}
+        m={'I':1,'V':5,'X':10,'L':50,'C':100,'D':500,'M':1000};tot=0;prev=0
+        for ch in reversed(v):cur=m[ch];tot+=(-cur if cur<prev else cur);prev=cur
+        return {'integer':tot}
+    except Exception as e:return {'error':f'roman: {e}'}
+_MORSE={'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---','K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-','U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.','.':'.-.-.-',',':'--..--','?':'..--..','/':'-..-.','-':'-....-','(':'-.--.',')':'-.--.-',' ':'/'}
+def _skill_cipher(args,ctx,reg):
+    op=(args.get('op') or '').lower();t=str(args.get('text',''));sh=int(args.get('shift',3))
+    try:
+        if op=='morse_encode':return {'result':' '.join(_MORSE.get(c.upper(),'?') for c in t)}
+        if op=='morse_decode':
+            inv={v:k for k,v in _MORSE.items()};return {'result':''.join(inv.get(c,'?') for c in t.split(' '))}
+        if op in('caesar','rot','shift'):
+            r=''.join(chr((ord(c)-b+sh)%26+b) if (b:=(65 if c.isupper() else 97)) and c.isalpha() else c for c in t);return {'result':r,'shift':sh}
+        if op=='atbash':return {'result':''.join(chr((25-(ord(c.lower())-97))+(65 if c.isupper() else 97)) if c.isalpha() else c for c in t)}
+        if op=='binary_encode':return {'result':' '.join(format(ord(c),'08b') for c in t)}
+        if op=='binary_decode':return {'result':''.join(chr(int(b,2)) for b in t.split())}
+        if op=='reverse':return {'result':t[::-1]}
+        return {'error':'op: morse_encode/decode | caesar(shift) | atbash | binary_encode/decode'}
+    except Exception as e:return {'error':f'cipher: {e}'}
+def _skill_numtheory(args,ctx,reg):
+    import sympy as sp
+    op=(args.get('op') or '').lower()
+    try:
+        n=int(args['n']) if args.get('n') is not None else None;k=int(args['k']) if args.get('k') is not None else None
+        if op in('isprime','prime'):return {'n':n,'is_prime':bool(sp.isprime(n))}
+        if op in('factorize','factor','factors'):return {'n':n,'factorization':{int(p):int(e) for p,e in sp.factorint(n).items()}}
+        if op=='gcd':return {'gcd':int(math.gcd(n,k))}
+        if op=='lcm':return {'lcm':abs(n*k)//math.gcd(n,k)}
+        if op in('ncr','choose','combination'):return {'result':int(sp.binomial(n,k))}
+        if op in('npr','permutation'):return {'result':int(sp.factorial(n)//sp.factorial(n-k))}
+        if op=='factorial':return {'result':int(sp.factorial(n))}
+        if op in('fib','fibonacci'):return {'result':int(sp.fibonacci(n))}
+        if op in('nextprime','next_prime'):return {'result':int(sp.nextprime(n))}
+        if op in('totient','phi'):return {'result':int(sp.totient(n))}
+        if op=='divisors':return {'divisors':[int(d) for d in sp.divisors(n)]}
+        return {'error':'op: isprime|factorize|gcd|lcm|ncr|npr|factorial|fib|nextprime|totient|divisors (args n, k?)'}
+    except Exception as e:return {'error':f'numtheory: {e}'}
+def _skill_matrix(args,ctx,reg):
+    import numpy as np
+    op=(args.get('op') or '').lower()
+    try:
+        A=np.array(args.get('a') if args.get('a') is not None else args.get('matrix'),float)
+        B=np.array(args['b'],float) if args.get('b') is not None else None
+        if op in('multiply','matmul','dot'):return {'result':(A@B).tolist()}
+        if op=='add':return {'result':(A+B).tolist()}
+        if op in('transpose','t'):return {'result':A.T.tolist()}
+        if op in('determinant','det'):return {'result':round(float(np.linalg.det(A)),8)}
+        if op in('inverse','inv'):return {'result':np.linalg.inv(A).round(8).tolist()}
+        if op=='rank':return {'result':int(np.linalg.matrix_rank(A))}
+        if op in('eigenvalues','eig'):return {'eigenvalues':[round(float(x),6) for x in np.linalg.eigvals(A).real]}
+        if op in('solve','linsolve'):return {'result':np.linalg.solve(A,B).round(8).tolist()}
+        return {'error':'op: multiply|add|transpose|det|inverse|rank|eig|solve (args a:[[...]], b:[[...]])'}
+    except Exception as e:return {'error':f'matrix: {e}'}
+def _skill_calendar(args,ctx,reg):
+    from datetime import date
+    import calendar as _cal
+    try:from dateutil import parser as _dp
+    except Exception:_dp=None
+    P=lambda s:(_dp.parse(str(s)).date() if _dp else date.fromisoformat(str(s)))
+    op=(args.get('op') or 'weekday').lower()
+    try:
+        if op=='weekday':return {'date':str(P(args['date'])),'weekday':P(args['date']).strftime('%A')}
+        if op in('leap','leap_year'):y=int(args['year']) if args.get('year') else P(args['date']).year;return {'year':y,'is_leap':_cal.isleap(y)}
+        if op in('days_in_month','month_length'):d=P(args['date']) if args.get('date') else date(int(args['year']),int(args['month']),1);return {'days':_cal.monthrange(d.year,d.month)[1]}
+        if op=='age':b=P(args.get('birthdate') or args['date']);t=date.today();return {'age_years':t.year-b.year-((t.month,t.day)<(b.month,b.day))}
+        if op in('day_of_year','doy'):return {'day_of_year':P(args['date']).timetuple().tm_yday}
+        return {'error':'op: weekday|leap_year|days_in_month|age|day_of_year'}
+    except Exception as e:return {'error':f'calendar: {e}'}
+def _skill_validate(args,ctx,reg):
+    op=(args.get('op') or '').lower();v=str(args.get('value',''))
+    def _luhn(s):
+        s=re.sub(r'\D','',s)
+        if not s:return False
+        d=[int(c) for c in s][::-1];return (sum(d[0::2])+sum(sum(divmod(x*2,10)) for x in d[1::2]))%10==0
+    try:
+        if op in('luhn','credit_card','card'):return {'valid':_luhn(v)}
+        if op=='email':return {'valid':bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$',v))}
+        if op=='url':return {'valid':bool(re.match(r'^https?://[^\s]+$',v))}
+        if op=='isbn':
+            d=re.sub(r'[^0-9Xx]','',v)
+            if len(d)==10:return {'valid':sum((10-i)*(10 if c in 'Xx' else int(c)) for i,c in enumerate(d))%11==0}
+            if len(d)==13:return {'valid':sum((1 if i%2==0 else 3)*int(c) for i,c in enumerate(d))%10==0}
+            return {'valid':False,'error':'ISBN must be 10 or 13 chars'}
+        if op=='json':
+            import json as _j
+            try:_j.loads(v);return {'valid':True}
+            except Exception as e:return {'valid':False,'error':str(e)}
+        if op in('ipv4','ip'):
+            p=v.split('.');return {'valid':len(p)==4 and all(x.isdigit() and 0<=int(x)<=255 for x in p)}
+        return {'error':'op: luhn|email|url|isbn|json|ipv4'}
+    except Exception as e:return {'error':f'validate: {e}'}
+def _skill_dataformat(args,ctx,reg):
+    import json as _j,csv as _csv,io
+    op=(args.get('op') or '').lower();t=args.get('text','')
+    try:
+        if op=='csv_to_json':return {'result':list(_csv.DictReader(io.StringIO(str(t))))}
+        if op=='json_to_csv':
+            data=_j.loads(t) if isinstance(t,str) else t;data=data if isinstance(data,list) else [data];out=io.StringIO();w=_csv.DictWriter(out,fieldnames=list(data[0].keys()));w.writeheader();w.writerows(data);return {'result':out.getvalue()}
+        if op=='flatten':
+            def fl(o,p=''):
+                it={}
+                for k,vv in (o.items() if isinstance(o,dict) else enumerate(o)):
+                    nk=f'{p}.{k}' if p else str(k);it.update(fl(vv,nk) if isinstance(vv,(dict,list)) else {nk:vv})
+                return it
+            return {'result':fl(_j.loads(t) if isinstance(t,str) else t)}
+        return {'error':'op: csv_to_json|json_to_csv|flatten'}
+    except Exception as e:return {'error':f'dataformat: {e}'}
+def _skill_diff(args,ctx,reg):
+    import difflib
+    a=str(args.get('a','')).splitlines();b=str(args.get('b','')).splitlines()
+    try:
+        d=list(difflib.unified_diff(a,b,lineterm='',n=int(args.get('context',2))))
+        return {'diff':'\n'.join(d),'similarity':round(difflib.SequenceMatcher(None,'\n'.join(a),'\n'.join(b)).ratio(),4),'added':sum(1 for x in d if x[:1]=='+' and x[:3]!='+++'),'removed':sum(1 for x in d if x[:1]=='-' and x[:3]!='---')}
+    except Exception as e:return {'error':f'diff: {e}'}
+_O1=['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
+_T1=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety']
+def _skill_num2words(args,ctx,reg):
+    try:n=int(args['n'])
+    except Exception:return {'error':'need integer n'}
+    def three(x):
+        s=''
+        if x>=100:s+=_O1[x//100]+' hundred';x%=100;s+=' ' if x else ''
+        if x>=20:s+=_T1[x//10]+('-'+_O1[x%10] if x%10 else '');x=0
+        if x>0:s+=_O1[x]
+        return s
+    if n==0:return {'words':'zero'}
+    sc=['','thousand','million','billion','trillion','quadrillion'];neg=n<0;n=abs(n);parts=[];i=0
+    while n and i<len(sc):
+        if n%1000:parts.insert(0,three(n%1000)+(' '+sc[i] if sc[i] else ''))
+        n//=1000;i+=1
+    return {'words':('negative ' if neg else '')+' '.join(parts).strip()}
+def _skill_resistor(args,ctx,reg):
+    col={'black':0,'brown':1,'red':2,'orange':3,'yellow':4,'green':5,'blue':6,'violet':7,'purple':7,'grey':8,'gray':8,'white':9}
+    mult={'black':1,'brown':10,'red':100,'orange':1e3,'yellow':1e4,'green':1e5,'blue':1e6,'violet':1e7,'grey':1e8,'gray':1e8,'white':1e9,'gold':.1,'silver':.01}
+    tol={'brown':1,'red':2,'green':.5,'blue':.25,'violet':.1,'gold':5,'silver':10}
+    bands=args.get('bands') or str(args.get('query','')).lower().split()
+    try:
+        bands=[b.lower().strip() for b in bands if str(b).strip()]
+        if len(bands) not in (4,5):return {'error':'give 4 or 5 color bands, e.g. bands=["brown","black","red","gold"]'}
+        if len(bands)==4:val=(col[bands[0]]*10+col[bands[1]])*mult[bands[2]];t=tol.get(bands[3])
+        else:val=(col[bands[0]]*100+col[bands[1]]*10+col[bands[2]])*mult[bands[3]];t=tol.get(bands[4])
+        v,unit=val,'ohm'
+        for u,dd in [('Mohm',1e6),('kohm',1e3)]:
+            if val>=dd:v,unit=val/dd,u;break
+        return {'resistance_ohms':val,'display':f'{round(v,3)} {unit}','tolerance_percent':t}
+    except Exception as e:return {'error':f'resistor: bad color band ({e})'}
+def _skill_quote(args,ctx,reg):
+    import requests
+    sym=str(args.get('symbol') or args.get('query','')).strip().lower();kind=(args.get('kind') or '').lower()
+    idmap={'btc':'bitcoin','eth':'ethereum','sol':'solana','doge':'dogecoin','ada':'cardano','xrp':'ripple','bnb':'binancecoin','ltc':'litecoin'}
+    try:
+        if kind=='crypto' or sym in idmap or sym in idmap.values():
+            cid=idmap.get(sym,sym);r=requests.get('https://api.coingecko.com/api/v3/simple/price',params={'ids':cid,'vs_currencies':'usd','include_24hr_change':'true'},timeout=8).json()
+            if cid in r:return {'symbol':cid,'price_usd':r[cid]['usd'],'change_24h_pct':round(r[cid].get('usd_24h_change',0),2),'source':'coingecko'}
+        m=re.match(r'([a-z]{3})\s*(?:to|/|->|,| )+\s*([a-z]{3})',sym)
+        if m:
+            base=m.group(1).upper();tgt=m.group(2).upper();amt=float(args.get('amount',1));r=requests.get('https://api.frankfurter.app/latest',params={'from':base,'to':tgt,'amount':amt},timeout=8).json()
+            if r.get('rates',{}).get(tgt) is not None:return {'from':base,'to':tgt,'amount':amt,'result':r['rates'][tgt],'source':'frankfurter.app (ECB)'}
+        return {'error':'give a crypto (btc/eth) or an FX pair (e.g. "usd eur")'}
+    except Exception as e:return {'error':f'quote: network unavailable ({type(e).__name__})'}
+def _skill_define(args,ctx,reg):
+    import requests
+    w=str(args.get('word') or args.get('query','')).strip()
+    try:
+        r=requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{w}',timeout=8).json()
+        if isinstance(r,list) and r:
+            e=r[0];defs=[m['definition'] for mn in e.get('meanings',[]) for m in mn.get('definitions',[])][:3]
+            return {'word':w,'phonetic':e.get('phonetic'),'part_of_speech':[m['partOfSpeech'] for m in e.get('meanings',[])],'definitions':defs}
+        return {'word':w,'error':'not found'}
+    except Exception as e:return {'error':f'define: network unavailable ({type(e).__name__})'}
+def _skill_password_strength(args,ctx,reg):
+    p=str(args.get('password') or args.get('value',''))
+    pool=(26 if re.search(r'[a-z]',p) else 0)+(26 if re.search(r'[A-Z]',p) else 0)+(10 if re.search(r'\d',p) else 0)+(33 if re.search(r'[^a-zA-Z0-9]',p) else 0)
+    ent=len(p)*math.log2(pool) if pool else 0
+    rate='very weak' if ent<28 else 'weak' if ent<36 else 'reasonable' if ent<60 else 'strong' if ent<128 else 'very strong'
+    return {'length':len(p),'charset_size':pool,'entropy_bits':round(ent,1),'rating':rate}
+def _skill_timestamp(args,ctx,reg):
+    from datetime import datetime,timezone
+    v=str(args.get('value') or args.get('query','')).strip()
+    try:
+        if v.replace('.','',1).isdigit():
+            ts=float(v);ts=ts/1000 if ts>1e12 else ts
+            return {'unix':ts,'utc':datetime.fromtimestamp(ts,timezone.utc).isoformat(),'local':datetime.fromtimestamp(ts).isoformat(timespec='seconds')}
+        try:from dateutil import parser as _dp;d=_dp.parse(v)
+        except Exception:d=datetime.fromisoformat(v)
+        return {'iso':d.isoformat(timespec='seconds'),'unix':int(d.timestamp())}
+    except Exception as e:return {'error':f'timestamp: {e}'}
+def _skill_unicode(args,ctx,reg):
+    import unicodedata
+    t=str(args.get('text') or args.get('query',''))
+    try:
+        if t.lower().startswith('u+') or args.get('codepoint') is not None:
+            cp=int(str(args.get('codepoint') or t[2:]),16);ch=chr(cp);return {'char':ch,'codepoint':f'U+{cp:04X}','name':unicodedata.name(ch,'?'),'category':unicodedata.category(ch)}
+        return {'chars':[{'char':c,'codepoint':f'U+{ord(c):04X}','name':unicodedata.name(c,'?')} for c in t[:20]]}
+    except Exception as e:return {'error':f'unicode: {e}'}
+_LOREM='lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum'.split()
+def _skill_lorem(args,ctx,reg):
+    import random as _r
+    n=max(1,int(args.get('n',30)));unit=(args.get('unit') or 'words').lower();rng=_r.Random(int(args.get('seed',42)))
+    sent=lambda:(' '.join(rng.choice(_LOREM) for _ in range(rng.randint(6,14)))).capitalize()+'.'
+    if unit.startswith('word'):return {'text':' '.join(rng.choice(_LOREM) for _ in range(n)).capitalize()}
+    if unit.startswith('sent'):return {'text':' '.join(sent() for _ in range(n))}
+    if unit.startswith('para'):return {'text':'\n\n'.join(' '.join(sent() for _ in range(rng.randint(3,6))) for _ in range(n))}
+    return {'error':'unit: words|sentences|paragraphs'}
+def _skill_jwt(args,ctx,reg):
+    import base64,json as _j
+    tok=str(args.get('token') or args.get('query','')).strip()
+    try:
+        parts=tok.split('.')
+        if len(parts)<2:return {'error':'not a JWT (need header.payload.signature)'}
+        dec=lambda s:_j.loads(base64.urlsafe_b64decode(s+'='*(-len(s)%4)))
+        h=dec(parts[0]);p=dec(parts[1]);out={'header':h,'payload':p,'signature_present':len(parts)>2}
+        if 'exp' in p:
+            from datetime import datetime,timezone;out['expires']=datetime.fromtimestamp(p['exp'],timezone.utc).isoformat();out['expired']=p['exp']<datetime.now(timezone.utc).timestamp()
+        return out
+    except Exception as e:return {'error':f'jwt decode: {e}'}
+def _skill_url(args,ctx,reg):
+    from urllib.parse import urlparse,parse_qs
+    u=str(args.get('url') or args.get('query',''))
+    try:
+        p=urlparse(u);return {'scheme':p.scheme,'host':p.hostname,'port':p.port,'path':p.path,'query':parse_qs(p.query),'fragment':p.fragment or None}
+    except Exception as e:return {'error':f'url: {e}'}
+def _skill_semver(args,ctx,reg):
+    a=str(args.get('a','')).lstrip('vV');b=str(args.get('b','')).lstrip('vV')
+    pr=lambda s:(lambda m:tuple(int(x) for x in m.groups()) if m else None)(re.match(r'(\d+)\.(\d+)\.(\d+)',s))
+    try:
+        pa,pb=pr(a),pr(b)
+        if not pa or not pb:return {'error':'need two semver strings like 1.2.3'}
+        c=(pa>pb)-(pa<pb);return {'a':a,'b':b,'comparison':{1:'a > b',0:'a == b',-1:'a < b'}[c],'result':c}
+    except Exception as e:return {'error':f'semver: {e}'}
+def _skill_cron(args,ctx,reg):
+    c=str(args.get('expression') or args.get('query','')).strip()
+    try:
+        parts=c.split()
+        if len(parts)!=5:return {'error':'cron needs 5 fields: minute hour day-of-month month day-of-week'}
+        names=['minute','hour','day-of-month','month','day-of-week']
+        def d(f,n):
+            return f'every {n}' if f=='*' else f'every {f[2:]} {n}s' if f.startswith('*/') else (f'{n} in {f}' if (',' in f or '-' in f) else f'at {n} {f}')
+        return {'expression':c,'fields':dict(zip(names,parts)),'description':'; '.join(d(parts[i],names[i]) for i in range(5))}
+    except Exception as e:return {'error':f'cron: {e}'}
+def _skill_translate(args,ctx,reg):
+    import requests
+    t=str(args.get('text',''));to=(args.get('to') or 'es').lower();frm=(args.get('from') or 'en').lower()
+    if not t:return {'error':'need text'}
+    try:
+        r=requests.get('https://api.mymemory.translated.net/get',params={'q':t,'langpair':f'{frm}|{to}'},timeout=8).json()
+        return {'translation':r['responseData']['translatedText'],'from':frm,'to':to,'source':'mymemory'}
+    except Exception as e:return {'error':f'translate: network unavailable ({type(e).__name__})'}
+_RXTOK={'^':'start of string','$':'end of string','.':'any character','\\d':'a digit','\\D':'a non-digit','\\w':'a word char','\\W':'a non-word char','\\s':'whitespace','\\S':'non-whitespace','\\b':'word boundary','*':'zero or more','+':'one or more','?':'optional (0 or 1)','|':'OR','[':'character class start',']':'class end','(':'group start',')':'group end','{':'repetition start','}':'repetition end'}
+def _skill_regex_explain(args,ctx,reg):
+    p=str(args.get('pattern') or args.get('query',''));found=[];i=0
+    while i<len(p):
+        two=p[i:i+2]
+        if two in _RXTOK:found.append({'token':two,'means':_RXTOK[two]});i+=2;continue
+        if p[i] in _RXTOK:found.append({'token':p[i],'means':_RXTOK[p[i]]});i+=1;continue
+        i+=1
+    out={'pattern':p,'components':found}
+    if args.get('text') is not None:
+        try:out['matches']=re.findall(p,str(args['text']))
+        except Exception as e:out['regex_error']=str(e)
+    return out
 def _skill_mem(args,ctx,reg):
     adam=ctx.get('adam')
     q=args.get('query','')
@@ -177,26 +723,41 @@ def _skill_mem(args,ctx,reg):
     if adam is None or not q:return {'error':'missing adam or query'}
     sl=getattr(adam,'sem_lut',None)
     n=len(sl._raw) if sl is not None else 0
-    if n==0:return {'hits':[],'lessons_n':0}
     hits=[]
+    if n>0:
+        try:
+            eff_margin=sl.auto_margin()
+            soft=sl.lookup_soft(q,margin=eff_margin)
+            if soft:hits.append({'q':'(soft-lookup)','a':soft,'score':None,'method':'soft_margin','store':'sem_lut'})
+        except Exception as e:hits.append({'error':f'soft-lookup: {e}'})
+        try:
+            if hasattr(sl,'_ensure_encoder') and hasattr(sl,'_raw') and sl._raw:
+                import numpy as np
+                enc=sl._ensure_encoder()
+                qv=enc([q])[0].astype('float32')
+                kv=getattr(sl,'_stored_embs',None)
+                if kv is None or len(kv)!=len(sl._raw):kv=enc([r[0] for r in sl._raw]).astype('float32')
+                scores=kv@qv
+                order=np.argsort(-scores)[:k]
+                for i in order:
+                    hits.append({'q':sl._raw[int(i)][0][:200],'a':sl._raw[int(i)][1][:400],'score':float(scores[int(i)]),'method':'flat_cosine','store':'sem_lut'})
+        except Exception as e:hits.append({'error':f'flat-cosine: {e}'})
+    loop=getattr(adam,'adam',None)
     try:
-        eff_margin=sl.auto_margin()
-        soft=sl.lookup_soft(q,margin=eff_margin)
-        if soft:hits.append({'q':'(soft-lookup)','a':soft,'score':None,'method':'soft_margin'})
-    except Exception as e:hits.append({'error':f'soft-lookup: {e}'})
+        lt=getattr(loop,'lut',None)
+        ex=lt.lookup(q) if lt is not None else None
+        if ex:hits.append({'q':(ex.get('q') or '')[:200],'a':(ex.get('a') or '')[:400],'score':1.0,'method':'answer_lut_exact','store':'atex_lut'})
+        li=getattr(loop,'lut_index',None)
+        if li is not None and li.size()>0:
+            for k2,q2,a2,s2,c2 in li.search(q,k=k,min_score=0.5):hits.append({'q':q2[:200],'a':a2[:400],'score':round(float(s2),3),'method':'lut_embed','store':'atex_lut'})
+    except Exception as e:hits.append({'error':f'atex-lut: {e}'})
     try:
-        if hasattr(sl,'_ensure_encoder') and hasattr(sl,'_raw') and sl._raw:
-            import numpy as np
-            enc=sl._ensure_encoder()
-            qv=enc([q])[0].astype('float32')
-            kv=getattr(sl,'_stored_embs',None)
-            if kv is None or len(kv)!=len(sl._raw):kv=enc([r[0] for r in sl._raw]).astype('float32')
-            scores=kv@qv
-            order=np.argsort(-scores)[:k]
-            for i in order:
-                hits.append({'q':sl._raw[int(i)][0][:200],'a':sl._raw[int(i)][1][:400],'score':float(scores[int(i)]),'method':'flat_cosine'})
-    except Exception as e:hits.append({'error':f'flat-cosine: {e}'})
-    return {'hits':hits,'lessons_n':n}
+        at=getattr(ctx.get('agent'),'atlas',None)
+        if at is not None:
+            for r in at.recall(q,session_id=str(args.get('session_id') or ''),k=min(k,3)):hits.append({'q':(r.get('user') or '')[:200],'a':(r.get('assistant') or '')[:400],'score':None,'method':f"conv_atlas_r{r.get('cell_radius')}",'store':'conversation_atlas'})
+    except Exception as e:hits.append({'error':f'conv-atlas: {e}'})
+    _li=getattr(loop,'lut_index',None)
+    return {'hits':hits,'lessons_n':n,'stores':{'sem_lut':n,'atex_lut':len(getattr(getattr(loop,'lut',None),'_index',None) or {}),'lut_index':_li.size() if _li is not None else 0}}
 def _scrub_pii_from_query(q:str,agent=None,source:str='web')->str:
     """Strip personal-info from any text before external HTTP. Delegates to the central pii_egress choke-point (single source of truth)."""
     try:
@@ -800,12 +1361,161 @@ def _skill_scan(args,ctx,reg):
         except Exception as e:errors.append({'save_error':str(e)})
     n_lessons_after=len(adam.sem_lut._raw) if adam.sem_lut is not None else 0
     return {'files_scanned':len(scanned),'lessons_added':n_lessons_after-n_lessons_before,'lessons_total':n_lessons_after,'distilled':distill,'errors':errors[:10],'files':scanned[:20],'bulk_fit':True}
+def _skill_options(args,ctx,reg):
+    tk=re.sub(r'[^A-Z.]','',str(args.get('ticker') or args.get('symbol') or args.get('query') or '').strip().upper().split(' ')[0])
+    if not tk:return {'error':'need a ticker, e.g. {ticker:"NVDA"}'}
+    tf=str(args.get('tf') or args.get('timeframe') or '1h').strip();lb=str(int(args.get('lookback',24)))
+    PY=os.environ.get('AZNO_PY',r'C:\Users\antho\Documents\ai\azno-v2\.venv\Scripts\python.exe');CWD=os.environ.get('AZNO_DIR',r'C:\Users\antho\Documents\ai\azno-v2')
+    try:
+        p=subprocess.run([PY,os.path.join('tools','options_signal.py'),tk,tf,lb],cwd=CWD,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=120,env={**os.environ,'PYTHONIOENCODING':'utf-8'})
+        o=(p.stdout or '').strip()
+        return json.loads(o[o.index('{'):o.rindex('}')+1]) if ('{' in o and '}' in o) else {'error':'options engine produced no card','detail':(p.stderr or o)[:300]}
+    except Exception as e:return {'error':f'options: {type(e).__name__}: {e}'}
+def _fmt_options(c)->str:
+    if not isinstance(c,dict) or not c.get('ok'):return 'Options: '+str((c or {}).get('error','no data / unknown ticker'))
+    tk=c.get('ticker');tf=c.get('tf');px=c.get('price');h=c.get('history') or {}
+    if not c.get('signal') or not c.get('options'):return f"{tk} {tf} @ ${px}: no fresh P-term reversal right now — no directional options setup. (backtest {int((h.get('win_rate') or 0)*100)}% hit-rate, {h.get('avg_swing_pct')}% avg swing.)"
+    return (c.get('example') or '')+' — '+(c.get('verdict') or '')+'. '+(c.get('disclaimer') or '')
+def options_command(text:str):
+    m=re.match(r'(?i)^\s*/?(?:opt|opts|option|options)\b[\s:]*([A-Za-z.]{1,6})(?:[\s:]+([0-9]+[a-z]+|[a-z]+))?\s*$',text or '')
+    return (m.group(1).upper(),(m.group(2) or '1h')) if m else None
+_CHART_STOP={'send','me','the','a','an','for','of','my','our','please','pls','show','get','gimme','give','chart','charts','plot','graph','option','options','opt','opts','signal','signals','and','to','on','in','with','pull','up','can','could','you','i','want','wanna','see','latest','about','info','how','is','whats','what','do','does','did','adam','azno','us','here','there','this','that','now','today','some','any','all','help','stuff','things','price','are','was','were','be','or','if','it','at','by','as','we','they','will','new','good','best','data','sell','buy','hold','call','put','long','short','trade','live','real','need','look','both','tell','your','them','from','yes','hey','hi','thx','thanks','ok','okay','cool','nice','well','just','also','only','make','take','come','know','like','more','less','over','into','out','off','per','via','than','then','when','why','who','much','many','lots','current','give','got','check','checks','checking','market','markets','status','update','updates','news','hello','howdy','hiya','morning','afternoon','evening','tonight','yesterday','tomorrow','holdings','holding','portfolio','position','positions','account','balance','funds','money','watch','watchlist','again','back','soon','later','maybe','sure','right','wrong','done','start','open','close','high','low','last','first','next','value','worth','total','gain','loss','gains','losses','profit','risk','sorry','still','which','where','been','have','has','had','would','should','something','anything','nothing'}
+def _chart_out_dir(sub='charts'):
+    d=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'json',sub);os.makedirs(d,exist_ok=True);return d
+def _extract_ticker(text):
+    best=None
+    for tok in re.findall(r'\$?\b[A-Za-z]{1,5}\b',text or ''):
+        dollar=tok.startswith('$');w=tok.lstrip('$');up=w.isupper() and len(w)>=2
+        if not (dollar or up) and w.lower() in _CHART_STOP:continue
+        score=3 if dollar else (2 if w.isupper() else 1)
+        if best is None or score>best[0]:best=(score,w.upper())
+    return best[1] if best else None
+def _extract_tf(text):
+    m=re.search(r'(?i)\b(\d+)\s?(m|min|h|hr|hour|d|day|w|wk)\b',text or '')
+    return f"{m.group(1)}{ {'m':'m','min':'m','h':'h','hr':'h','hour':'h','d':'d','day':'d','w':'w','wk':'w'}[m.group(2).lower()] }" if m else '1h'
+def chart_command(text):
+    t=(text or '').strip()
+    if not re.search(r'(?i)\b(chart|charts|plot|graph|option|options|opt|opts)\b',t):return None
+    tk=_extract_ticker(t)
+    return (tk,_extract_tf(t),bool(re.search(r'(?i)\boption',t))) if tk else None
+_TICKER_XSTOP={'LOL','OMG','WTF','BRB','IDK','IMO','IMHO','TBH','FYI','ASAP','LMAO','ROFL','SMH','NVM','THX','PLZ','BTW','GG','GL','GM','GN','GO','IRL','JK','NP','TY','YW','YEP','NOPE','NAH','WOW','HMM','HA','AH','OH','UM','EH','YO','SUP','WAIT','TEST','STOP','NO','SO','BUT','NOT','WHY','WHO','USA','USD','EUR','CEO','CTO','CFO','GPU','CPU','API','URL','FAQ','DIY','ETA','DNA','RIP','TV','PC','AI','FBI','NASA','HTML','JSON','HTTP','PIN','ID','AM','PM','EST','PST','UTC','GMT','CET','LMK','FWIW','IIRC','AFAIK','PDF','PNG','JPG','GIF','SQL','CSS','CSV','RAM','ROM','SSD','USB','WIFI','GPS','LED','LCD','TAPE','WAY','DUDE','BRO','MAN','SIR','MAAM','MEANT','MEAN','TABLE','ERROR','NAME','FILE','CODE','WORD'}|{'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'}
+def ticker_intent(text):
+    t=(text or '').strip()
+    def _ok(w):return bool(w) and w.upper() not in _TICKER_XSTOP and w.lower() not in _CHART_STOP
+    m=re.match(r'^\$?([A-Z]{1,5})(?:\s+(\d+\s?(?:m|min|h|hr|hour|d|day|w|wk)))?\s*[?.!]*$',t)
+    if m and (t.startswith('$') or m.group(2) or len(m.group(1))>=2) and _ok(m.group(1)):return (m.group(1),_extract_tf(t))
+    for _p in (r'(?i:\b(?:data|info|information|stats|numbers|analysis|read|signal)\s+(?:on|for|about)\s+)\$?([A-Z]{1,5})\b',r'(?i:\b(?:ticker|symbol)\b[\s:,]*)\$?([A-Z]{1,5})\b',r'(?i:\bstock\b[\s:,]*)\$?([A-Z]{1,5})\b',r'\$?\b([A-Z]{1,5})\b(?i:\s+(?:is\s+)?(?:a\s+|the\s+)?(?:ticker|stock|symbol)\b)',r'(?i:\b(?:i\s+meant|i\s+mean|meant|referring\s+to|talking\s+about|asking\s+about)\s+(?:the\s+)?(?:ticker\s+|stock\s+|symbol\s+|company\s+)?)\$?([A-Z]{1,5})\b',r'(?i:\b(?:i\s+meant|i\s+mean|meant|referring\s+to)\b.{0,30}?\b(?:ticker|symbol|stock)\b[\s:,]*)\$?([A-Za-z]{1,5})\b',r'^(?i:no+[,!\s]+)\$?([A-Z]{2,5})\s*[?.!]*$'):
+        m=re.search(_p,t)
+        if m and _ok(m.group(1)):return (m.group(1).upper(),_extract_tf(t))
+    return None
+def _render_azno_charts(ticker,tf,want_options=True):
+    PY=os.environ.get('AZNO_PY',r'C:\Users\antho\Documents\ai\azno-v2\.venv\Scripts\python.exe');CWD=os.environ.get('AZNO_DIR',r'C:\Users\antho\Documents\ai\azno-v2')
+    outdir=_chart_out_dir();ts=str(int(time.time()));imgs=[];summary='';env={**os.environ,'PYTHONIOENCODING':'utf-8','PYTHONUTF8':'1'}
+    if want_options:
+        op=os.path.join(outdir,f'{ticker}_{tf}_opt_{ts}.png')
+        try:
+            r=subprocess.run([PY,os.path.join('tools','options_chart.py'),ticker,tf,op,'stock'],cwd=CWD,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=160,env=env)
+            lines=[l for l in (r.stdout or '').splitlines() if l.strip()];summary=lines[-1].strip() if lines else ''
+            if os.path.exists(op):imgs.append(op)
+        except Exception:pass
+    pc=os.path.join(outdir,f'{ticker}_{tf}_price_{ts}.png')
+    try:
+        code='import sys;sys.path.insert(0,r"%s");from core.chart_export import export_chart_png;print(export_chart_png("%s","%s",r"%s",market="stock"))'%(CWD,ticker,tf,pc)
+        subprocess.run([PY,'-c',code],cwd=CWD,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=120,env=env)
+        if os.path.exists(pc):imgs.append(pc)
+    except Exception:pass
+    return {'ok':bool(imgs),'images':imgs,'summary':summary,'ticker':ticker,'tf':tf}
+def _skill_chart(args,ctx,reg):
+    tk=_extract_ticker(str(args.get('ticker') or args.get('symbol') or args.get('query') or ''))
+    if not tk:return {'error':'need a ticker, e.g. {ticker:"TSLA"}'}
+    tf=str(args.get('tf') or args.get('timeframe') or '1h').strip();r=_render_azno_charts(tk,tf,want_options=bool(args.get('options',True)))
+    return {'ok':True,'ticker':tk,'tf':tf,'images':r['images'],'summary':r.get('summary') or f'{tk} {tf} chart'} if r.get('ok') else {'error':'chart render produced no image','detail':(r.get('summary') or '')[:200]}
+_IMG_STOP={'conclusion','conclusions','comparison','comparisons','contrast','contrasts','distinction','distinctions','parallel','parallels','line','lines','blank','blanks','attention','inspiration','breath','up','on','it','that','this','out','near','from','back','away','closer','level','even','straws','lots','fire','blood','crowd','crowds'}
+def image_intent(text):
+    t=(text or '').strip()
+    m=re.match(r'(?i)^/?(?:img|image|imagine|dream)\b[\s:]+(.+)$',t) or re.match(r"(?i)^(?:please\s+|hey\s+)?(?:adam[,\s]+)?(?:can\s+you\s+|could\s+you\s+|would\s+you\s+)?(?:please\s+)?(?:draw|paint|sketch|illustrate|visualize)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|the\s+|some\s+)?(.+)$",t) or re.search(r"(?i)\b(?:generate|create|make|produce|render|gen)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|some\s+)?(?:image|picture|pic|photo|artwork|art|wallpaper|illustration|portrait|drawing|painting|poster|logo)\s*(?:of|for|about|showing|with|depicting|:)?\s*(.*)$",t)
+    if not m:return None
+    p=(m.group(1) or '').strip(' ?.!,')
+    return p if p and p.split()[0].lower() not in _IMG_STOP else None
+def _amni_gen_generate(prompt,negative='',steps=8,width=1024,height=1024,seed=-1,use_expansion=True,init_path=None,strength=0.6,timeout=900):
+    import requests,base64
+    base=os.environ.get('AMNI_GEN_URL','http://127.0.0.1:8763')
+    try:requests.get(base+'/health',timeout=4)
+    except Exception:return {'error':'amni-gen engine offline — start Amni-Gen (amni-ui) on :8763 and ask again'}
+    body={'prompt':prompt,'negative':negative or 'blurry, low quality, bad anatomy, deformed, watermark','steps':int(steps),'guidance':7.0,'width':int(width),'height':int(height),'seed':int(seed),'use_expansion':bool(use_expansion),'save_images':False,'lift_method':'none','backend':'sdxl'}
+    if init_path and os.path.exists(str(init_path)):body['init_image_b64']=base64.b64encode(open(init_path,'rb').read()).decode();body['strength']=float(strength)
+    last=None
+    with requests.post(base+'/generate',json=body,stream=True,timeout=(10,timeout)) as r:
+        for line in r.iter_lines(decode_unicode=True):
+            if line and line.startswith('data: '):
+                last=json.loads(line[6:])
+                if last.get('type') in ('done','error'):break
+    if not isinstance(last,dict) or last.get('type')!='done':return {'error':((last or {}).get('message') or 'amni-gen stream ended without a result')[:300]}
+    out=os.path.join(_chart_out_dir('gen'),f"gen_{int(time.time())}_{re.sub(r'[^a-z0-9]+','_',prompt.lower())[:40].strip('_')}.png")
+    open(out,'wb').write(base64.b64decode(last['image']))
+    tm=last.get('timings') or {}
+    return {'ok':True,'images':[out],'summary':f"🎨 \"{prompt[:70]}\" — {tm.get('gen_s','?')}s @ {int(width)}x{int(height)}"+(' (img2img)' if init_path else '')}
+def _skill_image_gen(args,ctx,reg):
+    p=str(args.get('prompt') or args.get('query') or args.get('text') or '').strip()
+    if not p:return {'error':'need a prompt, e.g. {prompt:"a sunset over the mountains"}'}
+    r=_amni_gen_generate(p,negative=str(args.get('negative') or ''),steps=int(args.get('steps') or 8),width=int(args.get('width') or 1024),height=int(args.get('height') or 1024),seed=int(args.get('seed') or -1),use_expansion=bool(args.get('expand',True)),init_path=args.get('init_path'),strength=float(args.get('strength') or 0.6))
+    return {'ok':True,'prompt':p,'images':r['images'],'summary':r['summary']} if r.get('ok') else r
 def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,audit_log:Optional[str]='logs/agent_skill_calls.jsonl',unrestricted:bool=False,with_agentic:bool=True)->SkillRegistry:
     reg=SkillRegistry(workdir=workdir,roots=roots,audit_log=audit_log,unrestricted=unrestricted)
     scope='UNRESTRICTED (all drives)' if unrestricted else f'{len(reg.roots)} root(s)'
     reg.register('time',_skill_time,desc='Get current local time. Args: {}',schema={})
-    reg.register('calc',_skill_calc,desc='Compute a math expression via Adam tier-3.7. Args: {expr}',schema={'expr':'str'})
-    reg.register('mem',_skill_mem,desc="Query Adam's lesson bank. Args: {query}",schema={'query':'str'})
+    reg.register('calc',_skill_calc,desc='Exact math via fast-eval + sympy (arithmetic, algebra, calculus, equations, percent, trig, gcd). Args: {expr}. e.g. "7*8", "solve x^2-4=0", "diff x^2", "17 percent of 200".',schema={'expr':'str'})
+    reg.register('units',_skill_units,desc='Exact unit conversion (length/mass/temp/time/data/energy/power/pressure/volume/speed/area/angle/frequency/force). Args: {query:"10 km to miles"} or {value,from,to}.',schema={'query':'str?','value':'float?','from':'str?','to':'str?'})
+    reg.register('datetime',_skill_datetime,desc='Date/time arithmetic. Args: {query:"days between 2026-01-01 and 2026-06-09"} or {action: diff|add|parse, a?,b?,date?,days?,weeks?,months?,years?,hours?}. Deterministic where weights fail.',schema={'query':'str?','action':'str?','a':'str?','b':'str?','date':'str?','days':'int?','weeks':'int?','months':'int?','years':'int?','hours':'int?','minutes':'int?'})
+    reg.register('formula',_skill_formula,desc='Recall physical constants (c,R,F=Faraday,N_A,k_B,h,e...), named equations (nernst,ideal_gas,ohms_law,faraday_electrolysis,arrhenius,compound_interest...), and element data (Fe,Cu,O...). Args: {query}. Pairs with calc: recall the formula, then compute.',schema={'query':'str'})
+    reg.register('codec',_skill_codec,desc='Exact encode/decode + hash + uuid + json + regex + base. Args: {op, text, ...}. op: base64_encode/decode, hex_encode/decode, url_encode/decode, hash(algo), uuid, json_pretty/minify/validate, regex(pattern), base(from_base,to_base), bitwise(a,b,bitop).',schema={'op':'str','text':'str?','algo':'str?','pattern':'str?','from_base':'int?','to_base':'int?','a':'int?','b':'int?','bitop':'str?','sort':'bool?'})
+    reg.register('stats',_skill_stats,desc='Exact statistics on a number set: mean/median/mode/stdev/variance/min/max/range/sum. Args: {numbers:[...]} or {data:"1,2,3"}; or {x:[],y:[]} for linear fit + correlation.',schema={'numbers':'list?','data':'str?','x':'list?','y':'list?'})
+    reg.register('chem',_skill_chem,desc='Exact molar mass + composition from a chemical formula (full periodic table, handles parens + hydrates). Args: {formula}. e.g. "H2O", "C6H12O6", "Ca(OH)2", "CuSO4.5H2O". Returns molar_mass g/mol, composition, percent_by_mass.',schema={'formula':'str'})
+    reg.register('finance',_skill_finance,desc='Exact financial math. Args: {op, ...}. op: compound (principal,rate,years,n?), loan/mortgage (principal,rate,years), pct_change (from,to), cagr (begin,end,years), pv (future_value,rate,years). Rates in percent.',schema={'op':'str','principal':'float?','rate':'float?','years':'float?','n':'float?','from':'float?','to':'float?','begin':'float?','end':'float?','future_value':'float?'})
+    reg.register('password',_skill_password,desc='Cryptographically-secure password/token generation (secrets). Args: {length?, kind?}. kind: strong (default) | alnum | hex | pin | letters | token (url-safe) | hextoken.',schema={'length':'int?','kind':'str?'})
+    reg.register('color',_skill_color,desc='Color conversion + readability. Args: {color:"#1e90ff" or "30,144,255"} or {r,g,b}. Returns hex, rgb, hsl, luminance, on_color (black/white for contrast).',schema={'color':'str?','r':'int?','g':'int?','b':'int?'})
+    reg.register('geo',_skill_geo,desc='Great-circle distance + bearing between two lat/lon points (haversine). Args: {lat1,lon1,lat2,lon2}. Returns distance_km, distance_mi, bearing_deg.',schema={'lat1':'float','lon1':'float','lat2':'float','lon2':'float'})
+    reg.register('net',_skill_net,desc='IP/subnet calculator. Args: {query} = an IP (192.168.1.10 -> private?/version/reverse-dns) or CIDR (10.0.0.0/24 -> network/broadcast/netmask/usable hosts). IPv4 + IPv6.',schema={'query':'str'})
+    reg.register('text',_skill_text,desc='Text utilities. Args: {op, text}. op: stats (char/word/line/sentence count) | upper | lower | title | capitalize | reverse | slug | rot13 | snake | camel.',schema={'op':'str','text':'str'})
+    reg.register('random',_skill_random,desc='Secure randomness. Args: {op, ...}. op: dice (n,sides) | coin | int (min,max) | pick (items) | shuffle (items) | sample (items,k) | uuid.',schema={'op':'str','n':'int?','sides':'int?','min':'int?','max':'int?','items':'list?','k':'int?'})
+    reg.register('solve',_skill_solve,desc='Recall-and-solve engine: takes a named equation (nernst/ideal_gas/ohms_law/arrhenius/compound_interest/kinematics_v...) or a raw "lhs = rhs", plugs in known {values} (and auto-fills physical constants R,F,c...), and solves for the unknown. Args: {equation|name, values:{var:num}, solve_for?}. e.g. {name:"ohms_law", values:{I:2,R:5}} -> V=10.',schema={'equation':'str?','name':'str?','values':'dict?','solve_for':'str?'})
+    reg.register('roman',_skill_roman,desc='Roman numeral <-> integer. Args: {value} (a number -> roman, or roman string -> integer).',schema={'value':'str'})
+    reg.register('cipher',_skill_cipher,desc='Classic encode/decode. Args: {op, text, shift?}. op: morse_encode/decode | caesar (shift) | atbash | binary_encode/decode | reverse.',schema={'op':'str','text':'str','shift':'int?'})
+    reg.register('numtheory',_skill_numtheory,desc='Exact number theory. Args: {op, n, k?}. op: isprime | factorize | gcd | lcm | ncr | npr | factorial | fib | nextprime | totient | divisors.',schema={'op':'str','n':'int','k':'int?'})
+    reg.register('matrix',_skill_matrix,desc='Exact linear algebra (numpy). Args: {op, a:[[...]], b?:[[...]]}. op: multiply | add | transpose | det | inverse | rank | eig | solve (Ax=b).',schema={'op':'str','a':'list','b':'list?'})
+    reg.register('calendar',_skill_calendar,desc='Calendar facts. Args: {op, date?|year?|month?|birthdate?}. op: weekday | leap_year | days_in_month | age | day_of_year.',schema={'op':'str','date':'str?','year':'int?','month':'int?','birthdate':'str?'})
+    reg.register('validate',_skill_validate,desc='Checksum/format validators. Args: {op, value}. op: luhn (credit card) | email | url | isbn (10/13) | json | ipv4.',schema={'op':'str','value':'str'})
+    reg.register('dataformat',_skill_dataformat,desc='Data format conversion. Args: {op, text}. op: csv_to_json | json_to_csv | flatten (nested json -> dotted keys).',schema={'op':'str','text':'str'})
+    reg.register('diff',_skill_diff,desc='Unified text diff + similarity between two strings. Args: {a, b, context?}. Returns diff, similarity ratio, added/removed line counts.',schema={'a':'str','b':'str','context':'int?'})
+    reg.register('num2words',_skill_num2words,desc='Integer -> English words (e.g. 1234 -> "one thousand two hundred thirty-four"). Args: {n}.',schema={'n':'int'})
+    reg.register('resistor',_skill_resistor,desc='Resistor color-band decoder. Args: {bands:["brown","black","red","gold"]} (4 or 5 bands) -> resistance + tolerance.',schema={'bands':'list?','query':'str?'})
+    reg.register('quote',_skill_quote,desc='Live market price (no API key). Args: {symbol or query, kind?}. Crypto via CoinGecko (btc/eth/sol...) or FX via exchangerate.host ("usd eur"). Returns price + 24h change.',schema={'symbol':'str?','query':'str?','kind':'str?'})
+    reg.register('options',_skill_options,desc='Options-trader read for a STOCK ticker from the azno P-term reversal signal: direction, conviction, historical hit-rate + swing, a horizon-matched expiry, an ATM single-leg AND a defined-risk vertical SPREAD (short leg parked at the P-term target), plus P-term expected move vs options-implied move (Black-Scholes). Informational, at-your-own-risk. Args: {ticker, tf?=1h}. e.g. {ticker:"NVDA"}.',schema={'ticker':'str','tf':'str?','lookback':'int?'})
+    reg.register('chart',_skill_chart,desc='Render + SEND a price/signal chart AND an options-analysis chart (PNG images) for a STOCK ticker via the azno P-term engine. Use whenever the user asks to see/send/pull up a chart, plot, graph, or options chart. Args: {ticker, tf?=1h, options?=true}. e.g. {ticker:"TSLA"}. Images are delivered as chat attachments.',schema={'ticker':'str','tf':'str?','options':'bool?'})
+    reg.register('image_gen',_skill_image_gen,desc='Generate (or transform via init_path) an AI image from a text prompt with the local Amni-Gen SDXL engine and SEND it as a chat attachment. Use whenever the user asks to draw/paint/sketch/generate/create an image, picture, photo, art, wallpaper, portrait, poster, or logo. Args: {prompt, width?, height?, steps?, seed?, negative?, expand?, init_path?, strength?}. e.g. {prompt:"a golden retriever astronaut on the moon"}.',schema={'prompt':'str','width':'int?','height':'int?','steps':'int?','seed':'int?','negative':'str?','expand':'bool?','init_path':'str?','strength':'float?'})
+    reg.register('define',_skill_define,desc='Dictionary lookup (dictionaryapi.dev, no key). Args: {word}. Returns phonetic, part-of-speech, up to 3 definitions.',schema={'word':'str'})
+    reg.register('password_strength',_skill_password_strength,desc='Estimate a password\'s entropy + strength rating. Args: {password}. Returns charset size, entropy bits, rating (very weak..very strong).',schema={'password':'str'})
+    reg.register('timestamp',_skill_timestamp,desc='Unix epoch <-> date. Args: {value}. A number -> UTC/local ISO; a date string -> unix timestamp. Handles ms timestamps.',schema={'value':'str'})
+    reg.register('unicode',_skill_unicode,desc='Unicode inspector. Args: {text} (per-char codepoint+name) or {codepoint:"1F600"} / "U+1F600" -> the char + name + category.',schema={'text':'str?','codepoint':'str?'})
+    reg.register('lorem',_skill_lorem,desc='Placeholder text generator. Args: {n, unit?}. unit: words (default) | sentences | paragraphs.',schema={'n':'int?','unit':'str?'})
+    reg.register('jwt',_skill_jwt,desc='Decode a JWT (header + payload, no verification). Args: {token}. Flags exp/expired. For inspection only - does NOT validate the signature.',schema={'token':'str'})
+    reg.register('url',_skill_url,desc='Parse a URL into scheme/host/port/path/query/fragment. Args: {url}.',schema={'url':'str'})
+    reg.register('semver',_skill_semver,desc='Compare two semantic versions. Args: {a, b}. Returns a>b / a==b / a<b.',schema={'a':'str','b':'str'})
+    reg.register('cron',_skill_cron,desc='Parse + describe a 5-field cron expression. Args: {expression} e.g. "*/15 9-17 * * 1-5".',schema={'expression':'str'})
+    reg.register('translate',_skill_translate,desc='Translate text (mymemory, no key). Args: {text, from?=en, to?=es}. Language codes like en/es/fr/de/ja.',schema={'text':'str','from':'str?','to':'str?'})
+    reg.register('regex_explain',_skill_regex_explain,desc='Explain a regex pattern token-by-token, and optionally test it. Args: {pattern, text?}.',schema={'pattern':'str','text':'str?'})
+    reg.register('mem',_skill_mem,desc="Query Adam's federated context stores: sem-lut lesson bank (soft+cosine) + ATEX answer-LUT (exact+embed index) + conversation atlas recall; hits tagged per-store. Args: {query, k?, session_id?}",schema={'query':'str','k':'int?','session_id':'str?'})
+    def _skill_weight_correct(args,ctx,_reg):
+        adam=ctx.get('adam')
+        if adam is None:return {'error':'adam unavailable'}
+        from amni.serve.correction_trace import CorrectionTrace
+        ct=getattr(adam,'_correction_trace',None)
+        if ct is None:ct=CorrectionTrace(adam,agent=ctx.get('agent'));adam._correction_trace=ct
+        if args.get('action')=='history':return {'history':ct.history(int(args.get('n',20)))}
+        p=args.get('prompt') or args.get('question') or '';c=args.get('correct') or args.get('correct_answer') or ''
+        if not p or not c:return {'error':'need prompt + correct'}
+        return ct.correct(p,args.get('wrong') or '',c,feedback=args.get('feedback') or '',retrain=bool(args.get('retrain',True)),steps=int(args.get('steps',240)))
+    reg.register('weight_correct',_skill_weight_correct,desc='Tracer/weight-correction cycle ("toggle a switch"): documents the wrong answer + self-diagnosed reason to the PTEX ledger, flips the instant ATEX switch (MemoryBus record + anti-pattern suppress), identifies the nonce (sem-lut cell), trains a SELECTIVE cosine-gated page at that address (base weights untouched, cos=1), re-asks to verify the flip. Actions: correct {prompt, wrong?, correct, feedback?, retrain?, steps?} | history {n?}',schema={'action':'str?','prompt':'str?','wrong':'str?','correct':'str?','feedback':'str?','retrain':'bool?','steps':'int?','n':'int?'})
     reg.register('web',_skill_web,desc="DDG search + distill via Adam's crawler. Args: {query}",schema={'query':'str'})
     reg.register('file_read',_skill_file_read,gate=_gate_path,desc=f'Read a UTF-8 text file within {scope}. Args: {{path, max_bytes?}}',schema={'path':'str','max_bytes':'int?'})
     reg.register('find',_skill_find,desc=f'Fast substring/regex search across workdir text files. Skips binary + noise dirs (.git/.venv/__pycache__/etc). Args: {{query, regex?, case_sensitive?, glob?, max_hits?, max_chars?}}',schema={'query':'str','regex':'bool?','case_sensitive':'bool?','glob':'str?','max_hits':'int?','max_chars':'int?'})
@@ -1011,9 +1721,10 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         if action=='query':return _ci.query(str(args.get('term') or args.get('query') or ''),limit=int(args.get('limit',25)))
         if action=='semantic':return _ci.semantic_query(str(args.get('q') or args.get('query') or ''),encoder=enc,k=int(args.get('k',5)))
         if action=='file':return _ci.file_info(str(args.get('path') or ''))
+        if action=='map':return _ci.repo_map(root=args.get('root'),max_files=int(args.get('max_files',400)),per_file_syms=int(args.get('per_file_syms',12)),sub=args.get('sub') or args.get('dir'),lang=args.get('lang'),encoder=enc)
         if action=='stats':return _ci.stats()
-        return {'error':f'unknown action {action!r}; valid: build|query|semantic|file|stats'}
-    reg.register('code_index',_skill_code_index,desc='Train Adam on a codebase + locate code. Walks a tree extracting per-file language/symbols/summary into a PTEX-backed map (experiences/code_map_ptex). Actions: build (root?, max_files?) | query (term — substring over paths+symbols) | semantic (q — Reffelt-cell nearest file) | file (path — its symbols) | stats. Foundation for the coding loop: locate -> edit -> verify -> iterate.',schema={'action':'str?','root':'str?','term':'str?','query':'str?','q':'str?','path':'str?','max_files':'int?','limit':'int?','k':'int?','ptex':'bool?'})
+        return {'error':f'unknown action {action!r}; valid: build|map|query|semantic|file|stats'}
+    reg.register('code_index',_skill_code_index,desc='Train Adam on a codebase + locate code. Walks a tree extracting per-file language/symbols/summary into a PTEX-backed map (experiences/code_map_ptex). Actions: map (ONE compact pointer-index of every file->top symbols+summary — CALL THIS FIRST to see the whole repo cheaply, optional sub=path-substring/lang/per_file_syms, then file_read the one file you pick) | build (root?, max_files?) | query (term — substring over paths+symbols) | semantic (q — Reffelt-cell nearest file) | file (path — its symbols) | stats. Foundation for the coding loop: map -> locate -> edit -> verify -> iterate.',schema={'action':'str?','root':'str?','term':'str?','query':'str?','q':'str?','path':'str?','sub':'str?','dir':'str?','lang':'str?','per_file_syms':'int?','max_files':'int?','limit':'int?','k':'int?','ptex':'bool?'})
     reg.register('pc_action',_skill_pc_action,desc='Safe PC operation (Tier 5b). propose-then-confirm gate: nothing touches the OS until the owner confirms a token. pc_action one of: echo|notify|open_url|open_path|launch_app|screenshot|type_text|press_key|click|run. type_text target=text to type; press_key target=key or combo e.g. "ctrl+c"; click target="x,y" or args {x,y,button,clicks}; screenshot describes the screen via LOCAL vision (never sent off-box). Actions: propose | confirm (token) | cancel (token) | pending | audit. Destructive patterns refused outright; every step audited to logs/pc_actions.jsonl. Tip: screenshot first so you can see the target before click/type.',schema={'action':'str?','pc_action':'str?','target':'str?','args':'dict?','token':'str?','question':'str?','limit':'int?'})
     reg.register('file_write',_skill_file_write,gate=_gate_path,desc=f'Write/overwrite a UTF-8 text file within {scope}. Args: {{path, content}}',schema={'path':'str','content':'str'})
     reg.register('code_edit',_skill_code_edit,gate=_gate_code_edit,desc=f'Find-and-replace edit in a file within {scope}; .py edits ast-validated. Args: {{path, find, replace, count?}}',schema={'path':'str','find':'str','replace':'str','count':'int?'})
@@ -1213,8 +1924,12 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
     except Exception as _ie:print(f'[skills] ingest skills register failed: {_ie}',flush=True)
     try:
         from amni.serve.learning_daemon import learning_daemon_skill as _ld_skill
-        reg.register('learning_daemon',_ld_skill,desc='Inspect/control Adam\'s 24/7 self-improvement daemon. Actions: stats | curiosity_tick | sleep_pass | repetition_pass | pause | resume | queue_topic <topic> | atlas_verified | atlas_debated. Args: {action, topic?, limit?}',schema={'action':'str','topic':'str?','limit':'int?'})
+        reg.register('learning_daemon',_ld_skill,desc='Inspect/control Adam\'s 24/7 self-improvement daemon AND run user-directed learning missions. Actions: stats | curiosity_tick | sleep_pass | repetition_pass | pause | resume | queue_topic <topic> | atlas_verified | atlas_debated | mission_start (topic=what to master, stop=stop condition, timeframe?) | mission_status | mission_stop | mission_resume. A mission makes Adam autonomously web-crawl to master the topic, decomposing it into subtopics and looping (going deeper each round) until the user stops it or it self-assesses the stop condition is met. Args: {action, topic?, stop?, timeframe?, limit?}',schema={'action':'str','topic':'str?','stop':'str?','stop_condition':'str?','timeframe':'str?','mission':'str?','limit':'int?'})
     except Exception as _le:print(f'[skills] learning_daemon skill register failed: {_le}',flush=True)
+    try:
+        from amni.serve.federation_store import federation_skill as _fed_skill
+        reg.register('federation',_fed_skill,desc='Federate Adam\'s learned lessons as portable PTEX learning packs (git/HuggingFace stored) and fetch them on demand. Actions: stats | list (the manifest \'page\' of available packs; remote=URL to read a peer\'s page) | export (publish a pack; source=provenance filter e.g. code-corpus, domain?, languages?, push? to git+HF) | fetch (download+merge a pack into the rapid-access sem_lut; pack_id? | url? | domain? | languages?). Local-first; HF push needs AMNI_LEARNINGS_HF_REPO+HF_TOKEN, git push needs AMNI_LEARNINGS_GIT_REMOTE. Args: {action, source?, domain?, languages?, pack_id?, url?, remote?, name?, push?, limit?}',schema={'action':'str','source':'str?','domain':'str?','languages':'list?','pack_id':'str?','id':'str?','url':'str?','remote':'str?','name':'str?','push':'bool?','limit':'int?'})
+    except Exception as _fede:print(f'[skills] federation skill register failed: {_fede}',flush=True)
     try:
         from amni.serve.kg_query import kg_query_skill as _kg_skill
         reg.register('kg_query',_kg_skill,desc='Query Adam\'s knowledge graph (SPO triples). Actions: stats | neighbors <subject> | out <subject> | in <subject> | predicate <p> | path <from> <to> [max_hops] | search <q> | add s,p,o | forget [s|p|o]. Args: {action, subject?, q?, predicate?, p?, a?, b?, from?, to?, max_hops?, s?, o?, object?, source?, confidence?, limit?, direction?}',schema={'action':'str','subject':'str?','q':'str?','predicate':'str?','p':'str?','s':'str?','o':'str?','a':'str?','b':'str?','from':'str?','to':'str?','max_hops':'int?','limit':'int?','direction':'str?','source':'str?','confidence':'float?'})

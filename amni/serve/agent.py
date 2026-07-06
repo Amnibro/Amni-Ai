@@ -433,7 +433,7 @@ class AmniAgent:
             from amni.serve.skills import image_intent as _imgi
             _ip=_imgi(msg)
             if _ip:return ('image_gen',{'prompt':_ip})
-        _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
+        _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:(?:look|looks|looking)\s+)?(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('weather'):
             _loc=re.sub(r"\b(?:right\s+now|today|tonight|tomorrow|now|later|currently|this\s+(?:morning|afternoon|evening|week|weekend))\b","",_m.group(1),flags=re.IGNORECASE).strip(' ?.,!')
             if _loc:return ('weather',{'location':_loc})
@@ -609,6 +609,7 @@ class AmniAgent:
     def _trading_turn(self,message,conv,brief,t0):
         from amni.serve.skills import options_command as _optcmd,chart_command as _chcmd,_extract_ticker as _extk,_fmt_options as _optfmt,_CHART_STOP as _stop,ticker_intent as _tick,_TICKER_XSTOP as _xstop
         sid=conv.session_id;persona=self.personas.for_session(sid) if self.use_persona else _PERSONA_PRESETS['neutral']
+        if re.search(r"(?i)\b(weather|forecast|temperature|humidity|raining|snowing|umbrella|sunny|cloudy|degrees|celsius|fahrenheit)\b",message) and not re.search(r"(?i)[\$]|\b(option|opt|call|put|strike|spread|chart|ticker|stock|share|azno|p-?term|reversal|calls?|puts?)\b",message):return None
         _oc=_optcmd(message);_ch=_chcmd(message);active=self._active_sym.get(sid)
         _tr=re.search(r"(?i)\b(buy|sell|bull|bear|bullish|bearish|calls?|puts?|option|opt|opts|signal|reversal|p-?term|target|entry|exit|position|long|longer|short|trade|trading|strike|expiry|spread|hit-?rate|swing|leaps?|scalp|intraday|weekly|chart|plot|graph|ticker|stocks?|shares?|azno|invest|market|price\s+action|overview)\b",message)
         _dollar=re.search(r"\$([A-Za-z]{1,5})\b",message)
