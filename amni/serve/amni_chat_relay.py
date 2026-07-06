@@ -6,6 +6,7 @@ import threading,os
 from amni.serve import amni_chat_bridge as bridge
 from amni.serve.amni_chat_client import Identity,AmniChatClient,run_relay
 _STATE={'thread':None,'stop':False,'client':None,'ed':None,'x':None,'err':None,'connected':False,'server':None}
+_IGNORE={e.strip().lower() for e in (os.environ.get('AMNI_CHAT_IGNORE_EDS') or '').split(',') if e.strip()}
 def _default_id_path():
     d=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),'json');os.makedirs(d,exist_ok=True);return os.path.join(d,'amni_chat_identity.json')
 def status():
@@ -13,16 +14,22 @@ def status():
 def profile(identity_path=None):
     idn=Identity.load_or_create(identity_path or _default_id_path());return {'ed':idn.ed_hex,'x':idn.x_hex,'link':f'amni://contact?p=adam&ed={idn.ed_hex}&x={idn.x_hex}&fp=&np='}
 def _reply_for(agent,item):
+    if (item.get('from_ed') or '').lower() in _IGNORE:return None
+    raw=item.get('raw') or ''
+    if raw.startswith('\x04') and _STATE['client'] is not None:
+        out=bridge.handle_image_frame(raw,_STATE['client'],from_user=item.get('from_ed','peer'),agent=agent)
+        return out.get('reply') if isinstance(out,dict) and out.get('reply') else None
     out=bridge.handle_message(item.get('text') or '',from_user=item.get('from_ed','peer'),conversation_id=item.get('from_ed',''),agent=agent)
-    return None if (not isinstance(out,dict) or out.get('error')) else out.get('reply')
+    if not isinstance(out,dict) or out.get('error'):return None
+    return {'text':out.get('reply') or '','images':out.get('images') or []} if out.get('images') else out.get('reply')
 def start(agent,server_url,identity_path=None,push_token='',interval=3.0):
     if _STATE['thread'] and _STATE['thread'].is_alive():return status()
-    idn=Identity.load_or_create(identity_path or _default_id_path());_STATE.update({'ed':idn.ed_hex,'x':idn.x_hex,'server':server_url,'stop':False,'err':None})
-    c=AmniChatClient(server_url,idn);_STATE['client']=c
+    idp=identity_path or _default_id_path();idn=Identity.load_or_create(idp);_STATE.update({'ed':idn.ed_hex,'x':idn.x_hex,'server':server_url,'stop':False,'err':None})
+    c=AmniChatClient(server_url,idn);_STATE['client']=c;seen=os.path.join(os.path.dirname(idp),'amni_chat_seen.txt')
     def _run():
         try:c.register(platform='amni-ai',push_token=push_token);_STATE['connected']=True
         except Exception as e:_STATE['err']=f'register failed: {e}';_STATE['connected']=False
-        run_relay(c,lambda it:_reply_for(agent,it),interval=interval,should_stop=lambda:_STATE['stop'],on_error=lambda e:_STATE.__setitem__('err',str(e)))
+        run_relay(c,lambda it:_reply_for(agent,it),interval=interval,should_stop=lambda:_STATE['stop'],on_error=lambda e:_STATE.__setitem__('err',str(e)),seen_path=seen,workers=int(os.environ.get('AMNI_CHAT_WORKERS','2')),on_ack=lambda it,n:f'⏳ Rao! Got it — {n} request{"s" if n>1 else ""} ahead of yours, hang tight!')
     t=threading.Thread(target=_run,daemon=True,name='amni-chat-relay');t.start();_STATE['thread']=t;return status()
 def stop():
     _STATE['stop']=True;return {'stopping':True}
@@ -37,7 +44,7 @@ def mount(app,agent):
         body={}
         try:body=await req.json()
         except Exception:pass
-        url=body.get('server_url') or os.environ.get('AMNI_CHAT_SERVER') or 'https://chat.example.com'
+        url=body.get('server_url') or os.environ.get('AMNI_CHAT_SERVER') or 'https://chat.amni-scient.com'
         return start(agent,url,push_token=body.get('push_token',''),interval=float(body.get('interval',3.0)))
     @app.post('/bridge/amni-chat/relay/stop')
     async def relay_stop():return stop()

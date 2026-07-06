@@ -18,6 +18,8 @@ _TIME_RE=re.compile(r"\b(?:what(?:'s|\s+is)?\s+the\s+(?:time|date|day(?:\s+of\s+
 _WEB_RE=re.compile(r"\b(?:(?:use\s+|please\s+)?(?:web|search|google)(?:\s+skill)?[\s:]+|google|find\s+online|news|latest|search\s+(?:online|the\s+web|google)|look\s+up|on\s+the\s+web|what'?s\s+(?:on|new\s+in)\s+the\s+web|what'?s\s+(?:new|happening)\s+(?:in|on|with|around)|current\s+events|find\s+(?:me\s+)?(?:something|info|articles?)|tell\s+me\s+about\s+\w+\s+(?:news|today|currently))",re.IGNORECASE)
 _MEM_RE=re.compile(r'\b(?:search\s+(?:my\s+|your\s+|adam\'?s?\s+|the\s+)?(?:memory|lessons|knowledge|bank|lesson\s+bank)|recall|what\s+do\s+(?:you|adam)\s+know\s+about|find\s+(?:in\s+)?(?:my\s+|your\s+|the\s+)?(?:memory|lessons|bank|notes|knowledge)|remember\s+about|look(?:up|\s+up)\s+(?:in\s+)?(?:my\s+|your\s+|the\s+)?(?:memory|bank|lessons|knowledge)|check\s+(?:your\s+|my\s+|adam\'?s?\s+)?(?:memory|lessons|notes|bank|knowledge))\s*(?:for|about)?\s*[:?]?\s*(.*)?$',re.IGNORECASE)
 _FILE_READ_RE=re.compile(r'\b(?:read|open|show|cat|display)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
+_PORTF_RE=re.compile(r'(?i)\b(holdings?|portfolio|positions?|balance|account|equity|p\s*&\s*l|pnl)\b')
+_BARE_TICK_RE=re.compile(r'(\$?)([A-Za-z]{2,5})\s*[?.!]*$')
 _DIR_READ_RE=re.compile(r"\b(?:read|list|show|open|browse|explore|scan\s+through|look\s+(?:in|at|through)|ls|dir|what(?:'s|\s+is)?\s+in|what\s+kind\s+of\s+files?\s+(?:are\s+)?in)\s+(?:me\s+)?(?:the\s+)?(?:contents?\s+of\s+)?(?:directory|folder|dir|path)\s+[\'\"`]?(.+?)[\'\"`]?(?:\s+and\s+\b.*)?\s*$",re.IGNORECASE)
 _FILE_WRITE_RE=re.compile(r'\b(?:write|save|create)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
 _SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?(?!\s*(?:the|it|this|that|these|those|a|an|my|your|our|them|again|once|now|tests?|files?|scripts?|code|programs?|asserts?|everything|all)\b)([^`\n]+)`?',re.IGNORECASE)
@@ -337,7 +339,7 @@ class AmniAgent:
         except Exception as e:print(f'[AmniAgent] TaskRegistry init failed (long-task UI disabled): {e}',flush=True);self.task_registry=None
         try:
             from amni.serve.vision import VisionService
-            self.vision=VisionService()
+            self.vision=VisionService(device=os.environ.get('AMNI_VISION_DEVICE') or 'cpu')
         except Exception as e:print(f'[AmniAgent] VisionService init failed (image input disabled): {e}',flush=True);self.vision=None
         try:
             from amni.storage.file_watcher import FileWatcher
@@ -427,6 +429,10 @@ class AmniAgent:
             if _m:
                 _q=_m.group(1).strip(' ?.,!')
                 return ('web',{'query':_q or msg})
+        if self.skills.has('image_gen'):
+            from amni.serve.skills import image_intent as _imgi
+            _ip=_imgi(msg)
+            if _ip:return ('image_gen',{'prompt':_ip})
         _m=re.search(r"\b(?:what(?:'s|\s+is)?\s+(?:the\s+)?)?weather\s+(?:like\s+)?(?:in|for|at|near)\s+([\w\s\-,.]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('weather'):
             _loc=re.sub(r"\b(?:right\s+now|today|tonight|tomorrow|now|later|currently|this\s+(?:morning|afternoon|evening|week|weekend))\b","",_m.group(1),flags=re.IGNORECASE).strip(' ?.,!')
@@ -443,6 +449,10 @@ class AmniAgent:
         if _m and self.skills.has('news'):return ('news',{'query':(_m.group(1) or _m.group(2) or '').strip(' ?.,!')})
         _m=re.search(r"\b(?:stock|share|quote)\s+(?:price\s+)?(?:for|of)?\s*\$?([A-Z]{1,5}(?:[,\s]+[A-Z]{1,5}){0,5})\b",msg,re.IGNORECASE)
         if _m and self.skills.has('stock'):return ('stock',{'symbols':re.sub(r'\s+',',',_m.group(1).upper())})
+        if self.skills.has('stock'):
+            from amni.serve.skills import ticker_intent as _tick
+            _ti=_tick(msg)
+            if _ti:return ('stock',{'symbols':_ti[0]})
         if re.search(r"\b(?:disk|drive)\s+(?:usage|space|free)\b|\bhow\s+much\s+(?:disk|drive|storage)\s+(?:space|free)\b",msg,re.IGNORECASE) and self.skills.has('disk_widget'):return ('disk_widget',{})
         if re.search(r"\bgit\s+status\b|\b(?:current\s+)?(?:git\s+)?branch\b|\bunstaged\s+(?:files|changes)\b",msg,re.IGNORECASE) and self.skills.has('git_status'):return ('git_status',{})
         if self.skills.has('coach'):
@@ -597,23 +607,33 @@ class AmniAgent:
             return (o.get('corrected_answer') or '').strip() if o.get('is_correction') and (o.get('corrected_answer') or '').strip() else None
         except Exception:return None
     def _trading_turn(self,message,conv,brief,t0):
-        from amni.serve.skills import options_command as _optcmd,chart_command as _chcmd,_extract_ticker as _extk,_fmt_options as _optfmt,_CHART_STOP as _stop
+        from amni.serve.skills import options_command as _optcmd,chart_command as _chcmd,_extract_ticker as _extk,_fmt_options as _optfmt,_CHART_STOP as _stop,ticker_intent as _tick,_TICKER_XSTOP as _xstop
         sid=conv.session_id;persona=self.personas.for_session(sid) if self.use_persona else _PERSONA_PRESETS['neutral']
         _oc=_optcmd(message);_ch=_chcmd(message);active=self._active_sym.get(sid)
         _tr=re.search(r"(?i)\b(buy|sell|bull|bear|bullish|bearish|calls?|puts?|option|opt|opts|signal|reversal|p-?term|target|entry|exit|position|long|longer|short|trade|trading|strike|expiry|spread|hit-?rate|swing|leaps?|scalp|intraday|weekly|chart|plot|graph|ticker|stocks?|shares?|azno|invest|market|price\s+action|overview)\b",message)
         _dollar=re.search(r"\$([A-Za-z]{1,5})\b",message)
-        _follow=bool(active) and bool(re.search(r"(?i)\b(it|this|that|now|look|looking|think|thoughts?|hows?|what\s+about|still|update|moving|move|worth|enter|good|bad)\b",message))
-        if not (_oc or _ch or _tr or _dollar or _follow):return None
-        want_chart=bool(_ch) or bool(re.search(r"(?i)\b(chart|plot|graph|show\s+me|pull\s+up|send)\b",message))
+        if _PORTF_RE.search(message) and not _dollar and not re.search(r'\b[A-Z]{2,5}\b',message):return None
+        _follow=bool(active) and bool(re.search(r"(?i)\b(it|this|that|now|look|looking|think|thoughts?|how'?s\s+(?:it|this|that)|what\s+about|still|update|moving|move|worth|enter|good|bad)\b",message))
+        _bw=_BARE_TICK_RE.fullmatch(message.strip())
+        _bare=_bw.group(2).upper() if _bw and (_bw.group(1) or _bw.group(2).isupper() or active) and _bw.group(2).upper() not in _xstop and _bw.group(2).lower() not in _stop else None
+        _ti=_tick(message)
+        if not (_oc or _ch or _tr or _dollar or _follow or _ti or _bare):return None
+        want_chart=bool(_ch) or bool(_ti and re.search(r"(?i)\b\d+\s?(?:m|min|h|hr|hour|d|day|w|wk)\b",message)) or bool(re.search(r"(?i)\b(chart|plot|graph|show\s+me|pull\s+up|send)\b",message))
         _overview=bool(re.search(r"(?i)\b(overview|all\s+(?:the\s+)?(?:time\s?frames?|tfs?|horizons?)|multi[\s-]?(?:tf|time|frame)|across\s+(?:time|frames?|horizons?)|short\s+and\s+long|full\s+picture|every\s+time\s?frame|big\s+picture)\b",message))
-        _et=_extk(message);_up=next((w for w in re.findall(r"\b([A-Z]{2,5})\b",message) if w.lower() not in _stop),None);tk=None
+        _et=_extk(message);_et=_et if (_et and _et not in _xstop) else None;_up=next((w for w in re.findall(r"\b([A-Z]{2,5})\b",message) if w.lower() not in _stop and w not in _xstop),None);tk=None
         if _dollar:tk=_dollar.group(1).upper()
+        elif _bare:tk=_bare
         elif _up:tk=_up
         elif _oc:tk=_oc[0]
         elif _ch and _ch[0]:tk=_ch[0]
         elif _tr and _et:tk=_et
+        elif _ti:tk=_ti[0]
         elif active:tk=active[0]
         elif _et:tk=_et
+        if not tk and re.search(r"(?i)\b(meant|mean|correction|actually|ticker|symbol|stocks?|shares?|company)\b",message):
+            for _hm in reversed([_t.get('content') or '' for _t in conv.turns[:-1] if _t.get('role')=='user'][-4:]):
+                _hti=_tick(_hm);_hc=_hti[0] if _hti else next((w for w in re.findall(r'\b([A-Z]{2,5})\b',_hm) if w not in _xstop and w.lower() not in _stop),None)
+                if _hc:tk=_hc;break
         if not tk:
             _ask=tone_atlas.wrap("Which ticker are you eyeing? Send me a symbol like TSLA or NVDA and I'll pull the Azno read.",'introspect',persona,seed=message)
             conv.append('assistant',_ask,{'tier':'tier0_azno_ask','persona':persona.name})
@@ -703,6 +723,7 @@ class AmniAgent:
             except Exception as _te:print(f'[AmniAgent] trading_turn failed: {_te}',flush=True)
         skill_calls:List[Dict[str,Any]]=[]
         skill_answer:Optional[str]=None
+        skill_images:List[str]=[]
         used_tier='tier0_skill' if use_skills else None
         if use_skills:
             det=None
@@ -718,6 +739,7 @@ class AmniAgent:
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)
+                    skill_images=list((r.output or {}).get('images') or []) if isinstance(r.output,dict) else []
                     used_tier=f'tier0_skill_{name}'
                 else:
                     try:
@@ -736,7 +758,9 @@ class AmniAgent:
             cat=tone_atlas.classify_intent(message,skill_used=(skill_calls[0]['skill'] if skill_calls else None))
             wrapped=tone_atlas.wrap(skill_answer,cat,persona,seed=message)
             conv.append('assistant',wrapped,{'tier':used_tier,'skill_calls':skill_calls,'tokens':0,'persona':persona.name,'category':cat})
-            return {'answer':wrapped,'tier':used_tier,'tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':cat}
+            _out={'answer':wrapped,'tier':used_tier,'tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':cat}
+            if skill_images:_out['images']=skill_images
+            return _out
         if _INTROSPECT_RE.search(message):
             _bus=getattr(self,'memory_bus',None);_cv=None
             if _bus is not None:
@@ -903,6 +927,7 @@ class AmniAgent:
             except Exception as e:print(f'[AmniAgent] atlas record failed: {e}',flush=True)
         return {'answer':wrapped,'tier':tier,'tokens':tokens,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':category,'is_private':is_private}
     def _format_skill_output(self,name:str,out:Any)->str:
+        if name=='image_gen':return f"🎨 I couldn't paint that one — {out.get('error')}" if (not isinstance(out,dict) or out.get('error') or not out.get('images')) else (out.get('summary') or f'🎨 generated an image for: {out.get("prompt","your prompt")}')+' — sending it your way!'
         if name=='time':return f'currently {out.get("iso")} local time'
         if name=='calc':return f'{out.get("value")}' if out.get('value') is not None else f'(calc error: {out.get("error")})'
         if name=='mem':

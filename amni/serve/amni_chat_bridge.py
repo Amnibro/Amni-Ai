@@ -5,11 +5,12 @@ Two hard safety rails for an EXTERNAL-facing surface:
     owner's name/location/contact to a chat peer (the leak-liability rule, applied to replies not just searches).
  2. Per-peer rate limit + length cap + an enable flag — "lightweight" interaction, not an open firehose.
 Per-peer conversation continuity uses session id `amnichat:<conversation_id|from_user>`."""
-import time,threading
+import time,threading,re,os
 from collections import defaultdict,deque
 from typing import Dict,Any,Optional,Deque
 _LOCK=threading.Lock()
 _HITS:Dict[str,Deque[float]]=defaultdict(deque)
+_LAST_IMG:Dict[str,Dict[str,Any]]={}
 _STATE={'enabled':True,'max_per_min':12,'max_in_chars':2000,'max_reply_chars':1200}
 def set_enabled(on:bool)->Dict[str,Any]:
     _STATE['enabled']=bool(on);return {'enabled':_STATE['enabled']}
@@ -26,6 +27,26 @@ def _scrub_owner_pii(text:str,agent)->str:
         from amni.serve.pii_egress import scrub
         return scrub(text,agent=agent,source='amni_chat_out')
     except Exception:return text
+def handle_image_frame(frame:str,client,from_user:str='peer',agent=None)->Dict[str,Any]:
+    if not _STATE['enabled']:return {'error':'amni-chat bridge disabled'}
+    peer=(from_user or 'peer')[:80]
+    if not _rate_ok(peer):return {'error':'rate limited'}
+    try:att=client.fetch_attachment(frame)
+    except Exception:att=None
+    if not att or not str(att.get('mime','')).startswith('image/'):return {'error':'not an image'}
+    if len(att['data'])>10*1024*1024:return {'error':'image too large'}
+    vision=getattr(agent,'vision',None)
+    if vision is None or not vision.is_available():return {'reply':'📷 Got your image! My vision module is offline right now though — ask Anthony to enable it.','from':'adam','conversation_id':peer,'tier':'skill:vision_offline'}
+    d=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'json','charts','inbox');os.makedirs(d,exist_ok=True)
+    ext={'image/png':'png','image/jpeg':'jpg','image/jpg':'jpg','image/webp':'webp','image/gif':'gif'}.get(str(att.get('mime','')).lower(),'img')
+    p=os.path.join(d,f"{peer[:8]}_{int(time.time())}.{ext}")
+    open(p,'wb').write(att['data'])
+    try:r=vision.describe(att['data'])
+    except Exception as e:r={'error':str(e)[:150]}
+    if not isinstance(r,dict) or r.get('error'):return {'reply':f"📷 Got your image but couldn't analyze it — {(r or {}).get('error','vision error')}",'from':'adam','conversation_id':peer,'tier':'skill:vision_error'}
+    _LAST_IMG[peer]={'path':p,'ts':time.time()}
+    cap=str(r.get('caption') or '').strip() or 'something I could not quite make out'
+    return {'reply':f"📷 I see {cap}. Ask me about it — e.g. \"what color is it in the photo?\"",'from':'adam','conversation_id':peer,'tier':'skill:vision_caption'}
 def handle_message(text:str,from_user:str='peer',conversation_id:str='',agent=None)->Dict[str,Any]:
     if not _STATE['enabled']:return {'error':'amni-chat bridge disabled','enabled':False}
     text=(text or '').strip()
@@ -52,6 +73,14 @@ def handle_message(text:str,from_user:str='peer',conversation_id:str='',agent=No
         if agent is not None and hasattr(agent,'_active_sym'):agent._active_sym['amnichat:'+peer]=(_oc[0],_oc[1])
         return {'reply':_optfmt(_optsk({'ticker':_oc[0],'tf':_oc[1]},{},None)),'from':'azno','conversation_id':peer,'tier':'skill:options'}
     if agent is None:return {'error':'agent unavailable'}
+    _li=_LAST_IMG.get(peer)
+    if _li and time.time()-_li['ts']<600 and re.search(r'(?i)\b(photo|image|pic|picture|screenshot|img)\b',text):
+        _v=getattr(agent,'vision',None)
+        if _v is not None and _v.is_available():
+            try:
+                _vr=_v.caption_with_question(open(_li['path'],'rb').read(),text)
+                if isinstance(_vr,dict) and _vr.get('answer'):return {'reply':f"📷 {str(_vr['answer']).strip()}",'from':'adam','conversation_id':peer,'tier':'skill:vision_vqa'}
+            except Exception:pass
     sid='amnichat:'+peer
     try:
         r=agent.chat(text,session_id=sid,brief=True)
@@ -59,7 +88,7 @@ def handle_message(text:str,from_user:str='peer',conversation_id:str='',agent=No
     reply=(r.get('answer') or '').strip() if isinstance(r,dict) else str(r)
     reply=_scrub_owner_pii(reply,agent)
     if len(reply)>int(_STATE['max_reply_chars']):reply=reply[:int(_STATE['max_reply_chars'])].rstrip()+'…'
-    imgs=[]
+    imgs=list((r.get('images') or [])[:4]) if isinstance(r,dict) else []
     try:
         from amni.serve.widgets import render_weather_card as _wxcard
         for _sc in ((r.get('skill_calls') or []) if isinstance(r,dict) else []):

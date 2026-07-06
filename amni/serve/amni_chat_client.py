@@ -80,14 +80,16 @@ def parse_profile_link(raw):
     return {"principal": (p.get("p") or [""])[0], "ed": ed, "x": x, "fp": (p.get("fp") or [""])[0], "nostr": (p.get("np") or [None])[0]}
 def clean_wire_body(s):
     if not s: return s
-    ctrl=set(range(32))-{9,10}
-    i=0
-    while i<len(s) and ord(s[i]) in ctrl: i+=1
-    s=s[i:]
-    if s.startswith('R:'):
-        bar=s.find('|'); nl=s.find(chr(10))
-        if 0<=bar<nl: return s[nl+1:]
-    return s
+    if s[0]=='\x1a':
+        sep=s.find('\x1c',1);s=s[sep+1:] if sep>=0 else s
+    if not s: return None
+    c=s[0]
+    if c=='\x01':
+        rest=s[1:]
+        if not rest.startswith('R:'): return s
+        content=rest[2:];nl=content.find('\n')
+        return content if nl<0 else content[nl+1:]
+    return None if ord(c)<32 and c!='\n' else s
 
 class AmniChatClient:
     def __init__(self, server_url, identity, pepper=None, timeout=20):
@@ -117,11 +119,41 @@ class AmniChatClient:
     def send_text(self, to_ed_hex, to_x_hex, text):
         nonce, ct = seal(self.id.x_priv, bytes.fromhex(to_x_hex), text.encode("utf-8"))
         return self._post_json("/inbox/put", {"to": to_ed_hex.lower(), "from": self.id.ed_hex, "nonce": nonce.hex(), "ciphertext": ct.hex()})
+    def blob_put(self, blob_id, enc):
+        url = self.base + "/blob/put?id=" + blob_id
+        if self._req: return self._req.post(url, data=enc, headers={"Content-Type": "application/octet-stream"}, timeout=self.timeout).status_code < 400
+        r = urllib.request.Request(url, data=enc, headers={"Content-Type": "application/octet-stream"}, method="POST")
+        with urllib.request.urlopen(r, timeout=self.timeout) as resp: return getattr(resp, "status", 200) < 400
+    def blob_get(self, blob_id):
+        url = self.base + "/blob/get?id=" + blob_id
+        if self._req:
+            r = self._req.get(url, timeout=self.timeout)
+            return r.content if r.status_code < 400 else None
+        with urllib.request.urlopen(url, timeout=self.timeout) as resp: return resp.read()
+    def fetch_attachment(self, frame):
+        if not frame or frame[0] != "\x04": return None
+        parts = frame[1:].split(":", 4)
+        if len(parts) < 5: return None
+        blob_id, key_hex, nonce_hex, mime, name = parts
+        if not re.fullmatch(r"[0-9a-fA-F-_]{2,64}", blob_id): return None
+        enc = self.blob_get(blob_id)
+        if not enc: return None
+        try: data = _adec(bytes.fromhex(key_hex), bytes.fromhex(nonce_hex), enc)
+        except Exception: return None
+        return {"data": data, "mime": mime, "name": name}
+    def send_attachment(self, to_ed_hex, to_x_hex, data, mime="image/png", name="chart.png"):
+        blob_key = secrets.token_bytes(32); blob_nonce = secrets.token_bytes(12)
+        enc = _aenc(blob_key, blob_nonce, data)
+        blob_id = secrets.token_bytes(16).hex()
+        if not self.blob_put(blob_id, enc): return None
+        wire = "\x04" + blob_id + ":" + blob_key.hex() + ":" + blob_nonce.hex() + ":" + mime + ":" + name
+        nonce, ct = seal(self.id.x_priv, bytes.fromhex(to_x_hex), wire.encode("utf-8"))
+        return self._post_json("/inbox/put", {"to": to_ed_hex.lower(), "from": self.id.ed_hex, "nonce": nonce.hex(), "ciphertext": ct.hex()})
     def send_to_principal(self, principal, text):
         d = self.lookup_by_principal(principal); ed = d.get("ed25519_pub"); x = d.get("x25519_pub")
         if not ed or not x: raise LookupError("no device for principal")
         return self.send_text(ed, x, text)
-    def drain(self):
+    def drain(self,verbose=False):
         out = []
         for it in self._get_json("/inbox/drain?pubkey=" + self.id.ed_hex).get("items", []):
             from_ed = it.get("from", ""); from_x = it.get("from_x")
@@ -131,16 +163,64 @@ class AmniChatClient:
             if from_x:
                 try: text = unseal(self.id.x_priv, bytes.fromhex(from_x), bytes.fromhex(it["nonce"]), bytes.fromhex(it["ciphertext"])).decode("utf-8", "replace")
                 except Exception: text = None
-            out.append({"id": it.get("id"), "from_ed": from_ed, "from_x": from_x, "ts_ms": it.get("ts_ms"), "raw": text, "text": clean_wire_body(text) if text is not None else None})
+            item={"id": it.get("id"), "from_ed": from_ed, "from_x": from_x, "ts_ms": it.get("ts_ms"), "raw": text, "text": clean_wire_body(text) if text is not None else None}
+            if verbose:print("[amni-chat] drained item from",from_ed,"len",len(text or "") if text else 0)
+            out.append(item)
         return out
-def run_relay(client, on_message, interval=3.0, should_stop=None, on_error=None):
-    import time
+def run_relay(client, on_message, interval=3.0, should_stop=None, on_error=None, verbose=False, seen_path=None, workers=0, on_ack=None):
+    import time,hashlib
+    from collections import deque
+    _seen=set();_seen_q=deque()
+    if seen_path and os.path.exists(seen_path):
+        try:
+            _ids=[l.strip() for l in open(seen_path,encoding='utf-8') if l.strip()][-4000:]
+            _seen=set(_ids);_seen_q=deque(_ids)
+            open(seen_path,'w',encoding='utf-8').write('\n'.join(_ids)+'\n')
+        except Exception:pass
+    def _process(it):
+        reply=on_message(it)
+        if not reply:return
+        text,images=(reply,[]) if isinstance(reply,str) else ((reply.get("text") or reply.get("reply") or ""),(reply.get("images") or []))
+        if text:client.send_text(it["from_ed"],it["from_x"],text)
+        for p in images:
+            try:
+                with open(p,"rb") as _f:data=_f.read()
+                nm=os.path.basename(p);mime="image/png" if nm.lower().endswith(".png") else "application/octet-stream"
+                client.send_attachment(it["from_ed"],it["from_x"],data,mime,nm)
+            except Exception as _ie:(on_error or (lambda _e:None))(_ie)
+    wq=None;pending=[0]
+    if workers and workers>0:
+        import threading,queue as _que
+        from collections import defaultdict
+        wq=_que.Queue();plocks=defaultdict(threading.Lock)
+        def _worker():
+            while True:
+                it=wq.get()
+                try:
+                    with plocks[it["from_ed"]]:_process(it)
+                except Exception as e:(on_error or (lambda _e:None))(e)
+                finally:pending[0]-=1;wq.task_done()
+        for _ in range(int(workers)):threading.Thread(target=_worker,daemon=True,name='amni-chat-worker').start()
     while not (should_stop and should_stop()):
         try:
-            for it in client.drain():
-                if it.get("text") is None or not it.get("from_x"): continue
-                reply = on_message(it)
-                if reply: client.send_text(it["from_ed"], it["from_x"], reply)
+            for it in client.drain(verbose=verbose):
+                if (it.get("text") is None and not str(it.get("raw") or "").startswith("\x04")) or not it.get("from_x"): continue
+                _mid=it.get("id") or hashlib.sha1((str(it.get("from_ed",""))+"|"+str(it.get("ts_ms",""))+"|"+str(it.get("text",""))).encode("utf-8","replace")).hexdigest()
+                if _mid in _seen: continue
+                _seen.add(_mid); _seen_q.append(_mid)
+                if len(_seen_q)>4000: _seen.discard(_seen_q.popleft())
+                if seen_path:
+                    try:open(seen_path,'a',encoding='utf-8').write(_mid+'\n')
+                    except Exception:pass
+                if wq is None:
+                    _process(it)
+                else:
+                    ahead=pending[0];pending[0]+=1;wq.put(it)
+                    if ahead>0 and on_ack:
+                        try:
+                            _am=on_ack(it,ahead)
+                            if _am:client.send_text(it["from_ed"],it["from_x"],_am)
+                        except Exception:pass
         except Exception as e:
             (on_error or (lambda _e: None))(e)
         time.sleep(interval)
@@ -153,9 +233,18 @@ def _smoke():
     assert back == msg, "round-trip mismatch"
     assert _x_shared(a.x_priv, b.x_pub) == _x_shared(b.x_priv, a.x_pub), "ECDH asymmetry"
     assert _hkdf_sha256(b"test", 32).hex() == hmac.new(hmac.new(_HKDF_SALT, b"test", hashlib.sha256).digest(), INFO + b"\x01", hashlib.sha256).digest().hex(), "hkdf"
-    pl = parse_profile_link("Add me https://chat.example.com/add?p=%2B15551234567&ed=" + "ab" * 32 + "&x=" + "cd" * 32 + "&fp=x&np=" + "ef" * 32)
+    pl = parse_profile_link("Add me https://chat.amni-scient.com/add?p=%2B15551234567&ed=" + "ab" * 32 + "&x=" + "cd" * 32 + "&fp=x&np=" + "ef" * 32)
     assert pl and pl["ed"] == "ab" * 32 and pl["x"] == "cd" * 32, "profile link parse"
-    assert clean_wire_body("R:abc|quoted"+chr(10)+"hello there") == "hello there", "reply unwrap"
+    assert clean_wire_body("\x01R:abc|quoted\nhello there") == "hello there", "reply unwrap"
+    assert clean_wire_body("\x01R:abc|quoted") == "abc|quoted", "reply no-body"
+    assert clean_wire_body("\x04blob:key:nonce:image/png:c.png") is None, "attachment frame"
+    assert clean_wire_body("\tmsgid123") is None, "ack frame"
+    assert clean_wire_body("\x02mid\x01\U0001F44D") is None, "reaction frame"
+    assert clean_wire_body("\x081719944243123") is None, "read receipt"
+    assert clean_wire_body("\x18mid\x1fnew body") is None, "edit frame"
+    assert clean_wire_body("\x1aAnthony\x1chello") == "hello", "name unwrap"
+    assert clean_wire_body("\x1aAzno\x1c\x04b:k:n:m:f") is None, "wrapped attachment"
+    assert clean_wire_body("PLUG 15m") == "PLUG 15m", "plain body"
     print("OK envelope round-trip, ECDH symmetry, HKDF, profile-link, wire-clean all pass")
 if __name__ == "__main__":
     _smoke()
