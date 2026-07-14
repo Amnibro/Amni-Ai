@@ -1918,6 +1918,7 @@ const _SLASH_COMMANDS=[
   {cmd:'perms',hint:'location/mic/camera/notification permissions'},
   {cmd:'pclog',hint:'PC action audit log (proposed/ran/refused)'},
   {cmd:'se',hint:'software-engineer dashboard (code map + attempts)'},
+  {cmd:'delve',hint:'multi-AI roundtable — /delve <q>, @agent <q>, debate <topic>, stop'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
 function _slashAcRender(){
@@ -1940,7 +1941,7 @@ function _slashAcUpdate(){
   _slashAcRender();
 }
 function _slashAcAccept(cmd){
-  const needsArg=(cmd==='persona'||cmd==='find'||cmd==='pace'||cmd==='search');
+  const needsArg=(cmd==='persona'||cmd==='find'||cmd==='pace'||cmd==='search'||cmd==='delve');
   input.value='/'+cmd+(needsArg?' ':'');
   _slashAcOpen=false;_slashAcRender();
   input.focus();try{input.setSelectionRange(input.value.length,input.value.length)}catch{}
@@ -2031,7 +2032,42 @@ function _handleSlashCommand(text){
   if(cmd==='perms'){togglePermsPanel(true);return true}
   if(cmd==='pclog'){togglePcLogPanel(true);return true}
   if(cmd==='se'){toggleSePanel(true);return true}
+  if(cmd==='delve'){
+    if(!arg){try{window.open('/delve','_blank')}catch(_){}bubble('bot','Opened the **Delve roundtable**. Inline: `/delve <question>` · `/delve @grok <q>` · `/delve debate <topic>` · `/delve stop`.','<span class="badge">cmd</span>');return true}
+    if(arg.toLowerCase()==='stop'){fetch('/api/delve/estop',{method:'POST'}).catch(()=>{});if(_delveES){try{_delveES.close()}catch(_){}_delveES=null}_delveUnthink();bubble('bot','Delve **E-STOP** sent.','<span class="badge">delve</span>');return true}
+    _delveRun(arg);return true;
+  }
   return false;
+}
+let _delveES=null,_delveThink=null;
+function _delveUnthink(){if(_delveThink){try{_delveThink.closest('.msg').remove()}catch(_){}_delveThink=null}}
+function _delveThinking(t){
+  if(!_delveThink){const m=document.createElement('div');m.className='msg bot';const b=document.createElement('div');b.className='bubble thinking';m.appendChild(b);log.appendChild(m);_delveThink=b}
+  _delveThink.textContent=t;log.scrollTop=log.scrollHeight;
+}
+function _delveRun(arg){
+  let target='',text=arg,rounds=0;
+  const tm=arg.match(/^@(\w+)\s+(.*)$/s);
+  const dm=arg.match(/^debate(?:\s+(\d+))?\s+(.*)$/is);
+  tm?(target=tm[1].toLowerCase(),text=tm[2]):dm?(target='debate',rounds=parseInt(dm[1]||'3',10),text=dm[2]):null;
+  bubble('user','/delve '+arg,'<span class="badge">delve</span>');
+  if(_delveES){try{_delveES.close()}catch(_){}_delveES=null}
+  let tok='';try{tok=localStorage.getItem('amni_token')||''}catch(_){}
+  const es=new EventSource('/api/delve/stream'+(tok?('?token='+encodeURIComponent(tok)):''));_delveES=es;
+  _delveThinking('delve roundtable engaging…');
+  es.onmessage=e=>{
+    let d={};try{d=JSON.parse(e.data)}catch(_){return}
+    d.type==='thinking'?_delveThinking((d.who||'delve')+' thinking…'):null;
+    d.type==='status'&&d.text?_delveThinking(String(d.text)):null;
+    d.type==='msg'?(_delveUnthink(),bubble('bot',String(d.text||''),'<span class="badge">delve · '+esc(d.who||'agent')+'</span>')):null;
+    d.type==='queued'?(_delveUnthink(),bubble('bot','_Room busy — message queued as interjection._','<span class="badge">delve</span>')):null;
+    d.type==='idle'?(_delveUnthink(),(()=>{try{es.close()}catch(_){}_delveES=null})()):null;
+  };
+  es.onerror=()=>{_delveUnthink();try{es.close()}catch(_){}_delveES===es?_delveES=null:null};
+  const body={text:text};target?body.target=target:null;rounds?body.rounds=rounds:null;
+  fetch('/api/delve/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>r.ok?null:r.json().then(j=>{throw new Error((j&&j.error)||('HTTP '+r.status))}).catch(x=>{throw (x instanceof Error?x:new Error('HTTP '+r.status))}))
+    .catch(err=>{_delveUnthink();try{es.close()}catch(_){}_delveES=null;bubble('bot','Delve send failed: '+esc(err.message)+' — open `/delve` (no args) to check the room.','<span class="badge">delve</span>')});
 }
 let _seOpen=false;
 function toggleSePanel(force){
@@ -2417,7 +2453,7 @@ async function _personaLearnNew(){
 function _pickVoice(v){_selectedVoice=v;localStorage.setItem(VOICE_KEY,v);_renderPersonaPanel();if(v)bubble('bot','TTS voice set to **'+esc(v)+'**','<span class="badge">voice</span>')}
 const _origProbeVoiceBackends=probeVoiceBackends;
 const _PERSONA_WELCOME={
-  alfred:{h:'AT YOUR SERVICE',t:'Master the maintainer — Alfred Pennyworth at your service. How may I assist you this morning?'},
+  alfred:{h:'AT YOUR SERVICE',t:'Master Anthony — Alfred Pennyworth at your service. How may I assist you this morning?'},
   rikku:{h:'RAO! READY TO GO!',t:"Fryd's ib?! Rikku here — let's get scrappy and figure things out together!"},
   jarvis:{h:'STANDING BY, SIR',t:"Of course, sir. All systems green. What's first on the agenda?"},
   yoda:{h:'READY, I AM',t:'Help you, I shall. Begin where you wish, you may.'},
