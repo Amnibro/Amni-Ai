@@ -78,7 +78,7 @@ class TestUvGemv(unittest.TestCase):
         V = torch.randn(inn, rank)
         x = torch.randn(inn)
         y = uv_gemv(x, U, V)
-        W = U @ V.T
+        W = U @ V.T  # test-only dense UVᵀ; FpaLinear.forward never builds this
         self.assertEqual(tuple(W.shape), (out, inn))
         ref = F.linear(x, W)
         self.assertTrue(torch.allclose(y, ref, atol=1e-5, rtol=1e-5))
@@ -92,7 +92,7 @@ class TestUvGemv(unittest.TestCase):
         lin = FpaLinear.born(128, 48, rank=8, gs=128, M=8, K=32, trainable=False, seed=4)
         x = torch.randn(128)
         y = lin.uv_gemv(x)
-        ref = F.linear(x, lin.U @ lin.V.T)
+        ref = F.linear(x, lin.U_deq() @ lin.V_deq().T)
         self.assertTrue(torch.allclose(y, ref, atol=1e-5, rtol=1e-5))
 
 
@@ -199,7 +199,7 @@ class TestBakeLoadAndForward(unittest.TestCase):
             self.assertEqual(tuple(y.shape), (32,))
             ref = lin.uv_gemv(x) + lin.pq_gemv(x) + lin.sparse_gemv(x)
             self.assertTrue(torch.allclose(y.float(), ref.float(), atol=1e-5, rtol=1e-5))
-            W_uv = lin.U @ lin.V.T
+            W_uv = lin.U_deq() @ lin.V_deq().T
             self.assertTrue(torch.allclose(lin.uv_gemv(x), F.linear(x, W_uv), atol=1e-5, rtol=1e-5))
             self.assertGreater(float(y.float().norm()), 0.0)
             bake = FpaBake(td)
@@ -245,26 +245,36 @@ class TestBakeLoadAndForward(unittest.TestCase):
 
 
 class TestTrainableHook(unittest.TestCase):
-    def test_parameters_and_grad(self):
+    def test_recipe_v0_train_freeze(self):
+        from amni.inference.fpa_linear import RECIPE_V0_TRAIN
+
         lin = FpaLinear.born(128, 24, rank=8, trainable=True, seed=9)
-        names = {n for n, _ in lin.named_parameters()}
-        self.assertTrue({"U", "V", "pq_scale", "codebooks"} <= names)
+        lin.apply_recipe_v0()
+        names = {n for n, p in lin.named_parameters() if p.requires_grad}
+        self.assertEqual(names, set(RECIPE_V0_TRAIN))
+        train = {n for n, p in lin.named_parameters() if p.requires_grad}
+        self.assertEqual(train, set(n for n, _ in zip(RECIPE_V0_TRAIN, lin.trainable_parameters())))
+        bufs = {n for n, _ in lin.named_buffers()}
+        self.assertIn("codebooks", bufs)
+        self.assertIn("pq_idx", bufs)
+        self.assertIn("U_packed", bufs)
+        self.assertFalse(lin.codebooks.requires_grad)
         x = torch.randn(3, 128, requires_grad=True)
         y = lin(x)
         y.square().mean().backward()
         self.assertIsNotNone(lin.U.grad)
+        self.assertIsNotNone(lin.U_scale.grad)
         self.assertIsNotNone(lin.V.grad)
+        self.assertIsNotNone(lin.V_scale.grad)
         self.assertIsNotNone(lin.pq_scale.grad)
-        self.assertIsNotNone(lin.codebooks.grad)
-        # discrete idx / packed codes stay non-trainable buffers
-        bufs = {n for n, _ in lin.named_buffers()}
-        self.assertIn("U_packed", bufs)
-        self.assertIn("pq_idx", bufs)
-        self.assertFalse(lin.U_packed.requires_grad)
+        self.assertTrue(lin.codebooks.grad is None)
 
     def test_serve_mode_has_no_factor_params(self):
         lin = FpaLinear.born(128, 16, rank=8, trainable=False, seed=10)
         self.assertEqual(list(lin.parameters()), [])
+        lin.apply_recipe_v0()
+        names = {n for n, _ in lin.named_parameters()}
+        self.assertEqual(names, {"U", "V", "U_scale", "V_scale", "pq_scale"})
 
 
 class TestCodebookLayouts(unittest.TestCase):

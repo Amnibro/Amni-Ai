@@ -91,22 +91,37 @@ y[row] += deq * x[col]
 `FpaLinear.materialize_sparse()` exists for v1 CPU / tests (scatter into
 `(out, inn)`). Forward uses indexed contrib.
 
-## Process-node / distill
+## Process-node / distill v0
 
-`FpaLinear.born(in, out, rank=…, trainable=True)` constructs a layer that
-exists only as FPA params (random U/V, zeroed pq_scale).
+Choice: live `U`/`V` are unpacked int4 **codes** (float). Forward uses
+`(U * U_scale) @ ((V * V_scale).T @ x)` so bake init is exact
+(`dequant = unpack * scale`). After train, `repack_int4()`.
 
-`FpaBake(folder, trainable=True).linear()` dequants packed U/V into
-`nn.Parameter`s. `parameters()` / `distill_parameters()` yield `U`, `V`,
-`pq_scale`, `codebooks`. Packed codes and `pq_idx` stay discrete buffers.
+Recipe trainables (`trainable_parameters()` / `apply_recipe_v0()`):
+`U`, `V`, `U_scale`, `V_scale`, `pq_scale`. Frozen: `codebooks`, `pq_idx`,
+sparse sidecars.
 
 ```python
-from amni.inference.fpa_linear import FpaBake, FpaLinear, load_fpa_linear
+from amni.inference.fpa_linear import load_fpa_linear
 
 lin = load_fpa_linear("bakes/qwen35_4b_hc_fpa_onetensor_probe", trainable=True)
+lin.apply_recipe_v0()
 y = lin(x)   # no dense W
-opt = torch.optim.AdamW(lin.parameters(), lr=1e-4)
+opt = torch.optim.AdamW(lin.trainable_parameters(), lr=1e-4)
 ```
+
+One-Linear proof (Qwen3.5-4B L15 `up_proj` only; GDN stays dense):
+
+```bash
+python scripts/lane_a_fpa_distill_v0.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --steps 5000 --lr 1e-4 --eval-every 500 \
+  --out logs/lane_a_fpa_distill_v0/qwen35_l15_up
+```
+
+Kill: after 5k, KL not improved vs freeze-init beyond ±5% noise → FAIL.
+Logs: `kl_curve.jsonl` + `kl_curve.csv` + `summary.json`. **Not Done.**
 
 ## Smoke
 

@@ -1,8 +1,15 @@
 """FpaLinear — native Factor+Product Atlas layer for Lane A train / serve.
 
-``parameters()`` exposes trainable U, V, pq_scale, and shared codebooks when
-``trainable=True`` so a later Kimahri distill loop can step compressed-domain
-factors without ever allocating dense W.
+Lane A distill v0 recipe (see ``amni.training.fpa_distill_v0``):
+
+    train:  U, V, U_scale, V_scale, pq_scale   (float scales)
+    freeze: codebooks, pq_idx, sparse sidecars, packed int4 snapshots
+
+Choice (simplest that preserves bake forward): live ``U``/``V`` are the
+unpacked int4 *codes* as float (not the dense matrix). Forward uses
+``(U * U_scale) @ ((V * V_scale).T @ x)`` so init matches
+``dequant = unpack(packed) * scale``. After train, ``repack_int4()``
+writes codes back to nibbles. Dense ``W`` is never materialised.
 
 This is not Gf17Atex ``AtexLin`` (``.codes`` / ``.scale`` int4-group). Do not
 route an FPA bake through ``GraniteAtexChatService``.
@@ -15,9 +22,9 @@ Usage::
     from amni.inference.fpa_linear import FpaBake, FpaLinear
 
     bake = FpaBake("bakes/qwen35_4b_hc_fpa_onetensor_probe", trainable=True)
-    lin = bake.linear()
+    lin = bake.linear().apply_recipe_v0()
     y = lin(x)                          # U@(Vᵀx) + pq + sparse
-    opt = torch.optim.AdamW(lin.parameters(), lr=1e-4)
+    opt = torch.optim.AdamW(lin.trainable_parameters(), lr=1e-4)
 
     # born-as-FPA (process-node: multi-B starts as FPA params)
     lin = FpaLinear.born(2560, 9216, rank=64, trainable=True)
@@ -39,7 +46,6 @@ from amni.inference.gf17_fpa import (
     DEFAULT_M,
     FORMAT,
     PACKING,
-    dequant_int4_cols,
     dequant_sparse_i8,
     discover_fpa_stems,
     extract_fpa_tensor_pack,
@@ -54,8 +60,22 @@ from amni.inference.gf17_fpa import (
     quantize_int4_cols,
     read_bake_manifest,
     sparse_gemv_indexed,
+    unpack_int4_nibbles,
     uv_gemv,
     validate_fpa_shapes,
+)
+
+# lane_a_fpa_distill_recipe_v1
+RECIPE_V0_TRAIN = ("U", "V", "U_scale", "V_scale", "pq_scale")
+RECIPE_V0_FREEZE = (
+    "codebooks",
+    "pq_idx",
+    "U_packed",
+    "V_packed",
+    "sp_indices",
+    "sp_values_i8",
+    "sp_vmax",
+    "sp_shape",
 )
 
 Pathish = Union[str, Path]
@@ -123,16 +143,16 @@ class FpaLinear(nn.Module):
 
         self.register_buffer("U_packed", U_packed)
         self.register_buffer("V_packed", V_packed)
-        self.register_buffer("U_scale", U_scale)
-        self.register_buffer("V_scale", V_scale)
         self.register_buffer("pq_idx", pq_idx)
+        self.register_buffer("codebooks", codebooks)  # recipe v0: always frozen
 
-        U = dequant_int4_cols(U_packed, U_scale)
-        V = dequant_int4_cols(V_packed, V_scale)
-        _reg(self, "U", U, trainable)
-        _reg(self, "V", V, trainable)
+        U_codes = unpack_int4_nibbles(U_packed).to(torch.float32)
+        V_codes = unpack_int4_nibbles(V_packed).to(torch.float32)
+        _reg(self, "U", U_codes, trainable)
+        _reg(self, "V", V_codes, trainable)
+        _reg(self, "U_scale", U_scale.float(), trainable)
+        _reg(self, "V_scale", V_scale.float(), trainable)
         _reg(self, "pq_scale", pq_scale.float() if trainable else pq_scale, trainable)
-        _reg(self, "codebooks", codebooks, trainable)
 
         sp = normalize_sparse_pack(sparse, out, inn)
         self.register_buffer("sp_indices", sp["indices"])
@@ -149,15 +169,91 @@ class FpaLinear(nn.Module):
     def sparse_nnz(self) -> int:
         return int(self.sp_indices.numel())
 
+    def U_deq(self) -> torch.Tensor:
+        """Live UV factor: unpacked codes × per-col scale. Not dense W."""
+        return self.U * self.U_scale.to(device=self.U.device, dtype=self.U.dtype)
+
+    def V_deq(self) -> torch.Tensor:
+        return self.V * self.V_scale.to(device=self.V.device, dtype=self.V.dtype)
+
     def distill_parameters(self) -> Iterable[nn.Parameter]:
-        """U, V, pq_scale, codebooks — the compressed-domain trainables."""
-        for n in ("U", "V", "pq_scale", "codebooks"):
-            p = getattr(self, n)
-            if isinstance(p, nn.Parameter):
+        return self.trainable_parameters()
+
+    def trainable_parameters(self) -> Iterable[nn.Parameter]:
+        """Recipe v0 trainables: U, V, U_scale, V_scale, pq_scale."""
+        for n in RECIPE_V0_TRAIN:
+            p = getattr(self, n, None)
+            if isinstance(p, nn.Parameter) and p.requires_grad:
                 yield p
 
+    def freeze_atlas(self) -> "FpaLinear":
+        """Freeze codebooks, pq_idx, packed snapshots, sparse sidecars."""
+        for n in RECIPE_V0_FREEZE:
+            self._demote_to_buffer(n)
+        return self
+
+    def freeze_all(self) -> "FpaLinear":
+        for n, p in list(self.named_parameters()):
+            p.requires_grad_(False)
+        return self
+
+    def apply_recipe_v0(self) -> "FpaLinear":
+        """Lane A distill v0: train U/V/scales; freeze atlas (codebooks+idx+sparse)."""
+        self.freeze_atlas()
+        for n in RECIPE_V0_TRAIN:
+            self._promote_to_param(n)
+        if self.bias is not None:
+            self._demote_to_buffer("bias")
+        self.trainable_factors = True
+        return self
+
+    def _promote_to_param(self, name: str) -> None:
+        t = getattr(self, name, None)
+        if t is None:
+            return
+        if isinstance(t, nn.Parameter):
+            t.requires_grad_(True)
+            return
+        if name in self._buffers:
+            buf = self._buffers.pop(name)
+            self._non_persistent_buffers_set.discard(name)
+            self.register_parameter(name, nn.Parameter(buf.detach().float()))
+        else:
+            self.register_parameter(name, nn.Parameter(t.detach().float()))
+
+    def _demote_to_buffer(self, name: str) -> None:
+        t = getattr(self, name, None)
+        if t is None:
+            return
+        if isinstance(t, nn.Parameter):
+            data = t.detach()
+            del self._parameters[name]
+            self.register_buffer(name, data)
+        elif isinstance(t, torch.Tensor) and t.is_floating_point():
+            t.requires_grad_(False)
+
+    def snapshot_trainables(self) -> Dict[str, torch.Tensor]:
+        return {n: getattr(self, n).detach().cpu().clone() for n in RECIPE_V0_TRAIN}
+
+    def restore_trainables(self, snap: Mapping[str, torch.Tensor]) -> None:
+        with torch.no_grad():
+            for n, v in snap.items():
+                getattr(self, n).copy_(v.to(device=getattr(self, n).device, dtype=getattr(self, n).dtype))
+
+    def repack_int4(self) -> None:
+        """Write current ``U_deq``/``V_deq`` back to packed nibbles + scales (post-train)."""
+        U_p, U_s = quantize_int4_cols(self.U_deq())
+        V_p, V_s = quantize_int4_cols(self.V_deq())
+        with torch.no_grad():
+            self.U_packed.copy_(U_p.to(device=self.U_packed.device))
+            self.V_packed.copy_(V_p.to(device=self.V_packed.device))
+            self.U_scale.copy_(U_s.to(device=self.U_scale.device, dtype=self.U_scale.dtype))
+            self.V_scale.copy_(V_s.to(device=self.V_scale.device, dtype=self.V_scale.dtype))
+            self.U.copy_(unpack_int4_nibbles(self.U_packed).to(dtype=self.U.dtype))
+            self.V.copy_(unpack_int4_nibbles(self.V_packed).to(dtype=self.V.dtype))
+
     def uv_gemv(self, x: torch.Tensor) -> torch.Tensor:
-        return uv_gemv(x, self.U, self.V)
+        return uv_gemv(x, self.U_deq(), self.V_deq())
 
     def pq_gemv(self, x: torch.Tensor) -> torch.Tensor:
         return pq_gemv(x, self.pq_idx, self.pq_scale, self.codebooks, self.gs)
@@ -260,10 +356,12 @@ class FpaLinear(nn.Module):
             U_p, V_p, U_s, V_s, pq_idx, pq_scale, codebooks,
             gs=gs, trainable=trainable, name=name, rank=rank,
         )
-        # born-as-FPA uses the float factors (not the int4 snapshot) as the live params
+        # exact float factors via codes × scale (U * U_scale = original U)
         with torch.no_grad():
-            lin.U.copy_(U.to(dtype=lin.U.dtype))
-            lin.V.copy_(V.to(dtype=lin.V.dtype))
+            lin.U.copy_((U / lin.U_scale.clamp_min(1e-8)).to(dtype=lin.U.dtype))
+            lin.V.copy_((V / lin.V_scale.clamp_min(1e-8)).to(dtype=lin.V.dtype))
+        if trainable:
+            lin.apply_recipe_v0()
         if device is not None:
             lin = lin.to(device)
         return lin
@@ -313,7 +411,7 @@ class FpaBake:
             pack = extract_fpa_tensor_pack(tens, stem)
             sparse = load_fpa_sparse(sparse_path, tensor_name=stem or None) if sparse_path.is_file() else None
             display = stem or next(iter((self.manifest.get("tensors") or {}), ""), "tensor")
-            self.linears[display] = FpaLinear.from_pack(
+            lin = FpaLinear.from_pack(
                 pack,
                 self.codebooks,
                 gs=self.pq["gs"],
@@ -323,6 +421,9 @@ class FpaBake:
                 kf=self.kf,
                 rank=self.rank,
             )
+            if trainable:
+                lin.apply_recipe_v0()
+            self.linears[display] = lin
         if device is not None:
             self.to(device)
 
