@@ -14,6 +14,12 @@ Routes:
 Usage:
   python scripts/amni_serve.py --seed
   Then point Open WebUI at http://localhost:8001 or open http://localhost:8001 in a browser.
+
+  Qwen3-8B Gf17Atex bake (Kimahri emit → Tidus serve), same Adam path:
+  python scripts/amni_serve.py --bake bakes/qwen3_8b_gf17_atex_probe
+  python scripts/amni_serve.py --bake bakes/qwen3_8b_gf17_atex_probe --model bakes/qwen3_8b_gf17_atex_probe
+  Plain HF checkpoint (packs int4-group at load):
+  python scripts/amni_serve.py --bake /path/to/Qwen3-8B --model /path/to/Qwen3-8B
 """
 import os,sys,argparse,time,socket,subprocess,signal,json,re
 _cpu_cap=os.environ.get('AMNI_CPU_THREADS') or str(max(4,(os.cpu_count() or 8)//2))
@@ -215,8 +221,8 @@ def _discover_bake(preferred=None):
     return light[0] if light else(found[0] if found else None)
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--bake',default=_CFG.get('bake'))
-    ap.add_argument('--model',default=_CFG.get('model') or _CFG.get('bake'))
+    ap.add_argument('--bake',default=_CFG.get('bake'),help='Bake or checkpoint dir. Gf17Atex Qwen3 (after Kimahri emits it): --bake bakes/qwen3_8b_gf17_atex_probe  (selects QwenAtexChatService). A plain HF Qwen/Qwen3-8B dir also works (int4-group pack at load). Granite/NVFP4 atex bakes keep their existing loaders.')
+    ap.add_argument('--model',default=_CFG.get('model') or _CFG.get('bake'),help='Tokenizer / HF model dir. Defaults to --bake (Kimahri Qwen3 Gf17Atex bakes ship config+tokenizer in the bake dir).')
     ap.add_argument('--port',type=int,default=int(_CFG.get('port') or DEFAULT_PORT))
     ap.add_argument('--host',default=_CFG.get('host') or DEFAULT_HOST)
     ap.add_argument('--force-port-kill',action='store_true',help='Kill ANY process holding the port (default: only kill python/uvicorn processes)')
@@ -268,7 +274,14 @@ def main():
     try:from amni.serve import trace_endpoints
     except Exception:trace_endpoints=None
     from amni.serve.code_atlas import CodeAtlas
-    if not os.environ.get('AMNI_NO_NVFP4'):
+    _explicit_qwen=False
+    try:
+        from amni.inference.atex_select import looks_like_qwen3 as _qwen3
+        _explicit_qwen=_qwen3(args.bake) or _qwen3(args.model)
+    except Exception:_explicit_qwen=False
+    if _explicit_qwen:
+        print(f'[amni_serve] Qwen3 bake/model requested — skipping VRAM auto-upgrade, serving {args.bake}',flush=True)
+    elif not os.environ.get('AMNI_NO_NVFP4'):
         try:
             from amni.adam import select_model_bake as _selbake
             _nvb,_why=_selbake()
