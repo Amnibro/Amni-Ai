@@ -40,6 +40,7 @@ from amni.inference.gf17_fpa import (
     FORMAT,
     PACKING,
     dequant_int4_cols,
+    dequant_sparse_i8,
     discover_fpa_stems,
     extract_fpa_tensor_pack,
     is_atex_codes_bake,
@@ -47,11 +48,12 @@ from amni.inference.gf17_fpa import (
     load_bake_tensors,
     load_fpa_codebooks,
     load_fpa_sparse,
+    normalize_sparse_pack,
     pq_cfg_from_manifest,
     pq_gemv,
     quantize_int4_cols,
     read_bake_manifest,
-    sparse_gemv,
+    sparse_gemv_indexed,
     uv_gemv,
     validate_fpa_shapes,
 )
@@ -132,14 +134,11 @@ class FpaLinear(nn.Module):
         _reg(self, "pq_scale", pq_scale.float() if trainable else pq_scale, trainable)
         _reg(self, "codebooks", codebooks, trainable)
 
-        if sparse and sparse.get("rows") is not None and int(sparse["rows"].numel()) > 0:
-            self.register_buffer("sp_rows", sparse["rows"].to(torch.int64).contiguous())
-            self.register_buffer("sp_cols", sparse["cols"].to(torch.int64).contiguous())
-            self.register_buffer("sp_vals", sparse["vals"].float().contiguous())
-        else:
-            self.register_buffer("sp_rows", torch.zeros(0, dtype=torch.int64))
-            self.register_buffer("sp_cols", torch.zeros(0, dtype=torch.int64))
-            self.register_buffer("sp_vals", torch.zeros(0, dtype=torch.float32))
+        sp = normalize_sparse_pack(sparse, out, inn)
+        self.register_buffer("sp_indices", sp["indices"])
+        self.register_buffer("sp_values_i8", sp["values"].to(torch.int8).contiguous())
+        self.register_buffer("sp_vmax", sp["vmax"].float().reshape(-1)[:1].contiguous())
+        self.register_buffer("sp_shape", sp["shape"].to(torch.int64).reshape(-1)[:2].contiguous())
 
         if bias is not None:
             _reg(self, "bias", bias.detach().float().reshape(-1).contiguous(), trainable)
@@ -148,7 +147,7 @@ class FpaLinear(nn.Module):
 
     @property
     def sparse_nnz(self) -> int:
-        return int(self.sp_rows.numel())
+        return int(self.sp_indices.numel())
 
     def distill_parameters(self) -> Iterable[nn.Parameter]:
         """U, V, pq_scale, codebooks — the compressed-domain trainables."""
@@ -163,8 +162,19 @@ class FpaLinear(nn.Module):
     def pq_gemv(self, x: torch.Tensor) -> torch.Tensor:
         return pq_gemv(x, self.pq_idx, self.pq_scale, self.codebooks, self.gs)
 
+    def sparse_values_deq(self) -> torch.Tensor:
+        return dequant_sparse_i8(self.sp_values_i8, self.sp_vmax)
+
     def sparse_gemv(self, x: torch.Tensor) -> torch.Tensor:
-        return sparse_gemv(x, self.sp_rows, self.sp_cols, self.sp_vals, self.out_features)
+        return sparse_gemv_indexed(x, self.sp_indices, self.sparse_values_deq(), self.out_features, self.in_features)
+
+    def materialize_sparse(self) -> torch.Tensor:
+        """v1 CPU helper: sparse residual as ``(out, inn)``. UV+PQ stay factorised."""
+        from amni.inference.gf17_fpa import materialize_sparse_residual
+
+        return materialize_sparse_residual(
+            self.sp_indices, self.sparse_values_deq(), (self.out_features, self.in_features)
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.shape[-1] != self.in_features:

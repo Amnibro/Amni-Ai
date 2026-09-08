@@ -22,7 +22,8 @@ y = U_deq @ (V_deq.T @ x) + pq_gemv(x) + sparse_gemv(x)
 ```
 
 Implemented as two thin GEMVs plus a product-VQ residual GEMV plus an optional
-COO scatter. `W = U @ V.T` (shape `(out, inn)`) is never allocated.
+indexed sparse contrib. `W = U @ V.T` (shape `(out, inn)`) is never allocated.
+v1 CPU may materialise the **sparse residual only**; UV+PQ stay factorised.
 
 ## Bake contract
 
@@ -51,12 +52,12 @@ Per-tensor keys in `*.safetensors` — example Qwen L15 `up_proj` `[9216, 2560]`
 Int4 layout matches `amni/inference/int4_linear.py`: even index → low nibble,
 odd → high nibble, stored `0..15 = signed -8..7` (zero-point 8).
 
-Sidecars in the bake folder:
+Sidecars in the bake folder (Antman ground truth):
 
 | file | role |
 |---|---|
-| `_fpa_codebooks.npy` | shared product-VQ tables. Canonical shape `(M, K, subvec)` with `subvec = gs/M` (16 when `gs=128`, `M=8`). Stacked / permuted layouts are normalised on load. |
-| `_fpa_sparse.npz` | optional COO residual. Typical keys: `idx` `(2, nnz)` or `(nnz, 2)` + `vals`, or `rows`/`cols`/`vals`. Per-tensor prefixes accepted. |
+| `_fpa_codebooks.npy` | float32 **`(M=8, K=256, subvec_dim=16)`**. Other stacked / permuted layouts are still normalised on load. |
+| `_fpa_sparse.npz` | **`indices`** int64 `(nnz,)` flat into `(out, inn)`; **`values`** int8 `(nnz,)`; **`vmax`** float32 `(1,)`; **`shape`** int64 `(2,)` = `(out, inn)`. Reconstruct: scatter `values/127 * vmax` at flat indices. Indexed GEMV is the default (no full sparse matrix). |
 | `_fpa_report.json` | optional bake notes (printed by the smoke CLI). |
 
 Reference folders (Antman; may be absent in CI):
@@ -66,19 +67,29 @@ Reference folders (Antman; may be absent in CI):
 
 ## Product-VQ residual
 
-Hypothesis implemented here (kept behind `pq_gemv` so the interface stays
-stable if a later `_fpa_report.json` disagrees):
+Per output row, over groups `g = inn/gs` (Antman sketch):
 
 ```
-R[o, g*gs:(g+1)*gs] = pq_scale[o, g] * concat_m( codebooks[m, pq_idx[o, g, m]] )
-y_pq[o]             = sum_g  R[o, g] · x[g]
+y_pq[row] ≈ sum_g  pq_scale[row, g] * sum_m
+    codebook[m, pq_idx[row, g, m]] · x[g*gs + m*subvec : g*gs + (m+1)*subvec]
 ```
 
-Equivalent GEMV that never builds `R` as `(out, inn)`:
+`codebook` entries are length `subvec_dim=16`. Equivalent concat form
+(`scale * concat_m(lookup_m) · x_group`) is used only in unit tests on tiny
+rows. The serve/train path never builds `(out, inn)`.
+
+## Sparse residual
+
+Antman `_fpa_sparse.npz`:
 
 ```
-y_pq[o] = sum_g  pq_scale[o, g] * sum_m  ( codebooks[m, idx[o,g,m]] · x_m )
+deq = values.float() / 127 * vmax          # values: int8
+row, col = divmod(indices, inn)            # indices: flat int64
+y[row] += deq * x[col]
 ```
+
+`FpaLinear.materialize_sparse()` exists for v1 CPU / tests (scatter into
+`(out, inn)`). Forward uses indexed contrib.
 
 ## Process-node / distill
 

@@ -16,13 +16,19 @@ from amni.inference.gf17_fpa import (
     FORMAT,
     PACKING,
     dequant_int4_cols,
+    dequant_sparse_i8,
     is_atex_codes_bake,
     is_fpa_manifest,
+    load_fpa_sparse,
+    materialize_sparse_residual,
     pack_int4_nibbles,
+    parse_sparse_npz,
     pq_gemv,
     pq_reconstruct_groups,
     quantize_int4_cols,
+    quantize_sparse_i8,
     sparse_gemv,
+    sparse_gemv_indexed,
     unpack_int4_nibbles,
     uv_gemv,
     write_synthetic_bake,
@@ -136,6 +142,39 @@ class TestSparseGemv(unittest.TestCase):
         ref[2] += -1.0 * 4.0
         self.assertTrue(torch.allclose(y, ref))
 
+    def test_antman_keys_and_dequant(self):
+        import numpy as np
+
+        out, inn, nnz = 8, 16, 5
+        indices = torch.tensor([0, 3, 16 + 2, 7 * 16 + 15, 4], dtype=torch.int64)
+        values = torch.tensor([127, -127, 64, -32, 0], dtype=torch.int8)
+        vmax = torch.tensor([0.5], dtype=torch.float32)
+        raw = {
+            "indices": indices.numpy(),
+            "values": values.numpy(),
+            "vmax": vmax.numpy(),
+            "shape": np.asarray([out, inn], dtype=np.int64),
+        }
+        pack = parse_sparse_npz(raw)
+        self.assertEqual(tuple(pack["indices"].shape), (nnz,))
+        self.assertEqual(pack["values"].dtype, torch.int8)
+        deq = dequant_sparse_i8(pack["values"], pack["vmax"])
+        self.assertTrue(torch.allclose(deq[0], torch.tensor(0.5)))
+        self.assertTrue(torch.allclose(deq[1], torch.tensor(-0.5)))
+        self.assertTrue(torch.allclose(deq[2], torch.tensor(64 / 127 * 0.5), atol=1e-6))
+
+    def test_indexed_matches_materialised_scatter(self):
+        torch.manual_seed(11)
+        out, inn = 12, 16
+        indices = torch.randint(0, out * inn, (9,), dtype=torch.int64)
+        values, vmax = quantize_sparse_i8(torch.randn(9))
+        deq = dequant_sparse_i8(values, vmax)
+        x = torch.randn(3, inn)
+        y = sparse_gemv_indexed(x, indices, deq, out, inn)
+        W = materialize_sparse_residual(indices, deq, (out, inn))
+        self.assertEqual(tuple(W.shape), (out, inn))
+        self.assertTrue(torch.allclose(y, x @ W.T, atol=1e-5, rtol=1e-5))
+
 
 class TestBakeLoadAndForward(unittest.TestCase):
     def test_synthetic_folder_roundtrip(self):
@@ -166,6 +205,21 @@ class TestBakeLoadAndForward(unittest.TestCase):
             bake = FpaBake(td)
             self.assertEqual(len(bake.names()), 1)
             self.assertIn("pq", bake.report or {})
+            sp = load_fpa_sparse(os.path.join(td, "_fpa_sparse.npz"))
+            self.assertIsNotNone(sp)
+            self.assertIn("indices", sp)
+            self.assertEqual(sp["values"].dtype, torch.int8)
+            self.assertEqual(tuple(int(x) for x in lin.sp_shape.tolist()), (32, 128))
+            W_sp = lin.materialize_sparse()
+            self.assertEqual(tuple(W_sp.shape), (32, 128))
+            self.assertTrue(torch.allclose(lin.sparse_gemv(x), W_sp @ x, atol=1e-5, rtol=1e-5))
+
+    def test_antman_codebook_shape(self):
+        with tempfile.TemporaryDirectory() as td:
+            write_synthetic_bake(td, out=16, inn=128, rank=8, gs=128, M=8, K=256, sparse_nnz=3, seed=12)
+            lin = load_fpa_linear(td)
+            self.assertEqual(tuple(lin.codebooks.shape), (8, 256, 16))
+            self.assertEqual(lin.codebooks.dtype, torch.float32)
 
     def test_rejects_atex_codes_manifest(self):
         with tempfile.TemporaryDirectory() as td:

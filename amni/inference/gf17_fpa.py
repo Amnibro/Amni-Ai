@@ -26,24 +26,27 @@ Per-tensor safetensors keys (Qwen L15 up_proj [9216,2560], r=64)::
     .pq_idx   U8  (out, inn/gs, M)                      e.g. (9216, 20, 8)
     .pq_scale F16 (out, inn/gs)
 
-Sidecars::
+Sidecars (Antman ground truth)::
 
-    _fpa_codebooks.npy  shared product-VQ tables; canonical (M, K, subvec)
-                        with subvec = gs/M (16 when gs=128, M=8). Other
-                        stacked layouts are accepted and normalised.
-    _fpa_sparse.npz     optional COO residual (idx + vals, or rows/cols/vals)
+    _fpa_codebooks.npy  float32 (M=8, K=256, subvec_dim=16)
+    _fpa_sparse.npz     indices int64 (nnz,) flat into (out,inn);
+                        values int8 (nnz,); vmax float32 (1,);
+                        shape int64 (2,) = (out, inn)
+                        reconstruct: scatter values/127*vmax at flat indices
     _fpa_report.json    optional bake notes (printed by the smoke CLI)
 
 Int4 nibble layout matches ``int4_linear`` / packed ATEX gemv: even index →
 low nibble, odd → high nibble, stored as uint8 0..15 = signed -8..7 (zp=8).
 
-PQ residual (product-VQ, not Gf17Atex ``.codes/.scale``)::
+PQ residual (product-VQ, not Gf17Atex ``.codes/.scale``). Per output row::
 
-    R[o, g*gs:(g+1)*gs] = pq_scale[o,g] * concat_m(codebooks[m, pq_idx[o,g,m]])
-    y_pq[o] = sum_g R[o, g] · x[g]
+    y_pq[row] ≈ sum_g pq_scale[row,g] * sum_m
+        codebook[m, pq_idx[row,g,m]] · x[g*gs + m*16 : …]
 
-i.e. a GEMV of the reconstructed residual groups — implemented as
-``scale * sum_m (lookup_m · x_m)`` so the (out, inn) matrix is never built.
+i.e. ``scale * sum_m (lookup_m · x_subvec)`` over groups ``g = inn/gs``.
+The (out, inn) residual is never built. Sparse uses indexed contrib
+(``values/127*vmax`` at flat indices); v1 may materialise the sparse residual
+only — UV+PQ stay factorised.
 
 Reference bake dirs (docs/tests; may be absent on this disk)::
 
@@ -70,8 +73,10 @@ PACKING = "factor_product_atlas_v1"
 DEFAULT_GS = 128
 DEFAULT_M = 8
 DEFAULT_K = 256
+DEFAULT_SUBVEC = 16  # gs/M; Antman _fpa_codebooks.npy is (8, 256, 16)
 INT4_ZP = 8
 INT4_ABSMAX = 7
+SPARSE_I8_ABSMAX = 127
 
 Pathish = Union[str, os.PathLike]
 
@@ -219,7 +224,11 @@ def pq_gemv(
     codebooks: torch.Tensor,
     gs: int,
 ) -> torch.Tensor:
-    """Product-VQ residual GEMV. Peak extra is ``(out, G, subvec)``, never ``(out, inn)``."""
+    """Product-VQ residual GEMV. Never builds ``(out, inn)``.
+
+    Per output row: ``sum_g pq_scale[row,g] * sum_m codebook[m, idx[row,g,m]] · x_m``
+    over groups ``g = inn/gs``, with ``x_m`` the length-``subvec`` slice of group g.
+    """
     *batch, inn = x.shape
     out, G, M = pq_idx.shape
     D = int(codebooks.shape[-1])
@@ -239,18 +248,87 @@ def pq_gemv(
     return y.reshape(*batch, out)
 
 
-def parse_sparse_npz(npz: Mapping[str, Any], tensor_name: Optional[str] = None) -> Optional[Dict[str, torch.Tensor]]:
-    """Parse ``_fpa_sparse.npz`` into COO ``rows, cols, vals``.
+def _as_tensor(v: Any) -> torch.Tensor:
+    if isinstance(v, torch.Tensor):
+        return v.detach()
+    return torch.from_numpy(np.ascontiguousarray(np.asarray(v)))
 
-    Accepts idx(2,nnz)|idx(nnz,2)+vals, rows/cols/vals, row/col/val, i/j/v,
-    and optional per-tensor prefixes (``{name}.idx`` / ``{name}/idx``).
+
+def dequant_sparse_i8(values_i8: torch.Tensor, vmax: torch.Tensor) -> torch.Tensor:
+    """Antman sparse payload: ``values.float() / 127 * vmax``."""
+    scale = vmax.reshape(-1)[0].to(dtype=torch.float32)
+    return values_i8.to(torch.int16).float() / float(SPARSE_I8_ABSMAX) * scale
+
+
+def quantize_sparse_i8(vals: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    vf = vals.detach().float().reshape(-1)
+    vmax = vf.abs().amax().clamp_min(1e-8).reshape(1)
+    q = torch.clamp(torch.round(vf / vmax * float(SPARSE_I8_ABSMAX)), -SPARSE_I8_ABSMAX, SPARSE_I8_ABSMAX)
+    return q.to(torch.int8).contiguous(), vmax.float().contiguous()
+
+
+def unravel_flat_indices(indices: torch.Tensor, inn: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    idx = indices.reshape(-1).to(torch.int64)
+    return idx // int(inn), idx % int(inn)
+
+
+def empty_sparse_pack(out: int = 0, inn: int = 0) -> Dict[str, torch.Tensor]:
+    return {
+        "indices": torch.zeros(0, dtype=torch.int64),
+        "values": torch.zeros(0, dtype=torch.int8),
+        "vmax": torch.ones(1, dtype=torch.float32),
+        "shape": torch.tensor([out, inn], dtype=torch.int64),
+    }
+
+
+def normalize_sparse_pack(
+    sparse: Optional[Mapping[str, torch.Tensor]],
+    out: int,
+    inn: int,
+) -> Dict[str, torch.Tensor]:
+    """Canonicalise to Antman keys: ``indices, values(int8), vmax, shape``."""
+    if not sparse:
+        return empty_sparse_pack(out, inn)
+    if "indices" in sparse and "values" in sparse:
+        indices = sparse["indices"].reshape(-1).to(torch.int64).contiguous()
+        raw = sparse["values"].reshape(-1)
+        if "vmax" in sparse and not raw.is_floating_point():
+            values = raw.to(torch.int8).contiguous()
+            vmax = _as_tensor(sparse["vmax"]).reshape(-1)[:1].float().contiguous()
+        elif "vmax" in sparse and raw.is_floating_point() and raw.dtype != torch.int8:
+            # already-dequant floats + vmax: re-encode so storage matches Antman
+            values, vmax = quantize_sparse_i8(raw)
+        elif not raw.is_floating_point():
+            values = raw.to(torch.int8).contiguous()
+            vmax = torch.ones(1, dtype=torch.float32)
+        else:
+            values, vmax = quantize_sparse_i8(raw)
+    elif "rows" in sparse and "cols" in sparse and "vals" in sparse:
+        rows = sparse["rows"].reshape(-1).to(torch.int64)
+        cols = sparse["cols"].reshape(-1).to(torch.int64)
+        indices = (rows * int(inn) + cols).contiguous()
+        values, vmax = quantize_sparse_i8(sparse["vals"])
+    else:
+        return empty_sparse_pack(out, inn)
+    shape = sparse["shape"].reshape(-1).to(torch.int64) if "shape" in sparse else torch.tensor([out, inn], dtype=torch.int64)
+    if int(shape[0]) != out or int(shape[1]) != inn:
+        # prefer live Linear shapes; keep npz shape if Linear dims were 0
+        if out > 0 and inn > 0:
+            shape = torch.tensor([out, inn], dtype=torch.int64)
+    return {"indices": indices, "values": values, "vmax": vmax, "shape": shape.contiguous()}
+
+
+def parse_sparse_npz(npz: Mapping[str, Any], tensor_name: Optional[str] = None) -> Optional[Dict[str, torch.Tensor]]:
+    """Parse ``_fpa_sparse.npz``.
+
+    Antman ground truth: ``indices`` int64 (nnz,) flat into (out,inn),
+    ``values`` int8 (nnz,), ``vmax`` float32 (1,), ``shape`` int64 (2,).
+    Older COO layouts (idx/vals, rows/cols/vals) are still accepted and
+    normalised to the Antman keys.
     """
     keys = list(npz.keys())
-
-    def _as_t(v: Any) -> torch.Tensor:
-        if isinstance(v, torch.Tensor):
-            return v.detach()
-        return torch.from_numpy(np.ascontiguousarray(np.asarray(v)))
+    if not keys:
+        return None
 
     prefixes: List[str] = [""]
     if tensor_name:
@@ -271,38 +349,53 @@ def parse_sparse_npz(npz: Mapping[str, Any], tensor_name: Optional[str] = None) 
                     return k
         return None
 
-    idx_k = _first(("idx", "indices", "index", "ij"))
-    val_k = _first(("vals", "val", "values", "data", "v"))
-    row_k = _first(("rows", "row", "i"))
-    col_k = _first(("cols", "col", "j"))
+    idx_k = _first(("indices", "idx", "index", "ij"))
+    val_k = _first(("values", "vals", "val", "data", "v"))
+    vmax_k = _first(("vmax", "Vmax", "max"))
+    shape_k = _first(("shape", "wh", "hw"))
+    row_k = _first(("rows", "row"))
+    col_k = _first(("cols", "col"))
 
-    rows = cols = vals = None
+    pack: Dict[str, torch.Tensor] = {}
     if idx_k is not None and val_k is not None:
-        idx = _as_t(npz[idx_k])
-        vals = _as_t(npz[val_k]).reshape(-1).float()
-        if idx.ndim == 2 and idx.shape[0] == 2:
-            rows, cols = idx[0], idx[1]
+        idx = _as_tensor(npz[idx_k])
+        pack["values"] = _as_tensor(npz[val_k]).reshape(-1)
+        if vmax_k is not None:
+            pack["vmax"] = _as_tensor(npz[vmax_k]).reshape(-1).float()
+        if shape_k is not None:
+            pack["shape"] = _as_tensor(npz[shape_k]).reshape(-1).to(torch.int64)
+        if idx.ndim == 1:
+            pack["indices"] = idx.to(torch.int64).contiguous()
+        elif idx.ndim == 2 and idx.shape[0] == 2:
+            if "shape" in pack and int(pack["shape"].numel()) >= 2:
+                inn = int(pack["shape"][1])
+            else:
+                inn = None
+            rows, cols = idx[0].to(torch.int64), idx[1].to(torch.int64)
+            if inn is None:
+                pack["rows"], pack["cols"], pack["vals"] = rows, cols, pack.pop("values").float()
+                return pack
+            pack["indices"] = (rows * inn + cols).contiguous()
         elif idx.ndim == 2 and idx.shape[1] == 2:
-            rows, cols = idx[:, 0], idx[:, 1]
+            rows, cols = idx[:, 0].to(torch.int64), idx[:, 1].to(torch.int64)
+            inn = int(pack["shape"][1]) if "shape" in pack else None
+            if inn is None:
+                pack["rows"], pack["cols"], pack["vals"] = rows, cols, pack.pop("values").float()
+                return pack
+            pack["indices"] = (rows * inn + cols).contiguous()
         else:
-            raise ValueError(f"sparse idx shape {tuple(idx.shape)} — expected (2,nnz) or (nnz,2)")
-    elif row_k is not None and col_k is not None and val_k is not None:
-        rows, cols = _as_t(npz[row_k]), _as_t(npz[col_k])
-        vals = _as_t(npz[val_k]).reshape(-1).float()
-    elif not keys:
+            raise ValueError(f"sparse indices shape {tuple(idx.shape)} — expected (nnz,) flat, (2,nnz), or (nnz,2)")
+        return pack
+    if row_k is not None and col_k is not None and val_k is not None:
+        pack["rows"] = _as_tensor(npz[row_k]).reshape(-1).to(torch.int64)
+        pack["cols"] = _as_tensor(npz[col_k]).reshape(-1).to(torch.int64)
+        pack["vals"] = _as_tensor(npz[val_k]).reshape(-1).float()
+        if shape_k is not None:
+            pack["shape"] = _as_tensor(npz[shape_k]).reshape(-1).to(torch.int64)
+        return pack
+    if tensor_name is not None:
         return None
-    else:
-        if tensor_name is not None:
-            return None
-        raise ValueError(f"unrecognised sparse npz keys: {keys}")
-
-    if rows is None:
-        return None
-    return {
-        "rows": rows.reshape(-1).to(torch.int64).contiguous(),
-        "cols": cols.reshape(-1).to(torch.int64).contiguous(),
-        "vals": vals.contiguous(),
-    }
+    raise ValueError(f"unrecognised sparse npz keys: {keys} (want Antman indices/values/vmax/shape)")
 
 
 def load_fpa_sparse(path: Pathish, tensor_name: Optional[str] = None) -> Optional[Dict[str, torch.Tensor]]:
@@ -319,9 +412,9 @@ def sparse_gemv(
     vals: torch.Tensor,
     out_features: int,
 ) -> torch.Tensor:
-    """COO residual GEMV: ``y[row] += val * x[col]``."""
+    """COO residual GEMV: ``y[row] += val * x[col]`` (no dense W)."""
     *batch, inn = x.shape
-    xf = x.reshape(-1, inn).to(dtype=vals.dtype)
+    xf = x.reshape(-1, inn).to(dtype=torch.float32)
     B = xf.shape[0]
     y = xf.new_zeros(B, out_features)
     if rows.numel() == 0:
@@ -329,6 +422,31 @@ def sparse_gemv(
     contrib = vals.to(dtype=xf.dtype).unsqueeze(0) * xf[:, cols.long()]
     y.index_add_(1, rows.long(), contrib)
     return y.reshape(*batch, out_features)
+
+
+def sparse_gemv_indexed(
+    x: torch.Tensor,
+    indices: torch.Tensor,
+    values_deq: torch.Tensor,
+    out_features: int,
+    in_features: int,
+) -> torch.Tensor:
+    """Antman flat-index GEMV: scatter contrib without building (out, inn)."""
+    rows, cols = unravel_flat_indices(indices, in_features)
+    return sparse_gemv(x, rows, cols, values_deq, out_features)
+
+
+def materialize_sparse_residual(
+    indices: torch.Tensor,
+    values_deq: torch.Tensor,
+    shape: Sequence[int],
+) -> torch.Tensor:
+    """v1 CPU helper: scatter dequant values into ``(out, inn)``. Not used by UV+PQ."""
+    out, inn = int(shape[0]), int(shape[1])
+    W = values_deq.new_zeros(out * inn)
+    if indices.numel():
+        W.index_add_(0, indices.reshape(-1).to(torch.int64), values_deq.reshape(-1).to(W.dtype))
+    return W.view(out, inn)
 
 
 def _load_safetensors_map(path: Pathish) -> Dict[str, torch.Tensor]:
@@ -488,15 +606,19 @@ def write_synthetic_bake(
         from safetensors.torch import save_file as save_pt
 
         save_pt(tens, str(folder / "model.safetensors"))
-    np.save(folder / "_fpa_codebooks.npy", codebooks.numpy())
+    np.save(folder / "_fpa_codebooks.npy", codebooks.detach().cpu().float().numpy().astype(np.float32))
     if sparse_nnz > 0:
         rows = torch.randint(0, out, (sparse_nnz,), generator=g)
         cols = torch.randint(0, inn, (sparse_nnz,), generator=g)
         vals = torch.randn(sparse_nnz, generator=g) * 0.2
+        q, vmax = quantize_sparse_i8(vals)
+        indices = (rows.to(torch.int64) * int(inn) + cols.to(torch.int64)).contiguous()
         np.savez(
             folder / "_fpa_sparse.npz",
-            idx=torch.stack([rows, cols], 0).numpy().astype(np.int64),
-            vals=vals.numpy().astype(np.float32),
+            indices=indices.numpy().astype(np.int64),
+            values=q.numpy().astype(np.int8),
+            vmax=vmax.numpy().astype(np.float32),
+            shape=np.asarray([out, inn], dtype=np.int64),
         )
     man = {
         "format": FORMAT,
@@ -518,7 +640,9 @@ def write_synthetic_bake(
     with open(folder / "_fpa_report.json", "w", encoding="utf-8") as f:
         json.dump(
             {
-                "pq": "product-VQ: residual group = pq_scale * concat_m(codebooks[m, idx])",
+                "pq": "y_pq[row] ≈ sum_g pq_scale[row,g] * sum_m codebook[m, pq_idx[row,g,m]] · x_subvec",
+                "codebooks": "float32 (M=8, K=256, subvec_dim=16)",
+                "sparse": "indices int64 (nnz,) + values int8 /127*vmax + shape (out,inn)",
                 "forward": "y = U_deq @ (V_deq.T @ x) + pq_gemv(x) + sparse_gemv(x)",
                 "lane_b": "freeze-quantize REFUTED (bpw~0.93 @ rel_err~0.72)",
                 "status": "bootstrap — not Done, not near-1",
@@ -573,7 +697,7 @@ def _cli(argv: Optional[Sequence[str]] = None) -> int:
     print(f"  format   {bake.manifest.get('format')} packing={bake.manifest.get('packing')}")
     print(f"  shapes   x={tuple(x.shape)} y={tuple(y.shape)} U={tuple(lin.U.shape)} V={tuple(lin.V.shape)} rank={lin.rank}")
     print(f"  pq       idx={tuple(lin.pq_idx.shape)} scale={tuple(lin.pq_scale.shape)} cb={tuple(lin.codebooks.shape)} gs={lin.gs}")
-    print(f"  sparse   nnz={lin.sparse_nnz}")
+    print(f"  sparse   nnz={lin.sparse_nnz} indices={tuple(lin.sp_indices.shape)} values={lin.sp_values_i8.dtype} vmax={float(lin.sp_vmax.reshape(-1)[0]):.6g} shape={tuple(int(x) for x in lin.sp_shape.tolist())}")
     print(f"  y.norm   {float(y.float().norm()):.6f}  y.mean={float(y.float().mean()):.6e}")
     report = bake.report
     if report:
