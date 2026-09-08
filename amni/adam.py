@@ -24,23 +24,28 @@ class Adam:
         t0=time.time()
         self.svc=None;self.svc_boot_s=0.0;self.runtime_error=None
         try:
-            _mf=Path(bake)/'bake_manifest.json';_man={}
-            try:_man=json.load(open(_mf)) if _mf.exists() else {}
-            except Exception:_man={}
+            from amni.inference.atex_select import select_svc_kind,looks_like_qwen3,load_bake_manifest
+            _man=load_bake_manifest(bake)
             _isnv=str(_man.get('format','')).startswith('nvfp4')
             try:
                 import torch as _t;_freeg=(_t.cuda.mem_get_info()[0]/1e9) if _t.cuda.is_available() else 0.0
             except Exception:_freeg=0.0
+            _want_qwen=looks_like_qwen3(bake,_man) or looks_like_qwen3(model)
+            # Legacy auto-swap: a non-atex bake + free VRAM used to force granite-3B ATEX.
+            # Must NOT steal an explicit Qwen3 bake / HF checkpoint (qwen3_8b_gf17_atex_probe, Qwen/Qwen3-8B, …).
             _atexdir=Path('bakes/granite41_3b_gf17_atex')
-            if (not _isnv) and ('gs' not in _man) and _atexdir.exists() and (_atexdir/'bake_manifest.json').exists() and _freeg>=5.0:
+            if (not _isnv) and (not _want_qwen) and ('gs' not in _man) and _atexdir.exists() and (_atexdir/'bake_manifest.json').exists() and _freeg>=5.0:
                 bake=str(_atexdir);model=str(_atexdir)
-                try:_man=json.load(open(_atexdir/'bake_manifest.json'))
+                try:_man=load_bake_manifest(_atexdir)
                 except Exception:_man={}
-            _isatex=('gs' in _man) and any((t or {}).get('q')==1 for t in (_man.get('tensors',{}) or {}).values())
-            if _isnv:
+            _kind=select_svc_kind(bake,model)
+            if _kind=='nvfp4':
                 from amni.inference.nvfp4_atex_svc import Nvfp4AtexChatService
                 self.svc=Nvfp4AtexChatService(bake=bake,tok_src=model);print(f'[Adam] NVFP4-ATEX server model loaded: {bake}',flush=True)
-            elif _isatex:
+            elif _kind=='qwen_atex':
+                from amni.inference.qwen_atex_svc import QwenAtexChatService
+                self.svc=QwenAtexChatService(path=bake,tok_src=model);print(f'[Adam] Qwen3 Gf17Atex/HF path loaded ({_freeg:.1f}GB free): {bake}',flush=True)
+            elif _kind=='granite_atex':
                 from amni.inference.granite_atex_svc import GraniteAtexChatService
                 self.svc=GraniteAtexChatService(bake=bake,tok_src=model);print(f'[Adam] int4-group ATEX GPU-resident model loaded ({_freeg:.1f}GB free): {bake}',flush=True)
             else:self.svc=StreamingChatService(bake,model,budget_mb=budget_mb);print(f'[Adam] StreamingChatService (CPU/stream fallback): {bake}',flush=True)
