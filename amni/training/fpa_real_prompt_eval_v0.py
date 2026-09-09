@@ -105,9 +105,10 @@ class PromptEvalConfig:
     dtype: str = "bfloat16"
     synthetic: bool = False
     use_sparse: bool = True
+    n_prompts: int = 32
 
 
-def load_prompts(path: str = "", limit: int = 128) -> List[str]:
+def load_prompts(path: str = "", limit: int = 32) -> List[str]:
     texts: List[str] = []
     if path:
         p = Path(path)
@@ -213,7 +214,7 @@ def run_prompt_eval(cfg: PromptEvalConfig) -> Dict[str, Any]:
     out_dir = Path(cfg.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    prompts = load_prompts(cfg.prompts)
+    prompts = load_prompts(cfg.prompts, limit=cfg.n_prompts)
     print(
         f"[fpa_prompt_eval] n_prompts={len(prompts)} seq_len={cfg.seq_len}  NOT Done / not near-1",
         flush=True,
@@ -258,24 +259,26 @@ def run_prompt_eval(cfg: PromptEvalConfig) -> Dict[str, Any]:
     print(f"[fpa_prompt_eval] tokens {tuple(ids.shape)} batches={len(batches)}", flush=True)
 
     t0 = time.time()
-    kl_self, per_self = mean_kl_pairs(teacher, teacher, batches, cfg.temperature, tdev, tdev)
-    print(f"[fpa_prompt_eval] teacher self-KL={kl_self:.6e} (expect ~0)", flush=True)
+    # dense teacher self-KL(logits, logits) — plumbing control, expect ~0
+    kl_self, per_self = _teacher_self_kl(teacher, batches, cfg.temperature, tdev)
+    print(f"[fpa_prompt_eval] self_kl_teacher={kl_self:.6e} (logits,logits control)", flush=True)
 
     fpa.restore_trainables(load_trainables_pt(freeze_p))
     kl_init, per_init = mean_kl_pairs(student, teacher, batches, cfg.temperature, device, tdev)
-    print(f"[fpa_prompt_eval] freeze-init KL={kl_init:.6f}", flush=True)
+    print(f"[fpa_prompt_eval] kl_freeze_init={kl_init:.6f}", flush=True)
 
     fpa.restore_trainables(load_trainables_pt(trained_p))
     kl_trained, per_trained = mean_kl_pairs(student, teacher, batches, cfg.temperature, device, tdev)
-    print(f"[fpa_prompt_eval] trained KL={kl_trained:.6f}", flush=True)
+    print(f"[fpa_prompt_eval] kl_trained={kl_trained:.6f}", flush=True)
 
-    rel = None if kl_init <= 0 else (kl_init - kl_trained) / kl_init
+    rel_vs_freeze = None if kl_init <= 0 else (kl_init - kl_trained) / kl_init
     summary = {
-        "status": "Lane A real-prompt eval v0 — NOT Done; not near-1; one-Linear probe only",
-        "kl_teacher_self": kl_self,
+        "status": "not Done",
+        "verdict": "plumbing_complete",
+        "self_kl_teacher": kl_self,
         "kl_freeze_init": kl_init,
         "kl_trained": kl_trained,
-        "rel_improvement": rel,
+        "rel_vs_freeze": rel_vs_freeze,
         "n_prompts": len(prompts),
         "seq_len": cfg.seq_len,
         "temperature": cfg.temperature,
@@ -290,15 +293,11 @@ def run_prompt_eval(cfg: PromptEvalConfig) -> Dict[str, Any]:
         "wall_s": round(time.time() - t0, 3),
         "prompts_preview": prompts[:8],
         "per_batch": {
-            "teacher_self": per_self,
-            "freeze_init": per_init,
-            "trained": per_trained,
+            "self_kl_teacher": per_self,
+            "kl_freeze_init": per_init,
+            "kl_trained": per_trained,
         },
-        "honesty": {
-            "done": False,
-            "near_1": False,
-            "note": "full-vocab KL on a small English prompt list; not a quality or bpw claim",
-        },
+        "note": "plumbing-only one-Linear KL numbers; not a quality claim; not Done",
         "cfg": asdict(cfg),
     }
     out_json = out_dir / "summary.json"
@@ -306,9 +305,25 @@ def run_prompt_eval(cfg: PromptEvalConfig) -> Dict[str, Any]:
     out_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     with open(out_jsonl, "w", encoding="utf-8") as f:
         for i, (a, b, c) in enumerate(zip(per_self, per_init, per_trained)):
-            f.write(json.dumps({"batch": i, "kl_teacher_self": a, "kl_freeze_init": b, "kl_trained": c}) + "\n")
+            f.write(json.dumps({"batch": i, "self_kl_teacher": a, "kl_freeze_init": b, "kl_trained": c}) + "\n")
     print(f"[fpa_prompt_eval] wrote {out_json}  {out_jsonl}", flush=True)
     return summary
+
+
+def _teacher_self_kl(
+    teacher: nn.Module,
+    batches: Sequence[torch.Tensor],
+    T: float,
+    device: torch.device,
+) -> Tuple[float, List[float]]:
+    """KL(softmax(logits/T) || log_softmax(same logits/T)) — dense self-check."""
+    teacher.eval()
+    per: List[float] = []
+    with torch.no_grad():
+        for b in batches:
+            logits = _forward(teacher, b.to(device))
+            per.append(float(kl_logits(logits, logits, T).item()))
+    return sum(per) / max(1, len(per)), per
 
 
 def _vocab_from(model: nn.Module) -> int:

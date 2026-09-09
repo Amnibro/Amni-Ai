@@ -135,8 +135,11 @@ python scripts/lane_a_fpa_real_prompt_eval_v0.py \
   --out logs/lane_a_fpa_real_prompt_eval_v0
 ```
 
-Full-vocab KL T=2 on a built-in list of short English sentences (or `--prompts`).
-Reports freeze-init vs trained and KL(teacher||teacher) (~0).
+Full-vocab KL T=2 on ~32 built-in English sentences (or `--prompts`; not random
+token ids). `summary.json` keys: `self_kl_teacher` (dense teacher
+self-KL(logits,logits)), `kl_freeze_init`, `kl_trained`, `rel_vs_freeze`.
+Verdict is plumbing-only (`plumbing_complete`); status is `not Done`. Not a
+quality PASS.
 
 ## Smoke
 

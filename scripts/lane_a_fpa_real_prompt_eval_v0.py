@@ -37,7 +37,8 @@ def main(argv=None) -> int:
     p.add_argument("--bake", default="bakes/qwen35_4b_hc_fpa_onetensor_probe")
     p.add_argument("--ckpt-dir", default="logs/lane_a_fpa_distill_v0", help="dir with freeze_init_trainables.pt + trained_trainables.pt")
     p.add_argument("--out", default="logs/lane_a_fpa_real_prompt_eval_v0")
-    p.add_argument("--prompts", default="", help="optional .txt (one/line) or .json list; default = built-in 48 English sentences")
+    p.add_argument("--prompts", default="", help="optional .txt (one/line) or .json list; default = built-in English sentences")
+    p.add_argument("--n-prompts", type=int, default=32, help="cap on English prompts (~32; not random token ids)")
     p.add_argument("--layer", type=int, default=15)
     p.add_argument("--seq-len", type=int, default=64)
     p.add_argument("--batch", type=int, default=4)
@@ -65,6 +66,7 @@ def main(argv=None) -> int:
         dtype=args.dtype,
         synthetic=args.synthetic,
         use_sparse=not args.no_sparse,
+        n_prompts=args.n_prompts,
     )
     print("Lane A real-prompt eval v0 — NOT Done; freeze-quantize REFUTED; not near-1", flush=True)
     run_prompt_eval(cfg)

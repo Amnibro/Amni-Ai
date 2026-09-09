@@ -105,11 +105,13 @@ class TestSyntheticDistill(unittest.TestCase):
                 batch=8,
                 seq_len=32,
             ))
-            self.assertLess(abs(summary["kl_teacher_self"]), 1e-5)
+            self.assertLess(abs(summary["self_kl_teacher"]), 1e-5)
             self.assertIn("kl_freeze_init", summary)
             self.assertIn("kl_trained", summary)
-            self.assertFalse(summary["honesty"]["done"])
-            self.assertFalse(summary["honesty"]["near_1"])
+            self.assertIn("rel_vs_freeze", summary)
+            self.assertEqual(summary["status"], "not Done")
+            self.assertEqual(summary["verdict"], "plumbing_complete")
+            self.assertNotIn("PASS", str(summary["verdict"]).upper())
             self.assertGreaterEqual(summary["n_prompts"], 32)
             self.assertTrue((edir / "summary.json").is_file())
 

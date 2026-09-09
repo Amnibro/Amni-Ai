@@ -96,7 +96,7 @@ python scripts/lane_a_fpa_real_prompt_eval_v0.py \
   --out logs/lane_a_fpa_real_prompt_eval_v0
 ```
 
-Reports full-vocab KL T=2 for freeze-init vs trained on 48 short English prompts, plus KL(teacher||teacher) (~0) as a control.
+Writes `summary.json` with `self_kl_teacher` (dense teacher self-KL(logits,logits)), `kl_freeze_init`, `kl_trained`, `rel_vs_freeze` on ~32 real English prompts. Verdict is plumbing-only (`plumbing_complete`); status is `not Done`. Not a quality PASS.
 
 - **`install.py`, `install.bat`, `install.sh`** — one-shot installers
 

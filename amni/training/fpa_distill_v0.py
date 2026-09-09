@@ -250,7 +250,7 @@ def save_trainables_pt(path: Path, snap: Dict[str, torch.Tensor]) -> Path:
 
 
 def save_run_artifacts(out_dir: Path, fpa: FpaLinear, init_snap: Dict[str, torch.Tensor]) -> Dict[str, Path]:
-    """Write freeze-init + trained snapshots. Live float codes are restored after repack export."""
+    """Always write both freeze_init_trainables.pt and trained_trainables.pt. Live codes restored after optional repack."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     freeze_p = save_trainables_pt(out_dir / "freeze_init_trainables.pt", init_snap)
