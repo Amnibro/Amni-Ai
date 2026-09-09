@@ -14,6 +14,9 @@ Antman HIP (torch sees ROCm as cuda)::
         --steps 5000 --lr 1e-4 --eval-every 500 \\
         --out logs/lane_a_fpa_distill_v0/qwen35_l15_up
 
+Writes freeze_init_trainables.pt, trained_trainables.pt, trained_fpa.pt,
+and trained_fpa_repacked.pt under --out.
+
 CI / no weights::
 
     python scripts/lane_a_fpa_distill_v0.py --synthetic --steps 8 --eval-every 4 --out /tmp/fpa_v0
