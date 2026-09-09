@@ -79,6 +79,39 @@ class TestSyntheticDistill(unittest.TestCase):
             self.assertIn("train", splits)
             self.assertEqual(summary["trainable"], list(RECIPE_V0_TRAIN) or summary["trainable"])
             self.assertTrue(set(summary["trainable"]) == set(RECIPE_V0_TRAIN))
+            for name in ("freeze_init_trainables.pt", "trained_trainables.pt", "trained_fpa.pt", "trained_fpa_repacked.pt"):
+                self.assertTrue((Path(td) / name).is_file(), name)
+            from amni.training.fpa_distill_v0 import load_trainables_pt
+
+            init = load_trainables_pt(Path(td) / "freeze_init_trainables.pt")
+            trained = load_trainables_pt(Path(td) / "trained_trainables.pt")
+            self.assertEqual(set(init), set(RECIPE_V0_TRAIN))
+            self.assertEqual(set(trained), set(RECIPE_V0_TRAIN))
+            self.assertTrue(any(not torch.equal(init[k], trained[k]) for k in RECIPE_V0_TRAIN))
+
+    def test_real_prompt_eval_synthetic(self):
+        from amni.training.fpa_real_prompt_eval_v0 import PromptEvalConfig, run_prompt_eval
+
+        with tempfile.TemporaryDirectory() as td:
+            ddir = Path(td) / "distill"
+            edir = Path(td) / "eval"
+            run_distill(DistillConfig(synthetic=True, steps=4, eval_every=2, out=str(ddir), seed=0, device="cpu", batch=2, seq_len=8, eval_batches=1))
+            summary = run_prompt_eval(PromptEvalConfig(
+                synthetic=True,
+                ckpt_dir=str(ddir),
+                out=str(edir),
+                seed=0,
+                device="cpu",
+                batch=8,
+                seq_len=32,
+            ))
+            self.assertLess(abs(summary["kl_teacher_self"]), 1e-5)
+            self.assertIn("kl_freeze_init", summary)
+            self.assertIn("kl_trained", summary)
+            self.assertFalse(summary["honesty"]["done"])
+            self.assertFalse(summary["honesty"]["near_1"])
+            self.assertGreaterEqual(summary["n_prompts"], 32)
+            self.assertTrue((edir / "summary.json").is_file())
 
     def test_uv_still_matches_dense_during_recipe(self):
         lin = FpaLinear.born(128, 32, rank=8, trainable=True, seed=1)

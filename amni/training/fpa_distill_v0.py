@@ -233,6 +233,44 @@ def _vocab_size(model: nn.Module) -> int:
     return 32000
 
 
+def load_trainables_pt(path: Path) -> Dict[str, torch.Tensor]:
+    try:
+        blob = torch.load(path, map_location="cpu", weights_only=True)
+    except TypeError:
+        blob = torch.load(path, map_location="cpu")
+    if not isinstance(blob, dict):
+        raise TypeError(f"{path} is not a trainables dict")
+    return {k: v for k, v in blob.items() if torch.is_tensor(v)}
+
+
+def save_trainables_pt(path: Path, snap: Dict[str, torch.Tensor]) -> Path:
+    path = Path(path)
+    torch.save({k: v.detach().cpu().contiguous() for k, v in snap.items()}, path)
+    return path
+
+
+def save_run_artifacts(out_dir: Path, fpa: FpaLinear, init_snap: Dict[str, torch.Tensor]) -> Dict[str, Path]:
+    """Write freeze-init + trained snapshots. Live float codes are restored after repack export."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    freeze_p = save_trainables_pt(out_dir / "freeze_init_trainables.pt", init_snap)
+    trained_snap = fpa.snapshot_trainables()
+    trained_p = save_trainables_pt(out_dir / "trained_trainables.pt", trained_snap)
+    fpa_p = out_dir / "trained_fpa.pt"
+    torch.save(fpa.state_dict(), fpa_p)
+    live = fpa.snapshot_trainables()
+    fpa.repack_int4()
+    repack_p = out_dir / "trained_fpa_repacked.pt"
+    torch.save(fpa.state_dict(), repack_p)
+    fpa.restore_trainables(live)
+    return {
+        "freeze_init": freeze_p,
+        "trained": trained_p,
+        "trained_fpa": fpa_p,
+        "trained_fpa_repacked": repack_p,
+    }
+
+
 def eval_kl(
     teacher: nn.Module,
     student: nn.Module,
@@ -412,9 +450,10 @@ def run_distill(cfg: DistillConfig) -> Dict[str, Any]:
         "status": "Lane A distill v0 bootstrap — NOT Done; freeze-quantize REFUTED; not near-1",
         "cfg": asdict(cfg),
     }
+    artifacts = save_run_artifacts(out_dir, fpa, init_snap)
+    summary["artifacts"] = {k: str(v) for k, v in artifacts.items()}
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(f"[fpa_distill_v0] {verdict}: {reason}", flush=True)
     print(f"[fpa_distill_v0] logs {log_jsonl}  {log_csv}  {out_dir / 'summary.json'}", flush=True)
-    # keep init snap available for A/B
-    torch.save({k: v for k, v in init_snap.items()}, out_dir / "freeze_init_trainables.pt")
+    print(f"[fpa_distill_v0] saved {artifacts['freeze_init']}  {artifacts['trained']}  {artifacts['trained_fpa']}", flush=True)
     return summary

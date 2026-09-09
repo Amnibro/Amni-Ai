@@ -66,6 +66,7 @@ The complete source for a working Adam install (CC BY-NC 4.0).
 - **`tests/`** — public-API probe tests, the memory-spine suites, the CoT-routing + self-consistency suites, and `run_security_suite.py` (46 hardening steps, 259 checks)
 - **`scripts/amni_serve.py`** — server entry point with `--seed --cors --port` flags
 - **`scripts/lane_a_fpa_distill_v0.py`** — Lane A one-Linear distill proof (Qwen3.5-4B L15 `up_proj`)
+- **`scripts/lane_a_fpa_real_prompt_eval_v0.py`** — honest English-prompt KL (freeze-init vs trained vs teacher self-KL)
 
 ### Lane A FPA distill v0 (not Done)
 
@@ -83,7 +84,19 @@ python scripts/lane_a_fpa_distill_v0.py \
 python scripts/lane_a_fpa_distill_v0.py --synthetic --steps 8 --eval-every 4 --out /tmp/fpa_v0
 ```
 
-Writes `kl_curve.jsonl`, `kl_curve.csv`, `summary.json` under `--out`. Trainables: U, V, U_scale, V_scale, pq_scale (float scales; U/V are unpacked int4 codes). Frozen: codebooks, pq_idx, sparse.
+Writes `kl_curve.jsonl`, `kl_curve.csv`, `summary.json` under `--out`, plus `freeze_init_trainables.pt`, `trained_trainables.pt`, `trained_fpa.pt`, and `trained_fpa_repacked.pt`. Trainables: U, V, U_scale, V_scale, pq_scale (float scales; U/V are unpacked int4 codes). Frozen: codebooks, pq_idx, sparse.
+
+Honest real-prompt KL (same one-Linear student; **not Done / not near-1**):
+
+```bash
+python scripts/lane_a_fpa_real_prompt_eval_v0.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --ckpt-dir logs/lane_a_fpa_distill_v0/qwen35_l15_up \
+  --out logs/lane_a_fpa_real_prompt_eval_v0
+```
+
+Reports full-vocab KL T=2 for freeze-init vs trained on 48 short English prompts, plus KL(teacher||teacher) (~0) as a control.
 
 - **`install.py`, `install.bat`, `install.sh`** — one-shot installers
 

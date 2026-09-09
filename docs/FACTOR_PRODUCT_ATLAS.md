@@ -121,7 +121,22 @@ python scripts/lane_a_fpa_distill_v0.py \
 ```
 
 Kill: after 5k, KL not improved vs freeze-init beyond ±5% noise → FAIL.
-Logs: `kl_curve.jsonl` + `kl_curve.csv` + `summary.json`. **Not Done.**
+Logs: `kl_curve.jsonl` + `kl_curve.csv` + `summary.json`. Also writes
+`freeze_init_trainables.pt`, `trained_trainables.pt`, `trained_fpa.pt`,
+`trained_fpa_repacked.pt`. **Not Done.**
+
+Real-prompt eval (same honesty bar):
+
+```bash
+python scripts/lane_a_fpa_real_prompt_eval_v0.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --ckpt-dir logs/lane_a_fpa_distill_v0/qwen35_l15_up \
+  --out logs/lane_a_fpa_real_prompt_eval_v0
+```
+
+Full-vocab KL T=2 on a built-in list of short English sentences (or `--prompts`).
+Reports freeze-init vs trained and KL(teacher||teacher) (~0).
 
 ## Smoke
 
