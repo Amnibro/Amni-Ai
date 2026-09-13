@@ -1,4 +1,4 @@
-"""Lane A FPA distill v0 — one-Linear proof (not Done, not near-1).
+﻿"""Lane A FPA distill v0 â€” one-Linear proof (not Done, not near-1).
 
 Authoritative recipe (hub: lane_a_fpa_distill_recipe_v1.md):
 
@@ -9,9 +9,9 @@ Authoritative recipe (hub: lane_a_fpa_distill_recipe_v1.md):
 * Train: U, V, U_scale, V_scale, pq_scale (float scales; U/V = unpacked int4
   codes as float; forward is ``(U*U_scale) @ ((V*V_scale).T @ x)`` + pq + sparse)
 * NEVER materialise dense W
-* Loss: KL(teacher ‖ student) at T=2, optional MSE on that layer's output
-* Steps 2k–5k, LR 1e-4, eval KL every 500 vs freeze-init baseline
-* Kill: after 5k, KL not improved vs freeze-init beyond ±5% noise → FAIL
+* Loss: KL(teacher â€– student) at T=2, optional MSE on that layer's output
+* Steps 2kâ€“5k, LR 1e-4, eval KL every 500 vs freeze-init baseline
+* Kill: after 5k, KL not improved vs freeze-init beyond Â±5% noise â†’ FAIL
 * GDN / linear_attn: leave dense untouched
 
 CLI: ``python scripts/lane_a_fpa_distill_v0.py``
@@ -83,7 +83,7 @@ def pick_device(explicit: str = "") -> torch.device:
 
 
 def kl_logits(student: torch.Tensor, teacher: torch.Tensor, T: float = DEFAULT_T) -> torch.Tensor:
-    """Token-mean KL(softmax(t/T) ‖ log_softmax(s/T)) * T² (standard KD)."""
+    """Token-mean KL(softmax(t/T) â€– log_softmax(s/T)) * TÂ² (standard KD)."""
     t = teacher.float().reshape(-1, teacher.shape[-1])
     s = student.float().reshape(-1, student.shape[-1])
     p = F.softmax(t / T, dim=-1)
@@ -98,11 +98,11 @@ def kill_verdict(kl_init: float, kl_final: float, noise: float = KILL_NOISE) -> 
         return "FAIL", f"freeze-init KL non-positive ({kl_init})"
     rel = (kl_init - kl_final) / kl_init
     if rel > noise:
-        return "PASS", f"KL improved {rel * 100:.2f}% vs freeze-init ({kl_init:.6f} → {kl_final:.6f})"
+        return "PASS", f"KL improved {rel * 100:.2f}% vs freeze-init ({kl_init:.6f} â†’ {kl_final:.6f})"
     return (
         "FAIL",
-        f"KL not improved beyond ±{noise * 100:.0f}% noise "
-        f"(rel={rel * 100:.2f}%; {kl_init:.6f} → {kl_final:.6f})",
+        f"KL not improved beyond Â±{noise * 100:.0f}% noise "
+        f"(rel={rel * 100:.2f}%; {kl_init:.6f} â†’ {kl_final:.6f})",
     )
 
 
@@ -133,7 +133,7 @@ def _dtype(name: str) -> torch.dtype:
 
 
 class _TinyUpLM(nn.Module):
-    """Synthetic stand-in: embed → up_proj → head. Used when --synthetic (CI / no 4B)."""
+    """Synthetic stand-in: embed â†’ up_proj â†’ head. Used when --synthetic (CI / no 4B)."""
 
     def __init__(self, inn: int, out: int, vocab: int = 128):
         super().__init__()
@@ -202,7 +202,7 @@ def swap_up_proj(student: nn.Module, bake: str, layer: int, device: torch.device
     out = int(getattr(dense, "out_features", fpa.out_features))
     if fpa.in_features != inn or fpa.out_features != out:
         raise ValueError(
-            f"FPA bake {fpa.in_features}×{fpa.out_features} != dense {path} {inn}×{out}"
+            f"FPA bake {fpa.in_features}Ã—{fpa.out_features} != dense {path} {inn}Ã—{out}"
         )
     set_module(student, path, fpa)
     return path, fpa
@@ -271,7 +271,7 @@ def run_distill(cfg: DistillConfig) -> Dict[str, Any]:
         if not Path(cfg.bake).exists():
             raise FileNotFoundError(f"FPA bake not found: {cfg.bake}")
         dt = _dtype(cfg.dtype)
-        print(f"[fpa_distill_v0] load teacher {cfg.teacher} → {tdev} {cfg.dtype}", flush=True)
+        print(f"[fpa_distill_v0] load teacher {cfg.teacher} â†’ {tdev} {cfg.dtype}", flush=True)
         teacher = load_causal_lm(cfg.teacher, tdev, dt)
         print(f"[fpa_distill_v0] load student copy + swap L{cfg.layer} up_proj from {cfg.bake}", flush=True)
         student = load_causal_lm(cfg.teacher, device, dt)
@@ -298,7 +298,7 @@ def run_distill(cfg: DistillConfig) -> Dict[str, Any]:
 
     def _eval() -> float:
         if tdev != device:
-            # student on device, teacher on tdev — move ids
+            # student on device, teacher on tdev â€” move ids
             acc = []
             student.eval()
             teacher.eval()
@@ -409,7 +409,7 @@ def run_distill(cfg: DistillConfig) -> Dict[str, Any]:
         "device": str(device),
         "wall_s": round(time.time() - t0, 3),
         "choice": "U/V are unpacked int4 codes (float); forward (U*U_scale)@(V*V_scale)^T x + pq + sparse; then repack_int4()",
-        "status": "Lane A distill v0 bootstrap — NOT Done; freeze-quantize REFUTED; not near-1",
+        "status": "Lane A distill v0 bootstrap â€” NOT Done; freeze-quantize REFUTED; not near-1",
         "cfg": asdict(cfg),
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -417,4 +417,7 @@ def run_distill(cfg: DistillConfig) -> Dict[str, Any]:
     print(f"[fpa_distill_v0] logs {log_jsonl}  {log_csv}  {out_dir / 'summary.json'}", flush=True)
     # keep init snap available for A/B
     torch.save({k: v for k, v in init_snap.items()}, out_dir / "freeze_init_trainables.pt")
+    final_snap = fpa.snapshot_trainables()
+    torch.save({k: v.detach().cpu().clone() for k, v in final_snap.items()}, out_dir / "trained_trainables.pt")
+    print(f"[fpa_distill_v0] saved {out_dir / 'trained_trainables.pt'}", flush=True)
     return summary

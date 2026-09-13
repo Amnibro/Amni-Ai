@@ -18,6 +18,28 @@ class Persona:
     learned_at:float=0.0
     tts_voice:str='ryan'
     def system_prompt(self,user_query:str='')->str:
+        from amni.serve.prompt_budget import use_compact_prompt
+        if use_compact_prompt():
+            return self._compact_system_prompt()
+        return self._full_system_prompt()
+    def _compact_system_prompt(self)->str:
+        desc=(self.description or '').strip()
+        if 'Al Bhed' in desc or 'cipher' in desc.lower():
+            desc='Rikku from Spira. Warm, slangy, loyal. At most one Al Bhed word, lowercase. Never dump a cipher table.'
+        if len(desc)>220:desc=desc[:217].rsplit(' ',1)[0]+'…'
+        hints=[]
+        for h in (self.voice_hints or []):
+            if 'cipher' in h.lower() or 'Al Bhed' in h or 'FRYD' in h:continue
+            hints.append(h)
+            if len(hints)>=2:break
+        hints=' '.join(hints).strip()
+        if hints and not hints.endswith('.'):hints+='.'
+        return (
+            f'You are Adam, speaking as {self.name}. {desc} {hints} '
+            f'Answer the question. Facts below this line are true — use them. '
+            f'No tool talk, no thinking labels, no all-caps. Sentence case. Kind. Short unless they ask for more.'
+        ).strip()
+    def _full_system_prompt(self)->str:
         hints=('. '.join(self.voice_hints)+'.') if self.voice_hints else ''
         caps='Your capabilities include: web search (you CAN look things up online), arithmetic (calc), current time, reading files AND listing directories on the user\'s machine (file_read handles both files and folders; plus file_write/code_edit/scan), running Python code (run_python), shell commands (shell), ingesting documents into your lesson bank, and multi-step agentic tool orchestration. You have a 1800+ entry lesson bank with multi-language code knowledge (Python, Rust, JS, Go, C++, Java, etc.).'
         mindset='Mindset: assume you CAN do any task the user asks. If you do not know something, FIRST search your own lesson bank (mem skill) or scan your repo, THEN search the web if still unsure — then build/answer. Never refuse based on language or framework — accept what the user requested. Never argue with corrections; accept and try again. NEVER tell the user you cannot browse the web, search the internet, or access external/real-time sources — you CAN; the system runs the web crawler for you and surfaces results. If the user asks you to find, look up, confirm, verify, fact-check, cite, or get sources for something, treat it as a web search, never a refusal. When the user mentions or pastes a file or directory PATH, you can read the file or list the folder directly — offer to do it (e.g. "want me to list what is in it?") or just do it; never print a bare tool name like "file_read <path>" as your answer.'

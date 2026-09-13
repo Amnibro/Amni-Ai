@@ -144,6 +144,8 @@ _MEMORY_RECALL_RE=re.compile(r"\b(?:do\s+you\s+remember(?:\s+what|\s+we|\s+our)|
 _INTROSPECT_NO_WEB_RE=re.compile(r"\b(?:what\s+can\s+you\s+do|what\s+are\s+(?:your|adam'?s?)\s+(?:capabilities|abilities|skills|features|tools)|who\s+are\s+you|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+(?:yourself|adam)|how\s+do\s+you\s+(?:work|remember|learn)|list\s+(?:your\s+)?(?:skills|capabilities|tools)|hi\b|hello\b|hey\b|sup\b|yo\b|greetings|good\s+(?:morning|evening|afternoon|night)|thank(?:s|\s+you)|thx\b|how\s+are\s+you|how'?s\s+it\s+going)",re.IGNORECASE)
 _NEEDS_FRESH_INFO_RE=re.compile(r"\b(?:weather|forecast|temperature|raining|snowing|sunny|news|headlines|stock\s+price|stocks?|market|exchange\s+rate|crypto|bitcoin|score|game\s+(?:tonight|today|score|result)|sports?|(?:who\s+won|who'?s\s+playing)|election|polls?|current\s+price|today'?s|right\s+now|currently|happening\s+(?:now|today)|recent|latest)\b",re.IGNORECASE)
 _CFG=load_config()
+if _CFG.get('gen_backend'):os.environ.setdefault('AMNI_GEN_BACKEND',str(_CFG['gen_backend']))
+if _CFG.get('active_gguf'):os.environ.setdefault('AMNI_ACTIVE_GGUF',str(_CFG['active_gguf']))
 def _port_pids(port:int):
     pids=[]
     try:
@@ -473,7 +475,13 @@ def main():
                 try:agent.profile.update_from_message(req.message)
                 except Exception as _pe:print(f'[amni_serve] /chat/stream profile update failed: {_pe}',flush=True)
             if getattr(agent,'notes',None) is not None and prior_a and ConversationNotes.is_correction(req.message):
-                try:agent.notes.add_correction(wrong_q=prior_q,wrong_a=prior_a,corrected_text=req.message,session_id=conv.session_id)
+                try:
+                    _cor=ConversationNotes.extract_corrected_answer(req.message) or req.message
+                    agent.notes.add_correction(wrong_q=prior_q,wrong_a=prior_a,corrected_text=_cor,session_id=conv.session_id)
+                    _bus=getattr(agent,'memory_bus',None)
+                    if _bus is not None and prior_q and _cor:
+                        _bus.record_learning(prior_q,_cor,kind='correction',provenance='user:Anthony',exactness='exact',supersedes=prior_a)
+                    yield f'event: learned\ndata: {_json.dumps({"q":(prior_q or "")[:160],"answer":_cor[:200]})}\n\n'
                 except Exception as _ce:print(f'[amni_serve] /chat/stream correction capture failed: {_ce}',flush=True)
             _skill_match=agent._detect_skill(req.message) if hasattr(agent,'_detect_skill') else None
             if _skill_match:
@@ -527,7 +535,8 @@ def main():
             apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam'
             if _profile_authoritative or _memory_recall:apply_cot=False
             from amni.serve.conversation import detect_personal as _dp
-            _hist_n=int(os.environ.get('AMNI_HISTORY_TURNS','12'))
+            from amni.serve.prompt_budget import history_turns as _hturns,use_compact_prompt as _ucp
+            _hist_n=_hturns()
             history_pairs=conv.history_pairs(n=_hist_n) if len(conv.turns)>1 else []
             _skip_atlas=_profile_authoritative or _memory_recall or (_intent_label=='introspection') or (_intent_label=='math_calc')
             atlas_recall=[] if _skip_atlas else (agent.atlas.recall(req.message,session_id=conv.session_id,k=3,include_global=True) if getattr(agent,'atlas',None) is not None else [])
@@ -536,7 +545,10 @@ def main():
                 if pair[0] and pair[1] and pair not in history_pairs:history_pairs=[pair]+history_pairs
             history_pairs=history_pairs[-_hist_n:]
             user_facts=agent._extract_user_facts(conv,extra_user_msgs=[r.get('user','') for r in atlas_recall],profile_only=(_intent_label=='profile_about_me')) if hasattr(agent,'_extract_user_facts') else []
-            user_facts=['The current local date and time is '+time.strftime('%A, %B %d, %Y at %I:%M %p',time.localtime())+'. Use this exact value for any date, time, "today", "now", or current-year reasoning — never guess or invent a date. For live system stats (CPU/memory/disk) or weather, rely on the tool widgets, never fabricate numbers.']+user_facts
+            if _ucp():
+                user_facts=['Local now: '+time.strftime('%A, %B %d, %Y %I:%M %p',time.localtime())+'.']+user_facts
+            else:
+                user_facts=['The current local date and time is '+time.strftime('%A, %B %d, %Y at %I:%M %p',time.localtime())+'. Use this exact value for any date, time, "today", "now", or current-year reasoning — never guess or invent a date. For live system stats (CPU/memory/disk) or weather, rely on the tool widgets, never fabricate numbers.']+user_facts
             is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
             sl=getattr(adam,'sem_lut',None)
             _has_correction=False
@@ -563,6 +575,16 @@ def main():
                             yield f'event: web_supplement_done\ndata: {_json.dumps({"chars":len(_pw_ans),"sources_n":len(_pw_srcs),"phase":"pre_fetch"})}\n\n'
             except Exception as _pwe:print(f'[serve] pre-web error: {_pwe}',flush=True)
             try:
+                _bus=getattr(agent,'memory_bus',None)
+                if _bus is not None and not _profile_authoritative and not _memory_recall and not _persona_query and not is_private:
+                    _lv,_lh,_lc=_bus.learned_override(req.message)
+                    if _lv and not _pre_web_supplemented:
+                        _bump('lut_hits')
+                        for ch in [_lv[i:i+48] for i in range(0,len(_lv),48)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
+                        conv.append('assistant',_lv,{'tier':_lh,'persona':persona_name,'category':category})
+                        yield f'event: done\ndata: {_json.dumps({"tier":_lh,"wall_s":round(time.time()-t0,3)})}\n\n';return
+            except Exception as _lre:print(f'[amni_serve] learned override skipped: {_lre}',flush=True)
+            try:
                 if getattr(agent,'notes',None) is not None:
                     _msg_norm=req.message.strip().lower()
                     for _c in (agent.notes.data.get('corrections') or [])[-20:]:
@@ -570,7 +592,7 @@ def main():
             except Exception:_has_correction=False
             try:
                 eff=sl.auto_margin() if sl and hasattr(sl,'auto_margin') else 0.08
-                hit=sl.lookup_soft(req.message,margin=eff) if (sl and hasattr(sl,'lookup_soft') and not history_pairs and not is_private and not _has_correction and not _profile_authoritative and not _memory_recall and not _persona_query) else None
+                hit=sl.lookup_soft(req.message,margin=eff) if (sl and hasattr(sl,'lookup_soft') and not is_private and not _has_correction and not _profile_authoritative and not _memory_recall and not _persona_query) else None
             except Exception:hit=None
             if hit is None and sl is not None and hasattr(sl,'lookup_soft') and os.environ.get('AMNI_FEDERATION_ONDEMAND','1')!='0' and not is_private and not _memory_recall and not _profile_authoritative and not _persona_query:
                 try:
@@ -908,7 +930,41 @@ def main():
         gated=_iter_counters['quality_gated'] or 0
         tests_total=_iter_counters['tests_passed']+_iter_counters['tests_failed']
         base['iter_rates']={'perturb_success_rate':round(total_perturb/attempted,3),'quality_gate_fire_rate':round(gated/max(promoted+gated,1),3),'tests_pass_rate':round(_iter_counters['tests_passed']/max(tests_total,1),3),'hint_inject_rate':round(_iter_counters['hint_injected']/max(_iter_counters['perturb_attempted'],1),3)}
+        try:
+            from amni.inference.gguf_catalog import status as _gs
+            from amni.serve.gguf_runtime import health as _gh,backend_name as _bn
+            base['model']={'backend':_bn(),'gguf':_gs(),'runtime':_gh()}
+        except Exception:pass
         return base
+    @app.get('/models')
+    def list_models():
+        from amni.inference.gguf_catalog import status as _gs
+        from amni.serve.gguf_runtime import health as _gh,backend_name as _bn
+        from amni.utils.model_resolver import model_roster,active_model_name
+        return {'active':active_model_name(),'backend':_bn(),'runtime':_gh(),'gguf':_gs(),'roster':model_roster()}
+    class _ActivateReq(BaseModel):
+        id:Optional[str]=None
+        path:Optional[str]=None
+        backend:str='gguf'
+        model:str='qwen38-27b-aggressive'
+    @app.post('/models/activate')
+    def activate_model(req:_ActivateReq):
+        from amni.inference.gguf_catalog import list_ggufs
+        from amni.serve.gguf_runtime import activate
+        path=req.path
+        if not path and req.id:
+            hit=next((m for m in list_ggufs() if m['id']==req.id),None)
+            if hit is None:raise HTTPException(status_code=404,detail=f'unknown model {req.id!r}')
+            path=hit['path']
+        if not path:raise HTTPException(status_code=400,detail='need id or path')
+        if req.backend=='bake':
+            os.environ['AMNI_GEN_BACKEND']='bake'
+            try:
+                from amni.bootstrap import load_config,save_config
+                cfg=load_config();cfg['gen_backend']='bake';save_config(cfg)
+            except Exception:pass
+            return {'ok':True,'backend':'bake','path':path}
+        return activate(path,backend=req.backend,model=req.model)
     @app.get('/stats/iter')
     def stats_iter():return dict(_iter_counters)
     @app.post('/stats/iter/reset')
@@ -929,7 +985,13 @@ def main():
         if _HUD_PATH.exists():return HTMLResponse(_HUD_PATH.read_text(encoding='utf-8'))
         return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p></body></html>',status_code=200)
     @app.get('/healthz')
-    def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state,'auth_required':bool(_AUTH_TOKEN)}
+    def health():
+        _m={'backend':os.environ.get('AMNI_GEN_BACKEND','bake'),'gguf':os.environ.get('AMNI_ACTIVE_GGUF') or ''}
+        try:
+            from amni.inference.gguf_catalog import status as _gs
+            _m['gguf_catalog']=_gs()
+        except Exception:pass
+        return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state,'auth_required':bool(_AUTH_TOKEN),'model':_m}
     @app.get('/manifest.webmanifest')
     def _pwa_manifest():
         from fastapi.responses import JSONResponse as _MJR

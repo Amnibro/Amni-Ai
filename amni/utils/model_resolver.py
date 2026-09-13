@@ -144,13 +144,23 @@ def best_2b_path()->Optional[Path]:
     return None
 def all_2b_paths()->List[Path]:
     return [_MODELS_DIR/n for n in _2B_QUANTS if (_MODELS_DIR/n).exists() and (_MODELS_DIR/n).stat().st_size>100_000_000]
+def hauhau_27b_q3_path()->Optional[Path]:
+    try:
+        from amni.inference.gguf_catalog import hauhau_q3_path
+        return hauhau_q3_path()
+    except Exception:
+        return None
 def get_active_gguf()->Optional[Path]:
-    return qwen35_9b_q8_path() or qwen35_9b_q4_path() or jackrong_9b_path() or luffy_9b_q8_path() or luffy_9b_q4_path()
+    env=os.environ.get('AMNI_ACTIVE_GGUF')
+    if env and Path(env).exists():return Path(env)
+    return hauhau_27b_q3_path() or qwen35_9b_q8_path() or qwen35_9b_q4_path() or jackrong_9b_path() or luffy_9b_q8_path() or luffy_9b_q4_path()
 def is_local_ready()->bool:
     return get_active_gguf() is not None
 def active_model_name()->str:
     active=os.environ.get("AMNI_ACTIVE_MODEL","").strip()
     if active:return active
+    if hauhau_27b_q3_path() and (os.environ.get('AMNI_GEN_BACKEND') or '').lower() in ('gguf','ollama','llama'):
+        return "Qwen3.8-27B HauhauCS Aggressive (Q3_K_P GGUF)"
     if qwen35_9b_q8_path():return "Qwen3.5-9B (local Q8_0, WSL ROCm Railgun)"
     if qwen35_9b_q4_path():return "Qwen3.5-9B (local Q4_K_M, WSL ROCm Railgun)"
     if jackrong_9b_path():return "Qwen3.5-9B-Claude-4.6-Opus-Reasoning (Jackrong Q8)"
@@ -165,6 +175,7 @@ def model_roster()->List[Dict]:
         ("jackrong-9b-q8","Jackrong 9B Q8 (Reasoning)",jackrong_9b_path,"proposer",9086),
         ("luffy-9b-q4","LuffyTheFox 9B Q4 (Uncensored)",luffy_9b_q4_path,"auditor",5366),
         ("luffy-9b-q8","LuffyTheFox 9B Q8 (Uncensored)",luffy_9b_q8_path,"heavy",9086),
+        ("hauhau-27b-q3","Qwen3.8-27B HauhauCS Aggressive Q3_K_P",hauhau_27b_q3_path,"heavy",13440),
     ]
     for mid,name,fn,role,mb in checks:
         p=fn()

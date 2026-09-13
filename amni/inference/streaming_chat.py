@@ -25,7 +25,7 @@ class _RuntimeBlobMissing(RuntimeError):
     """Raised when StreamingChatService can't import the Reffelt source modules.
     Under iter29 the public clone IS the runtime — this only fires when the source
     is incomplete or the prebuilt amni_kernels .pyd doesn't match the running Python."""
-_GDN_ARCHS=('Qwen3_5ForCausalLM','Qwen3_5MoeForCausalLM','MiniMaxText01ForCausalLM','Qwen3CoderNextForCausalLM')
+from amni.inference.gdn_detect import is_gdn_config
 _MULTIMODAL_PREFIXES=('model.language_model.',)
 class StreamingChatService:
     def __init__(self,bake_dir,model_path,budget_mb=4000,device=None,lmhead_full=True,enable_prefetch=True,prefetch_horizon=6,pin_embed=True):
@@ -47,7 +47,7 @@ class StreamingChatService:
             else:print(f'[StreamingChatService] WARN: tokenizer has no chat_template AND no chat_template.jinja next to it at {model_path}. apply_chat_template() will fail. Re-pull the bake: snapshot_download(repo_id="amnibro/granite41-3b-palette", local_dir="<bake_dir>")',flush=True)
         cfg=AutoConfig.from_pretrained(model_path)
         archs=tuple(getattr(cfg,'architectures',None) or [])
-        is_gdn=any(a in _GDN_ARCHS for a in archs)
+        is_gdn=is_gdn_config(cfg)
         if is_gdn:
             from amni.inference import triton_gdn_patch
             triton_gdn_patch.apply()
@@ -308,7 +308,8 @@ class StreamingChatService:
         sys_text='\n'.join(sys_parts) if sys_parts else None
         msgs=[]
         if sys_text:msgs.append({'role':'system','content':sys_text})
-        for u,a in (history or [])[-int(os.environ.get('AMNI_HISTORY_TURNS','12')):]:
+        from amni.serve.prompt_budget import history_turns as _hturns
+        for u,a in (history or [])[-_hturns():]:
             msgs.append({'role':'user','content':u})
             msgs.append({'role':'assistant','content':a})
         msgs.append({'role':'user','content':user_msg})

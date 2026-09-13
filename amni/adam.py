@@ -161,6 +161,16 @@ class Adam:
             if hit and not (bus is not None and bus.is_suppressed(hit)):
                 for chunk in [hit[i:i+24] for i in range(0,len(hit),24)]:yield chunk
                 return
+        try:
+            from amni.serve.gguf_runtime import enabled as _gguf_on,chat_stream as _gguf_stream
+        except Exception:
+            _gguf_on=lambda:False;_gguf_stream=None
+        if _gguf_on():
+            try:
+                for chunk in _gguf_stream(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample):yield chunk
+                return
+            except Exception as _ge:
+                yield f'[gguf stream: {_ge}]';return
         if self.svc is None:
             why=(self.runtime_error or 'StreamingChatService was None at server boot — check the server logs for the underlying exception')[:400]
             msg=f'[Adam streaming chat unavailable — the GF(17) backend failed to initialize at boot. Reason: {why}. Diagnostic: `python -c "from amni.runtime import fetch; fetch()"`. Most common cause: prebuilt amni_kernels .pyd is Python-version-specific (cp313 currently). Rebuild via `cd amni_kernels && pip install maturin && maturin develop --release`, then restart the server.]'
@@ -186,6 +196,17 @@ class Adam:
                 hit=sl.lookup_soft(message,k=1,cos_gate=float(os.environ.get('AMNI_RECALL_DIRECT_GATE','0.90')),margin=0.04)
                 if hit and not (bus is not None and bus.is_suppressed(hit)):return {'answer':hit,'tier':'tier1_sem_lut','tokens':0,'wall_s':round(time.time()-t0,3)}
             except Exception:pass
+        try:
+            from amni.serve.gguf_runtime import enabled as _gguf_on,chat as _gguf_chat
+        except Exception:
+            _gguf_on=lambda:False;_gguf_chat=None
+        if _gguf_on():
+            try:
+                r=_gguf_chat(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample)
+                r['wall_s']=round(time.time()-t0,3)
+                return r
+            except Exception as _ge:
+                return {'answer':None,'error':str(_ge),'tier':'gguf_error','tokens':0,'wall_s':round(time.time()-t0,3)}
         if self.svc is None:return {'answer':None,'error':f'runtime not installed: {self.runtime_error}','tier':'runtime_missing','tokens':0,'wall_s':round(time.time()-t0,3)}
         try:resp,n=self.svc.chat(message,system=system,history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample,kb_top_k=int(os.environ.get('AMNI_PERSONA_KB_TOPK','4')))
         except Exception as e:return {'answer':None,'error':str(e),'tier':'persona_error','tokens':0,'wall_s':round(time.time()-t0,3)}

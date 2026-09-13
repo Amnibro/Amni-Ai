@@ -56,7 +56,7 @@ def bake_tier_for_dir(bake_dir):
     return None
 DEFAULT_PORT=7700
 DEFAULT_HOST='127.0.0.1'
-_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'block_bank':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000,'granite_ready':False}
+_DEFAULTS={'bake':None,'model':None,'lessons':None,'lut_root':None,'conv_root':None,'persona_bank':None,'audit_log':None,'block_bank':None,'workdir':None,'default_persona':'rikku','port':DEFAULT_PORT,'host':DEFAULT_HOST,'unrestricted_files':False,'cors':True,'open_browser':True,'first_run_done':False,'hf_bake_repo':DEFAULT_HF_REPO,'hf_base_repo':DEFAULT_BASE_REPO,'budget_mb':8000,'granite_ready':False,'gen_backend':'bake','active_gguf':None}
 def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]

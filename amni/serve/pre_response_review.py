@@ -90,5 +90,13 @@ def build_brief(qn:int,qtags:List[str],items:Dict[str,Any])->str:
             bits.append(seg)
         lines.append(f"PRIOR ATTEMPTS at a similar task — do better than before: {' | '.join(bits)}")
     if not lines:return ''
+    try:
+        from amni.serve.prompt_budget import use_compact_prompt
+        if use_compact_prompt():
+            keep=[]
+            if cor and cor[0]:keep.append(str(cor[0])[:280])
+            if (items.get('leaks') or {}).get('total',0)>0:keep.append('Answer only. No thinking labels or tool narration.')
+            return '\n'.join(keep)
+    except Exception:pass
     head=f"[PRE-RESPONSE REVIEW · reffelt-nonce {'.'.join(str(d) for d in digits)}]"
     return head+"\n"+"\n".join(lines)

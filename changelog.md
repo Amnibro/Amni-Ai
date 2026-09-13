@@ -1,3 +1,27 @@
+## 2026-09-11 Operator crystal G3 layer split
+
+L00-01 official still FAIL rel 1.336. Sixteen-layer q+k on held-out seqs **0.096** (cos 0.785) vs dtype bar 0.019. Eight-layer stack was 0.045. Isolated late layers stay on the bar. Official G3 still needs v/o/MLP. Tests: `tests/test_gf17_opcrystal_v6_20_256.py`.
+
+## 2026-09-10 Operator crystal G0/G1 on 3B nib
+
+`gf17_opcrystal.py` on `granite41_3b_gf17_nib` (atex bake is gone). Stream load to GPU. G0 PASS rel 0.1629 (48×48×8 splat+y0, Adam off). G1 PASS 0.0339/0.1653 (16 rays split L0/L20). G2 PASS argmax 0.9902. G3 FAIL 1.33 vs bar 0.0064. G4 not run, no ship. Tests: `tests/test_gf17_opcrystal_v6_20_256.py`.
+
+## 2026-09-11 GGUF product path (v6.21.1)
+
+Downloaded HauhauCS Qwen3.8-27B Aggressive Q3_K_P + FastMTP (the 16GB-card quant from the repo). Local GGUFs now show up in `GET /models`; `POST /models/activate` switches Adam onto llama-server/Ollama without swapping the Granite bake. Chat streams a `learned` event when a correction lands. STATUS panel shows the active backend. Q4_K_P (~18GB) is still a later pull — it will not fully GPU-offload on a 16GB card.
+
+## 2026-09-10 Small-model loop (v6.21.0)
+
+Granite 3B default prompt is compact (~150–250 words; `AMNI_PROMPT=full` restores the old essay). Rikku no longer dumps the Al Bhed cipher table every turn. Corrections parse with regex first and get stored on the notes file + memory bus; mid-chat recall uses the ledger on paraphrases instead of hoping the 3B reads a fact line. History default is 6 turns in compact mode. Loader treats Qwen3.5 / 3.8 GDN (`Qwen3_5ForConditionalGeneration` + `linear_attention` layers) as first-class; installer catalog adds `Qwen/Qwen3.5-4B` (8GB+) and `Qwen/Qwen3.8-27B` (~18GB+, never auto-picked on a 4–8GB card). Tests: `python -m unittest tests.test_small_model_loop -v`.
+
+## 2026-09-09 Crystal exploration (v6.20.260)
+
+crystal_probe.py (closed-form crystal + fold floors): q/k foldable at 8 rays (rel 0.16-0.33), v/o/MLP not. Hybrid e2e (q/k crystal + lattice) KL 1.146 vs lattice-only 0.909 at 600 steps.
+
+## 2026-09-08 Operator crystal fold floor (v6.20.259)
+
+Reduced-rank floor of a k-dim fold: q_proj needs 64-512 dims for int4-bar rel, MLP up_proj sits at rel 0.89 @16 dims and 0.46 @1024. Crystal G0 8 rays = rel 0.41 @36 bpw. Closed post-hoc on MLPs. exports/ wiped 13:14 by a cleanup; 3B lives on as bakes/granite41_3b_gf17_nib; `flowmap_v1.load_bake_any` handles multi-shard scale placement.
+
 # Amni-Ai Changelog
 
 One line per release; full detail in git history.

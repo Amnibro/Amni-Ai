@@ -105,23 +105,32 @@ _EXPLAIN_RE=re.compile(r"\b(?:explain|how\s+(?:do|does|would|can|should)\s+(?:yo
 _HAS_CONCRETE_CALC_RE=re.compile(r"\d+(?:\.\d+)?\s*[+\-*/^]\s*\d|\bsolve\s+for\b|=\s*\?|\bfind\s+(?:the\s+)?(?:value|result|answer)\b|\bcompute\s+\d")
 _FACT_LOOKUP_RE=re.compile(r'^\s*(?:what(?:\'s| is| are| was)|who(?:\'s| is| are| was)|when(?:\'s| is| was)|where(?:\'s| is)|which|tell me (?:the|what|who)|give me the|how many)\b',re.IGNORECASE)
 _NONCODE_CODE_PHRASE=re.compile(r'\b(?:zip|area|postal|promo|coupon|discount|gift|access|error|status|country|dialing|barcode|qr|pin|cheat|redeem|activation|product|reference|booking|confirmation|tracking|swift|routing|morse|color|colour|secret|vault|launch)\s+code\b',re.IGNORECASE)
-def _pick_cot(category:str,message:str)->str:
+_COT_KIND_ON=frozenset(('code','math','debug','design','reasoning','explain'))
+def _cot_kind(category:str,message:str)->str:
     m=message.lower()
     _factlookup=bool(_FACT_LOOKUP_RE.match(message)) or bool(_NONCODE_CODE_PHRASE.search(message))
     _explain=bool(_EXPLAIN_RE.search(message)) and not bool(_HAS_CONCRETE_CALC_RE.search(message))
     _codephrase=not _factlookup and any(k in m for k in ('write a function','write code','implement','how do i write','write a program','code for','algorithm to','python function','javascript function','rust function','make me code','give me code','generate code','create code','make code'))
-    if any(k in m for k in (' debug','debugging','bug','why is my','why does my','why won','not working','broken','error','crash','hang','leak','slow','flak')):return _COT_DEBUG
-    if _codephrase:return _make_code_cot(_detect_code_lang(message))
-    if any(k in m for k in ('design a','design the','architect','how would you build','how to build a','scale to','system to handle','rate limit','queue','pipeline architecture')):return _COT_DESIGN
-    if _explain:return _COT_EXPLAIN
-    if not _factlookup and category=='code':return _make_code_cot(_detect_code_lang(message))
-    if any(k in m for k in ('solve for','calculate','compute the','equation','derivative','integral','probability','optimize','minimize','maximize','prove that','theorem','formula for')):return _COT_MATH
-    if category=='reasoning':return _COT_REASONING
-    return _COT_GENERIC
+    if any(k in m for k in (' debug','debugging','bug','why is my','why does my','why won','not working','broken','error','crash','hang','leak','slow','flak')):return 'debug'
+    if _codephrase:return 'code'
+    if any(k in m for k in ('design a','design the','architect','how would you build','how to build a','scale to','system to handle','rate limit','queue','pipeline architecture')):return 'design'
+    if _explain:return 'explain'
+    if not _factlookup and category=='code':return 'code'
+    if any(k in m for k in ('solve for','calculate','compute the','equation','derivative','integral','probability','optimize','minimize','maximize','prove that','theorem','formula for')):return 'math'
+    if category=='reasoning':return 'reasoning'
+    return 'generic'
+def _pick_cot(category:str,message:str)->str:
+    from amni.serve.prompt_budget import use_compact_prompt,compact_cot
+    kind=_cot_kind(category,message)
+    if use_compact_prompt():return compact_cot(kind)
+    if kind=='code':return _make_code_cot(_detect_code_lang(message))
+    return {'math':_COT_MATH,'debug':_COT_DEBUG,'design':_COT_DESIGN,'reasoning':_COT_REASONING,'explain':_COT_EXPLAIN}.get(kind,_COT_GENERIC)
 def _needs_cot(category:str,message:str)->bool:
     if category in _COT_SKIP_CATEGORIES:return False
     if len(message.split())<4:return False
-    return True
+    if _FACT_LOOKUP_RE.match(message):return False
+    kind=_cot_kind(category,message)
+    return category in _COT_KIND_ON or kind in _COT_KIND_ON
 _PY_BLOCK_RE=re.compile(r'```(?:python|py)?\s*\n(.+?)```',re.DOTALL|re.IGNORECASE)
 _ASSERT_RE=re.compile(r'(?:^|\n)\s*`?(assert\s+[^\n`]+?)`?\s*(?=\n|$)',re.MULTILINE)
 def _extract_python_blocks(text:str)->List[str]:
@@ -596,6 +605,9 @@ class AmniAgent:
         if m and self.skills.has('web'):return ('web',{'query':msg})
         return None
     def _extract_correction(self,prev_q,prev_a,message):
+        cor=ConversationNotes.extract_corrected_answer(message)
+        if cor:return cor
+        if len((message or '').split())<12:return None
         try:
             prompt=f'Prior question: {prev_q}\nMy previous answer: {prev_a}\nUser now says: {message}\nIs the user correcting my previous answer? If yes, give the corrected answer. Output ONLY JSON: {{"is_correction": true or false, "corrected_answer": "one-sentence correct answer or empty"}}'
             r=self.adam.chat_persona(prompt,system='You are a strict JSON extractor. Output ONLY a JSON object, no prose.',max_new_tokens=160,do_sample=False)
@@ -694,6 +706,9 @@ class AmniAgent:
                     pq,pa=turns[-3].get('content',''),turns[-2].get('content','')
                     cor=self._extract_correction(pq,pa,message) if (pq and pa) else None
                     if cor:
+                        if getattr(self,'notes',None) is not None:
+                            try:self.notes.add_correction(wrong_q=pq,wrong_a=pa,corrected_text=cor,session_id=getattr(conv,'session_id',None))
+                            except Exception:pass
                         _r=bus.record_learning(pq,cor,kind="correction",provenance="user:Anthony",exactness="exact",supersedes=pa)
                         print(f'[AmniAgent] correction captured (stored={_r.get("stored")} recall_ok={_r.get("recall_ok")} homes={_r.get("homes")}) -> {cor[:80]}',flush=True)
                         if not _r.get('recall_ok'):print(f'[AmniAgent] WARN correction verify-after-write did not confirm; wrong answer still suppressed via ledger',flush=True)
@@ -772,12 +787,14 @@ class AmniAgent:
             _tier='tier0_atex_canonical' if _cv is not None else 'tier0_introspect'
             conv.append('assistant',wrapped,{'tier':_tier,'skill_calls':skill_calls,'tokens':0,'persona':persona.name,'category':'introspect'})
             return {'answer':wrapped,'tier':_tier,'tokens':0,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'introspect'}
-        history_pairs=conv.history_pairs(n=12) if len(conv.turns)>1 else []
+        from amni.serve.prompt_budget import history_turns as _hturns
+        _hn=_hturns()
+        history_pairs=conv.history_pairs(n=_hn) if len(conv.turns)>1 else []
         atlas_recall=self.atlas.recall(message,session_id=conv.session_id,k=3,include_global=True) if self.atlas is not None else []
         for r in atlas_recall:
             pair=(r['user'],r['assistant'])
             if pair not in history_pairs:history_pairs=[pair]+history_pairs
-        history_pairs=history_pairs[-12:]
+        history_pairs=history_pairs[-_hn:]
         user_facts=self._extract_user_facts(conv,extra_user_msgs=[r.get('user','') for r in atlas_recall])
         try:
             _bus=getattr(self,'memory_bus',None);_gf=_bus.grounding_fact(message) if _bus is not None else None
@@ -786,14 +803,21 @@ class AmniAgent:
         is_private=detect_personal(message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
         category=tone_atlas.classify_intent(message)
         raw_ans='';tier='?';tokens=0
+        try:
+            _bus=getattr(self,'memory_bus',None)
+            if _bus is not None:
+                _lv,_lh,_lc=_bus.learned_override(message)
+                if _lv:raw_ans=_lv;tier=_lh;tokens=0
+        except Exception:pass
         sl=getattr(self.adam,'sem_lut',None)
-        if sl is not None and not history_pairs:
+        if sl is not None and not raw_ans and not is_private:
             try:
                 eff_margin=sl.auto_margin() if hasattr(sl,'auto_margin') else 0.08
                 hit=sl.lookup_soft(message,margin=eff_margin) if hasattr(sl,'lookup_soft') else None
-                if hit:raw_ans=hit;tier='tier1_5_semantic_lesson';tokens=0
+                _bus=getattr(self,'memory_bus',None)
+                if hit and not (_bus is not None and _bus.is_suppressed(hit)):raw_ans=hit;tier='tier1_5_semantic_lesson';tokens=0
             except Exception:pass
-        if not raw_ans and not history_pairs and not is_private:
+        if not raw_ans and not is_private:
             lut=getattr(getattr(self.adam,'adam',None),'lut',None)
             if lut is not None and hasattr(lut,'lookup'):
                 try:
@@ -802,10 +826,7 @@ class AmniAgent:
                 except Exception:pass
         apply_cot=_needs_cot(category,message) and not brief
         cot_scaffold=_pick_cot(category,message) if apply_cot else ''
-        cot_tag={'_COT_CODE':'code','_COT_MATH':'math','_COT_DEBUG':'debug','_COT_DESIGN':'design','_COT_REASONING':'reasoning'}.get(_pick_cot(category,message).split('\n')[0],'generic') if apply_cot else ''
-        if apply_cot:
-            first_line=cot_scaffold.split('\n')[0]
-            cot_tag='code' if 'Code task' in first_line else ('math' if 'Math problem' in first_line else ('debug' if 'Debugging' in first_line else ('design' if 'System design' in first_line else ('reasoning' if 'Reasoning question' in first_line else 'generic'))))
+        cot_tag=_cot_kind(category,message) if apply_cot else ''
         if not raw_ans and persona.name!='Adam' and self.use_persona and hasattr(self.adam,'chat_persona'):
             sys_p=persona.system_prompt(message)
             try:

@@ -257,6 +257,7 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #status-panel .sp-row:hover{background:rgba(var(--c-rgb),.08)}
 #status-panel .sp-name{flex:1;color:var(--fg)}
 #status-panel .sp-val{color:var(--cyan2);font-size:10.5px;letter-spacing:.05em}
+.learned-chip{margin-top:6px;display:inline-block;font-size:10px;letter-spacing:.06em;color:var(--cyan);border:1px solid rgba(var(--c-rgb),.35);padding:3px 8px;border-radius:3px}
 #status-panel .sp-arrow{color:var(--mute);font-size:13px}
 #status-panel .sp-led-inline{width:6px;height:6px;border-radius:50%;background:var(--mute);box-shadow:0 0 4px transparent;transition:background .2s,box-shadow .2s}
 #bookmarks-panel{position:fixed;top:60px;right:24px;width:380px;z-index:12;background:rgba(var(--panel-rgb,8,14,28),.96);border:1px solid rgba(var(--g-rgb),.4);border-radius:4px;box-shadow:0 0 24px rgba(var(--g-rgb),.18);backdrop-filter:blur(8px);padding:12px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease-out,transform .22s ease-out}
@@ -972,6 +973,7 @@ body.theme-min #adam-core{opacity:.6}
     <div id="status-panel" class="td-hidden">
       <div class="sp-head"><span>◆ SYSTEM STATUS</span><span class="sp-close" onclick="toggleStatusPanel()">CLOSE</span></div>
       <div class="sp-row" onclick="toggleStatusPanel();togglePersonaPanel()"><span class="sp-name">lessons</span><span class="sp-val" id="sp-lessons">—</span></div>
+      <div class="sp-row"><span class="sp-name">model</span><span class="sp-val" id="sp-model">bake</span></div>
       <div class="sp-row" id="sp-learn-row" onclick="toggleStatusPanel();toggleLearnPanel()"><span class="sp-led-inline" id="ld-led"></span><span class="sp-name" id="ld-text">learning —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-tests-row" onclick="toggleStatusPanel();toggleTestsPanel()"><span class="sp-led-inline" id="tp-led"></span><span class="sp-name" id="tp-text">tests —</span><span class="sp-arrow">›</span></div>
       <div class="sp-row" id="sp-shell-row" onclick="toggleStatusPanel();toggleShellPanel()"><span class="sp-led-inline" id="sh-led"></span><span class="sp-name" id="sh-text">shell —</span><span class="sp-arrow">›</span></div>
@@ -2208,6 +2210,13 @@ async function send(){
               window._SF||(window._SF={understanding:["Rao! lemme get my head around this…","figuring out what you need…","okay, processing your ask…","reading between the lines…"],recall:["rummaging through my memory…","checking what I remember…","digging through my notes…"],web:["hitting the web for the latest…","looking that up online…","scouring the net for you…","chasing down sources…"],reasoning:["thinking it through, step by step…","working out the logic…","reasoning it out… almost there","turning it over in my head…"],writing:["okay, here it comes!","putting it together…","writing it up…"]});
               if(bot.bubble.classList.contains('thinking')){var _F=window._SF[_stg]||window._SF.understanding,_si=0;var _show=function(){if(bot.bubble.classList.contains('thinking'))bot.bubble.innerHTML='<span style="color:var(--mute);font-style:italic">'+_F[_si%_F.length]+'</span>';_si++};if(bot._st)clearInterval(bot._st);_show();bot._st=setInterval(_show,2600)}
             }catch(_){}
+          }else if(etype==='learned'){
+            try{
+              const L=JSON.parse(edata);
+              const chip=document.createElement('div');chip.className='learned-chip';
+              chip.textContent='saved: '+(L.answer||'').slice(0,80);
+              bot.msg.appendChild(chip);
+            }catch(_){}
           }else if(etype==='meta'){
             const m=JSON.parse(edata);
             if(m.session_id){sid=m.session_id;localStorage.setItem(SKEY,sid)}
@@ -3406,7 +3415,7 @@ document.addEventListener('keydown',e=>{
   if(key==='e'&&sh){e.preventDefault();toggleShellPanel();return}
 });
 input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(160,input.scrollHeight)+'px'});
-async function refreshStats(){try{const r=await fetch('/stats');const j=await r.json();lessonPill.textContent='lessons '+(j.lessons_n||0);const lr=document.getElementById('sp-lessons');if(lr)lr.textContent=(j.lessons_n||0)+' indexed'}catch{}}
+async function refreshStats(){try{const r=await fetch('/stats');const j=await r.json();lessonPill.textContent='lessons '+(j.lessons_n||0);const lr=document.getElementById('sp-lessons');if(lr)lr.textContent=(j.lessons_n||0)+' indexed';const md=document.getElementById('sp-model');if(md){const b=(j.model&&j.model.backend)||'bake';const n=((j.model&&j.model.gguf&&j.model.gguf.recommended)||{}).quant||'';md.textContent=n?b+' · '+n:b}}catch{}}
 if(voiceOut)document.getElementById('voiceout-toggle').classList.add('on');
 refreshStats();setInterval(refreshStats,30000);
 const canvas=document.getElementById('netcanvas'),ctx=canvas.getContext('2d');

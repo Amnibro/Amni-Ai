@@ -9,6 +9,19 @@ def _kbkey(kind,key):return f'{kind}::'+hashlib.sha256(_norm(key).encode('utf-8'
 _CONF_DIRECT=float(os.environ.get('AMNI_RECALL_DIRECT_GATE','0.90'))
 _CONF_GROUND=float(os.environ.get('AMNI_RECALL_GROUND_GATE','0.84'))
 _CONF_MARGIN=float(os.environ.get('AMNI_RECALL_MARGIN','0.04'))
+_LEDGER_OVERLAP=float(os.environ.get('AMNI_LEDGER_OVERLAP','0.45'))
+_STOP=set("a an the is are was were be been being do does did what who when where which whom whose how why that this these those it its of to for and or in on at by from with as if then than so not no yes i you we they he she them my your our their".split())
+def _content_tokens(s):
+    return [t for t in re.findall(r"[a-z0-9']+",_norm(s)) if t not in _STOP and len(t)>1]
+def _token_overlap(a,b)->float:
+    na,nb=_norm(a),_norm(b)
+    if not na or not nb:return 0.0
+    if len(na)>=12 and len(nb)>=12 and (na in nb or nb in na):return 1.0
+    ta,tb=set(_content_tokens(a)),set(_content_tokens(b))
+    if len(ta)<2 or len(tb)<2:return 0.0
+    inter=len(ta&tb)
+    if inter<2:return 0.0
+    return inter/min(len(ta),len(tb))
 class MemoryBus:
     def __init__(self,adam=None,answer_lut=None,sem_lut=None,kb=None,learning_atlas=None,ledger_path='data/corrections.jsonl'):
         self.adam=adam
@@ -18,15 +31,25 @@ class MemoryBus:
         self.la=learning_atlas
         self.ledger=Path(ledger_path)
         self._antipattern=set()
-        self._tier_counts={'tier0_atex_override':0,'tier2_sem':0,'tier3_kb':0,'miss':0}
+        self._ledger_pairs=[]
+        self._tier_counts={'tier0_atex_override':0,'tier0_ledger_overlap':0,'tier2_sem':0,'tier3_kb':0,'miss':0}
         self._load_antipattern()
     def _load_antipattern(self):
         try:
             if self.ledger.exists():
                 for ln in self.ledger.read_text(encoding='utf-8').splitlines():
-                    try:self._antipattern.add(_sig(json.loads(ln).get('wrong','')))
+                    try:
+                        obj=json.loads(ln)
+                        self._antipattern.add(_sig(obj.get('wrong','')))
+                        q,c=obj.get('q'),obj.get('corrected')
+                        if q and c:self._ledger_pairs.append((q,c))
                     except Exception:pass
+                self._ledger_pairs=self._ledger_pairs[-80:]
         except Exception:pass
+    def _remember_ledger(self,q,corrected):
+        if q and corrected:
+            self._ledger_pairs.append((q,corrected))
+            self._ledger_pairs=self._ledger_pairs[-80:]
     def record_learning(self,key,value,kind='fact',provenance='',exactness='semantic',supersedes=None)->Dict[str,Any]:
         if not key or not value:return {'stored':False,'homes':[],'recall_ok':False,'reason':'empty'}
         homes=[];conf=1.0 if str(provenance).startswith('user:') else 0.7;ts=time.time()
@@ -51,6 +74,7 @@ class MemoryBus:
             try:
                 self.ledger.parent.mkdir(parents=True,exist_ok=True)
                 with self.ledger.open('a',encoding='utf-8') as f:f.write(json.dumps({'q':key,'wrong':supersedes,'corrected':value,'kind':kind,'provenance':provenance,'ts':ts})+'\n')
+                self._remember_ledger(key,value)
                 homes.append('ledger')
             except Exception:pass
         recall_ok=False
@@ -92,6 +116,8 @@ class MemoryBus:
                 hit=self.answer_lut.lookup(query)
                 if hit and hit.get('a') and not self.is_suppressed(hit.get('a')):return hit['a'],self._hit('tier0_atex_override'),1.0
             except Exception:pass
+        led=self._ledger_overlap(query)
+        if led:return led
         if self.sem_lut is not None and getattr(self.sem_lut,'_raw',None):
             try:
                 res=self.sem_lut.lookup_soft(query,k=1,return_diag=True)
@@ -107,3 +133,16 @@ class MemoryBus:
                 if v and not self.is_suppressed(v) and 0.95>=gate:return v,self._hit('tier3_kb'),0.95
             except Exception:pass
         return None,self._hit('miss'),0.0
+    def _ledger_overlap(self,query):
+        best=None;best_s=0.0
+        for q,c in self._ledger_pairs:
+            if not c or self.is_suppressed(c):continue
+            s=_token_overlap(query,q)
+            if s>best_s:best_s=s;best=c
+        if best and best_s>=_LEDGER_OVERLAP:return best,self._hit('tier0_ledger_overlap'),round(best_s,4)
+        return None
+    def learned_override(self,query):
+        try:v,home,c=self.recall(query)
+        except Exception:return None,'miss',0.0
+        if v and str(home).startswith('tier0_'):return v,home,c
+        return None,home,c

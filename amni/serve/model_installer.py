@@ -26,7 +26,7 @@ def detect_warnings(repo:str)->Dict[str,Any]:
     is_moe=any(h in txt for h in _MOE_HINTS)
     warnings=[]
     if is_linear and is_moe:warnings.append('LINEAR-ATTENTION MoE detected — does NOT work correctly on AMD Radeon/ROCm in this build. The state-space / gated-delta path produces wrong results on gfx11xx. Strongly discouraged on this GPU.')
-    elif is_linear:warnings.append('Linear-attention / state-space (Mamba/SSM/GDN/RWKV) layers detected — these are unreliable on AMD Radeon/ROCm in this build.')
+    elif is_linear:warnings.append('GDN / Mamba-class layers (Qwen3.5 / 3.8 Gated DeltaNet). Adam patches Triton causal_conv1d when the arch is recognized. Without that patch, ROCm can fall back to a slow or wrong PyTorch path.')
     elif is_moe:warnings.append('Mixture-of-Experts model — works but uses more VRAM; ensure it fits your card.')
     nl=cfg.get('num_hidden_layers') or cfg.get('n_layer');hs=cfg.get('hidden_size') or cfg.get('n_embd')
     return {'repo':repo,'arch':arch,'is_linear_attention':bool(is_linear),'is_moe':bool(is_moe),'num_hidden_layers':nl,'hidden_size':hs,'radeon_warnings':warnings,'recommended_scheme':'rgba4','schemes_available':list(_SCHEMES.keys())}
@@ -71,7 +71,9 @@ def detect_hardware()->Dict[str,Any]:
     return hw
 _CATALOG=[
     {'tier':'flagship','name':'Adam · Gemma-4-12B (NVFP4 lossless)','params':'12B','min_vram':12.5,'min_ram':16,'quality':'Best — MMLU-Pro 71%, coding 90→100% (self-correct); matches stock Gemma-4-12B','source':'AxionML/Gemma-4-12B-NVFP4','scheme':'nvfp4','bake':'bakes/gemma4_12b_nvfp4_atex'},
-    {'tier':'balanced','name':'Adam · Qwen3-4B','params':'4B','min_vram':5.5,'min_ram':10,'quality':'Strong reasoning for its size — great on 8GB cards','source':'Qwen/Qwen3-4B-Instruct-2507','scheme':'rgba4','bake':None},
+    {'tier':'heavy','name':'Adam · Qwen3.8-27B HauhauCS Aggressive (GGUF Q3_K_P)','params':'27B','min_vram':14.0,'min_ram':24,'quality':'Uncensored Qwen3.8 GDN via llama-server/Ollama. Q3_K_P (~13.4GB) fits a 16GB card. Activate with POST /models/activate.','source':'HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF','scheme':'gguf','bake':None},
+    {'tier':'heavy','name':'Adam · Qwen3.8-27B GDN (HF safetensors)','params':'27B','min_vram':18.0,'min_ram':32,'quality':'Same Gated DeltaNet family as Qwen3.5. Needs ~18GB+ quantized — do not pick this on a 4–8GB card.','source':'Qwen/Qwen3.8-27B','scheme':'rgba4','bake':None},
+    {'tier':'balanced','name':'Adam · Qwen3.5-4B GDN','params':'4B','min_vram':6.0,'min_ram':12,'quality':'Gated DeltaNet (Mamba-class). The upgrade from Granite 3B on 8GB+ cards.','source':'Qwen/Qwen3.5-4B','scheme':'rgba4','bake':None},
     {'tier':'light','name':'Adam · Granite-3B (GF17)','params':'3B','min_vram':3.0,'min_ram':8,'quality':'Solid + very light; fits small GPUs','source':'ibm-granite/granite-3.1-3b-a800m-instruct','scheme':'rgba4','bake':'bakes/granite41_3b_tilepack'},
     {'tier':'cpu','name':'Adam · Granite-350M','params':'350M','min_vram':0.0,'min_ram':4,'quality':'Runs anywhere (CPU/iGPU); basic but always works','source':'ibm-granite/granite-3.1-1b-a400m-instruct','scheme':'rgba4','bake':None},
 ]
@@ -96,6 +98,7 @@ def advise_install()->Dict[str,Any]:
     a=advise();m=a['recommended']
     if a['already_installed']:return {**a,'action':'ready','message':f"{m['name']} is already installed — just (re)start the server."}
     if m['scheme']=='nvfp4':return {**a,'action':'manual','message':f"Fetch the flagship: download {m['source']} then bake with scripts/bake_nvfp4_atex.py (needs ~12GB free)."}
+    if m['scheme']=='gguf':return {**a,'action':'manual','message':f"GGUF already downloads via `hf download {m['source']}`. Then POST /models/activate with the .gguf path. Needs a current llama-server (Qwen3.8 GDN)."}
     job=install(m['source'],scheme=m['scheme'],model_name=f"adam_{m['tier']}")
     return {**a,'action':'installing','job':job}
 _BAKE_CATALOG=[
@@ -216,7 +219,7 @@ async function inspect(i,repo){const box=$('#d'+i);box.style.display='block';box
  h+=`<div class="controls"><label class="kv">Bake scheme</label><select id="sch${i}"><option value="rgba4">rgba4 (GF17, ~4B/wt)</option><option value="rgba16">rgba16 (~2B/wt, RAM-light · experimental)</option></select><button class="dl" data-i="${i}" data-repo="${esc(repo)}" ${d.is_linear_attention?'data-warn="1"':''}>⬇ Download & Bake</button></div><div class="job" id="j${i}"></div>`;
  box.innerHTML=h;
 }
-async function startInstall(i,repo,warned){if(warned&&!confirm('This architecture is flagged as unsupported on AMD Radeon and will likely produce wrong results. Install anyway?'))return;
+async function startInstall(i,repo,warned){if(warned&&!confirm('This model uses GDN / linear-attention layers. Adam patches Triton causal_conv1d when it recognizes the arch. Without that patch, ROCm can be slow or wrong. Install anyway?'))return;
  const scheme=$('#sch'+i).value,jb=$('#j'+i);jb.innerHTML='<span class="spin"></span>starting…';
  let d;try{d=await(await fetch('/install/start?repo='+encodeURIComponent(repo)+'&scheme='+scheme,{method:'POST'})).json()}catch(e){jb.innerHTML='start failed';return}
  if(d.error){jb.innerHTML='<div class="warn">'+esc(d.error)+'</div>';return}
