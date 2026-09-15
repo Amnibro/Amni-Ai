@@ -98,11 +98,11 @@ def kill_verdict(kl_init: float, kl_final: float, noise: float = KILL_NOISE) -> 
         return "FAIL", f"freeze-init KL non-positive ({kl_init})"
     rel = (kl_init - kl_final) / kl_init
     if rel > noise:
-        return "PASS", f"KL improved {rel * 100:.2f}% vs freeze-init ({kl_init:.6f} → {kl_final:.6f})"
+        return "PASS", f"KL improved {rel * 100:.2f}% vs freeze-init ({kl_init:.6f} -> {kl_final:.6f})"
     return (
         "FAIL",
         f"KL not improved beyond ±{noise * 100:.0f}% noise "
-        f"(rel={rel * 100:.2f}%; {kl_init:.6f} → {kl_final:.6f})",
+        f"(rel={rel * 100:.2f}%; {kl_init:.6f} -> {kl_final:.6f})",
     )
 
 
@@ -309,7 +309,7 @@ def run_distill(cfg: DistillConfig) -> Dict[str, Any]:
         if not Path(cfg.bake).exists():
             raise FileNotFoundError(f"FPA bake not found: {cfg.bake}")
         dt = _dtype(cfg.dtype)
-        print(f"[fpa_distill_v0] load teacher {cfg.teacher} → {tdev} {cfg.dtype}", flush=True)
+        print(f"[fpa_distill_v0] load teacher {cfg.teacher} -> {tdev} {cfg.dtype}", flush=True)
         teacher = load_causal_lm(cfg.teacher, tdev, dt)
         print(f"[fpa_distill_v0] load student copy + swap L{cfg.layer} up_proj from {cfg.bake}", flush=True)
         student = load_causal_lm(cfg.teacher, device, dt)
