@@ -81,6 +81,65 @@ SPARSE_I8_ABSMAX = 127
 Pathish = Union[str, os.PathLike]
 
 
+def bpw_allin_from_parts(
+    *,
+    out: int,
+    inn: int,
+    u_packed_n: int,
+    v_packed_n: int,
+    u_scale_n: int,
+    v_scale_n: int,
+    pq_idx_n: int,
+    pq_scale_n: int,
+    codebook_n: int,
+    sp_idx_n: int = 0,
+    sp_val_n: int = 0,
+    sp_vmax_n: int = 0,
+    pq_scale_bits: int = 16,
+) -> float:
+    """All-in bits per original dense weight, including sidecars.
+
+    Counts bake storage, not live train dtypes: packed U/V and pq_idx as u8,
+    scales U/V f32, pq_scale f16 (manifest), codebooks f32, sparse i64+i8+f32.
+    Codebooks are charged in full to this Linear (honest for a one-tensor probe).
+    """
+    n = int(out) * int(inn)
+    if n <= 0:
+        raise ValueError(f"bpw_allin needs out*inn > 0 (got {out}x{inn})")
+    bits = (
+        int(u_packed_n) * 8
+        + int(v_packed_n) * 8
+        + int(u_scale_n) * 32
+        + int(v_scale_n) * 32
+        + int(pq_idx_n) * 8
+        + int(pq_scale_n) * int(pq_scale_bits)
+        + int(codebook_n) * 32
+        + int(sp_idx_n) * 64
+        + int(sp_val_n) * 8
+        + int(sp_vmax_n) * 32
+    )
+    return bits / n
+
+
+def bpw_allin(lin: Any, *, pq_scale_bits: int = 16) -> float:
+    """``bpw_allin`` for a loaded ``FpaLinear`` (or duck-typed bake linear)."""
+    return bpw_allin_from_parts(
+        out=int(lin.out_features),
+        inn=int(lin.in_features),
+        u_packed_n=int(lin.U_packed.numel()),
+        v_packed_n=int(lin.V_packed.numel()),
+        u_scale_n=int(lin.U_scale.numel()),
+        v_scale_n=int(lin.V_scale.numel()),
+        pq_idx_n=int(lin.pq_idx.numel()),
+        pq_scale_n=int(lin.pq_scale.numel()),
+        codebook_n=int(lin.codebooks.numel()),
+        sp_idx_n=int(getattr(lin, "sp_indices", torch.empty(0)).numel()),
+        sp_val_n=int(getattr(lin, "sp_values_i8", torch.empty(0)).numel()),
+        sp_vmax_n=int(getattr(lin, "sp_vmax", torch.empty(0)).numel()),
+        pq_scale_bits=pq_scale_bits,
+    )
+
+
 def is_fpa_manifest(man: Mapping[str, Any]) -> bool:
     fmt = str(man.get("format") or "").strip().lower()
     packing = str(man.get("packing") or "").strip().lower()

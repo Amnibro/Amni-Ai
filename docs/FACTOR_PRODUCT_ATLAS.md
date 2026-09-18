@@ -141,6 +141,29 @@ self-KL(logits,logits)), `kl_freeze_init`, `kl_trained`, `rel_vs_freeze`.
 Verdict is plumbing-only (`plumbing_complete`); status is `not Done`. Not a
 quality PASS.
 
+v0 **train** used random token ids and `mse_weight=0` (plumbing). A later
+32×128 real-prompt eval (freeze `0.451462` → trained `0.487534`) is not a
+silent bar change — it is why Arm A2 exists.
+
+## Arm A2 (real-prompt train+eval + layer MSE)
+
+Same family for train and eval (`real_prompt_en_v1`, default 32×128; up to 128
+or a documented file mix). `mse_weight ∈ {0.5, 1.0}` (default 1.0) on L15
+`mlp.up_proj` out vs teacher. Kimahri `summary.json` keys: `freeze_kl`,
+`trained_kl`, `delta_vs_freeze`, `teacher_self_kl`, `bpw_allin`, `layer_mse`,
+`arm_id`, `steps`, `data_mix`. **Never PASS. Not Done.** After 5k, if KL is
+not ≥5% better than freeze → escalate A3 (A3 is not in this tree). Tidus owns
+SHIP. Runbook: [`docs/A2_runbook.md`](A2_runbook.md).
+
+```bash
+export HIP_VISIBLE_DEVICES=0
+python scripts/lane_a_fpa_distill_a2.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --steps 5000 --mse-weight 1.0 --n-prompts 32 --seq-len 128 \
+  --out logs/lane_a_fpa_distill_a2/qwen35_l15_up
+```
+
 ## Smoke
 
 ```bash

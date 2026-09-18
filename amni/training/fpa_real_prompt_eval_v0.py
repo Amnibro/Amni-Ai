@@ -32,57 +32,12 @@ from amni.training.fpa_distill_v0 import (
     swap_up_proj,
     build_synthetic_pair,
 )
-
-# Short English prompts — local, no wiki download. 48 sentences.
-DEFAULT_PROMPTS: Tuple[str, ...] = (
-    "The river flooded the valley after three days of rain.",
-    "Please explain how a bicycle stays upright while moving.",
-    "Paris is the capital of France and a major cultural center.",
-    "What is seventeen times twenty-three?",
-    "She left the keys on the kitchen table this morning.",
-    "A compass points roughly toward magnetic north.",
-    "Write a short poem about winter light on snow.",
-    "The library closes at six on weekdays and four on Sunday.",
-    "Why does ice float on water?",
-    "He promised to call when the train reached Ottawa.",
-    "Photosynthesis converts light into chemical energy in plants.",
-    "Name three planets closer to the Sun than Jupiter.",
-    "The bread needs twenty minutes more in the oven.",
-    "If a car starts from rest and accelerates at three meters per second squared for four seconds, what is its speed?",
-    "They argued about whether the map was upside down.",
-    "Translate the word apple into Spanish.",
-    "A week has seven days and a common year has three hundred sixty-five.",
-    "The cat slept in the sunbeam until noon.",
-    "Describe the water cycle in two sentences.",
-    "Mercury is the closest planet to the Sun.",
-    "I need a recipe for tomato soup without cream.",
-    "Sound travels slower than light.",
-    "The museum exhibit opens next Tuesday.",
-    "How do you reverse a list in Python?",
-    "The mountain trail is icy after sunset.",
-    "Gold is denser than aluminum.",
-    "Please summarize the plot of a typical fable.",
-    "The battery lasted only four hours under load.",
-    "What city is the capital of Japan?",
-    "She planted beans along the fence in May.",
-    "A triangle has three sides and three angles.",
-    "The radio played a song I had not heard in years.",
-    "Explain gravity to a ten-year-old.",
-    "The harbor was quiet except for gulls.",
-    "Two plus two equals four.",
-    "He packed a raincoat because the forecast said storms.",
-    "Iron rusts when exposed to water and air.",
-    "Where does the Nile empty?",
-    "The clock on the tower was five minutes fast.",
-    "List the primary colors of light.",
-    "They crossed the bridge before the fog arrived.",
-    "A sonnet usually has fourteen lines.",
-    "The server returned a 404 for the missing page.",
-    "Why is the sky blue at noon?",
-    "She measured the window before buying curtains.",
-    "The Pacific is the largest ocean on Earth.",
-    "Boil the water before adding the pasta.",
-    "Can you spell the word necessary?",
+from amni.training.fpa_real_prompts import (
+    DEFAULT_PROMPTS,
+    batched,
+    encode_prompts,
+    load_prompts as _load_family,
+    load_tokenizer,
 )
 
 DEFAULT_OUT = "logs/lane_a_fpa_real_prompt_eval_v0"
@@ -109,76 +64,8 @@ class PromptEvalConfig:
 
 
 def load_prompts(path: str = "", limit: int = 32) -> List[str]:
-    texts: List[str] = []
-    if path:
-        p = Path(path)
-        if not p.is_file():
-            raise FileNotFoundError(f"prompts file not found: {path}")
-        raw = p.read_text(encoding="utf-8")
-        if p.suffix.lower() == ".json":
-            data = json.loads(raw)
-            if isinstance(data, list):
-                texts = [str(x).strip() for x in data]
-            elif isinstance(data, dict) and "prompts" in data:
-                texts = [str(x).strip() for x in data["prompts"]]
-            else:
-                raise ValueError("JSON prompts must be a list or {prompts: [...]}")
-        else:
-            texts = [ln.strip() for ln in raw.splitlines()]
-    else:
-        texts = list(DEFAULT_PROMPTS)
-    texts = [t for t in texts if t and not t.startswith("#")]
-    if not texts:
-        raise ValueError("no prompts after filtering")
-    n = min(len(texts), max(1, min(int(limit), 128)))
-    return texts[:n]
-
-
-class _WordTokenizer:
-    """Tiny fallback when transformers/teacher tokenizer is absent (synthetic)."""
-
-    def __init__(self, vocab_size: int = 128, pad_id: int = 0):
-        self.vocab_size = vocab_size
-        self.pad_token_id = pad_id
-        self.eos_token_id = 1
-
-    def __call__(self, texts: Sequence[str], padding=True, truncation=True, max_length=64, return_tensors="pt"):
-        rows = []
-        for t in texts:
-            ids = [(ord(c) % (self.vocab_size - 2)) + 2 for c in t[:max_length]]
-            if not ids:
-                ids = [2]
-            if truncation:
-                ids = ids[:max_length]
-            rows.append(ids)
-        if padding:
-            m = max(len(r) for r in rows)
-            m = min(m, max_length)
-            rows = [r + [self.pad_token_id] * (m - len(r)) for r in rows]
-        return {"input_ids": torch.tensor(rows, dtype=torch.long)}
-
-
-def load_tokenizer(teacher_path: str, synthetic: bool, vocab: int):
-    if synthetic:
-        return _WordTokenizer(vocab_size=vocab)
-    try:
-        from transformers import AutoTokenizer
-    except ImportError as e:
-        raise RuntimeError("transformers required for real-prompt eval") from e
-    tok = AutoTokenizer.from_pretrained(teacher_path, trust_remote_code=True)
-    if getattr(tok, "pad_token_id", None) is None:
-        tok.pad_token = tok.eos_token
-    return tok
-
-
-def encode_prompts(tok: Any, prompts: Sequence[str], seq_len: int, device: torch.device) -> torch.Tensor:
-    enc = tok(list(prompts), padding=True, truncation=True, max_length=seq_len, return_tensors="pt")
-    ids = enc["input_ids"] if isinstance(enc, dict) else enc.input_ids
-    return ids.to(device)
-
-
-def batched(ids: torch.Tensor, batch: int) -> List[torch.Tensor]:
-    return [ids[i : i + batch] for i in range(0, ids.shape[0], batch)]
+    """v0 eval still slices the original 48-sentence core (first 32 by default)."""
+    return _load_family(path, limit, family=DEFAULT_PROMPTS)
 
 
 def mean_kl_pairs(

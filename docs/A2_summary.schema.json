@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kimahri Lane A FPA Arm A2 summary",
+  "description": "Honest score fields for A2. Never PASS. Status is not Done. Tidus owns SHIP.",
+  "type": "object",
+  "required": [
+    "freeze_kl",
+    "trained_kl",
+    "delta_vs_freeze",
+    "teacher_self_kl",
+    "bpw_allin",
+    "layer_mse",
+    "arm_id",
+    "steps",
+    "data_mix"
+  ],
+  "properties": {
+    "freeze_kl": {
+      "type": "number",
+      "description": "Eval KL at freeze-init on the same real-prompt family used for train."
+    },
+    "trained_kl": {
+      "type": "number",
+      "description": "Eval KL after training on that family."
+    },
+    "delta_vs_freeze": {
+      "type": ["number", "null"],
+      "description": "(freeze_kl - trained_kl) / freeze_kl. Positive = trained is better. Kill bar stays >= 0.05 after 5k steps."
+    },
+    "teacher_self_kl": {
+      "type": "number",
+      "description": "KL(teacher || teacher) on the same batches. Plumbing control, expect ~0."
+    },
+    "bpw_allin": {
+      "type": "number",
+      "description": "All-in bits per original dense weight, including sidecars (codebooks charged to this Linear)."
+    },
+    "layer_mse": {
+      "type": "object",
+      "required": ["freeze", "trained"],
+      "properties": {
+        "freeze": {"type": "number"},
+        "trained": {"type": "number"}
+      },
+      "additionalProperties": false,
+      "description": "MSE of L15 mlp.up_proj output vs dense teacher, freeze and trained, same prompts."
+    },
+    "arm_id": {"const": "A2"},
+    "steps": {"type": "integer"},
+    "data_mix": {
+      "type": "string",
+      "description": "real_prompt_en_v1:NxS or real_prompt_file:<name>:NxS. Train and eval share this mix."
+    },
+    "status": {"type": "string", "const": "not Done"},
+    "verdict": {
+      "type": "string",
+      "enum": ["kill_not_armed", "improved_ge_5pct", "not_ge_5pct_better"],
+      "description": "Never PASS. improved_ge_5pct is not a ship claim."
+    }
+  }
+}

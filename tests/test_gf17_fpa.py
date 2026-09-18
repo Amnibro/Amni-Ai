@@ -15,6 +15,7 @@ from amni.inference.fpa_linear import FpaBake, FpaLinear, load_fpa_linear
 from amni.inference.gf17_fpa import (
     FORMAT,
     PACKING,
+    bpw_allin,
     dequant_int4_cols,
     dequant_sparse_i8,
     is_atex_codes_bake,
@@ -213,6 +214,7 @@ class TestBakeLoadAndForward(unittest.TestCase):
             W_sp = lin.materialize_sparse()
             self.assertEqual(tuple(W_sp.shape), (32, 128))
             self.assertTrue(torch.allclose(lin.sparse_gemv(x), W_sp @ x, atol=1e-5, rtol=1e-5))
+            self.assertGreater(float(bpw_allin(lin)), 0.0)
 
     def test_antman_codebook_shape(self):
         with tempfile.TemporaryDirectory() as td:

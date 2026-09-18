@@ -65,8 +65,9 @@ The complete source for a working Adam install (CC BY-NC 4.0).
 - **`amni/seeds/`** — corpus modules — Adam ships smart out of the box (`--seed`)
 - **`tests/`** — public-API probe tests, the memory-spine suites, the CoT-routing + self-consistency suites, and `run_security_suite.py` (46 hardening steps, 259 checks)
 - **`scripts/amni_serve.py`** — server entry point with `--seed --cors --port` flags
-- **`scripts/lane_a_fpa_distill_v0.py`** — Lane A one-Linear distill proof (Qwen3.5-4B L15 `up_proj`)
+- **`scripts/lane_a_fpa_distill_v0.py`** — Lane A one-Linear distill proof (Qwen3.5-4B L15 `up_proj`); trains on random ids, `mse_weight=0` (plumbing)
 - **`scripts/lane_a_fpa_real_prompt_eval_v0.py`** — honest English-prompt KL (freeze-init vs trained vs teacher self-KL)
+- **`scripts/lane_a_fpa_distill_a2.py`** — Arm A2: same real-prompt family for train+eval + layer MSE (`mse_weight` 1.0 or 0.5). Runbook: [`docs/A2_runbook.md`](docs/A2_runbook.md). **Not Done. Never PASS.**
 
 ### Lane A FPA distill v0 (not Done)
 
@@ -97,6 +98,24 @@ python scripts/lane_a_fpa_real_prompt_eval_v0.py \
 ```
 
 Writes `summary.json` with `self_kl_teacher` (dense teacher self-KL(logits,logits)), `kl_freeze_init`, `kl_trained`, `rel_vs_freeze` on ~32 real English prompts. Verdict is plumbing-only (`plumbing_complete`); status is `not Done`. Not a quality PASS.
+
+### Lane A FPA Arm A2 (not Done)
+
+v0 train was random-id + `mse_weight=0`. A2 trains and evals on the **same** `real_prompt_en_v1` family (default 32×128) with layer MSE on L15 `up_proj` out. `mse_weight` is 1.0 or 0.5 only. After 5k, if real-prompt KL is not ≥5% better than freeze → escalate A3 (A3 not implemented). Tidus owns SHIP. Headless commands: [`docs/A2_runbook.md`](docs/A2_runbook.md).
+
+```bash
+export HIP_VISIBLE_DEVICES=0
+python scripts/lane_a_fpa_distill_a2.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --steps 5000 --mse-weight 1.0 --n-prompts 32 --seq-len 128 \
+  --out logs/lane_a_fpa_distill_a2/qwen35_l15_up
+
+python scripts/lane_a_fpa_distill_a2.py --synthetic --skip-gpu-train \
+  --steps 8 --eval-every 4 --out /tmp/fpa_a2
+```
+
+Kimahri `summary.json` keys: `freeze_kl`, `trained_kl`, `delta_vs_freeze`, `teacher_self_kl`, `bpw_allin`, `layer_mse`, `arm_id`, `steps`, `data_mix`. Script language never writes PASS.
 
 - **`install.py`, `install.bat`, `install.sh`** — one-shot installers
 
