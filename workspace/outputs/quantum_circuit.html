@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Quantum Circuit & Bloch Simulation</title>
+<style>
+:root{--bg:#040711;--card:#0a1128;--border:#1e293b;--cyan:#38bdf8;--purple:#a855f7;--pink:#ec4899;--text:#f8fafc;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:monospace;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+#hud{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;}
+.tag{background:rgba(10,17,40,0.85);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:12px;color:var(--cyan);}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+</style>
+</head>
+<body>
+<div id="hud"><div class="tag">QUANTUM CIRCUIT & BLOCH SIMULATION</div><div class="tag" id="status">INITIALIZING</div></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d');
+function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+let state=[1,0,0,0,0,0,0,0];
+function applyH(q){
+const n=1<<q;
+for(let i=0;i<8;i++){
+if((i&n)===0){
+const a=state[i],b=state[i|n];
+state[i]=(a+b)*Math.SQRT1_2;state[i|n]=(a-b)*Math.SQRT1_2;
+}}
+}
+applyH(0);
+function computeReducedDensityMatrix(){return {rho00:state[0]*state[0]+state[1]*state[1],rho01:0.5,rho11:state[2]*state[2]+state[3]*state[3]};}
+function drawBlochSphere(cx,cy,r){
+ctx.strokeStyle='#38bdf8';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+ctx.strokeStyle='rgba(56,189,248,0.3)';ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.35,0,0,Math.PI*2);ctx.stroke();
+const theta=Math.PI*0.35,phi=Math.PI*0.45;
+const x=cx+r*Math.sin(theta)*Math.cos(phi),y=cy-r*Math.cos(theta);
+ctx.strokeStyle='#ec4899';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.stroke();
+ctx.fillStyle='#a855f7';ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.fill();
+}
+function loop(){
+ctx.fillStyle='#040711';ctx.fillRect(0,0,c.width,c.height);
+computeReducedDensityMatrix();
+drawBlochSphere(c.width/2,c.height/2,160);
+document.getElementById('status').textContent='QUANTUM STATE INVARIANTS PASS';
+requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

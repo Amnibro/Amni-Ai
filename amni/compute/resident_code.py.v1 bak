@@ -1,0 +1,337 @@
+"""Pull parseable Python out of the resident ptex pages the query ray actually hits.
+
+No textbook algorithm table. A miss is a miss.
+"""
+from __future__ import annotations
+import ast,re
+import numpy as np
+from gf17_ray_t2s2 import NBR,ray,hit_cell,step
+from amni.compute.ptex_1t_store import CODE_SUBRANGES_1T,DOMAINS_1T
+
+_STOP=frozenset({"python","function","class","algorithm","program","code","method","implement","write","simple","calculate","check","find","given","two","numbers","number","string","list","array","element","elements"})
+_WEAK=frozenset({"using","return","value","values","data","problem","solve","with","from","that","this","into","over","each","make","need","want"})
+_LANG_MARK={"zig":("zig","comptime","pub fn","@import"),"rust":("fn ","impl ","pub struct","extern crate","use std"),"cpp":("std::","template<","namespace ","#include"),"fortran":("subroutine","integer ::","program ")}
+
+def extract_python_defs(text:str,max_len:int=3500)->list:
+ import textwrap
+ out=[]
+ for m in re.finditer(r"(?m)^([ \t]*)(def|class)\s+([A-Za-z_]\w*)",text):
+  base_indent=len(m.group(1).expandtabs(4))
+  if m.group(2)=="def" and base_indent>0:
+   continue
+  start=m.start()
+  lines=text[start:].splitlines()
+  code_lines=[lines[0]]
+  for line in lines[1:]:
+   sline=line.strip()
+   if not sline:
+    code_lines.append(line)
+    continue
+   if sline.startswith("```"):
+    break
+   indent=len(line)-len(line.lstrip())
+   indent_exp=len(line[:indent].expandtabs(4))
+   if indent_exp<=base_indent:
+    break
+   code_lines.append(line)
+  while code_lines and not code_lines[-1].strip():
+   code_lines.pop()
+  chunk=textwrap.dedent("\n".join(code_lines))
+  if len(chunk)>max_len:
+   continue
+  try:
+   ast.parse(chunk)
+   out.append(chunk)
+  except Exception:
+   pass
+ return out
+
+def _clean_anchors(anchors:list)->list:
+ clean=[a.lower() for a in (anchors or []) if a.lower() not in _STOP and a.lower() not in _WEAK and len(a)>=3]
+ return clean if clean else [a.lower() for a in (anchors or []) if len(a)>=3]
+def lang_domain(query:str,anchors:list=None)->str:
+ blob=(" "+(query or "")+" "+" ".join(a for a in (anchors or []))+" ").lower()
+ if re.search(r"\bzig\b",blob):return "zig"
+ if re.search(r"\b(rust|rst)\b",blob):return "rust"
+ if re.search(r"\b(fortran|f90|f95)\b",blob):return "fortran"
+ if "c++" in blob or re.search(r"\bcpp\b",blob):return "cpp"
+ if re.search(r"\b(python|pythn)\b",blob):return "python"
+ return "python"
+def extract_lang_blocks(text:str,lang:str,max_len:int=4000)->list:
+ if not text:return []
+ if lang in ("python","",None):return extract_python_defs(text,max_len)
+ out=[]
+ if lang=="fortran":
+  for m in re.finditer(r"(?is)subroutine\s+\w+.*?end\s+subroutine(?:\s+\w+)?",text):
+   chunk=m.group(0).strip()
+   if 40<=len(chunk)<=max_len:out.append(chunk)
+  return out
+ if lang=="rust":pat=r"(?m)^(pub\s+)?(struct|enum|impl|fn)\s+"
+ elif lang=="cpp":pat=r"(?m)^(template\s*<|struct\s+|class\s+|void\s+|int\s+|std::)"
+ elif lang=="zig":pat=r"(?m)^(pub\s+)?(fn|const|struct)\s+"
+ else:pat=r"(?m)^(fn|def|class)\s+"
+ starts=[m.start() for m in re.finditer(pat,text)]
+ for i,s in enumerate(starts[:8]):
+  e=starts[i+1] if i+1<len(starts) else min(len(text),s+max_len)
+  chunk=text[s:e].strip()
+  if 40<=len(chunk)<=max_len:out.append(chunk)
+ return out
+def syntax_ok(src:str,lang:str)->bool:
+ if not src:return False
+ if lang in ("python","",None):
+  try:ast.parse(src);return True
+  except Exception:return False
+ if lang=="fortran":
+  t=src.lower();return "subroutine" in t and "end" in t
+ if src.count("{")!=src.count("}"):return False
+ if lang=="rust":return any(k in src for k in ("fn ","impl ","pub struct","struct "))
+ if lang=="cpp":return any(k in src for k in ("template","struct ","class ","std::","#include"))
+ if lang=="zig":return any(k in src for k in ("fn ","pub fn","comptime","@import"))
+ return True
+def coverage_ok(src:str,anchors:list)->bool:
+ low=src.lower()
+ nm=""
+ m=re.match(r"(?:def|class)\s+(\w+)",src)
+ if m:nm=m.group(1).lower()
+ clean=_clean_anchors(anchors)
+ asked=[a for a in clean if a in _LANG_MARK]
+ if asked and not any(any(mk in low for mk in _LANG_MARK[a]) for a in asked):
+  return False
+ if any(a in nm for a in clean if len(a)>=4):
+  return True
+ if len(clean)>=4:
+  hit=sum(1 for a in clean if a in nm or a in low)
+  if hit/len(clean)<0.4:return False
+ return True
+def score_src(src:str,anchors:list)->int:
+ low=src.lower()
+ nm=""
+ m=re.match(r"(?:def|class)\s+(\w+)",src)
+ if m:nm=m.group(1).lower()
+ s=0
+ clean=_clean_anchors(anchors)
+ for a in clean:
+  if a in nm:
+   s+=12
+   if nm==a or nm==f"is_{a}" or nm==f"find_{a}":s+=15
+  elif a in low:s+=1
+ if len(clean)>=2:
+  p1=f"{clean[0]}_{clean[1]}"
+  p2=f"{clean[1]}_{clean[0]}"
+  if p1 in nm or p2 in nm:s+=20
+ if not coverage_ok(src,anchors):s=min(s,3)
+ return s
+
+def walk_query_cells(query:str,lam,a:int=3,c:int=17,nstep:int=24)->list:
+ from gf17_ray_t2s2 import omega_byte,wrap
+ b=query.encode("utf-8","replace")
+ th,ph,St=0.0,0.0,1
+ for x in b:
+  dth,dph=omega_byte(x)
+  th,ph=wrap(th+dth,ph+dph)
+  St=((St<<1)^(int(x)*0x1D))&0xFFFFFFFF
+ if lam is None:lam=np.ones((256,7),dtype=np.float64)
+ cells=[]
+ for _ in range(max(1,nstep)):
+  bt,th,ph,St=step(th,ph,St,lam,a,c,greedy=True)
+  cells.append(hit_cell(ray(th,ph)))
+ return cells
+
+def domain_pages_for_cells(cells:list,domain:str="python")->list:
+ if domain=="zig":lo,hi=DOMAINS_1T["code"]
+ else:lo,hi=CODE_SUBRANGES_1T.get(domain,CODE_SUBRANGES_1T["python"])
+ span=max(1,hi-lo)
+ pages=[]
+ seen=set()
+ for c in cells:
+  for idx in [int(c)]+list(int(x) for x in NBR[int(c)]):
+   p=lo+(idx*span)//256
+   p=min(hi-1,max(lo,p))
+   if p not in seen:
+    seen.add(p);pages.append(p)
+ return pages
+def python_pages_for_cells(cells:list)->list:
+ return domain_pages_for_cells(cells,"python")
+def _blocks_from_pages(store,pages:list,lang:str="python")->list:
+ if lang in ("python","",None):return _defs_from_pages(store,pages)
+ rows=[]
+ for p in pages:
+  try:
+   text=store.read_tile_mmap(int(p),tile_size=int(store.page_dim)).decode("latin1","ignore")
+  except Exception:
+   continue
+  for src in extract_lang_blocks(text,lang):
+   rows.append((src,int(p)))
+ return rows
+
+def _defs_from_pages(store,pages:list)->list:
+ rows=[]
+ for p in pages:
+  try:
+   one=store.read_tile_mmap(int(p),tile_size=int(store.page_dim))
+  except Exception:
+   continue
+  text=one.decode("latin1","ignore")
+  for src in extract_python_defs(text):
+   rows.append((src,int(p)))
+  try:
+   blob=b""
+   for dp in (int(p)-1,int(p),int(p)+1):
+    if dp<0:continue
+    blob+=store.read_tile_mmap(int(dp),tile_size=int(store.page_dim))
+   if blob!=one:
+    for src in extract_python_defs(blob.decode("latin1","ignore")):
+     rows.append((src,int(p)))
+  except Exception:
+   pass
+ return rows
+
+def _mmap_named_defs(store,anchors:list,query:str="")->list:
+ buf=getattr(store,"mmap_obj",None)
+ if not buf or not hasattr(store,"get_page_offset"):return []
+ base=store.get_page_offset(0);dim=int(store.page_dim)
+ is_cls="class" in query.lower() or "class" in [a.lower() for a in (anchors or [])]
+ clean=[a.lower() for a in (anchors or []) if a.lower() not in _STOP and a.lower() not in _WEAK and len(a)>=3]
+ if not clean:clean=[a.lower() for a in (anchors or []) if len(a)>=3]
+ terms=list(clean)
+ for i in range(len(clean)-1):
+  terms.append(f"{clean[i]}_{clean[i+1]}")
+ patterns=[]
+ for t_str in terms:
+  t=t_str.encode("latin1","ignore")
+  if is_cls:
+   patterns.extend([b"class "+t.capitalize(),b"class "+t])
+  patterns.extend([
+   b"def "+t,
+   b"def is_"+t,
+   b"def find_"+t,
+   b"def get_"+t,
+   b"def "+t+b"_",
+  ])
+  if not is_cls:
+   patterns.extend([b"class "+t.capitalize(),b"class "+t])
+ rows=[]
+ seen=set()
+ for needle in patterns:
+  pos=0;n=0
+  while n<6:
+   idx=buf.find(needle,pos)
+   if idx<0:break
+   n+=1;pos=idx+len(needle)
+   sl=buf[idx:idx+3500].decode("latin1","ignore")
+   for src in extract_python_defs(sl):
+    m=re.match(r"(?:def|class)\s+(\w+)",src)
+    if not m:continue
+    fn_name=m.group(1)
+    if fn_name in seen:continue
+    seen.add(fn_name)
+    p=(idx-base)//dim if idx>=base else None
+    tot=int(getattr(store,"total_pages",3584))
+    if p is None or p<0 or p>=tot:continue
+    rows.append((src,p))
+ return rows
+
+MISS_TEXT="No parseable resident function matched this query. I will not invent one."
+
+def emit_verified(query:str,store=None,anchors:list=None,lam=None,a:int=3,c:int=17,nwalk:int=24)->dict:
+ """One emission path for ThreeStageRayHarness and LatticeGuidedRayEngine.
+
+ retrieve_resident_code already does mmap_name, ray pages, and a phrase scan.
+ This function verifies that hit (syntax, coverage, optional sandbox) and
+ returns the miss string when it does not parse. It does not walk every page
+ first, and it does not call compose_code.
+ """
+ empty={"text":MISS_TEXT,"code":None,"via":"miss","page":None,"score":0,"parse_ok":False,"ok":False,"harness":"","n_cands":0,"stderr":"","lang":"python"}
+ if store is None or not getattr(store,"mmap_obj",None):
+  return empty
+ kws=list(anchors or [])
+ if not kws:
+  kws=re.findall(r"[A-Za-z+]{3,}",query or "")
+ rec=retrieve_resident_code(query,kws,store,lam=lam,a=a,c=c,nwalk=nwalk)
+ src=rec.get("code")
+ lang=lang_domain(query,kws)
+ if not src:
+  return {**empty,"n_cands":int(rec.get("n_cands") or 0),"lang":lang}
+ if not syntax_ok(src,lang) or not coverage_ok(src,kws):
+  return {**empty,"n_cands":int(rec.get("n_cands") or 0),"lang":lang}
+ ok=False
+ err=""
+ harness=rec.get("harness") or ""
+ if lang=="python" and harness:
+  try:
+   from amni.compute.routine_bank import verify_code
+   vr=verify_code(src,harness)
+   ok=bool(vr.get("ok"))
+   err=(vr.get("stderr") or "")[:240]
+  except Exception as e:
+   err=type(e).__name__
+ return {
+  "text":src,"code":src,"via":rec.get("via"),"page":rec.get("page"),
+  "score":int(rec.get("score") or 0),"parse_ok":True,"ok":ok,
+  "harness":harness,"n_cands":int(rec.get("n_cands") or 0),"stderr":err,"lang":lang,
+ }
+
+def retrieve_resident_code(query:str,anchors:list=None,store=None,lam=None,a:int=3,c:int=17,nwalk:int=24)->dict:
+ """Return resident source if the ray neighborhood or a python-domain phrase scan yields a parseable def/class."""
+ miss={"code":None,"via":"miss","page":None,"score":0,"cells":[],"n_cands":0,"parse_ok":False,"harness":""}
+ if store is None or not getattr(store,"mmap_obj",None):
+  return miss
+ cells=walk_query_cells(query,lam,a,c,nwalk)
+ lang=lang_domain(query,anchors)
+ pages=domain_pages_for_cells(cells,lang)
+ try:
+  from amni.compute.routine_bank import python_page_for_key
+  if lang=="python":
+   for a0 in (anchors or []):
+    if len(a0)>=3:pages.append(python_page_for_key(a0.lower()))
+ except Exception:
+  pass
+ from amni.compute.routine_bank import extract_tests,python_page_for_key
+ def _harness_for(p,src):
+  if lang!="python":return ""
+  if p is None:return extract_tests(src or "")
+  try:
+   blob=b""
+   for dp in (int(p)-1,int(p),int(p)+1):
+    if dp<0:continue
+    blob+=store.read_tile_mmap(dp,tile_size=int(store.page_dim))
+   return extract_tests(blob.decode("latin1","ignore"))
+  except Exception:
+   return extract_tests(src or "")
+ cands=[]
+ for src,p in _blocks_from_pages(store,pages,lang):
+  sc=score_src(src,anchors)
+  hs=_harness_for(p,src)
+  if hs and sc>=12:sc+=40
+  if lang=="python" and p is not None and any(python_page_for_key(a.lower())==int(p) for a in (anchors or []) if len(a)>=3):sc+=10
+  if not coverage_ok(src,anchors):sc=0
+  cands.append((sc,src,p,"ray",hs))
+ if lang=="python":
+  for src,p in _mmap_named_defs(store,anchors,query=query):
+   sc=score_src(src,anchors)+3
+   hs=_harness_for(p,src)
+   if hs and sc>=12:sc+=40
+   if not coverage_ok(src,anchors):sc=0
+   cands.append((sc,src,p,"mmap_name",hs))
+ try:
+  scan_dom=lang if lang in CODE_SUBRANGES_1T else None
+  tiles=store.scan_domain_tiles(domain=scan_dom,keywords=list(anchors or []),phrase=query,max_matches=6)
+  phrase_pages=list(getattr(store,"last_candidate_pages",[]) or [])
+  for i,tile in enumerate(tiles):
+   p=phrase_pages[i] if i<len(phrase_pages) else None
+   text=tile.decode("latin1","ignore") if isinstance(tile,(bytes,bytearray)) else str(tile)
+   for src in extract_lang_blocks(text,lang):
+    sc=score_src(src,anchors)+2
+    hs=_harness_for(p,src)
+    if hs and sc>=12:sc+=40
+    if not coverage_ok(src,anchors):sc=0
+    cands.append((sc,src,p,"phrase",hs))
+ except Exception:
+  pass
+ if not cands:return {**miss,"cells":cells}
+ cands.sort(key=lambda x:x[0],reverse=True)
+ sc,src,p,via,harness=cands[0]
+ floor=12 if lang=="python" else 4
+ if sc<floor:
+  return {**miss,"cells":cells,"n_cands":len(cands)}
+ return {"code":src,"via":via,"page":p,"score":sc,"cells":cells,"n_cands":len(cands),"parse_ok":syntax_ok(src,lang),"harness":harness or ""}

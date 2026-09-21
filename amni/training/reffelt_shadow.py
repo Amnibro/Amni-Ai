@@ -49,6 +49,21 @@ class ReffeltShadowLinear(nn.Module):
             self.weight.copy_(torch.from_numpy(np.ascontiguousarray(decoded)).to(self.weight.device,self.weight.dtype))
     def assert_bit_exact_roundtrip(self):
         return roundtrip_bit_exact(self.weight)
+from amni.training.lattice_reg import gf17_lattice_quantize,_scale
+class PaletteShadowLinear(nn.Module):
+    def __init__(self,in_features,out_features,bias=True,levels=3,act_levels=0,device=None,dtype=torch.float32):
+        super().__init__()
+        self.in_features=in_features;self.out_features=out_features;self.levels=int(levels);self.act_levels=int(act_levels)
+        self.weight=nn.Parameter(torch.empty(out_features,in_features,device=device,dtype=dtype))
+        nn.init.kaiming_uniform_(self.weight,a=5**0.5)
+        self.bias=nn.Parameter(torch.zeros(out_features,device=device,dtype=dtype)) if bias else None
+    def forward(self,x):
+        w=gf17_lattice_quantize(self.weight,self.levels,(1,))
+        xq=gf17_lattice_quantize(x,self.act_levels,(-1,)) if self.act_levels>1 else x
+        return F.linear(xq,w,self.bias)
+    def palette_export(self):
+        s=_scale(self.weight.detach(),self.levels,(1,));h=(self.levels-1)/2
+        return torch.clamp(torch.round(self.weight.detach()/s),-h,h).to(torch.int8),s.squeeze(1)
 def save_model_as_bake(model,out_dir,model_name):
     out=Path(out_dir);out.mkdir(parents=True,exist_ok=True);(out/'tensors').mkdir(exist_ok=True)
     manifest={'model_name':model_name,'bake_version':'v5.4.0_native','reffelt_scheme':'rgba4','tensors':{}}

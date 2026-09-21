@@ -1,0 +1,68 @@
+{
+  "composite_score": 79.28571,
+  "all_passed": false,
+  "memory_footprint_bytes": 65536,
+  "diagnostics": [
+    {
+      "checker": "VisualChecker",
+      "passed": false,
+      "score": 0.49999997,
+      "findings": [
+        "Missing visual rendering canvas or SVG container",
+        "Body margin not reset to 0; risk of unexpected scrollbar layout drift",
+        "Viewport overflow not clipped to prevent vertical growth bug"
+      ],
+      "proposed_patches": []
+    },
+    {
+      "checker": "WritingChecker",
+      "passed": true,
+      "score": 0.85,
+      "findings": [
+        "Missing informative HUD or telemetry display for user guidance"
+      ],
+      "proposed_patches": []
+    },
+    {
+      "checker": "MathChecker",
+      "passed": true,
+      "score": 1.0,
+      "findings": [],
+      "proposed_patches": []
+    },
+    {
+      "checker": "ScienceChecker",
+      "passed": true,
+      "score": 1.0,
+      "findings": [],
+      "proposed_patches": []
+    },
+    {
+      "checker": "QualityChecker",
+      "passed": false,
+      "score": 0.6,
+      "findings": [
+        "Bundle size unexpectedly minimal; skeleton may be incomplete"
+      ],
+      "proposed_patches": []
+    },
+    {
+      "checker": "InteractionChecker",
+      "passed": false,
+      "score": 0.6,
+      "findings": [
+        "Interactive application lacks input event listeners"
+      ],
+      "proposed_patches": []
+    },
+    {
+      "checker": "CodeDebugger",
+      "passed": true,
+      "score": 1.0,
+      "findings": [],
+      "proposed_patches": []
+    }
+  ],
+  "artifact_path": null,
+  "timestamp": "2026-09-18T03:34:32.650662200+00:00"
+}

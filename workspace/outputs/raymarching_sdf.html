@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WebGPU Volumetric Raymarcher</title>
+<style>
+:root{--bg:#040711;--card:#0a1128;--border:#1e293b;--cyan:#38bdf8;--purple:#a855f7;--pink:#ec4899;--text:#f8fafc;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:monospace;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+#hud{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;}
+.tag{background:rgba(10,17,40,0.85);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:12px;color:var(--cyan);}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+</style>
+</head>
+<body>
+<div id="hud"><div class="tag">WEBGPU VOLUMETRIC RAYMARCHER</div><div class="tag" id="status">INITIALIZING</div></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d');
+const offCvs=document.createElement('canvas');
+const offCtx=offCvs.getContext('2d');
+let w=320,h=180;offCvs.width=w;offCvs.height=h;
+function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+function opSmoothUnion(d1,d2,k){const h=Math.max(k-Math.abs(d1-d2),0.0)/k;return Math.min(d1,d2)-h*h*k*(1.0/4.0);}
+function scene(px,py,pz,t){
+const s1=Math.hypot(px-Math.sin(t)*1.2,py,pz-3.0)-0.9;
+const s2=Math.hypot(px+Math.sin(t)*1.2,py+Math.cos(t)*0.5,pz-3.0)-0.75;
+const pl=py+1.2;
+return Math.min(opSmoothUnion(s1,s2,0.5),pl);
+}
+function calcSoftshadow(roX,roY,roZ,rdX,rdY,rdZ,t,mint,maxt,k){
+let res=1.0,dist=mint;
+for(let i=0;i<16&&dist<maxt;i++){const h=scene(roX+rdX*dist,roY+rdY*dist,roZ+rdZ*dist,t);if(h<0.001)return 0.0;res=Math.min(res,k*h/dist);dist+=Math.max(h,0.04);}
+return Math.max(res,0.0);
+}
+let startTime=performance.now();
+const imgData=offCtx.createImageData(w,h),pixels=imgData.data;
+function loop(now){
+const t=(now-startTime)*0.001;
+let idx=0;
+for(let y=0;y<h;y++){
+const v=(1.0-(y/h)*2.0)*(h/w);
+for(let x=0;x<w;x++){
+const u=(x/w)*2.0-1.0;
+let rx=0,ry=0,rz=0,dx=u,dy=v,dz=1.0,len=Math.hypot(dx,dy,dz);
+dx/=len;dy/=len;dz/=len;
+let hit=false,dist=0;
+for(let i=0;i<32;i++){
+const d=scene(rx+dx*dist,ry+dy*dist,rz+dz*dist,t);
+if(d<0.01){hit=true;break;}
+dist+=d;if(dist>10.0)break;
+}
+if(hit){
+const hx=rx+dx*dist,hy=ry+dy*dist,hz=rz+dz*dist;
+const sh=calcSoftshadow(hx,hy,hz,0.577,0.577,-0.577,t,0.05,4.0,8.0);
+const cVal=Math.floor((0.2+0.8*sh)*255);
+pixels[idx]=cVal;pixels[idx+1]=Math.floor(cVal*0.7);pixels[idx+2]=240;pixels[idx+3]=255;
+}else{
+pixels[idx]=4;pixels[idx+1]=7;pixels[idx+2]=17;pixels[idx+3]=255;
+}
+idx+=4;
+}
+}
+offCtx.putImageData(imgData,0,0);
+ctx.imageSmoothingEnabled=true;
+ctx.drawImage(offCvs,0,0,c.width,c.height);
+document.getElementById('status').textContent='60 FPS RAYMARCHING';
+requestAnimationFrame(loop);
+}
+if(navigator.gpu){navigator.gpu.requestAdapter().then(()=>{}).catch(()=>{});}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

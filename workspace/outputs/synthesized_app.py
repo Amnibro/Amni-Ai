@@ -1,0 +1,1 @@
+Analyzing request 'def f(a,b): return a/b' across GF(17) continuum. Let's build or inspect it together!

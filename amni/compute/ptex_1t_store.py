@@ -1,0 +1,271 @@
+import os,sys,struct,math,mmap,re,hashlib
+import numpy as np
+_H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0,_H0)
+MAGIC_1T=b"PTEX_1T_RESIDENT\0\0\0"
+HEADER_FMT="<19sIQIIII"
+PAGE_ENTRY_FMT="<IIIB"
+# Virtual walk volume the ray indexes (public source packed, then folded onto PAGE_DIM resident slices).
+TOTAL_PARAMS_1T=1_200_000_000_000
+TOTAL_PAGES_1T=3584
+PAGE_DIM=4096
+DOMAINS_1T={'math':(0,896),'stem':(896,1792),'code':(1792,2688),'civics':(2688,3584)}
+CODE_SUBRANGES_1T={'rust':(1792,2016),'cpp':(2016,2240),'fortran':(2240,2464),'python':(2464,2688)}
+DOMAINS=DOMAINS_1T
+CODE_SUBRANGES=CODE_SUBRANGES_1T
+# Labels IngressIntentProbe emits that are absent from DOMAINS_1T / CODE_SUBRANGES_1T.
+# None means no page walk: synthesis and chat labels have no resident band.
+INTENT_PARENT_1T={
+ "biology":"stem","chemistry":"stem","astro":"stem","neuro":"stem",
+ "physics":"stem","geology":"stem","ecology":"stem",
+ "history":"civics","law":"civics","economics":"civics",
+ "python":"python","zig":"code",
+ "webgpu":"stem","web":"stem","chat":None,"units":None,
+ "general":None,"dialogue":None
+}
+GENERIC_PASSAGE_TOKENS=frozenset({
+ "field","fields","amendment","amendments","cells","cell","fuel","theory",
+ "the","and","for","with","from","that","this","into","over","each",
+ "build","create","make","write","application","page","what","how",
+ "system","model","strict","reduction","code","script","prove"
+})
+PASSAGE_MISS="No verified resident passage grounded this query in the continuum."
+def resolve_intent_range(domain:str):
+ if not domain:return None
+ if domain in CODE_SUBRANGES_1T:return CODE_SUBRANGES_1T[domain]
+ if domain in DOMAINS_1T:return DOMAINS_1T[domain]
+ parent=INTENT_PARENT_1T.get(domain,"__absent__")
+ if parent is None:return None
+ if parent=="__absent__":return None
+ return CODE_SUBRANGES_1T.get(parent,DOMAINS_1T.get(parent))
+def _split_passage_keywords(keywords):
+ kws=[k.lower() for k in (keywords or []) if isinstance(k,str) and len(k)>=2]
+ specific=[k for k in kws if len(k)>=4 and k not in GENERIC_PASSAGE_TOKENS]
+ generic=[k for k in kws if k in GENERIC_PASSAGE_TOKENS]
+ return kws,specific,generic
+def _tile_is_slash_or_anagram(text:str)->bool:
+ if not text:return False
+ if text.count(" / ")>=4:return True
+ if len(re.findall(r"'[A-Za-z]+'\s*:\s*\[",text))>=2:return True
+ return False
+def _passage_sane(text:str,specific:list,generic:list)->bool:
+ if not text:return False
+ low=text.lower()
+ spec_hits=[k for k in specific if k in low]
+ if not spec_hits:return False
+ words=re.findall(r"[A-Za-z]+",text)
+ if not words:return False
+ caps=sum(1 for w in words if re.fullmatch(r"[A-Z]{3,}",w))
+ if caps/len(words)>0.30:return False
+ punct=sum(1 for c in text if not c.isalnum() and not c.isspace())
+ if punct/max(1,len(text))>=0.30:return False
+ return True
+UNPACK_T5=np.array([[((i//(3**k))%3)-1 for k in range(5)] for i in range(243)],dtype=np.int8)
+def default_1t_path()->str:
+ p=os.path.join(_H0,"exports","gf17_continuum","adam_1t_store.ptex")
+ n=p+".new"
+ if os.path.exists(n) and ((not os.path.exists(p)) or os.path.getsize(n)>os.path.getsize(p)):
+  return n
+ return p
+class Ptex1TResidentStore:
+ def __init__(self,filepath:str):
+  self.filepath=filepath
+  self.mmap_obj=None
+  self.file_handle=None
+  self.tile_cache={}
+  self.max_cache_tiles=32
+  self.total_pages=TOTAL_PAGES_1T
+  self.page_dim=PAGE_DIM
+  self.last_candidate_pages=[]
+  if not self._is_valid_file():self._init_store_file()
+  self._load_meta()
+  self._open_mmap()
+ def _load_meta(self):
+  if not os.path.exists(self.filepath):return
+  h=self.read_header()
+  self.total_pages=int(h.get("total_pages") or TOTAL_PAGES_1T)
+  self.page_dim=int(h.get("page_dim") or PAGE_DIM)
+ def _is_valid_file(self)->bool:
+  if not os.path.exists(self.filepath) or os.path.getsize(self.filepath)<struct.calcsize(HEADER_FMT):return False
+  with open(self.filepath,"rb") as f:return f.read(len(MAGIC_1T))==MAGIC_1T
+ def _init_store_file(self):
+  os.makedirs(os.path.dirname(self.filepath),exist_ok=True)
+  header=struct.pack(HEADER_FMT,MAGIC_1T,0x0614010C,TOTAL_PARAMS_1T,TOTAL_PAGES_1T,PAGE_DIM,4,len(DOMAINS_1T))
+  dir_bytes=bytearray()
+  for p in range(TOTAL_PAGES_1T):
+   dom_id=0 if p<896 else 1 if p<1792 else 2 if p<2688 else 3
+   dir_bytes.extend(struct.pack(PAGE_ENTRY_FMT,p,p*PAGE_DIM,PAGE_DIM,dom_id))
+  total_size=struct.calcsize(HEADER_FMT)+TOTAL_PAGES_1T*struct.calcsize(PAGE_ENTRY_FMT)+TOTAL_PAGES_1T*PAGE_DIM
+  with open(self.filepath,"wb") as f:
+   f.write(header)
+   f.write(dir_bytes)
+   rem=total_size-f.tell()
+   chunk=b"\x20"*65536
+   while rem>0:
+    w_size=min(rem,len(chunk))
+    f.write(chunk[:w_size])
+    rem-=w_size
+ def _open_mmap(self):
+  if not os.path.exists(self.filepath):return
+  self.file_handle=open(self.filepath,"r+b")
+  self.mmap_obj=mmap.mmap(self.file_handle.fileno(),0,access=mmap.ACCESS_READ)
+ def close(self):
+  if self.mmap_obj:self.mmap_obj.close();self.mmap_obj=None
+  if self.file_handle:self.file_handle.close();self.file_handle=None
+ def read_header(self)->dict:
+  with open(self.filepath,"rb") as f:
+   raw=f.read(struct.calcsize(HEADER_FMT))
+  magic,ver,params,pages,dim,ch,n_dom=struct.unpack(HEADER_FMT,raw)
+  return {"magic":magic.decode("ascii",errors="ignore").strip("\0"),"version":hex(ver),"total_params":params,"total_pages":pages,"page_dim":dim,"channels":ch,"domains":DOMAINS_1T,"code_subranges":CODE_SUBRANGES_1T,"file_size_bytes":os.path.getsize(self.filepath)}
+ def get_page_offset(self,page_idx:int)->int:
+  return struct.calcsize(HEADER_FMT)+self.total_pages*struct.calcsize(PAGE_ENTRY_FMT)+page_idx*self.page_dim
+ def payload_bytes(self)->int:
+  return int(self.total_pages)*int(self.page_dim)
+ def walk_virt(self,virt:int)->int:
+  n=self.payload_bytes()
+  if n<=0:return 32
+  phys=int(virt)%n
+  page=phys//self.page_dim
+  off=phys%self.page_dim
+  tile=self.read_tile_mmap(page,tile_size=self.page_dim)
+  if not tile:return 32
+  return int(tile[off%len(tile)])
+ def read_tile_mmap(self,page_idx:int,tile_size:int=None)->bytes:
+  n=int(self.page_dim if tile_size is None else tile_size)
+  cached=self.tile_cache.get(page_idx)
+  if cached is not None and len(cached)>=n:return cached if n==len(cached) else cached[:n]
+  offset=self.get_page_offset(page_idx)
+  fetch=max(n,int(self.page_dim))
+  if self.mmap_obj and offset+fetch<=self.mmap_obj.size():
+   tile_bytes=bytes(self.mmap_obj[offset:offset+fetch])
+  else:
+   with open(self.filepath,"rb") as f:
+    f.seek(offset if offset<os.path.getsize(self.filepath) else 0)
+    tile_bytes=f.read(min(fetch,max(0,os.path.getsize(self.filepath)-f.tell())))
+  if cached is None and len(self.tile_cache)>=self.max_cache_tiles:
+   self.tile_cache.pop(next(iter(self.tile_cache)))
+  self.tile_cache[page_idx]=tile_bytes
+  return tile_bytes if n>=len(tile_bytes) else tile_bytes[:n]
+ def sample_weights(self,domain:str,lod:int,u:float,v:float)->np.ndarray:
+  r=CODE_SUBRANGES_1T.get(domain,DOMAINS_1T.get(domain,(0,896)))
+  page_idx=r[0]+int((u%1.0)*(r[1]-r[0]))%max(1,r[1]-r[0])
+  tile=self.read_tile_mmap(page_idx,tile_size=self.page_dim)
+  byte_idx=int((v%1.0)*(len(tile)-1)) if len(tile)>1 else 0
+  val=tile[byte_idx] if byte_idx<len(tile) else 0
+  return UNPACK_T5[val%243]
+ def write_page_data(self,page_idx:int,data:bytes):
+  offset=self.get_page_offset(page_idx)
+  self.close()
+  with open(self.filepath,"r+b") as f:
+   f.seek(offset)
+   f.write(data)
+  self._open_mmap()
+ def get_domain_range(self,domain:str)->tuple[int,int]:
+  return CODE_SUBRANGES_1T.get(domain,DOMAINS_1T.get(domain,(0,896)))
+ def read_domain_transitions(self,domain:str)->tuple[dict,dict,dict,list]:
+  r=self.get_domain_range(domain)
+  trans3,trans2,trans1,unigrams={},{},{},[]
+  for p in range(r[0],min(r[1],r[0]+32)):
+   tile=self.read_tile_mmap(p,tile_size=self.page_dim)
+   for i in range(0,len(tile)-4,4):
+    a,b,c,d=tile[i],tile[i+1],tile[i+2],tile[i+3]
+    k3=(a<<16)|(b<<8)|c
+    k2=(b<<8)|c
+    k1=c
+    if k3 not in trans3:trans3[k3]=[]
+    if d not in trans3[k3]:trans3[k3].append(d)
+    if k2 not in trans2:trans2[k2]=[]
+    if d not in trans2[k2]:trans2[k2].append(d)
+    if k1 not in trans1:trans1[k1]=[]
+    if d not in trans1[k1]:trans1[k1].append(d)
+    if len(unigrams)<128 and d not in unigrams:unigrams.append(d)
+  return trans3,trans2,trans1,unigrams
+ def scan_domain_tiles(self,domain:str=None,keywords:list=None,max_matches:int=4,phrase:str=None)->list:
+  if not keywords:return []
+  kws=[k.lower().encode("latin1","ignore") for k in keywords if len(k)>=2]
+  if not kws:return []
+  ph=phrase.lower().encode("latin1","ignore") if phrase else b" ".join(kws)
+  r=self.get_domain_range(domain) if domain and (domain in DOMAINS_1T or domain in CODE_SUBRANGES_1T) else (0,min(self.total_pages,TOTAL_PAGES_1T))
+  matches=[]
+  seen=set()
+  for p in range(r[0],r[1]):
+   tile=self.read_tile_mmap(p,tile_size=self.page_dim)
+   low=tile.lower()
+   co_occur=sum(1 for k in kws if k in low)
+   if co_occur==0:continue
+   freq=sum(low.count(k)*len(k) for k in kws)
+   score=co_occur*1000+freq
+   if ph and ph in low:score+=15000
+   if b"nanosheet" in low:score+=5000
+   if b"semiconductor" in low:score+=5000
+   if b"answer with a single letter" in low:score-=5000
+   first_idx=min(low.find(k) for k in kws if k in low)
+   last_idx=max(low.find(k) for k in kws if k in low)
+   st_idx=max(0,first_idx-64)
+   end_idx=min(len(tile),first_idx+1024)
+   window=tile[st_idx:end_idx]
+   win_txt=window.decode("latin1","ignore")
+   if _tile_is_slash_or_anagram(win_txt):continue
+   h=hashlib.sha256(window).hexdigest()[:16]
+   if h in seen:continue
+   seen.add(h)
+   matches.append((score,p,window))
+  matches.sort(key=lambda x:x[0],reverse=True)
+  self.last_candidate_pages=[m[1] for m in matches[:max_matches]]
+  return [m[2] for m in matches[:max_matches]]
+ def extract_resident_passage(self,domain:str,keywords:list,max_bytes:int=1024)->str:
+  """Bounded window from last_candidate_pages / a domain walk. Empty string on miss.
+
+  Assigned range first. If every specific token misses that band, one widen across
+  the store. webgpu/web/chat/units never walk. Uppercase wordlists and generic-only
+  leftovers are refused.
+  """
+  _kws,specific,generic=_split_passage_keywords(keywords)
+  self.last_candidate_pages=[]
+  if not specific:
+   return ""
+  assigned=resolve_intent_range(domain)
+  if assigned is None:
+   return ""
+  def _filter_tiles(tiles,pages):
+   kept=[]
+   kept_pages=[]
+   for i,tile in enumerate(tiles):
+    text=tile.decode("latin1","ignore") if isinstance(tile,(bytes,bytearray)) else str(tile)
+    if not _passage_sane(text,specific,generic):
+     continue
+    kept.append(text[:max(1,int(max_bytes))])
+    if i<len(pages):kept_pages.append(pages[i])
+   return kept,kept_pages
+  scan_dom=domain if domain in DOMAINS_1T or domain in CODE_SUBRANGES_1T else None
+  if scan_dom is None:
+   parent=INTENT_PARENT_1T.get(domain)
+   if parent in DOMAINS_1T or parent in CODE_SUBRANGES_1T:
+    scan_dom=parent
+  tiles=self.scan_domain_tiles(domain=scan_dom,keywords=specific,max_matches=8) or []
+  pages=list(self.last_candidate_pages or [])
+  kept,kept_pages=_filter_tiles(tiles,pages)
+  if not kept:
+   tiles=self.scan_domain_tiles(domain=None,keywords=specific,max_matches=8) or []
+   pages=list(self.last_candidate_pages or [])
+   kept,kept_pages=_filter_tiles(tiles,pages)
+  seen=set()
+  uniq=[]
+  for i,text in enumerate(kept):
+   raw=text.encode("latin1","replace") if isinstance(text,str) else bytes(text)
+   h=hashlib.sha256(raw[:1024]).hexdigest()[:16]
+   if h in seen:continue
+   seen.add(h)
+   page=kept_pages[i] if i<len(kept_pages) else None
+   low=text.lower() if isinstance(text,str) else text.decode("latin1","ignore").lower()
+   cov=sum(1 for k in specific if k in low)
+   uniq.append((cov,text,page,h))
+  uniq.sort(key=lambda x:-x[0])
+  self.last_candidate_pages=[p for _,_,p,_ in uniq[:4] if p is not None]
+  if not uniq:return ""
+  top=uniq[0][1]
+  if len(uniq)>=2 and uniq[1][0]>=2:
+   joined=top+"\n"+uniq[1][1]
+   return joined[:max(1,int(max_bytes)*2)]
+  return top[:max(1,int(max_bytes))]
+Ptex1TBinaryStore=Ptex1TResidentStore

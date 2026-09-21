@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>N-Body Gravitational Physics</title>
+<style>
+:root{--bg:#040711;--card:#0a1128;--border:#1e293b;--cyan:#38bdf8;--purple:#a855f7;--pink:#ec4899;--text:#f8fafc;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:monospace;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+#hud{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;}
+.tag{background:rgba(10,17,40,0.85);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:12px;color:var(--cyan);}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+</style>
+</head>
+<body>
+<div id="hud"><div class="tag">N-BODY GRAVITATIONAL PHYSICS</div><div class="tag" id="status">INITIALIZING</div></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d');
+function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+const count=4000,px=new Float32Array(count),py=new Float32Array(count),vx=new Float32Array(count),vy=new Float32Array(count);
+for(let i=0;i<count;i++){const ang=Math.random()*Math.PI*2,r=Math.random()*250+50;px[i]=window.innerWidth/2+Math.cos(ang)*r;py[i]=window.innerHeight/2+Math.sin(ang)*r;vx[i]=-Math.sin(ang)*2.0;vy[i]=Math.cos(ang)*2.0;}
+let mx=window.innerWidth/2,my=window.innerHeight/2;
+window.onmousemove=e=>{mx=e.clientX;my=e.clientY;};
+let last=performance.now();
+function loop(now){
+const dt=Math.min((now-last)*0.001,0.033);last=now;
+ctx.fillStyle='rgba(4,7,17,0.2)';ctx.fillRect(0,0,c.width,c.height);
+ctx.fillStyle='#38bdf8';
+for(let i=0;i<count;i++){
+const dx=mx-px[i],dy=my-py[i],dsq=dx*dx+dy*dy+100.0,inv=1.0/Math.sqrt(dsq);
+const force=1500.0/dsq;
+vx[i]+=dx*inv*force*dt*60.0;vy[i]+=dy*inv*force*dt*60.0;
+px[i]+=vx[i]*dt*60.0;py[i]+=vy[i]*dt*60.0;
+ctx.fillRect(px[i],py[i],1.5,1.5);
+}
+document.getElementById('status').textContent='4,000 PARTICLES';
+requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

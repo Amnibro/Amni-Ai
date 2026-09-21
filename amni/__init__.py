@@ -6,4 +6,4 @@ try:
 except ImportError:
     __all__ = []
 __version__ = "0.1.0"
-APP_VERSION = "6.21.1"
+APP_VERSION = "6.21.8"
