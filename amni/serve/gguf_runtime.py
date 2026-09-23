@@ -54,7 +54,7 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     h=(history or [])[-1:];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
     e=engine();g=_ray_guide(e,message)
     if g is None and os.environ.get('AMNI_RAY_QA_DECLINE','1')=='1':yield "I'm not sure about that one yet.";return
-    yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','16')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))
+    yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','20')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))
 def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Dict:
     if backend_name()=='ray':
         t=''.join(_ray_stream(message,history,max_new_tokens,do_sample));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
