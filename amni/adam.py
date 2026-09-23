@@ -56,6 +56,8 @@ class Adam:
         except Exception as e:
             self.runtime_error=str(e)
             print(f'[Adam] WARNING: StreamingChatService unavailable — chat generation will return runtime-error messages. Cached lesson-bank LUT hits, /healthz, /stats still work.\n  Reason: {e}',flush=True)
+        from amni.serve.gguf_runtime import svc as _rt_svc
+        self.svc=self.svc or _rt_svc()
         self.crawler_plugin=None
         if enable_crawler:
             try:

@@ -8,12 +8,13 @@ from typing import Dict,Iterator,List,Optional,Tuple
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
 def enabled()->bool:
-    return backend_name() in ('gguf','ollama','llama')
+    return backend_name() in ('gguf','ollama','llama','ray')
 def server_url()->str:
     if backend_name()=='ollama':
         return (os.environ.get('AMNI_OLLAMA_URL') or 'http://127.0.0.1:11434').rstrip('/')
     return (os.environ.get('AMNI_GGUF_URL') or os.environ.get('LLAMA_SERVER_URL') or 'http://127.0.0.1:8787').rstrip('/')
 def model_id()->str:
+    if backend_name()=='ray':return (os.environ.get('AMNI_RAY_MODEL') or 'adam:ray-v16').strip()
     return (os.environ.get('AMNI_GGUF_MODEL') or os.environ.get('AMNI_OLLAMA_MODEL') or 'qwen38-27b-aggressive').strip()
 def _post(url:str,body:dict,timeout:int=300)->dict:
     data=json.dumps(body).encode('utf-8')
@@ -21,6 +22,9 @@ def _post(url:str,body:dict,timeout:int=300)->dict:
     with urllib.request.urlopen(req,timeout=timeout) as resp:
         return json.loads(resp.read().decode('utf-8'))
 def health()->Dict:
+    if backend_name()=='ray':
+        from amni.compute.ray_field import engine
+        e=engine();return {'ok':os.path.exists(e.path),'backend':'ray','model':model_id(),'pack':e.path,'loaded':e.ready,'arch':e.arch}
     url=server_url()
     try:
         req=urllib.request.Request(url+'/health' if backend_name()!='ollama' else url+'/api/tags')
@@ -39,7 +43,13 @@ def _messages(system:str,message:str,history:Optional[List[Tuple[str,str]]],fact
         msgs.append({'role':'assistant','content':a})
     msgs.append({'role':'user','content':message})
     return msgs
+def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
+    from amni.compute.ray_field import engine
+    h=(history or [])[-1:];prompt=''.join(f'{u.strip()}\n{a.strip()}\n\n' for u,a in h)+message.strip()+'\n'
+    yield from engine().stream(prompt,max_bytes=max(16,min(int(max_new_tokens),int(os.environ.get('AMNI_RAY_MAX_BYTES','600')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')))
 def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Dict:
+    if backend_name()=='ray':
+        t=''.join(_ray_stream(message,history,max_new_tokens,do_sample));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
     url=server_url()+'/v1/chat/completions'
     body={
         'model':model_id(),
@@ -55,6 +65,8 @@ def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=51
     usage=r.get('usage') or {}
     return {'answer':ans,'tier':'tier_gguf','tokens':int(usage.get('completion_tokens') or 0),'raw':r}
 def chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
+    if backend_name()=='ray':
+        yield from _ray_stream(message,history,max_new_tokens,do_sample);return
     url=server_url()+'/v1/chat/completions'
     body={
         'model':model_id(),
@@ -87,12 +99,20 @@ def ollama_modelfile(gguf_path:str,name:str='qwen38-27b-aggressive')->str:
     return f'FROM {gguf_path}\nPARAMETER temperature 0.7\nPARAMETER top_p 0.8\nPARAMETER top_k 20\nPARAMETER num_ctx 8192\n'
 def activate(gguf_path:str,backend:str='gguf',model:str='qwen38-27b-aggressive',persist:bool=True)->Dict:
     os.environ['AMNI_GEN_BACKEND']=backend
+    if backend=='ray':os.environ['AMNI_RAY_PACK']=gguf_path;os.environ['AMNI_RAY_MODEL']=model
     os.environ['AMNI_GGUF_MODEL']=model
     os.environ['AMNI_ACTIVE_GGUF']=gguf_path
     if persist:
         try:
             from amni.bootstrap import load_config,save_config
-            cfg=load_config();cfg['gen_backend']=backend;cfg['active_gguf']=gguf_path;save_config(cfg)
+            cfg=load_config();cfg['gen_backend']=backend;cfg['active_ray' if backend=='ray' else 'active_gguf']=gguf_path;save_config(cfg)
         except Exception as e:
             return {'ok':True,'persisted':False,'error':str(e)[:160],'backend':backend,'model':model,'path':gguf_path}
     return {'ok':True,'persisted':bool(persist),'backend':backend,'model':model,'path':gguf_path}
+class Svc:
+    def chat(self,user_msg:str,system=None,history=None,facts=None,max_new_tokens:int=80,do_sample:bool=False,**kw)->Tuple[str,int]:
+        r=chat(user_msg,system=system or '',history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample);return (r.get('answer') or ''),int(r.get('tokens') or 0)
+    def chat_stream(self,user_msg:str,system=None,history=None,facts=None,max_new_tokens:int=80,do_sample:bool=False,**kw)->Iterator[str]:
+        yield from chat_stream(user_msg,system=system or '',history=history,facts=facts,max_new_tokens=max_new_tokens,do_sample=do_sample)
+def svc()->Optional[Svc]:
+    return Svc() if enabled() else None

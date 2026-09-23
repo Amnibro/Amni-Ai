@@ -1,3 +1,14 @@
+## 2026-09-23 Ray hash field serves Adam on Linux (v6.21.13)
+The v16 non-matmul byte LM is now a selectable Adam backend: `AMNI_GEN_BACKEND=ray` (or `POST /models/activate {"backend":"ray"}`).
+- `amni/compute/ray_field.py`: inference-only engine. Loads the packed `rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz` (135.7 MB) directly: int8 dense rows, five-level slots, 4-bit log scales, rounded through f16 exactly as the dequantized set (verified bit-identical). One fused Taichi Vulkan kernel advances every beam by one byte from a carried driver state (16 rolling bytes, word hashes, synsets/hypernyms, indent/code/punct/column, topic accumulator) and adds 25 cell lookups + 4 chained hops. Lookups and scatter-adds only; 256 floats per beam back to the host.
+- Parity vs `scripts/ray_hash_field_ti_v16.py` on identical bytes: max |logit diff| 2.1e-5, top-1 335/335 (`tests/test_ray_field_parity.py`, reference in `tests/ray_field_ref.py`).
+- Held-out from the packed file: **1.6102 bits/byte** (logged 1.6101), 60×256×128 positions in 7.7 s = 257k positions/s (`tests/test_ray_field_bpb.py`).
+- Generation: top-k streaming ~1,400 bytes/s, beam-8 ~1,100 bytes/s (`tests/test_ray_field_gen.py`). Printable mask, word veto, run guard (a byte repeated 4x is penalized), stop on blank line, UTF-8 incremental decode, GeneratorExit-safe.
+- Wiring: `amni/serve/gguf_runtime.py` extended (no new dispatch): `ray` in `enabled()`, `model_id()`, `health()`, `chat()`, `chat_stream()`, `activate()`; `Svc`/`svc()` adapter so `agent.chat` → AdamLoop and Ollama `/api/*` reach the runtime backend (also fixes that gap for gguf). `amni/adam.py` falls back to `gguf_runtime.svc()`. `scripts/amni_serve.py`: no bake/model dir required when the backend is `ray`, CoT scaffold off for `ray`, `/models/activate` defaults the pack, boot reads `active_ray`.
+- Live on :7701: `/healthz`, `/models`, `/v1/chat/completions` (plain + SSE), `/api/chat`, `/chat/stream` (140 token events, no buffering) all answer from the ray engine (`tests/test_ray_field_backend.py`).
+- Linux runtime: `.venv-linux` (Python 3.12, taichi 1.7.4, CPU torch for Adam's other imports). RADV on RX 9060 XT.
+- Honest status: output is fluent English that does not answer the question — the corpus is textbook prose (no dialogue), effective context ~16 bytes / 4 words + topic. This change is the plumbing; conversational ability is the next arm (dialogue corpus, v15 conversation sphere). The engine is VRAM-resident (~400 MB) and the dense rows are the packed int8 from the existing v16 artifact; SSD tier streaming and a GF(17) dense encoding are open.
+
 ## 2026-09-19 AUDIT — what the gf17_continuum artifacts are, measured
 
 Every entry below dated 2026-09-14 through 2026-09-17 is marked RETRACTED. The text stays for the record; the numbers in those entries were produced without a held-out measurement and several describe files that hold no model. Measured 2026-09-19 (`docs/checklists/checklist_ray_ngram_engine_v1.md`):
@@ -15,6 +26,9 @@ Every entry below dated 2026-09-14 through 2026-09-17 is marked RETRACTED. The t
 - The August GF17 generator line (`workspace/gf17_auto_v3`, `gf17_field_v10`–`v17`, latfield, chainfold, epifield) is in git at commit 115b419 and was never deleted from history.
 
 ## 2026-09-20 Slot pages, measured packing, superposition (v6.21.12)
+- Superposition: prob-average of v13 and v16 2^20/150k files scores 1.5906 (singles 1.6289/1.6101). Batch sweep: +19% positions/s at BS=1024.
+- 2026-09-21 seed-1 reseed of v16 2^20/150k: 1.6089 from disk, curve tracks seed-0 at every checkpoint. Ensembles from dumps: seed0+seed1 1.5722 (271 MB), four files 1.5645 (819 MB). Same-recipe reseeds are the strongest ensemble partner.
+- v16 engine: live GPU throttle via throttle.txt (seconds slept per step, re-read every 50 steps) so remote desktop stays smooth during long runs.
 - v16 WordNet recipe at 2^20/150k: 1.6032 trained, 135,744,250-byte file scores 1.6101 from disk. Best file: under the 1.07 GB f32 dense table (1.6295) at 7.9x smaller.
 - WordNet tori (`ray_hash_field_ti_v16.py`, Anthony's manifold idea): synset bigram, hypernym bigram and prefix+synset tori keyed through `data/big2/synsets.txt` (121,986 words). Matched 2^17/10k five-level: 1.7997 vs 1.8143. Adopted.
 - Five-level recipe at 2^22/30k: 1.6396 trained, 424,758,010-byte file scores 1.6410 from disk. The 150k-step 2^20 five-level file (122 MB, 1.6289) remains the best from disk.

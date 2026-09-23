@@ -239,3 +239,4 @@ lessons/
 
 # Rust build artifacts (amni_ai_core)
 crates/amni_ai_core/target/
+.venv-linux/

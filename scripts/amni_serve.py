@@ -146,6 +146,7 @@ _NEEDS_FRESH_INFO_RE=re.compile(r"\b(?:weather|forecast|temperature|raining|snow
 _CFG=load_config()
 if _CFG.get('gen_backend'):os.environ.setdefault('AMNI_GEN_BACKEND',str(_CFG['gen_backend']))
 if _CFG.get('active_gguf'):os.environ.setdefault('AMNI_ACTIVE_GGUF',str(_CFG['active_gguf']))
+if _CFG.get('active_ray'):os.environ.setdefault('AMNI_RAY_PACK',str(_CFG['active_ray']))
 def _port_pids(port:int):
     pids=[]
     try:
@@ -236,7 +237,8 @@ def main():
     ap.add_argument('--default-persona',default=None,help='Default persona name (preset or learned). e.g. rikku, yoda, neutral')
     ap.add_argument('--no-persona',action='store_true',help='Disable persona layer entirely (raw Adam responses)')
     args=ap.parse_args()
-    if not _bake_usable(args.bake):
+    _ray=os.environ.get('AMNI_GEN_BACKEND','').lower()=='ray';args.bake=args.bake or ('bakes/_ray_none' if _ray else None);args.model=args.model or (args.bake if _ray else None)
+    if not _bake_usable(args.bake) and os.environ.get('AMNI_GEN_BACKEND','').lower()!='ray':
         _disc=_discover_bake(args.bake)
         if not _disc:
             print(f'[amni_serve] FATAL: no usable bake found.\n  Tried: {args.bake!r} (auto-scanned $AMNI_BAKE_PATHS, <repo>/bakes, ./bakes, ~/amni-bakes, ~/.amni-ai/bakes — a usable bake dir needs config.json plus manifest.json or bake_manifest.json).\n  Run `python install.py` to fetch the GF(17) bake from Hugging Face, or pass --bake <bake-dir> --model <model-dir>.',flush=True)
@@ -244,7 +246,7 @@ def main():
         print(f'[amni_serve] configured bake {args.bake!r} unusable — auto-discovered usable bake: {_disc}',flush=True)
         if not _bake_usable(args.model):args.model=_disc
         args.bake=_disc
-    if not args.model or not Path(args.model).exists() or not (Path(args.model)/'config.json').exists():
+    if not _ray and (not args.model or not Path(args.model).exists() or not (Path(args.model)/'config.json').exists()):
         if Path(args.bake).exists() and (Path(args.bake)/'config.json').exists():
             print(f'[amni_serve] model dir unset/invalid — using bake as model: {args.bake}',flush=True);args.model=args.bake
         else:
@@ -532,7 +534,7 @@ def main():
                 yield f'event: disambiguate\ndata: {_json.dumps({"reason":"I answered from what I know — want me to check the web for the latest instead?","options":[{"label":"\U0001F310 Search the web","send":"search the web for: "+req.message[:200]}]})}\n\n'
             _profile_authoritative=(_intent_label=='profile_about_me') or bool(_PROFILE_AUTHORITATIVE_RE.search(req.message))
             _memory_recall=(_intent_label=='memory_recall') or bool(_MEMORY_RECALL_RE.search(req.message))
-            apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam'
+            apply_cot=_needs_cot(category,req.message) and persona and persona.name!='Adam' and os.environ.get('AMNI_GEN_BACKEND','').lower()!='ray'
             if _profile_authoritative or _memory_recall:apply_cot=False
             from amni.serve.conversation import detect_personal as _dp
             from amni.serve.prompt_budget import history_turns as _hturns,use_compact_prompt as _ucp
@@ -956,6 +958,8 @@ def main():
             hit=next((m for m in list_ggufs() if m['id']==req.id),None)
             if hit is None:raise HTTPException(status_code=404,detail=f'unknown model {req.id!r}')
             path=hit['path']
+        path=path or (__import__('amni.compute.ray_field',fromlist=['DEFAULT_PACK']).DEFAULT_PACK if req.backend=='ray' else None)
+        model=req.model if req.backend!='ray' or req.model!='qwen38-27b-aggressive' else 'adam:ray-v16'
         if not path:raise HTTPException(status_code=400,detail='need id or path')
         if req.backend=='bake':
             os.environ['AMNI_GEN_BACKEND']='bake'
@@ -964,7 +968,7 @@ def main():
                 cfg=load_config();cfg['gen_backend']='bake';save_config(cfg)
             except Exception:pass
             return {'ok':True,'backend':'bake','path':path}
-        return activate(path,backend=req.backend,model=req.model)
+        return activate(path,backend=req.backend,model=model)
     @app.get('/stats/iter')
     def stats_iter():return dict(_iter_counters)
     @app.post('/stats/iter/reset')
