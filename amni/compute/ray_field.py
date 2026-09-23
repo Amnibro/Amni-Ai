@@ -2,35 +2,38 @@ import os,math,codecs,threading
 import numpy as np
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_PACK=os.path.join(_H0,"exports","gf17_continuum","rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz")
-V=256;WM=(1<<20)-1;NI=30;BASE=21;HOPS=4;KS=3;MAXB=256;TOPIC_A=0.99
+V=256;WM=(1<<20)-1;NI=37;BASE=21;HOPS=4;KS=3;MAXB=256;TOPIC_A=0.99
 _lock=threading.Lock();_eng=None
 def _unpack5(b:np.ndarray,n:int)->np.ndarray:
  u=np.packbits(np.concatenate([np.zeros((b.size//7,8,1),np.uint8),np.unpackbits(b.reshape(-1,7),axis=1).reshape(-1,8,7)],axis=2),axis=2).reshape(-1)[:n].astype(np.int16);return np.stack([u//25-2,(u//5)%5-2,u%5-2],axis=1).astype(np.int8)
 def load_pack(path:str)->dict:
+ if path.endswith("_sid.npy"):
+  pre=path[:-8];d=np.load(pre+"_dp.npy");sid=np.load(path);w=np.nan_to_num(np.load(pre+"_sw.npy").astype(np.float32));mx=np.abs(w).max(axis=2,keepdims=True);a=np.abs(w);sw=np.where(a<0.5*mx,0.0,np.sign(w)*np.where(a<0.75*mx,0.5*mx,mx)).astype(np.float16);L,T,K=sid.shape
+  return {"dp":np.concatenate([d[0,:256],d[1]]).astype(np.float32),"sid":sid,"sw":sw,"bias":np.load(pre+"_bias.npy").astype(np.float32),"L":L,"T":T,"K":K,"dshape":list(d.shape)}
  z=np.load(path);L,T,K=[int(v) for v in z["sshape"]];dsh=[int(v) for v in z["dshape"]];n=int(z["trit_n"]);cells=L*T
  q=(z["dense_digits"].astype(np.int16)-128).astype(np.float32).reshape(-1,8);sc=z["dense_scale"].astype(np.float32).reshape(-1,1);dp=(q/127.0*sc).reshape(-1,V).astype(np.float16).astype(np.float32)
  t=_unpack5(z["trits"],n).reshape(L,T,K).astype(np.float32);ub=np.unpackbits(z["scale4"])[:cells*4].reshape(cells,4);s4=(ub*np.array([8,4,2,1],np.uint8)).sum(axis=1).astype(np.float32);lo=float(z["scale_lo"]);hi=float(z["scale_hi"])
  scale=np.where(s4>0,np.power(2.0,lo+(s4-1)/14.0*(hi-lo)),0.0).reshape(L,T,1);sw=(t*(0.5*scale)).astype(np.float16)
  bp=path.replace("_pk_q5_i8.npz","_bias.npy");bias=np.load(bp).astype(np.float32) if os.path.exists(bp) else np.zeros(V,np.float32)
  return {"dp":dp,"sid":z["ids"].reshape(L,T,K),"sw":sw,"bias":bias,"L":L,"T":T,"K":K,"dshape":dsh}
-def load_syn(path:str)->tuple:
- ts=np.zeros(WM+1,dtype=np.int32);th=np.zeros(WM+1,dtype=np.int32)
+def load_syn(path:str,n:int=2)->tuple:
+ ts=[np.zeros(WM+1,dtype=np.int32) for _ in range(n)]
  for l in (open(path,"rb").read().splitlines() if os.path.exists(path) else []):
-  parts=l.split(b" ");h=0
-  if len(parts)!=3:continue
+  parts=l.split();h=0
+  if len(parts)!=n+1 or not all(x.isdigit() for x in parts[1:]):continue
   for c in parts[0]:h=(h*83492791+c+1)&0xFFFFFFFF
-  ts[h&WM]=int(parts[1])&0x7FFFFFFF;th[h&WM]=int(parts[2])&0x7FFFFFFF
- return ts,th
+  for i in range(n):ts[i][h&WM]=int(parts[i+1])&0x7FFFFFFF
+ return tuple(ts)
 class RayField:
  def __init__(self,path:str=None,syn:str=None,words:str=None,arch:str=None):
-  self.path=path or os.environ.get("AMNI_RAY_PACK",DEFAULT_PACK);self.syn=syn or os.path.join(_H0,"data","big2","synsets.txt");self.words_path=words or os.path.join(_H0,"data","big2","words.txt");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","vulkan");self.ready=False;self.words=set();self.pref=set();self.ok=np.array([(32<=c<127) or c in (9,10) for c in range(V)])
+  self.path=path or os.environ.get("AMNI_RAY_PACK",DEFAULT_PACK);self.syn=syn or os.path.join(_H0,"data","big2","synsets.txt");self.words_path=words or os.path.join(_H0,"data","big2","words.txt");self.wcnt_path=os.path.join(_H0,"data","big2","wordcounts.txt");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","vulkan");self.ready=False;self.words=set();self.pref=set();self.ok=np.array([(32<=c<127) or c in (9,10) for c in range(V)])
  def load(self):
   if self.ready:return self
   import taichi as ti
-  ti.init(arch=getattr(ti,self.arch),log_level=ti.ERROR,offline_cache=True);self.ti=ti;pk=load_pack(self.path);L,T,K=pk["L"],pk["T"],pk["K"];self.L,self.T=L,T;TE=T
-  DP=ti.field(ti.f32,shape=(pk["dp"].shape[0],V));SID=ti.field(ti.u8,shape=(L,T,K));SW=ti.field(ti.f16,shape=(L,T,K));BI=ti.field(ti.f32,shape=V);SYN=ti.field(ti.i32,shape=WM+1);HYP=ti.field(ti.i32,shape=WM+1);PUNCT=ti.field(ti.i32,shape=V);WORDCH=ti.field(ti.i32,shape=V)
+  ti.init(arch=getattr(ti,self.arch),log_level=ti.ERROR,offline_cache=True);self.ti=ti;pk=load_pack(self.path);L,T,K=pk["L"],pk["T"],pk["K"];self.L,self.T=L,T;TE=T;qt=L==BASE+HOPS+3;HB=BASE+(3 if qt else 0);self.qt=qt
+  DP=ti.field(ti.f32,shape=(pk["dp"].shape[0],V));SID=ti.field(ti.u8,shape=(L,T,K));SW=ti.field(ti.f16,shape=(L,T,K));BI=ti.field(ti.f32,shape=V);SYN=ti.field(ti.i32,shape=WM+1);HYP=ti.field(ti.i32,shape=WM+1);PUNCT=ti.field(ti.i32,shape=V);WORDCH=ti.field(ti.i32,shape=V);WCNT=ti.field(ti.i32,shape=WM+1)
   ST=ti.field(ti.u32,shape=(2,MAXB,NI));TF=ti.field(ti.f32,shape=(2,MAXB,2));LOG=ti.field(ti.f32,shape=(MAXB,V));PAR=ti.field(ti.i32,shape=MAXB);BYT=ti.field(ti.i32,shape=MAXB)
-  DP.from_numpy(pk["dp"]);SID.from_numpy(pk["sid"]);SW.from_numpy(pk["sw"]);BI.from_numpy(pk["bias"]);ts,th=load_syn(self.syn);SYN.from_numpy(ts);HYP.from_numpy(th)
+  DP.from_numpy(pk["dp"]);SID.from_numpy(pk["sid"]);SW.from_numpy(pk["sw"]);BI.from_numpy(pk["bias"]);ts,th=load_syn(self.syn);SYN.from_numpy(ts);HYP.from_numpy(th);WCNT.from_numpy(load_syn(self.wcnt_path,1)[0]) if qt else None
   pn=np.zeros(V,np.int32);pn[[ord(c) for c in ".,;:!?()[]{}<>=\"'`#-"]]=1;PUNCT.from_numpy(pn);wn=np.zeros(V,np.int32);wn[[ord(c) for c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"]]=1;WORDCH.from_numpy(wn)
   @ti.func
   def hmix2(a:ti.u32,b:ti.u32,salt:ti.u32)->ti.u32:
@@ -50,11 +53,18 @@ class RayField:
    for b in range(nb):
     pa=PAR[b];bb=BYT[b]
     for i in ti.static(range(NI)):ST[dst,b,i]=ST[src,pa,i]
-    tx=TF[src,pa,0];ty=TF[src,pa,1];wh=ST[dst,b,16];pw1=ST[dst,b,17];pw2=ST[dst,b,18];pw3=ST[dst,b,19];pw4=ST[dst,b,20];s1=ST[dst,b,21];s2=ST[dst,b,22];g1=ST[dst,b,23];g2=ST[dst,b,26];atstart=ti.cast(ST[dst,b,24],ti.i32);indent=ti.cast(ST[dst,b,25],ti.i32);col=ti.cast(ST[dst,b,27],ti.i32);incode=ti.cast(ST[dst,b,28],ti.i32);lp=ST[dst,b,29];lastp=ti.cast(lp&ti.u32(0xFFFF),ti.i32);tick=ti.cast(lp>>ti.u32(16),ti.i32)
+    tx=TF[src,pa,0];ty=TF[src,pa,1];wh=ST[dst,b,16];pw1=ST[dst,b,17];pw2=ST[dst,b,18];pw3=ST[dst,b,19];pw4=ST[dst,b,20];s1=ST[dst,b,21];s2=ST[dst,b,22];g1=ST[dst,b,23];g2=ST[dst,b,26];atstart=ti.cast(ST[dst,b,24],ti.i32);indent=ti.cast(ST[dst,b,25],ti.i32);col=ti.cast(ST[dst,b,27],ti.i32);incode=ti.cast(ST[dst,b,28],ti.i32);lp=ST[dst,b,29];lastp=ti.cast(lp&ti.u32(0xFFFF),ti.i32);tick=ti.cast(lp>>ti.u32(16),ti.i32);inq=ti.cast(ST[dst,b,30],ti.i32);q1=ST[dst,b,31];q2=ST[dst,b,32];c1=ti.cast(ST[dst,b,33],ti.i32);c2=ti.cast(ST[dst,b,34],ti.i32);qon=ti.cast(ST[dst,b,35],ti.i32);wlen=ti.cast(ST[dst,b,36],ti.i32)
     isw=WORDCH[bb]==1;ends=(not isw) and wh!=ti.u32(0)
     if ends:
      pw4=pw3;pw3=pw2;pw2=pw1;pw1=wh;s2=s1;g2=g1;s1=ti.cast(SYN[ti.cast(pw1&ti.u32(WM),ti.i32)],ti.u32);g1=ti.cast(HYP[ti.cast(pw1&ti.u32(WM),ti.i32)],ti.u32)
      a=ti.cast(pw1%ti.u32(360),ti.f32)*(2*math.pi/360.0);tx=TOPIC_A*tx+ti.cos(a)*(1-TOPIC_A)*8;ty=TOPIC_A*ty+ti.sin(a)*(1-TOPIC_A)*8
+     if ti.static(qt):
+      if inq==1 and wlen>=3 and not (bb==58 and ST[dst,b,0]==ti.u32(109) and ST[dst,b,1]==ti.u32(97) and ST[dst,b,2]==ti.u32(100) and ST[dst,b,3]==ti.u32(65)):
+       cw=WCNT[ti.cast(pw1&ti.u32(WM),ti.i32)]
+       if cw>0:
+        if c1==0 or cw<c1:q2=q1;c2=c1;q1=pw1;c1=cw
+        elif pw1!=q1 and (c2==0 or cw<c2):q2=pw1;c2=cw
+    if ti.static(qt):wlen=wlen+1 if isw else 0
     wh=(wh*ti.u32(83492791)+ti.cast(bb,ti.u32)+ti.u32(1)) if isw else ti.u32(0)
     nl=bb==10;col=0 if nl else col+1
     if nl:atstart=1;indent=0
@@ -66,6 +76,12 @@ class RayField:
     if PUNCT[bb]==1:lastp=bb
     elif nl:lastp=10
     for i in ti.static(range(15,0,-1)):ST[dst,b,i]=ST[dst,b,i-1]
+    ST[dst,b,0]=ti.cast(bb,ti.u32)
+    if ti.static(qt):
+     if ST[dst,b,5]==ti.u32(85) and ST[dst,b,4]==ti.u32(115) and ST[dst,b,3]==ti.u32(101) and ST[dst,b,2]==ti.u32(114) and ST[dst,b,1]==ti.u32(58) and ST[dst,b,0]==ti.u32(32):q1=ti.u32(0);q2=ti.u32(0);c1=0;c2=0;inq=1;qon=0
+     if ST[dst,b,5]==ti.u32(65) and ST[dst,b,4]==ti.u32(100) and ST[dst,b,3]==ti.u32(97) and ST[dst,b,2]==ti.u32(109) and ST[dst,b,1]==ti.u32(58) and ST[dst,b,0]==ti.u32(32):inq=0;qon=1 if q1!=ti.u32(0) else 0
+     if ST[dst,b,0]==ti.u32(10) and ST[dst,b,1]==ti.u32(10):qon=0
+     ST[dst,b,30]=ti.cast(inq,ti.u32);ST[dst,b,31]=q1;ST[dst,b,32]=q2;ST[dst,b,33]=ti.cast(c1,ti.u32);ST[dst,b,34]=ti.cast(c2,ti.u32);ST[dst,b,35]=ti.cast(qon,ti.u32);ST[dst,b,36]=ti.cast(wlen,ti.u32)
     ST[dst,b,0]=ti.cast(bb,ti.u32);ST[dst,b,16]=wh;ST[dst,b,17]=pw1;ST[dst,b,18]=pw2;ST[dst,b,19]=pw3;ST[dst,b,20]=pw4;ST[dst,b,21]=s1;ST[dst,b,22]=s2;ST[dst,b,23]=g1;ST[dst,b,26]=g2;ST[dst,b,24]=ti.cast(atstart,ti.u32);ST[dst,b,25]=ti.cast(indent,ti.u32);ST[dst,b,27]=ti.cast(col,ti.u32);ST[dst,b,28]=ti.cast(incode,ti.u32);ST[dst,b,29]=ti.cast(lastp,ti.u32)|(ti.cast(tick,ti.u32)<<ti.u32(16));TF[dst,b,0]=tx;TF[dst,b,1]=ty
     if want==1:
      b1=ST[dst,b,0];b2=ST[dst,b,1];b3=ST[dst,b,2];b4=ST[dst,b,3];b5=ST[dst,b,4];b6=ST[dst,b,5];b7=ST[dst,b,6];b8=ST[dst,b,7];b9=ST[dst,b,8];b10=ST[dst,b,9];b11=ST[dst,b,10];b12=ST[dst,b,11];b13=ST[dst,b,12];b14=ST[dst,b,13];b15=ST[dst,b,14];b16=ST[dst,b,15]
@@ -81,6 +97,8 @@ class RayField:
      for k in ti.static(range(4)):
       ii=i0+(k&1);jj=j0+(k>>1);w=(fu if k&1 else 1-fu)*(fv if k>>1 else 1-fv)
       if w!=0.0:cell(b,BASE-1,slot(ti.cast(ii%256,ti.u32),ti.cast(ti.min(jj,255),ti.u32),BASE-1),w)
+     if ti.static(qt):
+      if qon==1:cell(b,BASE,slot(q1,wh,BASE),1.0);cell(b,BASE+1,slot(hmix2(q1,q2,ti.u32(107)),pw1&ti.u32(4095),BASE+1),1.0);cell(b,BASE+2,slot(q1,b1+(b2<<ti.u32(8)),BASE+2),1.0)
      for h in ti.static(range(HOPS)):
       a0=0;a1=0;a2=0;m0=-1e30;m1=-1e30;m2=-1e30
       for c in range(V):
@@ -89,7 +107,7 @@ class RayField:
        elif v>m1:m2=m1;a2=a1;m1=v;a1=c
        elif v>m2:m2=v;a2=c
       lo=ti.min(a0,ti.min(a1,a2));hi=ti.max(a0,ti.max(a1,a2));mid=a0+a1+a2-lo-hi
-      cell(b,BASE+h,slot(hmix2(hmix2(ti.cast(lo*65536+mid*256+hi,ti.u32),b1,ti.u32(97+h)),b2,ti.u32(103+h)),ti.cast(h,ti.u32),BASE+h),1.0)
+      cell(b,HB+h,slot(hmix2(hmix2(ti.cast(lo*65536+mid*256+hi,ti.u32),b1,ti.u32(97+h)),b2,ti.u32(103+h)),ti.cast(h,ti.u32),BASE+h),1.0)
   self._reset,self._step,self.PAR,self.BYT,self.LOG=reset,step,PAR,BYT,LOG;self.cur=0;self.ready=True;return self
  def _advance(self,par:list,byt:list,want:bool=True)->np.ndarray:
   nb=len(byt);src=self.cur;dst=1-src;self.PAR.from_numpy(np.pad(np.asarray(par,np.int32),(0,MAXB-nb)));self.BYT.from_numpy(np.pad(np.asarray(byt,np.int32),(0,MAXB-nb)));self._step(nb,src,dst,1 if want else 0);self.cur=dst
@@ -107,6 +125,13 @@ class RayField:
    for t in range(ctx):
     lg=self._advance(list(range(bs)),x[:,t].tolist(),True);m=lg.max(axis=1,keepdims=True);lz=np.log(np.exp(lg-m).sum(axis=1))+m[:,0];tot+=float((lz-lg[np.arange(bs),y[:,t]]).sum());n+=bs
   return tot/n/math.log(2)
+ def score(self,prompts:list,conts:list)->np.ndarray:
+  with _lock:
+   self.load();seqs=[bytes(p)+bytes(c) for p,c in zip(prompts,conts)];nb=len(seqs);st=[len(p) for p in prompts];T=max(len(x) for x in seqs);lp=np.zeros(nb);self._reset(nb,self.cur);lg=None
+   for t in range(T):
+    if lg is not None:m=lg.max(axis=1,keepdims=True);lz=np.log(np.exp(lg-m).sum(axis=1))+m[:,0];lp+=[float(lg[b,seqs[b][t]]-lz[b]) if st[b]<=t<len(seqs[b]) else 0.0 for b in range(nb)]
+    lg=self._advance(list(range(nb)),[seqs[b][t] if t<len(seqs[b]) else 10 for b in range(nb)],True)
+   return lp
  def _load_words(self):
   if self.words or not os.path.exists(self.words_path):return
   for w in open(self.words_path,"rb").read().splitlines():self.words.add(w);[self.pref.add(w[:k]) for k in range(1,len(w)+1)]
@@ -116,15 +141,16 @@ class RayField:
   while j>0 and (65<=seq[j-1]<=90 or 97<=seq[j-1]<=122 or seq[j-1]==39):j-=1
   cur=bytes(seq[j:]);isl=65<=c<=90 or 97<=c<=122 or c==39
   return ((cur+bytes([c])) in self.pref or len(cur)>=24) if isl else (len(cur)<=1 or cur in self.words or cur.lower() in self.words)
- def stream(self,prompt:str,max_bytes:int=400,temp:float=0.7,topk:int=12,stop:tuple=("\n\n",),veto:bool=True,seed:int=None):
+ def stream(self,prompt:str,max_bytes:int=400,temp:float=0.7,topk:int=12,stop:tuple=("\n\n",),veto:bool=True,seed:int=None,guide:bytes=None,beta:float=6.0):
   with _lock:
-   self.load();veto and self._load_words();g=np.random.default_rng(seed);seq=list(prompt.encode());lg=self.prime(bytes(seq))[0];dec=codecs.getincrementaldecoder("utf-8")("replace");out=b""
+   self.load();veto and self._load_words();g=np.random.default_rng(seed);seq=list(prompt.encode());lg=self.prime(bytes(seq))[0];dec=codecs.getincrementaldecoder("utf-8")("replace");out=b"";gp=0;gl=len(guide or b"");pend="";hold=max([len(t) for t in stop]+[1])-1
    try:
     for _ in range(max_bytes):
-     z=np.where(self.ok,lg/temp,-1e9);z[seq[-1]]-=6.0 if len(seq)>=4 and len(set(seq[-4:]))==1 else 0.0;order=np.argsort(z)[::-1];keep=[int(c) for c in order[:topk*6] if not veto or self.word_ok(seq,int(c))][:topk] or [int(c) for c in order[:topk]];zz=z[keep]-z[keep].max();pr=np.exp(zz);pr/=pr.sum();c=keep[int(g.choice(len(keep),p=pr))]
-     seq.append(c);out+=bytes([c]);s=dec.decode(bytes([c]))
-     if any(out.endswith(t.encode()) for t in stop):break
-     s and (yield s);lg=self._advance([0],[c],True)[0]
+     z=np.where(self.ok,lg/temp,-1e9);z[seq[-1]]-=6.0 if len(seq)>=4 and len(set(seq[-4:]))==1 else 0.0;gb=guide[gp] if gp<gl else -1;z[gb]+=beta if gb>=0 else 0.0;order=np.argsort(z)[::-1];keep=[int(c) for c in order[:topk*6] if not veto or c==gb or self.word_ok(seq,int(c))][:topk] or [int(c) for c in order[:topk]];zz=z[keep]-z[keep].max();pr=np.exp(zz);pr/=pr.sum();c=keep[int(g.choice(len(keep),p=pr))]
+     seq.append(c);out+=bytes([c]);pend+=dec.decode(bytes([c]));j=-1 if c==gb or not gl else guide.find(out[-8:],max(0,gp-60));gp=gp+1 if c==gb else (j+len(out[-8:]) if j>=0 else gp);hit=[pend.find(t) for t in stop if t in pend]
+     if hit or (gl and gp>=gl):r=pend[:min(hit)] if hit else pend;pend="";r and (yield r);break
+     k=len(pend)-hold;r=pend[:k] if k>0 else "";pend=pend[len(r):];r and (yield r);lg=self._advance([0],[c],True)[0]
+    pend and (yield pend)
    except GeneratorExit:return
  def beam(self,prompt:str,width:int=8,expand:int=4,maxlen:int=300,rep:int=16,veto:bool=True)->str:
   with _lock:
