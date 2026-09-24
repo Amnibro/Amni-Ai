@@ -35,6 +35,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "adam-train"
+version = "0.1.0"
+dependencies = [
+ "adam-qa",
+ "adam-ray",
+ "bytemuck",
+ "half",
+ "memmap2",
+ "pollster",
+ "rayon",
+ "wgpu",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

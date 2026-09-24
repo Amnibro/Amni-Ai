@@ -16,7 +16,7 @@ impl RayField {
     pub fn load(&mut self) -> io::Result<&mut Self> {
         if self.ready { return Ok(self); }
         let tb = pack::load(&self.path, &self.syn, &self.wcnt_path)?;
-        (self.l, self.t, self.qt) = (tb.l, tb.t, tb.qt);
+        (self.l, self.t, self.qt) = (tb.l, tb.t, tb.geo.qt);
         let g = if self.arch == "cpu" { Err("cpu requested".to_string()) } else { Gpu::new(&tb) };
         (self.backend, self.back) = match g { Ok(g) => (format!("gpu:{}", g.name), Some(Back::Gpu(g))), Err(e) => (format!("cpu ({e})"), Some(Back::Cpu(Cpu::new(tb)))) };
         self.ready = true;

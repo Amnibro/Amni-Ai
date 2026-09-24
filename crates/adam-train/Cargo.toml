@@ -1,0 +1,17 @@
+[package]
+name = "adam-train"
+version = "0.1.0"
+edition = "2021"
+description = "Adam RayField trainer: wgpu compute passes (tables in textures) plus a CPU reference, same env and checkpoint format as the Taichi v16/v18 trainers"
+[[bin]]
+name = "adam-train"
+path = "src/main.rs"
+[dependencies]
+adam-ray = { workspace = true }
+adam-qa = { workspace = true }
+wgpu = "24"
+pollster = "0.4"
+bytemuck = "1"
+half = "2"
+memmap2 = "0.9"
+rayon = "1"
