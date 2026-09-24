@@ -95,7 +95,7 @@ fn probe_copy13() {
     assert!(has(&hr[8..12], b'C') && has(&hr[..8], b'D'), "{hr:?}");
     let san: &[u8] = b"User: My sister lives in San Diego.\n\nUser: Where does my sister live?\nAdam: Your sister lives in San ";
     let (cpb, _) = r.run(san);
-    let m = &r.d.rows[0];
+    let m = &r.d.rows[0].m;
     assert!((0..64).any(|i| m.stamp[i] > 0 && &m.val[i][..m.vlen[i] as usize] == b"San Diego"));
     let sp = rfind(san, b"San ");
     assert!(has(&cpb[sp + 2][..8], b' ') && has(&cpb[sp + 3][..8], b'D'));

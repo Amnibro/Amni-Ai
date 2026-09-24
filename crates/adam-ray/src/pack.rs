@@ -14,7 +14,7 @@ pub const TOPIC_A: f32 = 0.99;
 #[derive(Clone)]
 pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize }
 pub struct Lex { pub lex: Vec<[u32; 4]>, pub trig: Vec<[f32; 2]> }
-pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex }
+pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex, pub cw: Vec<u16> }
 impl Geo {
     pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0 } }
     pub fn sl(&self, u: u32, v: u32, l: usize) -> u32 { crate::cpu::hm(u, v, (l as u32 + 1).wrapping_add(self.salt.wrapping_mul(1000003))) % self.t }
@@ -37,9 +37,10 @@ pub fn load_syn(path: &str, n: usize) -> Vec<Vec<u32>> {
     }
     ts
 }
+pub fn copies(l: usize) -> usize { match l.wrapping_sub(BASE + 3 + HOPS) { c @ (4 | 9 | 13) => c, _ => 0 } }
 pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
     let raw = path.ends_with("_sid.npy");
-    let (l, t, rows, dp, cells, bias) = if raw {
+    let (l, t, rows, dp, cells, bias, cw) = if raw {
         let pre = &path[..path.len() - 8];
         let (dz, sz, wz) = (Npz::open(&format!("{pre}_dp.npy"))?, Npz::open(path)?, Npz::open(&format!("{pre}_sw.npy"))?);
         let (d, s, w) = (dz.get("")?, sz.get("")?, wz.get("")?);
@@ -54,7 +55,9 @@ pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
             let tr = v.map(|x| if x.abs() < 0.5 * mx { 0 } else { (1 + (x.abs() >= 0.75 * mx) as i32) * ((x > 0.0) as i32 - (x < 0.0) as i32) });
             [sid[c * 3] as u32 | (sid[c * 3 + 1] as u32) << 8 | (sid[c * 3 + 2] as u32) << 16 | (((tr[0] + 2) * 25 + (tr[1] + 2) * 5 + tr[2] + 2) as u32) << 24, h16(0.5 * mx) | h16(mx) << 16]
         }).collect();
-        (l, t, V + d.shape[1], dp, cells, Npz::open(&format!("{pre}_bias.npy"))?.get("")?.f32s())
+        let c0 = BASE + 3;
+        let cw = (0..copies(l) * t).map(|i| { let x = sw[((c0 + i / t) * t + i % t) * 3]; if f16::from_bits(x).is_nan() { 0 } else { x } }).collect();
+        (l, t, V + d.shape[1], dp, cells, Npz::open(&format!("{pre}_bias.npy"))?.get("")?.f32s(), cw)
     } else {
         let z = Npz::open(path)?;
         let (ss, n) = (z.get("sshape")?.i64s(), z.get("trit_n")?.i64s()[0] as usize);
@@ -70,10 +73,12 @@ pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
             [ids[c * 3] as u32 | (ids[c * 3 + 1] as u32) << 8 | (ids[c * 3 + 2] as u32) << 16 | u << 24, h16(h) | h16(2.0 * h) << 16]
         }).collect();
         let bp = path.replace("_pk_q5_i8.npz", "_bias.npy");
-        (l, t, dd.n() / V, dp, cells, if Path::new(&bp).exists() { Npz::open(&bp)?.get("")?.f32s() } else { vec![0.0; V] })
+        (l, t, dd.n() / V, dp, cells, if Path::new(&bp).exists() { Npz::open(&bp)?.get("")?.f32s() } else { vec![0.0; V] }, vec![])
     };
-    let qt = l == BASE + HOPS + 3;
-    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo::eng(t, qt), lx: lexicon(syn, qt.then_some(wcnt)) })
+    let cp = if raw { copies(l) } else { 0 };
+    let qt = l == BASE + HOPS + 3 || cp > 0;
+    let g = Geo::eng(t, qt);
+    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw })
 }
 pub fn lexicon(syn: &str, wcnt: Option<&str>) -> Lex {
     let (sy, wc) = (load_syn(syn, 2), wcnt.map_or_else(|| vec![0; WM as usize + 1], |w| load_syn(w, 1).remove(0)));

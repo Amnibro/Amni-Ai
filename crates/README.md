@@ -5,7 +5,7 @@ Cargo workspace for Adam's Rust port (phase R1: inference engine + answer memory
 
 | crate | what it is |
 |---|---|
-| `adam-ray` | `RayField` engine: v16 packed `.npz` and v18 raw `_sid.npy` loaders, wgpu compute kernel (`src/ray.wgsl`), CPU reference path, `prime` / `logits_for` / `advance` / `run` / `score` / `bpb` / `stream` / `beam` |
+| `adam-ray` | `RayField` engine: v16 packed `.npz`, v18 and v19 raw `_sid.npy` loaders, wgpu compute kernel (`src/ray.wgsl`), CPU reference path, `prime` / `logits_for` / `advance` / `run` / `score` / `bpb` / `stream` / `beam`; `src/v19.rs` is the v19c working-memory stepper shared with `adam-train` |
 | `adam-qa` | port of `amni/compute/ray_qa.py`: `words`, `stem`, index loader for `ray_qa_index.npz`, `search`, `overlap`, `hard`, `pick`, `guide` |
 | `adam-ray-py` | PyO3 module `adam_ray` exposing a drop-in `RayField`, `QA`, `pick`, `guide`, `words`, `stem`, `hard` |
 | `adam-train` | v16/v18 ray-hash-field trainer: wgpu compute passes (`src/wgsl/*.wgsl`) plus a CPU reference (`src/cpu.rs`), CLI `adam-train` with the Taichi trainers' env and checkpoint format |
@@ -68,6 +68,28 @@ Run the benchmark with `python crates/adam-ray-py/tests/bench.py v16 v18`, which
 
 Storage buffers hold only what the kernel writes: the per-beam driver state (double-buffered, `NS = 40` u32 per beam), the per-step parent|byte stream, and the logits output. One workgroup of 256 threads handles one beam. Thread 0 advances the state and plans the cells. Every thread gathers its own class in the Taichi order. The hop top-3 is a tie-exact rank count in workgroup memory. There is no matmul anywhere.
 
+## v19 inference (R1b)
+
+`RayField` detects a v19 raw pack from its level count: L=41 is COPY=13 (question tori 21..23, copy 24..36, hops 37..40), L=37 is COPY=9, L=32 is COPY=4. The Python getters `copy` and `v19` report it; nothing else changes for callers.
+
+- The copy band (levels 24..24+COPY) is kept as raw f16 slot-0 weights and never goes through the cell ternarizer.
+- `v19::W19` is one beam's v19 state: the 40-u32 core state, the parser scalars (question words and their 4-byte prefixes, working-memory cursors, fact-question clock, pronoun subject), the current-word buffer, the 128x4 set-associative working memory and the 64-entry entity ring (about 31 KB). `W19::step` is the per-byte update, `W19::gates` the copy-candidate emit. The trainer's `Drv19` runs the same two calls per position.
+- `v19::Host` holds 2 x 256 `W19` (double-buffered like the core state) plus the lexicons. Each step copies the parent beam's state into the child slot and steps it, so beams fork with their memory.
+- CPU path: bias, dense, planned taps, then the copy gates (`CG` x the sum of the gate cells' slot-0 weights, added to the candidate byte), then the four hops. This is the trainer's forward order.
+- GPU path: the CPU steps every beam and uploads, per want-step and beam, the core state and 13 (byte, gate) pairs (`EX = 66` u32). The kernel skips its own state update, plans and gathers from the uploaded state, adds the gates and runs the hops. Steps without logits are not dispatched.
+- v19 packs use the trainer's topic constant (`1 - 0.99f32`). v16/v18 keep the Taichi engine's `(1 - 0.99f64) as f32`, which drifts from the trainer's by 1e-9 and can move a topic cell on long inputs.
+
+```bash
+cd crates && cargo test --release -j 8 -p adam-train --test v19_fwd --no-run
+AMNI_HOME=/home/anmire/ai/Amni-Ai ADAM_V19_PACK=<rayhash_..._sid.npy> [ADAM_V19_TEXTS=<\0-separated file>] \
+  [ADAM_V19_REF=<taichi npz>] [ADAM_V19_GREEDY=90] ADAM_RAY_ARCHS=cpu,vulkan target/release/deps/v19_fwd-* --nocapture
+AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_continuum/rayhash_v19c2_chat3_rust_s20k v19c2_rust
+```
+
+- `v19_fwd` compares `RayField::logits_for` (each arch) with the `adam-train` CPU forward of the same checkpoint, and with a Taichi reference when given. The Taichi reference is `Amni-Ai-v19/tests/ray_field_ref.py` with `REF_SCRIPT=ray_hash_field_ti_v19.py LOG2_ENTRIES=16 COPY=13 TI_FAST_MATH=0 TI_ADVANCED_OPTIMIZATION=0`. It compiles in about 1.8 GB at LOG2_ENTRIES=16. Never compile it at LOG2_ENTRIES=20, which needs more than 29 GB.
+- `ADAM_V19_GREEDY=n` also greedy-decodes n bytes per text through `prime`/`advance` and through the trainer's full recompute, and counts identical outputs.
+- `v19_rust_eval.py` is `v19b_eval.py` with `adam_ray` greedy decoding: the same 934-byte prompt window, 90 bytes, and a stop at byte 10 or 30. It writes `data/concepts/eval/report_<tag>.json` under `AMNI_HOME`. `C3_N` (default 0, meaning all 1000 dialogues) limits chat3, `EVAL_N` limits the other suites, and `AMNI_RAY_ARCH` picks the backend (default cpu).
+
 ## Trainer (R2): `adam-train`
 
 `adam-train` replaces `scripts/ray_hash_field_ti_v16.py`, `ray_hash_field_ti_v18.py` and the v19c working-memory trainer (`ray_hash_field_ti_v19.py`, parser-fix revision). It reads the same environment, samples the same batches (numpy PCG64), and writes the same `exports/gf17_continuum/rayhash_<TAG>{.json,_dp.npy,_sid.npy,_sw.npy,_bias.npy}`. Those files load in `adam_ray`, in the Taichi `RayField`, and in the Taichi trainers (`PAGES=`).
@@ -99,7 +121,7 @@ target/release/adam-train
 |---|---|---|
 | `state` | thread per sequence | the shared byte state machine (`adam-ray/src/state.wgsl::upd`), which writes 40 u32 of state per position |
 | `plans` | thread per position | hashed torus cells, topic taps, question tori (`plan`), written as `[pos][level][4]` (entry, weight) |
-| v19 driver | CPU, one thread per sequence (`src/v19.rs`) | word/parse events, the memory update and the candidate/gate emit, run sequentially per sequence; the `[pos][level][4]` taps and 13 copy target bytes are uploaded, and the GPU `state`/`plans` passes are skipped |
+| v19 driver | CPU, one thread per sequence (`adam-ray/src/v19.rs`, wrapped by `src/v19.rs::Drv19`) | word/parse events, the memory update and the candidate/gate emit, run sequentially per sequence; the `[pos][level][4]` taps and 13 copy target bytes are uploaded, and the GPU `state`/`plans` passes are skipped |
 | `fwd` | workgroup per position | bias, dense byte1/byte2, all taps, the v19 copy gates (`4·Σ w·sw[slot 0]` added to the target byte), chained belief hops (tree-merge top-3), then CE, dlogits and loss |
 | `hist`, `args`, `umap` | per tap / 1 / per key | unique (level, entry) keys, indirect dispatch sizes, key to slot map |
 | `slots`, `dacc` | per tap / per position | gradient sums as exact 64-bit fixed-point atomics (order-free, so runs are bit-reproducible), plus the replacement candidate `atomicMax` |

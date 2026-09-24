@@ -2,7 +2,7 @@ use crate::{cfg::*, v19::{Drv19, CG}, Engine, Part};
 use adam_ray::{cpu::{hop, init, plan, top3, update}, pack::{lexicon, Lex}};
 use rayon::prelude::*;
 pub struct Tab { pub dp: Vec<f32>, pub dm: Vec<f32>, pub dv: Vec<f32>, pub sid: Vec<u8>, pub sw: Vec<f32>, pub sm: Vec<f32>, pub sv: Vec<f32>, pub bias: Vec<f32>, pub lq: Vec<f32> }
-pub struct Cpu { pub c: Cfg, pub lx: Lex, pub t: Tab, pi: Vec<u32>, pw: Vec<f32>, lg: Vec<f32>, cpb: Vec<i32>, pub d19: Option<Drv19> }
+pub struct Cpu { pub c: Cfg, pub lx: Lex, pub t: Tab, pi: Vec<u32>, pw: Vec<f32>, pub lg: Vec<f32>, cpb: Vec<i32>, pub d19: Option<Drv19> }
 #[derive(Clone, Copy)]
 struct P<T>(*mut T);
 unsafe impl<T> Send for P<T> {}

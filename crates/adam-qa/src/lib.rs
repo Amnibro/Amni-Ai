@@ -2,7 +2,7 @@ use adam_ray::{npy::Npz, rng::pairwise, RayField};
 use fancy_regex::Regex as FRe;
 use regex::{bytes::Regex as BRe, Regex};
 use std::{collections::{HashMap, HashSet}, io, str::FromStr, sync::LazyLock};
-pub static STOP: LazyLock<HashSet<&str>> = LazyLock::new(|| "the a an and or of to in on for with is are was were be been being do does did what why how whom which when where can could would should will shall may might must i you me my your it its this that these those there their they them he she his her we our us as at by from about into than then so if not no yes please tell give explain describe there here just also some any".split(' ').collect());
+pub static STOP: LazyLock<HashSet<&str>> = LazyLock::new(|| adam_ray::v19::STOPW.split(' ').collect());
 static TOK: LazyLock<BRe> = LazyLock::new(|| BRe::new(r"[a-z][a-z']{1,}").unwrap());
 static PROPER: LazyLock<FRe> = LazyLock::new(|| FRe::new(r"(?<=[\s\S])(?<![.?!] )\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)").unwrap());
 static WHO: LazyLock<FRe> = LazyLock::new(|| FRe::new(r"(?<![.!?] )(?<=[\s\S])\b[A-Z][a-z]+").unwrap());

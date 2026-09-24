@@ -1,4 +1,4 @@
-use crate::pack::*;
+use crate::{pack::*, v19::Host};
 use half::f16;
 use rayon::prelude::*;
 pub type St = [u32; NS];
@@ -78,11 +78,12 @@ pub fn cell(tb: &Tables, lg: &mut [f32], l: usize, e: u32, w: f32) {
     let c = tb.cells[l * tb.t + e as usize];
     (0..3).for_each(|s| { let (i, v) = tap(c, s); lg[i] += w * v; });
 }
-pub fn logits(tb: &Tables, s: &St, lg: &mut [f32]) {
+pub fn logits(tb: &Tables, s: &St, lg: &mut [f32], gt: &[(i32, f32)]) {
     let (b1, b2) = (s[0], s[1]);
     let (r1, r2) = (b1 as usize * V, (256 + b2 * 256 + b1) as usize * V);
     (0..V).for_each(|c| lg[c] = tb.bias[c] + f16::from_bits(tb.dp[r1 + c]).to_f32() + f16::from_bits(tb.dp[r2 + c]).to_f32());
     plan(&tb.geo, s).into_iter().for_each(|(l, _, e, w)| cell(tb, lg, l, e, w));
+    gt.iter().filter(|g| g.0 >= 0).for_each(|&(b, v)| lg[b as usize] += v);
     (0..tb.geo.hops).for_each(|h| { let e = hop(&tb.geo, top3(lg), b1, b2, h); cell(tb, lg, tb.geo.hb() + h, e, 1.0) });
 }
 pub struct Cpu { pub tb: Tables, st: Vec<St> }
@@ -90,17 +91,17 @@ impl Cpu {
     pub fn new(tb: Tables) -> Cpu { Cpu { tb, st: vec![init(); 2 * MAXB] } }
     pub fn reset(&mut self, cur: usize, nb: usize) { self.st[cur * MAXB..cur * MAXB + nb].fill(init()); }
     pub fn state(&self, cur: usize, b: usize) -> St { self.st[cur * MAXB + b] }
-    pub fn run(&mut self, cur: &mut usize, nb: usize, par: &[u32], byt: &[u8], want: &[bool]) -> Vec<f32> {
+    pub fn run(&mut self, cur: &mut usize, nb: usize, par: &[u32], byt: &[u8], want: &[bool], mut h: Option<&mut Host>) -> Vec<f32> {
         let mut out = vec![0f32; want.iter().filter(|&&w| w).count() * nb * V];
         let mut o = 0;
         for (t, &w) in want.iter().enumerate() {
             let (lo, hi) = self.st.split_at_mut(MAXB);
             let (src, dst) = if *cur == 0 { (&*lo, hi) } else { (&*hi, lo) };
             let (tb, pa, by) = (&self.tb, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb]);
-            let f = |(b, (d, lg)): (usize, (&mut St, Option<&mut [f32]>))| { *d = update(&tb.lx, &tb.geo, &src[pa[b] as usize], by[b] as u32); if let Some(lg) = lg { logits(tb, d, lg) } };
-            match w {
-                true => dst[..nb].par_iter_mut().zip(out[o..o + nb * V].par_chunks_mut(V).map(Some)).enumerate().with_min_len(4).for_each(f),
-                false => dst[..nb].par_iter_mut().map(|d| (d, None)).enumerate().with_min_len(4).for_each(f),
+            let sink: Vec<Option<&mut [f32]>> = if w { out[o..o + nb * V].chunks_mut(V).map(Some).collect() } else { (0..nb).map(|_| None).collect() };
+            match h.as_deref_mut() {
+                Some(h) => h.step(*cur, pa, by, sink, |d, g, cw, lg| if let Some(lg) = lg { logits(tb, &d.s, lg, &d.gv(g, cw)) }),
+                None => dst[..nb].par_iter_mut().zip(sink).enumerate().with_min_len(4).for_each(|(b, (d, lg))| { *d = update(&tb.lx, &tb.geo, &src[pa[b] as usize], by[b] as u32); if let Some(lg) = lg { logits(tb, d, lg, &[]) } }),
             }
             o += if w { nb * V } else { 0 };
             *cur = 1 - *cur;

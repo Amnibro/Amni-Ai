@@ -1,7 +1,8 @@
-use crate::{cpu, pack::*};
+use crate::{cpu, pack::*, v19::Host};
 use wgpu::*;
 const OUTCAP: usize = 64 << 20;
-pub struct Gpu { dev: Device, q: Queue, pipe: ComputePipeline, bgl: BindGroupLayout, views: Vec<TextureView>, st: Buffer, bufs: Option<(Buffer, Buffer, Buffer, BindGroup, usize, usize)>, pub name: String }
+pub const EX: usize = NS + 26;
+pub struct Gpu { dev: Device, q: Queue, pipe: ComputePipeline, bgl: BindGroupLayout, views: Vec<TextureView>, st: Buffer, bufs: Option<(Buffer, Buffer, Buffer, Buffer, BindGroup, usize, usize)>, v19: bool, pub name: String }
 fn mask(f: fn(u32) -> bool) -> String { (0..8).map(|w| format!("{}u", (0..32).fold(0u32, |m, i| m | (f(w * 32 + i) as u32) << i))).collect::<Vec<_>>().join(",") }
 pub fn common_wgsl(g: &Geo, state: bool) -> String { (include_str!("hash.wgsl").to_string() + if state { include_str!("state.wgsl") } else { "" }).replace("$TE", &g.t.to_string()).replace("$QT", &g.qt.to_string()).replace("$BASE", &g.base.to_string()).replace("$LVH", &(g.base + g.hops).to_string()).replace("$HB", &g.hb().to_string()).replace("$C0", &g.c0().to_string()).replace("$TA", &format!("{:?}f", g.ta)).replace("$TC", &format!("{:?}f", g.tc)).replace("$WORD", &mask(cpu::wordch)).replace("$PUNC", &mask(cpu::punct)) }
 pub fn device(label: &str, extra: Features) -> Result<(Device, Queue, String), String> {
@@ -28,38 +29,48 @@ impl Gpu {
             mk(V, 1, 1, TextureFormat::R32Float, 4, false, &|_| bytemuck::cast_slice(&tb.bias).to_vec()),
             mk(360, 1, 1, TextureFormat::Rg32Float, 8, false, &|_| bytemuck::cast_slice(&tb.lx.trig).to_vec()),
         ];
-        let src = common_wgsl(&tb.geo, true) + include_str!("ray.wgsl");
+        let (v19, src) = (tb.geo.copy > 0, common_wgsl(&tb.geo, true) + include_str!("ray.wgsl"));
+        let src = src.replace("$V19", &v19.to_string()).replace("$EX", &EX.to_string());
         let md = dev.create_shader_module(ShaderModuleDescriptor { label: Some("ray"), source: ShaderSource::Wgsl(src.into()) });
         let tx = |b: u32, s: TextureSampleType, d: TextureViewDimension| BindGroupLayoutEntry { binding: b, visibility: ShaderStages::COMPUTE, ty: BindingType::Texture { sample_type: s, view_dimension: d, multisampled: false }, count: None };
         let sb = |b: u32, ro: bool| BindGroupLayoutEntry { binding: b, visibility: ShaderStages::COMPUTE, ty: BindingType::Buffer { ty: BufferBindingType::Storage { read_only: ro }, has_dynamic_offset: false, min_binding_size: None }, count: None };
         let (fl, d2) = (TextureSampleType::Float { filterable: false }, TextureViewDimension::D2);
-        let bgl = dev.create_bind_group_layout(&BindGroupLayoutDescriptor { label: None, entries: &[tx(0, TextureSampleType::Uint, TextureViewDimension::D2Array), tx(1, fl, d2), tx(2, TextureSampleType::Uint, d2), tx(3, fl, d2), tx(4, fl, d2), sb(5, false), sb(6, true), sb(7, false)] });
+        let bgl = dev.create_bind_group_layout(&BindGroupLayoutDescriptor { label: None, entries: &[tx(0, TextureSampleType::Uint, TextureViewDimension::D2Array), tx(1, fl, d2), tx(2, TextureSampleType::Uint, d2), tx(3, fl, d2), tx(4, fl, d2), sb(5, false), sb(6, true), sb(7, false), sb(8, true)] });
         let pl = dev.create_pipeline_layout(&PipelineLayoutDescriptor { label: None, bind_group_layouts: &[&bgl], push_constant_ranges: &[PushConstantRange { stages: ShaderStages::COMPUTE, range: 0..24 }] });
         let pipe = dev.create_compute_pipeline(&ComputePipelineDescriptor { label: Some("ray"), layout: Some(&pl), module: &md, entry_point: Some("main"), compilation_options: Default::default(), cache: None });
         let st = dev.create_buffer(&BufferDescriptor { label: None, size: (2 * MAXB * NS * 4) as u64, usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC, mapped_at_creation: false });
-        Ok(Gpu { dev, q, pipe, bgl, views, st, bufs: None, name })
+        Ok(Gpu { dev, q, pipe, bgl, views, st, bufs: None, v19, name })
     }
     pub fn reset(&mut self, cur: usize, nb: usize) { self.q.write_buffer(&self.st, (cur * MAXB * NS * 4) as u64, bytemuck::cast_slice(&vec![cpu::init(); nb])); }
     fn ensure(&mut self, nio: usize, nout: usize) {
-        let (ci, co) = self.bufs.as_ref().map_or((0, 0), |b| (b.4, b.5));
+        let (ci, co) = self.bufs.as_ref().map_or((0, 0), |b| (b.5, b.6));
         if nio <= ci && nout <= co { return; }
         let (ci, co) = (nio.max(ci).max(MAXB), nout.max(co).max(MAXB * V));
         let mb = |n: usize, u: BufferUsages| self.dev.create_buffer(&BufferDescriptor { label: None, size: (n * 4) as u64, usage: u, mapped_at_creation: false });
-        let (io, out, rd) = (mb(ci, BufferUsages::STORAGE | BufferUsages::COPY_DST), mb(co, BufferUsages::STORAGE | BufferUsages::COPY_SRC), mb(co, BufferUsages::MAP_READ | BufferUsages::COPY_DST));
+        let (io, out, rd, ex) = (mb(ci, BufferUsages::STORAGE | BufferUsages::COPY_DST), mb(co, BufferUsages::STORAGE | BufferUsages::COPY_SRC), mb(co, BufferUsages::MAP_READ | BufferUsages::COPY_DST), mb(if self.v19 { ci * EX } else { 1 }, BufferUsages::STORAGE | BufferUsages::COPY_DST));
         let mut ents: Vec<BindGroupEntry> = self.views.iter().enumerate().map(|(i, v)| BindGroupEntry { binding: i as u32, resource: BindingResource::TextureView(v) }).collect();
-        ents.extend([(5, &self.st), (6, &io), (7, &out)].map(|(i, b)| BindGroupEntry { binding: i, resource: b.as_entire_binding() }));
+        ents.extend([(5, &self.st), (6, &io), (7, &out), (8, &ex)].map(|(i, b)| BindGroupEntry { binding: i, resource: b.as_entire_binding() }));
         let bg = self.dev.create_bind_group(&BindGroupDescriptor { label: None, layout: &self.bgl, entries: &ents });
-        self.bufs = Some((io, out, rd, bg, ci, co));
+        self.bufs = Some((io, out, rd, ex, bg, ci, co));
     }
-    pub fn run(&mut self, cur: &mut usize, nb: usize, par: &[u32], byt: &[u8], want: &[bool]) -> Vec<f32> {
+    pub fn run(&mut self, cur: &mut usize, nb: usize, par: &[u32], byt: &[u8], want: &[bool], mut h: Option<&mut Host>) -> Vec<f32> {
         let (mut res, per, mut t0) = (Vec::with_capacity(want.iter().filter(|&&w| w).count() * nb * V), (OUTCAP / (nb * V * 4)).max(1), 0);
         while t0 < want.len() {
             let (mut t1, mut nw) = (t0, 0);
             while t1 < want.len() && (nw < per || !want[t1]) { nw += want[t1] as usize; t1 += 1; }
             self.ensure((t1 - t0) * nb, nw * nb * V);
-            let (io, out, rd, bg, _, _) = self.bufs.as_ref().unwrap();
+            let (io, out, rd, ex, bg, _, _) = self.bufs.as_ref().unwrap();
             let pk: Vec<u32> = (t0 * nb..t1 * nb).map(|i| par[i] | (byt[i] as u32) << 16).collect();
             self.q.write_buffer(io, 0, bytemuck::cast_slice(&pk));
+            if let Some(h) = h.as_deref_mut() {
+                let (mut xb, mut c) = (vec![0u32; (t1 - t0) * nb * EX], *cur);
+                for (t, xr) in (t0..t1).zip(xb.chunks_mut(nb * EX)) {
+                    let sink: Vec<Option<&mut [u32]>> = if want[t] { xr.chunks_mut(EX).map(Some).collect() } else { (0..nb).map(|_| None).collect() };
+                    h.step(c, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb], sink, |d, g, cw, r| if let Some(r) = r { r[..NS].copy_from_slice(&d.s); d.gv(g, cw).iter().enumerate().for_each(|(k, &(b, v))| (r[NS + 2 * k], r[NS + 2 * k + 1]) = (b as u32, v.to_bits())); });
+                    c = 1 - c;
+                }
+                self.q.write_buffer(ex, 0, bytemuck::cast_slice(&xb));
+            }
             let mut enc = self.dev.create_command_encoder(&CommandEncoderDescriptor { label: None });
             {
                 let mut ps = enc.begin_compute_pass(&ComputePassDescriptor { label: None, timestamp_writes: None });
@@ -68,7 +79,7 @@ impl Gpu {
                 let mut o = 0;
                 for t in t0..t1 {
                     ps.set_push_constants(0, bytemuck::cast_slice(&[nb as u32, *cur as u32, 1 - *cur as u32, want[t] as u32, ((t - t0) * nb) as u32, o as u32]));
-                    ps.dispatch_workgroups(nb as u32, 1, 1);
+                    (!self.v19 || want[t]).then(|| ps.dispatch_workgroups(nb as u32, 1, 1));
                     (*cur, o) = (1 - *cur, o + want[t] as usize * nb * V);
                 }
             }

@@ -22,10 +22,10 @@ fn v19_driver() {
         let got = [crc32(&idx), crc32(bytemuck::cast_slice(&pw)), crc32(bytemuck::cast_slice(&cpb))];
         let want = &crc[b * 3..b * 3 + 3];
         bad += (got != want) as usize;
-        let rows: Vec<Vec<i64>> = d.rows[..8].iter().map(|m| [m.ent.iter().map(|&v| v as i64).collect::<Vec<_>>(), m.rel.iter().map(|&v| v as i64).collect(), m.vlen.iter().map(|&v| v as i64).collect(), m.stamp.iter().map(|&v| v as i64).collect(), m.val.iter().flatten().map(|&v| v as i64).collect(), m.cand.iter().map(|&v| v as i64).collect(), vec![m.qent as i64], vec![m.qrel as i64], vec![m.qtyp as i64]].concat()).collect();
+        let rows: Vec<Vec<i64>> = d.rows[..8].iter().map(|r| &r.m).map(|m| [m.ent.iter().map(|&v| v as i64).collect::<Vec<_>>(), m.rel.iter().map(|&v| v as i64).collect(), m.vlen.iter().map(|&v| v as i64).collect(), m.stamp.iter().map(|&v| v as i64).collect(), m.val.iter().flatten().map(|&v| v as i64).collect(), m.cand.iter().map(|&v| v as i64).collect(), vec![m.qent as i64], vec![m.qrel as i64], vec![m.qtyp as i64]].concat()).collect();
         let exp: Vec<Vec<i64>> = (0..8).map(|r| mem.iter().flat_map(|(_, v)| { let per = v.len() / (ls.len() * 8); v[(b * 8 + r) * per..(b * 8 + r + 1) * per].to_vec() }).collect()).collect();
         let mb = (0..8).filter(|&r| rows[r] != exp[r]).count();
-        d.rows[..8].iter().for_each(|m| { dump[0].extend(m.cand.iter().map(|&v| v as f32)); dump[1].extend(m.val.iter().flatten().map(|&v| v as f32)); dump[2].extend(m.vlen.iter().map(|&v| v as f32)); });
+        d.rows[..8].iter().map(|r| &r.m).for_each(|m| { dump[0].extend(m.cand.iter().map(|&v| v as f32)); dump[1].extend(m.val.iter().flatten().map(|&v| v as f32)); dump[2].extend(m.vlen.iter().map(|&v| v as f32)); });
         mbad += mb;
         if got != want || mb > 0 { println!("batch {b} L={l}: plan crc {got:?} vs {want:?}, memory rows differing {mb}"); }
     }

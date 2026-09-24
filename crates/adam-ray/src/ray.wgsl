@@ -8,6 +8,9 @@ var<push_constant> p: P;
 @group(0) @binding(5) var<storage, read_write> st: array<u32>;
 @group(0) @binding(6) var<storage, read> io: array<u32>;
 @group(0) @binding(7) var<storage, read_write> lo: array<f32>;
+@group(0) @binding(8) var<storage, read> ex: array<u32>;
+const V19 = $V19;
+const EX = $EXu;
 const MAXB = 256u;
 var<workgroup> pl: array<vec4<u32>, 32>;
 var<workgroup> tx: array<vec2<u32>, 32>;
@@ -30,14 +33,15 @@ fn sw(t: vec2<u32>, s: u32) -> f32 {
 fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) c: u32) {
     let b = wg.x;
     if (c == 0u) {
-        let q = io[p.io + b];
-        let bb = q >> 16u;
-        let sb = (p.src * MAXB + (q & 0xFFFFu)) * NS;
-        let db = (p.dst * MAXB + b) * NS;
         var s: array<u32, 40>;
-        for (var i = 0u; i < NS; i++) { s[i] = st[sb + i]; }
-        upd(&s, bb);
-        for (var i = 0u; i < NS; i++) { st[db + i] = s[i]; }
+        if (V19) { for (var i = 0u; i < NS; i++) { s[i] = ex[(p.io + b) * EX + i]; } } else {
+            let q = io[p.io + b];
+            let sb = (p.src * MAXB + (q & 0xFFFFu)) * NS;
+            let db = (p.dst * MAXB + b) * NS;
+            for (var i = 0u; i < NS; i++) { s[i] = st[sb + i]; }
+            upd(&s, q >> 16u);
+            for (var i = 0u; i < NS; i++) { st[db + i] = s[i]; }
+        }
         if (p.want == 1u) { np = 0u; bq = vec2<u32>(s[0], s[1]); plan(&s); }
     }
     workgroupBarrier();
@@ -53,6 +57,7 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) c
         let w = bitcast<f32>(pl[k].z);
         for (var s = 0u; s < 3u; s++) { if (((t.x >> (8u * s)) & 255u) == c) { a += w * sw(t, s); } }
     }
+    if (V19) { let o = (p.io + b) * EX + NS; for (var k = 0u; k < 13u; k++) { if (ex[o + 2u * k] == c) { a += bitcast<f32>(ex[o + 2u * k + 1u]); } } }
     for (var h = 0u; h < 4u; h++) {
         lg[c] = a;
         workgroupBarrier();

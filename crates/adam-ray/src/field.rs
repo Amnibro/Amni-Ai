@@ -1,7 +1,7 @@
-use crate::{cpu::Cpu, gpu::Gpu, pack::{self, V, MAXB}, rng::{pairwise, Pcg64}};
+use crate::{cpu::Cpu, gpu::Gpu, pack::{self, V, MAXB}, rng::{pairwise, Pcg64}, v19::Host};
 use std::io;
 pub enum Back { Cpu(Cpu), Gpu(Gpu) }
-pub struct RayField { pub path: String, pub syn: String, pub words_path: String, pub wcnt_path: String, pub arch: String, pub home: String, pub ready: bool, pub l: usize, pub t: usize, pub qt: bool, pub backend: String, pub ok: [bool; V], back: Option<Back>, cur: usize, words: Vec<Vec<u8>>, wtried: bool }
+pub struct RayField { pub path: String, pub syn: String, pub words_path: String, pub wcnt_path: String, pub arch: String, pub home: String, pub ready: bool, pub l: usize, pub t: usize, pub qt: bool, pub copy: usize, pub backend: String, pub ok: [bool; V], back: Option<Back>, h19: Option<Host>, cur: usize, words: Vec<Vec<u8>>, wtried: bool }
 pub struct Stream { seq: Vec<u8>, lg: Vec<f32>, g: Pcg64, out: Vec<u8>, gp: usize, guide: Vec<u8>, pend: Vec<char>, ub: Vec<u8>, stop: Vec<Vec<char>>, hold: usize, left: usize, temp: f64, topk: usize, veto: bool, beta: f64, done: bool }
 fn lse(r: &[f32]) -> f64 { let m = r.iter().fold(f64::NEG_INFINITY, |m, &x| m.max(x as f64)); pairwise(&r.iter().map(|&x| (x as f64 - m).exp()).collect::<Vec<_>>()).ln() + m }
 fn argsort_desc(z: &[f64]) -> Vec<usize> { let mut o: Vec<usize> = (0..z.len()).collect(); o.sort_by(|&a, &b| z[b].partial_cmp(&z[a]).unwrap_or(std::cmp::Ordering::Equal).then(b.cmp(&a))); o }
@@ -11,21 +11,22 @@ impl RayField {
     pub fn new(path: Option<String>, syn: Option<String>, words: Option<String>, wcnt: Option<String>, arch: Option<String>, home: Option<String>) -> RayField {
         let home = home.or_else(|| std::env::var("AMNI_HOME").ok()).unwrap_or_else(|| ".".into());
         let j = |p: &str| format!("{home}/{p}");
-        RayField { path: path.or_else(|| std::env::var("AMNI_RAY_PACK").ok()).unwrap_or_else(|| j("exports/gf17_continuum/rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz")), syn: syn.unwrap_or_else(|| j("data/big2/synsets.txt")), words_path: words.unwrap_or_else(|| j("data/big2/words.txt")), wcnt_path: wcnt.unwrap_or_else(|| j("data/big2/wordcounts.txt")), arch: arch.or_else(|| std::env::var("AMNI_RAY_ARCH").ok()).unwrap_or_else(|| "vulkan".into()), home, ready: false, l: 0, t: 0, qt: false, backend: String::new(), ok: std::array::from_fn(|c| (32..127).contains(&c) || c == 9 || c == 10), back: None, cur: 0, words: vec![], wtried: false }
+        RayField { path: path.or_else(|| std::env::var("AMNI_RAY_PACK").ok()).unwrap_or_else(|| j("exports/gf17_continuum/rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz")), syn: syn.unwrap_or_else(|| j("data/big2/synsets.txt")), words_path: words.unwrap_or_else(|| j("data/big2/words.txt")), wcnt_path: wcnt.unwrap_or_else(|| j("data/big2/wordcounts.txt")), arch: arch.or_else(|| std::env::var("AMNI_RAY_ARCH").ok()).unwrap_or_else(|| "vulkan".into()), home, ready: false, l: 0, t: 0, qt: false, copy: 0, backend: String::new(), ok: std::array::from_fn(|c| (32..127).contains(&c) || c == 9 || c == 10), back: None, h19: None, cur: 0, words: vec![], wtried: false }
     }
     pub fn load(&mut self) -> io::Result<&mut Self> {
         if self.ready { return Ok(self); }
-        let tb = pack::load(&self.path, &self.syn, &self.wcnt_path)?;
-        (self.l, self.t, self.qt) = (tb.l, tb.t, tb.geo.qt);
+        let mut tb = pack::load(&self.path, &self.syn, &self.wcnt_path)?;
+        (self.l, self.t, self.qt, self.copy) = (tb.l, tb.t, tb.geo.qt, tb.geo.copy);
         let g = if self.arch == "cpu" { Err("cpu requested".to_string()) } else { Gpu::new(&tb) };
+        self.h19 = (self.copy > 0).then(|| Host::new(tb.geo.clone(), std::mem::replace(&mut tb.lx, pack::Lex { lex: vec![], trig: vec![] }), std::mem::take(&mut tb.cw)));
         (self.backend, self.back) = match g { Ok(g) => (format!("gpu:{}", g.name), Some(Back::Gpu(g))), Err(e) => (format!("cpu ({e})"), Some(Back::Cpu(Cpu::new(tb)))) };
         self.ready = true;
         Ok(self)
     }
-    pub fn reset(&mut self, nb: usize) { match self.back.as_mut().unwrap() { Back::Cpu(c) => c.reset(self.cur, nb), Back::Gpu(g) => g.reset(self.cur, nb) } }
+    pub fn reset(&mut self, nb: usize) { match self.back.as_mut().unwrap() { Back::Cpu(c) => c.reset(self.cur, nb), Back::Gpu(g) => g.reset(self.cur, nb) } if let Some(h) = self.h19.as_mut() { h.reset(self.cur, nb) } }
     pub fn run(&mut self, nb: usize, par: &[u32], byt: &[u8], want: &[bool]) -> Vec<f32> {
         assert!(nb <= MAXB && par.len() == nb * want.len() && byt.len() == par.len());
-        match self.back.as_mut().unwrap() { Back::Cpu(c) => c.run(&mut self.cur, nb, par, byt, want), Back::Gpu(g) => g.run(&mut self.cur, nb, par, byt, want) }
+        match self.back.as_mut().unwrap() { Back::Cpu(c) => c.run(&mut self.cur, nb, par, byt, want, self.h19.as_mut()), Back::Gpu(g) => g.run(&mut self.cur, nb, par, byt, want, self.h19.as_mut()) }
     }
     pub fn advance(&mut self, par: &[u32], byt: &[u8], want: bool) -> Option<Vec<f32>> { let r = self.run(byt.len(), par, byt, &[want]); want.then_some(r) }
     pub fn prime(&mut self, data: &[u8], nb: usize) -> Vec<f32> {

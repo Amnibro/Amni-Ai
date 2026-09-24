@@ -40,6 +40,10 @@ impl RayField {
     fn t(&self) -> usize { self.e.lock().t }
     #[getter]
     fn qt(&self) -> bool { self.e.lock().qt }
+    #[getter]
+    fn copy(&self) -> usize { self.e.lock().copy }
+    #[getter]
+    fn v19(&self) -> bool { self.e.lock().copy > 0 }
     #[getter(r#impl)]
     fn imp(&self) -> &'static str { "rust" }
     #[pyo3(signature = (data, nb=1))]
