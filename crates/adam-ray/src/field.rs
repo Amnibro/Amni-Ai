@@ -1,8 +1,15 @@
-use crate::{cpu::Cpu, gpu::Gpu, pack::{self, V, MAXB}, rng::{pairwise, Pcg64}, v19::Host};
+use crate::{cpu::{wordch, Cpu}, gpu::Gpu, pack::{self, V, MAXB}, rng::{pairwise, Pcg64}, v19::Host};
 use std::io;
 pub enum Back { Cpu(Cpu), Gpu(Gpu) }
 pub struct RayField { pub path: String, pub syn: String, pub words_path: String, pub wcnt_path: String, pub arch: String, pub home: String, pub ready: bool, pub l: usize, pub t: usize, pub qt: bool, pub copy: usize, pub backend: String, pub ok: [bool; V], back: Option<Back>, h19: Option<Host>, cur: usize, words: Vec<Vec<u8>>, wtried: bool }
-pub struct Stream { seq: Vec<u8>, lg: Vec<f32>, g: Pcg64, out: Vec<u8>, gp: usize, guide: Vec<u8>, pend: Vec<char>, ub: Vec<u8>, stop: Vec<Vec<char>>, hold: usize, left: usize, temp: f64, topk: usize, veto: bool, beta: f64, done: bool }
+pub struct Stream { seq: Vec<u8>, lg: Vec<f32>, g: Pcg64, out: Vec<u8>, gp: usize, guide: Vec<u8>, pend: Vec<char>, ub: Vec<u8>, stop: Vec<Vec<char>>, hold: usize, left: usize, temp: f64, topk: usize, veto: bool, beta: f64, done: bool, dec: Dec, lk: Lock }
+#[derive(Clone, Copy, Default)]
+pub struct Dec { pub lock: bool, pub stop_sentence: bool, pub rep: f64 }
+#[derive(Clone, Default)]
+pub struct Lock { v: Vec<u8>, p: usize, k: usize, ban: Vec<Vec<u8>>, chain: bool, end: bool, fin: bool }
+impl Lock { fn on(&self) -> bool { self.p < self.v.len() } fn push(&mut self, c: u8) { if self.on() && self.v[self.p] == c { self.p += 1; (!self.on()).then(|| { self.ban.push(self.v.to_ascii_lowercase()); (self.chain, self.end) = (self.k == 12, true); }); } } }
+fn close(o: &[u8], p0: usize) -> (usize, bool) { let k = o.iter().rposition(|c| !b" ,;:-\n".contains(c)).map_or(p0, |i| (i + 1).max(p0)); (k, k > p0 && !b".!?".contains(&o[k - 1])) }
+fn send(o: &[u8]) -> bool { o.len() >= 2 && matches!(o[o.len() - 1], 32 | 10) && b".!?".contains(&o[o.len() - 2]) && o[..o.len() - 2].iter().any(|&x| wordch(x as u32)) }
 fn lse(r: &[f32]) -> f64 { let m = r.iter().fold(f64::NEG_INFINITY, |m, &x| m.max(x as f64)); pairwise(&r.iter().map(|&x| (x as f64 - m).exp()).collect::<Vec<_>>()).ln() + m }
 fn argsort_desc(z: &[f64]) -> Vec<usize> { let mut o: Vec<usize> = (0..z.len()).collect(); o.sort_by(|&a, &b| z[b].partial_cmp(&z[a]).unwrap_or(std::cmp::Ordering::Equal).then(b.cmp(&a))); o }
 fn rep4(seq: &[u8]) -> bool { seq.len() >= 4 && seq[seq.len() - 4..].iter().all(|&c| c == seq[seq.len() - 1]) }
@@ -75,35 +82,61 @@ impl RayField {
         if al(c) { let k = [cur, &[c]].concat(); let i = self.words.partition_point(|x| x.as_slice() < k.as_slice()); i < self.words.len() && self.words[i].starts_with(&k) || cur.len() >= 24 } else { cur.len() <= 1 || has(cur) || has(&cur.to_ascii_lowercase()) }
     }
     #[allow(clippy::too_many_arguments)]
-    pub fn stream(&mut self, prompt: &str, max_bytes: usize, temp: f64, topk: usize, stop: &[String], veto: bool, seed: Option<u64>, guide: Option<&[u8]>, beta: f64) -> Stream {
+    fn lockz(&self, b: usize, lk: &mut Lock, out: &[u8], z: &mut [f64], t: f64) -> Option<u8> {
+        if lk.on() { return Some(lk.v[lk.p]); }
+        if std::mem::take(&mut lk.end) { (0..V).filter(|&c| wordch(c as u32)).for_each(|c| z[c] = -1e9); return None; }
+        let h = self.h19.as_ref()?;
+        let (w, n) = (&h.w[self.cur * MAXB + b], out.iter().rev().take_while(|&&x| wordch(x as u32)).count());
+        let (gv, am, sep) = (w.gv(&h.g, &h.cw), z.iter().enumerate().fold(0, |a, (c, &x)| if x > z[a] { c } else { a }), out.len() == n || !matches!(out[out.len() - n - 1], 39 | 45));
+        let cs: Vec<(usize, f32, Vec<u8>, usize)> = (0..13).filter(|&k| gv[k].0 >= 0).map(|k| { let (v, p) = w.cv(k); (k, gv[k].1, v, p) }).filter(|x| x.3 < x.2.len() && x.2[x.3] as i32 == gv[x.0].0).collect();
+        let ban = lk.ban.clone();
+        let bn = |v: &[u8]| ban.contains(&v.to_ascii_lowercase());
+        let best = cs.iter().filter(|x| x.1 > 0.0 && x.2[x.3] as usize == am && (n >= 1 && sep || lk.chain && x.0 == 12 && out.last() == Some(&32)) && !bn(&x.2)).fold(None, |a: Option<&(usize, f32, Vec<u8>, usize)>, x| if a.is_none_or(|a| x.1 > a.1) { Some(x) } else { a });
+        lk.chain &= n == 0;
+        if let Some(x) = best { (lk.v, lk.p, lk.k) = (x.2.clone(), x.3, x.0); return Some(lk.v[lk.p]); }
+        lk.fin = n == 0 && cs.iter().any(|x| x.1 > 0.0 && x.3 == 0 && x.2[0] as usize == am && bn(&x.2)) && !cs.iter().any(|x| x.0 >= 8 && x.1 > 0.0 && !bn(&x.2));
+        cs.iter().filter(|x| x.1 > 0.0 && bn(&x.2)).for_each(|x| z[x.2[x.3] as usize] -= x.1 as f64 / t);
+        let cur = out[out.len() - n..].to_ascii_lowercase();
+        lk.ban.iter().filter(|v| v.len() > n && v[..n] == cur[..] && n + 1 >= v.len().min(3)).for_each(|v| { z[v[n] as usize] = -1e9; z[v[n].to_ascii_uppercase() as usize] = -1e9; });
+        None
+    }
+    #[allow(clippy::too_many_arguments)]
+    pub fn stream(&mut self, prompt: &str, max_bytes: usize, temp: f64, topk: usize, stop: &[String], veto: bool, seed: Option<u64>, guide: Option<&[u8]>, beta: f64, dec: Dec) -> Stream {
         self.load().expect("pack load");
         veto.then(|| self.load_words());
         let seq = prompt.as_bytes().to_vec();
         let lg = self.prime(&seq, 1);
-        Stream { seq, lg, g: Pcg64::new(seed), out: vec![], gp: 0, guide: guide.unwrap_or(&[]).to_vec(), pend: vec![], ub: vec![], stop: stop.iter().map(|s| s.chars().collect()).collect(), hold: stop.iter().map(|s| s.chars().count()).chain([1]).max().unwrap() - 1, left: max_bytes, temp, topk, veto, beta, done: false }
+        Stream { seq, lg, g: Pcg64::new(seed), out: vec![], gp: 0, guide: guide.unwrap_or(&[]).to_vec(), pend: vec![], ub: vec![], stop: stop.iter().map(|s| s.chars().collect()).collect(), hold: stop.iter().map(|s| s.chars().count()).chain([1, 3 * dec.stop_sentence as usize]).max().unwrap() - 1, left: max_bytes, temp, topk, veto, beta, done: false, dec, lk: Lock::default() }
     }
-    pub fn beam(&mut self, prompt: &str, width: usize, expand: usize, maxlen: usize, rep: usize, veto: bool) -> String {
+    #[allow(clippy::too_many_arguments)]
+    pub fn beam(&mut self, prompt: &str, width: usize, expand: usize, maxlen: usize, rep: usize, veto: bool, dec: Dec) -> String {
         self.load().expect("pack load");
         veto.then(|| self.load_words());
         let p0 = prompt.as_bytes().to_vec();
         let lp: Vec<f64> = self.ok.iter().map(|&o| if o { 0.0 } else { 1e-300f64.ln() }).collect();
-        let norm = |t: &(f64, Vec<u8>, usize)| t.0 / ((t.1.len() - p0.len() + 1) as f64).powf(0.7);
-        let (mut beams, mut lgs) = (vec![(0.0, p0.clone(), 0usize)], self.prime(&p0, 1));
+        let (md, norm) = (dec.lock || dec.stop_sentence, |t: &(f64, Vec<u8>, usize, Lock)| t.0 / ((t.1.len() - p0.len() + 1) as f64).powf(0.7));
+        let (mut beams, mut lgs) = (vec![(0.0, p0.clone(), 0usize, Lock::default())], self.prime(&p0, 1));
         for _ in 0..maxlen {
             let mut cand = vec![];
-            for (b, (sc, seq, _)) in beams.iter().enumerate() {
+            for (b, (sc, seq, _, lk0)) in beams.iter().enumerate() {
+                if md && seq.len() > p0.len() && seq[seq.len() - 1] == 10 { cand.push((*sc, seq.clone(), b, lk0.clone())); continue; }
                 let mut z: Vec<f64> = (0..V).map(|c| lgs[b * V + c] as f64 + lp[c]).collect();
                 rep4(seq).then(|| z[seq[seq.len() - 1] as usize] -= 6.0);
+                let mut lk = lk0.clone();
+                let fc = if dec.lock { self.lockz(b, &mut lk, &seq[p0.len()..], &mut z, 1.0) } else { None };
+                if dec.stop_sentence && lk.fin { let (k, d) = close(seq, p0.len()); cand.push((*sc, [&seq[..k], if d { &b"."[..] } else { &b""[..] }, &[10]].concat(), b, lk)); continue; }
                 let m = z.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
                 let e: Vec<f64> = z.iter().map(|x| (x - m).exp()).collect();
                 let s = pairwise(&e);
                 let pr: Vec<f64> = e.iter().map(|x| x / s).collect();
                 let order = argsort_desc(&pr);
                 let top: Vec<usize> = order[..(expand * 6).min(V)].iter().copied().filter(|&c| !veto || self.word_ok(seq, c as u8)).take(expand).collect();
-                for c in if top.is_empty() { order[..expand.min(V)].to_vec() } else { top } {
-                    let ns = [seq.as_slice(), &[c as u8]].concat();
+                for c in fc.map_or_else(|| if top.is_empty() { order[..expand.min(V)].to_vec() } else { top }, |f| vec![f as usize]) {
+                    let (mut ns, mut l2) = ([seq.as_slice(), &[c as u8]].concat(), lk.clone());
                     let pen = if rep > 0 && ns.len() > 2 * rep && find(&ns[..ns.len() - rep], &ns[ns.len() - rep..], 0).is_some() { 0.6 } else { 0.0 };
-                    cand.push((sc + (pr[c] + 1e-12).ln() - pen, ns, b));
+                    l2.push(c as u8);
+                    (dec.stop_sentence && !l2.on() && send(&ns[p0.len()..])).then(|| *ns.last_mut().unwrap() = 10);
+                    cand.push((sc + (pr[c] + 1e-12).ln() - pen, ns, b, l2));
                 }
             }
             cand.sort_by(|a, b| norm(b).partial_cmp(&norm(a)).unwrap_or(std::cmp::Ordering::Equal));
@@ -112,8 +145,9 @@ impl RayField {
             lgs = self.advance(&beams.iter().map(|x| x.2 as u32).collect::<Vec<_>>(), &beams.iter().map(|x| x.1[x.1.len() - 1]).collect::<Vec<_>>(), true).unwrap();
             if beams.iter().all(|x| x.1[x.1.len() - 1] == 10) { break; }
         }
-        let best = beams.iter().fold(None, |a: Option<&(f64, Vec<u8>, usize)>, x| if a.is_none_or(|a| norm(x) > norm(a)) { Some(x) } else { a }).unwrap();
-        String::from_utf8_lossy(&best.1[p0.len()..]).into_owned()
+        let best = beams.iter().fold(None, |a: Option<&(f64, Vec<u8>, usize, Lock)>, x| if a.is_none_or(|a| norm(x) > norm(a)) { Some(x) } else { a }).unwrap();
+        let o = &best.1[p0.len()..];
+        String::from_utf8_lossy(if md { &o[..o.iter().position(|&c| c == 10).unwrap_or(o.len())] } else { o }).into_owned()
     }
 }
 impl Stream {
@@ -138,19 +172,32 @@ impl Stream {
             rep4(&self.seq).then(|| z[self.seq[self.seq.len() - 1] as usize] -= 6.0);
             let gb = self.guide.get(self.gp).map(|&x| x as usize);
             if let Some(g) = gb { z[g] += self.beta; }
-            let order = argsort_desc(&z);
-            let keep: Vec<usize> = order[..(self.topk * 6).min(V)].iter().copied().filter(|&c| !self.veto || Some(c) == gb || f.word_ok(&self.seq, c as u8)).take(self.topk).collect();
-            let keep = if keep.is_empty() { order[..self.topk.min(V)].to_vec() } else { keep };
-            let m = keep.iter().map(|&c| z[c]).fold(f64::NEG_INFINITY, f64::max);
-            let e: Vec<f64> = keep.iter().map(|&c| (z[c] - m).exp()).collect();
-            let s = pairwise(&e);
-            let c = keep[self.g.choice(&e.iter().map(|x| x / s).collect::<Vec<_>>())];
+            let n = self.out.len();
+            (self.dec.rep > 0.0 && n >= 5).then(|| (0..V).filter(|&c| find(&self.out, &[&self.out[n - 5..], &[c as u8][..]].concat(), 0).is_some()).for_each(|c| z[c] -= self.dec.rep));
+            let fc = if self.dec.lock { f.lockz(0, &mut self.lk, &self.out, &mut z, self.temp) } else { None };
+            if self.dec.stop_sentence && self.lk.fin {
+                self.done = true;
+                let (k, d) = close(&self.out, 0);
+                let mut r: String = self.pend[..self.pend.len().saturating_sub(self.out.len() - k)].iter().collect();
+                d.then(|| r.push('.'));
+                return (!r.is_empty()).then_some(r);
+            }
+            let c = match fc { Some(x) => x as usize, None => {
+                let order = argsort_desc(&z);
+                let keep: Vec<usize> = order[..(self.topk * 6).min(V)].iter().copied().filter(|&c| !self.veto || Some(c) == gb || f.word_ok(&self.seq, c as u8)).take(self.topk).collect();
+                let keep = if keep.is_empty() { order[..self.topk.min(V)].to_vec() } else { keep };
+                let m = keep.iter().map(|&c| z[c]).fold(f64::NEG_INFINITY, f64::max);
+                let e: Vec<f64> = keep.iter().map(|&c| (z[c] - m).exp()).collect();
+                let s = pairwise(&e);
+                keep[self.g.choice(&e.iter().map(|x| x / s).collect::<Vec<_>>())]
+            } };
             self.seq.push(c as u8);
             self.out.push(c as u8);
+            self.lk.push(c as u8);
             self.decode(c as u8);
             let tail = &self.out[self.out.len().saturating_sub(8)..];
             self.gp = if Some(c) == gb { self.gp + 1 } else if self.guide.is_empty() { self.gp } else { find(&self.guide, tail, self.gp.saturating_sub(60)).map_or(self.gp, |j| j + tail.len()) };
-            let hit = self.stop.iter().filter_map(|t| (0..=self.pend.len().saturating_sub(t.len())).find(|&i| i + t.len() <= self.pend.len() && self.pend[i..i + t.len()] == t[..])).min();
+            let hit = self.stop.iter().filter_map(|t| (0..=self.pend.len().saturating_sub(t.len())).find(|&i| i + t.len() <= self.pend.len() && self.pend[i..i + t.len()] == t[..])).chain((self.dec.stop_sentence && !self.lk.on() && send(&self.out)).then(|| self.pend.len().saturating_sub(1))).min();
             if hit.is_some() || (!self.guide.is_empty() && self.gp >= self.guide.len()) {
                 self.done = true;
                 let r: String = self.pend[..hit.unwrap_or(self.pend.len())].iter().collect();

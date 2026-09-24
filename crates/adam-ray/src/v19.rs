@@ -499,6 +499,7 @@ impl W19 {
         std::array::from_fn(|i| (g.copy >= 13 && self.q.anc && self.q.qon == 1 && i < g.mr).then(|| g.sl(key[i].0, key[i].1, g.mb() + i)))
     }
     pub fn gv(&self, g: &Geo, cw: &[u16]) -> [(i32, f32); 13] { let mut o = [(-1, 0f32); 13]; self.gates(g, |k, b, e, n| o[k] = (b, if b >= 0 { CG * e[..n].iter().fold(0f32, |a, &x| a + f16::from_bits(cw[k * g.t as usize + x as usize]).to_f32()) } else { 0.0 })); o }
+    pub fn cv(&self, k: usize) -> (Vec<u8>, usize) { let (m, q) = (&self.m, &self.q); if k < 12 { let i = m.cand[k].max(0) as usize; (m.val[i][..m.vlen[i].clamp(0, 24) as usize].to_vec(), (m.woff[k] + q.cwl).max(0) as usize) } else { let s = m.vs(m.wm_find(q.ap4), 0, q.qclk).max(0) as usize; (m.wmb[s][0][..m.wml[s][0].clamp(0, 16) as usize].to_vec(), q.cwl.max(0) as usize) } }
 }
 pub struct Host { pub g: Geo, pub lex: Lex, pub lx: Lx19, pub cw: Vec<u16>, pub w: Vec<W19> }
 impl Host {

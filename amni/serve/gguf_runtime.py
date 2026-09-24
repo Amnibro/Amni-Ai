@@ -58,12 +58,13 @@ def _ray_learned(message:str):
     except Exception:return None
 _SELF=re.compile(r"(?i)\bmy\b|\bmine\b|\bi(?:'m|'ve| am| have| live| work| drive| like| love| hate| studied| was born| moved)\b|\b(?:where|what|which|who|when) (?:do|did|am|was) i\b|\bhow old am i\b")
 _RECALL=re.compile(r"(?i)^\W*(?:hey|so|ok(?:ay)?|um|and|also|wait)?[, ]*(?:where|what|which|who|when|whom|how old|how many|how long|remind me|do you (?:remember|know)|did i|can you (?:remind|tell) me)\b")
-def _memq(m:str)->bool:return bool(_SELF.search(m)) and (not m.strip().endswith('?') or bool(_RECALL.search(m)))
+_PRON=re.compile(r"(?i)^\W*(?:actually,? |also,? |and )?(?:he|she|they)(?:'s| is| was| has| drives| works| lives| moved| likes| loves| studied| goes)\b")
+def _memq(m:str)->bool:return bool(_SELF.search(m)) and (not m.strip().endswith('?') or bool(_RECALL.search(m))) or bool(_PRON.search(m)) and not m.strip().endswith('?')
 def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
     from amni.compute.ray_field import engine
     h=(history or [])[-int(os.environ.get('AMNI_RAY_HIST','24')):];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
-    e=engine()
-    if getattr(e,'v19',False) and _memq(message):yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','0.2')),topk=4,stop=('\n\n','\nUser:','\nAdam:'));return
+    e=engine();getattr(e,'impl','')=='rust' and e.load()
+    if getattr(e,'v19',False) and _memq(message):yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','1.0')),topk=int(os.environ.get('AMNI_RAY_MEM_TOPK','1')),stop=('\n\n','\nUser:','\nAdam:'),veto=os.environ.get('AMNI_RAY_MEM_VETO','0')=='1',**({'lock':os.environ.get('AMNI_RAY_MEM_LOCK','1')=='1','stop_sentence':os.environ.get('AMNI_RAY_MEM_STOP_SENTENCE','1')=='1','rep':float(os.environ.get('AMNI_RAY_MEM_REP','1.0'))} if getattr(e,'impl','')=='rust' else {}));return
     h=_ray_guide(e,message);g=h[3] if h else None;src=f" (Source: {_cite(h[5])})" if h and len(h)>5 and h[5] else ''
     if g is None:
         lr=_ray_learned(message)

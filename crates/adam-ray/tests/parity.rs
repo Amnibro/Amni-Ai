@@ -7,7 +7,7 @@ fn home() -> String { std::env::var("AMNI_HOME").unwrap_or_else(|_| concat!(env!
 fn pack(tag: &str) -> String { format!("{}/exports/gf17_continuum/{}", home(), if tag == "v16" { "rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz" } else { "rayhash_v18_chat2_qt_s20k_sid.npy" }) }
 fn open(tag: &str, arch: &str) -> RayField { let h = home(); let mut e = RayField::new(Some(pack(tag)), None, None, None, Some(arch.into()), Some(h)); e.load().unwrap(); e }
 fn stop() -> Vec<String> { ["\n\n", "\nUser:", "\nAdam:"].map(String::from).to_vec() }
-fn drain(e: &mut RayField, prompt: &str, guide: Option<&[u8]>) -> String { let mut s = e.stream(prompt, 160, 0.6, 8, &stop(), true, Some(11), guide, 6.0); let mut o = String::new(); while let Some(c) = s.next(e) { o += &c; } o }
+fn drain(e: &mut RayField, prompt: &str, guide: Option<&[u8]>) -> String { let mut s = e.stream(prompt, 160, 0.6, 8, &stop(), true, Some(11), guide, 6.0, Default::default()); let mut o = String::new(); while let Some(c) = s.next(e) { o += &c; } o }
 fn check(tag: &str) {
     let rp = format!("{}/{tag}.npz", std::env::var("ADAM_RAY_REF").unwrap_or_default());
     if !Path::new(&pack(tag)).exists() || !Path::new(&rp).exists() { eprintln!("skip {tag}: pack or reference missing (set AMNI_HOME, ADAM_RAY_REF)"); return; }
@@ -26,7 +26,7 @@ fn check(tag: &str) {
         }
         let (pp, cc): (Vec<Vec<u8>>, Vec<Vec<u8>>) = PROMPTS.iter().flat_map(|p| CONTS.iter().map(move |c| (p.to_vec(), c.to_vec()))).unzip();
         let sd = e.score(&pp, &cc).iter().zip(z.get("score").unwrap().vec::<f64>()).fold(0f64, |w, (a, b)| w.max((a - b).abs()));
-        let (st, gd, bm) = (drain(&mut e, "User: What is the capital of France?\nAdam:", None), drain(&mut e, "User: How do bees make honey?\nAdam:", Some(b" Bees collect nectar from flowers and store it in the hive.")), e.beam("User: What is gravity?\nAdam:", 4, 3, 40, 16, true));
+        let (st, gd, bm) = (drain(&mut e, "User: What is the capital of France?\nAdam:", None), drain(&mut e, "User: How do bees make honey?\nAdam:", Some(b" Bees collect nectar from flowers and store it in the hive.")), e.beam("User: What is gravity?\nAdam:", 4, 3, 40, 16, true, Default::default()));
         let txt = |k: &str| String::from_utf8(z.get(k).unwrap().data[..z.get(k).unwrap().n()].to_vec()).unwrap();
         let bp = e.bpb(Some(&format!("{}/data/big2/hold.bin", home())), 1, 32, 16, 1234).unwrap() - z.get("bpb").unwrap().vec::<f64>()[0];
         println!("{tag} {arch:>6} [{}] load {lt:.1}s | max|dlogit| {worst:.3e} | top1 {agree}/{n} | max|dscore| {sd:.3e} | stream {} | guided {} | beam {} | dbpb {bp:.2e}", e.backend, st == txt("stream"), gd == txt("guided"), bm == txt("beam"));

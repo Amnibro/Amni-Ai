@@ -5,4 +5,4 @@ pub mod npy;
 pub mod pack;
 pub mod rng;
 pub mod v19;
-pub use field::{RayField, Stream};
+pub use field::{Dec, RayField, Stream};

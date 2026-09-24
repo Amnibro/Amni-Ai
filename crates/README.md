@@ -88,7 +88,34 @@ AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_c
 
 - `v19_fwd` compares `RayField::logits_for` (each arch) with the `adam-train` CPU forward of the same checkpoint, and with a Taichi reference when given. The Taichi reference is `Amni-Ai-v19/tests/ray_field_ref.py` with `REF_SCRIPT=ray_hash_field_ti_v19.py LOG2_ENTRIES=16 COPY=13 TI_FAST_MATH=0 TI_ADVANCED_OPTIMIZATION=0`. It compiles in about 1.8 GB at LOG2_ENTRIES=16. Never compile it at LOG2_ENTRIES=20, which needs more than 29 GB.
 - `ADAM_V19_GREEDY=n` also greedy-decodes n bytes per text through `prime`/`advance` and through the trainer's full recompute, and counts identical outputs.
-- `v19_rust_eval.py` is `v19b_eval.py` with `adam_ray` greedy decoding: the same 934-byte prompt window, 90 bytes, and a stop at byte 10 or 30. It writes `data/concepts/eval/report_<tag>.json` under `AMNI_HOME`. `C3_N` (default 0, meaning all 1000 dialogues) limits chat3, `EVAL_N` limits the other suites, and `AMNI_RAY_ARCH` picks the backend (default cpu).
+- `v19_rust_eval.py` runs chat3 `hold_eval` and suite D (`recall.jsonl` split into known and unknown, plus `twohop.jsonl`) and writes `data/concepts/eval/report_<tag>.json` under `AMNI_HOME`. `LEX` picks the lexicon under `data/` (default `big2`; use `clean1` for the license-clean packs). `C3_N` (default 0, meaning all 1000 dialogues) limits chat3, `EVAL_N` limits suite D, and `AMNI_RAY_ARCH` picks the backend (default cpu).
+  - Decoding: `DEC=greedy` (default) is the raw argmax loop, which stops at byte 10 or 30. `DEC=stream` is `stream(topk=1)` and `DEC=beam` is `beam(BEAM_W, 4)`, both with `LOCK`, `SS` (`stop_sentence`), `REP` (stream only), `VETO` and `MAXB` (default 90 bytes).
+  - Every reply gets two scores. The lenient one (`hit`) counts a reply as correct if it contains the value. The strict one (`strict`) needs all of the following:
+    - the first sentence, up to the first `.`, `!` or `?` followed by whitespace or the end, contains the value as whole words (hyphens count as word characters);
+    - no conflicting value appears anywhere, except after `not`, `instead of`, `rather than` or `changed/switched/moved (it) from`;
+    - no content word appears 3 or more times (function words such as "the", "you" and "in" are exempt);
+    - the reply is at most 200 bytes.
+  - For an unknown item, the first sentence must contain a decline (`DECLINE` in `v19_eval_run.py`) and none of the candidate values.
+  - Conflicting values: collect every answer string in chat3 and suite D that is at least 3 characters long. Keep those that occur case-sensitively in the dialogue's earlier `User:` lines, other than the answer and its sub- or superstrings. Outside `correction` items, a value that shares a `User:` line with the answer (the two-hop bridge city, for example) is exempt.
+
+## Copy-lock decoding
+
+`stream(..., lock, stop_sentence, rep)` and `beam(..., lock, stop_sentence)` take the Rust `Dec` options (Python keywords `lock`, `stop_sentence` and `rep`). All of them default to off, and with them off the outputs are byte-identical to the previous engine.
+
+- `lock` works on v19 packs with `COPY >= 13`. At each step, a copy candidate (direct, hop or chain) is eligible when all of the following hold:
+  - its gate byte is valid and its gate logit is positive;
+  - the current word has at least one byte, and the character before the word is not an apostrophe or a hyphen;
+  - its next value byte is the model's own argmax;
+  - its value has not been banned.
+  - The eligible candidate with the highest gate logit is locked, and its remaining value bytes are forced, across spaces and hyphens, until the value is complete. The chain candidate (12) can also start at a word boundary right after a completed chain word.
+- After a locked value completes:
+  - the next byte cannot be a word character, so "Detroit" cannot become "Detroited";
+  - the value is banned: its gate contribution is subtracted wherever it pushes again, and any byte that would extend a word to the value's first 3 bytes, or to all of a shorter value, is masked;
+  - when `stop_sentence` is also on and no hop candidate is still pending, a word start whose argmax re-opens a banned value ends the reply ("In Austin Austin" becomes "In Austin.").
+- `stop_sentence` stops at the first `.`, `!` or `?` followed by a space or newline once a full word has been emitted, and never inside a locked value.
+- `rep` is subtracted from the logit of every byte that would repeat a 6-byte sequence already in the reply.
+- Everything is deterministic: a forced byte skips the sampler.
+- The server's memory route (`amni/serve/gguf_runtime.py`) defaults to greedy, `lock`, `stop_sentence`, `rep=1` and `veto` off. The knobs are `AMNI_RAY_MEM_LOCK`, `AMNI_RAY_MEM_STOP_SENTENCE`, `AMNI_RAY_MEM_REP`, `AMNI_RAY_MEM_TOPK`, `AMNI_RAY_MEM_TEMP`, `AMNI_RAY_MEM_VETO` and `AMNI_RAY_MEM_BYTES`. The Taichi engine ignores the lock options.
 
 ## v19d memory-result levels
 

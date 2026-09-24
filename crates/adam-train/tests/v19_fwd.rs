@@ -41,8 +41,8 @@ fn v19_forward() {
         let sc = e.score(&pp, &cc);
         let sr: Vec<f64> = pp.iter().zip(&cc).map(|(p, q)| { let full = [p.as_slice(), q].concat(); let lg = e.logits_for(&full); (p.len()..full.len()).map(|i| { let r = &lg[(i - 1) * 256..i * 256]; let m = r.iter().fold(f32::MIN, |m, &x| m.max(x)) as f64; r[full[i] as usize] as f64 - (r.iter().map(|&x| (x as f64 - m).exp()).sum::<f64>().ln() + m) }).sum() }).collect();
         let sd = sc.iter().zip(&sr).fold(0f64, |w, (a, b)| w.max((a - b).abs()));
-        let bm = e.beam("User: My sister lives in Denver.\nAdam: Noted.\n\nUser: Where does my sister live?\nAdam:", 4, 3, 40, 16, false);
-        let mut s = e.stream("User: My sister lives in Denver.\nAdam: Noted.\n\nUser: Where does my sister live?\nAdam:", 60, 0.6, 8, &["\n".to_string()], false, Some(3), None, 6.0);
+        let bm = e.beam("User: My sister lives in Denver.\nAdam: Noted.\n\nUser: Where does my sister live?\nAdam:", 4, 3, 40, 16, false, Default::default());
+        let mut s = e.stream("User: My sister lives in Denver.\nAdam: Noted.\n\nUser: Where does my sister live?\nAdam:", 60, 0.6, 8, &["\n".to_string()], false, Some(3), None, 6.0, Default::default());
         let mut st = String::new();
         while let Some(x) = s.next(&mut e) { st += &x; }
         println!("  {arch} [{}] load {lt:.1}s logits {rt:.2}s | batched score vs sequential max diff {sd:.2e} | beam {bm:?} | stream {st:?}", e.backend);

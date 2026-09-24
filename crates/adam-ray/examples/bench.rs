@@ -20,7 +20,7 @@ fn main() {
     e.logits_for(&vec![b'a'; n]);
     let batch = n as f64 / t.elapsed().as_secs_f64();
     let t = Instant::now();
-    let mut s = e.stream("User: Tell me about volcanoes.\nAdam:", n, 0.7, 12, &[], true, Some(7), None, 6.0);
+    let mut s = e.stream("User: Tell me about volcanoes.\nAdam:", n, 0.7, 12, &[], true, Some(7), None, 6.0, Default::default());
     let mut out = 0;
     while let Some(c) = s.next(&mut e) { out += c.len(); }
     let st = out as f64 / t.elapsed().as_secs_f64();

@@ -1,5 +1,5 @@
 use adam_qa::{Hit, Qa as QaCore};
-use ray::{RayField as Core, Stream};
+use ray::{Dec, RayField as Core, Stream};
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayMethods};
 use parking_lot::{lock_api::ArcMutexGuard, Mutex, RawMutex};
 use pyo3::{exceptions::PyIOError, prelude::*, types::PyBytes};
@@ -8,7 +8,7 @@ type Guard = ArcMutexGuard<RawMutex, Core>;
 #[pyclass(name = "RayField", module = "adam_ray")]
 struct RayField { e: Arc<Mutex<Core>> }
 #[pyclass(module = "adam_ray")]
-struct StreamIter { e: Arc<Mutex<Core>>, g: Option<Guard>, s: Option<Stream>, a: Option<(String, usize, f64, usize, Vec<String>, bool, Option<u64>, Option<Vec<u8>>, f64)> }
+struct StreamIter { e: Arc<Mutex<Core>>, g: Option<Guard>, s: Option<Stream>, a: Option<(String, usize, f64, usize, Vec<String>, bool, Option<u64>, Option<Vec<u8>>, f64, Dec)> }
 #[pyclass(name = "QA", module = "adam_ray")]
 struct Qa { q: Arc<QaCore> }
 fn lk(py: Python<'_>, e: &Arc<Mutex<Core>>) -> PyResult<Guard> { let mut g = py.allow_threads(|| e.lock_arc()); py.allow_threads(|| g.load().map(|_| ()).map_err(|x| PyIOError::new_err(x.to_string())))?; Ok(g) }
@@ -54,18 +54,19 @@ impl RayField {
     fn score<'py>(&self, py: Python<'py>, prompts: Vec<Vec<u8>>, conts: Vec<Vec<u8>>) -> PyResult<Bound<'py, PyArray1<f64>>> { let mut g = lk(py, &self.e)?; Ok(py.allow_threads(|| g.score(&prompts, &conts)).into_pyarray(py)) }
     #[pyo3(signature = (hold=None, batches=60, ctx=128, bs=256, seed=1234))]
     fn bpb(&self, py: Python<'_>, hold: Option<String>, batches: usize, ctx: usize, bs: usize, seed: u64) -> PyResult<f64> { let mut g = lk(py, &self.e)?; py.allow_threads(|| g.bpb(hold.as_deref(), batches, ctx, bs, seed)).map_err(|x| PyIOError::new_err(x.to_string())) }
-    #[pyo3(signature = (prompt, max_bytes=400, temp=0.7, topk=12, stop=vec!["\n\n".to_string()], veto=true, seed=None, guide=None, beta=6.0))]
+    #[pyo3(signature = (prompt, max_bytes=400, temp=0.7, topk=12, stop=vec!["\n\n".to_string()], veto=true, seed=None, guide=None, beta=6.0, lock=false, stop_sentence=false, rep=0.0))]
     #[allow(clippy::too_many_arguments)]
-    fn stream(&self, prompt: String, max_bytes: usize, temp: f64, topk: usize, stop: Vec<String>, veto: bool, seed: Option<u64>, guide: Option<Vec<u8>>, beta: f64) -> StreamIter { StreamIter { e: self.e.clone(), g: None, s: None, a: Some((prompt, max_bytes, temp, topk, stop, veto, seed, guide, beta)) } }
-    #[pyo3(signature = (prompt, width=8, expand=4, maxlen=300, rep=16, veto=true))]
-    fn beam(&self, py: Python<'_>, prompt: String, width: usize, expand: usize, maxlen: usize, rep: usize, veto: bool) -> PyResult<String> { let mut g = lk(py, &self.e)?; Ok(py.allow_threads(|| g.beam(&prompt, width, expand, maxlen, rep, veto))) }
+    fn stream(&self, prompt: String, max_bytes: usize, temp: f64, topk: usize, stop: Vec<String>, veto: bool, seed: Option<u64>, guide: Option<Vec<u8>>, beta: f64, lock: bool, stop_sentence: bool, rep: f64) -> StreamIter { StreamIter { e: self.e.clone(), g: None, s: None, a: Some((prompt, max_bytes, temp, topk, stop, veto, seed, guide, beta, Dec { lock, stop_sentence, rep })) } }
+    #[pyo3(signature = (prompt, width=8, expand=4, maxlen=300, rep=16, veto=true, lock=false, stop_sentence=false))]
+    #[allow(clippy::too_many_arguments)]
+    fn beam(&self, py: Python<'_>, prompt: String, width: usize, expand: usize, maxlen: usize, rep: usize, veto: bool, lock: bool, stop_sentence: bool) -> PyResult<String> { let mut g = lk(py, &self.e)?; Ok(py.allow_threads(|| g.beam(&prompt, width, expand, maxlen, rep, veto, Dec { lock, stop_sentence, rep: 0.0 }))) }
     fn word_ok(&self, seq: Vec<u8>, c: u8) -> bool { self.e.lock().word_ok(&seq, c) }
 }
 #[pymethods]
 impl StreamIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> { slf }
     fn __next__(&mut self, py: Python<'_>) -> PyResult<Option<String>> {
-        if let Some((p, mb, t, k, st, v, sd, gd, b)) = self.a.take() { let mut g = lk(py, &self.e)?; self.s = Some(py.allow_threads(|| g.stream(&p, mb, t, k, &st, v, sd, gd.as_deref(), b))); self.g = Some(g); }
+        if let Some((p, mb, t, k, st, v, sd, gd, b, dc)) = self.a.take() { let mut g = lk(py, &self.e)?; self.s = Some(py.allow_threads(|| g.stream(&p, mb, t, k, &st, v, sd, gd.as_deref(), b, dc))); self.g = Some(g); }
         let r = match (self.g.as_mut(), self.s.as_mut()) { (Some(g), Some(s)) => py.allow_threads(|| s.next(g)), _ => None };
         r.is_none().then(|| self.close());
         Ok(r)
