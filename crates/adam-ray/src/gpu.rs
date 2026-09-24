@@ -3,13 +3,19 @@ use wgpu::*;
 const OUTCAP: usize = 64 << 20;
 pub struct Gpu { dev: Device, q: Queue, pipe: ComputePipeline, bgl: BindGroupLayout, views: Vec<TextureView>, st: Buffer, bufs: Option<(Buffer, Buffer, Buffer, BindGroup, usize, usize)>, pub name: String }
 fn mask(f: fn(u32) -> bool) -> String { (0..8).map(|w| format!("{}u", (0..32).fold(0u32, |m, i| m | (f(w * 32 + i) as u32) << i))).collect::<Vec<_>>().join(",") }
+pub fn common_wgsl(g: &Geo, state: bool) -> String { (include_str!("hash.wgsl").to_string() + if state { include_str!("state.wgsl") } else { "" }).replace("$TE", &g.t.to_string()).replace("$QT", &g.qt.to_string()).replace("$BASE", &g.base.to_string()).replace("$LVH", &(g.base + g.hops).to_string()).replace("$HB", &g.hb().to_string()).replace("$TA", &format!("{:?}f", g.ta)).replace("$TC", &format!("{:?}f", g.tc)).replace("$WORD", &mask(cpu::wordch)).replace("$PUNC", &mask(cpu::punct)) }
+pub fn device(label: &str, extra: Features) -> Result<(Device, Queue, String), String> {
+    let inst = Instance::new(&InstanceDescriptor { backends: Backends::PRIMARY, ..Default::default() });
+    let pick = std::env::var("ADAM_RAY_ADAPTER").ok().and_then(|n| inst.enumerate_adapters(Backends::PRIMARY).into_iter().find(|a| a.get_info().name.to_lowercase().contains(&n.to_lowercase())));
+    let ad = pick.or_else(|| pollster::block_on(inst.request_adapter(&RequestAdapterOptions { power_preference: PowerPreference::HighPerformance, ..Default::default() }))).filter(|a| a.get_info().device_type != DeviceType::Cpu).ok_or("no gpu adapter")?;
+    let al = ad.limits();
+    let lim = Limits { max_push_constant_size: al.max_push_constant_size.min(128), max_storage_buffer_binding_size: al.max_storage_buffer_binding_size, max_buffer_size: al.max_buffer_size, max_storage_buffers_per_shader_stage: al.max_storage_buffers_per_shader_stage, max_storage_textures_per_shader_stage: al.max_storage_textures_per_shader_stage, max_texture_dimension_2d: al.max_texture_dimension_2d, max_texture_array_layers: al.max_texture_array_layers, max_compute_workgroups_per_dimension: al.max_compute_workgroups_per_dimension, ..Default::default() };
+    let (dev, q) = pollster::block_on(ad.request_device(&DeviceDescriptor { label: Some(label), required_features: Features::PUSH_CONSTANTS | (extra & ad.features()), required_limits: lim, memory_hints: MemoryHints::Performance }, None)).map_err(|e| e.to_string())?;
+    Ok((dev, q, format!("{} ({:?})", ad.get_info().name, ad.get_info().backend)))
+}
 impl Gpu {
     pub fn new(tb: &Tables) -> Result<Gpu, String> {
-        let inst = Instance::new(&InstanceDescriptor { backends: Backends::PRIMARY, ..Default::default() });
-        let pick = std::env::var("ADAM_RAY_ADAPTER").ok().and_then(|n| inst.enumerate_adapters(Backends::PRIMARY).into_iter().find(|a| a.get_info().name.to_lowercase().contains(&n.to_lowercase())));
-        let ad = pick.or_else(|| pollster::block_on(inst.request_adapter(&RequestAdapterOptions { power_preference: PowerPreference::HighPerformance, ..Default::default() }))).filter(|a| a.get_info().device_type != DeviceType::Cpu).ok_or("no gpu adapter")?;
-        let al = ad.limits();
-        let (dev, q) = pollster::block_on(ad.request_device(&DeviceDescriptor { label: Some("adam-ray"), required_features: Features::PUSH_CONSTANTS, required_limits: Limits { max_push_constant_size: 32, max_storage_buffer_binding_size: al.max_storage_buffer_binding_size, max_buffer_size: al.max_buffer_size, ..Default::default() }, memory_hints: MemoryHints::Performance }, None)).map_err(|e| e.to_string())?;
+        let (dev, q, name) = device("adam-ray", Features::empty())?;
         let mk = |w: usize, h: usize, d: usize, f: TextureFormat, bpp: usize, arr: bool, data: &dyn Fn(usize) -> Vec<u8>| {
             let t = dev.create_texture(&TextureDescriptor { label: None, size: Extent3d { width: w as u32, height: h as u32, depth_or_array_layers: d as u32 }, mip_level_count: 1, sample_count: 1, dimension: TextureDimension::D2, format: f, usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST, view_formats: &[] });
             (0..d).for_each(|z| { let mut b = data(z); b.resize(w * h * bpp, 0); q.write_texture(TexelCopyTextureInfo { texture: &t, mip_level: 0, origin: Origin3d { x: 0, y: 0, z: z as u32 }, aspect: TextureAspect::All }, &b, TexelCopyBufferLayout { offset: 0, bytes_per_row: Some((w * bpp) as u32), rows_per_image: Some(h as u32) }, Extent3d { width: w as u32, height: h as u32, depth_or_array_layers: 1 }); q.submit([]); });
@@ -18,11 +24,11 @@ impl Gpu {
         let views = vec![
             mk(TW, tb.t.div_ceil(TW), tb.l, TextureFormat::Rg32Uint, 8, true, &|z| bytemuck::cast_slice(&tb.cells[z * tb.t..(z + 1) * tb.t]).to_vec()),
             mk(TW, tb.rows.div_ceil(16), 1, TextureFormat::R16Float, 2, false, &|_| bytemuck::cast_slice(&tb.dp).to_vec()),
-            mk(1024, 1024, 1, TextureFormat::Rgba32Uint, 16, false, &|_| bytemuck::cast_slice(&tb.lex).to_vec()),
+            mk(1024, 1024, 1, TextureFormat::Rgba32Uint, 16, false, &|_| bytemuck::cast_slice(&tb.lx.lex).to_vec()),
             mk(V, 1, 1, TextureFormat::R32Float, 4, false, &|_| bytemuck::cast_slice(&tb.bias).to_vec()),
-            mk(360, 1, 1, TextureFormat::Rg32Float, 8, false, &|_| bytemuck::cast_slice(&tb.trig).to_vec()),
+            mk(360, 1, 1, TextureFormat::Rg32Float, 8, false, &|_| bytemuck::cast_slice(&tb.lx.trig).to_vec()),
         ];
-        let src = include_str!("ray.wgsl").replace("$TE", &tb.t.to_string()).replace("$QT", &tb.qt.to_string()).replace("$HB", &(BASE + 3 * tb.qt as usize).to_string()).replace("$TC", &format!("{:?}f", (1.0f64 - 0.99) as f32)).replace("$WORD", &mask(cpu::wordch)).replace("$PUNC", &mask(cpu::punct));
+        let src = common_wgsl(&tb.geo, true) + include_str!("ray.wgsl");
         let md = dev.create_shader_module(ShaderModuleDescriptor { label: Some("ray"), source: ShaderSource::Wgsl(src.into()) });
         let tx = |b: u32, s: TextureSampleType, d: TextureViewDimension| BindGroupLayoutEntry { binding: b, visibility: ShaderStages::COMPUTE, ty: BindingType::Texture { sample_type: s, view_dimension: d, multisampled: false }, count: None };
         let sb = |b: u32, ro: bool| BindGroupLayoutEntry { binding: b, visibility: ShaderStages::COMPUTE, ty: BindingType::Buffer { ty: BufferBindingType::Storage { read_only: ro }, has_dynamic_offset: false, min_binding_size: None }, count: None };
@@ -31,7 +37,6 @@ impl Gpu {
         let pl = dev.create_pipeline_layout(&PipelineLayoutDescriptor { label: None, bind_group_layouts: &[&bgl], push_constant_ranges: &[PushConstantRange { stages: ShaderStages::COMPUTE, range: 0..24 }] });
         let pipe = dev.create_compute_pipeline(&ComputePipelineDescriptor { label: Some("ray"), layout: Some(&pl), module: &md, entry_point: Some("main"), compilation_options: Default::default(), cache: None });
         let st = dev.create_buffer(&BufferDescriptor { label: None, size: (2 * MAXB * NS * 4) as u64, usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC, mapped_at_creation: false });
-        let name = format!("{} ({:?})", ad.get_info().name, ad.get_info().backend);
         Ok(Gpu { dev, q, pipe, bgl, views, st, bufs: None, name })
     }
     pub fn reset(&mut self, cur: usize, nb: usize) { self.q.write_buffer(&self.st, (cur * MAXB * NS * 4) as u64, bytemuck::cast_slice(&vec![cpu::init(); nb])); }

@@ -1,0 +1,143 @@
+pub mod cfg;
+pub mod cpu;
+pub mod gpu;
+use adam_ray::{npy::Npz, rng::{pairwise, Pcg64}};
+use cfg::*;
+use half::f16;
+use memmap2::Mmap;
+use std::{fs::{self, File}, io::{self, Write}, time::Instant};
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Part { Dp, Dm, Dv, Sid, Sw, Sm, Sv, Bias, Lq }
+pub trait Engine {
+    fn run(&mut self, x: &[u8], y: &[u8], nb: usize, t: usize, salt: u32, train: Option<(usize, f32)>) -> f64;
+    fn logits(&mut self, x: &[u8]) -> Vec<f32>;
+    fn refresh(&mut self);
+    fn get(&mut self, p: Part) -> Vec<f32>;
+    fn put(&mut self, p: Part, v: &[f32]);
+    fn name(&self) -> String;
+}
+pub fn engine(c: &Cfg) -> Box<dyn Engine> { if c.arch == "cpu" { Box::new(cpu::Cpu::new(c)) } else { match gpu::Gpu::new(c) { Ok(g) => Box::new(g), Err(e) => { eprintln!("gpu unavailable ({e}), using cpu"); Box::new(cpu::Cpu::new(c)) } } } }
+pub fn npy(path: &str, descr: &str, shape: &[usize], data: &[u8]) -> io::Result<()> {
+    let sh = shape.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ") + if shape.len() == 1 { "," } else { "" };
+    let mut h = format!("{{'descr': '{descr}', 'fortran_order': False, 'shape': ({sh}), }}");
+    h += &" ".repeat(63 - (10 + h.len()) % 64);
+    let mut f = io::BufWriter::new(File::create(path)?);
+    f.write_all(b"\x93NUMPY\x01\x00")?;
+    f.write_all(&((h.len() + 1) as u16).to_le_bytes())?;
+    f.write_all(h.as_bytes())?;
+    f.write_all(b"\n")?;
+    f.write_all(data)
+}
+pub fn f16b(v: &[f32]) -> Vec<u8> { v.iter().flat_map(|&x| f16::from_f32(x).to_le_bytes()).collect() }
+pub fn f32b(v: &[f32]) -> Vec<u8> { bytemuck::cast_slice(v).to_vec() }
+fn mmap(p: &str) -> io::Result<Mmap> { unsafe { Mmap::map(&File::open(p).map_err(|e| io::Error::new(e.kind(), format!("{p}: {e}")))?) } }
+pub fn corpus(c: &Cfg, name: &str) -> io::Result<(Mmap, Mmap)> { let d = format!("{}/data/{name}", c.home); Ok((mmap(&format!("{d}/train.bin"))?, mmap(&format!("{d}/hold.bin"))?)) }
+pub fn batch(d: &[u8], g: &mut Pcg64, bs: usize, t: usize) -> (Vec<u8>, Vec<u8>) {
+    let ix = g.integers(0, (d.len() - t - 1) as i64, bs);
+    (ix.iter().flat_map(|&i| d[i as usize..i as usize + t].iter().copied()).collect(), ix.iter().flat_map(|&i| d[i as usize + 1..i as usize + 1 + t].iter().copied()).collect())
+}
+fn npz_f32(p: &str) -> io::Result<(Vec<usize>, Vec<f32>)> { let z = Npz::open(p)?; let a = z.get("")?; Ok((a.shape.clone(), if a.descr.ends_with("u1") || a.descr.ends_with("i4") || a.descr.ends_with("i8") { a.i64s().iter().map(|&v| v as f32).collect() } else { a.f32s() })) }
+pub fn load_pages(c: &Cfg, e: &mut dyn Engine) -> io::Result<()> {
+    let p = if c.pages.is_empty() { &c.pages_v16 } else { &c.pages };
+    if p.is_empty() { return Ok(()); }
+    let pre = &p[..p.len() - 8];
+    e.put(Part::Dp, &npz_f32(&format!("{pre}_dp.npy"))?.1);
+    e.put(Part::Bias, &npz_f32(&format!("{pre}_bias.npy"))?.1);
+    let ((sh, sid), (_, sw)) = (npz_f32(p)?, npz_f32(&format!("{pre}_sw.npy"))?);
+    assert!(sh[1] == c.te && sh[2] == KS, "pages shape {sh:?}");
+    if !c.pages.is_empty() { e.put(Part::Sid, &sid); e.put(Part::Sw, &sw); println!("loaded slots {p}"); return Ok(()); }
+    let (tl, hb, n) = (c.tl(), c.geo.hb(), c.te * KS);
+    let (mut si, mut ww) = (e.get(Part::Sid), e.get(Part::Sw));
+    let k = (tl + 1).min(sh[0]);
+    si[..k * n].copy_from_slice(&sid[..k * n]);
+    ww[..k * n].copy_from_slice(&sw[..k * n]);
+    let nh = c.geo.hops.min(sh[0].saturating_sub(tl + 1));
+    si[hb * n..(hb + nh) * n].copy_from_slice(&sid[(tl + 1) * n..(tl + 1 + nh) * n]);
+    ww[hb * n..(hb + nh) * n].copy_from_slice(&sw[(tl + 1) * n..(tl + 1 + nh) * n]);
+    e.put(Part::Sid, &si);
+    e.put(Part::Sw, &ww);
+    println!("warm v16 {p} copied 0..{} hops {}..{} -> {hb}..{}", k as i64 - 1, tl + 1, (tl + nh) as i64, (hb + nh) as i64 - 1);
+    Ok(())
+}
+pub fn dense_used(dp: &[f32]) -> Vec<f32> { [&dp[..V * V], &dp[DE * V..]].concat() }
+pub fn dump(c: &Cfg, e: &mut dyn Engine, dir: &str) -> io::Result<()> {
+    fs::create_dir_all(dir)?;
+    let (lv, te) = (c.lv, c.te);
+    for (p, nm) in [(Part::Dp, "dp"), (Part::Dm, "dm"), (Part::Dv, "dv")] { npy(&format!("{dir}/{nm}.npy"), "<f4", &[V + DE, V], &f32b(&dense_used(&e.get(p))))?; }
+    for (p, nm) in [(Part::Sid, "sid"), (Part::Sw, "sw"), (Part::Sm, "sm"), (Part::Sv, "sv")] { npy(&format!("{dir}/{nm}.npy"), "<f4", &[lv, te, KS], &f32b(&e.get(p)))?; }
+    npy(&format!("{dir}/bias.npy"), "<f4", &[V], &f32b(&e.get(Part::Bias)))?;
+    npy(&format!("{dir}/lq.npy"), "<f4", &[2 * lv], &f32b(&e.get(Part::Lq)))
+}
+fn js(s: &str) -> String { s.chars().fold(String::from("\""), |mut o, ch| { match ch { '"' => o += "\\\"", '\\' => o += "\\\\", '\n' => o += "\\n", '\r' => o += "\\r", '\t' => o += "\\t", c if (c as u32) < 32 => o += &format!("\\u{:04x}", c as u32), c => o.push(c) } o }) + "\"" }
+fn r4(x: f64) -> f64 { (x * 1e4).round_ties_even() / 1e4 }
+fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0) }
+pub fn sample(c: &Cfg, e: &mut dyn Engine, pfx: &str) -> String {
+    let (mut buf, mut g, ok): (Vec<u8>, Pcg64, Vec<bool>) = (pfx.as_bytes().to_vec(), Pcg64::new(Some(7)), (0..V).map(|k| (32..127).contains(&k) || k == 9 || k == 10).collect());
+    for _ in 0..300 {
+        let lg = e.logits(&buf[buf.len().saturating_sub(c.ctx)..]);
+        let mut z: Vec<f64> = (0..V).map(|k| if ok[k] { lg[k] as f64 / c.gen_t } else { -1e9 }).collect();
+        let mut o: Vec<usize> = (0..V).collect();
+        o.sort_by(|&a, &b| z[a].partial_cmp(&z[b]).unwrap());
+        o[..V - c.gen_k].iter().for_each(|&k| z[k] = -1e9);
+        let m = z.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let p: Vec<f64> = z.iter().map(|x| (x - m).exp()).collect();
+        let s = pairwise(&p);
+        buf.push(g.choice(&p.iter().map(|x| x / s).collect::<Vec<_>>()) as u8);
+    }
+    String::from_utf8_lossy(&buf).into_owned()
+}
+pub fn train(c: &Cfg, e: &mut dyn Engine) -> io::Result<Vec<f64>> {
+    let t0 = Instant::now();
+    let names = if c.multi.is_empty() { vec![c.corpus.clone()] } else { c.multi.clone() };
+    let corp = names.iter().map(|n| corpus(c, n)).collect::<io::Result<Vec<_>>>()?;
+    load_pages(c, e)?;
+    let (lv, te) = (c.lv, c.te);
+    let cells = lv * te;
+    let mem = format!("{{\"dense_values\": {}, \"dense_tori\": \"byte1 (256 used) + byte2 (65536)\", \"cells\": {cells}, \"slots_per_cell\": {KS}, \"stored_values\": {}, \"inference_bytes_id8_sign1\": {}, \"inference_bytes_id8_ternary\": {}, \"fetches_per_byte\": {}, \"tori\": {lv}}}", 2 * DE * V, cells * KS, ((cells * KS * 9) as f64 / 8.0).round_ties_even(), ((cells * KS) as f64 * 9.585 / 8.0).round_ties_even(), lv + 3);
+    println!("=== adam-train [{}] v{} levels={} hops={} qt={} tern={} | corpus={} train {} B hold {} B | entries/level={te} ctx={} bs={} steps={} lr={}->{} rth={} rw={} wd={} | {mem}", e.name(), if c.geo.qt { 18 } else { 16 }, c.geo.base, c.geo.hops, c.geo.qt as u8, ["off", "cell", "level"][c.tern as usize], names.join(","), corp[0].0.len(), corp[0].1.len(), c.ctx, c.bs, c.steps, c.lr, c.lr_end, c.rth, c.rw, c.wd);
+    let (mut g, mut hist, mut best, mut ts, mut th, mut losses) = (Pcg64::new(Some(c.seed)), vec![], 9e9f64, vec![], 0.0, vec![]);
+    let mut slog = (!c.step_log.is_empty()).then(|| File::create(&c.step_log)).transpose()?;
+    let salt = |ci: usize| if c.salted { ci as u32 } else { 0 };
+    let evalv = |e: &mut dyn Engine, nb: usize, ci: usize| { let mut ge = Pcg64::new(Some(1234)); let v: Vec<f64> = (0..nb).map(|_| { let (x, y) = batch(&corp[ci].1, &mut ge, c.bs, c.ctx); e.run(&x, &y, c.bs, c.ctx, salt(ci), None) }).collect(); pairwise(&v) / nb as f64 };
+    for it in 1..=c.steps {
+        let ci = it % corp.len();
+        let (x, y) = batch(&corp[ci].0, &mut g, c.bs, c.ctx);
+        let s0 = Instant::now();
+        let loss = e.run(&x, &y, c.bs, c.ctx, salt(ci), Some((it, c.lr_at(it))));
+        ts.push(s0.elapsed().as_secs_f64());
+        losses.push(loss);
+        if let Some(f) = slog.as_mut() { writeln!(f, "{it} {loss:.17e}")?; }
+        th = if it % 50 == 0 || it == 1 { thr(&c.thf) } else { th };
+        (th > 0.0).then(|| std::thread::sleep(std::time::Duration::from_secs_f64(th)));
+        if it % 200 == 0 || it == 1 || it == c.steps {
+            let va = evalv(e, 20, 0);
+            best = best.min(va);
+            let sw = e.get(Part::Sw);
+            let mt = ts[ts.len().saturating_sub(200)..].iter().sum::<f64>() / ts[ts.len().saturating_sub(200)..].len() as f64;
+            let rec = format!("{{\"step\": {it}, \"train_nats\": {}, \"val_nats\": {}, \"val_bits_per_byte\": {}, \"ms_per_step\": {}, \"positions_per_s\": {}, \"live_slots_frac\": {}, \"w_abs_mean\": {}, \"elapsed_s\": {}, \"throttle_s\": {th}}}", r4(loss), r4(va), r4(va / std::f64::consts::LN_2), (mt * 1e4).round() / 10.0, (c.npos() as f64 / mt).round(), r4(sw.iter().filter(|w| w.abs() >= c.rth).count() as f64 / sw.len() as f64), r4(sw.iter().map(|w| w.abs() as f64).sum::<f64>() / sw.len() as f64), (t0.elapsed().as_secs_f64() * 10.0).round() / 10.0);
+            if let Some(f) = slog.as_mut() { writeln!(f, "eval {it} {va:.17e}")?; }
+            println!("{rec}");
+            hist.push(rec);
+        }
+    }
+    (c.tern > 0).then(|| e.refresh());
+    if c.steps == 0 { best = evalv(e, 60, 0); println!("eval-only {}: {:.4} bits/byte", c.corpus, best / std::f64::consts::LN_2); }
+    let per: Vec<String> = c.multi.iter().enumerate().map(|(i, n)| format!("{}: {}", js(n), r4(evalv(e, 60, i) / std::f64::consts::LN_2))).collect();
+    let pre = c.out.trim_end_matches(".json").to_string();
+    if c.steps > 0 {
+        fs::create_dir_all(std::path::Path::new(&c.out).parent().unwrap())?;
+        npy(&format!("{pre}_dp.npy"), "<f2", &[2, DE, V], &f16b(&e.get(Part::Dp)))?;
+        npy(&format!("{pre}_sid.npy"), "|u1", &[lv, te, KS], &e.get(Part::Sid).iter().map(|&v| v as u8).collect::<Vec<_>>())?;
+        let (mut sw, lq) = (e.get(Part::Sw), e.get(Part::Lq));
+        (c.tern == 2).then(|| sw.iter_mut().enumerate().for_each(|(i, w)| { let l = i / (te * KS); *w = if w.abs() < lq[l] { 0.0 } else { w.signum() * (*w != 0.0) as u8 as f32 * lq[lv + l] } }));
+        npy(&format!("{pre}_sw.npy"), "<f2", &[lv, te, KS], &f16b(&sw))?;
+        npy(&format!("{pre}_bias.npy"), "<f4", &[V], &f32b(&e.get(Part::Bias)))?;
+    }
+    (!c.dump.is_empty()).then(|| dump(c, e, &c.dump)).transpose()?;
+    let samples: Vec<String> = ["The weather today is", "def add(a, b):\n    return", "Kaolinite is a clay mineral that"].iter().map(|p| { let s = sample(c, e, p); println!("\n==== {:?}\n{s}", &p[..16]); format!("{}: {}", js(&p[..16]), js(&s)) }).collect();
+    let cfg = format!("{{\"entries\": {te}, \"ctx\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_end\": {}, \"corpus\": {}, \"slots\": {KS}, \"rth\": {}, \"rw\": {}, \"wd\": {}, \"gate\": 0.0, \"tern\": {}, \"tern_th\": {}, \"tern_scope\": \"{}\", \"qt\": {}, \"topic\": {}, \"levels\": {lv}, \"trainer\": \"adam-train {}\"}}", c.ctx, c.bs, c.steps, c.lr, c.lr_end, js(&c.corpus), c.rth, c.rw, c.wd, c.tern > 0, c.tern_th, if c.tern == 1 { "cell" } else { "level" }, c.geo.qt as u8, c.tl(), e.name());
+    let bv = r4(best / std::f64::consts::LN_2);
+    fs::write(&c.out, format!("{{\n \"cfg\": {cfg},\n \"memory\": {mem},\n \"hist\": [\n  {}\n ],\n \"best_val_bits_per_byte\": {bv},\n \"per_corpus\": {{{}}},\n \"salted\": {},\n \"multi\": [{}],\n \"samples\": {{{}}}\n}}\n", hist.join(",\n  "), per.join(", "), c.salted, c.multi.iter().map(|m| js(m)).collect::<Vec<_>>().join(", "), samples.join(", ")))?;
+    println!("best val {bv} bits/byte | total {:.1}s -> {}", t0.elapsed().as_secs_f64(), c.out);
+    Ok(losses)
+}
