@@ -495,8 +495,7 @@ def main():
                 _sk_persona_name=_sk_persona.name if _sk_persona else 'Adam'
                 try:
                     _sr=skills.call(_sname,_sargs,ctx={'adam':adam,'conv':conv})
-                    if _sr.ok:
-                        _formatted=agent._format_skill_output(_sname,_sr.output)
+                    if _sr.ok and (_formatted:=agent._format_skill_output(_sname,_sr.output)) is not None:
                         _sk_cat=tone_atlas.classify_intent(req.message,skill_used=_sname) if hasattr(tone_atlas,'classify_intent') else 'factual'
                         _wrapped=tone_atlas.wrap(_formatted,_sk_cat,_sk_persona,seed=req.message) if _sk_persona and hasattr(tone_atlas,'wrap') else _formatted
                         yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_sk_persona_name,"skill":_sname,"category":_sk_cat})}\n\n'
@@ -505,7 +504,7 @@ def main():
                         for ch in [_wrapped[i:i+48] for i in range(0,len(_wrapped),48)]:yield f'event: token\ndata: {_json.dumps(ch)}\n\n'
                         conv.append('assistant',_wrapped,{'tier':f'tier0_skill_{_sname}','persona':_sk_persona_name,'category':_sk_cat,'skill':_sname})
                         yield f'event: done\ndata: {_json.dumps({"tier":f"tier0_skill_{_sname}","wall_s":round(time.time()-t0,3),"persona":_sk_persona_name})}\n\n';return
-                    else:
+                    elif not _sr.ok:
                         _err=str(getattr(_sr,'error','') or 'no data returned')
                         _emsg=f"I tried the **{_sname}** skill but it couldn't return live data ({_err}). I won't make up values — please retry, or check the STATUS panel's skill-failures."
                         yield f'event: meta\ndata: {_json.dumps({"session_id":conv.session_id,"persona":_sk_persona_name,"skill":_sname,"skill_error":True})}\n\n'

@@ -1,3 +1,22 @@
+## 2026-09-24 Tier 0 Reference Truth: Python 3.8-3.13
+Official-source ground truth for the Proving Ground (report: `docs/ks/reference_python.md`).
+- Sources: sparse shallow clones of CPython v3.8.20, v3.9.25, v3.10.21, v3.11.16, v3.12.14, v3.13.15 (Lib, Doc, LICENSE) in `data/ks/reference/python/src`; uv interpreters of the same patch run from stdlib-only venvs (`venvs/<ver>`, no setuptools distutils shim).
+- `scripts/ref_truth_python.py` (stages fetch, filter, api, index, examples, stats) + `scripts/ref_truth_introspect.py` (in-sandbox list/walk/doctest replay, Python 3.8 compatible).
+- Content filter (`neutral_filter.DEFAULT_FILTER`) over 13,735 .py/.rst files: 0 dropped (`filter_report.md`).
+- API tables `api_<ver>.jsonl.gz` (57.7k-80.9k public names per version, 277-291 top modules), `api_index.json` (89,991 names, version masks, signature variants, deprecation evidence from docs + import-time warnings), 1,018 signature changes.
+- Verified examples (PSF-2.0, trust_tier verified, evidence cpython@tag): 62,177 test-function/API pairs from Lib/test, 11,628 Doc doctest groups and 2,689 docstring doctest groups, replayed on the pinned interpreter (45% reproduce).
+- `amni/compute/ref_truth.py`: `check_snippet(code, target_versions)` (compile-only probe on each pinned interpreter, stdlib name/signature/deprecation lookup, per-version verdict, never executes) and `run_on_version(code, version, timeout)` (x0_code_eval.run_sandbox on the pinned interpreter). Tests: `tests/test_ref_truth.py` (9 pass).
+
+## 2026-09-23 Router fixes from the independent web test
+Fixes the serve-path skill-routing bugs found by `docs/tasks/v19/reports/web_test_2026-09-23.md` (17 of 455 real queries hit the wrong tool). Tests: `tests/test_router_fixes.py` (9 checks, every bad query + positive controls); replayed through `/chat` on a scratch server.
+- scan (`amni/serve/agent.py`): `_SCAN_RE` matched the noun "study" ("the study of the nature..." -> path "of"). Scan now needs a path-like token (`/`, `\`, `~`, `*`, drive letter, file extension) or a named folder ("my downloads folder" -> ~/Downloads).
+- shell (`amni/serve/agent.py`): `_SHELL_RE` had no word boundary after the verb, so "runs in odi" / "home runs" became command "s". Added `\b`, and the first token must be an allowlisted command (or backtick-quoted). "run ls in my home dir" maps the home phrase to the home path.
+- azno (`AmniAgent._trading_turn`): generic words (long, market, invest, stocks) opened the trading turn and then asked "Which ticker are you eyeing?". The turn now needs a ticker ($TSLA, TSLA, "how is NVDA looking", ticker after an azno/options keyword); the ask only fires for explicit azno/ticker/options wording; "how long" no longer counts as a trading word; lowercase words are no longer guessed as tickers.
+- intent block (`amni/a1/semantic_intent.py`): "espionage act" history questions scored near the "corporate espionage" exploit seed. Informational wh-questions with no operative cue (how to, write/build/make, buy/obtain, can I, attack verbs...) now need cos >= 0.8 (`AMNI_INTENT_INFO_COS`) for harm/exploit; real exploit asks stay blocked.
+- introspect (`_INTROSPECT_RE`): "what can you do for team building" recited the bio. Short self-questions (what can you do / who are you / what are you) must end the message; bare "help" only.
+- define and other skills: an error result ({"error": ...}) was dumped as raw JSON. `_format_skill_output` returns None for error dicts and `/chat` and `/chat/stream` fall through to the normal answer path.
+- weather (`amni/serve/widgets.py::_geocode`): trailing qualifiers (fahrenheit, hourly, today, "in november"...) are stripped; a trailing US state name or code, a country or a comma region filters the Open-Meteo results; the first-word fallback (Big Delta, South KY, Le Desert) is gone.
+- persona lead-in (`amni/serve/tone_atlas.py::wrap`): no opener or cheerful closer on declines ("Easy - I'm not sure..."); after a comma opener the next word is lower-cased only for common words, otherwise the opener is skipped (no "Okay, They").
 ## 2026-09-23 Adam answers sensibly on the ray backend: v18 question torus + retrieval-guided decoding (v6.21.14)
 Loop goal: answers naturally coherent and sensible. Measured on 20 fixed everyday questions + 20 unseen + 5 edge cases (`scripts/ray_chat_eval.py`, QSET=1/2/3), judged by hand.
 - Baseline v16 (textbook corpus): 0/20 — every answer opened "A Comprehensive Guide…".

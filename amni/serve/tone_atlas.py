@@ -116,6 +116,8 @@ def _strip_thinking_process(text:str)->str:
     except Exception:pass
     return t or text
 _LEADINS=('here','so,','so ','okay','ok ','sure','your ','it\'s','its ','the ','that','this','right','yes','no,','got ','well','hmm','easy','aww','oac','rao','glad','done','boom','quick','let me','indeed','result','computed','equals','comes out','noted','acknowledged','understood')
+_DECLINE_RE=re.compile(r"^\W*(?:i\s*(?:'|’)?m\s+(?:not\s+(?:sure|certain|able)|unable|afraid|sorry)|i\s+am\s+(?:not\s+(?:sure|certain|able)|unable|afraid|sorry)|i\s+(?:don'?t|do\s+not|can'?t|cannot|won'?t|will\s+not|couldn'?t|could\s+not|have\s+no)\b|sorry|unfortunately|apologies|no\s+idea|not\s+sure)",re.IGNORECASE)
+_LOWER_OK=frozenset(('the','they','it','this','that','these','those','there','we','you','he','she','a','an','in','on','at','for','my','your','our','their','his','her','its','what','when','here','some','most','many','one','to','if','as','both','each','all','yes','no'))
 _STRUCT_RE=re.compile(r'^\s*(?:#{1,6}\s|[-*]\s|>\s|\||\d+\.\s|```|📁|🗂)')
 def wrap(answer:str,category:str,persona,seed:str='')->str:
     answer=_strip_thinking_process(answer)
@@ -125,8 +127,9 @@ def wrap(answer:str,category:str,persona,seed:str='')->str:
     leads=any(a.lower().startswith(w) for w in _LEADINS)
     op=sample_opener(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
     cl=sample_closer(category,persona.warmth,persona.formality,persona.excitement,seed=seed)
-    parts=[]
-    if op and not leads and not (structured and category not in ('greeting','introspect')) and not a[:8].lower().startswith(op.lower()[:6]):parts.append(op)
-    parts.append(a)
-    if cl and not structured and not long_ans and not a.rstrip().endswith(cl.rstrip()):parts.append(cl)
+    dec=bool(_DECLINE_RE.match(a));fw=re.match(r"[A-Za-z']*",a).group(0)
+    add=bool(op) and not leads and not dec and not (structured and category not in ('greeting','introspect')) and not a[:8].lower().startswith(op.lower()[:6])
+    cap=add and op.endswith(',') and a[:1].isupper();add=add and not (cap and fw.lower() not in _LOWER_OK)
+    parts=[op,a[:1].lower()+a[1:] if cap else a] if add else [a]
+    if cl and not dec and not structured and not long_ans and not a.rstrip().endswith(cl.rstrip()):parts.append(cl)
     return ' '.join(p for p in parts if p).strip()

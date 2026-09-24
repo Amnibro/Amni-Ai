@@ -49,10 +49,24 @@ def _ray_guide(e,message:str):
     p=os.environ.get('AMNI_RAY_QA',DEFAULT_QA)
     if not os.path.exists(p):return None
     _qa[0]=_qa[0] or QA(p);return guide(e,_qa[0],message)
+_learned=[None]
+def _ray_learned(message:str):
+    try:
+        from amni.compute.ray_learn import Learned
+        _learned[0]=_learned[0] or Learned();return _learned[0].find(message)
+    except Exception:return None
 def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
     from amni.compute.ray_field import engine
     h=(history or [])[-1:];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
     e=engine();g=_ray_guide(e,message)
+    if g is None:
+        lr=_ray_learned(message)
+        if lr:yield (f"{lr['span']}. " if lr.get('span') else '')+f"{lr['a']} (I learned this earlier from {lr.get('title') or 'the web'}.)";return
+    from amni.compute.ray_learn import learn,Learned,PERSONAL
+    if g is None and os.environ.get('AMNI_RAY_LEARN','0')=='1' and not PERSONAL.search(message):
+        yield "I'm not sure about that one yet, so let me look it up. "
+        _learned[0]=_learned[0] or Learned();r=learn(message,_learned[0])
+        yield (f"Found it: {r['span']}. " if r and r.get('span') else '')+(f"{r['a']} (Source: {r.get('title') or 'Wikipedia'}. I'll remember this.)" if r else "I couldn't find an answer I trust, so I won't guess.");return
     if g is None and os.environ.get('AMNI_RAY_QA_DECLINE','1')=='1':yield "I'm not sure about that one yet.";return
     yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','20')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))
 def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Dict:

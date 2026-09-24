@@ -113,6 +113,9 @@ def expand_encodings(text:str,max_extra:int=4)->List[str]:
     return cands[:max_extra]
 _LUT=None;_LUT_LOADED=False;_INTENT_PATH=Path('experiences/semantic_intent')
 _COS_GATE=float(os.environ.get('AMNI_INTENT_COS','0.45'))
+_INFO_COS=float(os.environ.get('AMNI_INTENT_INFO_COS','0.8'))
+_INFO_Q=re.compile(r"^\W*(?:what|who|whom|whose|when|where|which|why|was|were|did|does|is|are|how\s+(?:many|much|long|old|did|was|were|does|is|are))\b",re.IGNORECASE)
+_OPERATIVE=re.compile(r"\b(?:how\s+(?:to|would\s+you|can\s+you)|(?:can|could|should|do|would|will|might|may)\s+(?:i|we)|buy|purchase|obtain|acquire|hire|download|order|ways?\s+to|steps?|step[\s-]+by|methods?|recipe|instructions?|guide|tutorial|procedures?|write|make|build|create|code|script|help\s+me|show\s+me|give\s+me|teach\s+me|tell\s+me\s+how|i\s+(?:want|need|plan)\s+to|let'?s|bypass|hack|steal|crack|drain|dump|exfiltrate|phish|inject|delete|wipe|destroy|kill|murder|poison|synthesi[sz]e|assassinate|kidnap|abduct|torture|harm|hurt|attack|rm\s+-rf|exec|eval|run|without\s+(?:getting\s+caught|detection|a\s+trace))\b",re.IGNORECASE)
 def _build_lut():
     from amni.inference.semantic_ptex_lut import SemanticPTEXLUT
     lut=SemanticPTEXLUT(grid=48,pca_dim=8)
@@ -153,6 +156,7 @@ def screen(text:str,cos_gate:Optional[float]=None)->Tuple[bool,str,float,str]:
     for c in cands:
         cat,cos=_score_one(lut,c)
         if cat and cos>=gate and cos>best_cos:best_cat,best_cos,best_src=cat,cos,c
+    best_cat=None if (best_cat in ('harm','exploit') and best_cos<max(gate,_INFO_COS) and _INFO_Q.match(text) and not _OPERATIVE.search(text) and not _OPERATIVE.search(best_src)) else best_cat
     if best_cat:return True,best_cat,best_cos,_REFUSALS.get(best_cat,'I cannot help with that.')
     return False,'',best_cos,''
 def stats()->dict:

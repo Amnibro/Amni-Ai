@@ -4,7 +4,7 @@ Backend stays multifunctional; frontend just sees `{answer, tier, tokens, skill_
 import os,re,time,json,ast
 from pathlib import Path
 from typing import Optional,Dict,Any,List,Tuple
-from amni.serve.skills import SkillRegistry,default_registry
+from amni.serve.skills import SkillRegistry,default_registry,_SHELL_ALLOW,_CHART_STOP
 from amni.serve.conversation import ConversationStore,Conversation,detect_personal
 from amni.serve.conversation_atlas import ConversationAtlas
 from amni.storage.local_profile import LocalProfile
@@ -22,12 +22,14 @@ _PORTF_RE=re.compile(r'(?i)\b(holdings?|portfolio|positions?|balance|account|equ
 _BARE_TICK_RE=re.compile(r'(\$?)([A-Za-z]{2,5})\s*[?.!]*$')
 _DIR_READ_RE=re.compile(r"\b(?:read|list|show|open|browse|explore|scan\s+through|look\s+(?:in|at|through)|ls|dir|what(?:'s|\s+is)?\s+in|what\s+kind\s+of\s+files?\s+(?:are\s+)?in)\s+(?:me\s+)?(?:the\s+)?(?:contents?\s+of\s+)?(?:directory|folder|dir|path)\s+[\'\"`]?(.+?)[\'\"`]?(?:\s+and\s+\b.*)?\s*$",re.IGNORECASE)
 _FILE_WRITE_RE=re.compile(r'\b(?:write|save|create)\s+(?:file\s+|the\s+file\s+)?[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
-_SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\s*[:;]?\s*`?(?!\s*(?:the|it|this|that|these|those|a|an|my|your|our|them|again|once|now|tests?|files?|scripts?|code|programs?|asserts?|everything|all)\b)([^`\n]+)`?',re.IGNORECASE)
+_SHELL_RE=re.compile(r'\b(?:run|exec(?:ute)?|shell)\b\s*[:;]?\s*`?(?!\s*(?:the|it|this|that|these|those|a|an|my|your|our|them|again|once|now|tests?|files?|scripts?|code|programs?|asserts?|everything|all)\b)([^`\n]+)`?',re.IGNORECASE)
 _CODE_RE=re.compile(r'\b(?:edit|patch|replace|change)\s+.*\bin\b\s+[\'"`]?([\w\-./\\]+\.\w+)[\'"`]?',re.IGNORECASE)
-_SCAN_RE=re.compile(r'\b(?:use\s+)?(?:scan|ingest|study|learn\s+from|index|absorb)(?:\s+skill)?[\s:]+(?:(?:the|a|this|that|file|files|directory|directories|folder|folders|dir|path|contents?\s+of)\s+)*[\'"`]?([\w\-./:\\\\*?]+)[\'"`]?',re.IGNORECASE)
+_SCAN_RE=re.compile(r'\b(?:use\s+)?(?:scan|ingest|study|learn\s+from|index|absorb)(?:\s+skill)?[\s:]+(?:(?:the|a|this|that|my|file|files|directory|directories|folder|folders|dir|path|contents?\s+of)\s+)*[\'"`]?([\w\-./:\\\\*?~]+)[\'"`]?',re.IGNORECASE)
+_SCAN_PATH_RE=re.compile(r'[/\\~*]|^\.{1,2}$|^[A-Za-z]:|\.[A-Za-z]\w{0,5}$')
+_SCAN_KNOWN_RE=re.compile(r'\bmy\s+(downloads|documents|desktop|pictures|music|videos|home)\b|\b(downloads|documents|desktop|pictures|music|videos|home)\s+(?:folder|directory|dir)\b',re.IGNORECASE)
 _EXPR_EXTRACT=re.compile(r'([\d.]+(?:\s*(?:[+\-*/^x×]|times|plus|minus|over|divided\s+by)\s*[\d.]+)+)',re.IGNORECASE)
 _USER_FACT_RE=re.compile(r"\b(?:my\s+name\s+is|i\s+am\s+(?:called|named)|call\s+me)\s+([A-Z][a-zA-Z'\-]{1,30})|my\s+favorite\s+([a-z ]{3,30})\s+is\s+([A-Za-z0-9 '\-]{1,40})|i\s+(?:like|love|prefer)\s+([A-Za-z0-9 '\-]{2,40})|i\s+(?:live|am\s+based|reside|am\s+located)\s+(?:in|at|near|around)\s+([A-Z][A-Za-z0-9 ',\-]{2,80})|i'?m\s+(?:from|in)\s+([A-Z][A-Za-z0-9 ',\-]{2,80})|i\s+(?:work|am\s+working|am)\s+(?:at|for|on)\s+([A-Za-z0-9 '&,\-]{2,80})|i'?m\s+a\s+([a-z][a-zA-Z '\-]{2,60})|my\s+(?:job|role|title|occupation)\s+is\s+([A-Za-z0-9 '\-]{2,60})",re.IGNORECASE)
-_INTROSPECT_RE=re.compile(r'\b(?:what\s+can\s+(?:you|adam)\s+do|what\s+are\s+(?:your|adam\'?s?)\s+(?:capabilities|abilities|skills|features)|who\s+are\s+you|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+(?:yourself|adam)|what\s+is\s+adam|how\s+do\s+you\s+(?:work|remember|learn)|list\s+(?:your\s+)?(?:skills|capabilities|tools)|help\b)',re.IGNORECASE)
+_INTROSPECT_RE=re.compile(r'\b(?:(?:what\s+(?:else\s+)?can\s+(?:you|adam)\s+do(?:\s+for\s+me)?|who\s+are\s+you|what\s+are\s+you|what\s+is\s+adam|how\s+do\s+you\s+(?:work|remember|learn))(?=\s*[?.!]*\s*$)|what\s+are\s+(?:your|adam\'?s?)\s+(?:capabilities|abilities|skills|features)|introduce\s+yourself|tell\s+me\s+about\s+(?:yourself|adam)|list\s+(?:your\s+)?(?:skills|capabilities|tools))|^\s*help(?:\s+me)?\s*[?.!]*\s*$',re.IGNORECASE)
 _COT_SKIP_CATEGORIES={'greeting','creative','calc_result','time_result','file_result','scan_result','introspect','personal'}
 _COT_GENERIC=('Solve this with hyper-effective problem solving. Show your work concisely:\n'
               '1. RESTATE: in one sentence, what is being asked?\n'
@@ -457,7 +459,7 @@ class AmniAgent:
         _m=re.search(r"\b(?:top\s+)?news(?:\s+about|\s+on|\s+regarding)?\s+([\w\s\-]{2,60})\??$|\bwhat'?s\s+(?:happening|new)\s+(?:in|with|about)\s+([\w\s\-]{2,60})\??$",msg,re.IGNORECASE)
         if _m and self.skills.has('news'):return ('news',{'query':(_m.group(1) or _m.group(2) or '').strip(' ?.,!')})
         _m=re.search(r"\b(?:stock|share|quote)\s+(?:price\s+)?(?:for|of)?\s*\$?([A-Z]{1,5}(?:[,\s]+[A-Z]{1,5}){0,5})\b",msg,re.IGNORECASE)
-        if _m and self.skills.has('stock'):return ('stock',{'symbols':re.sub(r'\s+',',',_m.group(1).upper())})
+        if _m and self.skills.has('stock') and re.split(r'[,\s]+',_m.group(1))[0].lower() not in _CHART_STOP:return ('stock',{'symbols':re.sub(r'\s+',',',_m.group(1).upper())})
         if self.skills.has('stock'):
             from amni.serve.skills import ticker_intent as _tick
             _ti=_tick(msg)
@@ -582,13 +584,14 @@ class AmniAgent:
         if m and self.skills.has('code_edit'):
             find_m=re.search(r"(?:replace|change|find)\s+[\"'`]([^\"'`]+)[\"'`]\s+(?:with|to)\s+[\"'`]([^\"'`]+)[\"'`]",msg,re.IGNORECASE)
             if find_m:return ('code_edit',{'path':m.group(1),'find':find_m.group(1),'replace':find_m.group(2)})
-        m=_SCAN_RE.search(msg)
-        if m and self.skills.has('scan'):
-            args={'path':m.group(1)}
+        m=_SCAN_RE.search(msg);_sp=m.group(1).rstrip(',!?') if m else '';_kd=_SCAN_KNOWN_RE.search(msg) if m else None
+        _sp=os.path.expanduser(_sp) if _SCAN_PATH_RE.search(_sp) else (str(Path.home()/('' if (_kd.group(1) or _kd.group(2)).lower()=='home' else (_kd.group(1) or _kd.group(2)).capitalize())) if _kd else '')
+        if _sp and self.skills.has('scan'):
+            args={'path':_sp}
             if 'distill' in msg.lower() or 'distilled' in msg.lower():args['distill']=True
             return ('scan',args)
-        m=_SHELL_RE.search(msg)
-        if m and self.skills.has('shell'):return ('shell',{'cmd':m.group(1).strip()})
+        m=_SHELL_RE.search(msg);_cmd=re.sub(r'(?i)\s+(?:in|on|under)\s+(?:my\s+|the\s+)?home(?:\s+(?:dir|directory|folder))?\s*[?.!]*$',' '+str(Path.home()),m.group(1).strip()) if m else ''
+        if m and self.skills.has('shell') and ('`' in m.group(0) or (_cmd.split() or [''])[0].lower() in _SHELL_ALLOW|{x.strip().lower() for x in os.environ.get('AMNI_SHELL_EXTRA_ALLOW','').split(',') if x.strip()}):return ('shell',{'cmd':_cmd})
         try:
             from amni.serve import intent_classifier as _ic_mod
             _ic=_ic_mod._GLOBAL
@@ -619,34 +622,35 @@ class AmniAgent:
             return (o.get('corrected_answer') or '').strip() if o.get('is_correction') and (o.get('corrected_answer') or '').strip() else None
         except Exception:return None
     def _trading_turn(self,message,conv,brief,t0):
-        from amni.serve.skills import options_command as _optcmd,chart_command as _chcmd,_extract_ticker as _extk,_fmt_options as _optfmt,_CHART_STOP as _stop,ticker_intent as _tick,_TICKER_XSTOP as _xstop
+        from amni.serve.skills import options_command as _optcmd,chart_command as _chcmd,_fmt_options as _optfmt,_CHART_STOP as _stop,ticker_intent as _tick,_TICKER_XSTOP as _xstop
         sid=conv.session_id;persona=self.personas.for_session(sid) if self.use_persona else _PERSONA_PRESETS['neutral']
         if re.search(r"(?i)\b(weather|forecast|temperature|humidity|raining|snowing|umbrella|sunny|cloudy|degrees|celsius|fahrenheit)\b",message) and not re.search(r"(?i)[\$]|\b(option|opt|call|put|strike|spread|chart|ticker|stock|share|azno|p-?term|reversal|calls?|puts?)\b",message):return None
         _oc=_optcmd(message);_ch=_chcmd(message);active=self._active_sym.get(sid)
-        _tr=re.search(r"(?i)\b(buy|sell|bull|bear|bullish|bearish|calls?|puts?|option|opt|opts|signal|reversal|p-?term|target|entry|exit|position|long|longer|short|trade|trading|strike|expiry|spread|hit-?rate|swing|leaps?|scalp|intraday|weekly|chart|plot|graph|ticker|stocks?|shares?|azno|invest|market|price\s+action|overview)\b",message)
+        _tr=re.search(r"(?i)\b(buy|sell|bull|bear|bullish|bearish|calls?|puts?|option|opt|opts|signal|reversal|p-?term|target|entry|exit|position|(?<!how\s)long|longer|short|trade|trading|strike|expiry|spread|hit-?rate|swing|leaps?|scalp|intraday|weekly|chart|plot|graph|ticker|stocks?|shares?|azno|invest|market|price\s+action|overview)\b",message)
         _dollar=re.search(r"\$([A-Za-z]{1,5})\b",message)
         if _PORTF_RE.search(message) and not _dollar and not re.search(r'\b[A-Z]{2,5}\b',message):return None
         _follow=bool(active) and bool(re.search(r"(?i)\b(it|this|that|now|look|looking|think|thoughts?|how'?s\s+(?:it|this|that)|what\s+about|still|update|moving|move|worth|enter|good|bad)\b",message))
         _bw=_BARE_TICK_RE.fullmatch(message.strip())
         _bare=_bw.group(2).upper() if _bw and (_bw.group(1) or _bw.group(2).isupper() or active) and _bw.group(2).upper() not in _xstop and _bw.group(2).lower() not in _stop else None
-        _ti=_tick(message)
-        if not (_oc or _ch or _tr or _dollar or _follow or _ti or _bare):return None
+        _ti=_tick(message);_look=re.search(r"(?i:\bhow(?:'s|\s+is|\s+are))\s+\$?([A-Z]{2,5})\s+(?i:looking|doing|moving|trending|setting\s+up)\b",message);_look=_look if (_look and _look.group(1) not in _xstop and _look.group(1).lower() not in _stop) else None
+        _az=re.search(r"(?i)\b(?:azno|p-?term|tickers?|symbols?|options?|opts?)\b",message);_lo=re.search(r"(?i)\b(?:azno|p-?term|read|signal|chart|options?|opts?|calls?|puts?)\s+(?:on|for|of|about)\s+\$?([a-z]{1,5})\b|\b(?:ticker|symbol)[\s:]+\$?([a-z]{1,5})\b",message) if _az else None;_lo=(_lo.group(1) or _lo.group(2)).upper() if _lo else None;_lo=_lo if (_lo and _lo not in _xstop and _lo.lower() not in _stop) else None
+        if not (_oc or _ch or _tr or _dollar or _follow or _ti or _bare or _look):return None
         want_chart=bool(_ch) or bool(_ti and re.search(r"(?i)\b\d+\s?(?:m|min|h|hr|hour|d|day|w|wk)\b",message)) or bool(re.search(r"(?i)\b(chart|plot|graph|show\s+me|pull\s+up|send)\b",message))
         _overview=bool(re.search(r"(?i)\b(overview|all\s+(?:the\s+)?(?:time\s?frames?|tfs?|horizons?)|multi[\s-]?(?:tf|time|frame)|across\s+(?:time|frames?|horizons?)|short\s+and\s+long|full\s+picture|every\s+time\s?frame|big\s+picture)\b",message))
-        _et=_extk(message);_et=_et if (_et and _et not in _xstop) else None;_up=next((w for w in re.findall(r"\b([A-Z]{2,5})\b",message) if w.lower() not in _stop and w not in _xstop),None);tk=None
+        _up=next((w for w in re.findall(r"\b([A-Z]{2,5})\b",message) if w.lower() not in _stop and w not in _xstop),None);tk=None
         if _dollar:tk=_dollar.group(1).upper()
         elif _bare:tk=_bare
         elif _up:tk=_up
         elif _oc:tk=_oc[0]
         elif _ch and _ch[0]:tk=_ch[0]
-        elif _tr and _et:tk=_et
         elif _ti:tk=_ti[0]
-        elif active:tk=active[0]
-        elif _et:tk=_et
-        if not tk and re.search(r"(?i)\b(meant|mean|correction|actually|ticker|symbol|stocks?|shares?|company)\b",message):
+        elif _lo:tk=_lo
+        elif active and (_follow or _az or (_tr and not re.fullmatch(r"(?i)long|longer|short|intraday|weekly|stocks?|shares?|invest|market|price\s+action|overview",_tr.group(1)))):tk=active[0]
+        if not tk and re.search(r"(?i)\b(meant|mean|correction|actually|ticker|symbol)\b",message):
             for _hm in reversed([_t.get('content') or '' for _t in conv.turns[:-1] if _t.get('role')=='user'][-4:]):
                 _hti=_tick(_hm);_hc=_hti[0] if _hti else next((w for w in re.findall(r'\b([A-Z]{2,5})\b',_hm) if w not in _xstop and w.lower() not in _stop),None)
                 if _hc:tk=_hc;break
+        if not tk and not _az:return None
         if not tk:
             _ask=tone_atlas.wrap("Which ticker are you eyeing? Send me a symbol like TSLA or NVDA and I'll pull the Azno read.",'introspect',persona,seed=message)
             conv.append('assistant',_ask,{'tier':'tier0_azno_ask','persona':persona.name})
@@ -756,7 +760,7 @@ class AmniAgent:
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)
                     skill_images=list((r.output or {}).get('images') or []) if isinstance(r.output,dict) else []
-                    used_tier=f'tier0_skill_{name}'
+                    used_tier=f'tier0_skill_{name}' if skill_answer is not None else used_tier
                 else:
                     try:
                         from amni.serve.skill_failures import record as _sfrec
@@ -948,7 +952,7 @@ class AmniAgent:
             try:self.atlas.record(conv.session_id,message,wrapped,is_personal=is_private)
             except Exception as e:print(f'[AmniAgent] atlas record failed: {e}',flush=True)
         return {'answer':wrapped,'tier':tier,'tokens':tokens,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':category,'is_private':is_private}
-    def _format_skill_output(self,name:str,out:Any)->str:
+    def _format_skill_output(self,name:str,out:Any)->Optional[str]:
         if name=='image_gen':return f"🎨 I couldn't paint that one — {out.get('error')}" if (not isinstance(out,dict) or out.get('error') or not out.get('images')) else (out.get('summary') or f'🎨 generated an image for: {out.get("prompt","your prompt")}')+' — sending it your way!'
         if name=='time':return f'currently {out.get("iso")} local time'
         if name=='calc':return f'{out.get("value")}' if out.get('value') is not None else f'(calc error: {out.get("error")})'
@@ -1175,7 +1179,7 @@ class AmniAgent:
         if isinstance(out,dict) and 'widget' in out:
             _wd=out.get('widget') or {};_t=str(_wd.get('title') or name).strip()
             return out.get('summary') or out.get('text') or out.get('message') or f'Pulled your {_t.lower()} — details are in the card above.'
-        return json.dumps(out,default=str)[:1000]
+        return None if (isinstance(out,dict) and out.get('error')) else json.dumps(out,default=str)[:1000]
     def _introspect_answer(self,persona:Optional[Persona]=None)->str:
         skills=[s['name'] for s in self.list_skills()]
         n=len(self.adam.sem_lut._raw) if hasattr(self.adam,'sem_lut') and self.adam.sem_lut is not None else 0

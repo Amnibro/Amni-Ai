@@ -12,24 +12,26 @@ def _safe_get(url:str,timeout:float=4.0,headers:Optional[Dict[str,str]]=None)->O
             if 'json' in ct:return json.loads(raw)
             return {'_raw':raw}
     except Exception as e:return {'_error':str(e)[:200]}
+_WX_TRAIL=re.compile(r"(?:\s+|,\s*)(?:in\s+(?:the\s+)?(?:fahrenheit|celsius|metric|imperial)|(?:in|for|during)\s+(?:early\s+|late\s+|mid\s+)?(?:jan(?:uary)?|feb(?:ruary)?|march|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)|(?:this|next)\s+(?:week(?:end)?|month|morning|afternoon|evening)|right\s+now|fahrenheit|farenheit|celsius|hourly|daily|weekly|forecast|today|tonight|tomorrow|now|currently|temps?|temperature|radar|°\s*[fc])\s*[?.!]*$",re.IGNORECASE)
+_CC_ALIAS={'uk':'gb','u.k':'gb','england':'gb','britain':'gb','great britain':'gb','usa':'us','u.s':'us','u.s.a':'us','united states':'us','america':'us'}
+def _geo_match(r:Dict[str,Any],reg:str)->bool:
+    rl=reg.strip().lower().rstrip('.');a1=(r.get('admin1') or '').lower();cc=(r.get('country_code') or '').lower()
+    return bool(rl) and (rl in (a1,(r.get('country') or '').lower(),cc) or _US_ST.get(a1,'').lower()==rl or _CC_ALIAS.get(rl)==cc)
 def _geocode(query:str)->Optional[Dict[str,Any]]:
     if not query:return None
     from urllib.parse import quote
-    q=query.strip();toks=q.split();cands=[q]
-    parts=[p.strip() for p in re.split(r'[,/]',q) if p.strip()]
-    if parts and parts[0]!=q:cands.append(parts[0])
-    if len(toks)>=2 and toks[-1].isalpha() and len(toks[-1])==2:cands.append(' '.join(toks[:-1]))
-    if toks and toks[0] not in cands:cands.append(toks[0])
+    q=query.strip(' ?.!,')
+    for _ in range(4):q=_WX_TRAIL.sub('',q).strip(' ?.!,')
+    parts=[p.strip() for p in re.split(r'[,/]',q) if p.strip()];toks=q.replace(',',' ').split();low=' '.join(toks).lower();_codes={v.lower() for v in _US_ST.values()}
+    cands=([(parts[0],' '.join(parts[1:]))] if len(parts)>1 else [])+[(' '.join(toks[:-len(n.split())]),n) for n in sorted(_US_ST,key=len,reverse=True) if len(toks)>len(n.split()) and low.endswith(' '+n)]+([(' '.join(toks[:-1]),toks[-1])] if len(toks)>=2 and toks[-1].lower() in _codes else [])+[(' '.join(toks),'')]+[(' '.join(toks[:-k]),' '.join(toks[-k:])) for k in (1,2) if len(toks)>k]
     seen=set()
-    for c in cands:
-        cl=c.lower().strip()
-        if not cl or cl in seen:continue
-        seen.add(cl)
-        j=_safe_get(f'https://geocoding-api.open-meteo.com/v1/search?name={quote(c)}&count=1&language=en&format=json',timeout=4.0)
-        if not j or j.get('_error'):continue
-        results=j.get('results') or []
-        if not results:continue
-        r=results[0]
+    for pl,rg in cands:
+        k=(pl.lower(),rg.lower())
+        if not pl or k in seen:continue
+        seen.add(k)
+        j=_safe_get(f'https://geocoding-api.open-meteo.com/v1/search?name={quote(pl)}&count={100 if rg else 1}&language=en&format=json',timeout=4.0)
+        r=next((x for x in ((j or {}).get('results') or []) if not rg or _geo_match(x,rg)),None) if (j and not j.get('_error')) else None
+        if r is None:continue
         return {'lat':r.get('latitude'),'lon':r.get('longitude'),'name':r.get('name'),'country':r.get('country'),'admin1':r.get('admin1'),'cc':r.get('country_code'),'tz':r.get('timezone')}
     return None
 _US_ST={'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA','colorado':'CO','connecticut':'CT','delaware':'DE','district of columbia':'DC','florida':'FL','georgia':'GA','hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD','massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO','montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT','virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY'}
