@@ -8,6 +8,7 @@
 @group(0) @binding(7) var sidt: texture_2d_array<u32>;
 @group(0) @binding(8) var<storage, read_write> fa: array<atomic<u32>>;
 @group(0) @binding(9) var<storage, read_write> best: array<atomic<u32>>;
+@group(0) @binding(10) var<storage, read> cpb: array<i32>;
 fn fadd(i: u32, v: f32) {
     let x = fx(v);
     if (x.x == 0u && x.y == 0u) { return; }
@@ -29,6 +30,7 @@ fn slots(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) 
     let e = pi[j];
     let u = cnt[l * TE + e];
     let q = j / (LV * 4u);
+    if (COPY > 0u && l >= C0 && l < HB) { let cb = cpb[q * COPY + l - C0]; if (cb >= 0) { fadd(u * 6u, CG * pw[j] * dl[q * 256u + u32(cb)]); } return; }
     let id = textureLoad(sidt, tx(e), l, 0).x;
     let y = (xy[q] >> 8u) & 255u;
     var miss = true;

@@ -38,6 +38,7 @@ dependencies = [
 name = "adam-train"
 version = "0.1.0"
 dependencies = [
+ "adam-qa",
  "adam-ray",
  "bytemuck",
  "half",

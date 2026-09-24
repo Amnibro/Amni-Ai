@@ -1,12 +1,12 @@
-use crate::{cfg::*, cpu::sid0, Engine, Part};
-use adam_ray::{gpu::{common_wgsl, device}, pack::lexicon};
+use crate::{cfg::*, cpu::sid0, v19::Drv19, Engine, Part};
+use adam_ray::{gpu::{common_wgsl, device}, pack::{lexicon, Lex}};
 use std::{cell::RefCell, collections::HashMap};
 use wgpu::*;
 const CH: u64 = 32 << 20;
 enum R<'a> { T(&'a TextureView, TextureSampleType, TextureViewDimension), S(&'a TextureView, TextureFormat, TextureViewDimension), B(&'a Buffer, bool) }
 struct Tx { dp: Texture, sid: Texture, sw: Texture, bi: Texture }
 struct Prof { qs: QuerySet, rs: Buffer, rb: Buffer, nm: RefCell<Vec<&'static str>>, acc: RefCell<HashMap<&'static str, (f64, u32)>> }
-pub struct Gpu { c: Cfg, dev: Device, q: Queue, name: String, tx: Tx, b: HashMap<&'static str, Buffer>, p: HashMap<&'static str, (ComputePipeline, BindGroup)>, rows: u32, pf: Option<Prof> }
+pub struct Gpu { c: Cfg, dev: Device, q: Queue, name: String, tx: Tx, b: HashMap<&'static str, Buffer>, p: HashMap<&'static str, (ComputePipeline, BindGroup)>, rows: u32, pf: Option<Prof>, d19: Option<(Drv19, Lex, Vec<u32>, Vec<f32>, Vec<i32>)> }
 fn pc(v: [u32; 12]) -> Vec<u8> { bytemuck::cast_slice(&v).to_vec() }
 impl Gpu {
     pub fn new(c: &Cfg) -> Result<Gpu, String> {
@@ -26,7 +26,7 @@ impl Gpu {
         (0..lv as u32).for_each(|l| wt(&tx.sid, l, 4096, rows, 4, bytemuck::cast_slice(&init)));
         let mut b = HashMap::new();
         let (st, cs, cd) = (BufferUsages::STORAGE, BufferUsages::COPY_SRC, BufferUsages::COPY_DST);
-        for (k, n, u) in [("xy", npos, st | cd), ("stb", npos * 40, st), ("pi", m, st | cd), ("pw", m, st | cd), ("uk", m, st), ("ud", 2 * DE, st), ("ga", m * 6, st), ("best", m, st), ("dg", (V + DE) * V * 2, st), ("cnt", lv * te, st), ("ctr", 4, st | cd), ("ag", 6, st | BufferUsages::INDIRECT), ("dl", npos * V, st | cs), ("pl", npos, st | cs), ("lq", 2 * lv, st | cs | cd), ("dm", 2 * DE * V, st | cs), ("dv", 2 * DE * V, st | cs), ("sm", lv * te * KS, st | cs), ("sv", lv * te * KS, st | cs), ("bp", npos.div_ceil(V) * V, st), ("rd", (CH / 4) as usize, BufferUsages::MAP_READ | cd)] {
+        for (k, n, u) in [("xy", npos, st | cd), ("stb", npos * 40, st), ("pi", m, st | cd), ("pw", m, st | cd), ("uk", m, st), ("ud", 2 * DE, st), ("ga", m * 6, st), ("best", m, st), ("dg", (V + DE) * V * 2, st), ("cnt", lv * te, st), ("ctr", 4, st | cd), ("ag", 6, st | BufferUsages::INDIRECT), ("dl", npos * V, st | cs), ("pl", npos, st | cs), ("cpb", npos * c.copy.max(1), st | cd), ("lq", 2 * lv, st | cs | cd), ("dm", 2 * DE * V, st | cs), ("dv", 2 * DE * V, st | cs), ("sm", lv * te * KS, st | cs), ("sv", lv * te * KS, st | cs), ("bp", npos.div_ceil(V) * V, st), ("rd", (CH / 4) as usize, BufferUsages::MAP_READ | cd)] {
             b.insert(k, dev.create_buffer(&BufferDescriptor { label: Some(k), size: (n * 4) as u64, usage: u, mapped_at_creation: false }));
         }
         let fl = |t: &Texture, d: TextureViewDimension| t.create_view(&TextureViewDescriptor { dimension: Some(d), ..Default::default() });
@@ -34,17 +34,17 @@ impl Gpu {
         let (vdp, vsid, vsw, vbi, vlex, vtrg) = (fl(&tx.dp, d2), fl(&tx.sid, a2), fl(&tx.sw, a2), fl(&tx.bi, d2), fl(&lex, d2), fl(&trg, d2));
         let (tf, tu) = (TextureSampleType::Float { filterable: false }, TextureSampleType::Uint);
         let f = |x: f32| format!("{x:?}f");
-        let head = include_str!("wgsl/head.wgsl").replace("$LV", &lv.to_string()).replace("$HOPS", &c.geo.hops.to_string()).replace("$TERN", &c.tern.to_string()).replace("$QLEV", &c.qlev.to_string()).replace("$TT", &f(c.tern_th)).replace("$SG", &c.sgrid.to_string()).replace("$SLO", &f(c.slo)).replace("$SHI", &f(c.shi)).replace("$RTH", &f(c.rth)).replace("$RW", &f(c.rw)).replace("$WD", &f(c.wd));
+        let head = include_str!("wgsl/head.wgsl").replace("$LV", &lv.to_string()).replace("$HOPS", &c.geo.hops.to_string()).replace("$TERN", &c.tern.to_string()).replace("$QLEV", &c.qlev.to_string()).replace("$TT", &f(c.tern_th)).replace("$SG", &c.sgrid.to_string()).replace("$SLO", &f(c.slo)).replace("$SHI", &f(c.shi)).replace("$RTH", &f(c.rth)).replace("$RW", &f(c.rw)).replace("$WD", &f(c.wd)).replace("$COPY", &c.copy.to_string());
         let bb = |k: &str| &b[k];
         let (ro, rw) = (|k: &'static str| R::B(bb(k), true), |k: &'static str| R::B(bb(k), false));
         let specs: Vec<(&'static str, &str, &str, Vec<(u32, R)>)> = vec![
             ("state", include_str!("wgsl/drv.wgsl"), "state", vec![(0, R::T(&vlex, tu, d2)), (1, R::T(&vtrg, tf, d2)), (2, ro("xy")), (3, rw("stb"))]),
             ("plans", include_str!("wgsl/drv.wgsl"), "plans", vec![(3, rw("stb")), (4, rw("pi")), (5, rw("pw"))]),
-            ("fwd", include_str!("wgsl/fwd.wgsl"), "main", vec![(0, R::T(&vdp, tf, d2)), (1, R::T(&vsid, tu, a2)), (2, R::T(&vsw, tf, a2)), (3, R::T(&vbi, tf, d2)), (4, ro("lq")), (5, ro("xy")), (6, rw("pi")), (7, rw("pw")), (8, rw("dl")), (9, rw("pl"))]),
+            ("fwd", include_str!("wgsl/fwd.wgsl"), "main", vec![(0, R::T(&vdp, tf, d2)), (1, R::T(&vsid, tu, a2)), (2, R::T(&vsw, tf, a2)), (3, R::T(&vbi, tf, d2)), (4, ro("lq")), (5, ro("xy")), (6, rw("pi")), (7, rw("pw")), (8, rw("dl")), (9, rw("pl")), (10, ro("cpb"))]),
             ("hist", include_str!("wgsl/hist.wgsl"), "main", vec![(0, ro("pi")), (1, ro("pw")), (2, rw("cnt")), (3, rw("uk")), (4, rw("ud")), (5, rw("ctr"))]),
             ("args", include_str!("wgsl/args.wgsl"), "main", vec![(0, ro("ctr")), (1, rw("ag"))]),
             ("umap", include_str!("wgsl/acc.wgsl"), "umap", vec![(0, ro("ctr")), (1, ro("uk")), (2, rw("cnt"))]),
-            ("slots", include_str!("wgsl/acc.wgsl"), "slots", vec![(2, rw("cnt")), (3, ro("pi")), (4, ro("pw")), (5, ro("dl")), (6, ro("xy")), (7, R::T(&vsid, tu, a2)), (8, rw("ga")), (9, rw("best"))]),
+            ("slots", include_str!("wgsl/acc.wgsl"), "slots", vec![(2, rw("cnt")), (3, ro("pi")), (4, ro("pw")), (5, ro("dl")), (6, ro("xy")), (7, R::T(&vsid, tu, a2)), (8, rw("ga")), (9, rw("best")), (10, ro("cpb"))]),
             ("dacc", include_str!("wgsl/acc.wgsl"), "dense", vec![(3, ro("pi")), (4, ro("pw")), (5, ro("dl")), (8, rw("dg"))]),
             ("dense", include_str!("wgsl/dense.wgsl"), "main", vec![(0, R::S(&vdp, TextureFormat::R32Float, d2)), (1, rw("dm")), (2, rw("dv")), (3, ro("ctr")), (4, ro("ud")), (5, ro("uk")), (6, rw("dg")), (7, rw("cnt"))]),
             ("slot", include_str!("wgsl/slot.wgsl"), "main", vec![(0, R::S(&vsid, TextureFormat::R32Uint, a2)), (1, R::S(&vsw, TextureFormat::R32Float, a2)), (2, rw("sm")), (3, rw("sv")), (4, ro("ctr")), (5, ro("uk")), (6, rw("ga")), (7, rw("best")), (8, ro("xy")), (9, rw("cnt"))]),
@@ -65,7 +65,8 @@ impl Gpu {
             p.insert(k, (pipe, bg));
         }
         let pf = pon.then(|| Prof { qs: dev.create_query_set(&QuerySetDescriptor { label: None, ty: QueryType::Timestamp, count: 64 }), rs: dev.create_buffer(&BufferDescriptor { label: None, size: 512, usage: BufferUsages::QUERY_RESOLVE | BufferUsages::COPY_SRC, mapped_at_creation: false }), rb: dev.create_buffer(&BufferDescriptor { label: None, size: 512, usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST, mapped_at_creation: false }), nm: RefCell::new(vec![]), acc: RefCell::new(HashMap::new()) });
-        Ok(Gpu { c: c.clone(), dev, q, name, tx, b, p, rows, pf })
+        let d19 = (c.ver == 19).then(|| (Drv19::new(c.bs), lx, vec![], vec![], vec![]));
+        Ok(Gpu { c: c.clone(), dev, q, name, tx, b, p, rows, pf, d19 })
     }
     fn mark(&self, ps: &mut ComputePass, k: &'static str) { if let Some(f) = &self.pf { let mut n = f.nm.borrow_mut(); ps.write_timestamp(&f.qs, n.len() as u32); n.push(k); } }
     fn go(&self, ps: &mut ComputePass, k: &'static str, pcs: &[u8]) { self.mark(ps, k); let (pp, bg) = &self.p[k]; ps.set_pipeline(pp); ps.set_bind_group(0, bg, &[]); ps.set_push_constants(0, pcs); }
@@ -107,16 +108,23 @@ impl Gpu {
         let (nm, mut acc, per) = (f.nm.take(), f.acc.borrow_mut(), self.q.get_timestamp_period() as f64 * 1e-6);
         (0..nm.len().saturating_sub(1)).filter(|&i| !nm[i].is_empty()).for_each(|i| { let e = acc.entry(nm[i]).or_insert((0.0, 0)); e.0 += ts[i + 1].saturating_sub(ts[i]) as f64 * per; e.1 += 1; });
     }
-    fn fwd(&self, x: &[u8], y: &[u8], nb: usize, t: usize, salt: u32, mode: u32) -> CommandEncoder {
-        let n = nb * t;
+    fn fwd(&mut self, x: &[u8], y: &[u8], nb: usize, t: usize, salt: u32, mode: u32) -> CommandEncoder {
+        let (n, lv, cp) = (nb * t, self.c.lv, self.c.copy.max(1));
         self.q.write_buffer(&self.b["xy"], 0, bytemuck::cast_slice(&x.iter().zip(y).map(|(&a, &b)| a as u32 | (b as u32) << 8).collect::<Vec<u32>>()));
+        if let Some((d, lx, pi, pw, cpb)) = self.d19.as_mut() {
+            (pi.len() < n * lv * 4).then(|| { pi.resize(n * lv * 4, 0); pw.resize(n * lv * 4, 0.0); cpb.resize(n * cp, -1); });
+            d.run(&self.c, lx, x, t, salt, &mut pi[..n * lv * 4], &mut pw[..n * lv * 4], &mut cpb[..n * cp]);
+            [("pi", bytemuck::cast_slice::<u32, u8>(&pi[..n * lv * 4])), ("pw", bytemuck::cast_slice(&pw[..n * lv * 4])), ("cpb", bytemuck::cast_slice(&cpb[..n * cp]))].iter().for_each(|(k, v)| self.q.write_buffer(&self.b[k], 0, v));
+        }
         let mut enc = self.dev.create_command_encoder(&CommandEncoderDescriptor { label: None });
-        ["pi", "pw"].iter().for_each(|k| enc.clear_buffer(&self.b[k], 0, Some((n * self.c.lv * 16) as u64)));
+        (self.d19.is_none()).then(|| ["pi", "pw"].iter().for_each(|k| enc.clear_buffer(&self.b[k], 0, Some((n * lv * 16) as u64))));
         {
             let mut ps = enc.begin_compute_pass(&ComputePassDescriptor { label: None, timestamp_writes: None });
-            self.go(&mut ps, "state", &pc([nb as u32, t as u32, salt, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
-            ps.dispatch_workgroups(nb.div_ceil(64) as u32, 1, 1);
-            self.flat(&mut ps, "plans", &pc([n as u32, t as u32, salt, 0, 0, 0, 0, 0, 0, 0, 0, 0]), n.div_ceil(256));
+            if self.d19.is_none() {
+                self.go(&mut ps, "state", &pc([nb as u32, t as u32, salt, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+                ps.dispatch_workgroups(nb.div_ceil(64) as u32, 1, 1);
+                self.flat(&mut ps, "plans", &pc([n as u32, t as u32, salt, 0, 0, 0, 0, 0, 0, 0, 0, 0]), n.div_ceil(256));
+            }
             self.flat(&mut ps, "fwd", &pc([n as u32, t as u32, salt, mode, 0, 0, 0, 0, 0, 0, 0, 0]), n);
             self.mark(&mut ps, "");
         }

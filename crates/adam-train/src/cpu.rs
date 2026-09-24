@@ -1,8 +1,8 @@
-use crate::{cfg::*, Engine, Part};
+use crate::{cfg::*, v19::{Drv19, CG}, Engine, Part};
 use adam_ray::{cpu::{hop, init, plan, top3, update}, pack::{lexicon, Lex}};
 use rayon::prelude::*;
 pub struct Tab { pub dp: Vec<f32>, pub dm: Vec<f32>, pub dv: Vec<f32>, pub sid: Vec<u8>, pub sw: Vec<f32>, pub sm: Vec<f32>, pub sv: Vec<f32>, pub bias: Vec<f32>, pub lq: Vec<f32> }
-pub struct Cpu { pub c: Cfg, pub lx: Lex, pub t: Tab, pi: Vec<u32>, pw: Vec<f32>, lg: Vec<f32> }
+pub struct Cpu { pub c: Cfg, pub lx: Lex, pub t: Tab, pi: Vec<u32>, pw: Vec<f32>, lg: Vec<f32>, cpb: Vec<i32>, pub d19: Option<Drv19> }
 #[derive(Clone, Copy)]
 struct P<T>(*mut T);
 unsafe impl<T> Send for P<T> {}
@@ -33,17 +33,23 @@ pub fn drivers(c: &Cfg, lx: &Lex, x: &[u8], t: usize, salt: u32, pi: &mut [u32],
 impl Cpu {
     pub fn new(c: &Cfg) -> Cpu {
         let (n, lv) = (c.lv * c.te, c.lv);
-        Cpu { lx: lexicon(&c.syn, c.geo.qt.then_some(c.wcnt.as_str())), t: Tab { dp: vec![0.0; 2 * DE * V], dm: vec![0.0; 2 * DE * V], dv: vec![0.0; 2 * DE * V], sid: sid0(n), sw: vec![0.0; n * KS], sm: vec![0.0; n * KS], sv: vec![0.0; n * KS], bias: vec![0.0; V], lq: vec![0.0; 2 * lv] }, c: c.clone(), pi: vec![], pw: vec![], lg: vec![] }
+        Cpu { lx: lexicon(&c.syn, c.geo.qt.then_some(c.wcnt.as_str())), t: Tab { dp: vec![0.0; 2 * DE * V], dm: vec![0.0; 2 * DE * V], dv: vec![0.0; 2 * DE * V], sid: sid0(n), sw: vec![0.0; n * KS], sm: vec![0.0; n * KS], sv: vec![0.0; n * KS], bias: vec![0.0; V], lq: vec![0.0; 2 * lv] }, c: c.clone(), pi: vec![], pw: vec![], lg: vec![], cpb: vec![], d19: (c.ver == 19).then(|| Drv19::new(c.bs)) }
     }
     fn forward(&mut self, n: usize, y: &[u8], mode: u32, salt: u32) -> Vec<f32> {
-        let (c, t, lv, te, hb, mut g) = (&self.c, &self.t, self.c.lv, self.c.te, self.c.geo.hb(), self.c.geo.clone());
+        let (c, t, lv, te, hb, c0, cp, mut g) = (&self.c, &self.t, self.c.lv, self.c.te, self.c.geo.hb(), self.c.geo.c0(), self.c.copy, self.c.geo.clone());
         g.salt = salt;
         let mut pl = vec![0f32; n];
+        let cpb = &self.cpb;
         self.lg.par_chunks_mut(V).zip(self.pi.par_chunks_mut(lv * 4)).zip(self.pw.par_chunks_mut(lv * 4)).zip(pl.par_iter_mut()).enumerate().for_each(|(q, (((lg, pi), pw), pl))| {
             let (b1, e1) = (pi[0] as usize, pi[4] as usize);
             (0..V).for_each(|k| lg[k] = t.bias[k] + pw[0] * t.dp[b1 * V + k] + pw[4] * t.dp[(DE + e1) * V + k]);
             let add = |lg: &mut [f32], l: usize, e: usize, w: f32| { let o = (l * te + e) * KS; let v = qw(c, &t.lq, l, &t.sw[o..o + KS]); (0..KS).for_each(|s| lg[t.sid[o + s] as usize] += w * v[s]); };
-            for j in 8..hb * 4 { if pw[j] != 0.0 { add(lg, j / 4, pi[j] as usize, pw[j]); } }
+            for j in 8..c0 * 4 { if pw[j] != 0.0 { add(lg, j / 4, pi[j] as usize, pw[j]); } }
+            for k in 0..cp {
+                let (cb, l) = (cpb[q * cp + k], c0 + k);
+                let w0 = |j: usize| t.sw[(l * te + pi[l * 4 + j] as usize) * KS];
+                if cb >= 0 { lg[cb as usize] += if cp >= 13 { CG * (0..4).fold(0f32, |g, j| g + pw[l * 4 + j] * w0(j)) } else { CG * pw[l * 4] * w0(0) }; }
+            }
             for h in 0..c.geo.hops {
                 let (j, e) = ((hb + h) * 4, hop(&g, top3(lg), b1 as u32, (e1 / 256) as u32, h));
                 (pi[j], pw[j]) = (e, 1.0);
@@ -60,7 +66,7 @@ impl Cpu {
     }
     fn backward(&mut self, n: usize, y: &[u8], it: usize, lr: f32) {
         let (c, lv, te) = (self.c.clone(), self.c.lv, self.c.te);
-        let (pi, pw, d) = (&self.pi, &self.pw, &self.lg);
+        let (pi, pw, d, cpb, c0, cp) = (&self.pi, &self.pw, &self.lg, &self.cpb, self.c.geo.c0(), self.c.copy);
         let mut ks: Vec<(u32, u32)> = (0..n * lv * 4).into_par_iter().filter(|&j| pw[j] != 0.0).map(|j| (((j / 4 % lv) * te) as u32 + pi[j], j as u32)).collect();
         ks.par_sort_unstable_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)));
         let mut seg: Vec<usize> = (0..ks.len()).into_par_iter().filter(|&i| i == 0 || ks[i].0 != ks[i - 1].0).collect();
@@ -86,7 +92,8 @@ impl Cpu {
             let o = key * KS;
             let ids: [u8; 3] = std::array::from_fn(|s| *sid.at(o + s));
             let mut ga = [0f32; 3];
-            js.iter().for_each(|&(_, j)| { let (q, w) = (j as usize / (lv * 4), pw[j as usize]); (0..KS).for_each(|s| ga[s] += w * d[q * V + ids[s] as usize]); });
+            let cpy = (c0..c0 + cp).contains(&l);
+            js.iter().for_each(|&(_, j)| { let (q, w) = (j as usize / (lv * 4), pw[j as usize]); if cpy { let cb = cpb[q * cp + l - c0]; if cb >= 0 { ga[0] += CG * w * d[q * V + cb as usize]; } } else { (0..KS).for_each(|s| ga[s] += w * d[q * V + ids[s] as usize]); } });
             (0..KS).for_each(|s| {
                 let g = ga[s].min(4.0).max(-4.0);
                 let m = b1 * *sm.at(o + s) + (1.0 - b1) * g;
@@ -95,7 +102,7 @@ impl Cpu {
                 let ok = !m.is_nan() && !v.is_nan() && !w.is_nan() && w.abs() < 1e6;
                 (*sm.at(o + s), *sv.at(o + s), *sw.at(o + s)) = if ok { (m, v, w) } else { (0.0, 0.0, 0.0) };
             });
-            if let Some(&(_, j)) = js.iter().find(|&&(_, j)| !ids.contains(&y[j as usize / (lv * 4)])) {
+            if let Some(&(_, j)) = js.iter().find(|&&(_, j)| !cpy && !ids.contains(&y[j as usize / (lv * 4)])) {
                 let (smin, vmin) = (1..KS).fold((0, sw.at(o).abs()), |(b, v), s| if sw.at(o + s).abs() < v { (s, sw.at(o + s).abs()) } else { (b, v) });
                 (vmin < c.rth).then(|| { (*sid.at(o + smin), *sw.at(o + smin), *sm.at(o + smin), *sv.at(o + smin)) = (y[j as usize / (lv * 4)], c.rw, 0.0, 0.0); });
             }
@@ -105,22 +112,26 @@ impl Cpu {
         (0..V).for_each(|k| t.bias[k] -= lr * 0.1 * gb[k]);
     }
 }
+impl Cpu {
+    fn plan(&mut self, x: &[u8], t: usize, salt: u32, n: usize) {
+        let (lv, cp) = (self.c.lv, self.c.copy.max(1));
+        (self.pi.len() < n * lv * 4).then(|| { self.pi.resize(n * lv * 4, 0); self.pw.resize(n * lv * 4, 0.0); self.cpb.resize(n * cp, -1); });
+        (self.lg.len() < n.max(self.c.npos()) * V).then(|| self.lg.resize(n.max(self.c.npos()) * V, 0.0));
+        match self.d19.as_mut() { Some(d) => d.run(&self.c, &self.lx, x, t, salt, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4], &mut self.cpb[..n * cp]), None => drivers(&self.c, &self.lx, x, t, salt, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4]) }
+    }
+}
 impl Engine for Cpu {
     fn run(&mut self, x: &[u8], y: &[u8], nb: usize, t: usize, salt: u32, train: Option<(usize, f32)>) -> f64 {
-        let (n, lv) = (nb * t, self.c.lv);
-        (self.pi.len() < n * lv * 4).then(|| { self.pi.resize(n * lv * 4, 0); self.pw.resize(n * lv * 4, 0.0); });
-        (self.lg.len() < n.max(self.c.npos()) * V).then(|| self.lg.resize(n.max(self.c.npos()) * V, 0.0));
-        drivers(&self.c, &self.lx, x, t, salt, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4]);
+        let n = nb * t;
+        self.plan(x, t, salt, n);
         let pl = self.forward(n, y, if train.is_some() { 0 } else { 1 }, salt);
         let loss = pl.iter().fold(0f32, |a, &b| a + b) as f64 / n as f64;
         if let Some((it, lr)) = train { (self.c.tern > 0 && it % 100 == 1).then(|| self.refresh()); self.backward(n, y, it, lr); }
         loss
     }
     fn logits(&mut self, x: &[u8]) -> Vec<f32> {
-        let (n, lv) = (x.len(), self.c.lv);
-        (self.pi.len() < n * lv * 4).then(|| { self.pi.resize(n * lv * 4, 0); self.pw.resize(n * lv * 4, 0.0); });
-        (self.lg.len() < n * V).then(|| self.lg.resize(n * V, 0.0));
-        drivers(&self.c, &self.lx, x, n, 0, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4]);
+        let n = x.len();
+        self.plan(x, n, 0, n);
         self.forward(n, x, 2, 0);
         self.lg[(n - 1) * V..n * V].to_vec()
     }

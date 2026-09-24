@@ -8,6 +8,7 @@ name = "adam-train"
 path = "src/main.rs"
 [dependencies]
 adam-ray = { workspace = true }
+adam-qa = { workspace = true }
 wgpu = "24"
 pollster = "0.4"
 bytemuck = "1"

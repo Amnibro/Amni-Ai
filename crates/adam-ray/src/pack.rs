@@ -12,13 +12,14 @@ pub const MAXB: usize = 256;
 pub const TW: usize = 4096;
 pub const TOPIC_A: f32 = 0.99;
 #[derive(Clone)]
-pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32 }
+pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize }
 pub struct Lex { pub lex: Vec<[u32; 4]>, pub trig: Vec<[f32; 2]> }
 pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex }
 impl Geo {
-    pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32 } }
+    pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0 } }
     pub fn sl(&self, u: u32, v: u32, l: usize) -> u32 { crate::cpu::hm(u, v, (l as u32 + 1).wrapping_add(self.salt.wrapping_mul(1000003))) % self.t }
-    pub fn hb(&self) -> usize { self.base + 3 * self.qt as usize }
+    pub fn c0(&self) -> usize { self.base + 3 * self.qt as usize }
+    pub fn hb(&self) -> usize { self.c0() + self.copy }
     pub fn lv(&self) -> usize { self.hb() + self.hops }
     pub fn has(&self, l: usize) -> bool { l <= 6 || (l <= 10 && self.base + self.hops >= 12) || (l <= 14 && self.base + self.hops >= 16) || (l <= 16 && self.base >= 18) || (l <= 19 && self.base >= 21) }
 }

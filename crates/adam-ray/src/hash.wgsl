@@ -5,6 +5,7 @@ const QT = $QT;
 const BASE = $BASEu;
 const LVH = $LVHu;
 const HB = $HBu;
+const C0 = $C0u;
 const TA = $TA;
 const TC = $TC;
 const TAU = 6.283185307179586;

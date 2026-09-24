@@ -70,7 +70,7 @@ Storage buffers hold only what the kernel writes: the per-beam driver state (dou
 
 ## Trainer (R2): `adam-train`
 
-`adam-train` replaces `scripts/ray_hash_field_ti_v16.py` and `ray_hash_field_ti_v18.py`. It reads the same environment, samples the same batches (numpy PCG64), and writes the same `exports/gf17_continuum/rayhash_<TAG>{.json,_dp.npy,_sid.npy,_sw.npy,_bias.npy}`. Those files load in `adam_ray`, in the Taichi `RayField`, and in the Taichi trainers (`PAGES=`).
+`adam-train` replaces `scripts/ray_hash_field_ti_v16.py`, `ray_hash_field_ti_v18.py` and the v19c working-memory trainer (`ray_hash_field_ti_v19.py`, parser-fix revision). It reads the same environment, samples the same batches (numpy PCG64), and writes the same `exports/gf17_continuum/rayhash_<TAG>{.json,_dp.npy,_sid.npy,_sw.npy,_bias.npy}`. Those files load in `adam_ray`, in the Taichi `RayField`, and in the Taichi trainers (`PAGES=`).
 
 ```bash
 cd crates && cargo build --release -j 8 -p adam-train
@@ -81,6 +81,8 @@ target/release/adam-train
 ```
 
 - `QT=1` (the default) is v18 with question tori. `QT=0` is v16.
+- `VER=19` is v19c working memory. `COPY=13` gives the relational memory: a 64-entry entity ring, 13 copy candidates and 4-cell gates. `COPY=4` and `COPY=9` give the byte-copy bands.
+  - v19 also brings the byte-30 dialogue reset, the dialogue-start batch sampler, the copy band that skips the ternary quantizer, and the `PAGES_V18` and `PAGES_V19B` warm starts.
 - `ARCH=cpu` runs the CPU reference. Any other value runs wgpu and falls back to the CPU if no adapter is found.
 - Also supported: `SGRID/SLO/SHI`, `MULTI` (salted per corpus), `PAGES` (full warm start), `PAGES_V16` (v16 into v18), `SEED`, `RTH/RW/WD`, `TOPIC_ALPHA`, `GEN_T/GEN_K`.
 - Not supported: `GATE` (it must be 0), the `SLOTS` values other than 3, and the inference-only `DUMP`/`GEN_PROMPT`/`WORDS`/`COUNTS`.
@@ -97,7 +99,8 @@ target/release/adam-train
 |---|---|---|
 | `state` | thread per sequence | the shared byte state machine (`adam-ray/src/state.wgsl::upd`), which writes 40 u32 of state per position |
 | `plans` | thread per position | hashed torus cells, topic taps, question tori (`plan`), written as `[pos][level][4]` (entry, weight) |
-| `fwd` | workgroup per position | bias, dense byte1/byte2, all taps, chained belief hops (tree-merge top-3), then CE, dlogits and loss |
+| v19 driver | CPU, one thread per sequence (`src/v19.rs`) | word/parse events, the memory update and the candidate/gate emit, run sequentially per sequence; the `[pos][level][4]` taps and 13 copy target bytes are uploaded, and the GPU `state`/`plans` passes are skipped |
+| `fwd` | workgroup per position | bias, dense byte1/byte2, all taps, the v19 copy gates (`4·Σ w·sw[slot 0]` added to the target byte), chained belief hops (tree-merge top-3), then CE, dlogits and loss |
 | `hist`, `args`, `umap` | per tap / 1 / per key | unique (level, entry) keys, indirect dispatch sizes, key to slot map |
 | `slots`, `dacc` | per tap / per position | gradient sums as exact 64-bit fixed-point atomics (order-free, so runs are bit-reproducible), plus the replacement candidate `atomicMax` |
 | `dense`, `slot` | per dense key / per slot key | Adam on the dense rows and on slot weights; clip ±4, weight decay and the NaN guard; slot-id replacement (the first miss in Taichi order is the highest tap index) |
@@ -135,3 +138,23 @@ python crates/adam-train/tests/fwd_parity.py <rust _sid.npy>
   - driver FMA contraction;
   - fixed-point gradient sums;
   - argmin ties in slot replacement, which amplify ulp differences.
+
+### v19 parity
+
+```bash
+cd /home/anmire/ai/Amni-Ai
+TI_FAST_MATH=0 TI_ADVANCED_OPTIMIZATION=0 AMNI_HOME=<home holding scripts/ray_hash_field_ti_v19.py> \
+  .venv-linux/bin/python <worktree>/crates/adam-train/tests/v19_drv_ref.py /tmp/v19drv.npz
+cd <worktree>/crates
+ADAM_V19_DRV=/tmp/v19drv.npz ADAM_V19_DUMP=/tmp/v19rust VER=19 COPY=13 LEVELS=21 HOPS=4 QT=1 LOG2_ENTRIES=16 CTX=8192 BS=8 \
+  CORPUS=chat3 SYNSETS=$AMNI_HOME/data/big2/synsets.txt cargo test --release -p adam-train --test v19_drv -- --nocapture
+python3 adam-train/tests/v19_recall.py /tmp/v19rust
+cargo test --release -p adam-train --test v19_probe -- --nocapture
+```
+
+- `v19_drv` compares the Rust driver with the Taichi `drivers` kernel over all 1,000 `data/chat3/hold_eval.jsonl` dialogues:
+  - the IDX, W and CPB plan (CRC per batch);
+  - the entity ring, the candidates and the question state.
+- `v19_recall.py` prints the candidate recall@8 table from either dump.
+- `v19_probe` ports the `probe` and `probe13` asserts of `tests/test_v19_memory.py`.
+- Taichi's v19c CPU compile fits in about 2 GB only with `TI_ADVANCED_OPTIMIZATION=0`. That setting does not change results: the v18 parity stays bit-exact with it.

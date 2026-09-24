@@ -8,6 +8,7 @@
 @group(0) @binding(7) var<storage, read_write> pw: array<f32>;
 @group(0) @binding(8) var<storage, read_write> dl: array<f32>;
 @group(0) @binding(9) var<storage, read_write> pl: array<f32>;
+@group(0) @binding(10) var<storage, read> cpb: array<i32>;
 var<workgroup> tw: array<f32, NT>;
 var<workgroup> tid: array<u32, NT>;
 var<workgroup> tq: array<vec3<f32>, NT>;
@@ -19,6 +20,8 @@ var<workgroup> hid: u32;
 var<workgroup> hq: vec3<f32>;
 var<workgroup> ps: array<f32, 8>;
 var<workgroup> zs: f32;
+var<workgroup> cgv: array<f32, 16>;
+var<workgroup> cbv: array<i32, 16>;
 fn qv(l: u32, w: vec3<f32>) -> vec3<f32> {
     if (TERN == 0u) { return w; }
     let a = abs(w);
@@ -52,6 +55,21 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) c
     let e1 = pi[base + 4u];
     var a = textureLoad(bit, vec2<u32>(c, 0u), 0).x + pw[base] * textureLoad(dpt, dx(b1, c), 0).x + pw[base + 4u] * textureLoad(dpt, dx(DE + e1, c), 0).x;
     for (var k = 0u; k < NT; k++) { let w = tw[k]; if (w != 0.0) { a = hit(tid[k], tq[k], c, a, w); } }
+    if (COPY > 0u) {
+        if (c < COPY) {
+            let cb = cpb[q * COPY + c];
+            let l = C0 + c;
+            let j = base + l * 4u;
+            cbv[c] = cb;
+            if (cb >= 0) {
+                var g = 0.0;
+                for (var i = 0u; i < select(1u, 4u, COPY >= 13u); i++) { g += pw[j + i] * textureLoad(swt, tx(pi[j + i]), l * 3u, 0).x; }
+                cgv[c] = select(CG * pw[j] * textureLoad(swt, tx(pi[j]), l * 3u, 0).x, CG * g, COPY >= 13u);
+            }
+        }
+        workgroupBarrier();
+        for (var k = 0u; k < COPY; k++) { if (cbv[k] == i32(c)) { a += cgv[k]; } }
+    }
     for (var h = 0u; h < HOPS; h++) {
         tv[c] = vec3<f32>(a, -3.4e38, -3.4e38);
         tj[c] = vec3<u32>(c, 0xffffffffu, 0xffffffffu);

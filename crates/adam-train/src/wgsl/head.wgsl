@@ -2,7 +2,9 @@ struct P { n: u32, t: u32, salt: u32, mode: u32, it: u32, lr: f32, c1: f32, c2: 
 var<push_constant> p: P;
 const LV = $LVu;
 const HOPS = $HOPSu;
-const NT = (HB - 2u) * 4u;
+const NT = (C0 - 2u) * 4u;
+const COPY = $COPYu;
+const CG = 4.0;
 const TERN = $TERNu;
 const QLEV = $QLEVu;
 const TT = $TT;
