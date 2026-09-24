@@ -76,14 +76,15 @@ pub fn top3(lg: &[f32]) -> [u32; 3] {
 pub fn hop(g: &Geo, a: [u32; 3], b1: u32, b2: u32, h: usize) -> u32 { let (lo, hi) = (a[0].min(a[1]).min(a[2]), a[0].max(a[1]).max(a[2])); g.sl(hm(hm(lo * 65536 + (a[0] + a[1] + a[2] - lo - hi) * 256 + hi, b1, 97 + h as u32), b2, 103 + h as u32), h as u32, g.base + h) }
 pub fn cell(tb: &Tables, lg: &mut [f32], l: usize, e: u32, w: f32) {
     let c = tb.cells[l * tb.t + e as usize];
-    (0..3).for_each(|s| { let (i, v) = tap(c, s); lg[i] += w * v; });
+    (0..3).for_each(|s| { let (i, v) = tap(c, s, tb.geo.copy > 0); lg[i] += w * v; });
 }
-pub fn logits(tb: &Tables, s: &St, lg: &mut [f32], gt: &[(i32, f32)]) {
+pub fn logits(tb: &Tables, s: &St, lg: &mut [f32], gt: &[(i32, f32)], mt: &[Option<u32>]) {
     let (b1, b2) = (s[0], s[1]);
     let (r1, r2) = (b1 as usize * V, (256 + b2 * 256 + b1) as usize * V);
     (0..V).for_each(|c| lg[c] = tb.bias[c] + f16::from_bits(tb.dp[r1 + c]).to_f32() + f16::from_bits(tb.dp[r2 + c]).to_f32());
     plan(&tb.geo, s).into_iter().for_each(|(l, _, e, w)| cell(tb, lg, l, e, w));
     gt.iter().filter(|g| g.0 >= 0).for_each(|&(b, v)| lg[b as usize] += v);
+    mt.iter().enumerate().for_each(|(i, e)| if let Some(e) = *e { cell(tb, lg, tb.geo.mb() + i, e, crate::v19::MG) });
     (0..tb.geo.hops).for_each(|h| { let e = hop(&tb.geo, top3(lg), b1, b2, h); cell(tb, lg, tb.geo.hb() + h, e, 1.0) });
 }
 pub struct Cpu { pub tb: Tables, st: Vec<St> }
@@ -100,8 +101,8 @@ impl Cpu {
             let (tb, pa, by) = (&self.tb, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb]);
             let sink: Vec<Option<&mut [f32]>> = if w { out[o..o + nb * V].chunks_mut(V).map(Some).collect() } else { (0..nb).map(|_| None).collect() };
             match h.as_deref_mut() {
-                Some(h) => h.step(*cur, pa, by, sink, |d, g, cw, lg| if let Some(lg) = lg { logits(tb, &d.s, lg, &d.gv(g, cw)) }),
-                None => dst[..nb].par_iter_mut().zip(sink).enumerate().with_min_len(4).for_each(|(b, (d, lg))| { *d = update(&tb.lx, &tb.geo, &src[pa[b] as usize], by[b] as u32); if let Some(lg) = lg { logits(tb, d, lg, &[]) } }),
+                Some(h) => h.step(*cur, pa, by, sink, |d, g, cw, lg| if let Some(lg) = lg { logits(tb, &d.s, lg, &d.gv(g, cw), &d.mtaps(g)) }),
+                None => dst[..nb].par_iter_mut().zip(sink).enumerate().with_min_len(4).for_each(|(b, (d, lg))| { *d = update(&tb.lx, &tb.geo, &src[pa[b] as usize], by[b] as u32); if let Some(lg) = lg { logits(tb, d, lg, &[], &[]) } }),
             }
             o += if w { nb * V } else { 0 };
             *cur = 1 - *cur;

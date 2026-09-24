@@ -1,10 +1,10 @@
 use crate::{cpu, pack::*, v19::Host};
 use wgpu::*;
 const OUTCAP: usize = 64 << 20;
-pub const EX: usize = NS + 26;
+pub const EX: usize = NS + 28;
 pub struct Gpu { dev: Device, q: Queue, pipe: ComputePipeline, bgl: BindGroupLayout, views: Vec<TextureView>, st: Buffer, bufs: Option<(Buffer, Buffer, Buffer, Buffer, BindGroup, usize, usize)>, v19: bool, pub name: String }
 fn mask(f: fn(u32) -> bool) -> String { (0..8).map(|w| format!("{}u", (0..32).fold(0u32, |m, i| m | (f(w * 32 + i) as u32) << i))).collect::<Vec<_>>().join(",") }
-pub fn common_wgsl(g: &Geo, state: bool) -> String { (include_str!("hash.wgsl").to_string() + if state { include_str!("state.wgsl") } else { "" }).replace("$TE", &g.t.to_string()).replace("$QT", &g.qt.to_string()).replace("$BASE", &g.base.to_string()).replace("$LVH", &(g.base + g.hops).to_string()).replace("$HB", &g.hb().to_string()).replace("$C0", &g.c0().to_string()).replace("$TA", &format!("{:?}f", g.ta)).replace("$TC", &format!("{:?}f", g.tc)).replace("$WORD", &mask(cpu::wordch)).replace("$PUNC", &mask(cpu::punct)) }
+pub fn common_wgsl(g: &Geo, state: bool) -> String { (include_str!("hash.wgsl").to_string() + if state { include_str!("state.wgsl") } else { "" }).replace("$TE", &g.t.to_string()).replace("$QT", &g.qt.to_string()).replace("$BASE", &g.base.to_string()).replace("$LVH", &(g.base + g.hops).to_string()).replace("$HB", &g.hb().to_string()).replace("$C0", &g.c0().to_string()).replace("$MB", &g.mb().to_string()).replace("$MR", &g.mr.to_string()).replace("$MG", &format!("{:?}", crate::v19::MG)).replace("$TA", &format!("{:?}f", g.ta)).replace("$TC", &format!("{:?}f", g.tc)).replace("$WORD", &mask(cpu::wordch)).replace("$PUNC", &mask(cpu::punct)) }
 pub fn device(label: &str, extra: Features) -> Result<(Device, Queue, String), String> {
     let inst = Instance::new(&InstanceDescriptor { backends: Backends::PRIMARY, ..Default::default() });
     let pick = std::env::var("ADAM_RAY_ADAPTER").ok().and_then(|n| inst.enumerate_adapters(Backends::PRIMARY).into_iter().find(|a| a.get_info().name.to_lowercase().contains(&n.to_lowercase())));
@@ -66,7 +66,7 @@ impl Gpu {
                 let (mut xb, mut c) = (vec![0u32; (t1 - t0) * nb * EX], *cur);
                 for (t, xr) in (t0..t1).zip(xb.chunks_mut(nb * EX)) {
                     let sink: Vec<Option<&mut [u32]>> = if want[t] { xr.chunks_mut(EX).map(Some).collect() } else { (0..nb).map(|_| None).collect() };
-                    h.step(c, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb], sink, |d, g, cw, r| if let Some(r) = r { r[..NS].copy_from_slice(&d.s); d.gv(g, cw).iter().enumerate().for_each(|(k, &(b, v))| (r[NS + 2 * k], r[NS + 2 * k + 1]) = (b as u32, v.to_bits())); });
+                    h.step(c, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb], sink, |d, g, cw, r| if let Some(r) = r { r[..NS].copy_from_slice(&d.s); d.gv(g, cw).iter().enumerate().for_each(|(k, &(b, v))| (r[NS + 2 * k], r[NS + 2 * k + 1]) = (b as u32, v.to_bits())); r[NS + 26..NS + 28].copy_from_slice(&d.mtaps(g).map(|e| e.unwrap_or(u32::MAX))); });
                     c = 1 - c;
                 }
                 self.q.write_buffer(ex, 0, bytemuck::cast_slice(&xb));

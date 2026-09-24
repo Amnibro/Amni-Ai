@@ -113,7 +113,7 @@ impl Gpu {
         self.q.write_buffer(&self.b["xy"], 0, bytemuck::cast_slice(&x.iter().zip(y).map(|(&a, &b)| a as u32 | (b as u32) << 8).collect::<Vec<u32>>()));
         if let Some((d, lx, pi, pw, cpb)) = self.d19.as_mut() {
             (pi.len() < n * lv * 4).then(|| { pi.resize(n * lv * 4, 0); pw.resize(n * lv * 4, 0.0); cpb.resize(n * cp, -1); });
-            d.run(&self.c, lx, x, t, salt, &mut pi[..n * lv * 4], &mut pw[..n * lv * 4], &mut cpb[..n * cp]);
+            d.run(&self.c, lx, x, t, salt, mode == 2, &mut pi[..n * lv * 4], &mut pw[..n * lv * 4], &mut cpb[..n * cp]);
             [("pi", bytemuck::cast_slice::<u32, u8>(&pi[..n * lv * 4])), ("pw", bytemuck::cast_slice(&pw[..n * lv * 4])), ("cpb", bytemuck::cast_slice(&cpb[..n * cp]))].iter().for_each(|(k, v)| self.q.write_buffer(&self.b[k], 0, v));
         }
         let mut enc = self.dev.create_command_encoder(&CommandEncoderDescriptor { label: None });

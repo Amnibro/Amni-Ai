@@ -26,7 +26,7 @@ fn sw(t: vec2<u32>, s: u32) -> f32 {
     let u = t.x >> 24u;
     let d = i32(select(select(u % 5u, (u / 5u) % 5u, s == 1u), u / 25u, s == 0u)) - 2;
     let lv = unpack2x16float(t.y);
-    let m = select(select(0.0, lv.x, abs(d) == 1), lv.y, abs(d) == 2);
+    let m = select(select(0.0, select(lv.x, 0.5 * lv.y, V19), abs(d) == 1), lv.y, abs(d) == 2);
     return select(m, -m, d < 0);
 }
 @compute @workgroup_size(256)
@@ -57,7 +57,11 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) c
         let w = bitcast<f32>(pl[k].z);
         for (var s = 0u; s < 3u; s++) { if (((t.x >> (8u * s)) & 255u) == c) { a += w * sw(t, s); } }
     }
-    if (V19) { let o = (p.io + b) * EX + NS; for (var k = 0u; k < 13u; k++) { if (ex[o + 2u * k] == c) { a += bitcast<f32>(ex[o + 2u * k + 1u]); } } }
+    if (V19) {
+        let o = (p.io + b) * EX + NS;
+        for (var k = 0u; k < 13u; k++) { if (ex[o + 2u * k] == c) { a += bitcast<f32>(ex[o + 2u * k + 1u]); } }
+        for (var i = 0u; i < MR; i++) { let e = ex[o + 26u + i]; if (e != 0xffffffffu) { let t = cl(MB + i, e); for (var s = 0u; s < 3u; s++) { if (((t.x >> (8u * s)) & 255u) == c) { a += MG * sw(t, s); } } } }
+    }
     for (var h = 0u; h < 4u; h++) {
         lg[c] = a;
         workgroupBarrier();
