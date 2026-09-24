@@ -165,4 +165,4 @@ class RayField:
    return bytes(max(beams,key=norm)[1][len(p0):]).decode("utf-8","replace")
 def engine()->RayField:
  global _eng
- _eng=_eng or RayField();return _eng
+ _eng=_eng or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0) if os.environ.get("AMNI_RAY_IMPL","taichi")=="rust" else r)(RayField());return _eng

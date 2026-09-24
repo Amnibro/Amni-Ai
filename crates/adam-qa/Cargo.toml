@@ -1,0 +1,9 @@
+[package]
+name = "adam-qa"
+version = "0.1.0"
+edition = "2021"
+description = "Adam QA answer memory: inverted question/answer/bigram indexes, idf scoring, gates, pick/guide"
+[dependencies]
+adam-ray = { workspace = true }
+regex = "1"
+fancy-regex = "0.14"

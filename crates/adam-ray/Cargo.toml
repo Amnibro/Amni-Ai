@@ -1,0 +1,14 @@
+[package]
+name = "adam-ray"
+version = "0.1.0"
+edition = "2021"
+description = "Adam RayField inference engine: GF(17)-pack ray-hash field, wgpu TMU kernel plus CPU reference"
+[dependencies]
+wgpu = "24"
+pollster = "0.4"
+bytemuck = { version = "1", features = ["extern_crate_alloc"] }
+half = "2"
+memmap2 = "0.9"
+rayon = "1"
+[dev-dependencies]
+half = "2"

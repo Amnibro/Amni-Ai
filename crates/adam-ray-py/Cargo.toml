@@ -1,0 +1,14 @@
+[package]
+name = "adam-ray-py"
+version = "0.1.0"
+edition = "2021"
+description = "PyO3 bindings: import adam_ray for a drop-in RayField plus the QA answer memory"
+[lib]
+name = "adam_ray"
+crate-type = ["cdylib"]
+[dependencies]
+ray = { package = "adam-ray", path = "../adam-ray" }
+adam-qa = { workspace = true }
+pyo3 = { version = "0.24", features = ["extension-module"] }
+numpy = "0.24"
+parking_lot = { version = "0.12", features = ["arc_lock", "send_guard"] }

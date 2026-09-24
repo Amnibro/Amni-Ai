@@ -95,6 +95,8 @@ data/*.jsonl
 manifest.json
 # Rust build artifacts (218MB target dir; users compile locally if no prebuilt .pyd)
 amni_kernels/target/
+crates/target/
+/adam_ray*.so
 amni_kernels/__pycache__/
 # Lesson bank state (per-install)
 *.npz
@@ -240,3 +242,5 @@ lessons/
 # Rust build artifacts (amni_ai_core)
 crates/amni_ai_core/target/
 .venv-linux/
+!crates/*/tests/
+!crates/*/examples/
