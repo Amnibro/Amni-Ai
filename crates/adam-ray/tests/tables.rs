@@ -8,7 +8,7 @@ fn check(tag: &str) {
     let z = |k: &str| Npz::open(&format!("{pre}_{tag}_{k}.npy")).unwrap();
     let (sid, sw, dp, bias) = (z("sid"), z("sw"), z("dp"), z("bias"));
     let (sid, sw, dp, bias) = (sid.get("").unwrap().vec::<u8>(), sw.get("").unwrap().vec::<u16>(), dp.get("").unwrap().f32s(), bias.get("").unwrap().f32s());
-    let bad = tb.cells.par_iter().enumerate().filter(|&(c, &x)| (0..3).any(|s| { let (i, v) = pack::tap(x, s); i as u8 != sid[c * 3 + s] || v != f16::from_bits(sw[c * 3 + s]).to_f32() })).count();
+    let bad = tb.cells.par_iter().enumerate().filter(|&(c, &x)| (0..3).any(|s| { let (i, v) = pack::tap(x, s, tb.geo.copy > 0); i as u8 != sid[c * 3 + s] || v != f16::from_bits(sw[c * 3 + s]).to_f32() })).count();
     let dbad = (0..dp.len()).filter(|&i| f16::from_bits(tb.dp[i]).to_f32() != dp[i]).count();
     println!("{tag}: cells {} mismatched {bad} | dp {} mismatched {dbad} | bias equal {}", tb.cells.len(), dp.len(), tb.bias == bias);
     assert!(bad == 0 && dbad == 0 && tb.bias == bias);

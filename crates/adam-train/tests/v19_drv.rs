@@ -17,7 +17,7 @@ fn v19_driver() {
         let (l, nb) = (l as usize, nb as usize);
         let xb: Vec<u8> = (0..nb).flat_map(|r| xs[(b * 8 + r) * tn..(b * 8 + r) * tn + l].iter().copied()).collect();
         let (mut pi, mut pw, mut cpb) = (vec![0u32; nb * l * lv * 4], vec![0f32; nb * l * lv * 4], vec![0i32; nb * l * cp]);
-        d.run(&c, &lex, &xb, l, 0, &mut pi, &mut pw, &mut cpb);
+        d.run(&c, &lex, &xb, l, 0, true, &mut pi, &mut pw, &mut cpb);
         let idx: Vec<u8> = pi.iter().zip(&pw).flat_map(|(&i, &w)| (if w != 0.0 { i as i32 } else { 0 }).to_le_bytes()).collect();
         let got = [crc32(&idx), crc32(bytemuck::cast_slice(&pw)), crc32(bytemuck::cast_slice(&cpb))];
         let want = &crc[b * 3..b * 3 + 3];

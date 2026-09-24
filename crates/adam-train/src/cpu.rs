@@ -50,6 +50,7 @@ impl Cpu {
                 let w0 = |j: usize| t.sw[(l * te + pi[l * 4 + j] as usize) * KS];
                 if cb >= 0 { lg[cb as usize] += if cp >= 13 { CG * (0..4).fold(0f32, |g, j| g + pw[l * 4 + j] * w0(j)) } else { CG * pw[l * 4] * w0(0) }; }
             }
+            for j in (c.geo.mb() * 4..lv * 4).step_by(4) { if pw[j] != 0.0 { add(lg, j / 4, pi[j] as usize, pw[j]); } }
             for h in 0..c.geo.hops {
                 let (j, e) = ((hb + h) * 4, hop(&g, top3(lg), b1 as u32, (e1 / 256) as u32, h));
                 (pi[j], pw[j]) = (e, 1.0);
@@ -113,17 +114,17 @@ impl Cpu {
     }
 }
 impl Cpu {
-    fn plan(&mut self, x: &[u8], t: usize, salt: u32, n: usize) {
+    fn plan(&mut self, x: &[u8], t: usize, salt: u32, n: usize, anc: bool) {
         let (lv, cp) = (self.c.lv, self.c.copy.max(1));
         (self.pi.len() < n * lv * 4).then(|| { self.pi.resize(n * lv * 4, 0); self.pw.resize(n * lv * 4, 0.0); self.cpb.resize(n * cp, -1); });
         (self.lg.len() < n.max(self.c.npos()) * V).then(|| self.lg.resize(n.max(self.c.npos()) * V, 0.0));
-        match self.d19.as_mut() { Some(d) => d.run(&self.c, &self.lx, x, t, salt, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4], &mut self.cpb[..n * cp]), None => drivers(&self.c, &self.lx, x, t, salt, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4]) }
+        match self.d19.as_mut() { Some(d) => d.run(&self.c, &self.lx, x, t, salt, anc, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4], &mut self.cpb[..n * cp]), None => drivers(&self.c, &self.lx, x, t, salt, &mut self.pi[..n * lv * 4], &mut self.pw[..n * lv * 4]) }
     }
 }
 impl Engine for Cpu {
     fn run(&mut self, x: &[u8], y: &[u8], nb: usize, t: usize, salt: u32, train: Option<(usize, f32)>) -> f64 {
         let n = nb * t;
-        self.plan(x, t, salt, n);
+        self.plan(x, t, salt, n, false);
         let pl = self.forward(n, y, if train.is_some() { 0 } else { 1 }, salt);
         let loss = pl.iter().fold(0f32, |a, &b| a + b) as f64 / n as f64;
         if let Some((it, lr)) = train { (self.c.tern > 0 && it % 100 == 1).then(|| self.refresh()); self.backward(n, y, it, lr); }
@@ -131,7 +132,7 @@ impl Engine for Cpu {
     }
     fn logits(&mut self, x: &[u8]) -> Vec<f32> {
         let n = x.len();
-        self.plan(x, n, 0, n);
+        self.plan(x, n, 0, n, true);
         self.forward(n, x, 2, 0);
         self.lg[(n - 1) * V..n * V].to_vec()
     }

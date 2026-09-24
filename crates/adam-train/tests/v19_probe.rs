@@ -1,5 +1,5 @@
 use adam_ray::{cpu::hm, pack::{lexicon, Lex}};
-use adam_train::{cfg::Cfg, v19::{bh, Drv19}};
+use adam_train::{cfg::Cfg, v19::{bh, Drv19, MG}};
 struct R { c: Cfg, d: Drv19, lex: Lex }
 fn find(h: &[u8], n: &[u8]) -> usize { h.windows(n.len()).position(|w| w == n).unwrap() }
 fn rfind(h: &[u8], n: &[u8]) -> usize { h.windows(n.len()).rposition(|w| w == n).unwrap() }
@@ -9,7 +9,7 @@ impl R {
     fn run(&mut self, t: &[u8]) -> (Vec<Vec<i32>>, Vec<Vec<u32>>) {
         let (n, lv, cp) = (t.len(), self.c.lv, self.c.copy);
         let (mut pi, mut pw, mut cpb) = (vec![0u32; n * lv * 4], vec![0f32; n * lv * 4], vec![0i32; n * cp]);
-        self.d.run(&self.c, &self.lex, t, n, 0, &mut pi, &mut pw, &mut cpb);
+        self.d.run(&self.c, &self.lex, t, n, 0, true, &mut pi, &mut pw, &mut cpb);
         (cpb.chunks(cp).map(<[i32]>::to_vec).collect(), pi.chunks(lv * 4).map(<[u32]>::to_vec).collect())
     }
     fn sl(&self, u: u32, v: u32, l: usize) -> u32 { hm(u, v, l as u32 + 1) % self.c.te as u32 }
@@ -100,4 +100,23 @@ fn probe_copy13() {
     let sp = rfind(san, b"San ");
     assert!(has(&cpb[sp + 2][..8], b' ') && has(&cpb[sp + 3][..8], b'D'));
     println!("PROBE13 old63 k={k} gate ok, drive R, uncle clear, austin first {}, hop {:?}, san diego", row[0], &hr[8..12]);
+}
+#[test]
+fn probe_mr() {
+    let c = Cfg::with(&[("VER", "19"), ("COPY", "13"), ("MR", "2"), ("QT", "1"), ("LOG2_ENTRIES", "16"), ("BS", "1"), ("CTX", "512")]);
+    let (lex, mut d, lv, mb) = (lexicon(&c.syn, Some(&c.wcnt)), Drv19::new(1), c.lv, c.geo.mb());
+    assert!(lv == mb + 2 && mb == c.geo.hb() + c.geo.hops);
+    let mut on = |t: &[u8], anc: bool| { let n = t.len(); let (mut pi, mut pw, mut cpb) = (vec![0u32; n * lv * 4], vec![0f32; n * lv * 4], vec![0i32; n * 13]); d.run(&c, &lex, t, n, 0, anc, &mut pi, &mut pw, &mut cpb); ((0..n).map(|q| [pw[(q * lv + mb) * 4], pw[(q * lv + mb + 1) * 4]]).collect::<Vec<_>>(), d.rows[0].mstate()) };
+    let kn: &[u8] = b"User: My sister lives in Denver.\nAdam: Noted.\n\nUser: Where does my sister live?\nAdam: Your sister";
+    let (w, k) = on(kn, true);
+    let a = rfind(kn, b"Adam: ") + 5;
+    assert!(w[rfind(kn, b"User: ")..a].iter().all(|x| x == &[0.0; 2]) && w[a..].iter().all(|x| x == &[MG; 2]) && k / 4 % 3 == 1 && k / 24 % 2 == 1 && k / 48 == 2, "{k}");
+    let (w, k) = on(b"User: My sister lives in Denver.\nAdam: Noted.\n\nUser: Where does my brother live?\nAdam: I", true);
+    assert!(w[w.len() - 1] == [MG; 2] && k / 4 % 3 == 0, "{k}");
+    let (w, _) = on(kn, false);
+    assert!(w.iter().all(|x| x == &[0.0; 2]));
+    let sep = [b"sister.\n\n\x1e".as_slice(), kn].concat();
+    let (w, k) = on(&sep, false);
+    assert!(w[w.len() - 1] == [MG; 2] && k / 4 % 3 == 1);
+    println!("PROBE MR taps gated by answer and anchor, cand states known {k}");
 }

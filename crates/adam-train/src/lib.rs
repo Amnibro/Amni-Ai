@@ -4,6 +4,7 @@ pub mod gpu;
 pub mod v19;
 use adam_ray::{npy::Npz, rng::{pairwise, Pcg64}};
 use cfg::*;
+use cpu::sid0;
 use half::f16;
 use memmap2::Mmap;
 use std::{fs::{self, File}, io::{self, Write}, time::Instant};
@@ -48,7 +49,7 @@ pub fn load_pages(c: &Cfg, e: &mut dyn Engine) -> io::Result<()> {
     e.put(Part::Bias, &npz_f32(&format!("{pre}_bias.npy"))?.1);
     let ((sh, sid), (_, sw)) = (npz_f32(&format!("{pre}_sid.npy"))?, npz_f32(&format!("{pre}_sw.npy"))?);
     assert!(sh[1] == c.te && sh[2] == KS, "pages shape {sh:?}");
-    if mode == 0 { e.put(Part::Sid, &sid); e.put(Part::Sw, &sw); println!("loaded slots {p}"); return Ok(()); }
+    if mode == 0 { let n = c.lv * c.te * KS; let (fs, fw) = (sid0(c.lv * c.te)[sid.len()..].iter().map(|&v| v as f32).collect::<Vec<_>>(), vec![0f32; n - sw.len()]); e.put(Part::Sid, &[&sid[..], &fs].concat()); e.put(Part::Sw, &[&sw[..], &fw].concat()); println!("loaded slots {p} levels {} of {}", sh[0], c.lv); return Ok(()); }
     let (tl, c0, hb, n, hops, l) = (c.tl(), c.geo.c0(), c.geo.hb(), c.te * KS, c.geo.hops, sh[0]);
     let (k, hs) = [(0, 0), ((tl + 1).min(l), tl + 1), (c0.min(l), c0), (24.min(c0).min(l), l.saturating_sub(hops))][mode];
     let nh = hops.min(l.saturating_sub(hs));
@@ -97,7 +98,7 @@ pub fn train(c: &Cfg, e: &mut dyn Engine) -> io::Result<Vec<f64>> {
     let (lv, te) = (c.lv, c.te);
     let cells = lv * te;
     let mem = format!("{{\"dense_values\": {}, \"dense_tori\": \"byte1 (256 used) + byte2 (65536)\", \"cells\": {cells}, \"slots_per_cell\": {KS}, \"stored_values\": {}, \"inference_bytes_id8_sign1\": {}, \"inference_bytes_id8_ternary\": {}, \"fetches_per_byte\": {}, \"tori\": {lv}}}", 2 * DE * V, cells * KS, ((cells * KS * 9) as f64 / 8.0).round_ties_even(), ((cells * KS) as f64 * 9.585 / 8.0).round_ties_even(), lv + 3);
-    println!("=== adam-train [{}] v{} copy={} levels={} hops={} qt={} tern={} | corpus={} train {} B hold {} B | entries/level={te} ctx={} bs={} steps={} lr={}->{} rth={} rw={} wd={} | {mem}", e.name(), if c.ver == 19 { 19 } else if c.geo.qt { 18 } else { 16 }, c.copy, c.geo.base, c.geo.hops, c.geo.qt as u8, ["off", "cell", "level"][c.tern as usize], names.join(","), corp[0].0.len(), corp[0].1.len(), c.ctx, c.bs, c.steps, c.lr, c.lr_end, c.rth, c.rw, c.wd);
+    println!("=== adam-train [{}] v{} copy={} mr={} levels={} hops={} qt={} tern={} | corpus={} train {} B hold {} B | entries/level={te} ctx={} bs={} steps={} lr={}->{} rth={} rw={} wd={} | {mem}", e.name(), if c.ver == 19 { 19 } else if c.geo.qt { 18 } else { 16 }, c.copy, c.geo.mr, c.geo.base, c.geo.hops, c.geo.qt as u8, ["off", "cell", "level"][c.tern as usize], names.join(","), corp[0].0.len(), corp[0].1.len(), c.ctx, c.bs, c.steps, c.lr, c.lr_end, c.rth, c.rw, c.wd);
     let (mut g, mut hist, mut best, mut ts, mut th, mut losses) = (Pcg64::new(Some(c.seed)), vec![], 9e9f64, vec![], 0.0, vec![]);
     let mut slog = (!c.step_log.is_empty()).then(|| File::create(&c.step_log)).transpose()?;
     let salt = |ci: usize| if c.salted { ci as u32 } else { 0 };
@@ -140,7 +141,7 @@ pub fn train(c: &Cfg, e: &mut dyn Engine) -> io::Result<Vec<f64>> {
     }
     (!c.dump.is_empty()).then(|| dump(c, e, &c.dump)).transpose()?;
     let samples: Vec<String> = ["The weather today is", "def add(a, b):\n    return", "Kaolinite is a clay mineral that"].iter().map(|p| { let s = sample(c, e, p); println!("\n==== {:?}\n{s}", &p[..16]); format!("{}: {}", js(&p[..16]), js(&s)) }).collect();
-    let cfg = format!("{{\"entries\": {te}, \"ctx\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_end\": {}, \"corpus\": {}, \"slots\": {KS}, \"rth\": {}, \"rw\": {}, \"wd\": {}, \"gate\": 0.0, \"tern\": {}, \"tern_th\": {}, \"tern_scope\": \"{}\", \"qt\": {}, \"copy\": {}, \"topic\": {}, \"levels\": {lv}, \"trainer\": \"adam-train {}\"}}", c.ctx, c.bs, c.steps, c.lr, c.lr_end, js(&c.corpus), c.rth, c.rw, c.wd, c.tern > 0, c.tern_th, if c.tern == 1 { "cell" } else { "level" }, c.geo.qt as u8, c.copy, c.tl(), e.name());
+    let cfg = format!("{{\"entries\": {te}, \"ctx\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_end\": {}, \"corpus\": {}, \"slots\": {KS}, \"rth\": {}, \"rw\": {}, \"wd\": {}, \"gate\": 0.0, \"tern\": {}, \"tern_th\": {}, \"tern_scope\": \"{}\", \"qt\": {}, \"copy\": {}, \"mr\": {}, \"topic\": {}, \"levels\": {lv}, \"trainer\": \"adam-train {}\"}}", c.ctx, c.bs, c.steps, c.lr, c.lr_end, js(&c.corpus), c.rth, c.rw, c.wd, c.tern > 0, c.tern_th, if c.tern == 1 { "cell" } else { "level" }, c.geo.qt as u8, c.copy, c.geo.mr, c.tl(), e.name());
     let bv = r4(best / std::f64::consts::LN_2);
     fs::write(&c.out, format!("{{\n \"cfg\": {cfg},\n \"memory\": {mem},\n \"hist\": [\n  {}\n ],\n \"best_val_bits_per_byte\": {bv},\n \"per_corpus\": {{{}}},\n \"salted\": {},\n \"multi\": [{}],\n \"samples\": {{{}}}\n}}\n", hist.join(",\n  "), per.join(", "), c.salted, c.multi.iter().map(|m| js(m)).collect::<Vec<_>>().join(", "), samples.join(", ")))?;
     println!("best val {bv} bits/byte | total {:.1}s -> {}", t0.elapsed().as_secs_f64(), c.out);

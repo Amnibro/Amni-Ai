@@ -60,7 +60,7 @@ Run the benchmark with `python crates/adam-ray-py/tests/bench.py v16 v18`, which
 
 | table | texture | notes |
 |---|---|---|
-| slot cells (L levels × T slots) | `Rg32Uint` 2D array, 4096 × T/4096 × L | `.x` = sid0, sid1, sid2 bytes plus a base-5 trit code `u` (0..124, the pack's own `_unpack5` code); `.y` = two f16 levels (`lv1 = f16(0.5·scale)`, `lv2 = f16(scale)`); weight = sign(t)·lv[\|t\|]. Every cell of both packs decodes value-exact. |
+| slot cells (L levels × T slots) | `Rg32Uint` 2D array, 4096 × T/4096 × L | `.x` = sid0, sid1, sid2 bytes plus a base-5 trit code `u` (0..124, the pack's own `_unpack5` code); `.y` = two f16 levels (`lv1 = f16(0.5·scale)`, `lv2 = f16(scale)`); weight = sign(t)·lv[\|t\|]. v19 packs decode lv1 as 0.5·lv2 instead, the trainer's `qw` rule, which stays exact when the scale is an f16 subnormal (about 0.03% of v18 cells differ between the two rules); v16/v18 keep the stored lv1, the Taichi engine's rule. Every cell of both packs decodes value-exact. |
 | dense bigram rows (256 + 65536) × 256 | `R16Float`, 4096 wide (16 rows per texel row) | the dense page is f16-exact in both formats |
 | synset / hypernym / wordcount (2^20) | `Rgba32Uint` 1024 × 1024 | one fetch gives all three |
 | bias | `R32Float` 256 × 1 | |
@@ -70,13 +70,13 @@ Storage buffers hold only what the kernel writes: the per-beam driver state (dou
 
 ## v19 inference (R1b)
 
-`RayField` detects a v19 raw pack from its level count: L=41 is COPY=13 (question tori 21..23, copy 24..36, hops 37..40), L=37 is COPY=9, L=32 is COPY=4. The Python getters `copy` and `v19` report it; nothing else changes for callers.
+`RayField` detects a v19 raw pack from its level count: L=41 is COPY=13 (question tori 21..23, copy 24..36, hops 37..40), L=42/43 is COPY=13 plus 1/2 memory-result levels (v19d, see below), L=37 is COPY=9, L=32 is COPY=4. The Python getters `copy` and `v19` report it; nothing else changes for callers.
 
 - The copy band (levels 24..24+COPY) is kept as raw f16 slot-0 weights and never goes through the cell ternarizer.
 - `v19::W19` is one beam's v19 state: the 40-u32 core state, the parser scalars (question words and their 4-byte prefixes, working-memory cursors, fact-question clock, pronoun subject), the current-word buffer, the 128x4 set-associative working memory and the 64-entry entity ring (about 31 KB). `W19::step` is the per-byte update, `W19::gates` the copy-candidate emit. The trainer's `Drv19` runs the same two calls per position.
 - `v19::Host` holds 2 x 256 `W19` (double-buffered like the core state) plus the lexicons. Each step copies the parent beam's state into the child slot and steps it, so beams fork with their memory.
 - CPU path: bias, dense, planned taps, then the copy gates (`CG` x the sum of the gate cells' slot-0 weights, added to the candidate byte), then the four hops. This is the trainer's forward order.
-- GPU path: the CPU steps every beam and uploads, per want-step and beam, the core state and 13 (byte, gate) pairs (`EX = 66` u32). The kernel skips its own state update, plans and gathers from the uploaded state, adds the gates and runs the hops. Steps without logits are not dispatched.
+- GPU path: the CPU steps every beam and uploads, per want-step and beam, the core state, 13 (byte, gate) pairs and the 2 memory-result cell entries (`EX = 68` u32, `u32::MAX` = off). The kernel skips its own state update, plans and gathers from the uploaded state, adds the gates, the memory-result cells and runs the hops. Steps without logits are not dispatched.
 - v19 packs use the trainer's topic constant (`1 - 0.99f32`). v16/v18 keep the Taichi engine's `(1 - 0.99f64) as f32`, which drifts from the trainer's by 1e-9 and can move a topic cell on long inputs.
 
 ```bash
@@ -89,6 +89,32 @@ AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_c
 - `v19_fwd` compares `RayField::logits_for` (each arch) with the `adam-train` CPU forward of the same checkpoint, and with a Taichi reference when given. The Taichi reference is `Amni-Ai-v19/tests/ray_field_ref.py` with `REF_SCRIPT=ray_hash_field_ti_v19.py LOG2_ENTRIES=16 COPY=13 TI_FAST_MATH=0 TI_ADVANCED_OPTIMIZATION=0`. It compiles in about 1.8 GB at LOG2_ENTRIES=16. Never compile it at LOG2_ENTRIES=20, which needs more than 29 GB.
 - `ADAM_V19_GREEDY=n` also greedy-decodes n bytes per text through `prime`/`advance` and through the trainer's full recompute, and counts identical outputs.
 - `v19_rust_eval.py` is `v19b_eval.py` with `adam_ray` greedy decoding: the same 934-byte prompt window, 90 bytes, and a stop at byte 10 or 30. It writes `data/concepts/eval/report_<tag>.json` under `AMNI_HOME`. `C3_N` (default 0, meaning all 1000 dialogues) limits chat3, `EVAL_N` limits the other suites, and `AMNI_RAY_ARCH` picks the backend (default cpu).
+
+## v19d memory-result levels
+
+`MR=1|2` (trainer env, needs `VER=19 COPY=13`) appends `MR` ordinary 3-slot torus levels after the hops, so a v19c pack is a strict prefix of a v19d one (`PAGES` warm-starts levels 0..40 and the new levels start at the `sid0` pattern with zero weights).
+
+| levels | L=43 (`MR=2`) |
+|---|---|
+| 0..1 | dense byte1 / byte2 |
+| 2..19, 20 | byte and word tori, topic torus |
+| 21..23 | question tori |
+| 24..36 | copy gates (13 candidates, 4 cells each) |
+| 37..40 | belief hops (`hb() = 37`) |
+| 41 | memory result A (`mb() = hb() + hops`) |
+| 42 | memory result B, answer template (`lv() = mb() + mr`) |
+
+The signal comes from `W19` at every Adam-reply position (`qon == 1`), using the candidates picked at `Adam: `:
+
+- `mstate()` = `(min(#direct candidates, 2) + 3·[two-hop candidate] + 6·[question relation parsed] + 12·who) · 4 + qtype`, where who is 0 no question entity, 1 the user, 2 another person or pet, and qtype is 0 word, 1 name, 2 place, 3 number. So `mstate / 4 % 3` is empty / one / several. The `who` split is what separates "memory is empty for a question about my uncle" (decline) from a general question (normal answer): generic chat2 turns are all empty, but only 10% of them name another person.
+- `k = mstate · 16 + rel`, where rel is the top candidate's relation, or the parsed question relation when memory is empty.
+- `Q::ap` counts bytes since `Adam: ` (0 at the byte that predicts the first answer byte); `ab` buckets it as 0, 1, 2, 3, 4..7, 8..15, 16..31, 32+.
+- Level A key: `sl(hm(k / 64, min(ap, 23), 139), byte0)`: coarse state (empty / one / several, hop, parsed, who) × position × last byte.
+- Level B key: `sl(hm(k, ab, 141), hm(byte0 | byte1 << 8 | byte2 << 16, byte3, 143))`: full state and candidate relation × position bucket × last 4 bytes, so the reply template ("You haven't told me…" versus "You told me…") is conditioned on the memory.
+- Both taps have weight `MG = 4` (like the copy gates' `CG`), are added after the copy gates and before the hops, and train like any other cell (3 slots, replacement, ternary per cell).
+- Anchor: in training batches a window that does not start at a dialogue separator (byte 30) has an incomplete memory, so `W19::q.anc` is false until the first byte 30 and the memory-result taps stay off. `W19::begin` (inference, `Engine::logits`) sets it true.
+
+`crates/adam-train/tests/v19_probe.rs::probe_mr` checks the gating (answer only, anchor) and the empty / one states; `tests/v19_mstate.rs` (`ADAM_V19_MSTATE=<\0-separated kind\x01text>`) tabulates the state over an eval set.
 
 ## Trainer (R2): `adam-train`
 

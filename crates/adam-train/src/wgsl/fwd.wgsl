@@ -70,6 +70,7 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) c
         workgroupBarrier();
         for (var k = 0u; k < COPY; k++) { if (cbv[k] == i32(c)) { a += cgv[k]; } }
     }
+    for (var i = 0u; i < MR; i++) { let j = base + (MB + i) * 4u; let w = pw[j]; if (w != 0.0) { let e = pi[j]; a = hit(textureLoad(sidt, tx(e), MB + i, 0).x, cq(MB + i, e), c, a, w); } }
     for (var h = 0u; h < HOPS; h++) {
         tv[c] = vec3<f32>(a, -3.4e38, -3.4e38);
         tj[c] = vec3<u32>(c, 0xffffffffu, 0xffffffffu);
