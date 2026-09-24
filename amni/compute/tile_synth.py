@@ -15,9 +15,10 @@ PEN={k:float(v) for k,v in (x.split("=") for x in ("intent=5,cidx=2,fconst=2,cra
 AFT,REL_T,SPHT,COVT=0.75,(1,2,9,14,15),float(os.environ.get("TS_SPHT","0.99999")),float(os.environ.get("TS_COVT","0.75"))
 TOPN,XLV,XS=int(os.environ.get("TS_TOPN","8")),int(os.environ.get("TS_XLV","2")),float(os.environ.get("TS_XS","3"))
 NATP=str(ROOT/"exports"/"gf17_continuum"/"rayhash_v16_pycode_s30k_sid.npy")
-RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,"+os.environ.get("TS_RANK","")).split(",") if x)
+RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,cons=off,cn=99,cw=1,ct=1,cx=d,ci=a,cz=2,cm=x,cp=0,ca=0,cab=x,sx=0,sb=0,sk=20,sm=sub,sw=1,sl=0,so=0,sp=0,"+os.environ.get("TS_RANK","")).split(",") if x)
 PRIORP=os.environ.get("TS_PRIOR",str(ROOT/"data"/"pycode"/"x5_prior.npz"))
 PCFG=dict(x.split("=") for x in ("b=20,idf=1,gw=1,ga=1,gv=1,gr=1,norm=1,agg=sum,mode=pmi,fc=cmkops,"+os.environ.get("TS_PCFG","")).split(",") if x)
+SKC=dict(x.split("=") for x in ("s=4,b=3,n=4,e=1,eb=1.5,en=3,k=20,"+os.environ.get("TS_SKC","")).split(",") if x)
 PBIAS=dict(x.split("=") for x in ("t=99,dn=-99,rs=0,pat=1,"+os.environ.get("TS_PB","")).split(",") if x)
 class Unsafe(Exception):pass
 class Timeout(Exception):pass
@@ -28,7 +29,7 @@ BAN_NAME={"eval","exec","open","getattr","setattr","delattr","globals","locals",
 BAN_NODE=(ast.Import,ast.ImportFrom,ast.Global,ast.Nonlocal,ast.ClassDef,ast.AsyncFunctionDef,ast.Await,ast.AsyncFor,ast.AsyncWith,ast.With,ast.Yield,ast.YieldFrom)
 def _ns(m,ks=None):return types.SimpleNamespace(**{k:getattr(m,k) for k in (ks or dir(m)) if not k.startswith("_")})
 MODS={"math":_ns(math),"itertools":_ns(itertools),"functools":_ns(functools,["reduce","cmp_to_key","lru_cache","partial"])}
-XMODS={"collections":_ns(collections,["Counter","defaultdict","deque","OrderedDict"]),"string":_ns(string,["ascii_lowercase","ascii_uppercase","ascii_letters","digits","hexdigits","octdigits","punctuation","whitespace","printable"])}
+XMODS={"re":_ns(re,["compile","findall","finditer","fullmatch","match","search","split","sub","subn","escape","IGNORECASE","I","M","S"]),"collections":_ns(collections,["Counter","defaultdict","deque","OrderedDict"]),"string":_ns(string,["ascii_lowercase","ascii_uppercase","ascii_letters","digits","hexdigits","octdigits","punctuation","whitespace","printable"])}
 TYPING={k:getattr(typing,k) for k in "List Tuple Optional Any Dict Union Set Callable Iterable Sequence".split()}
 def _bad(n):return isinstance(n,BAN_NODE) or (isinstance(n,ast.Attribute) and (n.attr.startswith("_") or n.attr in BAN_ATTR)) or (isinstance(n,ast.Name) and (n.id.startswith("__") or n.id in BAN_NAME))
 def safe_check(src,mode="exec"):
@@ -337,20 +338,27 @@ ERR=_Err()
 def _try(fn,*a):
  try:return fn(*a)
  except Exception:return ERR
-def _mut(v,g):
- t=type(v);k=g.randrange(4)
- return (g.random()<0.5) if t is bool else (max(0,v+g.choice((-2,-1,1,2,3,5,7))) if v>=0 else v-g.choice((1,2,3,5))) if t is int else round(v*g.uniform(0.5,1.5)+g.uniform(-1,1),3) if t is float else _smut(v,g,k) if t is str else _lmut(v,g,k) if t is list else tuple(_mut(e,g) if g.random()<0.4 else e for e in v) if t is tuple else dict(g.sample(list(v.items()),max(1,len(v)-1))) if t is dict and v else v
+def _mut(v,g,x=0):
+ t=type(v);k=g.randrange(7 if x else 4)
+ return (g.random()<0.5) if t is bool else g.choice((0,1,-1,2,-v,v+1,v-1,2*v+1,v*10)) if t is int and k>=4 else (max(0,v+g.choice((-2,-1,1,2,3,5,7))) if v>=0 else v-g.choice((1,2,3,5))) if t is int else (round(-v,3) if k==4 else float(g.choice((0,1,-1,2))) if k==5 else round(v*g.uniform(0.5,1.5)+g.uniform(-1,1),3)) if t is float else _smut(v,g,k) if t is str else _lmut(v,g,k,x) if t is list else tuple(_mut(e,g,x) if g.random()<0.4 else e for e in v) if t is tuple else (dict(g.sample(list(v.items()),max(1,len(v)-1))) if k<4 else {a:_mut(b,g,x) for a,b in v.items()}) if t is dict and v else v
 def _smut(v,g,k):
  j=g.randrange(len(v)) if v else 0
- return g.choice("abcxyz ") if not v else "".join(g.sample(v,len(v))) if k==0 else v[:j]+v[j+1:] if k==1 else v[:j]+v[j]+v[j:] if k==2 else v[:j]+v[j].swapcase()+v[j+1:] if v[j].swapcase()!=v[j] else v[:j]+chr(ord(v[j])+1)+v[j+1:]
-def _lmut(v,g,k):
- j=g.randrange(len(v)) if v else 0;w=g.sample(v,len(v)) if k==0 else v[:j]+v[j+1:] if k==1 and len(v)>1 else v+[_mut(v[j],g)] if k==2 and v else v
- return [_mut(e,g) if g.random()<(0.9 if k==3 else 0.4) else e for e in w]
-def _probes(rows,K):
+ return g.choice("abcxyz ") if not v else "".join(g.sample(v,len(v))) if k==0 else v[:j]+v[j+1:] if k==1 else v[:j]+v[j]+v[j:] if k==2 else v[::-1] if k==4 else v+v if k==5 else v[:j]+g.choice("aZ09 ,.-!")+v[j:] if k==6 else v[:j]+v[j].swapcase()+v[j+1:] if v[j].swapcase()!=v[j] else v[:j]+chr(ord(v[j])+1)+v[j+1:]
+def _lmut(v,g,k,x=0):
+ j=g.randrange(len(v)) if v else 0;w=g.sample(v,len(v)) if k==0 else v[:j]+v[j+1:] if k==1 and len(v)>1 else v+[_mut(v[j],g,x)] if k==2 and v else v+[v[j]] if k==4 and v else [-e if type(e) in (int,float) else e for e in v] if k==5 else v[j:j+1] if k==6 else v
+ return [_mut(e,g,x) if g.random()<(0.9 if k==3 else 0.4 if k<4 else 0) else e for e in w]
+def _probes(rows,K,x=0):
  out,seen=[],{repr(r) for r in rows}
  for k in range(K*4 if rows else 0):
-  g=random.Random(zlib.crc32((repr(rows[k%len(rows)])+str(k)).encode()));r=tuple(_mut(a,g) for a in rows[k%len(rows)])
+  g=random.Random(zlib.crc32((repr(rows[k%len(rows)])+str(k)).encode()));r=tuple(_mut(a,g,x) for a in rows[k%len(rows)])
   (out.append(r),seen.add(repr(r))) if repr(r) not in seen and len(out)<K else None
+ return out
+def _ev(v):t=type(v);nm=t is list and all(type(e) in (int,float) for e in v);return [] if t is bool else [0,1,-1,2,-7,100] if t is int else [0.0,1.0,-1.5,0.5] if t is float else ["",v[:1] or "a",v+v,v.swapcase(),v[::-1]," "] if t is str else [[],v[:1],v+v,v[::-1],[v[0]]*3 if v else []]+([[-e for e in v],[0]*len(v)] if nm and v else []) if t is list else [v[::-1]] if t is tuple else [{}] if t is dict else []
+def _edges(rows):
+ out,seen=[],{repr(r) for r in rows}
+ for p in range(len(rows[0]) if rows else 0):
+  for b in rows[:3]:
+   for e in _ev(b[p]):r=b[:p]+(e,)+b[p+1:];(out.append(r),seen.add(repr(r))) if repr(r) not in seen else None
  return out
 FAM={"add":1,"sub":1,"inc":1,"dec":1,"mul":2,"dbl":2,"div":2,"fdiv":2,"half":2,"halff":2}
 def _bc(sp,n,kw,c):d=max(1,c-(sp is not None and sp.aff(kw)>=AFT));e=max(1,d-(sp.pb(n) if sp is not None else 0));return e,({("b:" if e<d else "B:")+n} if e!=d and PBIAS["rs"]=="1" else EMPTY)
@@ -471,13 +479,13 @@ class Ctx:
   except Exception:return s.S.partial(s,t,a,c,u,d,w) if not s.depth and s.S.split_on else None
   s.add(v+tuple(map(t.sfn,*(x.v[R0:] for x in a))),c,u,d,w,lambda:_rd(t.parts,[x.c for x in a]),cf)
 class Search:
- def __init__(z,sp,budget=10.0,recs=(),maxctx=28):
+ def __init__(z,sp,budget=10.0,recs=(),maxctx=28,only=None):
   z.sp,z.dl,z.n,z.hits,z.ctxs,z.iters,z.maxctx,z.tried,z.bods,z.c0=sp,time.perf_counter()+budget,0,[],[],[],maxctx,set(),set(),None
   z.rows=sp.rows+_probes(sp.rows,int(os.environ.get("TS_PROBES","6")));z.RE=len(z.rows);eg=tuple(type(a)() if type(a) in (list,str,tuple,dict) else a for a in sp.rows[0]) if sp.rows else ();z.rows+=[eg] if eg!=sp.rows[0] and repr(eg) not in {repr(r) for r in z.rows} else [];z.R0,z.R=len(sp.rows),len(z.rows)
   z.ex=sorted(sp.T);z.T=sp.T;z.full=(1<<len(z.ex))-1;z.abits=(1<<len(sp.params))-1;z.split_on=len(z.ex)>=3;W=sp.words
-  lt,hs=learned_tiles(recs,W,sp);z.hsrc={**HELP,**hs};z.n_learned=len(lt);z.tiles=sorted(library(sp)+sp.helper_tiles()+lt,key=lambda t:(-bool(t.hit),t.cost));z.pm=sorted({m for t in z.tiles for m in t.p}|{0});z.smask=(1<<len(sp.strong))-1;z.cmask=sum(b for w,b in sp.sb.items() if w[0]=="#")
-  z.pats={k:sorted([(n,max(1,c-(sp.aff(kw)>=AFT)-(kd in ("pair","adj") and "pair" in sp.cues)-sp.pb("@"+(n if kd=="single" else kd))*(PBIAS["pat"]=="1"))) for n,kd,c,kw in PATS if kd==k],key=lambda x:x[1]) for k in ("single","pair","adj","zip")};z.pw={(kd,n):sp.hm(kw) for n,kd,c,kw in PATS}
-  z.fc=2 if W&{"fold","accumulate","running","cumulative","reduce","rolling"} or "acc" in sp.cues else 3;z.loo,z.nex,z.pe,z.hk,z.be,z.vfail={},len(z.ex),None,{},1e9,set();z.fm=[(z.fc+(sp.aff(f[4])<AFT),sp.hm(f[4])) for f in FOLDS];sg={}
+  lt,hs=learned_tiles(recs,W,sp);z.hsrc={**HELP,**hs};z.n_learned=len(lt);z.tiles=[t for t in sorted(library(sp)+sp.helper_tiles()+lt,key=lambda t:(-bool(t.hit),t.cost)) if only is None or t.n in only[0] or "p:"+t.n in t.dep];z.pm=sorted({m for t in z.tiles for m in t.p}|{0});z.smask=(1<<len(sp.strong))-1;z.cmask=sum(b for w,b in sp.sb.items() if w[0]=="#")
+  z.pats={k:sorted([(n,max(1,c-(sp.aff(kw)>=AFT)-(kd in ("pair","adj") and "pair" in sp.cues)-sp.pb("@"+(n if kd=="single" else kd))*(PBIAS["pat"]=="1"))) for n,kd,c,kw in PATS if kd==k and (only is None or (n if kd=="single" else kd) in only[1])],key=lambda x:x[1]) for k in ("single","pair","adj","zip")};z.pw={(kd,n):sp.hm(kw) for n,kd,c,kw in PATS}
+  z.fc=2 if W&{"fold","accumulate","running","cumulative","reduce","rolling"} or "acc" in sp.cues else 3;z.loo,z.nex,z.pe,z.hk,z.be,z.vfail={},len(z.ex),None,{},1e9,set();z.fm=[(z.fc+(sp.aff(f[4])<AFT),sp.hm(f[4])) for f in FOLDS if only is None or only[2]];sg={}
   [sg.__setitem__(m.group(0),max(sg.get(m.group(0),0),sp.aff(tl[5]))) for tl in TILE_DEFS for m in [re.search(r"(?<![\w.])[\w.]+\(|\.\w+\(",tl[2])] if m];z.sig=[re.compile(r"(?<![\w.])"+re.escape(k)) for k,a in sg.items() if a<AFT]
   taken=set(sp.params)|{h.name for h in sp.hnodes}|{sp.name};z.X,z.Y,z.I=(next(n for n in ns if n not in taken) for ns in (("x","e","v","w","z"),("y","u","t","o"),("i","j","k","m","p")));taken|={z.X,z.Y,z.I};z.X2,z.I2=(next(n for n in ns if n not in taken) for ns in (("e","v","w","z","q","r"),("j","k","m","p","h")));z.vo=re.compile(rf"\b{z.Y}\b.*\b{z.X}\b")
   z.outer=Ctx(z,"outer",z.R,z.R0)
@@ -585,9 +593,7 @@ class Search:
  def verify(z,body):
   sp=z.sp
   try:
-   try:g=safe_exec(_strip_imports(sp.prompt+body),{**TYPING,**(XMODS if "def x5_" in body else {})})
-   except Unsafe:g=safe_exec(f"def {sp.name}({', '.join(sp.params)}):\n"+_strip_imports(body))
-   env={k:v for k,v in g.items() if k!="__builtins__"};env["_x0eq"]=_x0eq
+   env={k:v for k,v in _load(sp,body).items() if k!="__builtins__"};env["_x0eq"]=_x0eq
    return bool(sp.used) and all(bool(timed(safe_eval,ch,env,t=2.0)) for ch in sp.used)
   except Exception:return False
  def pick(z,c,n=1):
@@ -607,6 +613,49 @@ class Search:
   except Stop:pass
   return out+(z.pick(1<<30,n-len(out)) if z.hits and len(out)<n else [])
  def stats(z):return {"terms":sum(len(l) for c in [z.outer]+z.ctxs for l in c.lv.values()),"level":z.outer.level,"n_ctx":len(z.ctxs),"n_learned_tiles":z.n_learned,"n_tiles":len(z.tiles)}
+ def edit(z,nb,dl):
+  sp,out=z.sp,[]
+  try:F0=ast.parse(nb["src"]).body[0];ps=[a.arg for a in F0.args.args];req=len(ps)-len(F0.args.defaults)
+  except Exception:return out
+  hm=[(h,c) for h,c in ((t.hit,_core(tfeats().get(t.n,()))) for t in z.tiles) if h and c];kc={repr(v) for _,v,*_ in sp.consts}
+  for V,how in (_variants(F0,sp) if 1<=req<=len(sp.params) else ()):
+   for pm in itertools.permutations(sp.params,req):
+    if time.perf_counter()>dl or len(out)>=int(SKC["en"]):return out
+    b,c,u=_render(V,dict(zip(ps,pm)),ps[req:],sp)
+    if b in z.bods:continue
+    z.bods.add(b)
+    try:f=_load(sp,b)[sp.name];v=z.rowmap(lambda r:timed(f,*copy.deepcopy(r),t=0.05),z.rows)
+    except Exception:continue
+    if v is None or not all(_eqv(v[q],z.T[q]) for q in z.ex):continue
+    k=functools.reduce(op.and_,(_kv(x) for x in v[:z.R0]));cf=_cf(c);t=Tm(c,v,k,_ecost(V),sum(1<<j for j,p in enumerate(sp.params) if p in u),frozenset("k:"+x for x in _kx(V) if x not in kc),functools.reduce(op.or_,(h for h,q in hm if q<=cf),0));e=z.score(t) if k else None
+    (out.append((e,t,b,{"sk":2,"nb":[nb["i"]],"how":how+"|"+",".join(pm)})) if e is not None and z.verify(b) else None)
+  return out
+def _load(sp,body):
+ try:return safe_exec(_strip_imports(sp.prompt+body),{**TYPING,**(XMODS if "def x5_" in body or re.search(r"\b(?:collections|string|re)\.",body) else {})})
+ except Unsafe:return safe_exec(f"def {sp.name}({', '.join(sp.params)}):\n"+_strip_imports(body))
+def _cn(v):t=type(v);return repr(int(v)) if t in (int,bool) or t is float and v==v and abs(v)<1e15 and v==int(v) else repr(round(v,6)) if t is float else repr(v) if t in (str,type(None)) else "["+",".join(map(_cn,v))+"]" if t is list else "("+",".join(map(_cn,v))+")" if t is tuple else "{"+",".join(sorted(map(_cn,v)))+"}" if t in (set,frozenset) else "{"+",".join(sorted(_cn(a)+":"+_cn(b) for a,b in v.items()))+"}" if t is dict else "<"+t.__name__+">"
+def _bcall(f,r):
+ try:o=timed(f,*copy.deepcopy(r),t=0.05);return _cn(o),o
+ except Timeout:return -2,ERR
+ except Exception:return -1,ERR
+def _pok(fn,r,o,f):
+ try:return o is ERR or bool(fn(r,o,f))
+ except Exception:return True
+PROPS={"srt":(r"\bascending\b|\bincreasing order\b|\bsorted (list|order|array)\b|\bsort(s|ed)? (the |a |given )?(list|array|elements|numbers)\b(?!.*\b(by|key|according|descending|reverse|length|based)\b)",lambda r,o,f:type(o) is not list or all(a<=b for a,b in zip(o,o[1:]))),"srtr":(r"\bdescending\b|\bdecreasing order\b",lambda r,o,f:type(o) is not list or all(a>=b for a,b in zip(o,o[1:]))),"uniq":(r"\b(unique|distinct)\b|\bremove (all )?(the )?duplicates?\b|\bwithout duplicates?\b",lambda r,o,f:type(o) not in (list,tuple) or len({_cn(e) for e in o})==len(o)),"sub":(r"\b(remove|filter|filters|keep only|extract|delete)\b",lambda r,o,f:type(o) not in (list,str,tuple) or not any(type(a) is type(o) for a in r) or {_cn(e) for e in o}<={_cn(e) for a in r if type(a) is type(o) for e in a}),"len":(r"\b(each|every) (element|number|item|value|integer|word|string)\b",lambda r,o,f:type(o) is not list or not any(type(a) in (list,str) for a in r) or len(o)==len(next(a for a in r if type(a) in (list,str)))),"idem":(r"\b(sort|sorted|unique|distinct|duplicates?|strip|trim|normali[sz]e|flatten)\b",lambda r,o,f:len(r)!=1 or type(o) is not type(r[0]) or _bcall(f,(o,))[0]==_cn(o)),"nneg":(r"\bcount\b|\bhow many\b|\bnumber of\b",lambda r,o,f:type(o) is not int or o>=0)}
+def _neg(v):t=type(v);return v<0 if t in (int,float) else any(map(_neg,v)) if t in (list,tuple,set,frozenset) else any(map(_neg,v.values())) if t is dict else False
+def _ood(rows,r):return any((_neg(a) and not any(_neg(x[p]) for x in rows)) or (type(a) in (list,tuple,str,dict,set) and not a and all(type(x[p]) is type(a) and x[p] for x in rows)) for p,a in enumerate(r))
+def behave(sp,bodies,K=None,budget=None):
+ K,dl,t0=int(os.environ.get("TS_BEHK","40")) if K is None else K,time.perf_counter()+(float(os.environ.get("TS_BEHS","3")) if budget is None else budget),time.perf_counter();ins,sn=[],set()
+ for r,k in [(r,"n") for r in _probes(sp.rows,K//2)]+[(r,"m") for r in _probes(sp.rows,K,1)]+[(r,"e") for r in _edges(sp.rows)]:(ins.append((r,k.upper() if _ood(sp.rows,r) else k)),sn.add(repr(r))) if repr(r) not in sn else None
+ fs=[]
+ for b in bodies:
+  try:fs.append(_load(sp,b).get(sp.name))
+  except Exception:fs.append(None)
+ pr=[k for k,(rx,_) in PROPS.items() if re.search(rx,sp.desc.lower())];cols,kd,pv=[],"",[{k:0 for k in pr} for _ in fs]
+ for r,k in ins:
+  if time.perf_counter()>dl:break
+  col=[_bcall(f,r) if f else (-1,ERR) for f in fs];m={};cols.append([x if type(x) is int else m.setdefault(x,len(m)) for x,_ in col]);kd+=k;[d.__setitem__(q,d[q]+(not _pok(PROPS[q][1],r,o,f))) for d,(_,o),f in zip(pv,col,fs) if f for q in pr]
+ return {"beh":[list(c) for c in zip(*cols)] if cols else [[] for _ in fs],"kind":kd,"inputs":[repr(r)[:80] for r,_ in ins[:len(cols)]],"props":pr,"prop":pv,"time":time.perf_counter()-t0}
 def _gen(src,params):
  tr,mp=ast.parse(src),{p:f"a{k}" for k,p in enumerate(params)}
  for n in ast.walk(tr):(setattr(n,"id",mp[n.id]) if isinstance(n,ast.Name) and n.id in mp else setattr(n,"arg",mp[n.arg]) if isinstance(n,ast.arg) and n.arg in mp else None)
@@ -628,19 +677,64 @@ def probation(sp,budget,store,origin="",ref=None):
   (save_store(qp,Q),[open(store,"a",encoding="utf-8").write(json.dumps(q)+"\n") for q in Q if q["name"] in used]) if used or bad else None
   return {"pg_tried":nt,"pg_promoted":sorted(used),"pg_demoted":sorted(n for n in bad if byn[n]["status"]=="demoted"),"pg_expr":r[1].c if r else ""}
  except Exception as e:return {"pg_error":f"{type(e).__name__}: {e}"[:200]}
-def solve(prompt,checks,budget=None,store=None,learn=False,origin="",topn=None):
+SWAP=[{"add","sub","mul"},{"lt","le","eq","ne"},{"min","max"},{"min2","max2"},{"srt","srtr"},{"even","odd"},{"first","last"},{"maxl","minl"},{"imax","imin"},{"any","all"},{"lower","upper"},{"sw","ew"},{"isin","nin"},{"take","drop","takel"},{"rng","rng1","rng0i"},{"rng2","rng2i"},{"div","fdiv"},{"sand","sor","ssub"},{"dmaxk","dmink"},{"issrt","issrtr"}]
+PK={"map":{"p:iter"},"filter":{"p:filter"},"sortby":{"c:sorted","k:key"},"sortbyr":{"c:sorted","k:reverse"},"maxby":{"c:max","k:key"},"minby":{"c:min","k:key"},"firstidx":{"c:enumerate"},"dictc":{"p:dictc"},"flatmap":{"p:nest"},"pair":{"p:pair"},"adj":{"p:adj"},"zip":{"c:zip"}}
+SWO={ast.Lt:(ast.LtE,ast.Gt,ast.GtE),ast.LtE:(ast.Lt,ast.GtE),ast.Gt:(ast.GtE,ast.Lt,ast.LtE),ast.GtE:(ast.Gt,ast.LtE),ast.Eq:(ast.NotEq,),ast.NotEq:(ast.Eq,),ast.Add:(ast.Sub,),ast.Sub:(ast.Add,),ast.Mult:(ast.FloorDiv,),ast.Div:(ast.FloorDiv,),ast.FloorDiv:(ast.Div,),ast.And:(ast.Or,),ast.Or:(ast.And,)}
+SWN={"min":"max","max":"min","any":"all","all":"any"}
+SKMOD=("math","itertools","functools","collections","re","string")
+def _core(fs):return frozenset(f for f in fs if f[0] in "cmops")
+def _cf(c):
+ try:return _core(feats(c))
+ except Exception:return EMPTY
+def _nodes(c):
+ try:return sum(1 for _ in ast.walk(ast.parse(c,mode="eval")))
+ except SyntaxError:return sum(1 for _ in ast.walk(ast.parse(c)))
+def sk_only(fs):fs=set(fs);c=_core(fs);tf=tfeats();t={n for n,*_ in TILE_DEFS if _core(tf[n]) and _core(tf[n])<=c};return frozenset(t|{x for g in SWAP if g&t for x in g}|({n for n,*_,fl in TILE_DEFS if not _core(tf[n]) and "h" not in fl} if t else set())),frozenset(p for p,k in PK.items() if k<=fs),bool({"p:acc","c:reduce","c:accumulate"}&fs)
+def _holes(F):return [n for n in ast.walk(F) if isinstance(n,ast.Constant) and type(n.value) in (int,float,str) and len(str(n.value))<=12][:4],[(n,j) for n in ast.walk(F) for j,o in enumerate(n.ops if isinstance(n,ast.Compare) else [n.op] if isinstance(n,(ast.BinOp,ast.BoolOp)) else []) if type(o) in SWO][:6]+[(n,-1) for n in ast.walk(F) if isinstance(n,ast.Name) and n.id in SWN][:3]
+def _variants(F,sp):
+ yield F,"orig"
+ K,O=_holes(F);pool=[(code,v) for code,v,c,d,key in sp.consts if c<=2 and type(v) is not bool and v is not None]
+ for k,n in enumerate(K):
+  for code,v in pool:
+   if v!=n.value and (type(v) is str)==(type(n.value) is str):G=copy.deepcopy(F);_holes(G)[0][k].value=v;yield G,f"c{k}:{n.value!r}->{code}"
+ for k,(n,j) in enumerate(O):
+  for a in (SWO[type(n.ops[j] if isinstance(n,ast.Compare) else n.op)] if j>=0 else [SWN[n.id]]):G=copy.deepcopy(F);m,_=_holes(G)[1][k];(m.ops.__setitem__(j,a()) if isinstance(m,ast.Compare) else setattr(m,"op",a()) if j>=0 else setattr(m,"id",a));yield G,f"o{k}->{a if isinstance(a,str) else a.__name__}"
+def _render(V,mp,opt,sp):
+ G=copy.deepcopy(V);nm=G.name;[setattr(n,"id",mp[n.id] if n.id in mp else sp.name) for n in ast.walk(G) if isinstance(n,ast.Name) and (n.id in mp or n.id==nm)];dv=dict(zip([a.arg for a in G.args.args][len(G.args.args)-len(G.args.defaults):],G.args.defaults));st=[ast.Assign(targets=[ast.Name(id=p,ctx=ast.Store())],value=dv[p]) for p in opt]+G.body;src=ast.unparse(ast.fix_missing_locations(ast.Module(body=st,type_ignores=[])));ns={n.id for n in ast.walk(G) if isinstance(n,ast.Name)}
+ return "".join(f"    import {m}\n" for m in SKMOD if m in ns)+textwrap.indent(src,"    ")+"\n",(ast.unparse(st[0].value) if len(st)==1 and isinstance(st[0],ast.Return) and st[0].value is not None else src),ns
+def _ecost(V):return max(1,sum(1 for s in V.body for n in ast.walk(s) if not isinstance(n,(ast.expr_context,ast.operator,ast.cmpop,ast.boolop,ast.unaryop)))//2)
+def _kx(V):return [repr(n.value) for n in ast.walk(V) if isinstance(n,ast.Constant) and type(n.value) in (int,float,str) and n.value not in (0,1,"")]
+def sketch(z,nbs):
+ sp,out,g=z.sp,[],{}
+ for x in nbs.get("nb",[])[:int(SKC["k"])]:o=sk_only(x["f"]);(g.setdefault(o,[]).append(x["i"]) if o[0] or o[1] else None)
+ ks=list(g)[:int(SKC["s"])];per=float(SKC["b"])/max(1,len(ks))
+ for o in ks:
+  try:out+=[(e,t,b,{"sk":1,"nb":g[o]}) for e,t,b in Search(sp,per,(),only=o).run(int(SKC["n"]))]
+  except Exception:pass
+ dl=time.perf_counter()+float(SKC["eb"])
+ for x in nbs.get("pe",[]) if SKC["e"]=="1" else ():out+=z.edit(x,dl)
+ return out
+def _skmerge(rs,ks):
+ eb={b:[] for _,_,b in rs};sd={}
+ for e,t,b,m in ks:(eb[b].extend(m["nb"]) if b in eb else sd.setdefault(b,(e,t,b,{**m,"nb":[]}))[3]["nb"].extend(m["nb"]))
+ return [(e,t,b,{"sk":0,"nb":eb[b]}) for e,t,b in rs]+sorted(sd.values(),key=lambda x:x[0])
+def support(cs,nb,k):
+ nb=nb[:int(k["sk"])];F=[(set(x["f"]),_core(x["f"])) for x in nb];w=np.array([1.0 if k["sw"]=="1" else x["s"] for x in nb],float);w=w/max(1e-9,w.max()) if len(w) else w;W=w.sum();C=[set(c.get("cf") or ()) for c in cs]
+ m=np.array([[len(a&g)/max(1,len(a|g)) if k["sm"]=="jac" else float(a<=f) for f,g in F] for a in C],float).reshape(len(cs),len(F));M=(m*w[None,:]).sum(1);br=np.array([max(1e-6,c.get("br",1.0)) for c in cs])
+ return np.log((M+br)/((W+1)*br)) if k["sl"]=="1" else M/max(W,1e-9)
+def solve(prompt,checks,budget=None,store=None,learn=False,origin="",topn=None,nbs=None):
  t0=time.perf_counter();budget=float(os.environ.get("TS_BUDGET","10")) if budget is None else budget;base={"found":False,"body":"","n_checks":len(checks),"time":0.0,"size":0,"cost":0,"expr":""}
  try:sp=Spec(prompt,checks)
  except Exception as e:return {**base,"reason":f"spec_error {type(e).__name__}","time":time.perf_counter()-t0}
  base.update(n_ex=len(sp.T),n_raw=len(sp.raw))
  if not sp.used:return {**base,"reason":"no_examples","time":time.perf_counter()-t0}
- try:Sr=Search(sp,budget,load_store(store) if store else ());rs=Sr.run(TOPN if topn is None else topn);r=rs[0] if rs else None;st=Sr.stats();pe,nex,cm=Sr.pe,Sr.nex,Sr.cmask;lo=lambda e:sum(v<e for v in Sr.loo.values()) if nex>=2 else None;lf=lo(pe) if r else None;cs=[{"body":b,"expr":t.c,"cost":t.s,"score":e,"cov":bin(t.w).count("1"),"loo_fail":lo(e),"pri":sp.pri(t.c)} for e,t,b in rs];Sr=None;gc.collect();t1=time.perf_counter()-t0;pg=probation(sp,budget,store,origin,r[1].v if r else None) if learn and store else {}
+ try:Sr=Search(sp,budget,load_store(store) if store else ());rs=Sr.run(TOPN if topn is None else topn);t1=time.perf_counter()-t0;rs=_skmerge(rs,sketch(Sr,nbs) if nbs else []);r=rs[0] if rs else None;st=Sr.stats();pe,nex,cm=Sr.pe if Sr.pe is not None or not r else r[0],Sr.nex,Sr.cmask;lo=lambda e:sum(v<e for v in Sr.loo.values()) if nex>=2 else None;lf=lo(pe) if r else None;V=set(vocab());cs=[{"body":b,"expr":t.c,"cost":t.s,"score":e,"cov":bin(t.w).count("1"),"loo_fail":lo(e),"pri":sp.pri(t.c),"sk":m["sk"],"nb":list(dict.fromkeys(m["nb"])),"cf":sorted(_cf(t.c)&V),**({"how":m["how"]} if "how" in m else {})} for e,t,b,m in rs];Sr=None;gc.collect();tk=time.perf_counter()-t0-t1;bh=behave(sp,[x[2] for x in rs]) if len(rs)>1 and os.environ.get("TS_BEH","1")=="1" else None;[c.update(beh=v,prop=q) for c,v,q in zip(cs,bh["beh"],bh["prop"])] if bh else None;pg=probation(sp,budget,store,origin,r[1].v if r else None) if learn and store else {}
  except Exception as e:return {**base,"reason":f"search_error {type(e).__name__}: {e}"[:200],"time":time.perf_counter()-t0}
- tm={"time":t1,"time_total":time.perf_counter()-t0}
+ tm={"time":t1,"time_total":time.perf_counter()-t0,**({"sk_time":tk,"sk_nb":nbs.get("nb",[]),"sk_pe":[x["i"] for x in nbs.get("pe",[])],"sk_guard":nbs.get("guard",{}),"sk_n":sum(bool(c["sk"]) for c in cs)} if nbs else {})}
  if not r:return {**base,**st,**pg,"reason":"no_program",**tm}
- _,t,body=r;gate="helper" if any(x.startswith("p:") for x in t.d) else "reuse" if any(x.startswith("h:t_") for x in t.d) else "n_ex<2" if nex<2 else "loo" if lf else "const" if any(x[:2]=="k:" for x in t.d) or t.w&cm else ""
+ _,t,body,_=r;gate="helper" if any(x.startswith("p:") for x in t.d) else "reuse" if any(x.startswith("h:t_") for x in t.d) else "n_ex<2" if nex<2 else "loo" if lf else "const" if any(x[:2]=="k:" for x in t.d) or t.w&cm else ""
  (learn_store(qpath(store),sp,t,body,origin,"demoted" if gate else "quarantine",gate,{"n":nex,"fail":lf}) if learn and store and gate not in ("helper","reuse") else None)
- return {**base,**st,**pg,"found":True,"reason":"found","body":body,"expr":t.c,"cost":t.s,"score":pe,"loo_n":nex,"loo_fail":lf,"learn_gate":gate or "ok","size":sum(1 for _ in ast.walk(ast.parse(t.c,mode="eval"))),"used_learned":any(x.startswith("h:t_") for x in t.d),"cands":cs,**tm}
+ return {**base,**st,**pg,"found":True,"reason":"found","body":body,"expr":t.c,"cost":t.s,"score":pe,"loo_n":nex,"loo_fail":lf,"learn_gate":gate or "ok","size":_nodes(t.c),"used_learned":any(x.startswith("h:t_") for x in t.d),"cands":cs,**({"beh_kind":bh["kind"],"beh_in":bh["inputs"],"beh_props":bh["props"],"beh_time":bh["time"]} if bh else {}),**tm}
 def _clean(b):
  try:return textwrap.indent(ast.unparse(ast.parse(textwrap.dedent(b))),"    ")+"\n"
  except Exception:return b
@@ -649,13 +743,21 @@ def natural(prompt,cs,path=None):
  lp=ray_field.engine(path or os.environ.get("TS_NAT_PACK",NATP)).score([P]*n+[b""]*n+[S]*n+[P]*n,bs+bs+bs+cb) if n else []
  [c.update(nat_lp=float(a),nat_lp0=float(b),nat_lps=float(q),nat_lpc=float(w),nat_n=len(x),nat_nc=len(y)) for c,a,b,q,w,x,y in zip(cs,lp[:n],lp[n:2*n],lp[2*n:3*n],lp[3*n:],bs,cb)];return cs
 def _nf(c,m):return -c["score"] if m=="score" else 0.0 if m=="off" or "nat_lp" not in c else c["nat_lp"]/max(1,c["nat_n"]) if m=="byte" else c["nat_lpc"]/max(1,c["nat_nc"]) if m=="cbyte" else c["nat_lp"]-c["nat_lps"] if m=="pmis" else (c["nat_lp"]-c["nat_lp0"])/(max(1,c["nat_n"]) if m=="pmib" else 1)
+def consensus(cs,k,kind=""):
+ n=min(len(cs),int(k["cn"]));B=[c.get("beh") or [] for c in cs[:n]];L=min(map(len,B),default=0);ok=np.array([not any((c.get("prop") or {}).values()) for c in cs[:n]]) if k["cp"]=="1" else np.ones(n,bool);ok=ok if ok.any() else np.ones(n,bool)
+ A=np.array([b[:L] for b in B]).reshape(n,L);A=A[:,np.array([k["ci"]=="a" or kind[j:j+1] in k["ci"] for j in range(L)],bool)&((A<0).sum(0)<float(k["cz"])*n)] if L else A
+ if k["cons"]=="off" or n<2 or not A.shape[1]:j=int(np.argmax(ok));return j,1.0,[i==j for i in range(n)]
+ E=(A[:,None,:]==A[None,:,:])|(((A[:,None,:]<0)|(A[None,:,:]<0))&(k["cx"]=="w"));G=E.all(-1) if k["cm"]=="x" else E.mean(-1) if k["cm"]=="a" else E.mean(-1)>=float(k["cm"]);sc=np.array([c["score"] for c in cs[:n]],float)
+ w=(np.ones(n) if k["cw"]=="1" else np.exp(-(sc-sc[0])/float(k["ct"])) if k["cw"]=="s" else 1/np.maximum(1,np.array([c["cost"] for c in cs[:n]],float)) if k["cw"]=="c" else 1/(1+np.arange(n)))*ok;S=np.round((G*w[None,:]).sum(1)*ok,9);j=int(np.argmax(S))
+ return j,float(S[j]/max(1e-12,w.sum())),(G[j]>=1-1e-9).tolist()
 def rerank(r,prompt=None,cfg=None):
  k={**RANK,**(cfg or {})};cs=r.get("cands") or [];(natural(prompt,cs) if prompt is not None and cs and "nat_lp" not in cs[0] else None)
- tb=float(k["tb"]);pr=np.array([c.get("pri",0.0) for c in cs]);pr=(pr-pr.mean())/(pr.std()+1e-9) if k["pz"]=="1" and len(cs)>1 else pr;j=min(range(len(cs)),key=lambda i:(cs[i]["cost"]+float(k["pw"])*(cs[i]["score"]-cs[i]["cost"])+float(k["lw"])*(cs[i]["loo_fail"] or 0)-float(k["w"])*_nf(cs[i],k["nat"])-float(k["pv"])*pr[i]*(cs[i]["score"]<=cs[0]["score"]+float(k["pm"])),-tb*cs[i].get("cov",0),tb*cs[i]["cost"],-tb*_nf(cs[i],k["nat"]),i)) if cs else 0;c=cs[j] if cs else {}
- ab=bool(cs) and (k["ap"]=="1" or (c["loo_fail"]>0 if c["loo_fail"] is not None else k["anl"]=="1")) and _nf(c,k["af"])<float(k["at"])
- return {**r,**({"body":c.get("body",""),"expr":c["expr"],"cost":c["cost"],"score":c["score"],"loo_fail":c["loo_fail"],"size":sum(1 for _ in ast.walk(ast.parse(c["expr"],mode="eval")))} if cs else {}),"pick":j,"abstain":ab,"nat":_nf(c,k["nat"]) if cs else None,"rank":k}
+ tb=float(k["tb"]);pr=np.array([c.get("pri",0.0) for c in cs]);pr=(pr-pr.mean())/(pr.std()+1e-9) if k["pz"]=="1" and len(cs)>1 else pr;su=support(cs,r.get("sk_nb") or [],k) if cs and float(k["sb"]) else np.zeros(len(cs));kk=[bool(c.get("sk")) for c in cs];ne=all(kk);el=[not q or k["sx"]=="1" or ne for q in kk];ks=k["sp"]=="1" and any(a and b for a,b in zip(el,kk));el=[a and (b or not ks) for a,b in zip(el,kk)];j=min(range(len(cs)),key=lambda i:(not el[i],cs[i]["cost"]-float(k["sb"])*su[i]+float(k["pw"])*(cs[i]["score"]-cs[i]["cost"])+float(k["lw"])*(cs[i]["loo_fail"] or 0)-float(k["w"])*_nf(cs[i],k["nat"])-float(k["pv"])*pr[i]*(cs[i]["score"]<=cs[0]["score"]+float(k["pm"])),-tb*cs[i].get("cov",0),-(k["so"]=="1")*kk[i],tb*cs[i]["cost"],-tb*_nf(cs[i],k["nat"]),i)) if cs else 0;c=cs[j] if cs else {}
+ j,sh,_=consensus(cs,k,r.get("beh_kind","")) if cs and (k["cons"]!="off" or k["cp"]=="1") else (j,1.0,None);c=cs[j] if cs else {}
+ ax=bool(cs) and (k["ap"]=="1" or (c["loo_fail"]>0 if c["loo_fail"] is not None else k["anl"]=="1")) and _nf(c,k["af"])<float(k["at"]);ac=bool(cs) and sh<float(k["ca"]);ab={"x":ax,"c":ac,"o":ax or ac,"a":ax and ac}[k["cab"]]
+ return {**r,"cshare":sh,**({"body":c.get("body",""),"expr":c["expr"],"cost":c["cost"],"score":c["score"],"loo_fail":c["loo_fail"],"size":_nodes(c["expr"])} if cs else {}),"pick":j,"abstain":ab,"nat":_nf(c,k["nat"]) if cs else None,"rank":k}
 def _limit():
  vs=int(open("/proc/self/statm").read().split()[0])*os.sysconf("SC_PAGE_SIZE");resource.setrlimit(resource.RLIMIT_AS,(vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30),resource.RLIM_INFINITY))
 def pool(jobs=1):return ProcessPoolExecutor(max(1,jobs),mp_context=get_context("spawn"),initializer=_limit)
-def _solve_item(item,**kw):return solve(item[0],item[1],**kw)
+def _solve_item(item,**kw):return solve(item[0],item[1],**{**kw,**(item[2] if len(item)>2 else {})})
 def solve_many(ex,items,**kw):return list(ex.map(functools.partial(_solve_item,**kw),items))

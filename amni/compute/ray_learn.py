@@ -1,6 +1,7 @@
 import os,re,json,math,collections,time,fcntl,hashlib,threading,urllib.error,urllib.parse,urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from amni.compute.ray_qa import words,hard,STOP
+import amni.compute.ks_retrieve as KR
 try:from ddgs import DDGS
 except Exception:DDGS=None
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -43,7 +44,8 @@ def search(q:str,k:int=5)->list:return [p["title"] for p in (_get(API+"action=qu
 def page(t:str,cap:int=20000)->tuple:
  p=list((_get(API+"action=query&prop=extracts|description&explaintext=1&redirects=1&titles=%s&format=json"%urllib.parse.quote(t)).get("query") or {}).get("pages",{}).values()) or [{}]
  return p[0].get("title",t),(p[0].get("extract") or "")[:cap],p[0].get("description") or "","https://en.wikipedia.org/wiki/"+urllib.parse.quote(p[0].get("title",t).replace(" ","_"))
-def descs(ts:list)->dict:
+def descs(ts:list,lc:bool=False)->dict:
+ if lc:return {t:_kx()[1].gloss(t) for t in ts}
  x=(_get(API+"action=query&prop=description&redirects=1&titles=%s&format=json"%urllib.parse.quote("|".join(sorted(set(ts))[:50]))) if ts else {}).get("query") or {};m={r["from"]:r["to"] for r in x.get("normalized",[])+x.get("redirects",[])}
  d={p["title"]:(p.get("description") or ("" if "missing" in p else "?")) for p in x.get("pages",{}).values()};return {t:d.get(m.get(m.get(t,t),m.get(t,t)),None) for t in ts}
 _WC={}
@@ -107,13 +109,27 @@ def stem_(w:str)->bytes:
 MIRROR=re.compile(r"wikipedia\.org|wikiwand|grokipedia|explained\.today|wiki2\.org|wikimili|alchetron|dbpedia|infogalactic|justapedia|wikizero|wikiless|kiddle|wikiwiki|en-academic|wikibrief|thereaderwiki|wiki\.alquds|dictionary\.sensagent")
 def _sk(u:str)->str:
  p=urllib.parse.urlparse(u);return "w:"+urllib.parse.unquote(p.path.rstrip("/").rsplit("/",1)[-1]).replace("_"," ").lower() if MIRROR.search(p.netloc) else p.netloc.replace("www.","")
-def gather(q:str)->tuple:
+_KX=[]
+def _kx()->list:
+ _KX or _KX.extend([KR.KSIndex(srcs=tuple(os.environ.get("AMNI_LEARN_SRCS","wikipedia,grokipedia").split(","))),KR.Titles()]);return _KX
+def link(q:str)->list:
+ w=re.findall(r"[\w'&.-]+",q);T=_kx()[1];out=[];i=0
+ while i<len(w):
+  d=next(((n,d) for n in range(min(6,len(w)-i),0,-1) for d in [T.doc(" ".join(w[i:i+n])) or (T.doc("The "+" ".join(w[i:i+n])) if n>1 else None)] if d and (n>1 or idf(w[i].lower().encode())>=11.0) and w[i].lower() not in STOP),None);out+=[d[1]] if d else [];i+=d[0] if d else 1
+ return out
+def local(q:str,k:int=None)->list:
+ ix=_kx()[0];h=ix.search(q,k or int(os.environ.get("AMNI_LEARN_K","24")));by={}
+ for (t,x,_),(_,g,_) in zip(ix.fetch(h),h):by.setdefault((ix.seg[g][0],t),[]).append(x)
+ for t,x in link(q):by[("wikipedia",t)]=[KR.DEFAULT_FILTER.clean(x[:12000])[0]]
+ return [(t,"\n".join(v),"",KR.wurl(t,s)) for (s,t),v in by.items()]
+def gather(q:str,lc:bool=False)->tuple:
+ if lc:return [],local(q)
  with ThreadPoolExecutor(4) as ex:
   f=[ex.submit(ddg,z,10) for z in (q+" wikipedia",q," ".join(w for w in re.findall(r"[\w'-]+",q.lower()) if w not in STOP))]+[ex.submit(search,q,5)];e=f[0].result()+f[1].result()+f[2].result()
   w=[urllib.parse.unquote(x["u"].split("/wiki/",1)[1].split("#")[0]).replace("_"," ") for x in f[0].result() if "en.wikipedia.org/wiki/" in x["u"]]
   return [x for i,x in enumerate(e) if x["u"] not in {y["u"] for y in e[:i]}],[page(x) for x in list(dict.fromkeys(w[:3]+f[3].result()[:3]))[:5]]
-def evidence(q:str)->tuple:
- qt=qtype(q);F=fam(q);d,P=gather(q);qw=set(words(q.encode()));fw={w for w in qw if any(re.search(a,w.decode()) for a,_ in FAM)};W={w:idf(w) for w in qw};tot=sum(W.values()) or 1.0;yrs=set(re.findall(r"\b(?:1[0-9]|20)\d\d\b",q));V={}
+def evidence(q:str,lc:bool=False)->tuple:
+ qt=qtype(q);F=fam(q);d,P=gather(q,lc);qw=set(words(q.encode()));fw={w for w in qw if any(re.search(a,w.decode()) for a,_ in FAM)};W={w:idf(w) for w in qw};tot=sum(W.values()) or 1.0;yrs=set(re.findall(r"\b(?:1[0-9]|20)\d\d\b",q));V={}
  ps=[(t,u,x,set(words(t.encode()))) for t,txt,_,u in P for x in sents(txt)]+[(urllib.parse.urlparse(x["u"]).netloc,x["u"],y,set()) for x in d if "wikipedia.org" not in x["u"] for y in sents(re.sub(r"^(?:\w{3} \d{1,2}, \d{4}|\d+ \w+ ago)\s*[·—–-]+\s*","",x["b"]))]
  nz=lambda y:re.sub(r"[^a-z0-9]","",y.lower())[:50];dup={nz(x):"w:"+t.lower() for t,txt,_,u in P for x in sents(txt)};ps=[(t,u,x,tw,"w:"+t.lower() if "wikipedia.org" in u else dup.get(nz(x),_sk(u))) for t,u,x,tw in ps]
  al=" ".join(t for _,t,_,_ in P);loc=(collections.Counter(re.findall(r"\b[a-zß-öø-ÿ]+\b",al)),collections.Counter(re.findall(r"(?<![.!?]\s)\b[A-ZÀ-ÖØ-Þ]\w+",al)))
@@ -130,7 +146,7 @@ def evidence(q:str)->tuple:
   R.append((k,{"v":v,"mx":max(z[0] for z in h),"rs":sum(max([z[1]*z[6] for z in h if z[7]==t]) for t in {z[7] for z in h}),"ns1":len({z[7] for z in h if z[6]>=1.0 and z[1]>=0.6}),"ev":sorted({z[5] for z in h if z[6]>=1.0 and z[1]>=0.6}),"span":hb[2] if v in hb[2] else v,"best":(hb[3],hb[4],hb[5])}))
  R=sorted(R,key=lambda kv:-(kv[1]["rs"]+0.1*kv[1]["mx"]))[:12]
  if qt in ("person","place") and R:
-  ds=descs([e["v"] for _,e in R])
+  ds=descs([e["v"] for _,e in R],lc) if lc else descs([e["v"] for _,e in R])
   for _,e in R:e["desc"]=ds.get(e["v"]);e["ok"]=bool(e["desc"] and e["desc"]!="?" and (PERSONY if qt=="person" else PLACEY).search(e["desc"]) and not NEGD.search(e["desc"]))
  return qt,R,P,d
 class Learned:
@@ -144,13 +160,13 @@ class Learned:
   return b
  def add(self,q:str,a:str,title:str,url:str,**kw)->dict:
   r={"q":q,"a":a,"title":title,"src":url,"t":time.strftime("%Y-%m-%dT%H:%M:%S"),**kw};os.makedirs(os.path.dirname(self.path) or ".",exist_ok=True);open(self.path,"a").write(json.dumps(r)+"\n");self.rows.append(r);return r
-def decide(q:str)->dict:
- qt,R,P,d=evidence(q) if qtype(q)!="other" else ("other",[],[],[]);R=[e for _,e in R if e.get("ok",True)]
+def decide(q:str,lc:bool=False)->dict:
+ qt,R,P,d=(evidence(q,lc) if lc else evidence(q)) if qtype(q)!="other" else ("other",[],[],[]);R=[e for _,e in R if e.get("ok",True)]
  if not R:return None
  e=R[0];e2=R[1] if len(R)>1 else {"rs":0.0,"ns1":0};g=e["ns1"]-e2["ns1"];m=e["rs"]/(e["rs"]+e2["rs"]+1e-9)
- return {"a":e["best"][0],"title":e["best"][1],"src":e["best"][2],"span":e["span"],"confidence":round(m*(1-0.5**g),3),"evidence":e["ev"],"qtype":qt} if e["ns1"]>=2 and m>=0.65 and (g>=3 or e2["ns1"]==0) else None
+ return {"a":e["best"][0],"title":e["best"][1],"src":e["best"][2],"span":e["span"],"confidence":round(m*(1-0.5**g),3),"evidence":e["ev"],"qtype":qt,**({"local":True,"license":"CC BY-SA 4.0"} if lc else {})} if (e["ns1"]>=2 and m>=0.65 and (g>=3 or e2["ns1"]==0) and (not lc or e["ns1"]>=3 or any(bool(tw) and tw<=set(words(q.encode())) for u in e["ev"] for tw in [set(words(urllib.parse.unquote(u.rsplit("/",1)[-1]).replace("_"," ").encode()))]))) or (lc and e["ns1"]>=1 and e["mx"]>=float(os.environ.get("AMNI_LEARN_MX","0.7")) and e["mx"]>=e2.get("mx",0.0)+0.1 and bool(set(words(e["best"][1].encode()))) and set(words(e["best"][1].encode()))<=set(words(q.encode()))) else None
 def learn(q:str,store:Learned)->dict:
  if PERSONAL.search(q) or TEMPORAL.search(q):return None
- try:h=decide(_scrub(q))
+ try:h=(decide(q,True) if os.environ.get("AMNI_LEARN_LOCAL","1")=="1" else None) or (decide(_scrub(q)) if os.environ.get("AMNI_LEARN_WEB","0")=="1" else None)
  except Exception:return None
  return store.add(q,h.pop("a"),h.pop("title"),h.pop("src"),**h) if h else None

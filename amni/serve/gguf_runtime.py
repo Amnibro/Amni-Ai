@@ -48,8 +48,9 @@ def _ray_guide(e,message:str):
     from amni.compute.ray_qa import QA,guide,DEFAULT_QA
     p=os.environ.get('AMNI_RAY_QA',DEFAULT_QA)
     if not os.path.exists(p):return None
-    _qa[0]=_qa[0] or QA(p);return guide(e,_qa[0],message)
+    _qa[0]=_qa[0] or QA(p);return guide(e,_qa[0],message,full=True)
 _learned=[None]
+def _cite(title:str,url:str='')->str:return ('Grokipedia' if 'grokipedia' in url else 'Wikipedia')+(f' — {title}' if title else '')
 def _ray_learned(message:str):
     try:
         from amni.compute.ray_learn import Learned
@@ -58,17 +59,17 @@ def _ray_learned(message:str):
 def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
     from amni.compute.ray_field import engine
     h=(history or [])[-1:];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
-    e=engine();g=_ray_guide(e,message)
+    e=engine();h=_ray_guide(e,message);g=h[3] if h else None;src=f" (Source: {_cite(h[5])})" if h and len(h)>5 and h[5] else ''
     if g is None:
         lr=_ray_learned(message)
-        if lr:yield (f"{lr['span']}. " if lr.get('span') else '')+f"{lr['a']} (I learned this earlier from {lr.get('title') or 'the web'}.)";return
+        if lr:yield (f"{lr['span']}. " if lr.get('span') else '')+f"{lr['a']} (I learned this earlier from {_cite(lr.get('title'),lr.get('src') or '') if lr.get('local') else lr.get('title') or 'the web'}.)";return
     from amni.compute.ray_learn import learn,Learned,PERSONAL
-    if g is None and os.environ.get('AMNI_RAY_LEARN','0')=='1' and not PERSONAL.search(message):
-        yield "I'm not sure about that one yet, so let me look it up. "
+    if g is None and os.environ.get('AMNI_RAY_LEARN','1')=='1' and not PERSONAL.search(message):
         _learned[0]=_learned[0] or Learned();r=learn(message,_learned[0])
-        yield (f"Found it: {r['span']}. " if r and r.get('span') else '')+(f"{r['a']} (Source: {r.get('title') or 'Wikipedia'}. I'll remember this.)" if r else "I couldn't find an answer I trust, so I won't guess.");return
+        if r:yield (f"{r['span']}. " if r.get('span') else '')+f"{r['a']} (Source: {_cite(r.get('title'),r.get('src') or '') if r.get('local') else r.get('title') or 'Wikipedia'}. I'll remember this.)";return
     if g is None and os.environ.get('AMNI_RAY_QA_DECLINE','1')=='1':yield "I'm not sure about that one yet.";return
     yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','20')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))
+    if src:yield src
 def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Dict:
     if backend_name()=='ray':
         t=''.join(_ray_stream(message,history,max_new_tokens,do_sample));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}

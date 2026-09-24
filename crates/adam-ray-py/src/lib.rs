@@ -81,7 +81,7 @@ impl Qa {
     #[pyo3(signature = (q, k=3))]
     fn search<'py>(&self, py: Python<'py>, q: &str, k: usize) -> Vec<(f64, f64, String, Bound<'py, PyBytes>, i64)> { self.q.search(q, k).into_iter().map(|h| hit(py, h)).collect() }
     fn search_ids(&self, q: &str, k: usize) -> Vec<(usize, f64)> { self.q.search(q, k).into_iter().map(|h| (h.id, h.score)).collect() }
-    fn overlap(&self, q: &str, c: &str) -> (f64, f64, f64) { self.q.overlap(q, c) }
+    fn overlap(&self, q: &str, c: &str) -> (f64, f64, f64) { self.q.overlap(q, c, false) }
     fn answer<'py>(&self, py: Python<'py>, i: usize) -> Bound<'py, PyBytes> { PyBytes::new(py, &self.q.answer(i)) }
 }
 #[pyfunction]
