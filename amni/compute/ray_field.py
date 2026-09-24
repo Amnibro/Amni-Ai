@@ -3,7 +3,7 @@ import numpy as np
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_PACK=os.path.join(_H0,"exports","gf17_continuum","rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz")
 V=256;WM=(1<<20)-1;NI=37;BASE=21;HOPS=4;KS=3;MAXB=256;TOPIC_A=0.99
-_lock=threading.Lock();_eng=None
+_lock=threading.Lock();_eng={}
 def _unpack5(b:np.ndarray,n:int)->np.ndarray:
  u=np.packbits(np.concatenate([np.zeros((b.size//7,8,1),np.uint8),np.unpackbits(b.reshape(-1,7),axis=1).reshape(-1,8,7)],axis=2),axis=2).reshape(-1)[:n].astype(np.int16);return np.stack([u//25-2,(u//5)%5-2,u%5-2],axis=1).astype(np.int8)
 def load_pack(path:str)->dict:
@@ -163,6 +163,5 @@ class RayField:
     cand.sort(key=norm,reverse=True);beams=cand[:width];lgs=self._advance([b for _,_,b in beams],[s[-1] for _,s,_ in beams],True)
     if all(s[-1]==10 for _,s,_ in beams):break
    return bytes(max(beams,key=norm)[1][len(p0):]).decode("utf-8","replace")
-def engine()->RayField:
- global _eng
- _eng=_eng or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0) if os.environ.get("AMNI_RAY_IMPL","taichi")=="rust" else r)(RayField());return _eng
+def engine(path:str=None)->RayField:
+ _eng[path]=_eng.get(path) or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0) if os.environ.get("AMNI_RAY_IMPL","taichi")=="rust" else r)(RayField(path));return _eng[path]

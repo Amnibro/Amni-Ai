@@ -1,8 +1,9 @@
-import ast,builtins,copy,functools,gc,itertools,json,math,operator as op,os,random,re,resource,signal,textwrap,threading,time,types,typing,zlib
+import ast,builtins,collections,copy,functools,gc,itertools,json,math,operator as op,os,random,re,resource,signal,string,textwrap,threading,time,types,typing,zlib
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 from pathlib import Path
+from amni.compute import ray_field
 ROOT=Path(__file__).resolve().parents[2]
 STORE=ROOT/"data"/"code_eval"/"learned_tiles.jsonl"
 CAP,ROWCAP,PAIRCAP,RMAX,MAXC,BIG,LMAX=2000,600,800,2000,18,1<<128,24
@@ -12,6 +13,12 @@ CONC=ROOT/"data"/"concepts"
 SEMM=os.environ.get("TS_SEM","wn")
 PEN={k:float(v) for k,v in (x.split("=") for x in ("intent=5,cidx=2,fconst=2,crash=1,redund=2,edge=0.5,rel=0,"+os.environ.get("TS_PEN","")).split(",") if x)}
 AFT,REL_T,SPHT,COVT=0.75,(1,2,9,14,15),float(os.environ.get("TS_SPHT","0.99999")),float(os.environ.get("TS_COVT","0.75"))
+TOPN,XLV,XS=int(os.environ.get("TS_TOPN","8")),int(os.environ.get("TS_XLV","2")),float(os.environ.get("TS_XS","3"))
+NATP=str(ROOT/"exports"/"gf17_continuum"/"rayhash_v16_pycode_s30k_sid.npy")
+RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,"+os.environ.get("TS_RANK","")).split(",") if x)
+PRIORP=os.environ.get("TS_PRIOR",str(ROOT/"data"/"pycode"/"x5_prior.npz"))
+PCFG=dict(x.split("=") for x in ("b=20,idf=1,gw=1,ga=1,gv=1,gr=1,norm=1,agg=sum,mode=pmi,fc=cmkops,"+os.environ.get("TS_PCFG","")).split(",") if x)
+PBIAS=dict(x.split("=") for x in ("t=99,dn=-99,rs=0,pat=1,"+os.environ.get("TS_PB","")).split(",") if x)
 class Unsafe(Exception):pass
 class Timeout(Exception):pass
 class Stop(BaseException):pass
@@ -21,6 +28,7 @@ BAN_NAME={"eval","exec","open","getattr","setattr","delattr","globals","locals",
 BAN_NODE=(ast.Import,ast.ImportFrom,ast.Global,ast.Nonlocal,ast.ClassDef,ast.AsyncFunctionDef,ast.Await,ast.AsyncFor,ast.AsyncWith,ast.With,ast.Yield,ast.YieldFrom)
 def _ns(m,ks=None):return types.SimpleNamespace(**{k:getattr(m,k) for k in (ks or dir(m)) if not k.startswith("_")})
 MODS={"math":_ns(math),"itertools":_ns(itertools),"functools":_ns(functools,["reduce","cmp_to_key","lru_cache","partial"])}
+XMODS={"collections":_ns(collections,["Counter","defaultdict","deque","OrderedDict"]),"string":_ns(string,["ascii_lowercase","ascii_uppercase","ascii_letters","digits","hexdigits","octdigits","punctuation","whitespace","printable"])}
 TYPING={k:getattr(typing,k) for k in "List Tuple Optional Any Dict Union Set Callable Iterable Sequence".split()}
 def _bad(n):return isinstance(n,BAN_NODE) or (isinstance(n,ast.Attribute) and (n.attr.startswith("_") or n.attr in BAN_ATTR)) or (isinstance(n,ast.Name) and (n.id.startswith("__") or n.id in BAN_NAME))
 def safe_check(src,mode="exec"):
@@ -272,6 +280,45 @@ class Sem:
   return out
 @functools.lru_cache(None)
 def sem():return Sem() if SEMM!="off" and (CONC/"wordnet_graph.npz").exists() else None
+FMOD={"math","itertools","functools","collections","string","re","operator","statistics","heapq"}
+FCMP={"Gt":"Lt","GtE":"LtE","Is":"Eq","IsNot":"NotEq"}
+TYV={bool:"bool",int:"int",float:"float",str:"str",list:"list",tuple:"tuple",dict:"dict",set:"set",frozenset:"set",type(None):"none"}
+TYA={"integer":"int","int":"int","long":"int","string":"str","str":"str","unicode":"str","text":"str","bool":"bool","boolean":"bool","float":"float","number":"float","double":"float","list":"list","sequence":"list","iterable":"list","array":"list","tuple":"tuple","dict":"dict","dictionary":"dict","mapping":"dict","set":"set","frozenset":"set","none":"none"}
+PSHAPE={"map":"[x for x in a]","filter":"[x for x in a if b]","sortby":"sorted(a, key=lambda x: b)","sortbyr":"sorted(a, key=lambda x: b, reverse=True)","maxby":"max(a, key=lambda x: b)","minby":"min(a, key=lambda x: b)","firstidx":"next((i for i, x in enumerate(a) if b), -1)","dictc":"{x: b for x in a}","flatmap":"[y for x in a for y in b]","pair":"[b for i, x in enumerate(a) for y in a[i + 1:]]","adj":"[b for x, y in zip(a, a[1:])]","zip":"[b for x, y in zip(a, c)]","fold":"functools.reduce(lambda _a, _x: _a + _x, a)","scan":"list(itertools.accumulate(a, lambda _a, _x: _a + _x))","tern":"(a if b else c)"}
+def _cv(x):return x.value if isinstance(x,ast.Constant) else -x.operand.value if isinstance(x,ast.UnaryOp) and isinstance(x.op,ast.USub) and isinstance(x.operand,ast.Constant) and type(x.operand.value) in (int,float) else None
+def _fk(v):return "k:bool" if type(v) is bool else "k:None" if v is None else ("k:"+repr(v) if v in (0,1,2,10,-1) else "k:int") if type(v) is int else "k:float" if type(v) is float else ("k:"+repr(v) if v in (""," ") else "k:str") if type(v) is str else None
+def _i1(x):return isinstance(x,ast.BinOp) and isinstance(x.op,ast.Add) and _cv(x.right)==1 and not isinstance(x.left,ast.Constant)
+def _fcall(n):f=n.func;a=f.id if isinstance(f,ast.Name) else f.attr if isinstance(f,ast.Attribute) else "";return ([("c:" if isinstance(f,ast.Name) or isinstance(f.value,ast.Name) and f.value.id in FMOD else "m:")+a] if a and a[0]!="_" else [])+["k:"+k.arg for k in n.keywords if k.arg in ("key","reverse")]+(["p:adj"] if a=="zip" and any(isinstance(x,ast.Subscript) and isinstance(x.slice,ast.Slice) and _cv(x.slice.lower)==1 for x in n.args) else [])+(["p:pair"] if a=="range" and n.args and _i1(n.args[0]) else [])+(["p:acc"] if a=="accumulate" else [])
+def _fsub(s):c=_cv(s);return ((["s:rev"] if _cv(s.step)==-1 else ["s:step"] if s.step else ["s:slice"] if s.lower and s.upper else ["s:drop"] if s.lower else ["s:take"] if s.upper else [])+(["p:pair"] if _i1(s.lower) else [])) if isinstance(s,ast.Slice) else ["s:"+str(c)] if type(c) is int and c in (0,1,-1) else ["s:idx"]
+def _fcomp(n):return ["p:iter"]+(["p:filter"] if any(g.ifs for g in n.generators) else [])+(["p:nest"] if len(n.generators)>1 else [])+(["p:dictc"] if isinstance(n,ast.DictComp) else [])
+FX={ast.Call:_fcall,ast.BinOp:lambda n:["o:"+type(n.op).__name__],ast.Compare:lambda n:["o:"+FCMP.get(type(o).__name__,type(o).__name__) for o in n.ops],ast.UnaryOp:lambda n:["o:Not"] if isinstance(n.op,ast.Not) else [_fk(_cv(n))] if _cv(n) is not None else ["o:USub"] if isinstance(n.op,ast.USub) else [],ast.BoolOp:lambda n:["o:"+type(n.op).__name__],ast.Subscript:lambda n:_fsub(n.slice),**{c:_fcomp for c in (ast.ListComp,ast.GeneratorExp,ast.SetComp,ast.DictComp)},ast.For:lambda n:["p:iter"]+(["p:filter"] if any(isinstance(b,ast.If) for b in n.body) else [])+(["p:nest"] if any(isinstance(b,ast.For) for b in n.body) else []),ast.While:lambda n:["p:while"],ast.Lambda:lambda n:["p:lambda"],ast.IfExp:lambda n:["p:cond"],ast.If:lambda n:["p:cond"],ast.AugAssign:lambda n:["p:acc"],ast.Constant:lambda n:[_fk(n.value)],ast.Attribute:lambda n:["k:pi"] if n.attr=="pi" else []}
+def _nil(n):return ()
+def feats(src):
+ t=src if isinstance(src,ast.AST) else ast.parse(textwrap.dedent(src).strip());fd=isinstance(t,(ast.FunctionDef,ast.AsyncFunctionDef))
+ return {x for s in (t.body[1:] if fd and ast.get_docstring(t) is not None else t.body if fd or isinstance(t,ast.Module) else [t]) for n in ast.walk(s) for x in FX.get(type(n),_nil)(n) if x}
+@functools.lru_cache(None)
+def tfeats():return {**{n:frozenset(feats(_rd(_parts(tp),["a","b","c"]))) for n,pr,tp,*_ in TILE_DEFS},**{"@"+k:frozenset(feats(v)) for k,v in PSHAPE.items()}}
+@functools.lru_cache(None)
+def vocab():return tuple(sorted(set().union(*tfeats().values())|{_fk(v) for v in (0,1,2,10,-1,""," ",None,True,3,0.5,"x")}|{"k:pi","p:acc","p:while","p:nest","p:cond"}))
+def _h(t):b=t.encode();return zlib.crc32(b)|(zlib.adler32(b)&0xFFFFFF)<<32
+def _stem(w):return w[:-3]+"y" if len(w)>4 and w.endswith("ies") else w[:-1] if len(w)>3 and w[-1]=="s" and w[-2]!="s" else w
+def _at(s):m=re.findall(r"[a-z]+",re.sub(r"typing\.|optional\[","",str(s or "").lower()));b=TYA.get(m[0]) if m else None;e=(TYA.get(m[2]) if len(m)>2 and m[1]=="of" else TYA.get(m[1]) if len(m)>1 else None) if b in ("list","tuple","set") else None;return ([b]+([f"{b}[{e}]"] if e else [])) if b else []
+def _vt(v):b=TYV.get(type(v));e=[TYV.get(type(x)) for x in v] if b in ("list","tuple","set") and v else [];return ([b]+([f"{b}[{e[0]}]"] if e and len(set(e))==1 and e[0] else [])) if b else []
+def ptoks(doc,name,params,at,rt):return {"w:"+_stem(t) for t in re.findall(r"[a-z]+",(doc+" "+re.sub(r"([a-z])([A-Z])",r"\1 \2",name).replace("_"," ")).lower()) if len(t)>1}|{"v:"+re.sub(r"\d+$","",p.lower()) for p in params if p not in ("self","cls")}|{"a:"+x for a in at for x in a}|{"r:"+x for x in rt}
+class Prior:
+ def __init__(s,path):z=np.load(path);s.pk,s.pc,s.tk,s.tc,s.fc,s.N,s.V=z["pk"],z["pc"],z["tk"],z["tc"],z["fc"].astype(np.float64),float(z["n"]),[str(x) for x in z["vocab"]];s.fi={f:j for j,f in enumerate(s.V)};s.hd={n:[s.fi[f] for f in fs if f in s.fi and f[0] in "cmp"] or [s.fi[f] for f in fs if f in s.fi] for n,fs in tfeats().items()}
+ def _get(s,k,tab,cnt):i=np.minimum(np.searchsorted(tab,k),len(tab)-1);return np.where(tab[i]==k,cnt[i],0).astype(np.float64)
+ def fvec(s,toks,cfg=None):
+  c={**PCFG,**(cfg or {})};T=sorted(toks);h=np.array([_h(t) for t in T],np.uint64).reshape(-1);ct=s._get(h,s.tk,s.tc);C=s._get((h[:,None]<<np.uint64(8))|np.arange(len(s.V),dtype=np.uint64)[None,:],s.pk,s.pc);b=float(c["b"]);pf=(s.fc+0.5)/(s.N+1);L=np.log((C+b*pf)/((ct[:,None]+b)*pf));w=np.where(ct>0,np.log((s.N+1)/(ct+1)),0.0)**float(c["idf"]);g=np.array([{"a":"a","v":"v","r":"r"}.get(t[0],"w") for t in T])
+  a=w*np.array([float(c["g"+x]) for x in g]) if T else w;q=np.clip(((a[:,None]*(C+b*pf)/(ct[:,None]+b)).sum(0)+1e-3*pf)/(a.sum()+1e-3),1e-9,1-1e-9);lo=np.log(q/(1-q))-(np.log(pf/(1-pf)) if c["mode"]=="lr" else 0)
+  return (lo if c["mode"] in ("lo","lr") else sum(float(c["g"+k])*(w[g==k,None]*L[g==k]).sum(0)/(max(1e-9,w[g==k].sum()) if c["norm"]=="1" else 1) for k in "wavr") if T else np.zeros(len(s.V)))*np.array([f[0] in c["fc"] for f in s.V])
+ def cand(s,fv,expr,agg=None):
+  try:j=[s.fi[f] for f in feats(expr) if f in s.fi]
+  except Exception:j=[]
+  a=agg or PCFG["agg"];return float(fv[j].max() if a=="max" and j else fv[j].sum()/(max(1,len(j)) if a=="mean" else 1))
+ def tile(s,fv,name):j=s.hd.get(name);return float(fv[j].max()) if j else 0.0
+@functools.lru_cache(None)
+def prior(path=None):p=Path(path or PRIORP);return Prior(p) if p.exists() and os.environ.get("TS_PRIOR_OFF")!="1" else None
 class Tm:
  __slots__=("c","v","k","s","u","d","w","f")
  def __init__(s,c,v,k,z,u,d,w,f=0):s.c,s.v,s.k,s.s,s.u,s.d,s.w,s.f=c,v,k,z,u,d,w,f
@@ -306,7 +353,8 @@ def _probes(rows,K):
   (out.append(r),seen.add(repr(r))) if repr(r) not in seen and len(out)<K else None
  return out
 FAM={"add":1,"sub":1,"inc":1,"dec":1,"mul":2,"dbl":2,"div":2,"fdiv":2,"half":2,"halff":2}
-def library(sp=None):return sorted([Tl(n,tuple(PR[ch] for ch in pv),_parts(tp),fn,max(1,c-1) if sp and sp.aff(kw)>=AFT else c,"C" in fl,frozenset(DEPF[ch] for ch in fl if ch in DEPF)|({"h:"+tp.split("(")[0]} if "h" in fl else EMPTY),sp.hm(kw) if sp else 0) for n,pr,tp,fn,c,kw,fl in TILE_DEFS for pv in pr.split("|")],key=lambda t:(-bool(t.hit),t.cost))
+def _bc(sp,n,kw,c):d=max(1,c-(sp is not None and sp.aff(kw)>=AFT));e=max(1,d-(sp.pb(n) if sp is not None else 0));return e,({("b:" if e<d else "B:")+n} if e!=d and PBIAS["rs"]=="1" else EMPTY)
+def library(sp=None):return sorted([Tl(n,tuple(PR[ch] for ch in pv),_parts(tp),fn,_bc(sp,n,kw,c)[0],"C" in fl,frozenset(DEPF[ch] for ch in fl if ch in DEPF)|({"h:"+tp.split("(")[0]} if "h" in fl else EMPTY)|_bc(sp,n,kw,c)[1],sp.hm(kw) if sp else 0) for n,pr,tp,fn,c,kw,fl in TILE_DEFS for pv in pr.split("|")],key=lambda t:(-bool(t.hit),t.cost))
 def _strip_imports(src):return re.sub(r"(?m)^[ \t]*(?:import [\w., ]+|from [\w.]+ import [^\n]+)$","",src)
 def _wrap(fn,cp=True):return (lambda *a:timed(fn,*copy.deepcopy(a),t=0.1)) if cp else (lambda *a:timed(fn,*a,t=0.05))
 def _annp(a):s=(ast.unparse(a) if a is not None else "").lower();return S_ if "str" in s else N if ("int" in s or "float" in s) else Q if ("list" in s or "tuple" in s) else B if "bool" in s else 0
@@ -314,7 +362,7 @@ def _major(k):e=k&(SN|SS|SQ|SB);return (k&(N|B|S_|Q|D))|(e if e!=(SN|SS|SQ|SB) e
 def _lit(code):return (math.pi,frozenset({"math"})) if code=="math.pi" else (ast.literal_eval(code),EMPTY)
 class Spec:
  def __init__(s,prompt,checks):
-  s.prompt=prompt;fs=[n for n in ast.parse(prompt).body if isinstance(n,ast.FunctionDef)];f=fs[-1];s.name=f.name;s.params=[a.arg for a in f.args.args];s.hnodes=fs[:-1];dv=f.args.defaults;s.dflt={}
+  s.prompt=prompt;fs=[n for n in ast.parse(prompt).body if isinstance(n,ast.FunctionDef)];f=fs[-1];s.name=f.name;s.params=[a.arg for a in f.args.args];s.ann,s.ret=[a.annotation for a in f.args.args],f.returns;s.hnodes=fs[:-1];dv=f.args.defaults;s.dflt={}
   for p,d in zip(s.params[len(s.params)-len(dv):],dv):
    try:s.dflt[p]=ast.literal_eval(d)
    except Exception:pass
@@ -329,6 +377,10 @@ class Spec:
   [s.ka.__setitem__(k,max(v,s.ka.get(k,0))) for a in s.wa.values() for k,v in a.items()];[sw.setdefault(frozenset(k for k,v in a.items() if v>=0.99) or t,t) for t,a in s.wa.items() if any(a.get(w,0)>=0.8 for w in STRONG)]
   s.strong=(list(sw.values())+[c[4] for c in s.consts if c[4]])[:30];s.sb={w:1<<k for k,w in enumerate(s.strong)};lc=s.desc.lower();ot={type(v) for v in s.T.values()}
   s.cues={k for k,(rx,ty) in CUES.items() if re.search(rx,lc) and (not ty or ot&set(ty))};s.quant=bool(QRX.search(lc)) and not PRX.search(lc);s.cix=re.compile(r"(?<![\w\].)])(?:"+"|".join(map(re.escape,s.params))+r")\[-?\d+\]") if s.params else None
+  P=prior();s.fv=P.fvec(s.toks()) if P else None
+ def toks(s):return ptoks(s.desc,s.name,s.params,[(_at(ast.unparse(a)) if a is not None else []) or (_vt(s.rows[0][k]) if s.rows else []) for k,a in enumerate(s.ann)],(_at(ast.unparse(s.ret)) if s.ret is not None else []) or (_vt(s.T[min(s.T)]) if s.T else []))
+ def pri(s,expr):P=prior();return P.cand(s.fv,expr) if P and s.fv is not None else 0.0
+ def pb(s,name):P=prior();v=P.tile(s.fv,name) if P and s.fv is not None else 0.0;return int(v>=float(PBIAS["t"]))-int(v<=float(PBIAS["dn"]))
  def aff(s,kw):return max((s.ka.get(k,0) for k in kw.split()),default=0)
  def hm(s,kw):ks=kw.split() if isinstance(kw,str) else kw;return functools.reduce(op.or_,(b for t,b in s.sb.items() if t in s.wa and max((s.wa[t].get(k,0) for k in ks),default=0)>=COVT),0)
  def bind(s,a,k):
@@ -365,7 +417,7 @@ def load_store(path):p=Path(path);return [json.loads(l) for l in p.read_text(enc
 def learned_tiles(recs,W,sp=None):
  out,src=[],{}
  for ov,r in sorted(((len((set(r["words"])-STOP)&(W-STOP)),r) for r in recs),key=lambda x:-x[0])[:LMAX]:
-  try:fn=safe_exec(_strip_imports(r["src"]))[r["name"]] if ov else None
+  try:fn=safe_exec(_strip_imports(r["src"]),XMODS)[r["name"]] if ov else None
   except Exception:fn=None
   (out.append(Tl(r["name"],tuple(_major(k) for k in r["kinds"]),_call(r["name"],len(r["kinds"])),_wrap(fn,False),1 if ov>=2 else 2,False,frozenset({"h:"+r["name"]}),sp.hm(r["words"]) if sp else 0,3)),src.setdefault(r["name"],r["src"])) if fn else None
  return out,src
@@ -420,11 +472,11 @@ class Ctx:
   s.add(v+tuple(map(t.sfn,*(x.v[R0:] for x in a))),c,u,d,w,lambda:_rd(t.parts,[x.c for x in a]),cf)
 class Search:
  def __init__(z,sp,budget=10.0,recs=(),maxctx=28):
-  z.sp,z.dl,z.n,z.hits,z.ctxs,z.iters,z.maxctx,z.tried=sp,time.perf_counter()+budget,0,[],[],[],maxctx,set()
+  z.sp,z.dl,z.n,z.hits,z.ctxs,z.iters,z.maxctx,z.tried,z.bods,z.c0=sp,time.perf_counter()+budget,0,[],[],[],maxctx,set(),set(),None
   z.rows=sp.rows+_probes(sp.rows,int(os.environ.get("TS_PROBES","6")));z.RE=len(z.rows);eg=tuple(type(a)() if type(a) in (list,str,tuple,dict) else a for a in sp.rows[0]) if sp.rows else ();z.rows+=[eg] if eg!=sp.rows[0] and repr(eg) not in {repr(r) for r in z.rows} else [];z.R0,z.R=len(sp.rows),len(z.rows)
   z.ex=sorted(sp.T);z.T=sp.T;z.full=(1<<len(z.ex))-1;z.abits=(1<<len(sp.params))-1;z.split_on=len(z.ex)>=3;W=sp.words
   lt,hs=learned_tiles(recs,W,sp);z.hsrc={**HELP,**hs};z.n_learned=len(lt);z.tiles=sorted(library(sp)+sp.helper_tiles()+lt,key=lambda t:(-bool(t.hit),t.cost));z.pm=sorted({m for t in z.tiles for m in t.p}|{0});z.smask=(1<<len(sp.strong))-1;z.cmask=sum(b for w,b in sp.sb.items() if w[0]=="#")
-  z.pats={k:sorted([(n,max(1,c-(sp.aff(kw)>=AFT)-(kd in ("pair","adj") and "pair" in sp.cues))) for n,kd,c,kw in PATS if kd==k],key=lambda x:x[1]) for k in ("single","pair","adj","zip")};z.pw={(kd,n):sp.hm(kw) for n,kd,c,kw in PATS}
+  z.pats={k:sorted([(n,max(1,c-(sp.aff(kw)>=AFT)-(kd in ("pair","adj") and "pair" in sp.cues)-sp.pb("@"+(n if kd=="single" else kd))*(PBIAS["pat"]=="1"))) for n,kd,c,kw in PATS if kd==k],key=lambda x:x[1]) for k in ("single","pair","adj","zip")};z.pw={(kd,n):sp.hm(kw) for n,kd,c,kw in PATS}
   z.fc=2 if W&{"fold","accumulate","running","cumulative","reduce","rolling"} or "acc" in sp.cues else 3;z.loo,z.nex,z.pe,z.hk,z.be,z.vfail={},len(z.ex),None,{},1e9,set();z.fm=[(z.fc+(sp.aff(f[4])<AFT),sp.hm(f[4])) for f in FOLDS];sg={}
   [sg.__setitem__(m.group(0),max(sg.get(m.group(0),0),sp.aff(tl[5]))) for tl in TILE_DEFS for m in [re.search(r"(?<![\w.])[\w.]+\(|\.\w+\(",tl[2])] if m];z.sig=[re.compile(r"(?<![\w.])"+re.escape(k)) for k,a in sg.items() if a<AFT]
   taken=set(sp.params)|{h.name for h in sp.hnodes}|{sp.name};z.X,z.Y,z.I=(next(n for n in ns if n not in taken) for ns in (("x","e","v","w","z"),("y","u","t","o"),("i","j","k","m","p")));taken|={z.X,z.Y,z.I};z.X2,z.I2=(next(n for n in ns if n not in taken) for ns in (("e","v","w","z","q","r"),("j","k","m","p","h")));z.vo=re.compile(rf"\b{z.Y}\b.*\b{z.X}\b")
@@ -450,7 +502,7 @@ class Search:
  def score(z,t):
   sp,pr,ty=z.sp,t.v[z.R0:z.RE],{type(z.T[r]) for r in z.ex};pv=[repr(x) for x in t.v if x is not ERR]
   if ty and any(x is not ERR and x is not None and type(x) not in ty and not (type(x) in (int,float) and ty<={int,float}) or "count" in sp.cues and x is not ERR and (type(x) is not int or x<0) for x in pr):return None
-  return t.s+5*(len(sp.params)-bin(t.u&z.abits).count("1"))+COVW*bin(z.smask&~t.w&~z.cmask).count("1")+2*bin(z.cmask&~t.w).count("1")+(3 if len(set(pv))==1 and len(pv)-z.R0>=2 and not t.k&B else 0)+(3 if t.c in sp.params else 0)+PEN["intent"]*sum(not re.search(CREQ[k],t.c) for k in sp.cues)+(PEN["cidx"]*min(2,len(sp.cix.findall(t.c))) if sp.quant and sp.cix else 0)+PEN["fconst"]*sum(x[:2]=="k:" for x in t.d)+PEN["crash"]*sum(x is ERR for x in pr)+PEN["redund"]*_redund(t.c)+PEN["edge"]*(z.RE<z.R and t.v[z.RE] is ERR)+PEN["rel"]*min(3,sum(1 for rx in z.sig if rx.search(t.c)))+(0.5 if z.vo.search(t.c.split(" for ")[0]) and not re.search(rf"\b{z.X}\b.*\b{z.Y}\b",t.c.split(" for ")[0]) else 0)
+  return t.s+5*(len(sp.params)-bin(t.u&z.abits).count("1"))+COVW*bin(z.smask&~t.w&~z.cmask).count("1")+2*bin(z.cmask&~t.w).count("1")+(3 if len(set(pv))==1 and len(pv)-z.R0>=2 and not t.k&B else 0)+(3 if t.c in sp.params else 0)+PEN["intent"]*sum(not re.search(CREQ[k],t.c) for k in sp.cues)+(PEN["cidx"]*min(2,len(sp.cix.findall(t.c))) if sp.quant and sp.cix else 0)+PEN["fconst"]*sum(x[:2]=="k:" for x in t.d)+PEN["crash"]*sum(x is ERR for x in pr)+PEN["redund"]*_redund(t.c)+PEN["edge"]*(z.RE<z.R and t.v[z.RE] is ERR)+PEN["rel"]*min(3,sum(1 for rx in z.sig if rx.search(t.c)))+(sum(x[:2]=="b:" for x in t.d)-sum(x[:2]=="B:" for x in t.d) if PBIAS["rs"]=="1" else 0)+(0.5 if z.vo.search(t.c.split(" for ")[0]) and not re.search(rf"\b{z.X}\b.*\b{z.Y}\b",t.c.split(" for ")[0]) else 0)
  def on_outer(z,t,key=None,m=None,dup=False):
   m=sum(1<<q for q,r in enumerate(z.ex) if _eqv(t.v[r],z.T[r])) if m is None else m;q=(z.full^m).bit_length()-1;nr=z.nex>=2 and m and bin(m).count("1")==z.nex-1;(z.hk.__setitem__(key,m) if key and (m==z.full or nr) else None)
   if t.u&z.abits and m==z.full and (not dup or t.s<=z.be) and z.raw_ok(t):e=z.score(t);(z.hits.append((e,t)),setattr(z,"be",min(z.be,e))) if e is not None else None
@@ -533,24 +585,27 @@ class Search:
  def verify(z,body):
   sp=z.sp
   try:
-   try:g=safe_exec(_strip_imports(sp.prompt+body),TYPING)
+   try:g=safe_exec(_strip_imports(sp.prompt+body),{**TYPING,**(XMODS if "def x5_" in body else {})})
    except Unsafe:g=safe_exec(f"def {sp.name}({', '.join(sp.params)}):\n"+_strip_imports(body))
    env={k:v for k,v in g.items() if k!="__builtins__"};env["_x0eq"]=_x0eq
    return bool(sp.used) and all(bool(timed(safe_eval,ch,env,t=2.0)) for ch in sp.used)
   except Exception:return False
- def pick(z,c):
+ def pick(z,c,n=1):
+  out=[]
   for e,t in sorted([h for h in z.hits if h[0]<=c],key=lambda h:(h[0],-bin(h[1].w).count("1"),h[1].s))[:30]:
+   if len(out)>=n:break
    b=z.body(t)
-   if z.verify(b):z.pe=e;return t,b
-   z.vfail|={x[2:] for x in t.d if x.startswith("h:t_")}
-  z.hits=[h for h in z.hits if h[0]>c];return None
- def run(z):
+   if b in z.bods:continue
+   z.bods.add(b);(out.append((e,t,b)) if z.verify(b) else z.vfail.update(x[2:] for x in t.d if x.startswith("h:t_")))
+  z.pe=out[0][0] if out and z.pe is None else z.pe;z.hits=[h for h in z.hits if h[0]>c];return out
+ def run(z,n=1):
+  out=[]
   try:
    for c in range(1,MAXC+1):
-    z.outer.grow(c);r=z.pick(c) if z.hits else None
-    if r:return r
+    z.outer.grow(c);out+=z.pick(c,n-len(out)) if z.hits else [];z.dl,z.c0=(min(z.dl,time.perf_counter()+XS),c) if out and z.c0 is None else (z.dl,z.c0)
+    if out and (len(out)>=n or c>=z.c0+XLV):break
   except Stop:pass
-  return z.pick(1<<30) if z.hits else None
+  return out+(z.pick(1<<30,n-len(out)) if z.hits and len(out)<n else [])
  def stats(z):return {"terms":sum(len(l) for c in [z.outer]+z.ctxs for l in c.lv.values()),"level":z.outer.level,"n_ctx":len(z.ctxs),"n_learned_tiles":z.n_learned,"n_tiles":len(z.tiles)}
 def _gen(src,params):
  tr,mp=ast.parse(src),{p:f"a{k}" for k,p in enumerate(params)}
@@ -568,24 +623,37 @@ def probation(sp,budget,store,origin="",ref=None):
  try:
   qp=qpath(store);Q=load_store(qp);me=origin or sp.name;cand=[r for r in Q if r.get("status")=="quarantine" and r.get("from")!=me];nt=len(learned_tiles(cand,sp.words,sp)[0]) if cand else 0
   if not nt:return {"pg_tried":0}
-  Sr=Search(sp,budget,load_store(store)+cand);r=Sr.run();byn={q["name"]:q for q in cand};lf=sum(v<Sr.pe for v in Sr.loo.values()) if r and Sr.nex>=2 else 0;hu={x[2:] for x in r[0].d if x.startswith("h:t_")}&set(byn) if r else set();dis=hu if ref is not None and r and repr(r[0].v)!=repr(ref) else set();used=hu-dis if not lf else set();bad=((Sr.vfail&set(byn))|dis)-used
+  Sr=Search(sp,budget,load_store(store)+cand);r=(Sr.run() or [None])[0];byn={q["name"]:q for q in cand};lf=sum(v<Sr.pe for v in Sr.loo.values()) if r and Sr.nex>=2 else 0;hu={x[2:] for x in r[1].d if x.startswith("h:t_")}&set(byn) if r else set();dis=hu if ref is not None and r and repr(r[1].v)!=repr(ref) else set();used=hu-dis if not lf else set();bad=((Sr.vfail&set(byn))|dis)-used
   for q in Q:(q.update(status="promoted",promoted_by=me,date_promoted=_now()) if q["name"] in used else q.update(strikes=q.get("strikes",0)+1,**({"status":"demoted","reason":"probation_disagrees_with_trusted" if q["name"] in dis else "probation_verify_fail","demoted_by":me} if q.get("strikes",0)>=1 else {})) if q["name"] in bad else None)
   (save_store(qp,Q),[open(store,"a",encoding="utf-8").write(json.dumps(q)+"\n") for q in Q if q["name"] in used]) if used or bad else None
-  return {"pg_tried":nt,"pg_promoted":sorted(used),"pg_demoted":sorted(n for n in bad if byn[n]["status"]=="demoted"),"pg_expr":r[0].c if r else ""}
+  return {"pg_tried":nt,"pg_promoted":sorted(used),"pg_demoted":sorted(n for n in bad if byn[n]["status"]=="demoted"),"pg_expr":r[1].c if r else ""}
  except Exception as e:return {"pg_error":f"{type(e).__name__}: {e}"[:200]}
-def solve(prompt,checks,budget=None,store=None,learn=False,origin=""):
+def solve(prompt,checks,budget=None,store=None,learn=False,origin="",topn=None):
  t0=time.perf_counter();budget=float(os.environ.get("TS_BUDGET","10")) if budget is None else budget;base={"found":False,"body":"","n_checks":len(checks),"time":0.0,"size":0,"cost":0,"expr":""}
  try:sp=Spec(prompt,checks)
  except Exception as e:return {**base,"reason":f"spec_error {type(e).__name__}","time":time.perf_counter()-t0}
  base.update(n_ex=len(sp.T),n_raw=len(sp.raw))
  if not sp.used:return {**base,"reason":"no_examples","time":time.perf_counter()-t0}
- try:Sr=Search(sp,budget,load_store(store) if store else ());r=Sr.run();st=Sr.stats();pe,nex,cm=Sr.pe,Sr.nex,Sr.cmask;lf=sum(v<pe for v in Sr.loo.values()) if r and nex>=2 else None;Sr=None;gc.collect();t1=time.perf_counter()-t0;pg=probation(sp,budget,store,origin,r[0].v if r else None) if learn and store else {}
+ try:Sr=Search(sp,budget,load_store(store) if store else ());rs=Sr.run(TOPN if topn is None else topn);r=rs[0] if rs else None;st=Sr.stats();pe,nex,cm=Sr.pe,Sr.nex,Sr.cmask;lo=lambda e:sum(v<e for v in Sr.loo.values()) if nex>=2 else None;lf=lo(pe) if r else None;cs=[{"body":b,"expr":t.c,"cost":t.s,"score":e,"cov":bin(t.w).count("1"),"loo_fail":lo(e),"pri":sp.pri(t.c)} for e,t,b in rs];Sr=None;gc.collect();t1=time.perf_counter()-t0;pg=probation(sp,budget,store,origin,r[1].v if r else None) if learn and store else {}
  except Exception as e:return {**base,"reason":f"search_error {type(e).__name__}: {e}"[:200],"time":time.perf_counter()-t0}
  tm={"time":t1,"time_total":time.perf_counter()-t0}
  if not r:return {**base,**st,**pg,"reason":"no_program",**tm}
- t,body=r;gate="helper" if any(x.startswith("p:") for x in t.d) else "reuse" if any(x.startswith("h:t_") for x in t.d) else "n_ex<2" if nex<2 else "loo" if lf else "const" if any(x[:2]=="k:" for x in t.d) or t.w&cm else ""
+ _,t,body=r;gate="helper" if any(x.startswith("p:") for x in t.d) else "reuse" if any(x.startswith("h:t_") for x in t.d) else "n_ex<2" if nex<2 else "loo" if lf else "const" if any(x[:2]=="k:" for x in t.d) or t.w&cm else ""
  (learn_store(qpath(store),sp,t,body,origin,"demoted" if gate else "quarantine",gate,{"n":nex,"fail":lf}) if learn and store and gate not in ("helper","reuse") else None)
- return {**base,**st,**pg,"found":True,"reason":"found","body":body,"expr":t.c,"cost":t.s,"score":pe,"loo_n":nex,"loo_fail":lf,"learn_gate":gate or "ok","size":sum(1 for _ in ast.walk(ast.parse(t.c,mode="eval"))),"used_learned":any(x.startswith("h:t_") for x in t.d),**tm}
+ return {**base,**st,**pg,"found":True,"reason":"found","body":body,"expr":t.c,"cost":t.s,"score":pe,"loo_n":nex,"loo_fail":lf,"learn_gate":gate or "ok","size":sum(1 for _ in ast.walk(ast.parse(t.c,mode="eval"))),"used_learned":any(x.startswith("h:t_") for x in t.d),"cands":cs,**tm}
+def _clean(b):
+ try:return textwrap.indent(ast.unparse(ast.parse(textwrap.dedent(b))),"    ")+"\n"
+ except Exception:return b
+def natural(prompt,cs,path=None):
+ bs=[c["body"].encode() for c in cs];cb=[_clean(c["body"]).encode() for c in cs];n=len(bs);m=list(re.finditer(r"(?m)^def [^\n]*:[ \t]*\n",prompt));P,S=prompt.encode(),prompt[:m[-1].end()].encode() if m else b""
+ lp=ray_field.engine(path or os.environ.get("TS_NAT_PACK",NATP)).score([P]*n+[b""]*n+[S]*n+[P]*n,bs+bs+bs+cb) if n else []
+ [c.update(nat_lp=float(a),nat_lp0=float(b),nat_lps=float(q),nat_lpc=float(w),nat_n=len(x),nat_nc=len(y)) for c,a,b,q,w,x,y in zip(cs,lp[:n],lp[n:2*n],lp[2*n:3*n],lp[3*n:],bs,cb)];return cs
+def _nf(c,m):return -c["score"] if m=="score" else 0.0 if m=="off" or "nat_lp" not in c else c["nat_lp"]/max(1,c["nat_n"]) if m=="byte" else c["nat_lpc"]/max(1,c["nat_nc"]) if m=="cbyte" else c["nat_lp"]-c["nat_lps"] if m=="pmis" else (c["nat_lp"]-c["nat_lp0"])/(max(1,c["nat_n"]) if m=="pmib" else 1)
+def rerank(r,prompt=None,cfg=None):
+ k={**RANK,**(cfg or {})};cs=r.get("cands") or [];(natural(prompt,cs) if prompt is not None and cs and "nat_lp" not in cs[0] else None)
+ tb=float(k["tb"]);pr=np.array([c.get("pri",0.0) for c in cs]);pr=(pr-pr.mean())/(pr.std()+1e-9) if k["pz"]=="1" and len(cs)>1 else pr;j=min(range(len(cs)),key=lambda i:(cs[i]["cost"]+float(k["pw"])*(cs[i]["score"]-cs[i]["cost"])+float(k["lw"])*(cs[i]["loo_fail"] or 0)-float(k["w"])*_nf(cs[i],k["nat"])-float(k["pv"])*pr[i]*(cs[i]["score"]<=cs[0]["score"]+float(k["pm"])),-tb*cs[i].get("cov",0),tb*cs[i]["cost"],-tb*_nf(cs[i],k["nat"]),i)) if cs else 0;c=cs[j] if cs else {}
+ ab=bool(cs) and (k["ap"]=="1" or (c["loo_fail"]>0 if c["loo_fail"] is not None else k["anl"]=="1")) and _nf(c,k["af"])<float(k["at"])
+ return {**r,**({"body":c.get("body",""),"expr":c["expr"],"cost":c["cost"],"score":c["score"],"loo_fail":c["loo_fail"],"size":sum(1 for _ in ast.walk(ast.parse(c["expr"],mode="eval")))} if cs else {}),"pick":j,"abstain":ab,"nat":_nf(c,k["nat"]) if cs else None,"rank":k}
 def _limit():
  vs=int(open("/proc/self/statm").read().split()[0])*os.sysconf("SC_PAGE_SIZE");resource.setrlimit(resource.RLIMIT_AS,(vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30),resource.RLIM_INFINITY))
 def pool(jobs=1):return ProcessPoolExecutor(max(1,jobs),mp_context=get_context("spawn"),initializer=_limit)
