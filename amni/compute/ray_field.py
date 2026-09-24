@@ -26,7 +26,7 @@ def load_syn(path:str,n:int=2)->tuple:
  return tuple(ts)
 class RayField:
  def __init__(self,path:str=None,syn:str=None,words:str=None,arch:str=None):
-  self.path=path or os.environ.get("AMNI_RAY_PACK",DEFAULT_PACK);self.syn=syn or os.path.join(_H0,"data","big2","synsets.txt");self.words_path=words or os.path.join(_H0,"data","big2","words.txt");self.wcnt_path=os.path.join(_H0,"data","big2","wordcounts.txt");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","vulkan");self.ready=False;self.words=set();self.pref=set();self.ok=np.array([(32<=c<127) or c in (9,10) for c in range(V)])
+  self.path=path or os.environ.get("AMNI_RAY_PACK",DEFAULT_PACK);LX=os.path.join(_H0,"data",os.environ.get("AMNI_RAY_LEX","big2"));self.syn=syn or os.path.join(LX,"synsets.txt");self.words_path=words or os.path.join(LX,"words.txt");self.wcnt_path=os.path.join(LX,"wordcounts.txt");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","vulkan");self.ready=False;self.words=set();self.pref=set();self.ok=np.array([(32<=c<127) or c in (9,10) for c in range(V)])
  def load(self):
   if self.ready:return self
   import taichi as ti

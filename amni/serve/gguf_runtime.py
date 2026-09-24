@@ -3,7 +3,7 @@
 Does not replace the Granite bake. Activate with AMNI_GEN_BACKEND=gguf
 or POST /models/activate.
 """
-import json,os,urllib.request,urllib.error
+import json,os,re,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
@@ -56,10 +56,15 @@ def _ray_learned(message:str):
         from amni.compute.ray_learn import Learned
         _learned[0]=_learned[0] or Learned();return _learned[0].find(message)
     except Exception:return None
+_SELF=re.compile(r"(?i)\bmy\b|\bmine\b|\bi(?:'m|'ve| am| have| live| work| drive| like| love| hate| studied| was born| moved)\b|\b(?:where|what|which|who|when) (?:do|did|am|was) i\b|\bhow old am i\b")
+_RECALL=re.compile(r"(?i)^\W*(?:hey|so|ok(?:ay)?|um|and|also|wait)?[, ]*(?:where|what|which|who|when|whom|how old|how many|how long|remind me|do you (?:remember|know)|did i|can you (?:remind|tell) me)\b")
+def _memq(m:str)->bool:return bool(_SELF.search(m)) and (not m.strip().endswith('?') or bool(_RECALL.search(m)))
 def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
     from amni.compute.ray_field import engine
-    h=(history or [])[-1:];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
-    e=engine();h=_ray_guide(e,message);g=h[3] if h else None;src=f" (Source: {_cite(h[5])})" if h and len(h)>5 and h[5] else ''
+    h=(history or [])[-int(os.environ.get('AMNI_RAY_HIST','24')):];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
+    e=engine()
+    if getattr(e,'v19',False) and _memq(message):yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','0.2')),topk=4,stop=('\n\n','\nUser:','\nAdam:'));return
+    h=_ray_guide(e,message);g=h[3] if h else None;src=f" (Source: {_cite(h[5])})" if h and len(h)>5 and h[5] else ''
     if g is None:
         lr=_ray_learned(message)
         if lr:yield (f"{lr['span']}. " if lr.get('span') else '')+f"{lr['a']} (I learned this earlier from {_cite(lr.get('title'),lr.get('src') or '') if lr.get('local') else lr.get('title') or 'the web'}.)";return
