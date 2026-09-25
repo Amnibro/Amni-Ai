@@ -10,7 +10,7 @@ fn qa_parity() {
     let t0 = std::time::Instant::now();
     let qa = Qa::load(Some(&ix)).unwrap();
     let lt = t0.elapsed().as_secs_f64();
-    let mut e = RayField::new(Some(format!("{}/exports/gf17_continuum/rayhash_v18_chat2_qt_s20k_sid.npy", home())), None, None, None, Some(std::env::var("ADAM_RAY_ARCH").unwrap_or_else(|_| "cpu".into())), Some(home()));
+    let mut e = RayField::new(Some(format!("{}/exports/gf17_continuum/rayhash_clean1v2_base_v18_s100k_sid.npy", home())), Some(format!("{}/data/clean1/synsets.txt", home())), Some(format!("{}/data/clean1/words.txt", home())), Some(format!("{}/data/clean1/wordcounts.txt", home())), Some(std::env::var("ADAM_RAY_ARCH").unwrap_or_else(|_| "cpu".into())), Some(home()));
     e.load().unwrap();
     let (mut n, mut ss, mut pk, t1) = (0, 0, 0, std::time::Instant::now());
     for l in std::fs::read_to_string(&rp).unwrap().lines() {

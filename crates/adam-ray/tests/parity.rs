@@ -4,8 +4,9 @@ const TEXTS: [&[u8]; 5] = [b"The weather today is sunny, and the kaolinite clay 
 const PROMPTS: [&[u8]; 3] = [b"User: What is the capital of France?\nAdam: ", b"User: \nAdam: ", b"User: How do bees make honey?\nAdam: "];
 const CONTS: [&[u8]; 3] = [b"Paris is the capital of France.", b"Bees collect nectar from flowers and store it in the hive.", b"I am not sure."];
 fn home() -> String { std::env::var("AMNI_HOME").unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/../..").to_string()) }
-fn pack(tag: &str) -> String { format!("{}/exports/gf17_continuum/{}", home(), if tag == "v16" { "rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz" } else { "rayhash_v18_chat2_qt_s20k_sid.npy" }) }
-fn open(tag: &str, arch: &str) -> RayField { let h = home(); let mut e = RayField::new(Some(pack(tag)), None, None, None, Some(arch.into()), Some(h)); e.load().unwrap(); e }
+fn pack(tag: &str) -> String { format!("{}/exports/{}", home(), if tag == "v16" { "legacy_grok/rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz" } else { "gf17_continuum/rayhash_clean1v2_base_v18_s100k_sid.npy" }) }
+fn lex(h: &str, f: &str) -> Option<String> { Some(format!("{h}/data/clean1/{f}")) }
+fn open(tag: &str, arch: &str) -> RayField { let h = home(); let mut e = RayField::new(Some(pack(tag)), lex(&h, "synsets.txt"), lex(&h, "words.txt"), lex(&h, "wordcounts.txt"), Some(arch.into()), Some(h)); e.load().unwrap(); e }
 fn stop() -> Vec<String> { ["\n\n", "\nUser:", "\nAdam:"].map(String::from).to_vec() }
 fn drain(e: &mut RayField, prompt: &str, guide: Option<&[u8]>) -> String { let mut s = e.stream(prompt, 160, 0.6, 8, &stop(), true, Some(11), guide, 6.0, Default::default()); let mut o = String::new(); while let Some(c) = s.next(e) { o += &c; } o }
 fn check(tag: &str) {
@@ -28,12 +29,13 @@ fn check(tag: &str) {
         let sd = e.score(&pp, &cc).iter().zip(z.get("score").unwrap().vec::<f64>()).fold(0f64, |w, (a, b)| w.max((a - b).abs()));
         let (st, gd, bm) = (drain(&mut e, "User: What is the capital of France?\nAdam:", None), drain(&mut e, "User: How do bees make honey?\nAdam:", Some(b" Bees collect nectar from flowers and store it in the hive.")), e.beam("User: What is gravity?\nAdam:", 4, 3, 40, 16, true, Default::default()));
         let txt = |k: &str| String::from_utf8(z.get(k).unwrap().data[..z.get(k).unwrap().n()].to_vec()).unwrap();
-        let bp = e.bpb(Some(&format!("{}/data/big2/hold.bin", home())), 1, 32, 16, 1234).unwrap() - z.get("bpb").unwrap().vec::<f64>()[0];
+        let bp = e.bpb(Some(&format!("{}/data/clean1/hold.bin", home())), 1, 32, 16, 1234).unwrap() - z.get("bpb").unwrap().vec::<f64>()[0];
         println!("{tag} {arch:>6} [{}] load {lt:.1}s | max|dlogit| {worst:.3e} | top1 {agree}/{n} | max|dscore| {sd:.3e} | stream {} | guided {} | beam {} | dbpb {bp:.2e}", e.backend, st == txt("stream"), gd == txt("guided"), bm == txt("beam"));
         assert!(worst < 1e-3 && agree == n, "{tag} {arch} logit parity failed");
     }
 }
 #[test]
+#[ignore = "legacy_grok retired"]
 fn parity_v16() { check("v16"); }
 #[test]
 fn parity_v18() { check("v18"); }

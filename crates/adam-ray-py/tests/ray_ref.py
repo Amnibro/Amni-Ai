@@ -1,13 +1,13 @@
 import os,sys,time,numpy as np
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))));sys.path[:0]=[_H0,os.path.dirname(os.path.abspath(__file__))];os.environ.setdefault("AMNI_RAY_ARCH","cpu")
-from amni.compute.ray_field import RayField
+from amni.compute.ray_field import RayField,BASE_PACK
 HOME=os.environ.get("AMNI_HOME",_H0);EX=os.path.join(HOME,"exports","gf17_continuum")
-PACKS={"v16":os.path.join(EX,"rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz"),"v18":os.path.join(EX,"rayhash_v18_chat2_qt_s20k_sid.npy")}
+PACKS={"v18":BASE_PACK};LX=os.path.join(HOME,"data","clean1")
 TEXTS=[b"The weather today is sunny, and the kaolinite clay mineral forms in warm, humid soils.",b"def add(a, b):\n    return a + b\n\n```python\nprint(add(2, 3))\n```\nDone.",b"  Indented line; with (punct) {braces} and \"quotes\" -- plus a\ttab.\nNext line!",b"Photosynthesis converts light energy into chemical energy stored in glucose molecules within the plant.",b"User: Why do volcanoes erupt near tectonic boundaries?\nAdam: Volcanoes erupt where magma rises through cracks in the crust.\n\nUser: Who is Adam?\nAdam: I am Adam."]
 PROMPTS=[b"User: What is the capital of France?\nAdam: ",b"User: \nAdam: ",b"User: How do bees make honey?\nAdam: "]
 CONTS=[b"Paris is the capital of France.",b"Bees collect nectar from flowers and store it in the hive.",b"I am not sure."]
-def field(tag:str,**kw)->RayField:return RayField(path=PACKS[tag],syn=os.path.join(HOME,"data","big2","synsets.txt"),words=os.path.join(HOME,"data","big2","words.txt"),**kw)
-def fix(e:RayField)->RayField:e.wcnt_path=os.path.join(HOME,"data","big2","wordcounts.txt");return e
+def field(tag:str,**kw)->RayField:return RayField(path=PACKS[tag],syn=os.path.join(LX,"synsets.txt"),words=os.path.join(LX,"words.txt"),**kw)
+def fix(e:RayField)->RayField:e.wcnt_path=os.path.join(LX,"wordcounts.txt");return e
 def qa_ref(out:str,tag:str="v18"):
  from amni.compute import ray_qa
  from scripts.ray_chat_eval import QS,QS2,QS3

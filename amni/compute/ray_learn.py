@@ -111,7 +111,7 @@ def _sk(u:str)->str:
  p=urllib.parse.urlparse(u);return "w:"+urllib.parse.unquote(p.path.rstrip("/").rsplit("/",1)[-1]).replace("_"," ").lower() if MIRROR.search(p.netloc) else p.netloc.replace("www.","")
 _KX=[]
 def _kx()->list:
- _KX or _KX.extend([KR.KSIndex(srcs=tuple(os.environ.get("AMNI_LEARN_SRCS","wikipedia,grokipedia").split(","))),KR.Titles()]);return _KX
+ _KX or _KX.extend([KR.KSIndex(srcs=tuple(os.environ.get("AMNI_LEARN_SRCS","wikipedia").split(","))),KR.Titles()]);return _KX
 def link(q:str)->list:
  w=re.findall(r"[\w'&.-]+",q);T=_kx()[1];out=[];i=0
  while i<len(w):
