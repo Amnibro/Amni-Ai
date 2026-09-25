@@ -208,6 +208,7 @@ def c_claims(path,fs,rerun,tol,timeout)->tuple:
   art=Path(c["artifact"]) if Path(c["artifact"]).is_absolute() else ROOT/c["artifact"];argv=shlex.split(c["command"]);n={"metric":nm,"value":c["value"],"command":c["command"],"artifact":rel(art),"artifact_exists":art.exists()}
   out+=[fnd("FAIL",None,0,f"claim {nm}: box path",m.group(0)) for m in BOX.finditer(c["command"]+" "+c["artifact"])]
   out+=[fnd("FAIL",None,0,f"claim {nm}: artifact not on Antman",c["artifact"])] if not art.exists() or not art.resolve().is_relative_to(ROOT) else []
+  out+=[fnd("FAIL",None,0,f"claim {nm}: trivial command regenerates nothing",c["command"][:120])] if argv and Path(argv[0]).name in ("true",":","echo","cat","printf","test","ls","jq") else []
   out+=[fnd("FAIL",None,0,f"claim {nm}: command not runnable here",f"`{argv[0] if argv else ''}` not found")] if not argv or not (shutil.which(argv[0]) or (ROOT/argv[0]).exists()) else []
   out+=[fnd("FAIL",None,0,f"claim {nm}: command references a missing path",x) for x in argv[1:] if "/" in x and not x.startswith("-") and "{out}" not in x and "=" not in x and not ((ROOT/x).exists() or Path(x).exists())]
   age=[fnd("WARN",None,0,f"claim {nm}: artifact is older than the declared code",f"{rel(art)} mtime {time.strftime('%H:%M',time.localtime(art.stat().st_mtime))} < newest code {time.strftime('%H:%M',time.localtime(newest))}")] if art.exists() and art.stat().st_mtime<newest else []
@@ -218,16 +219,17 @@ def c_claims(path,fs,rerun,tol,timeout)->tuple:
   out+=[fnd("FAIL",None,0,f"claim {nm}: artifact code_hash differs from the code on Antman",f"artifact {el['code_hash'][:12]} vs now {elh[:12]}")] if elh and elh!=el.get("code_hash") else []
   if rerun and argv:
    with tempfile.TemporaryDirectory(prefix="presub_rr_") as od:
-    av=[x.replace("{out}",od) for x in argv];jl=c.get("jail",True);r=sd.jail_run(av,od,timeout=c.get("timeout",timeout),mem_mb=c.get("mem_mb",2048),nproc=c.get("nproc",64),extra=["--ro-bind",str(ROOT),str(ROOT),"--chdir",str(ROOT)],max_output=4<<20) if jl else {**run(av,ROOT,c.get("timeout",timeout)),"jailed":False}
+    av=[x.replace("{out}",od) for x in argv];jl=c.get("jail",True);jf0=c.get("json");fp0=Path(jf0["file"]) if jf0 and "{out}" not in jf0["file"] else None;fp0=fp0 if fp0 is None or fp0.is_absolute() else ROOT/fp0;m0=fp0.stat().st_mtime if fp0 and fp0.exists() else None;r=sd.jail_run(av,od,timeout=c.get("timeout",timeout),mem_mb=c.get("mem_mb",2048),nproc=c.get("nproc",64),extra=["--ro-bind",str(ROOT),str(ROOT),"--chdir",str(ROOT)],max_output=4<<20) if jl else {**run(av,ROOT,c.get("timeout",timeout)),"jailed":False}
     so=(r.get("stdout") or r.get("out") or "")+"\n"+(r.get("stderr") or r.get("err") or "");jf=c.get("json");fp=Path(jf["file"].replace("{out}",od)) if jf else None
     fp=fp if fp is None or fp.is_absolute() else ROOT/fp
     try:got=_num(_dig(json.loads(fp.read_text()),jf["key"])) if jf else None
     except (OSError,ValueError,KeyError,TypeError):got=None
     m=None if jf else re.search(c.get("regex") or rf"{re.escape(nm)}\s*[=:]\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)",so);got=_num(m.group(1)) if m else got;rc=r.get("returncode",r.get("rc"));t=float(c.get("tol",tol))
-    n.update({"rerun_rc":rc,"rerun_value":got,"jailed":r.get("jailed"),"tol":t})
+    regen=(not jf) or "{out}" in jf["file"] or (fp.exists() and m0 is not None and fp.stat().st_mtime>m0);n.update({"rerun_rc":rc,"rerun_value":got,"jailed":r.get("jailed"),"tol":t,"regenerated":regen})
+    out+=[fnd("FAIL",None,0,f"claim {nm}: rerun did not regenerate the artifact",f"{rel(fp)} unchanged by the command; the value was read from a stale file (write it to {{out}})")] if rc==0 and not regen else []
     out+=[fnd("WARN",None,0,f"claim {nm}: rerun outside the jail","set jail:true unless the command runs no mission code")] if not jl else []
     out+=[fnd("FAIL",None,0,f"claim {nm}: rerun failed",f"rc={rc} killed={r.get('killed')} {so.strip()[-200:]}")] if rc!=0 else [fnd("FAIL",None,0,f"claim {nm}: value not found in rerun output","set regex or json {file,key}")] if got is None else [fnd("FAIL",None,0,f"claim {nm}: rerun differs",f"claimed {c['value']} rerun {got} tol {t}")] if abs(got-float(c["value"]))>t else []
-    age=[] if rc==0 and got is not None and abs(got-float(c["value"]))<=t else age
+    age=[] if rc==0 and regen and got is not None and abs(got-float(c["value"]))<=t else age
   out+=age;notes.append(n)
  return out,notes
 def _git(*a,text_=True):return subprocess.run(["git","-C",str(ROOT),*a],capture_output=True,text=text_).stdout
