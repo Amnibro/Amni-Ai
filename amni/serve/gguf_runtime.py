@@ -85,6 +85,8 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     from amni.compute.ray_field import engine;from amni.serve.user_memory import turn
     mem=turn(message,history,user,session);prompt=mem['pre']+''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in mem['hist'])+f'User: {message.strip()}\nAdam:'
     if mem['reply']:yield mem['reply'];return
+    ma=(lambda r:r[0] if r and r[1]>=float(os.environ.get('AMNI_MATH_MIN_CONF','0.6')) else None)(__import__('amni.math.answer',fromlist=['answer']).answer(message)) if os.environ.get('AMNI_MATH','1')=='1' else None
+    if ma:yield ma;return
     e=engine();getattr(e,'impl','')=='rust' and e.load()
     from amni.compute.ray_learn import learn,Learned,PERSONAL
     gd=os.environ.get('AMNI_RKNOW_FACT_GUARD','1')=='1';fg=gd and _factq(message);ch=_chatq(message,mem['hist'],fg)
