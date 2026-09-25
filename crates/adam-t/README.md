@@ -16,45 +16,51 @@ cd crates && cargo build --release -p adam-t
 
 The binary is written to `crates/target/release/adam-t`.
 
-## Scoring interface (for eval harnesses)
-
-The model can be loaded two ways:
-
-- `--ckpt <run dir>`: a training run directory such as `exports/adam_t/<TAG>`. It needs `log.jsonl`, whose first line holds the config, plus `ckpt/core.bin`, and `ckpt/mem.bin` for memory models.
-  - It runs on the GPU by default. Set `BACKEND=ndarray` to run on the CPU instead.
-  - GPU runs follow the governor: set `THROTTLE_FILE`.
-- `--gf17 <model.gf17>`: the exported lookup-only model, run on the CPU.
-  - It needs no GPU and no checkpoint.
-  - It matches `--ckpt` to about 1e-3 nats per byte.
-
-Both commands read the whole of stdin as JSON lines and write one JSON line to stdout per input line, in the same order.
-
-### logprob
+## Scoring interface: `adam-t serve` (proto 1)
 
 ```
-adam-t logprob --ckpt exports/adam_t/smoke_tern_mem < items.jsonl
-{"context": "The capital of France is", "continuation": " Paris"}
--> {"context": ..., "continuation": ..., "logprob": -10.97, "n_bytes": 6, "greedy": false, "truncated": false}
+adam-t serve exports/adam_t/<TAG>/model.gf17
+adam-t serve exports/adam_t/<TAG>
 ```
 
-- `logprob` is the sum of natural-log probabilities over the continuation's UTF-8 bytes. The model is byte-level, so divide by `n_bytes` for a per-byte score, or by `n_bytes·ln2` for bits per byte.
-- `greedy` is true when every continuation byte is the argmax.
-- `truncated` is true when context plus continuation exceeded the model's context window (`ctx`, 256 bytes for the smoke models). Only the last `ctx+1` bytes are scored as the window.
-- An empty context is replaced with `"\n"`.
-- `LP_BATCH` (default 16) sets how many items go into one GPU forward.
+The model can be given two ways:
 
-### gen
+- **A `.gf17` file:** the lookup-only CPU path. It needs no GPU. Generation uses a per-layer K/V cache, so each new symbol costs one step and the window is not rerun.
+- **A training run directory:** the burn checkpoint path.
+  - It needs `log.jsonl`, whose first line holds the config, plus `ckpt/`.
+  - It runs on the GPU by default. Set `BACKEND=ndarray` to run on the CPU. GPU runs follow `THROTTLE_FILE`.
+  - Use it for fast batched `lp`. Only one GPU job runs at a time, so pause training first.
 
-```
-adam-t gen --gf17 exports/adam_t/smoke_tern_mem/model.gf17 < prompts.jsonl
-{"prompt": "Q: Who wrote Hamlet?\nA:", "max_new": 32, "stop": "\n"}
--> {"prompt": ..., "completion": " ...", "new_bytes": 12}
-```
+The protocol is JSON lines on stdin and stdout, one reply per request, and all text is base64:
 
-- Decoding is greedy, one byte at a time.
-- `max_new` defaults to 64.
-- `stop` defaults to `"\n"`, and is stripped from the completion. Use `""` for no stop.
-- A plain-text input line is taken as `{"prompt": line}`.
+| request | reply |
+|---|---|
+| `{"op":"hello"}` | `{"model":"adam-t-<TAG>","step":N,"fmt":"plain","ctx":<window bytes, approx>,"ctx_symbols":T,"vocab":V,"proto":1}` |
+| `{"op":"lp","items":[[ctx_b64,cont_b64],...]}` | `{"lp":[ln p(cont\|ctx),...]}` |
+| `{"op":"gen","prompt":b64,"max":N,"stop":[b64,...]}` | `{"text":b64}` |
+| `{"op":"bye"}` | `{"bye":true}`, then the server exits |
+| anything that fails | `{"error":"..."}` |
+
+`lp` details:
+- Values are natural-log probabilities summed over the whole continuation.
+- The context is truncated from the left.
+- A continuation longer than the window is scored in strided windows, with at least T/2 symbols of left context each.
+- `LP_BATCH` (default 16) sets how many windows go into one forward.
+
+`gen` details:
+- Decoding is greedy.
+- `max` is counted in bytes.
+- The text is cut at the first stop sequence, and the stop itself is not returned.
+
+Byte models use symbols equal to bytes. BPE models (`v` > 256) carry their merge table inside the `.gf17` file, and they tokenize context and continuation separately.
+
+The eval harness uses it like this: `python scripts/adam_t_eval.py run --model proto --proto-cmd "crates/target/release/adam-t serve exports/adam_t/<TAG>/model.gf17"`.
+
+## Tokenizer (homegrown BPE)
+
+- `crates/adam-t/bpe.py <V>` trains the merges on `data/clean2/train.bin` only and writes `data/clean2/bpe<V>.json`. The merges come out of HF `tokenizers` used as code.
+- `adam-t tokenize <bpe.json> <in.bin> <out.u16>` is a lossless Rust encoder that runs in parallel, at about 160 MB/s on 8 threads. The trainer reads `data/<CORPUS>/{train,hold}.bpe<V>.u16` when `BPE=<bpe.json>` is set.
+- `adam-t bpe-enc <bpe.json>` prints the ids for stdin.
 
 ## Training
 
@@ -79,6 +85,7 @@ THROTTLE_FILE=... RUN_DIR=exports/adam_t/<TAG> TAG=<TAG> TERN=1 MEM=1 STEPS=3000
 | Eval and checkpoints | `EVAL_EVERY`, `CKPT_EVERY`, `EVAL_BATCHES` |
 | Limits | `MAX_MIN`: wall-clock limit per process; the run checkpoints, pauses, and resumes when rerun |
 | Throttle | `THROTTLE_FILE`, `THROTTLE_UNIT_MS` |
+| Vocabulary | `BPE` (path to `bpe<V>.json`; empty means bytes) |
 
 The throttle file is read every step. The run sleeps `throttle × max(1, gpu_ms/THROTTLE_UNIT_MS)` per step.
 

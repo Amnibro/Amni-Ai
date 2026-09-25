@@ -75,11 +75,13 @@ dependencies = [
  "adam-gf17",
  "adam-ray",
  "adam-train",
+ "base64 0.22.1",
  "burn",
  "bytemuck",
  "memmap2",
  "pollster",
  "rayon",
+ "regex",
  "serde_json",
  "wgpu 24.0.5",
 ]
