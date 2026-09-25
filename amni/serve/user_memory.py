@@ -60,11 +60,441 @@ def _lt()->bool:
     if v is not None:return v!='0'
     from amni.compute.ray_field import DEFAULT_PACK
     return _pflag(os.environ.get('AMNI_RAY_PACK') or DEFAULT_PACK)
+def _g2()->bool:
+    v=os.environ.get('AMNI_UMEM_G2')
+    if v is not None:return v!='0'
+    from amni.compute.ray_field import DEFAULT_PACK
+    p=os.environ.get('AMNI_RAY_PACK') or DEFAULT_PACK;j=(p[:-8] if p.endswith('_sid.npy') else p[:-5] if p.endswith('.gf17') else p)+'.json'
+    if j+'#g2' not in _LTC:
+        try:_LTC[j+'#g2']='"gen2": 1' in open(j,encoding='utf-8',errors='replace').read()
+        except OSError:_LTC[j+'#g2']=False
+    return _gn() and _LTC[j+'#g2']
 WCH=frozenset(b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_')
 _TRIM=(b" last year",b" this year",b" the most",b" these days",b" by the way",b" the",b" of",b" now",b" again");_TRIML=_TRIM+(b" the moment",b" right")
+class _HD2(dict):
+    def __missing__(s,k):v=bh(k.encode());s[k]=v;return v
+_H2=_HD2()
+def _pk(hs):
+    k=hs[0]
+    for h in hs[1:]:k=((k*GK)&0xFFFFFFFF)^h
+    return k
+def _fb(h,b):return G2F.get(h,0)>>b&1
+_MON2,_FAV2,_ADV2,_DIT2=({bh(w.encode()) for w in x.split()} for x in ("january february march april may june july august september october november december","favourite favorite fave fav go-to all-time top","really just also always still truly totally absolutely seriously pretty super so very actually even currently usually sometimes often mostly definitely honestly literally basically","give gave feed fed buy bought get got bring brought make made send sent offer hand cook cooked"))
+G2C,G2R,G2T,G2HD,G2V,G2M,G2S,G2X,G2Y,G2K,G2J,G2F,G2CF,G2A={},{},{},set(),set(),set(),set(),set(),set(),set(),set(),{},set(),set()
+def _g2init():
+    if G2F:return
+    for l in open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'crates','adam-ray','src','v19_gen2.tsv'),encoding='utf-8'):
+        r=l.rstrip('\n').split('\t')
+        if len(r)<5:continue
+        c,rl,f=int(r[2]),int(r[3]),int(r[4]);ws=r[1].split(' ');k=_pk([bh(w.encode()) for w in ws])
+        if c==1:G2C.setdefault(k,[]).append((rl,f,len(ws)));G2CF.add(bh(ws[0].encode()))
+        elif c==2:G2R.setdefault(k,rl)
+        elif c==3:G2T.setdefault(k,(rl,f))
+        elif c==12:G2F[k]=G2F.get(k,0)|(1<<rl)
+        elif c in (4,5,6,7,8,9,10,11,13):{4:G2HD,5:G2V,6:G2M,7:G2S,8:G2X,9:G2Y,10:G2K,11:G2J,13:G2A}[c].add(k)
+class _G2:
+    def __init__(s):_g2init();s.lm=[];s.tk=[];s.ante=0;s.links=[];s.lastp=b'';s.pend=None;s.lastv=None;s.tf=[];s.qe=s.qr=0;s.nm={}
+    def newturn(s):s.pend=None;s.lastv=None;s.tf=[];s.qe=s.qr=0
+    def word(s,w,n,pbd):
+        w=w[:16];lw=w.lower();h=bh(lw);T=s.tk;p=T[-1] if T and T[-1][6]==0 else None
+        if pbd==2 and p:
+            if lw==b's':
+                if p[0] in (_H2['he'],_H2['she'],_H2['it'],_H2['that'],_H2['there'],_H2['what'],_H2['where'],_H2['who'],_H2['when'],_H2['how'],_H2['here']):len(T)<48 and T.append([_H2['is'],b's',False,False,False,False,0])
+                else:p[4]=True;p[1]=(p[1]+b"'s")[:24]
+                return
+            if lw==b't':p[5]=True;return
+            if lw in (b'm',b're'):len(T)<48 and T.append([_H2['am'] if lw==b'm' else _H2['are'],lw,False,False,False,False,0]);return
+            if lw==b'd':len(T)<48 and T.append([_H2['would'],lw,False,False,False,False,0]);return
+            if lw in (b've',b'll'):len(T)<48 and T.append([_H2['have'] if lw==b've' else _H2['will'],lw,False,False,False,False,0]);return
+            p[1]=(p[1]+b"'"+w)[:24];p[0]=bh(p[1].lower());return
+        if pbd==1 and p:p[1]=(p[1]+b'-'+w)[:24];p[0]=bh(p[1].lower());p[3]=p[3] and w.isdigit();return
+        if len(T)<48:T.append([h,bytes(w),65<=w[0]<=90,w.isdigit(),False,False,0])
+    def comma(s):
+        if s.tk and len(s.tk)<48:s.tk.append([0,b',',False,False,False,False,1])
+    def end(s,nq,mem):
+        T=s.tk;s.tk=[]
+        if T:s.run(T,nq,mem)
+    def run(s,T,nq,mem):
+        n=len(T);hs=[t[0] for t in T];bd=[t[6] for t in T];cap=[t[2] for t in T];num=[t[3] for t in T];capx=[t[2] or (not t[6] and 48<=t[1][0]<=57) for t in T]
+        wd=lambda i:0<=i<n and not bd[i]
+        cl=[0]*n;c=0
+        for i in range(n):
+            if bd[i] or (hs[i] in (_H2['and'],_H2['but'],_H2['so'],_H2['while'],_H2['whereas']) and i+1<n and (hs[i+1] in (_H2['my'],_H2['our'],_H2['i'],_H2['he'],_H2['she'],_H2['they'],_H2['his'],_H2['her'],_H2['their']))):c+=1
+            cl[i]=c
+        neg=[t[5] or _fb(t[0],10) for t in T]
+        ifr=[False]*n;inif=False
+        for i in range(n):
+            inif=(inif and not bd[i]) or hs[i]==_H2['if'];ifr[i]=inif
+        hyp=[False]*n
+        for i in range(n):hyp[i]=(i>0 and hyp[i-1] and cl[i]==cl[i-1]) or hs[i] in G2Y
+        cov=[0]*n;men=[];rnh=[];mself=False
+        def rnmatch(j):
+            k=j;fav=False
+            while True:
+                for L in (4,3,2,1):
+                    if k+L<=n and all(wd(x) for x in range(k,k+L)):
+                        r=G2R.get(_pk(hs[k:k+L]))
+                        if r is not None and not (r==0 and not fav and hs[k] in (_H2['thing'],_H2['one'])):return (k+L,7 if r==0 and fav and hs[k] in (_H2['thing'],_H2['one']) else r,fav)
+                if k<n and wd(k) and hs[k] in G2M and k-j<3:fav=fav or hs[k] in _FAV2;k+=1
+                else:break
+            if fav and (k>=n or not wd(k) or _fb(hs[k],5) or hs[k] in G2S):return (k,0,fav)
+            return None
+        def npend(j,inv):
+            k=j;hd=False
+            while k<n and k-j<4 and wd(k):
+                h=hs[k];r=T[k][1]
+                if cap[k] or num[k] or G2F.get(h,0) or h in G2S or neg[k] or (hd and h not in G2HD):break
+                if k==j and (h in G2V or h in G2CF) and not T[k][4] and not (k+1<n and wd(k+1) and not G2F.get(hs[k+1],0) and hs[k+1] not in G2S and not cap[k+1]):break
+                if k>j:
+                    isv=h in G2V or h in G2CF or (k>j and h not in G2HD and ((r.endswith(b's') and not r.endswith(b'ss')) or r.endswith(b'ed') or r.endswith(b'ing'))) or (inv and k>j and h in G2A and (k+1>=n or not wd(k+1) or ((G2F.get(hs[k+1],0) or hs[k+1] in G2S) and not _fb(hs[k+1],6) and not _fb(hs[k+1],5))))
+                    if inv and hd and h in G2A and h not in G2HD:break
+                    if isv and not (k+1<n and wd(k+1) and hs[k+1] in G2HD and not G2F.get(hs[k+1],0) and not cap[k+1] and not T[k][4] and not (inv and (k+2>=n or not wd(k+2)))):break
+                hd=hd or h in G2HD;k+=1
+                if T[k-1][4]:break
+            return k
+        def resolve(i,kind):
+            ks=[m[2] for m in men if m[2]!=SELFK]
+            if kind==2:
+                sub=next((m[2] for m in men if cl[m[0]]==cl[i] and m[3]!=3),None);ks2=[x for x in ks if x!=sub]
+                if ks2:return ks2[-1]
+            return ks[-1] if ks else s.ante
+        i=0
+        while i<n:
+            h=hs[i]
+            if not wd(i):i+=1;continue
+            ocue=i>0 and any(f&1 for r,f,L in G2C.get(hs[i-1],()))
+            if h in (_H2['my'],_H2['our']) or (h in (_H2['his'],_H2['her'],_H2['their'],_H2['its']) and wd(i+1) and not _fb(hs[i+1],1) and not (h==_H2['her'] and ocue) and not (h==_H2['her'] and G2F.get(hs[i+1],0))):
+                own=SELFK if h in (_H2['my'],_H2['our']) else resolve(i,1);j=i+1;key=None;inv=i>0 and _fb(hs[i-1],6);dit=i>0 and hs[i-1] in _DIT2
+                while j<n:
+                    r=rnmatch(j)
+                    if r and r[1]==9 and T[r[0]-1][4]:r=None
+                    if r:
+                        rnh.append((j,r[0],r[1],key if key is not None else own,r[2],i));[cov.__setitem__(x,2) for x in range(j,r[0])]
+                        if men and men[-1][1]==j and men[-1][3]==3:men[-1][3]=0
+                        j=r[0];break
+                    k=min(npend(j,inv),j+1) if dit else npend(j,inv)
+                    if k==j:break
+                    for x in range(j,k):key=hs[x] if key is None else ((key*83492791)&0xFFFFFFFF)^hs[x]
+                    men.append([j,k,key,0]);[cov.__setitem__(x,1) for x in range(j,k)];s.nm[key]=b' '.join(T[x][1] for x in range(i+1,k)).removesuffix(b"'s");j=k
+                    if not T[k-1][4]:break
+                    men[-1][3]=3
+                if men and men[-1][3]==3 and men[-1][1]==j:men[-1][3]=0
+                cov[i]=cov[i] or 3;i=max(j,i+1);continue
+            if h in (_H2['i'],_H2['me'],_H2['myself'],_H2['mine']):
+                meta=any(wd(x) and hs[x] in G2X for x in (i+1,i+2) if x<n and not (x==i+2 and not _fb(hs[i+1],6)))
+                objimp=h==_H2['me'] and i>0 and hs[i-1] in (_H2['remind'],_H2['tell'],_H2['let'],_H2['ask'],_H2['give'],_H2['show'])
+                if not meta and not objimp:men.append([i,i+1,SELFK,1]);cov[i]=1
+                elif meta:mself=True
+                i+=1;continue
+            if h in (_H2['he'],_H2['she'],_H2['they'],_H2['him'],_H2['them']) or (h==_H2['her'] and not (wd(i+1) and not G2F.get(hs[i+1],0) and not ocue)) or (h==_H2['it'] and (ocue or (wd(i+1) and (hs[i+1] in G2CF or _fb(hs[i+1],5))))):
+                rp=i>=2 and hs[i-1] in (_H2['says'],_H2['said'],_H2['thinks'],_H2['reckons'],_H2['told']) and len(men)>=2 and men[-1][3]==0 and men[-2][3]==3 and men[-2][1]==men[-1][0]
+                e=men[-2][2] if rp else resolve(i,2 if h in (_H2['him'],_H2['them'],_H2['her']) or (h==_H2['it'] and ocue) else 1)
+                if e:men.append([i,i+1,e,4 if h==_H2['it'] else 2]);cov[i]=1
+                i+=1;continue
+            i+=1
+        cues=[];i=0
+        while i<n:
+            if not wd(i) or cov[i] in (1,3):i+=1;continue
+            hit=None;ix=[i]
+            while len(ix)<6 and ix[-1]+1<n and wd(ix[-1]+1) and cov[ix[-1]+1] in (0,2):
+                q=ix[-1]+1
+                while q<n and wd(q) and hs[q] in _ADV2 and q-ix[-1]<3:q+=1
+                if q<n and wd(q) and cov[q] in (0,2):ix.append(q)
+                else:break
+            for L in range(len(ix),0,-1):
+                if not all(cov[x]==2 for x in ix[:L]):
+                    rs=[x for x in G2C.get(_pk([hs[x] for x in ix[:L]]),()) if nq or not x[1]&16]
+                    if rs and not (L==1 and i>0 and _fb(hs[i-1],1) and hs[i-1]!=_H2['that']):hit=(i,ix[L-1]+1,rs);break
+            if hit:cues.append(hit);i=hit[1]
+            else:i+=1
+        free=[]
+        for i in range(n):
+            if wd(i) and not cov[i] and (i==0 or not wd(i-1) or _fb(hs[i-1],1) or _fb(hs[i-1],9) or _fb(hs[i-1],7) or hs[i-1] in (_H2['same'],_H2['other'],_H2['best']) or hs[i-1] in G2M):
+                r=rnmatch(i)
+                if r and r[1]:free.append((i,r[0],r[1]))
+        alg=any(h in (_H2['allergy'],_H2['allergic'],_H2['allergies'],_H2['epipen'],_H2['hives']) for h in hs)
+        def content(k):return wd(k) and not G2F.get(hs[k],0) and hs[k] not in G2S and not neg[k] and not cov[k]
+        cst={c[0] for c in cues if not all(x[1]&2 for x in c[2])}
+        def vspan(j,rel,cut=None):
+            k=j
+            while k<n and wd(k) and not cov[k]:
+                if cut is not None and k in cst:return -1
+                r=rnmatch(k)
+                if r and r[1] and k==j and not cap[k] and r[0]<n and wd(r[0]) and (capx[r[0]] or G2T.get(hs[r[0]],(0,0))[0]==r[1]):k=r[0];continue
+                if hs[k]==_H2['the'] and k+1<n and wd(k+1) and not cov[k+1]:
+                    r=rnmatch(k+1)
+                    if r and r[1]:k=r[0];continue
+                if not capx[k] and ((hs[k] in G2K and not (hs[k]==_H2['the'] and rel in (2,7,8,11) and k+1<n and content(k+1) and not cap[k+1])) or hs[k] in G2S or hs[k] in G2M or (hs[k] in (_H2['on'],_H2['in'],_H2['at'],_H2['with'],_H2['as'],_H2['to'],_H2['of'],_H2['from'],_H2['about'],_H2['for'],_H2['by'],_H2['into']) and k==j)):k+=1;continue
+                break
+            if k>=n or not wd(k) or cov[k]:return None
+            k0=k
+            if cap[k] and G2F.get(hs[k],0)&0b1100111110:return None
+            if capx[k] or num[k]:
+                while k<n and wd(k) and not cov[k] and k-k0<4 and (capx[k] or num[k] or (hs[k] in G2J and k+1<n and wd(k+1) and cap[k+1])):k+=1
+                while k<n and k-k0<4 and content(k) and not cap[k] and hs[k] in G2T and G2T[hs[k]][0] in (11,5,7,9):k+=1
+            else:
+                for L in (6,5,4,3,2):
+                    if k0+L<=n and all(wd(x) for x in range(k0,k0+L)) and _pk(hs[k0:k0+L]) in G2T:return (k0,k0+L)
+                if hs[k]==_H2['the']:k+=1
+                while k<n and k-k0<4:
+                    if content(k) or (wd(k) and cap[k] and not cov[k]):k+=1;continue
+                    if wd(k) and hs[k] in (_H2['in'],_H2['on'],_H2['at'],_H2['from'],_H2['with']) and any(T[x][1].endswith(b'ing') for x in range(k0,k)) and content(k+1):k+=2;continue
+                    if wd(k) and hs[k] in (_H2['and'],_H2['of']) and content(k+1) and _pk(hs[k0:k+2]) in G2T:k+=2;continue
+                    break
+            return (k0,k) if k>k0 and not (k-k0==1 and hs[k0]==_H2['the']) else None
+        def vback(i):
+            k=i-1;g=0
+            while k>=0 and g<7 and not (content(k) or (wd(k) and capx[k] and not cov[k])):k-=1;g+=1
+            if k<0 or g>=7 or used[k]:return None
+            k1=k+1
+            if cap[k] and G2F.get(hs[k],0)&0b1100111110:return None
+            if capx[k] or num[k]:
+                while k>=0 and wd(k) and not cov[k] and k1-k<=4 and (capx[k] or num[k] or hs[k] in G2J) and not (cap[k] and G2F.get(hs[k],0)&0b1100111110):k-=1
+            else:
+                while k>=0 and k1-k<=4 and (content(k) or (wd(k) and cap[k] and not cov[k])):k-=1
+            k0=k+1
+            while k0<k1 and hs[k0] in G2J and not cap[k0]:k0+=1
+            return (k0,k1) if k1>k0 else None
+        def vtype(a,b):
+            if num[a]:return 14
+            if hs[a] in _MON2:return 15
+            if cap[a]:
+                for L in range(b-a,0,-1):
+                    t=G2T.get(_pk(hs[a:a+L]))
+                    if t and t[1]&1:return t[0]
+                if any(G2T.get(hs[x],(0,0))[1]==3 for x in range(a,b)):return 13
+            t=G2T.get(_pk(hs[a:b])) or G2T.get(hs[b-1])
+            if t and not (t[1]&1 and not cap[a]):return t[0]
+            if T[b-1][1].endswith(b'ing') and not cap[a] and len(T[b-1][1])>=5:return 7
+            t=G2T.get(hs[a])
+            return t[0] if t and not (t[1]&1 and not cap[a]) else 0
+        def txt(a,b):return b' '.join(T[x][1] for x in range(a,b))[:24]
+        def near(i,j):
+            c0=cl[i];ms=[m for m in men if not (m[0]<=i<m[1]) and m[3]!=3]
+            L=[m for m in ms if m[1]<=i and cl[m[0]]==c0];R=[m for m in ms if m[0]>=j and cl[m[0]]==c0];L2=[m for m in ms if m[1]<=i]
+            return L[-1][2] if L else R[0][2] if R else L2[-1][2] if L2 else 0
+        def after_men(j):
+            q=j
+            if q<n and cov[q]==3:q+=1
+            m=next((m for m in men if m[0]==q and m[3]!=3),None)
+            if m is None:
+                m=next((m for m in men if m[0]==q),None)
+                while m is not None and m[3]==3:
+                    m2=next((x for x in men if x[0]==m[1]),None)
+                    if m2 is None:break
+                    m=m2
+            return (m[2],m[1]) if m else (0,q)
+        used=[0]*n;out=[]
+        def put(e,r,a,b,vt):
+            if not e or r<2 or r>15:return False
+            v=txt(a,b)
+            if r in (4,6,13) and not capx[a]:return False
+            if r==14 and not num[a]:return False
+            if r==15 and not (hs[a] in _MON2 or cap[a]):return False
+            if r==9 and not (cap[a] or vt==9):return False
+            for x in range(a,b):used[x]=1
+            out.append((e,r,v,vt));return True
+        same=[i for i in range(n) if wd(i) and (hs[i] in (_H2['same'],_H2['share'],_H2['shares'],_H2['shared'],_H2['sharing']) or (hs[i]==_H2['as'] and i>0 and hs[i-1]==_H2['old']))]
+        scl={cl[i] for i in same}
+        if not nq:
+            for i in range(n-3):
+                if wd(i) and hs[i]==_H2['it'] and _fb(hs[i+1],5):
+                    sp=vspan(i+2,0)
+                    if sp and sp[1]+2<n and not wd(sp[1]) and neg[sp[1]+1]:
+                        sp2=vspan(sp[1]+2,0)
+                        if sp2:
+                            er=mem.findval(txt(*sp2))
+                            if er:put(er[0],er[1],sp[0],sp[1],vtype(*sp))
+        if not nq and s.pend and n>=3 and hs[0] in (_H2['it'],_H2['that'],_H2['he'],_H2['she'],_H2['they']) and _fb(hs[1],5):
+            sp=vspan(2,s.pend[1])
+            if sp:put(s.pend[0],s.pend[1],sp[0],sp[1],vtype(*sp))
+        s.pend=None
+        if not nq:
+            for (j0,j1,rel,own,fav,st) in rnh+[(x[0],x[1],x[2],0,False,x[0]) for x in free]:
+                if cl[j0] in scl or any(j0<=c[0]<j1 for c in cues):continue
+                k=j1;sk=0
+                while k<n and wd(k) and not cov[k] and not cap[k] and (_fb(hs[k],5) or _fb(hs[k],6) or hs[k] in G2S or hs[k] in (_H2['in'],_H2['on'],_H2['at'],_H2['falls'],_H2['comes'],_H2['lands'],_H2['around'],_H2['every'],_H2['been'])) and k-j1<5:k+=1;sk+=1
+                sp=vspan(k,rel) if sk and (st!=j0 or any(_fb(hs[x],5) or hs[x] in (_H2['has'],_H2['have'],_H2['had'],_H2['falls'],_H2['comes'],_H2['lands']) for x in range(j1,k))) else None
+                if sp is None and k<n and not wd(k) and k+1<n and hs[k+1] in (_H2['if'],_H2['for'],_H2['in'],_H2['as'],_H2['just'],_H2['by']):
+                    q=k+1
+                    while q<n and wd(q) and q-k<7:q+=1
+                    if q+2<n and hs[q+1]==_H2['is']:sp=vspan(q+2,rel)
+                if sp is None and (k>=n or not wd(k)) and k+2<n and hs[k+1]==_H2['it'] and (_fb(hs[k+2],5) or hs[k+2]==_H2['would']):sp=vspan(k+3,rel)
+                q=st-1
+                while q>=0 and wd(q) and hs[q] in (_H2['the'],_H2['best'],_H2['a'],_H2['an']):q-=1
+                if sp is None and q>=0 and _fb(hs[q],5):sp=vback(q)
+                if sp and own==0 and not men and st>=2 and hs[st-1]==_H2['best']:own=SELFK
+                if sp is None and rel and st>=2 and hs[st-2] in (_H2['it'],_H2['that']) and _fb(hs[st-1],5) and own:
+                    tv=next((x for x in reversed(s.tf) if x[0]==own),None)
+                    if tv and tv[1]!=rel:out.append((own,rel,tv[2],tv[3]))
+                    continue
+                if not sp or any(used[x] for x in range(*sp)):continue
+                a,b=sp;vt=vtype(a,b);r2=rel or vt
+                if r2==0 and fav:r2=mem.lrel(own or near(j0,j1),(7,10,11)) or 0
+                if rel==9 and vt in (10,14):own=_pk([hs[x] for x in range(j0,j1) if hs[x] not in G2M]);r2=vt
+                if ifr[a] or hyp[j0] or any(neg[x] and cl[x]==cl[j0] for x in range(n)):continue
+                put(own or near(j0,j1),r2,a,b,vt)
+            for (i0,i1,rs) in cues:
+                if cl[i0] in scl:continue
+                ng=any(neg[x] for x in range(i0,i1)) or any(neg[x] and cl[x]==cl[i0] for x in range(0,i0))
+                rows=[x for x in rs if not x[1]&16 and (bool(x[1]&(4|128))==ng)] or [x for x in rs if not x[1]&16 and not x[1]&(4|128)]
+                if not rows:continue
+                rel,f,_=rows[0];e0=0
+                if f&64:sp=vback(i0)
+                else:
+                    e0,j=after_men(i1)
+                    j2=j
+                    while j2<n and wd(j2) and (_fb(hs[j2],5) or hs[j2] in G2S) and e0:j2+=1
+                    sp=vspan(j2 if e0 else j,rel,True)
+                    if sp==-1:continue
+                    if sp is None and (j>=n or not wd(j)):
+                        q=j+1
+                        if q+1<n and hs[q]==_H2['it'] and (_fb(hs[q+1],5) or hs[q+1]==_H2['would']):sp=vspan(q+2,rel)
+                        elif q+1<n and hs[q]==_H2['that'] and _fb(hs[q+1],5):sp=vspan(q+2,rel)
+                        elif not f&1:sp=vback(i0)
+                    if sp is None and rel==8 and (j>=n or not wd(j)):
+                        e=e0 or near(i0,i1)
+                        tv=next((x for x in reversed(s.tf) if x[0]==e and x[1]==2),None) or (s.lastv and (e,2,s.lastv,0))
+                        if e and tv:out.append((e,8,tv[2],tv[3]))
+                        continue
+                if i1<n and wd(i1) and hs[i1] in (_H2['there'],_H2['here']) and s.lastp and rel==4:
+                    e=e0 or near(i0,i1)
+                    if e:out.append((e,4,s.lastp,4))
+                    used[i1]=1;continue
+                if not sp or any(used[x] for x in range(*sp)):continue
+                a,b=sp;vt=vtype(a,b)
+                if f&2 and not (vt==rel or (rel==14 and num[a]) or (rel==15 and hs[a] in _MON2) or (rel==12 and vt in (12,13)) or (rel==9 and cap[a] and a>0 and hs[a-1] in (_H2['a'],_H2['an']) and hs[a] not in _MON2)):continue
+                if f&2 and rel==12 and vt==13:rel=13
+                if f&8:
+                    fr=[x[2] for x in free if x[2] in (10,11)]
+                    rel=fr[0] if fr else 10 if vt==10 else 11 if vt==11 else 7 if vt==7 else rel
+                if f&32:rel=8 if alg else rel
+                if rel==4 and vt==15:continue
+                if rel==15 and vt not in (15,0) and cap[a]:rel=4
+                if rel==6 and b<n and wd(b) and hs[b]==_H2['home']:rel=4
+                if ng and not f&(4|128):
+                    if rel in (7,10,11):rel=2
+                    elif rel!=8:continue
+                if (ifr[a] and ifr[i0]) or hyp[i0]:continue
+                put(e0 or near(i0,i1),rel,a,b,vt)
+            for c0 in sorted(set(cl)):
+                if c0 in scl or any(cl[x]==c0 and used[x] for x in range(n)):continue
+                idx=[x for x in range(n) if cl[x]==c0]
+                for m in [m for m in men if cl[m[0]]==c0 and m[3]!=3]:
+                    k=m[1]
+                    while k<n and wd(k) and _fb(hs[k],6) and k-m[1]<2:k+=1
+                    if k<n and wd(k) and _fb(hs[k],5) and not any(neg[x] for x in idx) and not any(hyp[x] or ifr[x] for x in idx):
+                        art=k+1<n and hs[k+1] in (_H2['a'],_H2['an'])
+                        sp=vspan(k+1,0)
+                        if sp:
+                            a,b=sp;vt=vtype(a,b)
+                            r=vt if vt in (10,14,15,5) else 5 if art and not cap[a] and vt in (0,7) else 6 if vt==0 and cap[a] and b-a<=2 and not art else 0
+                            r=r if m[3]!=4 or r in (10,14,15) else 0
+                            if r:put(m[2],r,a,b,vt)
+                        break
+            for p0 in range(n):
+                if not (capx[p0] and not cov[p0] and (p0==0 or not wd(p0-1) or hs[p0-1]==_H2['and'])):continue
+                k=p0
+                while k<n and wd(k) and (capx[k] or (hs[k] in G2J and k+1<n and wd(k+1) and cap[k+1] and k>p0)) and k-p0<4 and not (k>p0 and T[k-1][4]):k+=1
+                imp=T[k-1][4] and k<n and wd(k) and hs[k] in (_H2['in'],_H2['a'],_H2['part'],_H2['located'],_H2['over'])
+                if not (k<n and wd(k) and (_fb(hs[k],5) or imp)):continue
+                q=k if imp else k+1
+                while q<n and wd(q) and hs[q] in (_H2['an'],_H2['a'],_H2['city'],_H2['town'],_H2['village'],_H2['located'],_H2['over'],_H2['part'],_H2['situated'],_H2['right'],_H2['just'],_H2['up'],_H2['down'],_H2['out'],_H2['actually'],_H2['also']):q+=1
+                if not (q<n and hs[q] in (_H2['in'],_H2['of'])):continue
+                q+=1
+                while q<n and wd(q) and hs[q] in (_H2['the'],_H2['state'],_H2['country'],_H2['region'],_H2['province'],_H2['prefecture'],_H2['county'],_H2['of']):q+=1
+                if q<n and wd(q) and cap[q]:
+                    sp=vspan(q,4)
+                    if sp:s.isk(mem,txt(p0,k)[:-2] if imp else txt(p0,k),txt(*sp))
+            for e,r,v,vt in out:mem.put(e,r,v,vt);s.fire(e,r,v,mem);s.tf=(s.tf+[(e,r,v,vt)])[-16:];s.qe,s.qr=e,r
+            lv=[x for x in range(n) if content(x) and not used[x]]
+            if lv:
+                q=lv[-1]
+                while q>0 and content(q-1) and not used[q-1] and lv[-1]-q<3:q-=1
+                s.lastv=txt(q,lv[-1]+1)
+            for i in range(n-2):
+                if bd[i] and wd(i+1):
+                    pv=next(((e,r,v) for e,r,v,vt in out if r==4),None)
+                    q=i+1
+                    if pv and hs[q] in (_H2['a'],_H2['which'],_H2['in']):
+                        if hs[q]==_H2['in'] and q+1<n and cap[q+1]:
+                            sp=vspan(q+1,4)
+                            if sp:s.isk(mem,pv[2],txt(*sp))
+                            continue
+                        while q<n and wd(q) and hs[q] in (_H2['a'],_H2['city'],_H2['town'],_H2['which'],_H2['is'],_H2['located'],_H2['part']):q+=1
+                        if q<n and hs[q] in (_H2['in'],_H2['of']) and q+1<n and cap[q+1]:
+                            sp=vspan(q+1,4)
+                            if sp:s.isk(mem,pv[2],txt(*sp))
+            for c0 in sorted(scl):
+                ms=[m for m in men if cl[m[0]]==c0 and m[3]!=3];sm=[x for x in same if cl[x]==c0][0]
+                if not ms:continue
+                rr=[x[2] for x in rnh+[(f[0],f[1],f[2],0,0) for f in free] if cl[x[0]]==c0 and x[2]]
+                cr=[x[2][0][0] for x in cues if cl[x[0]]==c0 and not x[2][0][1]&(16|2)]
+                rel=14 if hs[sm]==_H2['as'] else rr[0] if rr else cr[0] if cr else 0
+                src=[m for m in ms if m[0]>sm];tg=[m for m in ms if m[0]<sm]
+                own=[x[3] for x in rnh if cl[x[0]]==c0 and x[3]]
+                if not src and own and tg and own[-1]!=tg[0][2]:src=[(0,0,own[-1],0)]
+                if not tg and own and src:tg=[(0,0,own[0],0)]
+                if not tg or not src or not rel:continue
+                pairs=[(tg[0][2],src[-1][2])]
+                if len(tg)>=2 and tg[1][2]!=tg[0][2]:pairs=[(tg[0][2],tg[1][2]),(tg[1][2],tg[0][2])]
+                elif hs[sm] in (_H2['share'],_H2['shares'],_H2['shared'],_H2['sharing']) and _H2['with'] in hs:pairs.append((src[-1][2],tg[0][2]))
+                for t_,s_ in pairs:
+                    if t_==s_:continue
+                    s.links=(s.links+[(t_,rel,s_)])[-8:]
+                    v=mem.latest(s_,rel) or next((mem.latest(s_,r) for r in (7,11,10) if rel in (7,10,11) and r!=rel and mem.latest(s_,r) is not None),None)
+                    if v is not None:mem.put(t_,rel,v[0],v[1]);s.fire(t_,rel,v[0],mem)
+        else:
+            owners=[m for m in men if m[3]!=3]+[(x[0],x[1],x[3],0) for x in rnh if x[3]]
+            owners.sort(key=lambda m:m[0])
+            ns=[m for m in owners if m[2]!=SELFK];e=ns[-1][2] if ns else SELFK if owners or mself else 0
+            v9=[x for x in rnh if x[2]==9]
+            if v9 and (any(x[0]!=9 and not x[1]&2 for c in cues for x in c[2][:1]) or any(x[2]!=9 for x in free)):
+                e=_pk([hs[x] for x in range(v9[-1][0],v9[-1][1]) if hs[x] not in G2M]);rnh=[x for x in rnh if x[2]!=9]
+            r1=[x[2] for x in rnh if x[3]==e and x[2]]
+            ng=any(neg)
+            cr=[];ep=max([m[0] for m in owners if m[2]==e],default=-1)
+            for (i0,i1,rs) in sorted(cues,key=lambda c:(c[0]<ep,c[0])):
+                rows=[x for x in rs if not x[1]&2 and bool(x[1]&(4|128))==ng] or [x for x in rs if not x[1]&2 and not x[1]&(4|128)]
+                if rows:
+                    r,f,_=rows[0];fr=[x[2] for x in free if x[2] in (10,11)]
+                    r=fr[0] if f&8 and fr and r in (7,11) else r
+                    r=2 if ng and r in (7,11) and not f&(4|128) else r
+                    cr.append(8 if f&32 and (alg or (mem.latest(e,8) is not None and mem.latest(e,2) is None)) else r)
+            fr=[x[2] for x in free]
+            wh=[h for h in hs if _fb(h,9)]
+            r4=4 if _H2['where'] in wh else 15 if _H2['when'] in wh else 14 if (_H2['how'] in wh and _H2['old'] in hs) or _H2['age'] in hs else 6 if _H2['who'] in wh else 0
+            if not r4 and not r1 and not cr and not fr and any(h in (_H2['do'],_H2['does'],_H2['did'],_H2['doing']) for h in hs[-2:]) and _H2['what'] in wh:r4=5
+            rel=r1[-1] if r1 else cr[0] if cr else fr[0] if fr else r4
+            if _H2['where'] in wh and rel in (12,0,13):rel=13 if rel in (12,13) or any(h in (_H2['study'],_H2['studied'],_H2['degree'],_H2['school'],_H2['college'],_H2['university'],_H2['enrolled']) for h in hs) else 4
+            if r1 and e:s.pend=(e,r1[-1])
+            s.qe,s.qr=e,rel
+        lp=[x for x in range(1,n) if capx[x] and not cov[x] and wd(x-1) and hs[x-1] in (_H2['in'],_H2['to'],_H2['at'],_H2['from'])]
+        if lp:
+            q=lp[-1]
+            while q<n and wd(q) and (capx[q] or (hs[q] in G2J and q+1<n and wd(q+1) and cap[q+1])) and q-lp[-1]<4:q+=1
+            s.lastp=txt(lp[-1],q)
+        ms=[m[2] for m in men if m[2]!=SELFK and m[3]!=3];s.lm=ms
+        if ms:s.ante=ms[-1]
+    def isk(s,mem,c,v):s.nm[_f4(c)]=c;mem.put(_f4(c),ISINK,v,4)
+    def fire(s,e,r,v,mem,d=0):
+        for (t_,rel,s_) in list(s.links):
+            if s_==e and (rel==r or (rel in (7,10,11) and r in (7,10,11))) and d<2:mem.put(t_,r,v,0);s.fire(t_,r,v,mem,d+1)
+def _f4(v):
+    h=0
+    for c in v[:4]:
+        if c!=32:h=(h*83492791+c+1)&0xFFFFFFFF
+    return h
+class _GM:
+    def __init__(s,p):s.p=p
+    def _m(s,f):return max((x for x in s.p.facts[-64:] if f(x)),key=lambda x:x[3],default=None)
+    def put(s,e,r,v,vs):p=s.p;p.clk+=1;p.facts.append([e,r,bytes(v),p.clk,p.names.get(e,'')]);p.vsm[p.clk]=vs
+    def latest(s,e,r):f=s._m(lambda x:x[0]==e and x[1]==r);return (f[2],s.p.vsm.get(f[3],0)) if f else None
+    def lrel(s,e,rs):f=s._m(lambda x:x[0]==e and x[1] in rs);return f[1] if f else 0
+    def findval(s,v):f=s._m(lambda x:x[2].lower()==bytes(v).lower());return (f[0],f[1]) if f else None
 class _P:
-    def __init__(s,lt=None,gn=None):
-        s.gn=_gn() if gn is None else gn;s.lt=s.lt_=(_lt() if lt is None else lt) or s.gn;s.sms=s.prn=s.apv=s.cwt=s.vty=s.vwn=0;s.cms=s.vms=s.pcm=s.gbg=False;s.vws=[0]*8;s.vwt=[0]*8
+    def __init__(s,lt=None,gn=None,g2=None):
+        s.g2=(_g2() if gn is None else False) if g2 is None else g2;s.gn=(_gn() if gn is None else gn) or s.g2;s.vsm={};s.ga=_G2() if s.g2 else None;s.gm=_GM(s);s.lt=s.lt_=(_lt() if lt is None else lt) or s.gn;s.sms=s.prn=s.apv=s.cwt=s.vty=s.vwn=0;s.cms=s.vms=s.pcm=s.gbg=False;s.vws=[0]*8;s.vwt=[0]*8
         s.flg=s.pre=s.subj=s.meta=s.ante=s.own=s.pbd=s.inv=s.poss=s.entc=s.relc=s.gapc=s.qent=s.qrel=s.clk=s.nps=s.we=s.ph=s.pph=s.sw=s.cw=s.hw=0;s.lav=-9;s.wq=s.tcm=False;s.vb=bytearray();s.facts=[];s.names={SELFK:'I'};s.kin={};s.ments=set();s.t=b''
     def b(s,m):return s.flg&m!=0
     def on(s,*m):
@@ -89,7 +519,7 @@ class _P:
         rel=s.relc;ent=s.subj if rel==ISINK else s.entc
         if s.b(BSOL) and s.vb and rel==0 and (s.b(BFAV) or s.b(BMOST)):f=s.latest(lambda f:f[0]==ent and f[1]>=4);rel=f[1] if f else rel;s.relc=rel
         if s.b(BSOL) and rel==7 and s.b(BMOST):f=s.latest(lambda f:f[0]==ent and f[1] in (10,11));rel=f[1] if f else rel;s.relc=rel
-        if s.b(BSOL) and s.vb and (2 if s.lt else 3)<=rel<=15 and not (s.gn and s.b(BNEG) and rel not in (2,8,ISINK)) and ent and (rel==ISINK or ent==SELFK or s.b(BENTK)):s.clk+=1;s.facts.append([ent,rel,bytes(s.vb),s.clk,s.names.get(ent,'')])
+        if not s.g2 and s.b(BSOL) and s.vb and (2 if s.lt else 3)<=rel<=15 and not (s.gn and s.b(BNEG) and rel not in (2,8,ISINK)) and ent and (rel==ISINK or ent==SELFK or s.b(BENTK)):s.clk+=1;s.facts.append([ent,rel,bytes(s.vb),s.clk,s.names.get(ent,'')])
         s.reset()
     def setrel(s,r,noun,force):
         if s.gn and r==13 and not noun and s.b(BWHE) and s.hw in (H_GO2,H_GOES2,H_WENT2,H_GOING2):return
@@ -351,12 +781,15 @@ class _P:
         for _ in range(2):
             if s.step(w,whw,p4w)==1:break
         s.pre=bh(w[:16].lower())
+        if s.g2:s.ga.word(w,len(w),s.pbd)
     def finish_q(s):
         if s.gn and s.b(BQDONE):return
         s.qent=s.qent or (SELFK if s.b(BMETI) else 0);s.qrel=s.qrel or (6 if s.b(BWHO) else 15 if s.b(BWHEN) else 4 if s.b(BWHE) else 5 if s.b(BDO) else 0)
     def punct(s,c):
         if s.prn:s.rflush()
-        end,nq=c in (46,33,63,10),s.lt and (c==63 or s.wq)
+        end,nq,qd0=c in (46,33,63,10),s.lt and (c==63 or s.wq),s.b(BQDONE)
+        if s.g2 and c==44:s.ga.comma()
+        elif s.g2 and end:s.ga.end(nq,s.gm);s.names.update({k:v.decode('latin-1') for k,v in s.ga.nm.items()});[s.kin.__setitem__(k,True) for k in s.ga.lm];s.ments|=set(s.ga.lm)
         if s.meta==5 and c==44:s.meta=0
         elif s.b(BSKNO) and end:s.off(BSKNO);s.reset()
         elif c==44 and not s.b(BSOL):
@@ -373,12 +806,14 @@ class _P:
         if s.lt and (end or c==44):s.sw,s.cw,s.wq=0 if end else s.sw,0,False
         if end:s.apv=0
         s.pcm=c==44
+        if s.g2 and end and not qd0:s.qent,s.qrel=s.ga.qe,s.ga.qr
     def turn(s,t):
-        s.qent=s.qrel=s.flg=s.pbd=s.ph=s.sw=s.cw=0;s.wq=s.tcm=False;s.reset();s.ments=set();s.t=t=t+b'\n';w=bytearray();f0=len(s.facts)
+        s.qent=s.qrel=s.flg=s.pbd=s.ph=s.sw=s.cw=0;s.wq=s.tcm=False;s.reset();s.ments=set();s.t=t=t+b'\n';w=bytearray();f0=len(s.facts);s.g2 and s.ga.newturn()
         for i,c in enumerate(t):
             if c in WCH:w.append(c);continue
             if w:s.we=i;s.word(bytes(w));w.clear();s.pbd=1 if c==45 else 2 if c==39 else 0
             if c in (46,44,33,63,10):s.punct(c)
+            elif s.g2 and c in (58,59):s.ga.comma()
         return s.facts[f0:]
 _enc=lambda x:(x if isinstance(x,bytes) else str(x).encode('utf-8','replace'))
 _FORGET=re.compile(r"(?i)^\W*(?:(?:please|ok(?:ay)?|hey|adam|and|also|now)\W+)*(?:forget|erase|delete|remove|wipe)\b(?!\W*(?:it|about it|that)\W*$)")

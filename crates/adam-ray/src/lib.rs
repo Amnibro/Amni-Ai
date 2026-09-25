@@ -1,5 +1,6 @@
 pub mod cpu;
 pub mod field;
+pub mod g2;
 pub mod gpu;
 pub mod npy;
 pub mod pack;
