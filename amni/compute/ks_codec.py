@@ -23,8 +23,8 @@ def pack_files(path:str,lex:str="big2")->list:
  pre=path[:-8] if path.endswith("_sid.npy") else path.replace("_pk_q5_i8.npz","");return [f for f in ([pre+"_dp.npy",path,pre+"_sw.npy",pre+"_bias.npy"] if path.endswith("_sid.npy") else [path,pre+"_bias.npy"]) if os.path.exists(f)]+lex_files(lex,("synsets.txt","wordcounts.txt"))
 def pack_id(path:str,lex:str="big2")->str:return digest(pack_files(path,lex))
 class KSCodec:
- def __init__(self,pack:str=None,arch:str=None,nb:int=MAXB,impl:str=None,ver:str=None,lex:str=None):
-  self.pack,self.lex=CODERS[ver] if ver else (pack or LEGACY_PACK,lex or os.environ.get("AMNI_RAY_LEX","big2"));self.ver=ver or next((k for k,v in CODERS.items() if v==(self.pack,self.lex)),"custom");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","cpu");self.impl=impl or os.environ.get("AMNI_RAY_IMPL","rust" if importlib.util.find_spec("adam_ray") else "taichi");self.nb=min(nb,MAXB);self.pid=None;self.lid=None;self.stats=False;self.nll=[0.0];self._e=None
+ def __init__(self,pack:str=None,arch:str=None,nb:int=MAXB,impl:str=None,ver:str=None,lex:str=None,ks:str=None):
+  self.pack,self.lex=CODERS[ver] if ver else (pack or LEGACY_PACK,lex or os.environ.get("AMNI_RAY_LEX","big2"));self.ver=ver or next((k for k,v in CODERS.items() if v==(self.pack,self.lex)),"custom");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","cpu");self.impl=impl or os.environ.get("AMNI_RAY_IMPL","rust" if importlib.util.find_spec("adam_ray") else "taichi");self.nb=min(nb,MAXB);self.pid=None;self.lid=None;self.stats=False;self.nll=[0.0];self._e=None;self.ks=ks or os.environ.get("AMNI_KS_IMPL","rust" if importlib.util.find_spec("adam_ks") else "python");self._k=None
  def ident(self)->dict:self.pid=self.pid or pack_id(self.pack,self.lex);self.lid=self.lid or digest(lex_files(self.lex));return {"coder":f"{CODER}:{self.impl}-{self.arch}:{os.path.basename(self.pack)}:{self.pid[:12]}","ver":self.ver,"pack":os.path.basename(self.pack),"pack_id":self.pid,"lex":self.lex,"lex_id":self.lid,"impl":self.impl,"arch":self.arch,"qk":QK,"dmax":DMAX,"expc":EXPC,"tot":TOT,"start":START,"page":PAGE}
  def eng(self):
   f=[os.path.join(_H0,"data",self.lex,x) for x in LEXF];self._e=self._e or (__import__("adam_ray").RayField(self.pack,*f,self.arch,_H0) if self.impl=="rust" else (lambda r:(setattr(r,"wcnt_path",f[2]),r)[1])(RayField(self.pack,f[0],f[1],self.arch))).load();return self._e
@@ -50,8 +50,10 @@ class KSCodec:
     if not len(kp):break
     row,low,rng,op,ip,code=row[kp],low[kp],rng[kp],op[kp],ip[kp],code[kp];lg=np.asarray(r._advance(kp.tolist(),(out if dec else src)[row,t].tolist(),True),np.float64)
   return res
- def encode(self,pages:list)->list:return self.run([len(p) for p in pages],pages)
- def decode(self,lens:list,codes:list)->list:return self.run(lens,codes,True)
+ def rs(self):
+  self._k=self._k or (self.ks=="rust" and self.impl=="rust" and self.arch=="cpu" and importlib.util.find_spec("adam_ks") is not None and __import__("adam_ks").Codec(self.pack,os.path.join(_H0,"data",self.lex),self.ver,int(os.environ.get("AMNI_KS_THREADS","0")))) or None;return self._k
+ def encode(self,pages:list)->list:k=self.rs();return self.run([len(p) for p in pages],pages) if k is None else (lambda r:(self.nll.__setitem__(0,self.nll[0]+r[1]),r[0])[1])(k.encode([bytes(p) for p in pages],self.stats))
+ def decode(self,lens:list,codes:list)->list:k=self.rs();return self.run(lens,codes,True) if k is None else k.decode([int(x) for x in lens],[bytes(c) for c in codes])
 def _dir_pack(clen:np.ndarray,nby:np.ndarray,crc:np.ndarray)->np.ndarray:
  a=encode_ids_to_rgba2(clen.astype(np.int64)+83521*nby.astype(np.int64)).reshape(-1,8);b=encode_ids_to_rgba2(crc.astype(np.int64)).reshape(-1,8)[:,:4];a[:,7]=(-(a[:,:7].astype(np.int64)*CW).sum(axis=1)-(b.astype(np.int64)*np.arange(8,12)).sum(axis=1))%17;return np.concatenate([a,b],axis=1)
 def _dir_unpack(d:np.ndarray)->tuple:
@@ -60,7 +62,9 @@ def _dir_unpack(d:np.ndarray)->tuple:
  v=decode_rgba2_to_ids(np.concatenate([d[:,:7],np.zeros((len(d),1),np.uint8)],axis=1));w=decode_rgba2_to_ids(np.concatenate([d[:,8:],np.zeros((len(d),4),np.uint8)],axis=1));return v%83521,v//83521,w
 def atlas(d:np.ndarray)->np.ndarray:
  px=d.reshape(-1,4);h=-(-len(px)//ATW);a=np.zeros((max(h,1),ATW,4),np.uint8);a.reshape(-1,4)[:len(px)]=px;return a
-def write_store(out:str,docs,codec:KSCodec,chunk:int=4096,log=None)->dict:
+def write_store(out:str,docs,codec:KSCodec,chunk:int=4096,log=None,src:str="wikipedia")->dict:
+ if isinstance(docs,str) and codec.rs() is not None:return json.loads(codec.rs().encode_store(docs,out,src,chunk))
+ docs=({"src":src,"title":r["title"],"text":r["text"].encode(),"tier":"endorsed","score":r["score"],"stale":r["stale"],"date":r["date"],"evidence":{"urls":[r["url"]],"agree":1,"refs":r["refs"],**({"license":r["license"]} if "license" in r else {}),"signals":{},"code":None}} for b in pq.ParquetFile(docs).iter_batches(batch_size=2048) for r in b.to_pylist()) if isinstance(docs,str) else docs
  os.makedirs(out,exist_ok=True);pf=open(os.path.join(out,"pages.bin"),"wb");clen=[];nby=[];crc=[];D={k:[] for k in ("src","title","first")};P={k:[] for k in ("tier","score","stale","date","evidence")};srcs={};buf=[];tb=0
  def flush():
   cs=codec.encode(buf);[pf.write(c) for c in cs];clen.extend(len(c) for c in cs);nby.extend(len(p) for p in buf);crc.extend(crc16(p) for p in buf);buf.clear();log and log(len(clen))

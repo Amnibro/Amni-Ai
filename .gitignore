@@ -97,6 +97,8 @@ manifest.json
 amni_kernels/target/
 crates/target/
 /adam_ray*.so
+/adam_ks*.so
+crates/adam-ks/tmp/
 amni_kernels/__pycache__/
 # Lesson bank state (per-install)
 *.npz
