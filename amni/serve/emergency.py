@@ -1,4 +1,4 @@
-import re,json,zlib,numpy as np
+import os,re,json,zlib,numpy as np
 from pathlib import Path
 from typing import Iterable,Iterator,Optional
 from bisect import bisect_right
@@ -346,7 +346,7 @@ def guard_stream(message:str,chunks:Iterable[str])->Iterator[str]:
     if r:yield r
     if not st['said']:yield neutral(message)
 def guard(message:str,text:str)->str:return ''.join(guard_stream(message,[text or '']))
-LUTP=Path(__file__).with_name('emergency_lut.npz');VETO=False;EB=19;EM=(1<<EB)-1;EQ=4913;EO=41760;EA=0.1;ECL=3.0;K4=(1,17,289,4913)
+LUTP=Path(__file__).with_name('emergency_lut.npz');VETO=os.environ.get('AMNI_EMERGENCY_VETO','1')!='0';EB=19;EM=(1<<EB)-1;EQ=4913;EO=41760;EA=0.1;ECL=3.0;K4=(1,17,289,4913)
 EC=('none','medical','suicide','violence','fire','gas','poison','child');EK={'medical':'general','suicide':'suicide','violence':'violence','fire':'fire','gas':'gas','poison':'poison','child':'child_danger'}
 MKN=('GEN','URGS','URGW','URGP','PIVOT','ADMIN','SIDE','URGR','URGJ','EMB','IDE','HUMS','FIC','HYPOS','REAL','HYPO','EDU','EDUP','EDUS','JOKE','JOKES','RES','PAST','NEG','MULTI','DOM','INTR','QN')
 SUBX=re.compile(rf"\b(?:(?P<self>i|im|me|my|myself|ive|ill)|(?P<kid>{KID})|(?P<kin>{KIN})|(?P<oth>he|she|hes|shes|him|her|they|someone|somebody|guy|man|woman|girl|boy|person|lady))\b");TOKR=re.compile(r"[a-z0-9']+")
