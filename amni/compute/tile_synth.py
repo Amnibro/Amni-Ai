@@ -1,6 +1,7 @@
 import ast,builtins,collections,copy,functools,gc,itertools,json,math,operator as op,os,random,re,resource,signal,string,textwrap,threading,time,types,typing,zlib
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from multiprocessing import get_context
 from pathlib import Path
 from amni.compute import ray_field
@@ -761,4 +762,8 @@ def _limit():
  vs=int(open("/proc/self/statm").read().split()[0])*os.sysconf("SC_PAGE_SIZE");resource.setrlimit(resource.RLIMIT_AS,(vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30),resource.RLIM_INFINITY))
 def pool(jobs=1):return ProcessPoolExecutor(max(1,jobs),mp_context=get_context("spawn"),initializer=_limit)
 def _solve_item(item,**kw):return solve(item[0],item[1],**{**kw,**(item[2] if len(item)>2 else {})})
-def solve_many(ex,items,**kw):return list(ex.map(functools.partial(_solve_item,**kw),items))
+def solve_many(ex,items,**kw):
+ try:return list(ex.map(functools.partial(_solve_item,**kw),items))
+ except BrokenProcessPool:
+  if len(items)==1:return [{"found":False,"body":"","n_checks":len(items[0][1]),"time":0.0,"size":0,"cost":0,"expr":"","reason":"worker_crash"}]
+  h=len(items)//2;n=max(1,getattr(ex,"_max_workers",1));return [r for part in (items[:h],items[h:]) for r in (lambda q:(lambda o:(q.shutdown(cancel_futures=True),o)[1])(solve_many(q,part,**kw)))(pool(n))]
