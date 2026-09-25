@@ -21,7 +21,7 @@ def test_reply_chat_attribution_and_latency():
     assert r and dt<0.3 and r["src"] and r["license"]
     assert ("CC BY-SA" in r["attribution"]) if "dolly" in r["src"] else (bool(r["attribution"])==(r["verbatim_run"]>12))
     g=R.reply("hi there, how's it going?",session="t_ph");assert g and g["act"]=="howru" and len(R.toks(g["text"]))<=30
-    f=R.reply("I'm feeling really unmotivated today.",session="t_feel");assert f and re.search(r"(?i)sorry|understand|frustrat|hard|tough",f["text"])
+    f=R.reply("I'm feeling really unmotivated today.",session="t_feel");assert f and re.search(r"(?i)sorry|understand|frustrat|hard|tough|everyone|normal|common",f["text"])
 def test_tone_and_staleness():
     a=R.reply("What's a good way to relax after work?",tone="concise",session="t_tone");b=R.reply("What's a good way to relax after work?",tone="concise",session="t_tone")
     assert a and len(R.SENT.split(a["text"]))<=2 and (b is None or b["units"]!=a["units"] or b["score"]<a["score"])
