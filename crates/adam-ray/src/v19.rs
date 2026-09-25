@@ -365,6 +365,7 @@ impl Mem {
         else if bb == 44 { self.commit_fact(); self.bon(BACO); }
         else if end { if bb == 63 { self.finish_q(); } self.commit_fact(); }
     }
+    fn qmask(&self, h: u32) -> u32 { if (0..NR).any(|i| self.stamp[i] > 0 && self.val[i][..self.vlen[i].clamp(0, 24) as usize].split(|&c| c == 32 || c == 45).any(|w| bh(w) == h)) { bh(b"_") } else { h } }
     fn ent_p4(&self, i: usize) -> u32 { let (mut h, mut n) = (0u32, 0); for t in 0..4 { if t < self.vlen[i] && self.val[i][t as usize] != 32 && n < 4 { h = h.wrapping_mul(83492791).wrapping_add(self.val[i][t as usize] as u32 + 1); n += 1; } } h }
     fn cval(&self, k: usize) -> Option<(&[u8; 24], i32)> { if k == 15 { (self.esl > 0).then_some((&self.esb, self.esl)) } else if k != 12 && k < 15 && self.cand[k] >= 0 { Some((&self.val[self.cand[k] as usize], self.vlen[self.cand[k] as usize])) } else { None } }
     fn next_ent(&self, k: usize, n: i32) -> i32 {
@@ -481,7 +482,7 @@ impl W19 {
             if b1 == 10 && b2 == 10 { qon = 0; inq = 0; }
             if cp >= 13 {
                 if user { (m.qent, m.qrel, m.qtyp, m.ptag, m.flg, m.esl, m.eal, m.eon, m.isq, m.epr) = (0, 0, 0, 0, 0, 0, 0, false, 0, false); m.fact_reset(); }
-                if adam && qon == 1 { m.pick_cands(qclk); }
+                if adam && qon == 1 { m.pick_cands(qclk); if g.mv { (q1, q2) = (m.qmask(q1), m.qmask(q2)); } }
             }
         }
         if cp >= 13 && inq == 1 && (bb == 46 || bb == 44 || bb == 33 || bb == 63 || bb == 10) { m.on_punct(bb); }
