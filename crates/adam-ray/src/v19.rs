@@ -58,7 +58,13 @@ const H_NOT: u32 = bh(b"not");
 const H_LET: u32 = bh(b"let");
 const H_TELL: u32 = bh(b"tell");
 const H_ASK: u32 = bh(b"ask");
-pub struct Lx19 { pub cls: Vec<i32>, pub rid: Vec<i32>, pub fun: Vec<u8>, pub stop: Vec<u8> }
+const H_FAMILY: u32 = bh(b"family");
+const H_RELATIVES: u32 = bh(b"relatives");
+const H_FOLKS: u32 = bh(b"folks");
+const WQS: [u32; 18] = [bh(b"what"), bh(b"where"), bh(b"who"), bh(b"when"), bh(b"which"), bh(b"how"), bh(b"why"), bh(b"whose"), bh(b"do"), bh(b"does"), bh(b"did"), bh(b"can"), bh(b"could"), bh(b"would"), bh(b"will"), bh(b"remind"), bh(b"is"), bh(b"are")];
+const WIM: [u32; 30] = [bh(b"give"), bh(b"tell"), bh(b"list"), bh(b"write"), bh(b"explain"), bh(b"describe"), bh(b"create"), bh(b"make"), bh(b"find"), bh(b"identify"), bh(b"classify"), bh(b"provide"), bh(b"generate"), bh(b"summarize"), bh(b"translate"), bh(b"compare"), bh(b"suggest"), bh(b"recommend"), bh(b"show"), bh(b"define"), bh(b"calculate"), bh(b"build"), bh(b"reply"), bh(b"label"), bh(b"choose"), bh(b"name"), bh(b"rewrite"), bh(b"extract"), bh(b"categorize"), bh(b"imagine")];
+const WCM: [u32; 22] = [bh(b"actually"), bh(b"correction"), bh(b"scratch"), bh(b"update"), bh(b"updated"), bh(b"wrong"), bh(b"oops"), bh(b"misspoke"), bh(b"fix"), bh(b"mixed"), bh(b"instead"), bh(b"now"), bh(b"moved"), bh(b"changed"), bh(b"switched"), bh(b"longer"), bh(b"anymore"), bh(b"traded"), bh(b"sorry"), bh(b"wait"), bh(b"corrected"), bh(b"new")];
+pub struct Lx19 { pub cls: Vec<i32>, pub rid: Vec<i32>, pub fun: Vec<u8>, pub stop: Vec<u8>, pub gx: Vec<(u32, i32, i32)> }
 impl Lx19 {
     pub fn new() -> Lx19 {
         let n = WM as usize + 1;
@@ -74,16 +80,17 @@ impl Lx19 {
         let wait = [("live", 4), ("lives", 4), ("lived", 4), ("living", 4), ("based", 4), ("base", 4), ("moved", 4), ("move", 4), ("moving", 4), ("work", 5), ("works", 5), ("worked", 5), ("working", 5), ("allergic", 8), ("react", 8), ("reacts", 8), ("reacted", 8), ("major", 12), ("majored", 12), ("graduate", 13), ("graduated", 13), ("turned", 14), ("turn", 14), ("went", 13), ("go", 13), ("goes", 13), ("going", 13)];
         let obj = [("like", 7), ("likes", 7), ("liked", 7), ("love", 7), ("loves", 7), ("loved", 7), ("drive", 9), ("drives", 9), ("drove", 9), ("driving", 9), ("eat", 11), ("eats", 11), ("eating", 11), ("order", 11), ("orders", 11), ("ordered", 11), ("studied", 12), ("study", 12), ("studying", 12), ("bought", 9), ("buy", 9), ("pick", 7), ("picks", 7), ("into", 7)];
         [(&noun[..], 256), (&wait[..], 512), (&obj[..], 1024)].iter().for_each(|(d, bit)| d.iter().for_each(|(w, r)| put(w, *bit, *r)));
-        Lx19 { cls, rid, fun, stop }
+        let gx = [("employed", 512, 5), ("lands", 512, 15), ("passionate", 1024, 7), ("alma", 256, 13), ("profession", 256, 5), ("professions", 256, 5), ("occupation", 256, 5), ("career", 256, 5), ("shade", 256, 10), ("hue", 256, 10), ("birth", 256, 15), ("located", 512, 4), ("reside", 512, 4), ("resides", 512, 4), ("enjoy", 1024, 7), ("enjoys", 1024, 7), ("enjoyed", 1024, 7), ("hate", 1024, 2), ("hates", 1024, 2), ("hated", 1024, 2), ("dislike", 1024, 2), ("dislikes", 1024, 2), ("detest", 1024, 2), ("detests", 1024, 2), ("loathe", 1024, 2), ("loathes", 1024, 2), ].iter().flat_map(|&(w, b, r)| both(w).into_iter().flatten().map(move |h| (h & WM, b, r))).chain("red orange yellow green blue purple pink brown black white gray grey silver gold golden beige teal navy maroon violet scarlet crimson indigo turquoise magenta lavender burgundy charcoal cerulean chartreuse cobalt emerald fuchsia ivory khaki lilac mauve ochre periwinkle sapphire sepia taupe terracotta ultramarine vermilion aquamarine azure bronze copper cyan mahogany chestnut gunmetal pewter platinum amethyst goldenrod seafoam aqua celadon puce umber russet cornflower heliotrope".split(' ').flat_map(both).flatten().map(|h| (h & WM, 2048, 10))).collect();
+        Lx19 { cls, rid, fun, stop, gx }
     }
 }
 impl Default for Lx19 { fn default() -> Self { Self::new() } }
 #[derive(Clone)]
-pub struct Mem { wmk: [u32; MS], wmb: [[[u8; 16]; 2]; MS], wml: [[i32; 2]; MS], wmt: [i32; MS], wmv: [[i32; 2]; MS], wclk: i32, cwb: [u8; 16], flg: i32, pre: u32, subj: u32, meta: i32, ante: u32, own: u32, pbd: i32, inv: i32, pub ent: [u32; NR], pub rel: [u32; NR], pub val: [[u8; 24]; NR], pub vlen: [i32; NR], vtype: [i32; NR], pub stamp: [i32; NR], ep: i32, poss: i32, entc: u32, relc: u32, gapc: i32, vlc: i32, vb: [u8; 24], pub qent: u32, pub qrel: u32, pub qtyp: i32, ptag: i32, pub cand: [i32; 16], woff: [i32; 16], cnr: [i32; 16], pub xe: bool, esb: [u8; 24], pub esl: i32, eacc: [u8; 24], eal: i32, eon: bool, pub isq: i32, asb: [u8; 24], asl: i32, aent: u32, epr: bool }
+pub struct Mem { wmk: [u32; MS], wmb: [[[u8; 16]; 2]; MS], wml: [[i32; 2]; MS], wmt: [i32; MS], wmv: [[i32; 2]; MS], wclk: i32, cwb: [u8; 16], flg: i32, pre: u32, subj: u32, meta: i32, ante: u32, own: u32, pbd: i32, inv: i32, pub ent: [u32; NR], pub rel: [u32; NR], pub val: [[u8; 24]; NR], pub vlen: [i32; NR], vtype: [i32; NR], pub stamp: [i32; NR], ep: i32, poss: i32, entc: u32, relc: u32, gapc: i32, vlc: i32, vb: [u8; 24], pub qent: u32, pub qrel: u32, pub qtyp: i32, ptag: i32, pub cand: [i32; 16], woff: [i32; 16], cnr: [i32; 16], pub xe: bool, esb: [u8; 24], pub esl: i32, eacc: [u8; 24], eal: i32, eon: bool, pub isq: i32, asb: [u8; 24], asl: i32, aent: u32, epr: bool, lt: bool, ph: u32, pph: u32, sw: i32, cw: i32, lav: i32, wq: bool, pub cor: [bool; NR], tcm: bool }
 fn lc(c: u8) -> i32 { let x = c as i32; if (65..=90).contains(&x) { x + 32 } else { x } }
 impl Default for Mem { fn default() -> Self { Self::new() } }
 impl Mem {
-    pub fn new() -> Mem { Mem { wmk: [0; MS], wmb: [[[0; 16]; 2]; MS], wml: [[0; 2]; MS], wmt: [0; MS], wmv: [[0; 2]; MS], wclk: 0, cwb: [0; 16], flg: 0, pre: 0, subj: 0, meta: 0, ante: 0, own: 0, pbd: 0, inv: 0, ent: [0; NR], rel: [0; NR], val: [[0; 24]; NR], vlen: [0; NR], vtype: [0; NR], stamp: [0; NR], ep: 0, poss: 0, entc: 0, relc: 0, gapc: 0, vlc: 0, vb: [0; 24], qent: 0, qrel: 0, qtyp: 0, ptag: 0, cand: [-1; 16], woff: [0; 16], cnr: [0; 16], xe: false, esb: [0; 24], esl: 0, eacc: [0; 24], eal: 0, eon: false, isq: 0, asb: [0; 24], asl: 0, aent: 0, epr: false } }
+    pub fn new() -> Mem { Mem { wmk: [0; MS], wmb: [[[0; 16]; 2]; MS], wml: [[0; 2]; MS], wmt: [0; MS], wmv: [[0; 2]; MS], wclk: 0, cwb: [0; 16], flg: 0, pre: 0, subj: 0, meta: 0, ante: 0, own: 0, pbd: 0, inv: 0, ent: [0; NR], rel: [0; NR], val: [[0; 24]; NR], vlen: [0; NR], vtype: [0; NR], stamp: [0; NR], ep: 0, poss: 0, entc: 0, relc: 0, gapc: 0, vlc: 0, vb: [0; 24], qent: 0, qrel: 0, qtyp: 0, ptag: 0, cand: [-1; 16], woff: [0; 16], cnr: [0; 16], xe: false, esb: [0; 24], esl: 0, eacc: [0; 24], eal: 0, eon: false, isq: 0, asb: [0; 24], asl: 0, aent: 0, epr: false, lt: false, ph: 0, pph: 0, sw: 0, cw: 0, lav: -9, wq: false, cor: [false; NR], tcm: false } }
     fn bit(&self, m: i32) -> bool { self.flg & m != 0 }
     fn bon(&mut self, m: i32) { self.flg |= m; }
     fn boff(&mut self, m: i32) { self.flg &= 2147483647 ^ m; }
@@ -106,26 +113,27 @@ impl Mem {
     fn is_capw(&self, n: i32) -> bool { n >= 2 && self.cwb[0].is_ascii_uppercase() }
     fn fact_reset(&mut self) { (self.poss, self.entc, self.relc, self.gapc, self.vlc, self.inv, self.meta, self.subj) = (0, 0, 0, 0, 0, 0, 0, 0); self.flg &= BKEEP; }
     fn ent_clr(&mut self) {
-        (self.ent, self.rel, self.vlen, self.vtype, self.stamp) = ([0; NR], [0; NR], [0; NR], [0; NR], [0; NR]);
+        (self.ent, self.rel, self.vlen, self.vtype, self.stamp, self.cor, self.tcm) = ([0; NR], [0; NR], [0; NR], [0; NR], [0; NR], [false; NR], false);
         (self.ep, self.qent, self.qrel, self.qtyp, self.ptag, self.ante, self.own, self.pbd, self.flg, self.pre, self.subj) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         self.fact_reset();
-        (self.cand, self.woff, self.cnr, self.esl, self.eal, self.eon, self.isq, self.asl, self.aent, self.epr) = ([-1; 16], [0; 16], [0; 16], 0, 0, false, 0, 0, 0, false);
+        (self.cand, self.woff, self.cnr, self.esl, self.eal, self.eon, self.isq, self.asl, self.aent, self.epr, self.ph, self.pph, self.sw, self.cw, self.wq) = ([-1; 16], [0; 16], [0; 16], 0, 0, false, 0, 0, 0, false, 0, 0, 0, 0, false);
     }
     fn tail(&self, cs: &[u8]) -> bool { let (l, n) = (self.vlc, cs.len() as i32); l > n && (0..n).all(|i| { let k = l - n + i; (0..24).contains(&k) && self.vb[k as usize] == cs[i as usize] }) }
     fn trim_val(&mut self) {
-        for _ in 0..4 { if let Some(t) = [&b" last year"[..], b" this year", b" the most", b" these days", b" by the way", b" the", b" of", b" now", b" again"].iter().find(|t| self.tail(t)) { self.vlc -= t.len() as i32; } }
+        let tl: &[&[u8]] = if self.lt { &[b" last year", b" this year", b" the most", b" these days", b" by the way", b" the", b" of", b" now", b" again", b" the moment", b" right"] } else { &[b" last year", b" this year", b" the most", b" these days", b" by the way", b" the", b" of", b" now", b" again"] };
+        for _ in 0..4 { if let Some(t) = tl.iter().find(|t| self.tail(t)) { self.vlc -= t.len() as i32; } }
     }
     fn commit_fact(&mut self) {
         self.trim_val();
         let (mut rel, ent) = (self.relc, if self.relc == ISINK { self.subj } else { self.entc });
         if self.bit(BSOL) && self.vlc > 0 && rel == 0 && (self.bit(BFAV) || self.bit(BMOST)) { let mut bs = -1; for j in 0..NR { if self.ent[j] == ent && self.stamp[j] > bs && self.rel[j] >= 4 { rel = self.rel[j]; bs = self.stamp[j]; } } self.relc = rel; }
         if self.bit(BSOL) && rel == 7 && self.bit(BMOST) { let mut bs = -1; for j in 0..NR { if self.ent[j] == ent && self.stamp[j] > bs && (self.rel[j] == 10 || self.rel[j] == 11) { rel = self.rel[j]; bs = self.stamp[j]; } } self.relc = rel; }
-        if self.bit(BSOL) && self.vlc > 0 && (3..=15).contains(&rel) && ent != 0 && (rel == ISINK || ent == SELFK || self.bit(BENTK)) {
+        if self.bit(BSOL) && self.vlc > 0 && (if self.lt { 2 } else { 3 }..=15).contains(&rel) && ent != 0 && (rel == ISINK || ent == SELFK || self.bit(BENTK)) {
             let (dig, c0, i) = ((0..24).all(|t| t >= self.vlc || self.vb[t as usize].is_ascii_digit()), self.vb[0], (self.ep % NR as i32) as usize);
             (self.ent[i], self.rel[i], self.vlen[i], self.vtype[i]) = (ent, rel, self.vlc, if dig { 2 } else if c0.is_ascii_uppercase() { 1 } else { 0 });
             self.val[i] = std::array::from_fn(|t| if (t as i32) < self.vlc { self.vb[t] } else { 0 });
             self.wclk += 1;
-            self.stamp[i] = self.wclk;
+            (self.stamp[i], self.cor[i]) = (self.wclk, self.tcm);
             self.ep += 1;
         }
         self.fact_reset();
@@ -144,7 +152,7 @@ impl Mem {
     fn lhash(&self, n: i32) -> u32 { (0..16).filter(|&i| i < n).fold(0u32, |h, i| h.wrapping_mul(83492791).wrapping_add(lc(self.cwb[i as usize]) as u32 + 1)) }
     fn setrel(&mut self, r: u32, noun: bool, force: bool) {
         if force || noun || self.relc == 0 { self.relc = r; }
-        if noun { self.qrel = r; self.bon(BQLOCK); } else if !self.bit(BQLOCK) { self.qrel = r; }
+        if noun { self.qrel = r; self.bon(BQLOCK); } else if (!self.bit(BQLOCK) && !(self.lt && self.qrel == 2)) || (self.lt && r == 2) { self.qrel = r; }
         if !self.bit(BSOL) && self.bit(BPRE) { self.vlc = 0; }
         self.boff(BJOB); self.boff(BHAV); self.boff(BPRE);
     }
@@ -161,9 +169,11 @@ impl Mem {
         for i in 0..16 { if i < n && self.vlc < 24 { self.vb[self.vlc as usize] = self.cwb[i as usize]; self.vlc += 1; } }
     }
     fn addv(&mut self, n: i32, cap: bool, cls: i32) {
+        if self.lt && self.vlc == 0 && self.relc == 0 && !cap && (5..=16).contains(&n) && self.cwb[(n - 3) as usize..n as usize] == *b"ing" { self.bon(BFRO); return; }
         let skip = self.bit(BFRO) || (!self.bit(BSOL) && (cls & 4 != 0 || cls & 1 != 0) && !cap) || (self.bit(BSOL) && cls & 1 != 0 && !cap);
         if skip { return; }
         self.push(Some(if self.pbd == 1 { 45 } else if self.pbd == 2 { 39 } else { 32 }), n);
+        self.lav = self.sw;
         self.bon(BSOL); self.boff(BART); self.boff(BPRE);
         if self.bit(BJOB) && self.relc == 0 { self.setrel(if cap { 13 } else { 5 }, false, false); }
     }
@@ -178,10 +188,12 @@ impl Mem {
         self.bon(BSOL); self.bon(BFRO); self.bon(BVOP);
         if self.relc == 0 { self.relc = 4; }
     }
+    fn cmp(&mut self, p: u32, cap: bool) -> u32 { let e = if self.lt && self.pph != 0 && !cap { self.pph.wrapping_mul(83492791) ^ p } else { p }; self.ph = e; e }
     fn step(&mut self, lx: &Lx19, n: i32, whw: u32, p4w: u32) -> i32 {
         let hw = self.lhash(n);
         let ix = (whw & WM) as usize;
-        let (cls, fun, rid, cap, num, pre) = (lx.cls[ix], lx.fun[ix] as i32, lx.rid[ix], self.is_capw(n), self.is_numw(n), self.pre);
+        let (cls, rid) = if self.lt { lx.gx.iter().find(|x| x.0 == ix as u32).map_or((lx.cls[ix], lx.rid[ix]), |x| (x.1, x.2)) } else { (lx.cls[ix], lx.rid[ix]) };
+        let (fun, cap, num, pre, ew) = (lx.fun[ix] as i32, self.is_capw(n), self.is_numw(n), self.pre, if self.lt { hw } else { p4w });
         let hd = cls & 32 != 0 || (n >= 3 && fun == 0 && cls & 2015 == 0);
         let [c0, c1, c2, c3] = std::array::from_fn(|i| lc(self.cwb[i]));
         let mut r = 1;
@@ -193,7 +205,7 @@ impl Mem {
         if self.meta >= 9 { self.meta = 0; if hd && self.pbd != 2 { self.poss = 1; self.own = if self.ante != 0 { self.ante } else { self.own }; } else { self.person(if self.ante != 0 { self.ante } else { self.entc }, true); } }
         let (bsol, bfro, bvop, bstud) = (|m: &Mem| m.bit(BSOL), |m: &Mem| m.bit(BFRO), |m: &Mem| m.bit(BVOP), |m: &Mem| m.bit(BSTUD));
         if self.bit(BACO) && (hw == H_NOT || (n == 3 && c0 == 110 && c1 == 111 && c2 == 116)) { self.bon(BSKNO); self.boff(BACO); }
-        else if self.bit(BACO) { self.boff(BACO); }
+        else if self.bit(BACO) && !self.lt { self.boff(BACO); }
         else if self.bit(BSKNO) { r = 1; }
         else if self.meta == 4 { self.meta = 0; }
         else if n == 6 && c0 == 114 && c1 == 101 && c2 == 109 { self.meta = 4; }
@@ -229,11 +241,13 @@ impl Mem {
         else if n == 2 && c0 == 109 && c1 == 101 { if bsol(self) && self.relc == 0 { self.bon(BFRO); } self.person(SELFK, true); }
         else if (n == 2 && c0 == 104 && c1 == 101) || (n == 3 && c0 == 115 && c1 == 104 && c2 == 101) || (n == 4 && c0 == 116 && c1 == 104 && c2 == 101 && c3 == 121) || (n == 2 && c0 == 105 && c1 == 116) || (n == 3 && c0 == 104 && c1 == 105 && c2 == 109) { let e = if n == 2 && c0 == 105 && self.own != 0 { self.own } else { self.ante }; if e != 0 { self.person(e, true); } }
         else if (n == 3 && c0 == 104 && c2 == 114) || (n == 3 && c0 == 104 && c1 == 105 && c2 == 115) || (n == 5 && c0 == 116 && c1 == 104 && c2 == 101 && c3 == 105) { if self.inv == 2 && self.vlc > 0 { self.freeze(); } self.meta = if n == 3 && c2 == 114 { 9 } else if n == 3 { 10 } else { 11 }; }
+        else if self.lt && cls & 2048 != 0 && self.entc != 0 && self.gapc == 1 && self.relc == 0 && !bsol(self) { self.poss = 0; self.setrel(10, false, false); self.addv(n, cap, 0); }
+        else if self.lt && self.entc == SELFK && !bsol(self) && (hw == H_FAMILY || hw == H_RELATIVES || hw == H_FOLKS) { self.person(H_FAMILY, true); }
         else if num { if self.relc == 0 || self.relc == 14 { self.setrel(14, true, false); } self.addv(n, false, 0); }
         else if n == 3 && c0 == 111 && c1 == 108 && c2 == 100 { if pre == H_HOW || pre == H_YEARS || (!bvop(self) && !bsol(self)) { self.setrel(14, true, false); } }
         else if cls & 512 != 0 && rid == 4 && pre == H_A && n >= 6 { self.setrel(5, true, false); self.poss = 0; }
         else if (n == 4 && c0 == 99 && c1 == 97 && c2 == 108 && c3 == 108) || (n == 5 && c0 == 99 && c3 == 108 && c1 == 97) { self.vlc = 0; self.inv = 0; self.poss = 0; self.setrel(6, false, false); self.bon(BCALL); }
-        else if (bsol(self) || bvop(self)) && !bfro(self) && n == 4 && c0 == 119 && c1 == 111 && c2 == 114 && c3 == 107 && pre != H_TO { self.addv(n, false, cls); }
+        else if (bsol(self) || bvop(self)) && !bfro(self) && n == 4 && c0 == 119 && c1 == 111 && c2 == 114 && c3 == 107 && pre != H_TO && !(self.lt && self.wq) { self.addv(n, false, cls); }
         else if (n == 6 && c0 == 99 && c1 == 97 && c2 == 108 && c3 == 108) || (n == 5 && c0 == 110 && c1 == 97 && c2 == 109 && c3 == 101) { self.setrel(6, n == 5, false); self.poss = 0; if self.gapc == 1 { self.bon(BVOP) } else { self.bon(BCALL) } }
         else if n == 4 && c0 == 104 && c1 == 111 && c2 == 109 && c3 == 101 {
             if self.inv == 2 && self.vlc > 0 { self.freeze(); self.setrel(4, false, false); r = 0; }
@@ -253,7 +267,9 @@ impl Mem {
         else if cls & 256 != 0 && (n == 6 || n == 7) && self.entc == 0 && !bsol(self) && pre == H_IN { r = 1; }
         else if cls & 256 != 0 && self.qrel == 12 && pre == H_IN && !bstud(self) { r = 1; }
         else if cls & 256 != 0 && cap && bsol(self) && (n == 4 || n == 6 || n == 7 || n == 10) { self.addv(n, true, 0); }
+        else if self.lt && cls & 256 != 0 && bvop(self) && !bfro(self) && self.relc != 0 && self.relc != rid as u32 && self.poss == 0 && !bsol(self) && !self.wq { self.addv(n, cap, 0); }
         else if cls & 256 != 0 {
+            if self.lt && bsol(self) && !bfro(self) && self.lav == self.sw - 1 && self.vb[0].is_ascii_lowercase() && !self.vb[..self.vlc.clamp(0, 24) as usize].contains(&32) { self.vlc = 0; self.boff(BSOL); }
             let own = if self.own != 0 { self.own } else { SELFK };
             if self.poss != 0 { self.person(own, true); }
             if (rid == 10 || rid == 11) && self.bit(BFAV) && !bsol(self) {
@@ -269,7 +285,7 @@ impl Mem {
         else if cls & 1024 != 0 { if n >= 5 && c0 == 115 && c1 == 116 { self.bon(BSTUD); } self.setrel(rid as u32, false, rid == 11 && self.relc == 7); self.poss = 0; self.bon(BVOP); self.boff(BCALL); }
         else if n == 3 && c0 == 102 && c1 == 97 && c2 == 110 { self.setrel(7, false, false); self.poss = 0; }
         else if n == 4 && c0 == 98 && c1 == 97 && c2 == 98 && c3 == 121 { self.setrel(15, true, false); }
-        else if (n == 4 && c0 == 103 && c1 == 114) || (n == 4 && c0 == 97 && c1 == 108 && c2 == 117) { self.setrel(13, true, false); }
+        else if (n == 4 && c0 == 103 && c1 == 114 && (!self.lt || self.weq(n, 4, b"grad"))) || (n == 4 && c0 == 97 && c1 == 108 && c2 == 117) { self.setrel(13, true, false); }
         else if n == 6 && c0 == 97 && c1 == 114 && (self.bit(BNEG) || self.relc == 8) { self.setrel(8, false, false); self.bon(BVOP); self.poss = 0; }
         else if n == 4 && c0 == 97 && c1 == 119 && c2 == 97 && c3 == 121 { self.setrel(8, false, false); }
         else if cls & 8 != 0 && !bsol(self) && !bvop(self) && self.gapc == 0 && !(n == 3 && c0 == 104 && c1 == 97 && c2 == 100) {
@@ -280,14 +296,14 @@ impl Mem {
         else if ((n == 3 && c0 == 103 && c1 == 111 && c2 == 116) || (n == 4 && c0 == 104 && c1 == 97 && c2 == 118 && c3 == 101) || (n == 6 && c0 == 103 && c1 == 111 && c2 == 116 && c3 == 116)) && self.entc == 0 && !bsol(self) && self.poss == 0 { self.meta = 1; }
         else if (n == 3 && c0 == 103 && c1 == 111 && c2 == 116) || (n == 4 && c0 == 104 && c1 == 97 && c2 == 118 && c3 == 101) || (n == 3 && c0 == 104 && c1 == 97 && c2 == 115) || (n == 3 && c0 == 104 && c1 == 97 && c2 == 100) || (n == 6 && c0 == 103 && c1 == 111 && c2 == 116 && c3 == 116) { self.bon(BHAV); self.poss = 0; }
         else if n == 4 && c0 == 98 && c1 == 101 && c2 == 101 && c3 == 110 { self.boff(BHAV); self.gapc = 1; }
-        else if self.bit(BART) && self.bit(BHAV) && cls & 32 != 0 && !cap { self.person(p4w, true); self.boff(BHAV); self.boff(BART); }
+        else if self.bit(BART) && self.bit(BHAV) && cls & 32 != 0 && !cap { self.person(ew, true); self.boff(BHAV); self.boff(BART); }
         else if n == 4 && c0 == 109 && c1 == 111 && c2 == 115 && c3 == 116 { self.bon(BMOST); }
         else if n == 8 && c0 == 102 && c1 == 97 && c2 == 118 { self.bon(BFAV); }
-        else if self.poss != 0 && ((n == 3 && c0 == 98 && c1 == 105) || (n == 4 && c0 == 98 && c1 == 101) || (n == 6 && c0 == 108) || (n == 3 && c0 == 110 && c1 == 101 && c2 == 119)) { r = 1; }
-        else if self.poss != 0 && self.pbd == 1 && n == 2 && c0 == 105 && c1 == 110 { r = 1; }
-        else if self.poss != 0 && self.pbd == 1 && hd { self.person(p4w, cls & 32 != 0); self.poss = 1; if cls & 32 != 0 { self.bon(BKINL); } }
+        else if self.poss != 0 && ((n == 3 && c0 == 98 && c1 == 105) || (n == 4 && c0 == 98 && c1 == 101) || (n == 6 && c0 == 108 && (!self.lt || (c1 == 105 && c2 == 116) || (c1 == 111 && (c2 == 118 || c2 == 110)) || (c1 == 97 && c2 == 116))) || (n == 3 && c0 == 110 && c1 == 101 && c2 == 119)) { r = 1; }
+        else if self.poss != 0 && self.pbd == 1 && n == 2 && c0 == 105 && c1 == 110 { r = 1; self.ph = self.pph; }
+        else if self.poss != 0 && self.pbd == 1 && hd { let e = self.cmp(ew, cap); self.person(e, cls & 32 != 0 || self.lt); self.poss = 1; if cls & 32 != 0 || self.lt { self.bon(BKINL); } }
         else if self.poss != 0 && hd && self.bit(BKINL) && cls & 32 == 0 && self.pbd != 1 { self.poss = 0; r = 0; }
-        else if self.poss != 0 && hd { self.person(p4w, cls & 32 != 0); self.poss = 1; if cls & 32 != 0 { self.bon(BKINL); } }
+        else if self.poss != 0 && hd { let e = self.cmp(ew, cap); self.person(e, cls & 32 != 0 || self.lt); self.poss = 1; if cls & 32 != 0 || self.lt { self.bon(BKINL); } }
         else if (n == 2 && c0 == 105 && c1 == 115) || (n == 3 && c0 == 97 && c1 == 114 && c2 == 101) || (n == 3 && c0 == 119 && c1 == 97 && c2 == 115) || (n == 4 && c0 == 119 && c1 == 101 && c2 == 114 && c3 == 101) || (n == 2 && c0 == 97 && c1 == 109) { self.gapc = 1; if self.inv == 1 { self.inv = 2; } if self.bit(BPRE) && self.vlc > 0 { self.bon(BSOL); self.bon(BFRO); self.bon(BVOP); self.boff(BPRE); } }
         else if (n == 1 && c0 == 97) || (n == 2 && c0 == 97 && c1 == 110) { self.bon(BART); if (self.gapc == 1 || self.bit(BHAV)) && self.relc == 0 { self.bon(BJOB); } if self.gapc == 1 || self.relc != 0 || self.entc != 0 { self.bon(BVOP); } }
         else if self.inv == 2 && self.vlc > 0 && ((n == 4 && c0 == 111 && c1 == 118 && c2 == 101 && c3 == 114) || (n == 3 && c0 == 97 && c1 == 108 && c2 == 108) || (n == 3 && c0 == 116 && c1 == 104 && c2 == 101) || (n == 3 && c0 == 119 && c1 == 97 && c2 == 121)) { r = 1; }
@@ -313,8 +329,8 @@ impl Mem {
         else if n == 2 && c0 == 105 && c1 == 110 && pre == H_AROUND { self.setrel(9, false, true); self.bon(BVOP); }
         else if n == 3 && c0 == 102 && c1 == 111 && c2 == 114 && pre == H_IN { self.setrel(9, false, true); self.bon(BVOP); self.boff(BSOL); self.vlc = 0; }
         else if n == 2 && c0 == 105 && c1 == 110 && self.relc == 0 && self.entc != 0 && self.inv == 0 && !bsol(self) { self.setrel(4, false, false); self.bon(BVOP); }
-        else if (n == 3 && c0 == 102 && c1 == 111 && c2 == 114) || (n == 2 && c0 == 105 && c1 == 110) || (n == 2 && c0 == 116 && c1 == 111) || (n == 4 && c0 == 102 && c1 == 114) || (n == 5 && c0 == 97 && c1 == 98) || (n == 2 && c0 == 111 && c1 == 102) || (n == 4 && c0 == 105 && c1 == 110) || (n == 2 && c0 == 97 && c1 == 115) || (n == 2 && c0 == 98 && c1 == 121) {
-            if bsol(self) && bvop(self) && !bfro(self) && ((n == 2 && c0 == 105 && c1 == 110) || (n == 2 && c0 == 111 && c1 == 102) || (n == 4 && c0 == 105 && c1 == 110)) { self.addv(n, false, 0); }
+        else if (n == 3 && c0 == 102 && c1 == 111 && c2 == 114) || (n == 2 && c0 == 105 && c1 == 110) || (n == 2 && c0 == 116 && c1 == 111) || (n == 4 && c0 == 102 && c1 == 114 && (!self.lt || self.weq(n, 4, b"from"))) || (n == 5 && c0 == 97 && c1 == 98 && (!self.lt || self.weq(n, 5, b"about"))) || (n == 2 && c0 == 111 && c1 == 102) || (n == 4 && c0 == 105 && c1 == 110 && (!self.lt || self.weq(n, 4, b"into"))) || (n == 2 && c0 == 97 && c1 == 115) || (n == 2 && c0 == 98 && c1 == 121) {
+            if bsol(self) && bvop(self) && !bfro(self) && ((n == 2 && c0 == 105 && c1 == 110) || (n == 2 && c0 == 111 && c1 == 102) || (n == 4 && c0 == 105 && c1 == 110 && (!self.lt || self.weq(n, 4, b"into")))) { self.addv(n, false, 0); }
             else if bsol(self) { self.boff(BVOP); }
             else if self.entc == 0 && self.inv == 0 && !bsol(self) && !bvop(self) && self.relc == 0 { r = 1; }
             else if !bfro(self) && !bsol(self) { if self.bit(BPRE) { self.vlc = 0; self.boff(BPRE); } self.bon(BVOP); }
@@ -334,10 +350,13 @@ impl Mem {
         else if cap && self.entc == 0 && self.poss == 0 && fun == 0 { self.vlc = 0; self.push(None, n); self.subj = p4w; self.inv = 1; }
         else if self.bit(BPRE) && cap { self.push(Some(32), n); }
         else { r = 1; }
+        if self.lt { self.boff(BACO); }
         r
     }
     fn on_user_word(&mut self, lx: &Lx19, p4w: u32, n: i32, whw: u32) {
         self.bump_q(n);
+        let (e0, hw) = (self.entc, self.lhash(n));
+        (self.pph, self.ph, self.wq, self.sw, self.cw, self.tcm) = (self.ph, 0, if self.cw == 0 { WQS[..16].contains(&hw) || WIM.contains(&hw) || (self.sw == 0 && WQS.contains(&hw)) } else { self.wq }, self.sw + 1, self.cw + 1, self.tcm || (self.lt && WCM.contains(&hw)));
         for _ in 0..2 { if self.step(lx, n, whw, p4w) == 1 { break; } }
         let my = (n == 2 && lc(self.cwb[0]) == 109 && lc(self.cwb[1]) == 121) || (n == 4 && lc(self.cwb[0]) == 121 && lc(self.cwb[1]) == 111 && lc(self.cwb[2]) == 117 && lc(self.cwb[3]) == 114);
         (self.eon, self.eal) = if !self.xe { (false, 0) } else if my { (true, 0) } else { (self.eon && self.poss != 0, self.eal) };
@@ -345,7 +364,8 @@ impl Mem {
             let sep = [32u8, 45, 39][self.pbd.clamp(0, 2) as usize];
             (self.eal > 0 && self.eal < 24).then(|| { self.eacc[self.eal as usize] = sep; self.eal += 1; });
             (0..n.min(16)).for_each(|i| if self.eal < 24 { self.eacc[self.eal as usize] = self.cwb[i as usize]; self.eal += 1; });
-            (self.entc == p4w && p4w != 0).then(|| (self.esb, self.esl, self.asb, self.asl, self.aent) = (self.eacc, self.eal, self.eacc, self.eal, p4w));
+            let ne = if self.lt { self.entc != 0 && (self.entc == p4w || self.entc != e0) } else { self.entc == p4w && p4w != 0 };
+            ne.then(|| (self.esb, self.esl, self.asb, self.asl, self.aent) = (self.eacc, self.eal, self.eacc, self.eal, self.entc));
         }
         self.epr |= self.xe && self.is_pron(n);
         (self.epr && self.esl == 0 && self.aent != 0 && self.entc == self.aent).then(|| (self.esb, self.esl) = (self.asb, self.asl));
@@ -356,14 +376,15 @@ impl Mem {
         self.qrel = if self.qrel != 0 { self.qrel } else if self.bit(BWHO) { 6 } else if self.bit(BWHEN) { 15 } else if self.bit(BWHE) { 4 } else if self.bit(BDO) { 5 } else { 0 };
     }
     fn on_punct(&mut self, bb: u32) {
-        let end = bb == 46 || bb == 33 || bb == 63 || bb == 10;
+        let (end, nq) = (bb == 46 || bb == 33 || bb == 63 || bb == 10, self.lt && (bb == 63 || self.wq));
         self.isq |= (bb == 63) as i32;
         if self.meta == 5 && bb == 44 { self.meta = 0; }
         else if self.bit(BSKNO) && end { self.boff(BSKNO); self.fact_reset(); }
         else if bb == 44 && !self.bit(BSOL) { self.poss = 0; self.boff(BKINL); self.boff(BVOP); self.gapc = 0; self.inv = 0; self.vlc = 0; self.boff(BPRE); }
         else if bb == 63 && !self.bit(BSOL) { self.finish_q(); self.boff(BVOP); self.gapc = 0; self.inv = 0; self.vlc = 0; }
-        else if bb == 44 { self.commit_fact(); self.bon(BACO); }
-        else if end { if bb == 63 { self.finish_q(); } self.commit_fact(); }
+        else if bb == 44 { if nq { self.fact_reset(); } else { self.commit_fact(); self.bon(BACO); } }
+        else if end { if bb == 63 { self.finish_q(); } if nq { self.fact_reset(); } else { self.commit_fact(); } }
+        if self.lt && (end || bb == 44) { (self.sw, self.cw, self.wq) = (if end { 0 } else { self.sw }, 0, false); }
     }
     fn qmask(&self, h: u32) -> u32 { if (0..NR).any(|i| self.stamp[i] > 0 && self.val[i][..self.vlen[i].clamp(0, 24) as usize].split(|&c| c == 32 || c == 45).any(|w| bh(w) == h)) { bh(b"_") } else { h } }
     fn ent_p4(&self, i: usize) -> u32 { let (mut h, mut n) = (0u32, 0); for t in 0..4 { if t < self.vlen[i] && self.val[i][t as usize] != 32 && n < 4 { h = h.wrapping_mul(83492791).wrapping_add(self.val[i][t as usize] as u32 + 1); n += 1; } } h }
@@ -383,21 +404,21 @@ impl Mem {
             self.woff[k] = if sp { off + n + 1 } else { 0 };
         }
     }
-    fn newest_rel(&self, i: i32, qc: i32) -> i32 { if i < 0 { return 0; } let (st, e, rv) = (self.stamp[i as usize], self.ent[i as usize], self.rel[i as usize]); (!(0..NR).any(|j| self.ent[j] == e && self.rel[j] == rv && self.stamp[j] > st && self.stamp[j] <= qc && self.stamp[j] > 0)) as i32 }
+    fn newest_rel(&self, i: i32, qc: i32) -> i32 { if i < 0 { return 0; } let (st, e, rv) = (self.stamp[i as usize], self.ent[i as usize], self.rel[i as usize]); (!(0..NR).any(|j| self.ent[j] == e && self.rel[j] == rv && self.stamp[j] > st && self.stamp[j] <= qc && self.stamp[j] > 0 && (!self.lt || self.cor[j] || self.vtype[j] == self.vtype[i as usize]))) as i32 }
     fn pick_cands(&mut self, qc: i32) {
-        let (mut prev, qe) = (2147483647, self.qent);
+        let (mut prev, qe, lim) = (2147483647, self.qent, if self.lt && self.isq != 0 { self.wclk } else { qc });
         for k in 0..8 {
             let (mut best, mut bs) = (-1i32, -1);
-            for i in 0..NR { let st = self.stamp[i]; if qe != 0 && self.ent[i] == qe && st > 0 && st <= qc && st < prev && st > bs && (self.qrel == 0 || self.rel[i] == self.qrel) { best = i as i32; bs = st; } }
+            for i in 0..NR { let st = self.stamp[i]; if qe != 0 && self.ent[i] == qe && st > 0 && st <= lim && st < prev && st > bs && (self.qrel == 0 || self.rel[i] == self.qrel) && (!self.lt || self.newest_rel(i as i32, lim) == 1) { best = i as i32; bs = st; } }
             self.cand[k] = best;
             prev = if best >= 0 { bs } else { -1 };
-            self.cnr[k] = self.newest_rel(best, qc);
+            self.cnr[k] = self.newest_rel(best, lim);
         }
         for k in 0..4 {
             let (src, mut best, mut bs) = (self.cand[k], -1i32, -1);
-            if src >= 0 { let vp = self.ent_p4(src as usize); for i in 0..NR { let st = self.stamp[i]; if i as i32 != src && vp != 0 && self.ent[i] == vp && st > 0 && st <= qc && st > bs { best = i as i32; bs = st; } } }
+            if src >= 0 { let vp = self.ent_p4(src as usize); for i in 0..NR { let st = self.stamp[i]; if i as i32 != src && vp != 0 && self.ent[i] == vp && st > 0 && st <= lim && st > bs { best = i as i32; bs = st; } } }
             self.cand[8 + k] = best;
-            self.cnr[8 + k] = self.newest_rel(best, qc);
+            self.cnr[8 + k] = self.newest_rel(best, lim);
         }
         let mut prev = i32::MAX;
         for k in 13..15 {
@@ -424,7 +445,7 @@ impl Mem {
     }
 }
 #[derive(Clone, Copy, Default)]
-pub struct Q { qclk: i32, inq: i32, q1: u32, q2: u32, c1: i32, c2: i32, qon: i32, wlen: i32, p4: u32, qp1: u32, qp2: u32, m1: u32, m2: u32, cwl: i32, ap4: u32, acf: i32, subj: u32, fst: i32, pub ap: i32, pub anc: bool, pub vp: i32 }
+pub struct Q { qclk: i32, inq: i32, q1: u32, q2: u32, c1: i32, c2: i32, qon: i32, pub mq: i32, wlen: i32, p4: u32, qp1: u32, qp2: u32, m1: u32, m2: u32, cwl: i32, ap4: u32, acf: i32, subj: u32, fst: i32, pub ap: i32, pub anc: bool, pub vp: i32 }
 #[derive(Clone)]
 pub struct W19 { pub s: St, pub q: Q, pub m: Mem, ws: [St; 8], wc: usize }
 impl W19 {
@@ -432,13 +453,14 @@ impl W19 {
     pub fn begin(&mut self, cp: usize) { (self.s, self.q, self.m.wclk, self.m.xe, self.wc) = (init(), Q { anc: true, ..Q::default() }, 0, cp >= 16, 0); self.m.wm_clear(); (cp >= 13).then(|| self.m.ent_clr()); }
     pub fn step(&mut self, g: &Geo, lex: &Lex, lx: &Lx19, bx: u8) {
         let (cp, qt, m, g0, mut s) = (g.copy, g.qt, &mut self.m, Geo { qt: false, ..g.clone() }, self.s);
-        let Q { mut qclk, mut inq, mut q1, mut q2, mut c1, mut c2, mut qon, mut wlen, mut p4, mut qp1, mut qp2, mut m1, mut m2, mut cwl, mut ap4, mut acf, mut subj, mut fst, mut ap, mut anc, .. } = self.q;
+        m.lt = g.lt;
+        let Q { mut qclk, mut inq, mut q1, mut q2, mut c1, mut c2, mut qon, mut mq, mut wlen, mut p4, mut qp1, mut qp2, mut m1, mut m2, mut cwl, mut ap4, mut acf, mut subj, mut fst, mut ap, mut anc, .. } = self.q;
         let bb = bx as u32;
         let (isw, wh) = (wordch(bb), s[16]);
         let ends = !isw && wh != 0;
         (g.mv && isw && cwl == 0).then(|| { self.ws[self.wc % 8] = s; self.wc += 1; });
         if bb == 30 {
-            (inq, qon, q1, q2, c1, c2, qp1, qp2, m1, m2, subj, fst, ap4, acf, qclk, anc) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, m.wclk, true);
+            (inq, qon, mq, q1, q2, c1, c2, qp1, qp2, m1, m2, subj, fst, ap4, acf, qclk, anc) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, m.wclk, true);
             m.wm_clear();
             (cp >= 13).then(|| m.ent_clr());
         }
@@ -466,7 +488,7 @@ impl W19 {
             if cp >= 13 {
                 (inq == 1).then(|| m.on_user_word(lx, p4, cwl, wh));
                 m.pbd = if bb == 45 { 1 } else if bb == 39 { 2 } else { 0 };
-                (qon == 1).then(|| m.adv_woff(cwl));
+                (mq == 1).then(|| m.adv_woff(cwl));
             }
         }
         wlen = if qt { if isw { wlen + 1 } else { 0 } } else { wlen };
@@ -475,33 +497,33 @@ impl W19 {
         if qt {
             let (b1, b2, b3, b4, b5, b6) = (s[0], s[1], s[2], s[3], s[4], s[5]);
             let user = b6 == 85 && b5 == 115 && b4 == 101 && b3 == 114 && b2 == 58 && b1 == 32;
-            if user { (q1, q2, c1, c2, qp1, qp2, m1, m2, inq, qon, qclk, fst, ap4, acf) = (0, 0, 0, 0, 0, 0, 0, 0, 1, 0, m.wclk, 1, 0, 0); }
+            if user { (q1, q2, c1, c2, qp1, qp2, m1, m2, inq, qon, mq, qclk, fst, ap4, acf) = (0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, m.wclk, 1, 0, 0); }
             let adam = b6 == 65 && b5 == 100 && b4 == 97 && b3 == 109 && b2 == 58 && b1 == 32;
-            if adam { inq = 0; qon = (q1 != 0) as i32; ap4 = 0; acf = 0; }
-            ap = if adam || qon == 0 { 0 } else { ap + 1 };
-            if b1 == 10 && b2 == 10 { qon = 0; inq = 0; }
+            if adam { inq = 0; qon = (q1 != 0) as i32; mq = (q1 != 0 || (g.lt && cp >= 13 && m.qent != 0 && m.qrel != 0)) as i32; ap4 = 0; acf = 0; }
+            ap = if adam || mq == 0 { 0 } else { ap + 1 };
+            if b1 == 10 && b2 == 10 { qon = 0; mq = 0; inq = 0; }
             if cp >= 13 {
-                if user { (m.qent, m.qrel, m.qtyp, m.ptag, m.flg, m.esl, m.eal, m.eon, m.isq, m.epr) = (0, 0, 0, 0, 0, 0, 0, false, 0, false); m.fact_reset(); }
-                if adam && qon == 1 { m.pick_cands(qclk); if g.mv { (q1, q2) = (m.qmask(q1), m.qmask(q2)); } }
+                if user { (m.qent, m.qrel, m.qtyp, m.ptag, m.flg, m.esl, m.eal, m.eon, m.isq, m.epr, m.ph, m.sw, m.cw, m.wq, m.tcm) = (0, 0, 0, 0, 0, 0, 0, false, 0, false, 0, 0, 0, false, false); m.fact_reset(); }
+                if adam && mq == 1 { m.pick_cands(qclk); if g.mv { (q1, q2) = (m.qmask(q1), m.qmask(q2)); } }
             }
         }
         if cp >= 13 && inq == 1 && (bb == 46 || bb == 44 || bb == 33 || bb == 63 || bb == 10) { m.on_punct(bb); }
         (s[31], s[32], s[35]) = (q1, q2, qon as u32);
-        let nw = if qon == 0 || ap == 0 || !m.xe { 0 } else { m.vend(cwl) };
-        let vp = if qon == 0 || ap == 0 { 0 } else if nw > 0 { 1 } else if self.q.vp > 0 { self.q.vp + 1 } else { 0 };
+        let nw = if mq == 0 || ap == 0 || !m.xe { 0 } else { m.vend(cwl) };
+        let vp = if mq == 0 || ap == 0 { 0 } else if nw > 0 { 1 } else if self.q.vp > 0 { self.q.vp + 1 } else { 0 };
         (g.mv && nw > 0 && nw <= self.wc.min(8)).then(|| { s = update(lex, &g0, &self.ws[(self.wc - nw) % 8], 95); (s[31], s[32], s[35]) = (q1, q2, qon as u32); });
-        (self.s, self.q) = (s, Q { qclk, inq, q1, q2, c1, c2, qon, wlen, p4, qp1, qp2, m1, m2, cwl, ap4, acf, subj, fst, ap, anc, vp });
+        (self.s, self.q) = (s, Q { qclk, inq, q1, q2, c1, c2, qon, mq, wlen, p4, qp1, qp2, m1, m2, cwl, ap4, acf, subj, fst, ap, anc, vp });
     }
     pub fn gates(&self, g: &Geo, mut f: impl FnMut(usize, i32, [u32; 4], usize)) {
-        let (cp, c0, m, s, Q { qon, cwl, acf, ap4, qclk, qp1, qp2, .. }) = (g.copy, g.c0(), &self.m, &self.s, self.q);
+        let (cp, c0, m, s, Q { qon, mq, cwl, acf, ap4, qclk, qp1, qp2, .. }) = (g.copy, g.c0(), &self.m, &self.s, self.q);
         let e13 = |k: usize, t: [u32; 4]| t.map(|x| g.sl(x, 0, c0 + k));
         if cp >= 13 {
             let (qrel, qtyp, ctx) = (m.qrel, m.qtyp as u32 + 4 * (m.xe && m.isq == 0) as u32, if cwl > 0 { 1 } else if m.xe { 2 + (s[17] & 4095) * 2 + (s[0] == 32) as u32 } else { 0 });
             for k in (0..16).filter(|&k| k != 12 && k < cp) {
                 let (i, (kind, rank)) = (if k < 15 { m.cand[k] } else { -1 }, match k { 0..=7 => (0, k as u32), 8..=11 => (1, k as u32 - 8), 13 | 14 => (3, k as u32 - 13), _ => (4, 0) });
                 let (mut byte, mut rel, mut vt, mut em, mut nr) = (-1, 0u32, if k == 15 { 3 } else { 0 }, (k == 15 && m.qent > SELFK) as u32, 0u32);
-                if qon == 1 { byte = m.next_ent(k, cwl); }
-                if qon == 1 && i >= 0 { rel = m.rel[i as usize]; vt = m.vtype[i as usize] as u32; em = if k < 8 || m.ent[i as usize] == m.qent { 1 } else { 0 }; nr = if k < 13 { m.cnr[k] as u32 } else { 5 }; }
+                if mq == 1 { byte = m.next_ent(k, cwl); }
+                if mq == 1 && i >= 0 { rel = m.rel[i as usize]; vt = m.vtype[i as usize] as u32; em = if k < 8 || m.ent[i as usize] == m.qent { 1 } else { 0 }; nr = if k < 13 { m.cnr[k] as u32 } else { 5 }; }
                 f(k, byte, e13(k, [hm(kind, rank, ctx), hm(qrel, rel, 1), hm(qtyp, vt, 2), hm(em, nr, 3)]), 4);
                 (k == 11).then(|| { let byte = if qon == 1 && acf == 1 { m.next_byte(m.vs(m.wm_find(ap4), 0, qclk), 0, cwl) } else { -1 }; f(12, byte, e13(12, [hm(2, 0, ctx), hm(qrel, 0, 1), hm(qtyp, 0, 2), hm((byte >= 0) as u32, 0, 3)]), 4) });
             }
@@ -524,7 +546,7 @@ impl W19 {
         let k = self.mstate() * 16 + if m.cand[0] >= 0 { m.rel[m.cand[0] as usize] } else { m.qrel };
         let ab = if ap < 4 { ap } else if ap < 8 { 4 } else if ap < 16 { 5 } else if ap < 32 { 6 } else { 7 };
         let key = [(hm(k / 64, if m.xe && m.vend(self.q.cwl) > 0 { 24 } else { ap.min(23) }, 139), s[0]), if m.xe && self.q.vp > 0 { let d = self.q.vp - 1; (hm(k, 8 + d.min(15) as u32, 141), hm((0..4).filter(|&i| i < d).fold(0, |h, i| h | s[i as usize] << (8 * i)), d.min(4) as u32, 143)) } else { (hm(k, ab, 141), hm(s[0] | s[1] << 8 | s[2] << 16, s[3], 143)) }];
-        std::array::from_fn(|i| (g.copy >= 13 && self.q.anc && self.q.qon == 1 && i < g.mr).then(|| g.sl(key[i].0, key[i].1, g.mb() + i)))
+        std::array::from_fn(|i| (g.copy >= 13 && self.q.anc && self.q.mq == 1 && i < g.mr).then(|| g.sl(key[i].0, key[i].1, g.mb() + i)))
     }
     pub fn gv(&self, g: &Geo, cw: &[u16]) -> [(i32, f32); NG] { let mut o = [(-1, 0f32); NG]; self.gates(g, |k, b, e, n| o[k] = (b, if b >= 0 { CG * e[..n].iter().fold(0f32, |a, &x| a + f16::from_bits(cw[k * g.t as usize + x as usize]).to_f32()) } else { 0.0 })); o }
     pub fn cv(&self, k: usize) -> (Vec<u8>, usize) { let (m, q) = (&self.m, &self.q); if k != 12 { let (v, ln) = m.cval(k).unwrap_or((&m.esb, 0)); (v[..ln.clamp(0, 24) as usize].to_vec(), (m.woff[k] + q.cwl).max(0) as usize) } else { let s = m.vs(m.wm_find(q.ap4), 0, q.qclk).max(0) as usize; (m.wmb[s][0][..m.wml[s][0].clamp(0, 16) as usize].to_vec(), q.cwl.max(0) as usize) } }

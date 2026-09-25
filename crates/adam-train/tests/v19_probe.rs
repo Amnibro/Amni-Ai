@@ -196,3 +196,52 @@ fn probe_mask() {
     assert!((31..33).any(|i| qa0.s[i] == bh(b"Anthony") && qa.s[i] == bh(b"_") && qa.s[63 - i] == qa0.s[63 - i]) && qq.s[31] == qq0.s[31] && qq.s[32] == qq0.s[32] && qq.s[31] != bh(b"_"), "{} {}", qa.s[31], qa0.s[31]);
     println!("PROBE mask: reply values collapse to one '_' word (multiword, hyphen entity, echo), question words that are stored values become '_', user-turn bytes and MASKV=0 untouched, masked taps equal a literal '_' reply");
 }
+#[test]
+fn probe_latest() {
+    let kv = [("VER", "19"), ("COPY", "16"), ("MR", "2"), ("MASKV", "1"), ("QT", "1"), ("LEVELS", "21"), ("HOPS", "4"), ("LOG2_ENTRIES", "16"), ("BS", "1"), ("CTX", "768")];
+    let (mut r, mut r0) = (R::new(&[&kv[..], &[("LATEST", "1")]].concat()), R::new(&kv));
+    assert!(r.c.geo.lt && !r0.c.geo.lt && !R::new(&[("VER", "19"), ("COPY", "13"), ("MR", "2"), ("LATEST", "1")]).c.geo.lt);
+    let last = |r: &mut R, t: &[u8]| r.run(t).0[t.len() - 1].clone();
+    let q = |x: &[u8]| [x, b"\nAdam: "].concat();
+    let cor = q(b"User: My sister lives in Denver.\nAdam: Nice.\n\nUser: Actually, my sister moved to Austin.\nAdam: Got it.\n\nUser: Where does my sister live?");
+    let (a, a0) = (last(&mut r, &cor), last(&mut r0, &cor));
+    assert!(a[0] == b'A' as i32 && a[1..8].iter().all(|&v| v < 0) && a0[0] == b'A' as i32 && a0[1] == b'D' as i32, "{a:?} {a0:?}");
+    let same = q(b"User: My sister lives in Denver.\nAdam: Nice.\n\nUser: Actually, my sister moved to Austin. Where does she live now?");
+    let (a, a0) = (last(&mut r, &same), last(&mut r0, &same));
+    assert!(a[0] == b'A' as i32 && !a[..13].contains(&(b'D' as i32)) && a0[0] == b'D' as i32 && a0[13] == b'A' as i32, "{a:?} {a0:?}");
+    let ack = q(b"User: My sister lives in Denver.\nAdam: Nice.\n\nUser: Actually, my sister moved to Austin.");
+    let a = last(&mut r, &ack);
+    assert!(a[0] == b'D' as i32 && a[13] == b'A' as i32, "{a:?}");
+    let jk = q(b"User: I live in Kosice.\nAdam: Nice.\n\nUser: I live in a cozy flat.\nAdam: Ok.\n\nUser: Where do I live?");
+    let jc = q(b"User: I live in Kosice.\nAdam: Nice.\n\nUser: Update: I live in a cozy flat.\nAdam: Ok.\n\nUser: Where do I live?");
+    let (a, b) = (last(&mut r, &jk), last(&mut r, &jc));
+    assert!(a[0] == b'c' as i32 && a[1] == b'K' as i32 && b[0] == b'c' as i32 && b[1] < 0, "{a:?} {b:?}");
+    let ing = q(b"User: I live in Kosice.\nAdam: Nice.\n\nUser: I'm looking for ideas to decorate my living room.\nAdam: Ok.\n\nUser: Where do I live?");
+    let (a, a0) = (last(&mut r, &ing), last(&mut r0, &ing));
+    assert!(a[0] == b'K' as i32 && a0[0] != b'K' as i32, "{a:?} {a0:?}");
+    let loc = q(b"User: My friend lives in Zurich.\nAdam: Nice.\n\nUser: Where is my friend located?");
+    let (a, a0) = (last(&mut r, &loc), last(&mut r0, &loc));
+    assert!(a[0] == b'Z' as i32 && a[13] < 0 && a0[13] == b'l' as i32, "{a:?} {a0:?}");
+    let inl = q(b"User: My mother-in-law lives in Stamford.\nAdam: Nice.\n\nUser: My father-in-law lives in Bangkok.\nAdam: Ok.\n\nUser: Where does my mother-in-law live?");
+    let (a, a0) = (last(&mut r, &inl), last(&mut r0, &inl));
+    assert!(a[0] == b'S' as i32 && a[1] < 0 && a0[0] == b'B' as i32 && a[15] == b'm' as i32, "{a:?} {a0:?}");
+    let lab = q(b"User: My lab partner drives a Rivian.\nAdam: Nice.\n\nUser: My partner drives a Volvo.\nAdam: Ok.\n\nUser: What does my lab partner drive?");
+    let (a, a0) = (last(&mut r, &lab), last(&mut r0, &lab));
+    assert!(a[0] == b'R' as i32 && a[1] < 0 && a0[0] == b'V' as i32 && a[15] == b'l' as i32, "{a:?} {a0:?}");
+    let short = q(b"User: My favorite hobby is tennis.\nAdam: Fun.\n\nUser: What am I into?");
+    let (a, a0) = (last(&mut r, &short), last(&mut r0, &short));
+    assert!(a[0] == b't' as i32 && a0.iter().all(|&v| v < 0), "{a:?} {a0:?}");
+    let obj = q(b"User: My bike is silver.\nAdam: Nice.\n\nUser: My plant is called Minty.\nAdam: Cute.\n\nUser: What color is my bike painted?");
+    let pl = q(b"User: My bike is silver.\nAdam: Nice.\n\nUser: My plant is called Minty.\nAdam: Cute.\n\nUser: What is my plant called?");
+    let (a, b, a0) = (last(&mut r, &obj), last(&mut r, &pl), last(&mut r0, &obj));
+    assert!(a[0] == b's' as i32 && b[0] == b'M' as i32 && a0[0] < 0, "{a:?} {b:?} {a0:?}");
+    let syn = q(b"User: I work as a lawyer.\nAdam: Nice.\n\nUser: I hate anchovies.\nAdam: Noted.\n\nUser: What is my profession?");
+    let hate = q(b"User: I work as a lawyer.\nAdam: Nice.\n\nUser: I hate anchovies.\nAdam: Noted.\n\nUser: Which food do I dislike?");
+    let (a, b, a0, b0) = (last(&mut r, &syn), last(&mut r, &hate), last(&mut r0, &syn), last(&mut r0, &hate));
+    assert!(a[0] == b'l' as i32 && b[0] == b'a' as i32 && a0[0] < 0 && b0[0] < 0, "{a:?} {b:?} {a0:?} {b0:?}");
+    let (g, lx) = (r.c.geo.clone(), adam_train::v19::Lx19::new());
+    let mut w = adam_train::v19::W19::new(16);
+    cor.iter().for_each(|&b| w.step(&g, &r.lex, &lx, b));
+    assert!((0..64).filter(|&i| w.m.stamp[i] > 0 && w.m.rel[i] == 4).count() == 2 && w.m.cor.iter().filter(|&&c| c).count() == 1 && w.q.mq == 1);
+    println!("PROBE latest: correction supersedes (question turn, same turn), ack keeps old, junk w/o marker keeps old, -ing freeze, no facts from questions, in-law/lab-partner compounds, stopword-only question, object entities + color, synonyms + dislike, history kept");
+}

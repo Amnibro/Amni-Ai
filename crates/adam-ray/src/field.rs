@@ -88,11 +88,13 @@ impl RayField {
         let h = self.h19.as_ref()?;
         let (w, n) = (&h.w[self.cur * MAXB + b], out.iter().rev().take_while(|&&x| wordch(x as u32)).count());
         let (gv, am, sep) = (w.gv(&h.g, &h.cw), z.iter().enumerate().fold(0, |a, (c, &x)| if x > z[a] { c } else { a }), out.len() == n || !matches!(out[out.len() - n - 1], 39 | 45));
+        let pw = { let o = &out[..out.len() - n]; let o = o.strip_suffix(b" ").unwrap_or(o); o[o.len() - o.iter().rev().take_while(|&&c| wordch(c as u32)).count()..].to_ascii_lowercase() };
+        let eok = |k: usize| !h.g.lt || k != 15 || pw == b"your";
         let cs: Vec<(usize, f32, Vec<u8>, usize)> = (0..h.g.copy).filter(|&k| gv[k].0 >= 0).map(|k| { let (v, p) = w.cv(k); (k, gv[k].1, v, p) }).filter(|x| x.3 < x.2.len() && x.2[x.3] as i32 == gv[x.0].0).collect();
         let ban = lk.ban.clone();
         let bn = |v: &[u8]| ban.contains(&v.to_ascii_lowercase());
         let sec = z.iter().enumerate().filter(|&(c, _)| c != am).fold(f64::NEG_INFINITY, |m, (_, &v)| m.max(v));
-        let best = cs.iter().filter(|x| x.1 > 0.0 && x.2[x.3] as usize == am && (n >= 1 && sep || lk.chain && x.0 == 12 && out.last() == Some(&32) || h.g.copy >= 16 && n == 0 && x.3 == 0 && sep && z[am] - x.1 as f64 / t < sec) && !bn(&x.2)).fold(None, |a: Option<&(usize, f32, Vec<u8>, usize)>, x| if a.is_none_or(|a| x.1 > a.1) { Some(x) } else { a });
+        let best = cs.iter().filter(|x| x.1 > 0.0 && eok(x.0) && x.2[x.3] as usize == am && (n >= 1 && sep || lk.chain && x.0 == 12 && out.last() == Some(&32) || h.g.copy >= 16 && n == 0 && x.3 == 0 && sep && z[am] - x.1 as f64 / t < sec) && !bn(&x.2)).fold(None, |a: Option<&(usize, f32, Vec<u8>, usize)>, x| if a.is_none_or(|a| x.1 > a.1) { Some(x) } else { a });
         lk.chain &= n == 0;
         if let Some(x) = best { (lk.v, lk.p, lk.k) = (x.2.clone(), x.3, x.0); return Some(lk.v[lk.p]); }
         lk.fin = n == 0 && out.last() != Some(&39) && cs.iter().any(|x| x.1 > 0.0 && x.3 == 0 && x.2[0] as usize == am && bn(&x.2)) && !cs.iter().any(|x| (8..13).contains(&x.0) && x.1 > 0.0 && !bn(&x.2));
