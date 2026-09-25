@@ -1,6 +1,10 @@
 import os,re,sys,json,glob,time,shlex,socket,hashlib,subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2];EVD=ROOT/"data"/"concepts"/"eval";KINDS=("prod","dry","stub");NONPROD=re.compile(r"_(stub|dry)(\.|$)")
+EVAL_ONLY=re.compile(r"(^|[/_])(lcd|lcb|livecodebench)[/_]|leetcode",re.I)
+def eval_only(x)->bool:return bool(EVAL_ONLY.search(x if isinstance(x,str) else " ".join(str(x.get(k,"")) for k in ("id","url","src","title")) if isinstance(x,dict) else str(x)))
+def assert_trainable(items,what="training")->int:
+ bad=[x if isinstance(x,str) else x.get("id",str(x)[:80]) if isinstance(x,dict) else str(x) for x in items if eval_only(x)];assert not bad,f"eval-only (statement copyright) rows must never enter {what}: {bad[:5]} (+{max(0,len(bad)-5)})";return 0
 def rel(p)->str:
  p=Path(p).resolve();return str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p)
 def sha256(p)->str:
