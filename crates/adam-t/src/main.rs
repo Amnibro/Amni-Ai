@@ -61,8 +61,9 @@ fn main() -> io::Result<()> {
             [(16384usize, 1024usize, 256usize), (16384, 256, 1024), (16384, 768, 256)].iter().for_each(|&(m, n, k)| {
                 let w = mm_wgsl(m, n, k, it).unwrap_or(-1.0);
                 let b = mm_burn::<Wgpu>(WgpuDevice::DiscreteGpu(0), m, n, k, it);
-                let cpu = mm_burn::<NdArray>(NdArrayDevice::Cpu, m, n, k, 3);
-                println!("{{\"m\": {m}, \"n\": {n}, \"k\": {k}, \"handwritten_wgsl_gflops\": {w:.0}, \"burn_wgpu_gflops\": {b:.0}, \"burn_ndarray_cpu_gflops\": {cpu:.0}}}");
+                let h = mm_burn::<Wgpu<burn::tensor::f16>>(WgpuDevice::DiscreteGpu(0), m, n, k, it);
+                let cpu = if var("MM_CPU").is_ok() { mm_burn::<NdArray>(NdArrayDevice::Cpu, m, n, k, 3) } else { 0.0 };
+                println!("{{\"m\": {m}, \"n\": {n}, \"k\": {k}, \"handwritten_wgsl_gflops\": {w:.0}, \"burn_wgpu_f32_gflops\": {b:.0}, \"burn_vulkan_f16_gflops\": {h:.0}, \"burn_ndarray_cpu_gflops\": {cpu:.0}}}");
             });
         }
         "lut" => {
