@@ -5,7 +5,7 @@ or POST /models/activate.
 """
 import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
-from amni.serve.emergency import respond as _em_respond,guard as _em_guard,guard_stream as _em_stream
+from amni.serve.emergency import respond as _em_respond,detect as _em_detect,guard as _em_guard,guard_stream as _em_stream
 RAY_MODEL='adam:ray-v19f-clean'
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
@@ -101,7 +101,7 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     if src:yield src
 def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
     em=_em_respond(message)
-    if em:return {'answer':em,'tier':'tier_emergency','tokens':len(em.encode('utf-8'))}
+    if em:return {'answer':em,'tier':'tier_'+(_em_detect(message) or {}).get('tier','emergency'),'tokens':len(em.encode('utf-8'))}
     r=_chat(message,system,history,facts,max_new_tokens,do_sample,user,session);r['answer']=_em_guard(message,r.get('answer') or '');return r
 def _chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
     if backend_name()=='ray':
