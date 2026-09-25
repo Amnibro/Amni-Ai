@@ -12,12 +12,13 @@ fn v19_forward() {
     let sh = Npz::open(&pk).unwrap().get("").unwrap().shape.clone();
     let (syn, l2, (cp, mr)) = (format!("{home}/data/{}/synsets.txt", var("ADAM_V19_LEX").unwrap_or_else(|_| "big2".into())), sh[1].trailing_zeros().to_string(), copies(sh[0]));
     let (cp, mr) = (cp.to_string(), mr.to_string());
-    let c = Cfg::with(&[("VER", "19"), ("COPY", &cp), ("MR", &mr), ("MASKV", if maskv(&pk) { "1" } else { "0" }), ("LEVELS", "21"), ("HOPS", "4"), ("QT", "1"), ("TERN", "1"), ("TERN_SCOPE", "cell"), ("QLEV", "5"), ("LOG2_ENTRIES", &l2), ("BS", "1"), ("CTX", "8192"), ("ARCH", "cpu"), ("PAGES", &pk), ("AMNI_HOME", &home), ("SYNSETS", &syn)]);
+    let mut c = Cfg::with(&[("VER", if cp == "0" { "18" } else { "19" }), ("COPY", &cp), ("MR", &mr), ("MASKV", if maskv(&pk) { "1" } else { "0" }), ("LEVELS", "21"), ("HOPS", "4"), ("QT", "1"), ("TERN", "1"), ("TERN_SCOPE", "cell"), ("QLEV", "5"), ("LOG2_ENTRIES", &l2), ("BS", "1"), ("CTX", "8192"), ("ARCH", "cpu"), ("PAGES", &pk), ("AMNI_HOME", &home), ("SYNSETS", &syn)]);
+    c.geo.tc = if c.ver == 19 { c.geo.tc } else { (1.0f64 - 0.99) as f32 };
     let t0 = Instant::now();
     let gn: usize = var("ADAM_V19_GREEDY").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
     let greedy = |f: &mut dyn FnMut(&[u8], Option<u8>) -> Vec<f32>, p: &[u8]| { let (mut o, mut lg) = (vec![], f(p, None)); for _ in 0..gn { let c = am(&lg) as u8; if c == 10 || c == 30 { break; } o.push(c); lg = f(&[p, &o].concat(), Some(c)); } o };
     let (tr, tg): (Vec<Vec<f32>>, Vec<Vec<u8>>) = { let mut e = Cpu::new(&c); load_pages(&c, &mut e).unwrap(); (texts.iter().map(|t| { e.logits(t); e.lg[..t.len() * 256].to_vec() }).collect(), texts.iter().map(|t| greedy(&mut |x, _| e.logits(x), t)).collect()) };
-    println!("pack {pk} L={} T={} copy={cp} mr={mr} maskv={} | {} texts {} positions | adam-train cpu forward {:.1}s", sh[0], sh[1], c.geo.mv, texts.len(), texts.iter().map(Vec::len).sum::<usize>(), t0.elapsed().as_secs_f64());
+    println!("pack {pk} v{} L={} T={} copy={cp} mr={mr} maskv={} | {} texts {} positions | adam-train cpu forward {:.1}s", c.ver, sh[0], sh[1], c.geo.mv, texts.len(), texts.iter().map(Vec::len).sum::<usize>(), t0.elapsed().as_secs_f64());
     let ti: Option<Vec<Vec<f32>>> = var("ADAM_V19_REF").ok().map(|r| { let z = Npz::open(&r).unwrap(); (0..texts.len()).map(|i| z.get(&format!("t{i}")).unwrap().f32s()).collect() });
     let row = |nm: &str, a: &[Vec<f32>], b: &[Vec<f32>]| { let (w, t, x, n) = cmp(a, b); println!("| {nm:<34} | {w:.3e} | {t}/{n} | {x}/{n} |"); (w, t == n) };
     println!("| comparison | max abs logit diff | top-1 agree | bit-identical rows |\n|---|---|---|---|");
