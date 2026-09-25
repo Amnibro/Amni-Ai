@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["adam-ray", "adam-qa", "adam-ray-py", "adam-train"]
+members = ["adam-ray", "adam-qa", "adam-ray-py", "adam-train", "adam-ks"]
 exclude = ["amni_ai_core"]
 [workspace.dependencies]
 adam-ray = { path = "adam-ray" }

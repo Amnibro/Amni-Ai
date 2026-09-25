@@ -1,0 +1,26 @@
+[package]
+name = "adam-ks"
+version = "0.1.0"
+edition = "2021"
+description = "Adam Knowledge Store coder: v18 CPU engine plus the ksc1 range coder, bit-exact with amni.compute.ks_codec; streaming parquet store writer, CLI and PyO3 module adam_ks"
+[lib]
+name = "adam_ks"
+crate-type = ["rlib", "cdylib"]
+[[bin]]
+name = "adam-ks"
+path = "src/main.rs"
+[features]
+py = ["dep:pyo3"]
+[dependencies]
+adam-ray = { workspace = true }
+rayon = "1"
+half = "2"
+sha2 = "0.10"
+zstd = "0.14"
+crc32fast = "1"
+memmap2 = "0.9"
+serde_json = { version = "1", features = ["preserve_order"] }
+parquet = { version = "60", default-features = false, features = ["arrow", "zstd"] }
+arrow-array = "60"
+arrow-schema = "60"
+pyo3 = { version = "0.24", features = ["extension-module"], optional = true }
