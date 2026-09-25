@@ -1,4 +1,4 @@
-import os,re,sys,json,time,shlex,socket,argparse,resource,tempfile,subprocess,datetime as dt
+import os,re,sys,json,time,shlex,socket,argparse,resource,tempfile,subprocess,unicodedata,datetime as dt
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1];sys.path[:0]=[str(ROOT),str(ROOT/"scripts")]
@@ -7,11 +7,11 @@ from amni.compute.ray_field import DEFAULT_PACK,BASE_PACK,DEFAULT_LEX
 EV=ROOT/"data"/"concepts"/"eval";NB=EV/"nightly";MAN=NB/"nightly_lock.json";HIST=EV/"nightly_history.json";F7=NB/"f7_smoke_transcript.json";NQ=EV/"v20_m13"/"nq_v20_m13.json"
 SEED=20260925;NQ_N=200;BPB_BATCHES=64;THREADS=6;RSS_MAX=6<<30;AVAIL_MIN=12<<30;BUDGET=88*60;GB=1<<30
 SPLITS=[ROOT/"data"/"chat3"/"hold_eval.jsonl",EV/"recall.jsonl",EV/"twohop.jsonl",EV/"d2"/"d2.jsonl",ROOT/"data"/"clean1"/"hold.bin",ROOT/"data"/"clean2"/"hold.bin",NQ,F7]
-CODE=[Path(__file__).resolve(),*[ROOT/p for p in ("scripts/v19_rust_eval.py","scripts/v19_eval_run.py","amni/serve/gguf_runtime.py","amni/serve/user_memory.py","amni/compute/ray_field.py","amni/compute/ray_learn.py","amni/compute/ray_qa.py","amni/compute/ks_retrieve.py","amni/compute/eval_lock.py")],*sorted(ROOT.glob("adam_ray.cpython-*.so"))]
+CODE=[Path(__file__).resolve(),*[ROOT/p for p in ("scripts/v19_rust_eval.py","scripts/v19_eval_run.py","amni/serve/gguf_runtime.py","amni/serve/user_memory.py","amni/compute/ray_field.py","amni/compute/ray_learn.py","amni/compute/ray_qa.py","amni/compute/rknow.py","amni/compute/ks_retrieve.py","amni/compute/eval_lock.py")],*sorted(ROOT.glob("adam_ray.cpython-*.so"))]
 MEM_ENV={"DEC":"stream","MAXB":"240","LOCK":"1","SS":"1","REP":"1.0","VETO":"0"};PHASES=(("mem",1800),("bpb",900),("chat",2700))
 LOWER={"bpb_clean1":0.02,"bpb_clean2":0.02,"garbles":0};NOALERT={"nq_decline"}
 FUNC=set("of the a an to and or with for in on at from by than instead as but is was".split());CITE=re.compile(r"\s*\((?:Source:|I learned)[^)]*\)\.?\s*$")
-NORM=lambda s:" ".join(re.sub(r"\b(a|an|the)\b"," ",re.sub(r"[^\w\s]"," ",(s or "").lower())).split())
+NORM=lambda s:re.sub(r"^(?:(?:in|on|at|by|from|during|around|near)\s+)+(?=\S)",""," ".join(re.sub(r"\b(a|an|the|sir|dame|dr|mr|mrs|ms)\b"," ",re.sub(r"[^\w\s]"," ","".join(c for c in unicodedata.normalize("NFKD",s or "") if not unicodedata.combining(c)).lower())).split()))
 packs=lambda p:[p[:-8]+s for s in ("_sid.npy","_sw.npy","_dp.npy","_bias.npy")]
 def netguard()->list:
  bl=[];oc,og=socket.socket.connect,socket.getaddrinfo;loc=lambda h:h is None or str(h).split("%")[0] in ("127.0.0.1","::1","localhost","")
@@ -19,7 +19,7 @@ def netguard()->list:
  socket.socket.connect=lambda s,a,*k:oc(s,a,*k) if s.family==socket.AF_UNIX or loc(a[0] if isinstance(a,tuple) else a) else deny(a)
  socket.getaddrinfo=lambda h,*a,**k:og(h,*a,**k) if loc(h) else deny(h);return bl
 def score_qa(pred:str,golds:list,decline)->dict:
- b=CITE.sub("",pred or "").strip();core=re.split(r"(?<=[.!?])\s+",b)[0] if b else "";d=bool(decline.search((pred or "").lower()));nb=NORM(b);gs=[g for g in map(NORM,golds) if g]
+ b=CITE.sub("",pred or "").strip();core=re.split(r"(?<=[.!?])(?<!\b[A-Z]\.)(?<!\bDr\.)(?<!\bMr\.)(?<!\bMs\.)(?<!\bSt\.)(?<!\bJr\.)(?<!\bSr\.)(?<!\bMrs\.)\s+",b)[0] if b else "";d=bool(decline.search((pred or "").lower()));nb=NORM(b);gs=[g for g in map(NORM,golds) if g]
  return {"decline":d,"em":not d and NORM(core) in gs,"hit":not d and any(re.search(r"(?<!\S)"+re.escape(g)+r"(?!\S)",nb) for g in gs)}
 def lexok(w:str,lex:set)->bool:return all(p in lex for p in re.split(r"-",w.lower().split("'")[0].split("’")[0]) if p)
 def garbles(reply:str,values:list,lex:set)->list:
@@ -82,13 +82,13 @@ def child_env(td:str)->dict:
  e={k:v for k,v in os.environ.items() if not k.startswith(("AMNI_","ADAM_")) and k not in ("TS_NAT_PACK","EVAL_N","C3_N","LEX","DEC","MAXB","LOCK","SS","REP","VETO","BEAM_W","CTX")}
  return {**e,"NIGHTLY_TMP":td,"AMNI_GEN_BACKEND":"ray","AMNI_RAY_ARCH":"cpu","AMNI_UMEM_DIR":os.path.join(td,"umem"),"AMNI_RAY_LEARNED":os.path.join(td,"learned.jsonl"),"AMNI_WIKI_CACHE":os.path.join(td,"wiki_cache"),"AMNI_LEARN_WEB":"0","AMNI_LEARN_LOCAL":"1","PYTHONUNBUFFERED":"1",**{k:str(THREADS) for k in ("RAYON_NUM_THREADS","OMP_NUM_THREADS","MKL_NUM_THREADS","OPENBLAS_NUM_THREADS","NUMEXPR_MAX_THREADS","TI_NUM_THREADS","POLARS_MAX_THREADS")}}
 def main():
- ap=argparse.ArgumentParser();ap.add_argument("--phase");ap.add_argument("--out");ap.add_argument("--limit",type=int,default=0);ap.add_argument("--dry",action="store_true");ap.add_argument("--date",default=dt.date.today().isoformat());ap.add_argument("--skip",default="");a=ap.parse_args()
+ ap=argparse.ArgumentParser();ap.add_argument("--phase");ap.add_argument("--out");ap.add_argument("--limit",type=int,default=0);ap.add_argument("--dry",action="store_true");ap.add_argument("--date",default=dt.date.today().isoformat());ap.add_argument("--skip",default="");ap.add_argument("--log",default="");a=ap.parse_args()
  if a.phase:
   bl=netguard();r={"mem":phase_mem,"bpb":phase_bpb,"chat":phase_chat}[a.phase](a.limit);r["net_blocked"]=bl;r["maxrss_mb"]=round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024);Path(a.out).write_text(json.dumps(r));return
  os.nice(max(0,10-os.nice(0)));t0=time.time();NB.mkdir(parents=True,exist_ok=True);MAN.exists() or EL.lock(SPLITS,MAN);man=json.loads(MAN.read_text());deadline=t0+BUDGET;blockers=[];res={};stats={}
  next((1 for _ in range(60) if avail()>=AVAIL_MIN+RSS_MAX or time.sleep(10)),0)
  avail()<AVAIL_MIN+RSS_MAX and blockers.append(f"MemAvailable {avail()/GB:.1f}GB < 18GB after 10 min wait")
- with tempfile.TemporaryDirectory(prefix="adam_nightly_") as td,open(NB/f"run_{a.date}.log","w") as log:
+ with tempfile.TemporaryDirectory(prefix="adam_nightly_") as td,open(a.log or NB/f"run_{a.date}{'_dry' if a.dry or a.limit>0 or a.skip else ''}.log","w") as log:
   env=child_env(td)
   for name,to in ([] if blockers else PHASES):
    r,st=(None,{"skipped":True}) if name in a.skip.split(",") else run_phase(name,env,a.limit,deadline,to,log);stats[name]=st;res[name]=r or {};r is None and blockers.append(f"phase {name} failed: "+json.dumps(st))

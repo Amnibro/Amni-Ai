@@ -2,9 +2,10 @@ import os,re,json,math,unicodedata,collections
 import numpy as np,pyarrow as pa
 import amni.compute.ray_learn as RL
 import amni.compute.ks_retrieve as KR
+from amni.serve.user_memory import bh
 IXD=os.environ.get("AMNI_RKNOW_INDEX",os.path.join(KR.KS,"index_rknow","wiki_v2"));STOP=set("a an the of and or in on at to for by with from as is was are were be been it its that this which who he she his her they their has had have not but also into than then there".split());QSTOP=set("what when where which whom whose why how many much did doe do name called call".split())
 K1,B,DFMAX,M64=0.9,0.4,300000,(1<<64)-1;LB=float(os.environ.get("AMNI_RKNOW_LB","3.0"));LIDF=float(os.environ.get("AMNI_RKNOW_LIDF","9.0"));QCI=6.0;TEMP=re.compile(r"(?i)\b(latest|current|currently|now|newest|next|recent|recently|today|this year|upcoming|so far|to date|as of)\b");BYV=re.compile(r"(?i)\b(?:played|portrayed|voiced|performed|sung|recorded|written|directed|composed|produced|created|founded|invented|discovered|built|designed|painted|developed|won|hosted|narrated|owned|led)\s+by\s*$");FACTQ=re.compile(r"(?i)^\W*(?:(?:and|so|but|ok|okay|hey|um|well)\W+)?(?:who|whom|whose|what|what's|when|where|which|how\s+(?:many|much|old|long|far|tall|big|high|deep|fast|often|large|wide)|(?:in|on|at|from|by|for|to)\s+(?:what|which|whom)|name\s+the)\b");YOU=re.compile(r"(?i)^\W*(?:\S+\s+){0,3}(?:you|your|you're|yours|yourself|u|ur)\b");OPIN=re.compile(r"(?i)\b(?:a good|any good|good way|best way|should|recommend\w*|advice|tips?|ideas?|suggest\w*|do you think|opinion|i can|can i|could i|would i|will i|myself)\b");ASV=re.compile(r"\s*(?:\(\s*)?(?:(?:stars?|starring|starred|plays?|played|portrays?|portrayed|voices?|voiced|appears?|appeared|cast)\s+)?as\s");POSS=re.compile(r"(?i)\b([\w.-]+(?:\s+[\w.-]+)?)['’]s\s+(?:real\s+|biological\s+|first\s+|second\s+|ex[- ]?)?(?:mother|father|mom|mum|dad|wife|husband|son|daughter|sister|brother|boyfriend|girlfriend|friend|best friend|boss|partner|uncle|aunt|cousin|niece|nephew|grandmother|grandfather|grandma|grandpa|baby|twin|fianc[eé]e?|lover|love interest|parents?|kids?|children|family|dog|cat)\b");ACT=re.compile(r"(?i)\b(?:play|plays|played|playing|portray\w*|voice[sd]?|star\w*|cast)\b");SOFT=re.compile(r"(?i)unknown|not sure|don'?t know|do not know|no idea|can'?t recall|not certain")
-GATE={"c":float(os.environ.get("AMNI_RKNOW_C","0.5"))}
+GATE={"c":float(os.environ.get("AMNI_RKNOW_C","0.633"))}
 def fnv(b:bytes)->int:
  h=0xcbf29ce484222325
  for x in b:h=((h^x)*0x100000001b3)&M64
@@ -65,14 +66,14 @@ _IX=[]
 def ix()->Index:
  _IX or _IX.append(Index());return _IX[0]
 CONN=set("of the de van von da del der la le du di bin al y".split());ENT=re.compile(r"(?<![\w'’.-])(?:[A-Z][\w'’.&-]*|[A-Z]\.)(?:[ \t]+(?:(?:of|the|de|van|von|da|del|der|la|le|du|di|bin|al|y)[ \t]+)*(?:[A-Z][\w'’.&-]*|[A-Z]\.|\d+(?:st|nd|rd|th)?\b))*")
-FEAT=("bias","s0","pw","r","cov","lc","d","sup","n","share","rk","relhi","rello","relna","tok","tmiss","tbad","qover","ntok","top","title","q_date","q_num","q_person","q_place","q_other","tchar","gap","actqo","pas","pby","ppar","lnk","lead","lnklead","occ","occna","pasx")
-WTS=dict(zip(FEAT,json.loads(os.environ.get("AMNI_RKNOW_WTS","null") or "null") or (-2.6033,0.3956,-1.3234,-1.067,-0.1368,-0.4368,-0.3136,-0.1654,0.0773,0.4265,0.9631,0.6025,-0.3353,0.0917,0.4272,-0.5734,-0.637,-0.9201,0.2541,0.4588,0.2277,-0.3162,-0.0907,-0.0676,-0.7155,-0.6949,-0.2251,0.0344,-0.7633,0.5282,0.182,-0.0139,0.1959,0.2917,0.1563,0.6455,-0.3817,-0.099)))
+FEAT=("bias","s0","pw","r","cov","lc","d","sup","n","share","rk","relhi","rello","relna","tok","tmiss","tbad","qover","ntok","top","title","q_date","q_num","q_person","q_place","q_other","tchar","gap","actqo","pas","pby","ppar","lnk","lead","lnklead","occ","occna","pasx","fx","fx5","fxl","fxn","fw","fpar","kb","ko","yorig","ynew","yold","dmin","fxu","fxa","sbad")
+WTS=dict(zip(FEAT,json.loads(os.environ.get("AMNI_RKNOW_WTS","null") or "null") or (-1.8786,0.3376,-0.9641,-0.9774,-0.4726,-0.3256,-0.5874,0.219,-0.0181,0.2884,1.0231,0.2221,-0.3363,0.1453,0.4407,-0.4275,-0.6348,-0.2651,0.3533,0.3643,0.2292,-0.1632,-0.0085,-0.2075,-0.4141,-0.5528,-0.2444,0.0169,-0.352,0.3307,0.1693,0.1219,0.1938,0.1589,0.3825,0.4554,-0.4159,-0.049,0.1384,0.2919,0.0668,0.1309,-0.1985,-0.5796,-0.0518,0.0743,-0.0023,0.019,-0.0539,0.0843,-1.1724,0.0559,-0.2777)))
 _TY={}
 def ents(y:str)->list:
  out=[]
  for m in ENT.finditer(y):
-  tk=m.group(0).split();a=m.start()
-  while tk and (tk[0] in RL.STOPC or tk[0].lower() in CONN):a=y.index(tk[0],a)+len(tk[0]);tk=tk[1:]
+  tk=m.group(0).split();a=m.start();ci=next((i for i,t in enumerate(tk[:-1]) if t.endswith(".") and not re.fullmatch(r"(?:[A-Z]|Jr|Sr|St|Mt|Dr|Mr|Mrs|Ms|Inc|Co|Ltd|Prof|Gen|Col|Lt|Capt|Sgt|Rev|U\.S|D\.C|Ft|No|Vol|Jan|Feb|Aug|Sept?|Oct|Nov|Dec)\.",t)),None);tk=tk[:ci+1] if ci is not None else tk;tk and re.search(r"['’]s$",tk[-1]) and tk.__setitem__(-1,tk[-1][:-2])
+  while tk and (tk[0] in RL.STOPC or tk[0].lower() in CONN or not tk[0][:1].isupper()):a=y.index(tk[0],a)+len(tk[0]);tk=tk[1:]
   while tk and tk[-1].lower() in CONN:tk=tk[:-1]
   tk and not re.fullmatch(r"[A-Z]\.|(?:Jr|Sr|St|Mt|Dr|Inc|Co|Ltd)\.",tk[-1]) and tk[-1].endswith(".") and tk.__setitem__(-1,tk[-1][:-1])
   v=" ".join(tk);a=y.find(tk[0],a) if tk else -1
@@ -80,13 +81,87 @@ def ents(y:str)->list:
   e=y.find(tk[-1],a)+len(tk[-1]);out.append((y[a:e],a,e))
  return out
 def gen(qt:str,y:str,q:str)->list:
- if qt in ("date","num"):return RL.cands(qt,y,q)
+ if qt=="date":ql=q.lower();return [(m.group(0),k,m.start(),m.end()) for m in RL.DATE.finditer(y) for k in [fkey(qt,m.group(0),ql)] if k]
+ if qt=="num":return RL.cands(qt,y,q) if re.search(r"\bhow (?:many|much|old|long|far|tall|big|high|deep|fast)\s+",q.lower()) else []
  E=ents(y);X=[(y[a:e2],a,e2) for (v,a,e),(v2,a2,e2) in zip(E,E[1:]) if qt=="place" and re.fullmatch(r",\s*",y[e:a2])]
  return [(v,AN_NORM(v),a,e) for v,a,e in E+X]
 def AN_NORM(s:str)->str:return " ".join(re.sub(r"\b(a|an|the)\b"," ",re.sub(r"[^\w\s]"," ",fold(s).lower())).split())
+RELW=((1,"play plays played playing portray portrays portrayed portraying star stars starred starring cast role roles actor actress"),(2,"voice voices voiced voicing"),(3,"sing sings sang sung singing singer singers recorded perform performs performed performer vocals vocalist song single"),(4,"write writes wrote written writing writer writers author authored penned composed composer lyricist lyrics novel poem"),(5,"direct directs directed director"),(6,"produce produces produced producer"),(7,"invent invented inventor discover discovered discoverer found founded founder create created creator design designed designer develop developed developer coined establish established built formulated proposed"),(8,"win wins won winner winners champion champions"),(9,"host hosts hosted presenter presented narrate narrated narrator"),(10,"own owns owned owner"),(11,"lead leads led leader coach coached captain"),(12,"release released releases premiere premiered premieres aired airs debut debuted publish published come came opened launched began begin start started"),(13,"die died dies death killed"),(14,"born birth"),(15,"located situated held filmed shot set headquartered based lies place"),(16,"married marry marries wife husband spouse"))
+KREL={bh(w.encode()):r for r,ws in RELW for w in ws.split()};RFAM={2:1};AG=set(range(1,12))|{16};NOUN=set("actor actress role roles cast singer singers song single vocals vocalist writer writers author composer lyricist lyrics novel poem director producer inventor discoverer founder creator designer developer winner winners champion champions presenter narrator owner leader coach captain death birth place wife husband spouse premiere release debut star".split())
+QGEN=set(toks("actor actress character role name person people movie film show series tv television song single album novel book original first voice part who what out"));QKIND=((r"\b(?:movie|film)s?\b","film"),(r"\b(?:tv|shows?|series|sitcom|season|episodes?|television)\b","tv"),(r"\b(?:song|single)\b","song"),(r"\balbum\b","album"),(r"\b(?:novel|book)\b","book"))
+AKW=((r"film|movie","film"),(r"television|tv|series|sitcom|soap|miniseries|season|show","tv"),(r"song|single","song"),(r"album|\bep\b","album"),(r"novel|book","book"),(r"game","game"));AKT=re.compile(r"\(((?:\d{4}\s+)?(?:[\w'-]+\s+){0,3}?(?:film|movie|TV series|television series|miniseries|series|season \d+|sitcom|soap opera|song|single|album|EP|novel|book|video game|game|musical|play))\)\s*$",re.I);AKL=re.compile(r"(?i)\b(?:is|was)\s+(?:an?|the)\s+((?:\d{4}\s+)?(?:[\w'-]+\s+){0,6}?(?:film|movie|television series|tv series|miniseries|sitcom|soap opera|series|television show|show|song|single|album|novel|book|video game|game))\b")
+CHARQ=re.compile(r"(?i)\b(?:who|what)\s+(?:did|does|do|is|was|will|has)\s+(?!the\b|an?\b)\S.{0,60}?\s+(?:play|playing|played|portray\w*|voice|voicing)\b|\b(?:what|which)\s+(?:character|role|part)\b")
+ASR=re.compile(r"\s*(?:\([^()]{0,40}\)\s*)?(?:(?:is|was|co-?stars?|stars?|starred|starring|appears?|appeared|returns?|returned|reprises?|reprised|plays?|played|portrays?|portrayed|voices?|voiced|guest[- ]stars?|cast)\s+)?as\s+(?!(?:well|of|such|a\s+result|part|far|long|soon|much|if|though|opposed|to|follows?|many|early|late|and|a\s+whole|usual|possible|expected|before|mentioned|described|shown|seen|in|with|for|from|by)\b)(?:the\s+voice\s+of\s+)?");CHP=re.compile(r"(?:(?:Dr|Mr|Mrs|Ms|St|Jr|Sr|Prof|Lt|Col|Gen|Capt|Sgt|Rev|[A-Z])\.|[^,;.()\n]){1,60}?(?=\s*(?:[,;.()\n–—:]|\s(?:in|on|and|who|which|that|from|with|for|while|during|opposite|alongside|to|was|is|were|are|has|had|but|\w+ing)\s|$))")
+def rid(w:str)->int:r=KREL.get(bh(w.lower().encode()),0);return RFAM.get(r,r)
+def qparse(q:str)->tuple:
+ ws=re.findall(r"[\w'’]+",q);rs=[x for x in map(rid,ws) if x];r=(rs[-1] if re.match(r"(?i)\W*(?:when|where|what\s+year|in\s+what\s+year)\b",q) else rs[0]) if rs else 0;ql=q.lower();drop={z for w in ws if rid(w)==r for z in toks(w)}|QGEN
+ return r,"char" if r==1 and CHARQ.search(q) else "agent",[z for z in dict.fromkeys(toks(q)) if z not in QSTOP and z not in drop],next((v for p,v in QKIND if re.search(p,ql)),None),bool(re.search(r"(?i)\b(?:original|first)\b",q)),ql,pslot(q,r)
+PQ=re.compile(r"(?i)\b(?:plays?|played|playing|portrays?|portrayed|voices?|voiced|(?:is|was|does|did|do)\s+the\s+voice\s+(?:of|for)|stars?\s+as|starred\s+as)\s+(?:the\s+(?:role|part|voice|character)\s+of\s+)?(.+?)(?:\s+(?:in|on|from|of|for)\s+(.+?))?\s*\??$");CQ=re.compile(r"(?i)\bwho\s+(?:did|does|do|is|was|will|has)\s+(.+?)\s+(?:play|playing|played|portray\w*|voice|voicing)\b")
+def pslot(q:str,r:int)->tuple:
+ m=(CQ.search(q) if CHARQ.search(q) else PQ.search(q)) if r==1 else None;c=m.group(1) if m else "";return set(toks(c))-QGEN,bool(re.search(r"[’']s\s+[a-z]",c))
+def akind(t:str,lead:str)->tuple:
+ m=AKT.search(t);k=(m.group(1) if m else "") or next((x.group(1) for x in [AKL.search(lead[:300])] if x),"");y=re.search(r"\b(1[89]\d\d|20\d\d)\b",k)
+ return next((v for p,v in AKW if re.search(p,k.lower())),None) if k else None,int(y.group(1)) if y else None
+def chain(E:list,p:int,y:str,back:bool=False)->list:
+ out=[]
+ for v,a,b in (E[::-1] if back else E):
+  if (back and b>p) or (not back and a<p):continue
+  if not re.fullmatch((r"\s*(?:(?:had|has|have)\s+been|were|was|are|is|all|both|also)?\s*" if back else r"\s*(?:the\s+)?") if not out else r"\s*(?:,|and|&|,\s*and)\s*",y[b:p] if back else y[p:a]):break
+  out.append((v,a,b));p=a if back else b
+ return out[::-1] if back else out
+def lent(E:list,a:int,y:str)->tuple:return next(((v,x,b) for v,x,b in E[::-1] if b<=a and re.fullmatch(r"[\s,(]*(?:(?:is|was|are|were|has|had|have|been|who|which|also|later|originally|first|famously|previously|once|then|currently|and|being)\s+)*",y[b:a])),None)
+def facts(y:str)->list:
+ E=ents(y);F=[];rs=[(m,rid(m.group(0))) for m in re.finditer(r"[\w'’-]+",y)];pl=any(r==1 for _,r in rs) or bool(re.search(r"(?i)\b(?:regulars?|recurring|guest|appear\w*|characters?|interns?|cameos?|reprise\w*)\b",y));rp=re.search(r"\brespectively\b",y)
+ cl=lambda a:re.split(r"[;:]",y[:a])[-1][-150:]
+ for m,r in rs:
+  if not r:continue
+  a,b=m.span();w=m.group(0).lower();pb=re.match(r"(?:\s*,?\s*(?:and|&)\s+[a-z]+(?:ed|en))?\s+by\s+",y[b:b+40]) if r in AG else None;ag=chain(E,b+pb.end(),y) if pb else []
+  if ag:le=lent(E,a,y) if r==1 else None;F.append({"r":r,"S":{"agent":ag,**({"char":[le]} if le else {})},"c":cl(a),"k":"pas"})
+  st=chain(E,b+1,y) if r==1 and w in ("stars","starred","starring","star") else []
+  st and F.append({"r":1,"S":{"agent":st},"c":cl(a),"k":"star"})
+  le=lent(E,a,y) if r in AG and w not in NOUN and not pb and not st and w not in ("stars","starred","starring","star") else None
+  if le and not re.match(r"\s*[:,\"“]",y[b:b+3]):
+   am=re.match(r"\s*(?:the\s+(?:role|part|voice)\s+of\s+|as\s+|in\s+the\s+role\s+of\s+)?",y[b:]);ch=CHP.match(y,b+am.end()) if r==1 else None;F.append({"r":r,"S":{"agent":[le],**({"char":[(ch.group(0).strip(" \"“”"),ch.start(),ch.end())]} if ch else {})},"c":re.split(r"[;.]",y[b:b+100])[0],"k":"act"})
+  dm=[d for d in RL.DATE.finditer(y) if (b<=d.start()<b+70 and ";" not in y[b:d.start()]) or (a-60<d.end()<=a and ";" not in y[d.end():a])]
+  dm and F.append({"r":r,"S":{"date":[(d.group(0),d.start(),d.end()) for d in sorted(dm,key=lambda d:abs(d.start()-b))[:1]]},"c":cl(a)+" "+y[b:b+70],"k":"dat"})
+  pm=re.match(r"\s+(?:[\w-]+\s+){0,2}?(?:in|at|on|near|from|inside|within)\s+",y[b:b+45]) if r in (15,14,13,12,7) else None;pc=chain(E,b+pm.end(),y) if pm else []
+  pc and F.append({"r":r,"S":{"place":[pc[0]]+([(y[pc[0][1]:pc[1][2]],pc[0][1],pc[1][2])] if len(pc)>1 and re.fullmatch(r",\s*",y[pc[0][2]:pc[1][1]]) else [])},"c":cl(a),"k":"loc"})
+ if rp and pl:
+  vm=re.search(r"\b(?:cast|chosen|selected|play|played|portray\w*|voice[sd]?|star\w*)\s+(?:as|in\s+the\s+roles\s+of|the\s+roles\s+of)\s+",y);L=chain(E,vm.start(),y,True) if vm else [];R=chain(E,vm.end(),y) if vm else []
+  len(L)==len(R)>1 and F.extend({"r":1,"S":{"agent":[l],"char":[c]},"c":"","k":"resp"} for l,c in zip(L,R))
+ for v,a,b in E:
+  am=ASR.match(y,b);ch=CHP.match(y,am.end()) if am and not rp and (pl or not y[:a].strip()) and not re.search(r"(?i)\b(?:play\w*|portray\w*|voic\w*|as|star\w*)\s+(?:the\s+(?:role|part)\s+of\s+)?$",y[max(0,a-40):a]) else None
+  ch and F.append({"r":1,"S":{"agent":[(v,a,b)],"char":[(ch.group(0).strip(" \"“”"),ch.start(),ch.end())]},"c":re.split(r"\bas\b",y[ch.end():ch.end()+100])[0],"k":"as"})
+  pm=re.match(r"\s*\(\s*((?:[A-Z][\w'’.-]*\s+){1,3}[A-Z][\w'’.-]*)\s*\)",y[b:b+45])
+  pm and F.append({"r":1,"S":{"agent":[(pm.group(1),b+pm.start(1),b+pm.end(1))],"char":[(v,a,b)]},"c":re.split(r"\.\s|;",y[b+pm.end():b+pm.end()+100])[0],"k":"par"})
+ return F
+def fkey(qt:str,v:str,ql:str="")->str:
+ d=RL.DATE.search(v) if qt=="date" else None;return (d.group(1) if d.group(1) not in ql else AN_NORM(v) if re.search(RL.MON,v) else "") if d else AN_NORM(v)
+def fmatch(F:list,qp:tuple,qt:str,W:dict,tw:set)->tuple:
+ qr,role,qe,_,_,ql=qp[:6];role={"date":"date","place":"place"}.get(qt,role);tot=sum(W.get(z,0.0) for z in qe) or 1.0;FX={};FW={}
+ if not qr or qe==[] or (qt not in ("person","date","place") and role!="char"):return FX,FW
+ for f in F:
+  if f["r"]!=qr or role not in f["S"]:continue
+  sm=(slot(f,role,qp[6][0] or set(qe),qp[6][1],W) if ("char" if role=="agent" else "agent") in f["S"] else 0.7) if f["r"]==1 and f["k"]!="star" else 1.0
+  cx=set(toks(f["c"]+" "+" ".join(v for rr,vs in f["S"].items() if rr!=role for v,_,_ in vs)))|tw;m=round(sum(W.get(z,0.0) for z in qe if z in cx)/tot*(0.6 if f["k"]=="star" else 1.0)*sm,4);u=max([W.get(z,0.0) for z in qe if z not in cx] or [0.0])/(max(W.get(z,0.0) for z in qe) or 1.0)
+  for v,a,b in f["S"][role] if role=="char" else [z for z in f["S"][role] if z[0][:1].isupper() or z[0][:1].isdigit()]:k=fkey(qt,v,ql);k and (m,-u)>FX.get(k,(-1,0,0,0,0,0))[::5] and FX.__setitem__(k,(m,v,a,b,f["k"],-u))
+  for rr,vs in f["S"].items():rr!=role and rr in ("agent","char") and [FW.__setitem__(fkey(qt,v,ql),max(FW.get(fkey(qt,v,ql),0.0),m)) for v,_,_ in vs]
+ return FX,FW
+def slot(f:dict,role:str,qe:set,kin:bool=False,W:dict={})->float:
+ o=f["S"]["char" if role=="agent" else "agent"][0][0];pm=re.match(r"(.+?)[’']s\s+([a-z][\w-]*)",o) if role=="agent" else None;nm=set(toks(pm.group(2) if pm else o))&qe;dm=re.match(r"\W*(?:[\w–-]+\W+){0,5}?([A-Z][\w.'’-]*(?:\s+[A-Z][\w.'’-]*)*)[’']s?\s+([a-z][\w-]*)",(pm.group(1)+"'s "+pm.group(2)) if pm else f["c"][:60]) if role=="agent" else None
+ dk=bool(dm and set(toks(dm.group(2)))<=qe and set(toks(dm.group(1)))&qe);return 1.0 if dk else 0.5+0.5*sum(W.get(z,1.0) for z in nm)/(sum(W.get(z,1.0) for z in qe) or 1.0) if nm and not kin else 0.5
+NW=dict(zip("one two three four five six seven eight nine ten eleven twelve".split(),range(1,13)));OW="first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth".split()
+def snum(q:str):
+ m=re.search(r"(?i)\b(season|series|episode|part|chapter|volume)\s+(\d{1,2}|%s)\b"%"|".join(NW),q);n=(int(m.group(2)) if m.group(2).isdigit() else NW[m.group(2).lower()]) if m else 0;k=m.group(1).lower() if m else ""
+ return re.compile(r"(?i)\b%s\s+(?:%d|%s)\b|\b(?:%s|%d(?:st|nd|rd|th))\s+%s\b"%(k,n,[*NW][n-1] if n<=12 else "x",OW[n-1] if n<=12 else "x",n,k)) if m and n else None
+def ss(x:str)->list:
+ s=RL.sents(x);s=s+[l.strip() for l in x.split("\n") if re.match(r"\s*[A-Z][^\n]{2,60}?\s+as\s+\S",l) and not any(l.strip() in z for z in s)];return s or [z for l in x.split("\n") for z in re.split(r"(?<=[.!?])\s+(?=[A-Z])",l.strip()) if 15<len(z)<600]
+def subseq(a:list,b:list)->bool:
+ it=iter(b);return all(any(y.startswith(x) for y in it) for x in a)
+HON=set("sir dame dr lord lady jr sr ii iii iv mr mrs ms".split())
 def ent(v:str,T)->tuple:
  if v in _TY:return _TY[v]
- d=T.doc(v) if T is not None else None;g=KR.lead(*d)[2] or "?" if d else None;m=re.match(r"\s*([^()\n,;:\"]{3,80}?)\s*\(",d[1][:400]) if d else None;f=m.group(1).strip() if m else None;f=f if f and f!=v and len(f.split())<=6 and set(toks(v))<set(toks(f)) and f[:1].isupper() else None
+ d=T.doc(v) if T is not None else None;g=KR.lead(*d)[2] or "?" if d else None;m=re.match(r"\s*([^()\n,;:\"]{3,80}?)\s*\(([^()]{0,120})",d[1][:400]) if d else None;bn=re.search(r"\bborn\s+((?:[A-Z][\w.'’-]*\s+)+[A-Z][\w'’-]*)\s*[;,)]",m.group(2)+")") if m else None;vw=v.split();f=next((z for z in [bn and bn.group(1),m and m.group(1).strip()] if z and z!=v and len(z.split())<=6 and z[:1].isupper() and len(z.split())>len(vw) for c in [[fold(w).lower() for w in z.replace(",","").split() if w.strip(".").lower() not in HON]] if len(c)>len(vw) and c[-1].startswith(fold(vw[-1]).lower()) and subseq([fold(w).lower() for w in vw[:-1]],c[:-1])),None) if len(vw)>1 else None
  return _TY.setdefault(v,(g,f))
 OCCS=((r"\b(?:play|plays|played|playing|portray\w*|star\w*|cast)\b",r"actor|actress|comedian|entertainer|performer|model|personality|presenter|host|singer|rapper"),(r"\bvoice[sd]?\b",r"actor|actress|voice|comedian|singer|performer"),(r"\b(?:sing|sings|sang|sung|perform\w*|record\w*)\b",r"singer|band|musician|rapper|group|duo|vocalist|songwriter|artist|trio|quartet|performer"),(r"\b(?:wrote|write|writes|written|author\w*|compos\w*|lyric\w*|pen\w*)\b",r"writer|author|novelist|poet|songwriter|composer|lyricist|playwright|screenwriter|journalist|band|singer|musician|rapper|producer"),(r"\bdirect\w*\b",r"director|filmmaker|producer|screenwriter"))
 def occf(q:str,d)->dict:
@@ -100,29 +175,34 @@ def occ(q:str,k:int=None)->tuple:
  I=ix();qt=RL.qtype(q);h=I.search(q,k or int(os.environ.get("AMNI_RKNOW_K","30")));O=[];P=[]
  if not h:return qt,O,P
  qa=set(toks(q));qw=[w for w in dict.fromkeys(toks(q)) if w not in QSTOP];W={w:I.idf(w) for w in qw};tot=sum(W.values()) or 1.0;F=RL.fam(q);qn=set(RL.words(q.encode()));yrs=set(re.findall(r"\b(?:1[0-9]|20)\d\d\b",q));cache={};qi=[w[0] for w in re.findall(r"[a-z0-9]+",fold(q).lower())];ini={"".join(qi[i:j]) for i in range(len(qi)) for j in range(i+2,min(len(qi),i+6)+1)}
- qc={z for z in qw if W[z]>=QCI};pm=POSS.search(q);pt=set(toks(pm.group(1))) if pm else set();lks=getattr(I,"lk",set())
+ qc={z for z in qw if W[z]>=QCI};sn=snum(q);pm=POSS.search(q);pt=set(toks(pm.group(1))) if pm else set();lks=getattr(I,"lk",set());qp=qparse(q);AK={}
  for r,(sc,pid) in enumerate(h):
-  t,x,g=I.text(pid,cache);tw=set(toks(t));P.append((sc,pid,t,x));fp=int(I.first[g])
-  for y in RL.sents(x) or [x]:
-   sw=set(toks(y));cov=(sum(W[z] for z in qw if z in sw)+0.5*sum(W[z] for z in qw if z in tw and z not in sw))/tot
-   if cov<0.3 or (yrs and not all(z in y+" "+t for z in yrs)):continue
+  t,x,g=I.text(pid,cache);tw=set(toks(t));P.append((sc,pid,t,x));fp=int(I.first[g]);ak=AK.get(g) or AK.setdefault(g,akind(t,x if fp==pid else I.text(fp,cache)[1]));kb,ko=(float(bool(qp[3] and ak[0] and ak[0]!=qp[3])),float(bool(qp[3] and ak[0]==qp[3])))
+  tm=re.match(r"(.+?) \((.+?)(?:['’]s?)? (?:song|single)\)$",t) if qp[0]==3 else None
+  for y in ss(x):
+   sw=set(toks(y));cov=(sum(W[z] for z in qw if z in sw)+0.5*sum(W[z] for z in qw if z in tw and z not in sw))/tot;FX,FW=fmatch(facts(y)+([{"r":3,"S":{"agent":[(tm.group(2),0,0)]},"c":tm.group(1),"k":"ttl"}] if tm and fp==pid else []),qp,qt,W,tw) if qp[0] else ({},{})
+   if (cov<0.3 and max([z[0] for z in FX.values()] or [0])<0.5) or (yrs and not all(z in y+" "+t for z in yrs)):continue
    yl=fold(y).lower();pos=[(m.start(),m.end(),z) for z in qw if z in sw for m in re.finditer(r"\b"+re.escape(z),yl)]
-   for v,key,a,b in gen(qt,y,q):
+   C=gen(qt,y,q);ks={c[1] for c in C}
+   for v,key,a,b in C+[(z[1],k,z[2],z[3]) for k,z in FX.items() if k not in ks]:
     ct=set(toks(v));qo=1.0 if v.isupper() and 1<len(v)<=6 and v.lower() in ini else len(ct&qa)/max(1,len(ct))
     if not ct or qo>=1.0:continue
     d=min([a-p0 if p0<a else max(0,p0-b) for p0,_,_ in pos] or [200]);lc=sum(W[z] for z in {z for p0,p1,z in pos if p1>=a-80 and p0<=b+80})/tot
-    qn2=lambda z:bool(set(toks(z))&(qc-tw));am=ASV.match(y[b:b+40]);ae=" ".join(v for v,_,_ in ents(y[b+am.end():b+am.end()+50])[:1]) if am else "";bm=BYV.search(y[max(0,a-40):a]);be=" ".join(v for v,_,_ in ents(y[max(0,a-110):a])[-1:]) if bm else "";O.append({"key":key,"v":v,"g":g,"t":t,"y":y,"r":r,"pw":sc/h[0][0],"cov":cov,"lc":lc,"d":d,"qo":qo,"rel":RL.rel(qt,y[max(0,a-100):b+100],a-max(0,a-100),b-max(0,a-100),F,qn) if F is not None else None,"pas":bool(am) and qn2(ae) and not set(toks(ae))&pt,"pasx":bool(pt and ((am and set(toks(ae))&pt) or (bm and set(toks(be))&pt))),"pby":bool(bm) and qn2(y[max(0,a-90):a]) and not (pt and set(toks(be))&pt),"ppar":y[max(0,a-2):a].strip()=="(" and qn2(y[max(0,a-50):a]),"lnk":g in lks,"lead":fp==pid})
+    qn2=lambda z:bool(set(toks(z))&(qc-tw));am=ASV.match(y[b:b+40]);ae=" ".join(v for v,_,_ in ents(y[b+am.end():b+am.end()+50])[:1]) if am else "";bm=BYV.search(y[max(0,a-40):a]);be=" ".join(v for v,_,_ in ents(y[max(0,a-110):a])[-1:]) if bm else "";O.append({"key":key,"v":t+", "+v if qt=="date" and re.fullmatch(r"\d{4}",v) and re.fullmatch(r"(?:%s) \d{1,2}"%RL.MON,t) else v,"g":g,"t":t,"y":y,"r":r,"pw":sc/h[0][0],"cov":cov,"lc":lc,"d":d,"qo":qo,"rel":RL.rel(qt,y[max(0,a-100):b+100],a-max(0,a-100),b-max(0,a-100),F,qn) if F is not None else None,"pas":bool(am) and qn2(ae) and not set(toks(ae))&pt,"pasx":bool(pt and ((am and set(toks(ae))&pt) or (bm and set(toks(be))&pt))),"pby":bool(bm) and qn2(y[max(0,a-90):a]) and not (pt and set(toks(be))&pt),"ppar":y[max(0,a-2):a].strip()=="(" and qn2(y[max(0,a-50):a]),"lnk":g in lks,"lead":fp==pid,"fx":FX[key][0] if key in FX else 0.0,"fu":-FX[key][5] if key in FX else 1.0,"fk":FX[key][4] if key in FX else "","fw":FW.get(key,0.0),"kb":kb,"ko":ko,"ay":ak[1],"sbad":float(bool(sn and not sn.search(y+" "+t)))})
+ Y=[o["ay"] for o in O if o["fx"]>=0.5 and o["ay"]];lo,hi=(min(Y),max(Y)) if Y else (0,0)
+ D=[int(o["key"]) for o in O if qt=="date" and o["fx"]>=0.5 and not o["kb"] and o["key"].isdigit()]
+ for o in O:o.update({"dmin":float(bool(D) and o["key"]==str(min(D))),"yorig":float(bool(qp[4] and lo<hi and o["ay"]==lo)),"ynew":float(bool(not qp[4] and lo<hi and o["ay"]==hi)),"yold":float(bool(not qp[4] and lo<hi and o["ay"]==lo))})
  return qt,O,P
-def feats(qt:str,O:list,T=None,n:int=10,q:str="")->list:
+def feats(qt:str,O:list,T=None,n:int=int(os.environ.get("AMNI_RKNOW_N","25")),q:str="")->list:
  C=collections.defaultdict(list)
  for o in O:C[o["key"]].append({**o,"s":o["pw"]**2*o["cov"]**2*(0.2+o["lc"])})
  for kk in sorted(C,key=len):
   sup=[j for j in C if j!=kk and set(kk.split())<set(j.split())];len(sup)==1 and C[sup[0]].extend(C.pop(kk))
- R=[]
+ R=[];qa=set(toks(q))
  for kk,o in C.items():
-  per={};[per.__setitem__(z["g"],max(per.get(z["g"],0.0),z["s"])) for z in o];f=collections.Counter(z["v"] for z in o);tf=max(f.values());v=max([z for z in f if f[z]>=max(2,tf/3)] or f,key=lambda z:(len(z),f[z]) if f[z]>=max(2,tf/3) else (f[z],len(z)));bz=max([z for z in o if z["v"]==v],key=lambda z:(bool(z.get("lnk")),bool(z.get("pas") or z.get("pby")),round(z["cov"],1),z["s"]));rl=[z["rel"] for z in o]
-  R.append({"key":kk,"v":v,"t":bz["t"],"y":bz["y"],"raw":sum(per.values()),"sup":len(per),"x":{"pw":max(z["pw"] for z in o),"r":min(z["r"] for z in o)/30,"cov":max(z["cov"] for z in o),"lc":max(z["lc"] for z in o),"d":math.log1p(min(z["d"] for z in o))/5,"sup":math.log1p(len(per)),"n":math.log1p(len(o)),"relhi":float(any(x is not None and x>=1.0 for x in rl)),"rello":float(all(x is not None and x<0.4 for x in rl)),"relna":float(rl[0] is None),"qover":min(z["qo"] for z in o),"ntok":len(kk.split())/4,"top":float(any(z["r"]==0 for z in o)),"title":float(any(AN_NORM(z["t"]).startswith(kk) for z in o)),"pas":float(any(z.get("pas") for z in o)),"pby":float(any(z.get("pby") for z in o)),"ppar":float(any(z.get("ppar") for z in o)),"pasx":float(any(z.get("pasx") for z in o)),"lnk":float(any(z.get("lnk") for z in o)),"lead":float(any(z.get("lead") for z in o)),"lnklead":float(any(z.get("lnk") and z.get("lead") for z in o)),**{"q_"+x:float(qt==x) for x in ("date","num","person","place","other")}}})
- R=sorted(R,key=lambda z:-z["raw"])[:n];tot=sum(z["raw"] for z in R) or 1.0;T=T if T is not None or qt not in ("person","place") or not R else RL._kx()[1]
+  per={};[per.__setitem__(z["g"],max(per.get(z["g"],0.0),z["s"])) for z in o];f=collections.Counter(z["v"] for z in o);f=(not kk.isdigit() and collections.Counter({z:c for z,c in f.items() if len(z.split())>1})) or f;tf=max(f.values());fv=collections.Counter(z["v"] for z in o if z["fx"]>=0.5) or f;v=max(fv,key=lambda z:(len(z),fv[z])) if kk[:1].isdigit() and RL.DATE.fullmatch(max(fv,key=len)) else max([z for z in f if f[z]>=max(2,tf/3)] or f,key=lambda z:(len(z),f[z]) if f[z]>=max(2,tf/3) else (f[z],len(z)));bz=max([z for z in o if z["v"]==v],key=lambda z:(round(z["fx"],1),bool(z.get("lnk")),len(set(toks(z["t"]))&qa),bool(z.get("pas") or z.get("pby")),round(z["cov"],1),z["s"]));rl=[z["rel"] for z in o]
+  R.append({"key":kk,"v":v,"t":bz["t"],"y":bz["y"],"raw":sum(per.values()),"sup":len(per),"x":{"pw":max(z["pw"] for z in o),"r":min(z["r"] for z in o)/30,"cov":max(z["cov"] for z in o),"lc":max(z["lc"] for z in o),"d":math.log1p(min(z["d"] for z in o))/5,"sup":math.log1p(len(per)),"n":math.log1p(len(o)),"relhi":float(any(x is not None and x>=1.0 for x in rl)),"rello":float(all(x is not None and x<0.4 for x in rl)),"relna":float(rl[0] is None),"qover":min(z["qo"] for z in o),"ntok":len(kk.split())/4,"top":float(any(z["r"]==0 for z in o)),"title":float(any(AN_NORM(z["t"]).startswith(kk) for z in o)),"pas":float(any(z.get("pas") for z in o)),"pby":float(any(z.get("pby") for z in o)),"ppar":float(any(z.get("ppar") for z in o)),"pasx":float(any(z.get("pasx") for z in o)),"lnk":float(any(z.get("lnk") for z in o)),"lead":float(any(z.get("lead") for z in o)),"lnklead":float(any(z.get("lnk") and z.get("lead") for z in o)),"fx":max(z["fx"] for z in o),"fxu":min(z["fu"] for z in o if z["fx"]==max(y["fx"] for y in o)),"fxa":float(any(z["fx"]>=0.5 and z["fu"]==0 for z in o)),"fx5":float(max(z["fx"] for z in o)>=0.6),"fxl":max(z["fx"]*z["lnk"] for z in o),"fxn":math.log1p(len({z["g"] for z in o if z["fx"]>=0.5})),"fw":max(z["fw"] for z in o),"fpar":float(any(z["fx"]>=0.5 for z in o) and all(z["fk"] in ("par","star","dat") for z in o if z["fx"]>=0.5)),**{k:float(any(z[k] and z["fx"]>=0.5 for z in o)) for k in ("kb","ko","yorig","ynew","yold","dmin")},"sbad":float(all(z["sbad"] for z in o)),**{"q_"+x:float(qt==x) for x in ("date","num","person","place","other")}}})
+ R=sorted(R,key=lambda z:-z["raw"]);R=R[:n]+[z for z in R[n:] if z["x"]["fx"]>=0.5][:5];tot=sum(z["raw"] for z in R) or 1.0;T=T if T is not None or qt not in ("person","place") or not R else RL._kx()[1]
  for i,z in enumerate(R):ty=_typeok(qt,z["v"],T);z["x"].update({"bias":1.0,"s0":math.log1p(10*z["raw"]),"share":z["raw"]/tot,"rk":1/(1+i),"tok":float(ty==0 and qt in ("person","place")),"tmiss":float(ty==1),"tbad":float(ty==2),"actqo":float(bool(ACT.search(q)) and z["x"]["qover"]>0),**occf(q,ent(z["v"],T)[0] if T is not None else None),"tchar":float(bool(T is not None and ACT.search(q) and re.search(r"(?i)character|fictional",(ent(z["v"],T)[0] or "")))),"gap":(z["raw"]-(R[1]["raw"] if i==0 and len(R)>1 else R[0]["raw"]))/max(z["raw"],1e-9)})
  return R
 def rank(qt:str,O:list,wts:dict=None,T=None,q:str="")->list:
@@ -131,17 +211,23 @@ def rank(qt:str,O:list,wts:dict=None,T=None,q:str="")->list:
  return sorted(R,key=lambda z:-z["s"])
 def candidates(q:str,k:int=None)->tuple:
  qt,O,P=occ(q,k);return qt,rank(qt,O,q=q),P
-CF=("bias","p1","gap","p2","share","sup","cov","relhi","pas","pby","tok","tmiss","lnk","lead","q_date","q_num","q_person","q_place","q_other","ncand","top","qover","s0","occ","occna","q_act","q_won")
-CWTS=dict(zip(CF,json.loads(os.environ.get("AMNI_RKNOW_CWTS","null") or "null") or (-4.1953,0.7626,0.7338,0.0288,0.6721,0.0138,0.5731,0.4748,0.4543,0.1339,0.3915,-0.3585,0.2974,0.0667,0.2401,0.0193,0.358,-0.5249,-0.1287,-0.2489,0.3105,-0.756,0.3549,0.7686,0.1,-0.1359,-0.1392)))
+CF=("bias","p1","gap","p2","share","sup","cov","relhi","pas","pby","tok","tmiss","lnk","lead","q_date","q_num","q_person","q_place","q_other","ncand","top","qover","s0","occ","occna","q_act","q_won","fx","fxa","fxu","fw","kb","ko","nfx","fxr","q_rel","sbad","vorig","pstr","rstr")
+CWTS=dict(zip(CF,json.loads(os.environ.get("AMNI_RKNOW_CWTS","null") or "null") or (-3.6662,0.3683,0.3651,0.0032,0.2542,0.2163,0.1386,0.3132,0.2674,0.1361,0.4505,-0.2512,0.2423,0.0822,0.2368,-0.0141,0.2428,-0.2956,-0.1706,0.0722,0.2527,-0.3748,0.2782,0.459,0.0569,-0.0053,-0.1548,0.3842,0.3024,-0.2298,-0.0303,0.0041,0.0145,-0.2638,0.3313,0.0243,-0.1219,-0.1215,0.2282,-0.0343)))
 def qfeat(qt:str,R:list,q:str)->dict:
- c=R[0]["x"];p2=R[1]["s"] if len(R)>1 else 0.0;return {**{k:c.get(k,0.0) for k in CF},"bias":1.0,"p1":R[0]["s"],"gap":R[0]["s"]-p2,"p2":p2,"ncand":len(R)/10,"q_act":float(bool(ACT.search(q))),"q_won":float(bool(re.search(r"(?i)\b(?:won|win|wins|winner|champion\w*)\b",q)) and not re.search(r"\b(?:1[0-9]|20)\d\d\b",q))}
+ c=R[0]["x"];p2=R[1]["s"] if len(R)>1 else 0.0;return {**{k:c.get(k,0.0) for k in CF},"bias":1.0,"p1":R[0]["s"],"gap":R[0]["s"]-p2,"p2":p2,"ncand":len(R)/10,"q_act":float(bool(ACT.search(q))),"nfx":math.log1p(sum(z["x"]["fx"]>=max(0.5,c["fx"]-0.05) for z in R[1:])),"vorig":float(c["fx"]>=0.5 and any(z["x"]["fx"]>=0.5 for z in R[1:]) and ((qparse(q)[4] and not c["yorig"]) or (bool(NEWQ.search(q)) and not c["ynew"]))),"fxr":c["fx"]-max([z["x"]["fx"] for z in R[1:]] or [0.0]),"q_rel":float(qparse(q)[0]>0),"pstr":float(qparse(q)[0]==1 and c["fx"]>=0.9 and c["fxa"]>0 and not any(z["x"]["fx"]>=0.5 for z in R[1:])),"rstr":float(qparse(q)[0]>1 and c["fx"]>=0.9 and c["fxa"]>0 and not any(z["x"]["fx"]>=0.5 for z in R[1:])),"q_won":float(bool(re.search(r"(?i)\b(?:won|win|wins|winner|champion\w*)\b",q)) and not re.search(r"\b(?:1[0-9]|20)\d\d\b",q))}
+NEWQ=re.compile(r"(?i)\b(?:the\s+new|new\s+(?:movie|film|series|show|version|season|one|remake))\b(?!\s+(?:york|zealand|jersey|orleans|england|mexico|hampshire|delhi|testament|world|deal|south|brunswick|guinea|caledonia|amsterdam|hope|kids|girl|edition))")
+def veto(e:dict,f:dict,q:str)->bool:return bool(e["x"].get("kb") or e["x"].get("sbad") or f.get("vorig") or f.get("fxr",0)<=-0.2 or (f.get("q_act") and e["x"].get("tchar")) or (qparse(q)[0]==1 and e["x"].get("fx",0)<0.8) or (qparse(q)[0]>0 and e["x"].get("fx",0)<float(os.environ.get("AMNI_RKNOW_VFX","0.5"))) or (f.get("q_person") and e["x"].get("tbad")) or (POSS.search(q) and not e["x"].get("fxa")))
 def decide(qt:str,R:list,gate:dict=GATE,q:str="")->dict:
  if not R:return None
- e=R[0];f=qfeat(qt,R,q);c=1/(1+math.exp(-sum(CWTS.get(k,0.0)*v for k,v in f.items())));ok=c>=gate["c"] and not SOFT.search(e["v"])
+ e=R[0];f=qfeat(qt,R,q);c=1/(1+math.exp(-sum(CWTS.get(k,0.0)*v for k,v in f.items())));ok=c>=gate["c"] and not SOFT.search(e["v"]) and not veto(e,f,q)
  return {"span":e["v"],"title":e["t"],"url":KR.wurl(e["t"]),"evidence":e["y"],"qtype":qt,"conf":round(c,4),"score":round(e["s"],4),"sup":e["sup"],"cov":round(e["cov"],3),"ok":ok,"license":"CC BY-SA 4.0","reply":"%s (Source: Wikipedia, %s)."%(span(qt,e["v"]),e["t"] if not SOFT.search(e["t"]) else "article")}
-def factq(q:str)->bool:
+TITQ=(re.compile(r"(?i)^\W*(?:who|what\s+\w+)\s+(?:\w+\s+){0,2}?(?:sings?|sang|sung|raps?|rapped|wrote|writes?|written|recorded|performed|made|produced|composed|scripted|said|says|did|does)\s+(?:the\s+(?:song|lyrics|theme)\s+(?:to\s+|for\s+|of\s+)?)?(?P<t>.+?)\??$"),re.compile(r"(?i)^\W*when\s+(?:did|was|were|does|is)\s+(?:the\s+(?:song|movie|film|album|show|book)\s+)?(?P<t>.+?)\s+(?:come\s+out|released|written|recorded|made|published|premiered?|air)\??$"),re.compile(r"(?i)^\W*who\s+(?:plays?|played|voices?|voiced|sings?|sang)\s+.+?\s+(?:in|on)\s+(?P<t>.+?)\??$"),re.compile(r"(?i)^\W*(?:where|what|when|who)\b.*?\b(?:term|phrase|saying|expression|quote|song|poem|book|novel|movie|film|show|series|album|hymn|slogan)\s+(?P<t>.+?)\s+(?:come\s+from|mean|originate|take\s+place|set|filmed|written|released|come\s+out)\??$"));DECLQ=re.compile(r"(?i)^\W*(?!(?:is|are|was|were|do|does|did|can|could|would|should|will|shall|have|has|had|may|might|must|am|any|anyone|anybody|anything|hi|hey|hello|so|and|but|ok|okay|lol|wow|yeah|yes|no|please|thanks|thank|i|i'm|im|we|let's|lets|why|how)\b)(?:[\w'’.,&-]+\s+){3,}[\w'’.&-]+\s*\?\s*$");PRON=re.compile(r"(?i)\b(?:i|i'm|im|me|my|mine|we|our|you|your|you're|yours|u|ur)\b|^\W*\w+(?:'s)?\s+(?:\w+\s+)?(?:he|she|him|her)\b")
+WCHAT=re.compile(r"(?i)\b(?:ever\s*\?\s*$|(?:the|a)\s+(?:funniest|coolest|nicest)\b|favou?rite\s+(?!season\b|song\b)|meaning\s+of\s+life|what\s+time\s+is\s+it|fun\s+fact|weather|tonight|what\s+happens\s+if|how\s+(?:do|can|should)\s+(?:i|you|we)|the\s+point\s+of)")
+def factq(q:str,wide:bool=False)->bool:
  from amni.compute.rchat import act
- return bool(FACTQ.search(q)) and not YOU.search(q) and not OPIN.search(q) and not RL.PERSONAL.search(q) and not TEMP.search(q) and act(q) in ("fact","other")
+ m=next((m for T in TITQ for m in [T.match(q)] if m and PRON.search(m.group("t"))),None) if wide else None;r=q[:m.start("t")]+" "+q[m.end("t"):] if m else q
+ return (bool(FACTQ.search(q)) or (wide and bool(DECLQ.search(q)))) and not (wide and (PRON.search(r) or WCHAT.search(r) or len(q.split())<4)) and not YOU.search(r) and not OPIN.search(r) and not RL.PERSONAL.search(r) and (wide or not TEMP.search(q)) and (bool(m) or act(q) in ("fact","other"))
+def askq(q:str)->bool:return (factq(q,True) or (factq(q) and not PRON.search(q))) and not TEMP.search(q)
 def ask(q:str,gate:bool=True)->dict:
- if not factq(q):return None
+ if not askq(q):return None
  qt,R,_=candidates(q);r=decide(qt,R,q=q);return r if r and (r["ok"] or not gate) else None

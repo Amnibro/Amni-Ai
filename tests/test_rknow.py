@@ -38,3 +38,30 @@ def test_fact_guard_skips_rchat(monkeypatch):
  monkeypatch.setattr(g,"_rknow",lambda m:(None,True));assert "".join(g._ray_stream("who played sax on the heat is on?"))=="I'm not sure about that one yet." and rc==[]
  monkeypatch.setattr(g,"_rknow",lambda m:(None,False));assert "".join(g._ray_stream("I started learning guitar last month."))=="chat reply" and rc==["I started learning guitar last month."]
  monkeypatch.setenv("AMNI_RKNOW_FACT_GUARD","0");monkeypatch.setattr(g,"_rknow",lambda m:(None,True));assert "".join(g._ray_stream("who played sax?"))=="chat reply"
+def test_relational_facts():
+ F=lambda y:[(f["k"],{k:[z[0] for z in v] for k,v in f["S"].items()}) for f in RK.facts(y)]
+ assert ("par",{"agent":["Tina Majorino"],"char":["Dr. Heather Brooks"]}) in F("In the season 9 premiere, interns Dr. Jo Wilson (Camilla Luddington) and Dr. Heather Brooks (Tina Majorino) are introduced.")
+ assert ("resp",{"agent":["Tina Majorino"],"char":["Heather Brooks"]}) in F("It was announced that Camilla Luddington, Gaius Charles, and Tina Majorino had been cast as Jo Wilson, Shane Ross, and Heather Brooks, respectively.")
+ assert ("as",{"agent":["Betsy Sodaro"],"char":["Dabby"]}) in F("Betsy Sodaro as Dabby")
+ assert ("loc",{"place":["Jacob K. Javits Convention Center"]}) in F("The New York Comic Con is held annually at the Jacob K. Javits Convention Center in New York City.")
+ assert any(k=="pas" and s.get("agent")==["David Swift"] for k,s in F("The Parent Trap is a 1961 American comedy film written and directed by David Swift."))
+ assert not any(k=="as" for k,_ in F("Sasha Pieterse continued to portray Alison DiLaurentis as Alison struggles."))
+def test_question_parse_and_slots():
+ qp=RK.qparse("who plays emily's father on pretty little liars?");assert qp[0]==1 and qp[1]=="agent" and qp[6]==({"emily","father"},True)
+ assert RK.qparse("who did tina majorino play in grey's anatomy?")[1]=="char" and RK.qparse("when was elegy written in a country churchyard published?")[0]==12
+ f=lambda c,d="":{"r":1,"S":{"agent":[("X",0,1)],"char":[(c,0,1)]},"c":d,"k":"as"}
+ assert RK.slot(f("Emily Fields"),"agent",{"emily","father"},True)==0.5 and RK.slot(f("Wayne Fields",", Emily's father"),"agent",{"emily","father"},True)==1.0
+ assert RK.slot(f("John Paul Getty III's mother"),"agent",{"john","paul","getty"})==0.5
+def test_wide_gate():
+ for q in ["the name given to the noble class of russia is?","who sings i'm never going to give you up?","when did if you wannabe my lover come out?","who is the current president of france?"]:assert RK.factq(q,True),q
+ for q in ["Do you have a favorite season?","what time is it?","what are we having for dinner tonight?","who is my sister's boss?","how old are you?","I started learning guitar last month."]:assert not RK.factq(q,True),q
+ assert not RK.askq("who is the current president of france?") and RK.askq("the name given to the noble class of russia is?")
+def test_scorer_normalization():
+ import importlib,sys as _s
+ _s.path.insert(0,os.path.join(_H0,"scripts"));AN=importlib.import_module("adam_nightly");D=__import__("re").compile("not sure")
+ assert AN.score_qa("Derek Jacobi (full name Sir Derek George Jacobi) (Source: Wikipedia, X).",["Sir Derek Jacobi"],D)["hit"] and AN.score_qa("1990 (Source: Wikipedia, X).",["in 1990"],D)["em"] and AN.score_qa("Zoe Saldaña.",["Zoe Saldana"],D)["em"] and AN.score_qa("Dr. Heather Brooks (Source: Wikipedia, X).",["Dr. Heather Brooks"],D)["em"]
+def test_factual_skips_guide_and_learn(monkeypatch):
+ import amni.serve.gguf_runtime as g,amni.serve.user_memory as um,amni.compute.ray_field as rf,amni.compute.ray_learn as RL
+ seen=[];monkeypatch.setattr(rf,"engine",lambda *a,**k:type("E",(),{"impl":"py","v19":True})());monkeypatch.setattr(g,"_ray_guide",lambda e,m:seen.append("guide"));monkeypatch.setattr(g,"_ray_learned",lambda m:seen.append("learned"));monkeypatch.setattr(RL,"learn",lambda *a:seen.append("learn"));monkeypatch.setattr(g,"_rchat",lambda *a,**k:seen.append("rchat") or "chat reply");monkeypatch.setattr(g,"_rknow",lambda m:(None,False));monkeypatch.setattr(um,"turn",lambda *a,**k:{"pre":"","hist":[],"reply":None,"route":True})
+ assert "".join(g._ray_stream("the name given to the noble class of russia is?"))=="I'm not sure about that one yet." and seen==[]
+ assert "".join(g._ray_stream("who is the current chief justice of the supreme court?"))=="I'm not sure about that one yet." and seen==[]
