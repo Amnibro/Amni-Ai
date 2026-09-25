@@ -90,3 +90,20 @@ def test_web_second_pass_verifies_and_stores_only_licensed(monkeypatch,tmp_path)
  monkeypatch.setattr(RK.RL,"evidence",lambda q:("person",[E("Jane Roe","https://example.com/x",3,3.0)],[],[]))
  r=RK.webx("who produced some obscure film","person",[{"v":"Jane Roe","t":"Obscure Film","y":"Produced by Jane Roe."}],base());assert r["web"]=="switch" and r["span"]=="Jane Roe" and "Source: Wikipedia, Obscure Film" in r["reply"]
  n=len(RK.learned().rows);r=RK.webx("who edited some obscure film","person",[],base());assert r["web"]=="switch" and r["license"] is None and "Source: web, example.com" in r["reply"] and len(RK.learned().rows)==n
+def test_alias_key_matches_rust_and_links():
+ assert RK.akey("The St. Charles, Missouri & Friends")=="st charles missouri friends" and RK.akey("O’Brien Café")=="obrien cafe" and RK.akey("Mount Saint Helens")=="mt st helens"
+ for t in ["The Walking Dead (TV series)","Beyoncé’s Fort Worth & Co.","A Place to Call Home"]:
+  if os.path.exists(BIN):k,h=subprocess.run([BIN,"akey",t],capture_output=True,text=True).stdout.rsplit(" ",1);assert k==RK.akey(t) and int(h)==RK.fnv(k.encode())
+ if not HAVE or not os.path.exists(os.path.join(RK.IXD,"al_h.u64")):pytest.skip("alias table missing")
+ I=RK.ix();T=lambda q:(I.search(q,5),[I.text(int(I.first[g]))[0] for g in I.lk])[1]
+ assert "The Walking Dead (TV series)" in T("when does season 8 of the walking dead end") and "St. Charles, Missouri" in T("what is the population of st charles mo")
+ assert "Come Out!" not in T("when did i can see for miles come out") and "I Can See for Miles" in T("when did i can see for miles come out")
+def test_passage_rerank_features():
+ if not HAVE or RK.PRM is None:pytest.skip("rerank model missing")
+ I=RK.ix();q="who played kevin in home alone";h=I.search(q,40);assert h and len(h)<=40 and RK.PRM["feat"]==list(RK.PRF);X=I.pfeat(q,[(1.0,p) for _,p in h]);assert X.shape==(len(h),len(RK.PRF)) and np.isfinite(X).all()
+def test_wikidata_low_tier_fallback(monkeypatch):
+ monkeypatch.setattr(RK,"candidates",lambda q:("person",[],[]));w={"answer":"Steven Spielberg","qid":189505,"conf":0.9,"source":"Wikidata Q189505 P57","temporal":False};monkeypatch.setattr(RK.WF,"ask",lambda q:dict(w))
+ r=RK.ask("who directed jaws");assert r["tier"]=="low" and r["reply"]=="My best guess is Steven Spielberg, but I'm unsure (Source: Wikidata, Q189505)." and r["license"]=="CC0 1.0" and r["span"]=="Steven Spielberg"
+ w["temporal"]=True;assert RK.ask("who directed jaws") is None
+ w.update(temporal=False,conf=RK.WF.THR-0.01);assert RK.ask("who directed jaws") is None
+ w["conf"]=0.9;monkeypatch.setenv("AMNI_RKNOW_WF","0");assert RK.ask("who directed jaws") is None

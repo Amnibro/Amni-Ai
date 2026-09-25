@@ -1,3 +1,58 @@
+## 2026-09-25 R-KNOW4: retrieval fixes (alias title linking, passage reranker, in-article pool), Wikidata low-tier fallback
+- Failure analysis, tune (400), baseline BM25 top-30 (`R@30` 70.5%, 118 misses):
+  - answer passage is in a linked or top-30 article but ranked past 30: 37 (9.3%);
+  - answer passage is in another article that covers the question well: 41 (10.3%);
+  - vocabulary gap (the best answer passage covers less than half the question's idf): 24 (6.0%);
+  - entity-linking miss: 2 by the strict test. Manual review found more, filed under the other buckets: titles that start with The/A, `st charles mo`, `bucs`, `this is us`;
+  - gold string in no passage at all: 14 (3.5%). These are mostly infobox or table facts (episode air dates, populations, top speeds) or full-name gold forms. The 2023-11 Wikipedia text drops wikitables and infoboxes (a few markdown tables remain). Bullet lists are kept and indexed.
+- `crates/adam-rknow`: `adam-rknow alias <fetch/wikipedia> <index_dir> [threads]` builds an alias table in 15 s on 4 threads (peak RSS 1.0 GB, 158 MB on disk), with 8.31M entries (`al_h/al_g/al_k/al_y/al_p`). Sources:
+  - title, and title without its parenthetical (the kind and year come from the parenthetical);
+  - comma head and US-state abbreviation (`st charles mo`);
+  - lead-sentence also-known-as, acronym, and subject.
+  - The prior is article size. `adam-rknow akey` prints the key; the Python `akey` matches it.
+- `amni/compute/rknow.py`:
+  - `link()` uses the alias table (`AMNI_RKNOW_AL`, `ALK`, `LI2`):
+    - The/A/An-prefixed titles are allowed;
+    - 2-word phrases need an idf sum ≥ 7.5 ("come out" no longer links);
+    - phrases that start with a stop word need 3+ words and a title match;
+    - kind and year come first, then the top 2 by prior.
+  - Passage reranker `rknow_prr.json` (bagged GBDT, 44 features, trained on fit+fitx 8,400 questions): adds link span, source and prior rank, doc size, and query-relative versions of bm, cov, bcov, window, bigram, answer-type distance and n-gram. It reranks BM25 top-200 plus the top 40 passages of each linked article.
+  - `ask()`: Wikidata fallback (`AMNI_RKNOW_WF`, default 1). When the R-KNOW answer is empty or low tier, `WF.ask` answers if conf ≥ `WF.THR` and the answer is not temporal. The reply is low tier, "My best guess is X, but I'm unsure (Source: Wikidata, Q…)", licensed CC0 1.0.
+  - Tested and left off:
+    - WordNet expansion (`AMNI_RKNOW_QWW`; table `rknow_wnx.json` from `rknow_tune.py wnx`): R@30 on tune fell 71.3 → 69.3;
+    - Wikidata alias linking (`AMNI_RKNOW_WFL`): neutral;
+    - passage depth K 20/50 and candidate depth N 40: flat;
+    - refit answer ranker: hold fell 22.5 → 21.25, so `rknow_rank.json` is kept.
+- `scripts/rknow_tune.py`: `pdump`/`pfit` (reranker features and fit), `wnx`.
+- Dev results, env baseline equal to R-KNOW3 → R-KNOW4 (network off, `rknow_eval --noq`):
+
+  | split | R@1 | R@5 | R@10 | R@30 | acc | acc without WF |
+  |---|---|---|---|---|---|---|
+  | tune | 21.7 → 33.5 | 46.8 → 56.5 | 56.8 → 63.7 | 70.5 → 72.5 | 25.25 → 27.50 | 26.25 |
+  | hold | 24.7 → 35.2 | 46.8 → 54.5 | 58.3 → 63.5 | 68.5 → 75.0 | 22.50 → 22.50 | 21.75 |
+  | hold2 | 20.5 → 27.0 | 47.5 → 56.8 | 56.0 → 64.7 | 70.3 → 75.0 | 20.00 → 20.25 | 20.00 |
+  | hold3 | 21.0 → 30.2 | 47.2 → 54.2 | 57.3 → 65.7 | 70.3 → 74.3 | 19.75 → 21.50 | 21.00 |
+
+  - Tier precision, final (tune/hold/hold2/hold3):
+    - high: 92/100/73/92%;
+    - medium: 50/40/43/41%;
+    - low: 16/14/11/12%.
+  - Search p95 ≤ 0.49 s and ask p95 ≤ 0.58 s. Chit-chat negatives: 0 of 204 answered.
+- Bottleneck is now extraction, not retrieval. On tune:
+  - an answer passage is in the top 30 for 72.5%;
+  - the gold is among extracted occurrences for 53.5%;
+  - it is among the top-25 candidates for 45.5%;
+  - the answer is correct for 27.5%.
+  - Common-noun answers ("salt", "morgue", "wind instrument") are never extracted, because `other`-type candidates are capitalised entities only.
+- Tests: `tests/test_rknow.py` adds alias key parity with Rust and linking, reranker feature shape, and the Wikidata fallback (tiers, temporal, threshold, env off).
+## 2026-09-25 M04 v2: Wikidata fact store as coordinate tables + GF(17) pages (replaces the 15.5 GB sqlite path)
+- `crates/adam-wikifact` (standalone crate; build with `CARGO_TARGET_DIR=crates/target`):
+  - `wf_extract` streams `wikidata-20260921-all.json.gz` (CC0, 156.2 GB) over resumable parallel range reads (mirrors your.org / umu.se / dumps.wikimedia.org), md5-checks the stream (`933a3fdb…`, matches the published sum), and keeps the English/mul label and aliases of every item, plus the claims of the 10.35M items with an enwiki sitelink: 145 kept properties (`KEEP`, no contact/PII properties such as P968/P1329) and 12 qualifier properties (`QKEEP`, including P453 character role, P580/P582/P585). Peak RSS 1.2 GB; 4,004 s.
+  - `wf_pack` turns the extract into coordinate tables (entity index, not numbers: `f_v` holds an entity index, packed date or f64 bits) and writes them as a coded GF(17) PTEX page file `facts.gf17` through `adam_gf17::write` (587 MB for 1.54 GB of tables, round-trip byte-exact, checked on every build).
+- `amni/compute/wikifact.py`: read API (`ask(q)` → dict, `answer(q)` → `(answer, conf, source)` or None), the question parser (rule table plus WordNet-expanded verb map and property noun map), entity linking by blake2b-64 alias hash (18.6M names), P453 cast/role lookups and reverse role index, and `--build` for the alias and reverse indexes and `manifest.json` (source URL, md5, license, counts). Changing values (population, office holders, CEO, …) are marked `temporal` and `answer()` declines them unless `AMNI_WIKIFACT_TEMPORAL=1`.
+- Store: `data/wikifact/v2/store/` (4.3 GB): 11.81M entities, 53.43M facts, 8.43M qualifiers. The build ran inside `systemd-run --user --scope -p MemoryMax=4G` with 3 threads.
+- Dev eval (`scripts/wikifact_eval.py`, NQ-open train splits in `data/concepts/eval/rknow/`, network off; one-look test untouched): coverage 3.8–6.5%, precision 33–62% (nightly hit scorer), wrong rate 2.5–2.75%. The M04 gate (wrong ≤2%) is **not met**. As a fallback under R-KNOW low/none tiers, it adds +0.0 to +0.75 pt accuracy and costs none.
+- Tests: `tests/test_wikifact.py` (synthetic store + full-store probes), `tests/security/test_wikifact_security.py`, 2 Rust tests.
 ## 2026-09-25 F13b: gen2 parser fixes for suite D, dlock decode flag (parser-only meets the promotion rule; dlock does not; the CTO decides)
 - Restart of F13 from `feat/f13` (diagnosis, relmine WIP, `examples/v19_facts.rs`). No retraining; all numbers use the v19j2 weights (`rayhash_v19j2_clean_chat10j_s30k`).
 - Parser (gen2 only; rules in `crates/README.md`, "F13 gen2 additions"): 4-digit birth years, birth-year nouns, `where ... born` asks the place, `has a birthday in May`; names and colours bind to relation-9 objects (`My car is called Bolt`) and object keys fold the owner; a generic like-cue question falls back to the latest like-family relation; stored names act as mentions (`Kiwi only eats seeds`); `bought X in City`; `favourite <noun>` object facts; `than anything` keeps hobbies as hobbies; colour words and inverted-question cue verbs end compound mentions; `X and Y ... the same Z` links both ways; `I work as X in City` feeds the region hop; `do all day`, `name-wise`.

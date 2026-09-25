@@ -1,6 +1,7 @@
 use memmap2::Mmap;
 use rayon::prelude::*;
 use serde_json::json;
+use regex::Regex;
 use std::{cmp::Reverse, collections::{BinaryHeap, HashMap, HashSet}, env, fs, io::{self, BufWriter, Write}, path::{Path, PathBuf}, time::Instant};
 use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 const STOP: &[&str] = &["a", "an", "the", "of", "and", "or", "in", "on", "at", "to", "for", "by", "with", "from", "as", "is", "was", "are", "were", "be", "been", "it", "its", "that", "this", "which", "who", "he", "she", "his", "her", "they", "their", "has", "had", "have", "not", "but", "also", "into", "than", "then", "there"];
@@ -127,9 +128,65 @@ fn merge(tmps: &[PathBuf], pbase: &[u64], dbase: &[u64], out: &Path) -> io::Resu
     Ok((v, nb))
 }
 fn rss() -> f64 { fs::read_to_string("/proc/self/status").unwrap_or_default().lines().find(|l| l.starts_with("VmHWM")).and_then(|l| l.split_whitespace().nth(1)).and_then(|x| x.parse::<f64>().ok()).unwrap_or(0.0) / 1048576.0 }
+const STATES: &[(&str, &str)] = &[("alabama", "al"), ("alaska", "ak"), ("arizona", "az"), ("arkansas", "ar"), ("california", "ca"), ("colorado", "co"), ("connecticut", "ct"), ("delaware", "de"), ("florida", "fl"), ("georgia", "ga"), ("hawaii", "hi"), ("idaho", "id"), ("illinois", "il"), ("indiana", "in"), ("iowa", "ia"), ("kansas", "ks"), ("kentucky", "ky"), ("louisiana", "la"), ("maine", "me"), ("maryland", "md"), ("massachusetts", "ma"), ("michigan", "mi"), ("minnesota", "mn"), ("mississippi", "ms"), ("missouri", "mo"), ("montana", "mt"), ("nebraska", "ne"), ("nevada", "nv"), ("new hampshire", "nh"), ("new jersey", "nj"), ("new mexico", "nm"), ("new york", "ny"), ("north carolina", "nc"), ("north dakota", "nd"), ("ohio", "oh"), ("oklahoma", "ok"), ("oregon", "or"), ("pennsylvania", "pa"), ("rhode island", "ri"), ("south carolina", "sc"), ("south dakota", "sd"), ("tennessee", "tn"), ("texas", "tx"), ("utah", "ut"), ("vermont", "vt"), ("virginia", "va"), ("washington", "wa"), ("west virginia", "wv"), ("wisconsin", "wi"), ("wyoming", "wy")];
+fn akey(s: &str) -> String {
+    let (mut v, mut w) = (Vec::<String>::new(), String::new());
+    for c in s.chars().filter(|c| !matches!(c, '\'' | '’' | '`')) { for d in c.nfkd().filter(|d| !is_combining_mark(*d)) { if d.is_alphanumeric() { w.extend(d.to_lowercase()); } else if !w.is_empty() { v.push(std::mem::take(&mut w)); } } }
+    if !w.is_empty() { v.push(w); }
+    let v: Vec<String> = v.into_iter().map(|t| match t.as_str() { "saint" => "st".to_string(), "mount" => "mt".to_string(), "fort" => "ft".to_string(), _ => t }).filter(|t| t != "and").collect();
+    (if v.len() > 1 && matches!(v[0].as_str(), "the" | "a" | "an") { &v[1..] } else { &v[..] }).join(" ")
+}
+fn akind(p: &str) -> u8 { let p = p.to_lowercase(); [("film", 1), ("movie", 1), ("television", 2), ("tv", 2), ("series", 2), ("sitcom", 2), ("soap", 2), ("season", 2), ("show", 2), ("song", 3), ("single", 3), ("album", 4), (" ep", 4), ("novel", 5), ("book", 5), ("game", 6)].iter().find(|(k, _)| p.contains(k) || (*k == " ep" && p == "ep")).map_or(0, |x| x.1) }
+fn ayear(p: &str) -> u16 { p.split(|c: char| !c.is_ascii_digit()).find(|x| x.len() == 4 && (x.starts_with("18") || x.starts_with("19") || x.starts_with("20"))).and_then(|x| x.parse().ok()).unwrap_or(0) }
+struct Rx { aka: Regex, acr: Regex, subj: Regex }
+fn aliases(title: &str, text: &str, rx: &Rx) -> Vec<(String, u8)> {
+    let (base, par) = title.rfind(" (").filter(|_| title.ends_with(')')).map_or((title, ""), |i| (&title[..i], &title[i + 2..title.len() - 1]));
+    let mut o = vec![(akey(title), 0u8)];
+    if !par.is_empty() { o.push((akey(base), 1)); }
+    if let Some((h, t)) = base.split_once(", ") { o.push((akey(h), 2)); let tk = akey(t); if let Some((_, ab)) = STATES.iter().find(|(n, _)| *n == tk) { o.push((format!("{} {}", akey(h), ab), 2)); } }
+    let lead: String = text.split('\n').find(|l| !l.trim().is_empty()).unwrap_or("").chars().take(600).collect();
+    for c in rx.aka.captures_iter(&lead).take(3) { let v: Vec<&str> = c[1].split_whitespace().collect(); let n = v.iter().rposition(|x| !matches!(*x, "of" | "the" | "and" | "de" | "la" | "&")).map_or(0, |i| i + 1); if n > 0 { o.push((akey(&v[..n].join(" ")), 3)); } }
+    let ini: Vec<char> = base.split_whitespace().filter(|x| !matches!(x.to_lowercase().as_str(), "of" | "the" | "and" | "for" | "in" | "on" | "a" | "an" | "de")).filter_map(|x| x.chars().next()).flat_map(|c| c.to_uppercase()).collect();
+    for c in rx.acr.captures_iter(&lead.chars().take(300).collect::<String>()) { let a: Vec<char> = c[1].chars().filter(|x| x.is_ascii_uppercase()).collect(); let mut it = ini.iter(); if a.len() >= 2 && a.first() == ini.first() && a.iter().all(|x| it.any(|y| y == x)) { o.push((akey(&c[1]), 4)); } }
+    if let Some(c) = rx.subj.captures(&lead) { let s = c[1].trim(); if !s.contains(',') && s.split_whitespace().count() <= 7 && base.split_whitespace().last().map_or(false, |l| akey(s).split(' ').any(|t| t == akey(l))) { o.push((akey(s), 5)); } }
+    let mut seen = HashSet::new();
+    o.into_iter().filter(|(k, _)| !k.is_empty() && seen.insert(k.clone())).collect()
+}
+fn alias(src: &Path, out: &Path, th: usize) -> io::Result<()> {
+    let t0 = Instant::now();
+    let rx = Rx { aka: Regex::new(r#"(?:(?i:also|commonly|better|often|formerly|originally|popularly|simply|informally|colloquially|sometimes|widely|usually|officially)\s+)?(?i:known\s+as|called|referred\s+to\s+as|abbreviated(?:\s+as|\s+to)?|shortened\s+to|nicknamed|or\s+simply)\s+(?:the\s+)?["“'‘]?([A-Z0-9][\w'’.&-]*(?:\s+(?:of|the|and|de|la|&|[A-Z0-9][\w'’.&-]*)){0,5})"#).unwrap(), acr: Regex::new(r"\(([A-Z][A-Za-z0-9&.-]{1,8})[;,)]").unwrap(), subj: Regex::new(r"^\s*(.{3,80}?)\s+(?:\(|is\s|was\s|are\s|were\s)").unwrap() };
+    let mut segs: Vec<String> = fs::read_dir(src)?.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| n.len() == 5 && n.bytes().all(|b| b.is_ascii_digit())).collect();
+    segs.sort();
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(th).build().unwrap();
+    let parts: Vec<Vec<(u64, u32, u8, u16, u32)>> = pool.install(|| segs.par_iter().enumerate().map(|(si, s)| {
+        let dir = src.join(s);
+        let (off, raw) = (npy_i64(&dir.join("off.npy")).unwrap(), npy_i64(&dir.join("raw.npy")).unwrap());
+        let blob = unsafe { Mmap::map(&fs::File::open(dir.join("blob.bin")).unwrap()).unwrap() };
+        let mut v = vec![];
+        for d in 0..raw.len() {
+            let x = zstd::bulk::decompress(&blob[off[d] as usize..off[d + 1] as usize], raw[d] as usize).unwrap();
+            let s = String::from_utf8_lossy(&x);
+            let (title, text) = s.split_once('\0').unwrap_or(("", &s));
+            let par = title.rfind(" (").filter(|_| title.ends_with(')')).map_or("", |i| &title[i + 2..title.len() - 1]);
+            let (k, y) = (akind(par), ayear(par));
+            for (a, src) in aliases(title, text, &rx) { v.push((fnv(a.as_bytes()), (si << 24 | d) as u32, src << 4 | k, y, raw[d].min(u32::MAX as i64) as u32)); }
+        }
+        eprintln!("{:.0}s alias seg {s} docs {} entries {}", t0.elapsed().as_secs_f64(), raw.len(), v.len());
+        v
+    }).collect());
+    let db: Vec<u64> = segs.iter().map(|s| npy_i64(&src.join(s).join("raw.npy")).map(|r| r.len() as u64)).collect::<io::Result<Vec<_>>>()?.iter().scan(0u64, |a, &n| { let b = *a; *a += n; Some(b) }).collect();
+    let mut all: Vec<(u64, u32, u8, u16, u32)> = parts.into_iter().flatten().map(|(h, sd, k, y, p)| (h, (db[(sd >> 24) as usize] + (sd & 0xFFFFFF) as u64) as u32, k, y, p)).collect();
+    all.sort_unstable_by(|a, b| a.0.cmp(&b.0).then(b.4.cmp(&a.4)).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
+    all.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
+    wr(&out.join("al_h.u64"), &all.iter().map(|x| x.0).collect::<Vec<_>>())?; wr(&out.join("al_g.u32"), &all.iter().map(|x| x.1).collect::<Vec<_>>())?; wr(&out.join("al_k.u8"), &all.iter().map(|x| x.2).collect::<Vec<_>>())?; wr(&out.join("al_y.u16"), &all.iter().map(|x| x.3).collect::<Vec<_>>())?; wr(&out.join("al_p.u32"), &all.iter().map(|x| x.4).collect::<Vec<_>>())?;
+    println!("{}", json!({"alias_entries": all.len(), "docs": db.last().copied().unwrap_or(0) + npy_i64(&src.join(segs.last().unwrap()).join("raw.npy"))?.len() as u64, "s": t0.elapsed().as_secs_f64(), "peak_rss_gb": rss(), "key": "akey: NFKD strip marks, drop apostrophes, lowercase alnum runs, saint->st mount->mt fort->ft, drop 'and', drop leading the/a/an; fnv1a64", "src": "0 title 1 title-no-paren 2 comma-head(+state abbr) 3 lead also-known-as 4 lead acronym 5 lead subject", "kind": "low nibble 1 film 2 tv 3 song 4 album 5 book 6 game"}));
+    Ok(())
+}
 fn main() -> io::Result<()> {
     let a: Vec<String> = env::args().skip(1).collect();
-    if a.len() < 3 || a[0] != "build" { eprintln!("adam-rknow build <fetch/wikipedia> <out_dir> [threads] [limit_segs]\nadam-rknow tok <text>"); if a.first().map(String::as_str) == Some("tok") { let st = stops(); let mut o = vec![]; tokens(&a[1..].join(" "), &mut o, &st); println!("{}", json!(o.iter().map(|x| x.to_string()).collect::<Vec<_>>())); return Ok(()); } std::process::exit(2); }
+    if a.len() >= 3 && a[0] == "alias" { return alias(Path::new(&a[1]), Path::new(&a[2]), a.get(3).and_then(|x| x.parse().ok()).unwrap_or(4usize)); }
+    if a.first().map(String::as_str) == Some("akey") { println!("{} {}", akey(&a[1..].join(" ")), fnv(akey(&a[1..].join(" ")).as_bytes())); return Ok(()); }
+    if a.len() < 3 || a[0] != "build" { eprintln!("adam-rknow build <fetch/wikipedia> <out_dir> [threads] [limit_segs]\nadam-rknow alias <fetch/wikipedia> <index_dir> [threads]\nadam-rknow tok|akey <text>"); if a.first().map(String::as_str) == Some("tok") { let st = stops(); let mut o = vec![]; tokens(&a[1..].join(" "), &mut o, &st); println!("{}", json!(o.iter().map(|x| x.to_string()).collect::<Vec<_>>())); return Ok(()); } std::process::exit(2); }
     let (src, out, th, lim) = (Path::new(&a[1]), PathBuf::from(&a[2]), a.get(3).and_then(|x| x.parse().ok()).unwrap_or(6usize), a.get(4).and_then(|x| x.parse().ok()).unwrap_or(usize::MAX));
     let t0 = Instant::now(); let st = stops();
     let mut segs: Vec<String> = fs::read_dir(src)?.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| n.len() == 5 && n.bytes().all(|b| b.is_ascii_digit())).collect();
