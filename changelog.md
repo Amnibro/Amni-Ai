@@ -1,3 +1,9 @@
+## 2026-09-25 KS2: license-clean Knowledge Store coder `ks2-clean1`
+The clean base `rayhash_clean1v2_base_v18_s100k` (with lexicon `data/clean1`) is now a registered KS coder. Results: `docs/ks/ks1_results.md` (KS2 section). Checklist: `docs/checklists/checklist_ks2_clean_coder_v1.md`. Council: `docs/guardian_councils/guardian_council_ks2_clean_coder.md`.
+- `ks_codec.py`: `CODERS` registry (`ks1-v16`, `ks2-clean1`); `KSCodec(ver=, lex=)`; the frozen identity adds `ver`, `lex` and `lex_id`; `pack_id(path, lex)` hashes the chosen lexicon (v16 id unchanged); the engine loads the codec's own lexicon; `KStore` accepts a list of codecs and routes each page by its coder record; the wrong coder or lexicon is refused.
+- `ks_ingest.py encode`: `--ver`, `--store` (any root other than `store` keeps the stage and records `stores.<root>`, resumable per shard), a fresh process per shard, rate and RSS logged. `--src` defaults to `wikipedia`; grokipedia is excluded from every clean-coder encode (CTO licensing order). `ks_eval.py`: coder versions, `pages_sha256`, `--out`, `--src wikipedia` default.
+- Held-out Wikipedia, 1,000 pages: clean 2.007 bpb code only (2.034 with the directory, 2.224 with all metadata) vs v16 2.245. xz -9e on the whole set: 2.558. 100% exact; bit-identical across two runs. Pilot re-encode of 5 shards: 2.006 / 2.025 / 2.087 bpb at 0.65 MB/s aggregate. The full `data/ks/store_clean/` re-encode was started in the background. Test `test_coder_version_guard` (suite 12/12).
+
 ## 2026-09-25 Lane M1: permanent per-user memory at the server layer (v6.21.16)
 Facts that a user states survive past the 24-turn window and across sessions. They are stored as GF(17) PTEX pages, one file per user, and replayed into the v19 working memory as synthetic turns. `crates/` is untouched. Checklist: `docs/checklists/checklist_m1_user_memory_v1.md`. Council: `docs/guardian_councils/guardian_council_m1_user_memory.md`.
 - `amni/serve/user_memory.py`:
