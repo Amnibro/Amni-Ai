@@ -1,0 +1,24 @@
+[package]
+name = "adam-wikifact"
+version = "0.2.0"
+edition = "2021"
+description = "M04 Wikidata fact store: streaming CC0 JSON dump extractor (resumable, md5-checked) and packer into coordinate tables plus coded GF(17) PTEX pages"
+[lib]
+path = "src/lib.rs"
+[[bin]]
+name = "wf_extract"
+path = "src/bin/wf_extract.rs"
+[[bin]]
+name = "wf_pack"
+path = "src/bin/wf_pack.rs"
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
+md-5 = "0.10"
+memmap2 = "0.9"
+crossbeam-channel = "0.5"
+adam-gf17 = { path = "../adam-gf17", default-features = false }
+[profile.release]
+opt-level = 3
+[workspace]
