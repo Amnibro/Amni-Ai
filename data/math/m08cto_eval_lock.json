@@ -1,0 +1,9 @@
+{
+ "splits": {
+  "data/math/gsm8k/test.jsonl": "752adc99f23132275139f1f7be57126b08735a55daf0c56859ee6df70abafbac",
+  "data/math/svamp/SVAMP.json": "5be77703a6d891ae476d7c082787ad361392aa02453b132516cdd5f4e7934e3e"
+ },
+ "splits_hash": "c96c66f5cd1dbe89c31a404c7dfd8aa4ae7ff7632fc0154a1b3e0a1725a1282c",
+ "n": 2,
+ "locked": "2026-09-25T09:54:16-0400"
+}
