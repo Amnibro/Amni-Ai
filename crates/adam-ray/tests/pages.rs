@@ -14,7 +14,7 @@ fn run(pk: &str, home: &str, d: &[u8], prompt: &str) -> (Vec<u32>, String) {
 fn gf17_pages_bit_exact() {
     let home = std::env::var("AMNI_HOME").unwrap_or_default();
     let hold = std::fs::read(format!("{home}/data/clean1/hold.bin")).unwrap_or_default();
-    let packs: Vec<String> = std::env::var("ADAM_RAY_PAGES_PACKS").unwrap_or_else(|_| "rayhash_clean1v2_base_v18_s100k,rayhash_v19e_clean_chat4e_r4_s30k,rayhash_v19d_clean_chat6c_s60k".into()).split(',').map(|p| format!("{home}/exports/gf17_continuum/{p}")).filter(|p| Path::new(&format!("{p}_sid.npy")).exists() && Path::new(&format!("{p}.gf17")).exists()).collect();
+    let packs: Vec<String> = std::env::var("ADAM_RAY_PAGES_PACKS").unwrap_or_else(|_| "rayhash_clean1v2_base_v18_s100k,rayhash_v19d_clean_chat6c_s60k,rayhash_v19f_clean_chat7e_s40k".into()).split(',').map(|p| format!("{home}/exports/gf17_continuum/{p}")).filter(|p| Path::new(&format!("{p}_sid.npy")).exists() && Path::new(&format!("{p}.gf17")).exists()).collect();
     if hold.len() < 1 << 21 || packs.is_empty() { return eprintln!("skip: set AMNI_HOME with data/clean1/hold.bin and exports/gf17_continuum/<pack>_*.npy + <pack>.gf17 (pack: target/release/examples/pages pack <prefix>)"); }
     let d = &hold[1 << 20..(1 << 20) + 2000];
     for p in &packs {

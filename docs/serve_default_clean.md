@@ -8,11 +8,11 @@ The `ray` backend (`AMNI_GEN_BACKEND=ray`) now picks the clean stack when no env
 
 | Setting | Old default | New default | Where |
 |---|---|---|---|
-| Pack (`AMNI_RAY_PACK`) | `rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz` (big2, 35% Grokipedia) | `exports/gf17_continuum/rayhash_v19e_clean_chat4e_r4_s30k_sid.npy` (`DEFAULT_PACK`) | `amni/compute/ray_field.py` |
+| Pack (`AMNI_RAY_PACK`) | `rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz` (big2, 35% Grokipedia) | `exports/gf17_continuum/rayhash_v19f_clean_chat7e_s40k_sid.npy` (`DEFAULT_PACK`, since F8; was v19e, then v19d chat6c) | `amni/compute/ray_field.py` |
 | Base / knowledge pack | none | `rayhash_clean1v2_base_v18_s100k_sid.npy` (`BASE_PACK`): KS coder `ks2-clean1`, bpb test, tile_synth naturalness scorer (`TS_NAT_PACK`), parity tests | `ray_field.py`, `ks_codec.py`, `tile_synth.py` |
 | Lexicon (`AMNI_RAY_LEX`) | `big2` | `clean1` (`DEFAULT_LEX`) | `ray_field.py` |
 | Engine (`AMNI_RAY_IMPL`) | `taichi` | `rust` (`DEFAULT_IMPL`, the `adam_ray` PyO3 module) | `ray_field.engine()` |
-| Model id (`AMNI_RAY_MODEL`) | `adam:ray-v16` | `adam:ray-v19e-clean` (`RAY_MODEL`) | `amni/serve/gguf_runtime.py`, `scripts/amni_serve.py` (`POST /models/activate`) |
+| Model id (`AMNI_RAY_MODEL`) | `adam:ray-v16` | `adam:ray-v19f-clean` (`RAY_MODEL`) | `amni/serve/gguf_runtime.py`, `scripts/amni_serve.py` (`POST /models/activate`) |
 | KS local-learn sources (`AMNI_LEARN_SRCS`) | `wikipedia,grokipedia` | `wikipedia` | `amni/compute/ray_learn.py` |
 | Answer citation | `Grokipedia` or `Wikipedia` by URL | always `Wikipedia` | `gguf_runtime._cite` |
 | `v19_rust_eval.py` / `nightly_eval.py` `LEX` | `big2` | `clean1` | scripts |
@@ -47,7 +47,7 @@ AMNI_RAY_PACK=$PWD/exports/legacy_grok/rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk
 AMNI_LEARN_SRCS=wikipedia .venv-linux/bin/python scripts/amni_serve.py
 ```
 
-Previous clean-lineage pack (v19d, same engine and lexicon): `AMNI_RAY_PACK=$PWD/exports/gf17_continuum/rayhash_v19d_clean_chat4c_s60k_sid.npy`.
+Previous clean-lineage pack (v19d chat6c, same engine and lexicon): `AMNI_RAY_PACK=$PWD/exports/gf17_continuum/rayhash_v19d_clean_chat6c_s60k_sid.npy`.
 
 Code rollback: `git revert bfa170e` (defaults) and the GROK-PURGE commit that adds this file (test and script repoints). Module rollback:
 
@@ -75,11 +75,11 @@ Moved to `exports/legacy_grok/`, names unchanged: 809 files, 57,472,750,010 byte
 
 By family: v13 12.1 GiB, v3 11.1, prune 6.0, v9 4.5, v11 3.7, v8 2.0, v16 2.0, v19d-chat4 1.7, ab 1.7, v10 1.1, tritdeq 1.0, plus smaller runs.
 
-The rayhash packs with weights that stay in `gf17_continuum` are `clean1v2_base_v18_s100k`, `v19d_clean_chat4c_s60k`, `v19e_clean_chat4e_r4_s30k` and the two `v13_big4` packs (FineWeb only). `v19d_clean_chat6c_s60k` was still training when the packs were moved.
+The rayhash packs with weights that stay in `gf17_continuum` are `clean1v2_base_v18_s100k`, `v19d_clean_chat4c_s60k`, `v19e_clean_chat4e_r4_s30k` and the two `v13_big4` packs (FineWeb only). `v19d_clean_chat6c_s60k` was still training when the packs were moved. F8 later moved `v19d_clean_chat4c_*` and `v19e_clean_chat4e_*` (npy, json, log, `.gf17`) to `exports/legacy_grok` as well (see the finding below).
 
 ### Open finding: the v19e "clean" pack is not fully clean
 
-`data/chat4c` and `data/chat4e` (the v19d-clean and v19e fine-tune corpora) put 28 MB of `data/chat2` chunks into training. `data/chat2` was built on 2026-09-23 with a 35% big2 prose mix: 10.3 MB, about 42% of which is Grokipedia. Their own prose slice is clean1: the random offset carries a 32-bit length signature. The chat2 chunks are not. In prose-probe checks, 5 of 16 chat4e probes were found only in big2 and in no clean1 byte. Estimate: about 14% of chat4e is big2 text, about 6% Grokipedia. `data/chat6c` (chat5 distractors plus clean1 prose) showed 0 of 12 big2-only probes. v19e stays the default because this mission named it. The fix is the queued chat6c retrain (CHAT6C-TRAIN / F8); swap `DEFAULT_PACK` when that pack passes eval.
+`data/chat4c` and `data/chat4e` (the v19d-clean and v19e fine-tune corpora) put 28 MB of `data/chat2` chunks into training. `data/chat2` was built on 2026-09-23 with a 35% big2 prose mix: 10.3 MB, about 42% of which is Grokipedia. Their own prose slice is clean1: the random offset carries a 32-bit length signature. The chat2 chunks are not. In prose-probe checks, 5 of 16 chat4e probes were found only in big2 and in no clean1 byte. Estimate: about 14% of chat4e is big2 text, about 6% Grokipedia. `data/chat6c` (chat5 distractors plus clean1 prose) showed 0 of 12 big2-only probes. v19e stays the default because this mission named it. The fix is the queued chat6c retrain (CHAT6C-TRAIN / F8); swap `DEFAULT_PACK` when that pack passes eval. Resolved in F8: the default is now `v19f_clean_chat7e_s40k` (warm-started from chat6c), and the chat4c/chat4e packs are in `exports/legacy_grok`.
 
 Other leftovers, reported only:
 

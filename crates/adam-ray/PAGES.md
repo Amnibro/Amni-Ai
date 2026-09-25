@@ -70,9 +70,10 @@ The evaluation text is 2,000 bytes of `data/clean1/hold.bin` at offset 1,234,567
 | pack | bpb (2,000 B) | logits FNV (512,000 f32) | batched bpb | decode |
 |---|---|---|---|---|
 | v18 `rayhash_clean1v2_base_v18_s100k` | 1.87846216514683695 both | `164a8b26e0d16c20` both | 1.79108088018359468 both | identical |
-| v19d `rayhash_v19d_clean_chat4c_s60k` | 2.16964848225962292 both | `f0143d8cdd9d0061` both | 2.05765664863378728 both | identical |
-| v19e `rayhash_v19e_clean_chat4e_r4_s30k` | 2.33756774526122468 both | `7c07e044662f9ca4` both | 2.20949163860542930 both | identical |
-| v19d `rayhash_v19d_clean_chat6c_s60k` (serve default since 3d7893e) | 2.27442265713151581 both | `e3fd3541e21f1405` both | 2.09451936920121939 both | identical |
+| v19d `rayhash_v19d_clean_chat4c_s60k` (retired to `exports/legacy_grok`, F8) | 2.16964848225962292 both | `f0143d8cdd9d0061` both | 2.05765664863378728 both | identical |
+| v19e `rayhash_v19e_clean_chat4e_r4_s30k` (retired to `exports/legacy_grok`, F8) | 2.33756774526122468 both | `7c07e044662f9ca4` both | 2.20949163860542930 both | identical |
+| v19d `rayhash_v19d_clean_chat6c_s60k` (serve default 3d7893e to F8) | 2.27442265713151581 both | `e3fd3541e21f1405` both | 2.09451936920121939 both | identical |
+| v19f `rayhash_v19f_clean_chat7e_s40k` (serve default since F8, MASKV) | 2.32975395604304225 both | `74279bd2692d8e62` both | 2.15184850423366480 both | identical |
 | v19e, GPU (RX 9060 XT, Vulkan) | 2.33756775530370398 both | `0cc4f4687384d0b7` both | 2.20949164007896037 both | identical |
 
 - Streamed budgets of 128, 64 and 48 MB are also exact (`tests/pages.rs`: 0 of 512,000 logits differ, and the decode is equal).

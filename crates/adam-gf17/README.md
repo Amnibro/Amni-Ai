@@ -119,7 +119,7 @@ This copies `adam_gf17.cpython-*.so` to the repo root, like `build_py.sh` does f
 
 ```python
 import adam_gf17
-st = adam_gf17.pack("exports/gf17_continuum/rayhash_v19d_clean_chat4c_s60k", "/path/v19d.gf17")
+st = adam_gf17.pack("exports/gf17_continuum/rayhash_v19d_clean_chat6c_s60k", "/path/v19d.gf17")
 st = adam_gf17.pack(prefix, "/path/v19d_c.gf17", tile=128)
 st = adam_gf17.Store("/path/v19d.gf17", budget_mb=256)
 arrs = adam_gf17.unpack(st)
@@ -144,7 +144,7 @@ st.tile; st.size; st.streams
 ```bash
 cd crates
 cargo test --release -j 8 -p adam-gf17
-TMPDIR=target/gf17 ADAM_GF17_PREFIX=$AMNI_HOME/exports/gf17_continuum/rayhash_v19d_clean_chat4c_s60k cargo test --release -j 8 -p adam-gf17 --test roundtrip
+TMPDIR=target/gf17 ADAM_GF17_PREFIX=$AMNI_HOME/exports/gf17_continuum/rayhash_v19d_clean_chat6c_s60k cargo test --release -j 8 -p adam-gf17 --test roundtrip
 DEST=target/py bash adam-gf17/build_py.sh && ADAM_GF17_SO_DIR=crates/target/py python crates/adam-gf17/tests/test_py.py
 cargo build --release -j 8 -p adam-gf17 --example gf17
 target/release/examples/gf17 pack    <prefix> <out.gf17> raw|ord [tile]
@@ -281,7 +281,7 @@ Every table is bit-exact under both keys, and `cos = 1.0` (f64, printed to 12 di
 | pack | raw `.npy` | `.gf17` | coarse stream (exact tables + d3) | digit-entropy bound |
 |---|---|---|---|---|
 | `rayhash_clean1v2_base_v18_s100k` (L=28) | 331,351,552 B | 662,731,019 B (2.000×) | 297,811,968 B (0.899×) | 216.7 MB (0.654×) |
-| `rayhash_v19d_clean_chat4c_s60k` (L=43) | 472,909,312 B | 945,851,819 B (2.000×) | 439,369,728 B (0.929×) | 301.5 MB (0.638×) |
+| `rayhash_v19d_clean_chat4c_s60k` (L=43, retired to `exports/legacy_grok`; `v19d_clean_chat6c_s60k` has the same shape) | 472,909,312 B | 945,851,819 B (2.000×) | 439,369,728 B (0.929×) | 301.5 MB (0.638×) |
 
 - **Why 2×.** One base-17 digit per 8-bit channel is the cost of rule 5, and the file carries 4 bytes per 16-bit word.
 - **The coarse stream** is mostly `sid`, because coordinates stay exact. The d3 planes alone are 0.25× of `sw` and `dp`.

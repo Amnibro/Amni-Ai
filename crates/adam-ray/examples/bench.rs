@@ -3,7 +3,7 @@ use std::time::Instant;
 fn main() {
     let a: Vec<String> = std::env::args().collect();
     let home = std::env::var("AMNI_HOME").unwrap_or_else(|_| ".".into());
-    let pk = format!("{home}/exports/gf17_continuum/{}", if a.get(2).map_or("v19e", |s| s) == "v18" { "rayhash_clean1v2_base_v18_s100k_sid.npy" } else { "rayhash_v19e_clean_chat4e_r4_s30k_sid.npy" });
+    let pk = format!("{home}/exports/gf17_continuum/{}", if a.get(2).map_or("v19f", |s| s) == "v18" { "rayhash_clean1v2_base_v18_s100k_sid.npy" } else { "rayhash_v19f_clean_chat7e_s40k_sid.npy" });
     let mut e = RayField::new(Some(pk), Some(format!("{home}/data/clean1/synsets.txt")), Some(format!("{home}/data/clean1/words.txt")), Some(format!("{home}/data/clean1/wordcounts.txt")), a.get(1).cloned(), Some(home));
     let t = Instant::now();
     e.load().unwrap();
