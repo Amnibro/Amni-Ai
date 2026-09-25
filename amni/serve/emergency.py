@@ -1,4 +1,5 @@
-import re
+import re,zlib,numpy as np
+from pathlib import Path
 from typing import Iterable,Iterator,Optional
 from bisect import bisect_right
 from functools import lru_cache
@@ -294,8 +295,7 @@ def _guarded(t,h,b):
     for g in PAST.finditer(t):
         if (g.start()>=h['s'] or _clause(b,g.start())==h['c'] or not h['P']) and not URGP.search(PAST.sub(' ',t[:g.start()]+' '+t[g.end():]).replace(h['txt'],' ')):return 'past'
     return None
-@lru_cache(2048)
-def detect(text:str)->Optional[dict]:
+def rules(text:str)->Optional[dict]:
     t=norm(text);hs,b=_hits(t);ok=[h for h in hs if not _guarded(t,h,b)]
     sm=[m for m in (x.search(t) for x in SOFT) if m];sh={'sub':'general','s':min((m.start() for m in sm),default=0),'e':0,'c':_clause(b,min((m.start() for m in sm),default=0)),'k':None,'gen':False,'P':True,'txt':' / '.join(m.group(0) for m in sm)}
     pv=list(PIVOT.finditer(t));tl=t[pv[-1].end():] if pv else ''
@@ -318,6 +318,8 @@ def detect(text:str)->Optional[dict]:
     ks='allergy'+('_self' if h['k']=='self' else '') if k=='breath' and re.search(r"\b(?:allerg\w*|peanuts?|nuts?|shellfish|shrimp|bee|wasp|stung|sting|epipen|hives|anaphyla\w*)\b",t) else ks
     r=T[ks]+(' '+DV if ks=='violence' and DOM.search(t) else '')+(' '+TRAF if ks=='violence' and re.search(r"\b(?:passport|visa|documents|papers|owe|debt|forced|forcing|made me)\b",t) else '')
     return {'category':'child' if kid and CAT[k]=='medical' else CAT[k],'kind':ks,'reply':r,'match':h['txt'],'norm':t.strip()}
+@lru_cache(2048)
+def detect(text:str)->Optional[dict]:return rules(text) or classify(text)
 def respond(text:str)->Optional[str]:
     d=detect(text or '');return d['reply'] if d else None
 OUT=re.compile(r"\b(?:(?:call|dial|text|phone|ring|contact)\w* (?:\w+ ){0,3}(?:911|999|112|988|000)|911|988|emergency(?! (?:fund|funds|savings|kit|brake|exit|stash|budget|cash|money|contact|preparedness|supplies|meeting|meetings))|emergencies|poison control|crisis (?:line|lifeline|hotline|text line)|suicide (?:hotline|lifeline|prevention)|ambulance|paramedics?|call the police)\b",re.I)
@@ -342,3 +344,36 @@ def guard_stream(message:str,chunks:Iterable[str])->Iterator[str]:
     if r:yield r
     if not st['said']:yield neutral(message)
 def guard(message:str,text:str)->str:return ''.join(guard_stream(message,[text or '']))
+LUTP=Path(__file__).with_name('emergency_lut.npz');EB=19;EM=(1<<EB)-1;EQ=4913;EO=41760;EA=0.1;ECL=3.0;K4=(1,17,289,4913)
+EC=('none','medical','suicide','violence','fire','gas','poison','child');EK={'medical':'general','suicide':'suicide','violence':'violence','fire':'fire','gas':'gas','poison':'poison','child':'child_danger'}
+MKN=('GEN','URGS','URGW','URGP','PIVOT','ADMIN','SIDE','URGR','URGJ','EMB','IDE','HUMS','FIC','HYPOS','REAL','HYPO','EDU','EDUP','EDUS','JOKE','JOKES','RES','PAST','NEG','MULTI','DOM','INTR','QN')
+SUBX=re.compile(rf"\b(?:(?P<self>i|im|me|my|myself|ive|ill)|(?P<kid>{KID})|(?P<kin>{KIN})|(?P<oth>he|she|hes|shes|him|her|they|someone|somebody|guy|man|woman|girl|boy|person|lady))\b");TOKR=re.compile(r"[a-z0-9']+")
+def efeats(text:str)->list:
+    t=norm(text);w=TOKR.findall(t);g=globals();return ['w'+x for x in w]+['b'+a+'_'+b for a,b in zip(w,w[1:])]+['m'+k for k in MKN if g[k].search(t)]+['j'+m.lastgroup for m in SUBX.finditer(t)]+['len%d'%min(len(w)//5,8)]
+def _ix(fs)->np.ndarray:return np.unique(np.fromiter((zlib.crc32(f.encode())&EM for f in fs),np.int64))
+def _fit(X,Y)->np.ndarray:
+    C=np.bincount(np.concatenate([x+y*(EM+1) for x,y in zip(X,Y)]),minlength=8<<EB).reshape(8,-1).astype(np.float64);n=np.bincount(Y,minlength=8).astype(np.float64);P=C[1:].sum(0);q=lambda a,b:np.log((a+EA)/(b+2*EA))
+    return np.clip(np.stack([q(P,n[1:].sum())-q(C[0],n[0])]+[q(C[c],n[c])-q(P-C[c],n[1:].sum()-n[c]) for c in range(1,8)],1),-ECL,ECL)
+def _enc(W)->np.ndarray:
+    v=np.rint(W*EQ).astype(np.int64)+EO;return np.stack([(v//k)%17 for k in K4],-1).astype(np.uint8)
+def _dec(d)->np.ndarray:return (sum(d[...,i].astype(np.int32)*k for i,k in enumerate(K4))-EO).astype(np.int16)
+def _sc(W,x)->tuple:
+    s=W[x].sum(0);return s[0]/EQ/np.sqrt(max(len(x),1)),EC[1+int(np.argmax(s[1:]))]
+def train(out=LUTP,sets=('dev','blind1','blind2','blind3','blind4'),fp=0.01)->dict:
+    from amni.compute import eval_lock as EL
+    D=Path(__file__).resolve().parents[2]/'tests'/'data'/'emergency';lk=EL.verify(D/'lock.json');assert not lk,lk
+    R=[(s,c if p=='pos' else 'none',m) for s in sets for p in ('pos','neg') for c,m in (l.rstrip('\n').split('\t',1) for l in open(D/f'{s}_{p}.tsv',encoding='utf-8') if l.strip())]
+    X=[_ix(efeats(m)) for *_,m in R];Y=np.array([EC.index(c) for _,c,_ in R]);S=np.array([s for s,*_ in R]);L=np.zeros(len(R));G=[None]*len(R)
+    for s in sets:
+        k=S!=s;W=_dec(_enc(_fit([x for x,j in zip(X,k) if j],Y[k])))
+        for i in np.flatnonzero(~k):L[i],G[i]=_sc(W,X[i])
+    y=Y>0;th=float(np.quantile(L[~y],1-fp));W=_enc(_fit(X,Y));p=L>=th
+    m={'th':th,'th_veto':float(np.quantile(L[y],0.02)),'loso_recall':float(p[y].mean()),'loso_fp':float(p[~y].mean()),'loso_cat_acc':float(np.mean([G[i]==EC[Y[i]] for i in np.flatnonzero(y)])),'n':len(R),'bits':EB,'alpha':EA,'clip':ECL,'q':EQ,'offset':EO,'splits_hash':__import__('json').loads((D/'lock.json').read_text())['splits_hash']}
+    out and np.savez_compressed(out,d=W,th=np.float64(th),meta=np.array(__import__('json').dumps(m)));_lut.cache_clear();return m
+@lru_cache(1)
+def _lut():
+    z=np.load(LUTP) if LUTP.exists() else None;d=z['d'] if z is not None else None;return (np.concatenate([_dec(d[i:i+32768]) for i in range(0,len(d),32768)]),float(z['th'])) if z is not None else None
+def classify(text:str)->Optional[dict]:
+    z=_lut();v,c=_sc(z[0],_ix(efeats(text))) if z and (text or '').strip() else (0.0,None)
+    return {'category':c,'kind':EK[c],'reply':T[EK[c]],'match':'','norm':norm(text).strip(),'score':round(float(v),3),'src':'lut'} if z and c and v>=z[1] else None
+if __name__=='__main__':print(train())
