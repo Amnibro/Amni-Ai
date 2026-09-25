@@ -1,7 +1,7 @@
 import ast,hashlib,importlib.util,json,os,random,re
 from pathlib import Path
 import numpy as np
-ROOT=Path(os.environ.get("AMNI_HOME") or Path(__file__).resolve().parents[1]);OUT=ROOT/"data"/"chat3";EVD=ROOT/"data"/"concepts"/"eval";SEED=90719;N_TRAIN=int(os.environ.get("N_TRAIN","40000"));N_HOLD=int(os.environ.get("N_HOLD","1000"));CH=65536;MIXW={"dialogues":.45,"chat2":.40,"big2":.15}
+ROOT=Path(os.environ.get("AMNI_HOME") or Path(__file__).resolve().parents[1]);OUT=ROOT/"data"/"chat3";EVD=ROOT/"data"/"concepts"/"eval";SEED=int(os.environ.get("SEED","90719"));N_TRAIN=int(os.environ.get("N_TRAIN","40000"));N_HOLD=int(os.environ.get("N_HOLD","1000"));CH=65536;MIXW={"dialogues":.45,"chat2":.40,"big2":.15}
 _sp=importlib.util.spec_from_file_location("v19_eval_sets",ROOT/"scripts"/"v19_eval_sets.py");EV=importlib.util.module_from_spec(_sp);_sp.loader.exec_module(EV)
 _dc=importlib.util.spec_from_file_location("decontam",ROOT/"amni"/"compute"/"decontam.py");DC=importlib.util.module_from_spec(_dc);_dc.loader.exec_module(DC)
 KINDS={"simple":.25,"multi":.20,"correction":.10,"pronoun":.10,"twohop":.15,"longgap":.10,"unknown":.10}
@@ -167,7 +167,7 @@ def facts(R,S,n,excl=()):
   rel=R.choice(RELW);h=pick(R,S,rel)
   fs=fs+[(h,rel)] if (h,rel) not in fs and (h,rel) not in excl else fs
  return fs
-def ask(R,h,rel):q=fm(R.choice(REL[rel]["u"+kk(h)]),{"P":h});return R.choice(QPRE)+(q if q.startswith("I ") else q[:1].lower()+q[1:]) if C4 and R.random()<.2 else q
+def ask(R,h,rel):q=fm(R.choice(REL[rel]["u"+kk(h)]),{"P":h});return R.choice(QPRE)+(q if q.startswith("I ") else q[:1].lower()+q[1:]) if C4 and R.random()<float(os.environ.get("QPRE_P",".2")) else q
 def ans(R,S,h,rel):
  v,x,old=S["ex"][(h,rel)];k=kk(h);c=ctx(h,gd(R,S,h),v,False,rel,O=old or "")
  ys=[t for t in REL[rel]["a"+k] if t.startswith("{Y")] if ECHO else []
@@ -289,7 +289,7 @@ if H9:
   o=_unit(R,S,h,rel,v,pron,old);u,a,f=o[0];u=(R.choice(SPRE)+u[:1].lower()+u[1:] if not u.startswith(("I ","I'")) else R.choice(SPRE)+u) if R.random()<.2 and not u[:1].islower() else u;u=u+" "+R.choice(SSUF) if R.random()<.08 else u
   return [(u,a,f)]+o[1:]
  def ask(R,h,rel):
-  q=_ask(R,h,rel);return q+" "+R.choice(QSUF) if R.random()<.25 else q
+  q=_ask(R,h,rel);return q+" "+R.choice(QSUF) if R.random()<float(os.environ.get("QSUF_P",".25")) else q
  RST[:]=RST+T("{C} is part of {R}.;{C} is a city in {R}.;{C} is located in {R}.;{C}, for what it's worth, is in {R}.;Heads up, {C} is in {R}.")
  SAME={"city":T("{H} lives in the same {n} as {A}.;{H} moved to the same {n} as {A}.;{H} is based in the same {n} as {A}.|city,town"),"school":T("{H} went to the same {n} as {A}.;{H} graduated from the same {n} as {A}.|school,college,university"),"job":T("{H} has the same {n} as {A}.;{H} does the same {n} as {A}.|job,occupation,profession"),"food":T("{H} has the same favourite {n} as {A}.;{G} favorite {n} is the same as {A2}.|food,dish,meal"),"color":T("{H} has the same favourite {n} as {A}.;{G} favorite {n} is the same as {A2}.|color,colour"),"like":T("{H} loves the same {n} as {A}.;{H} has the same {n} as {A}.|hobby,pastime"),"drive":T("{H} drives the same {n} as {A}.|car,model"),"birthday":T("{H} was born in the same {n} as {A}.|month"),"age":T("{H} is exactly as old as {A}.;{H} is just as old as {A}.|x"),"dislike":T("{H} hates the same {n} as {A}.|thing,stuff"),"study":T("{H} studied the same {n} as {A}.;{H} majored in the same {n} as {A}.|subject,field")}
  def k_same(R,S,D):
@@ -304,7 +304,7 @@ if H9:
    u=fm(R.choice(T("{H} lives in {C}, a {t} in {R}.;{H} lives in {C}, which is in {R}.;{H} is based in {C}, in {R}.;{H} moved to {C}, a {t} in {R}.")),c) if h!="I" else fm(R.choice(T("I live in {C}, a {t} in {R}.;I live in {C}, which is in {R}.;I'm based in {C}, in {R}.")),c)
    S["ex"][(h,"city")]=(C,"",None);S["two"]=C;return mix(R,[[(u,R.choice(GACK),[(h,"city",C),("#"+C,"region",CITY[C][0])])]],dis(R,D,*DK["twohop"])),(h,"city"),[]
   return _ktwo(R,S,D)
- OBJ.extend(w for w in NNO if w not in OBJ);KB["sameas"]=k_same;KINDS.clear();KINDS.update({"simple":.14,"multi":.13,"correction":.12,"pronoun":.09,"twohop":.10,"sameas":.09,"longgap":.10,"unknown":.23});DK["sameas"]=(0,2)
+ OBJ.extend(w for w in NNO if w not in OBJ);KB["sameas"]=k_same;KINDS.clear();KINDS.update({"simple":.14,"multi":.13,"correction":.12,"pronoun":.09,"twohop":.10,"sameas":.09,"longgap":.10,"unknown":.23});KINDS.update({k:float(v) for k,v in (x.split(":") for x in os.environ.get("KINDS_W","").split(",") if x)});DK["sameas"]=(0,2)
 def turn(u,a):return f"User: {u}\nAdam: {a}\n\n"
 def one(R,kind,D):
  S={"g":{},"ex":{},"vals":[]};body,(h,rel),iq=KB[kind](R,S,D);tu=[t for u in body for t in u];asks=[]
