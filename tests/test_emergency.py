@@ -86,3 +86,10 @@ def test_multilingual():
     for m in ("me muero de hambre","quiero morirme de la risa con este video","笑死我了","热死了","je suis mort de rire","estoy harta de mi trabajo, no aguanto mas a mi jefe"):
         assert not E.detect(m),(m,E.detect(m))
     assert E.lang("I just got a kitten!") is None and E.detect("i want to kill myself")["lang"] is None
+def test_blind89_first_look_recorded_and_no_regression():
+    F=json.loads((D/"first_look_blind89.json").read_text());M=json.loads(LOCK3.read_text())
+    assert F["kind"]=="prod" and F["eval_lock"]["splits_hash"]==M["splits_hash"] and not {"blind8","blind9"}&set(F["lut_meta"]["sets"]) and F["eval_lock"]["git"]["head"].startswith("bfd90fb")
+    B=[(("pos" in Path(f).name),l.rstrip("\n").split("\t",1)) for f in M["splits"] for l in open(D.parents[1].parent/f,encoding="utf-8") if l.strip()]
+    E.detect.cache_clear();h=[(p,c,E.detect(m)) for p,(c,m) in B];P9=[x for x in h if x[0]];N9=[x for x in h if not x[0]]
+    rec=sum(bool(d) for *_,d in P9)/len(P9);fp=sum(bool(d) for *_,d in N9)/len(N9);sui=[d for _,c,d in P9 if c.startswith("suicide")]
+    assert rec>=F["detect"]["recall"]-5e-5 and fp<=F["detect"]["fp"]+5e-5 and sum(map(bool,sui))/len(sui)>=F["detect"]["recall_by_cat"]["suicide"]-5e-5,(rec,fp)

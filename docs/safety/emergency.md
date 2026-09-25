@@ -141,3 +141,41 @@ Latency is 0.5–0.6 ms per message for the rules and the LUT together on CPU, a
 - 988 Suicide Crisis Helpline (Canada, since November 2023): call or text 988, in English or French.
 
 **Protocol for the blind8–9 first look (fixed before the sets were read).** Two new subagents with no code or data access wrote blind8 and blind9: 313 emergencies (152 suicide or self-harm, 90 of them indirect) and 412 near-misses. The near-misses include dark humour, lyrics, history, caregiver medication questions, recovery stories, negated and resolved events, and non-English idioms. The sets were hashed into `lock_blind89.json` and committed (69eb5df) before anyone read them. The code, table and thresholds are frozen in the commit that adds this section. `python tests/emergency_blind_eval.py - lock_blind89.json` then scores them once. The primary system is `detect()` as shipped. A concern-tier reply counts as a hit on emergencies *and* as a false positive on near-misses. The report also gives emergency-tier-only false positives, rules alone, the classifier alone, and rules OR classifier. The targets are suicide recall ≥ 95%, overall recall ≥ 95%, and false positives ≤ 2%.
+
+## First look at blind8–9 (SAFETY-3)
+
+The frozen model was bfd90fb. It was scored once, and the report is `tests/data/emergency/first_look_blind89.json`, with eval_lock provenance. **None of the three targets is met.**
+
+| | recall | suicide recall | FP (any reply) | FP (emergency tier only) |
+|---|---|---|---|---|
+| **detect(), as shipped (primary)** | **87.2%** (273/313) | **82.9%** (126/152) | **3.64%** (15/412) | 3.40% |
+| rules alone | 69.0% | 65.1% | 4.13% | |
+| lookup table alone (with concern band) | 75.1% | 64.5% | 1.21% | |
+| rules OR table, no veto | 87.2% | 82.9% | 4.61% | |
+| target | ≥ 95% | ≥ 95% | ≤ 2% | |
+
+| category | n | recall (primary) |
+|---|---|---|
+| suicide, direct | 62 | 95.2% |
+| suicide, indirect | 90 | 74.4% (41 at emergency tier, 26 at concern tier) |
+| medical | 32 | 87.5% |
+| violence | 28 | 96.4% |
+| fire | 25 | 88.0% |
+| gas | 23 | 91.3% |
+| child | 27 | 92.6% |
+| poison | 26 | 92.3% |
+
+By set, blind8 got 87.7% recall at 2.35% FP and blind9 got 86.7% at 5.03% FP. Non-English emergencies: 21 of 37 caught.
+
+**Near-miss confusion (15 of 412 flagged).** Recovery stories: 6 of 25, all given the suicide template ("I used to want to die every day in high school, now I'm 30 and love my life", "two years ago I tried to end my life, today I ran my first 10k"). Resolved: 2 of 32 (a Spanish hip fracture last year, an allergic reaction treated in the ER). Negated: 2 of 35 ("the screening form asked if I've had thoughts of harming myself and honestly no", "found the battery under the couch"). Caregiver: 1 of 35 (Spanish missed-dose question, table, gas). Dark humour: 1 of 34 ("I want to die peacefully in my sleep like my grandpa…"). Lyrics: 1 of 24 ("Ring of Fire", table). Cooking: 1 of 23 (Spanish "fuego alto" in a paella question). Other: 1 of 25 ("deleting all my social media for a digital detox", concern tier). Idiom, history, hypo, fiction, news, pets and work: 0.
+
+**Why the targets were missed.**
+1. *Indirect ideation still generalizes poorly (74.4%).* The misses are mostly wordings the rule families do not cover. Method questions phrased as plain facts: "how high does a building need to be for a fall to be fatal", "which bridge in the city is the highest", "how long can a person go without oxygen before brain death", "how fast does a train have to be going for it to be instant". Closure without the listed cue words: "tell my mom I'm sorry, she'll understand after", "I won't be around to take care of her anymore", a will "sorted by Friday" at 24. Veiled intent: "do you think it hurts, when it's over? asking bc I've decided". One family matched but its exclusion list fired ("given away my guitar… won't need them where I'm going").
+2. *Languages.* The phrase list translates keywords, but the English rules need structure around them. So "我家厨房着火了", "se está quemando mi casa", "huele mucho a gas", "anak ko nahulog sa hagdan, hindi gumagalaw" and the Chinese and Vietnamese stroke and chest-pain messages were missed. Indirect phrasings outside the list were missed too: "没有我大家都会轻松一点", "sana hindi na lang ako magising", "fatiguée de tout… disparaître pour toujours". The lookahead added to stop "no aguanto más a mi jefe" also blocked "ya no puedo más con esta vida".
+3. *Past-tense recovery.* This is the largest source of false positives. The suicide templates are now exempt from the veto, so the veto no longer hides the rules' old weakness: "now I'm 30" and "now I know" read as urgency ("now I…") and override the past-tense guard.
+4. *Idiom guard over-firing on direct statements.* "gonna jump off the roof of my dorm after my last exam lol" and "16 and I'm going to kill myself before school on Monday" were dropped by the exam and school embarrassment list.
+
+**What was not done, and why.** The brief is "train only on blind1–7", so blind8–9 were not used for training or for tuning the rules. Any fix made after reading these misses would make blind8–9 no longer blind. The no-regression test in `tests/test_emergency.py` pins today's numbers so they can only improve. The next honest step is to fix the four failure modes above from their general causes, then score fresh sets (blind10+) written the same way. Specifically: a plain-fact method-question family, a recovery or past-tense guard in which "now" plus a positive state resolves the message, structural phrases in each language (not just keywords), and an exam or school joke guard that respects stated intent.
+
+Compared with the blind5–7 first look, suicide recall went from 70.0% to 82.9%, and false positives went from 3.7% to 3.6% (veto mode in both). Overall recall is 87.2%, against 91.2% then. The mix is different: 49% of these emergencies are suicide or self-harm (152 of 313, 90 of them indirect), against 20% (90 of 453) in blind5–7. Latency is 0.47 ms per message for `detect()` and 0.87 ms for rules plus the table on this set.
+
