@@ -1,0 +1,12 @@
+[package]
+name = "adam-vision-py"
+version = "0.1.0"
+edition = "2021"
+description = "PyO3 bindings for adam-vision (V1 Eye)"
+[lib]
+name = "adam_vision"
+crate-type = ["cdylib"]
+[dependencies]
+vision = { package = "adam-vision", path = "../adam-vision" }
+pyo3 = { version = "0.24", features = ["extension-module"] }
+numpy = "0.24"

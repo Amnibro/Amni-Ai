@@ -1,0 +1,12 @@
+[package]
+name = "adam-vision"
+version = "0.1.0"
+edition = "2021"
+description = "Adam V1 Eye: mip pyramid, 8x8 patch-hash colour/edge/motion slot tables, connected-motion object tracker, GF(17) addresses"
+[[bin]]
+name = "eval_hold"
+path = "src/bin/eval_hold.rs"
+[dependencies]
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+npyz = { version = "0.8", features = ["npz"] }

@@ -1,10 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["adam-ray", "adam-qa", "adam-ray-py", "adam-train", "adam-gf17"]
+members = ["adam-ray", "adam-qa", "adam-ray-py", "adam-train", "adam-gf17", "adam-vision", "adam-vision-py"]
 exclude = ["amni_ai_core"]
 [workspace.dependencies]
 adam-ray = { path = "adam-ray" }
 adam-qa = { path = "adam-qa" }
+adam-vision = { path = "adam-vision" }
 [profile.release]
 opt-level = 3
 [profile.dev]
