@@ -81,3 +81,12 @@ def test_always_answer_tiers(monkeypatch):
 def test_gbdt_ranker_loaded():
  if RK.GBM is None:pytest.skip("rknow_rank.json missing")
  X=np.zeros((3,len(RK.GBM["feat"])+len(RK.GBM["rel"])));p=RK.gbp(X);assert p.shape==(3,) and np.all((p>0)&(p<1)) and RK.CWTS["bias"]==RK.GBM["cw"][0]
+def test_web_second_pass_verifies_and_stores_only_licensed(monkeypatch,tmp_path):
+ monkeypatch.setenv("AMNI_RAY_LEARNED",str(tmp_path/"l.jsonl"));monkeypatch.setattr(RK.RL,"_scrub",lambda q:q)
+ E=lambda v,u,ns=2,rs=2.0:(v.lower(),{"v":v,"ns1":ns,"rs":rs,"best":("%s did it."%v,"Page",u)})
+ base=lambda:{"span":"Steve Pink","title":"Hot Tub Time Machine","url":"u","evidence":"Directed by Steve Pink.","conf":0.4,"tier":"medium","license":"CC BY-SA 4.0","reply":"x"}
+ monkeypatch.setattr(RK.RL,"evidence",lambda q:("person",[E("Steve Pink","https://en.wikipedia.org/wiki/Steve_Pink")],[],[]))
+ r=RK.webx("who directed hot tub time machine","person",[],base());assert r["web"]=="agree" and r["tier"]=="high" and r["pre"]["tier"]=="medium" and RK.learned().find("who directed hot tub time machine")
+ monkeypatch.setattr(RK.RL,"evidence",lambda q:("person",[E("Jane Roe","https://example.com/x",3,3.0)],[],[]))
+ r=RK.webx("who produced some obscure film","person",[{"v":"Jane Roe","t":"Obscure Film","y":"Produced by Jane Roe."}],base());assert r["web"]=="switch" and r["span"]=="Jane Roe" and "Source: Wikipedia, Obscure Film" in r["reply"]
+ n=len(RK.learned().rows);r=RK.webx("who edited some obscure film","person",[],base());assert r["web"]=="switch" and r["license"] is None and "Source: web, example.com" in r["reply"] and len(RK.learned().rows)==n

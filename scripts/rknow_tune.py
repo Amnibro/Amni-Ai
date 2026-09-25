@@ -27,16 +27,17 @@ def curve(S:np.ndarray,H:np.ndarray,n:int)->list:
 def oof(Z:list,l2:float,k:int=5)->list:return [r for f in range(k) for r in qrows([z for i,z in enumerate(Z) if i%k==f],fit(*mat([z for i,z in enumerate(Z) if i%k!=f])[:2],l2))]
 def evalw(Z:list,w:np.ndarray,v:np.ndarray)->dict:
  Q=qrows(Z,w);S=np.array([1/(1+np.exp(-(a@v))) for a,_,_ in Q]);H=np.array([h for _,h,_ in Q]);return {"n":len(Z),"top1":int(H.sum()),"oracle":sum(any(c["y"] for c in z["R"]) for z in Z),"curve":curve(S,H,len(Z)),"at":{str(t):{"answered":int((S>=t).sum()),"correct":int(H[S>=t].sum()),"precision":round(float(H[S>=t].mean()),4) if (S>=t).any() else None} for t in (0.4,0.5,0.6,0.7,0.8)}}
-FX=list(RK.FEAT)+["hnv","hng","hna","gq"];REL=["s0","cov","fx","share","pw","lc","sup","n","fw","gq"]
+FX=list(RK.FEAT)+["hnv","hng","hna","gq"]+(["yr0","ymin","ymax","qf","ql"] if os.environ.get("RKNOW_YF","1")=="1" else []);REL=["s0","cov","fx","share","pw","lc","sup","n","fw","gq"]
 def gmat(Z:list,lab:str="y")->tuple:
  m={"feat":FX,"rel":REL};Q=[(i,z) for i,z in enumerate(Z) if z["R"]];return np.vstack([RK.gbx(z["R"],m) for _,z in Q]),np.array([c[lab] for _,z in Q for c in z["R"]],float),np.array([i for i,z in Q for _ in z["R"]])
-def export(h,base:dict={})->dict:
+def export(hs:list,base:dict={})->dict:
  F,T,Lf,Rt,V,ro,off,dep=[],[],[],[],[],[],0,0
- for p in h._predictors:nd=p[0].nodes;ro.append(off);F+=[-1 if lf else int(x) for x,lf in zip(nd["feature_idx"],nd["is_leaf"])];T+=nd["num_threshold"].tolist();Lf+=(nd["left"].astype(np.int64)+off).tolist();Rt+=(nd["right"].astype(np.int64)+off).tolist();V+=nd["value"].tolist();dep=max(dep,int(nd["depth"].max()));off+=len(nd)
- return {**base,"feat":FX,"rel":REL,"base":float(np.ravel(h._baseline_prediction)[0]),"f":F,"t":T,"l":Lf,"r":Rt,"v":V,"roots":ro,"depth":dep}
-def gfit(X:np.ndarray,y:np.ndarray)->dict:
+ for h in hs:
+  for p in h._predictors:nd=p[0].nodes;ro.append(off);F+=[-1 if lf else int(x) for x,lf in zip(nd["feature_idx"],nd["is_leaf"])];T+=nd["num_threshold"].tolist();Lf+=(nd["left"].astype(np.int64)+off).tolist();Rt+=(nd["right"].astype(np.int64)+off).tolist();V+=(nd["value"]/len(hs)).tolist();dep=max(dep,int(nd["depth"].max()));off+=len(nd)
+ return {**base,"feat":FX,"rel":REL,"base":float(np.mean([np.ravel(h._baseline_prediction)[0] for h in hs])),"f":F,"t":T,"l":Lf,"r":Rt,"v":V,"roots":ro,"depth":dep}
+def gfit(X:np.ndarray,y:np.ndarray,bag:int=3)->dict:
  from sklearn.ensemble import HistGradientBoostingClassifier as HG
- m=export(HG(max_iter=400,max_leaf_nodes=31,learning_rate=0.05,l2_regularization=1.0,min_samples_leaf=40,random_state=0).fit(X,y));m.update({k:np.asarray(m[k]) for k in ("f","t","l","r","v","roots")});return m
+ m=export([HG(max_iter=400,max_leaf_nodes=31,learning_rate=0.05,l2_regularization=1.0,min_samples_leaf=40,random_state=i).fit(X,y) for i in range(bag)]);m.update({k:np.asarray(m[k]) for k in ("f","t","l","r","v","roots")});return m
 def granked(Z:list,m:dict)->list:return [(z,sorted([{**c,"s":float(s)} for c,s in zip(z["R"],RK.gbp(RK.gbx(z["R"],m),m))],key=lambda c:-c["s"])) for z in Z if z["R"]]
 def tiers(Z:list,m:dict,cw:np.ndarray,c:float,c2:float,lab:str="y")->dict:
  T={"high":[0,0],"medium":[0,0],"low":[0,0]};n=len(Z)
