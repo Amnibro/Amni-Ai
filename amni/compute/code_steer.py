@@ -4,7 +4,20 @@ from pathlib import Path
 from amni.compute import tile_synth as TS,code_rank as CR,eval_lock
 ROOT=Path(__file__).resolve().parents[2];MODEL=ROOT/"data"/"code_eval"/"x11_steer.npz"
 def facts(sp):
- m=CR.memory(sp);ws=set(m.get("doc","words",[]))|set(CR.words(sp.name));return sorted({"b"}|{"w:"+TS._stem(w) for w in ws}|{f"#{x}" for w in ws for x in CR.syn(w)[:1]}|{"o:"+o for o in m.get("op","want",[])}|{f"a:{m.get(p,'type','')}" for p in sp.params}|{f"r:{m.get('ret','type','')}"}|{"y:"+t for t in m.ents("says")}|{"p:"+p for p in m.get("prop","want",[])}|{f"n:{len(sp.params)}"}|{"c:"+c for c in sp.cues})
+ m=CR.memory(sp);ws=set(m.get("doc","words",[]))|set(CR.words(sp.name));return sorted({"b"}|{"w:"+TS._stem(w) for w in ws}|{f"#{x}" for w in ws for x in CR.syn(w)[:1]}|{"o:"+o for o in m.get("op","want",[])}|{f"a:{m.get(p,'type','')}" for p in sp.params}|{f"r:{m.get('ret','type','')}"}|{"y:"+t for t in m.ents("says")}|{"p:"+p for p in m.get("prop","want",[])}|{f"n:{len(sp.params)}"}|{"c:"+c for c in sp.cues}|(iof(sp) if os.environ.get("TS_STEER_IO","1")=="1" else set()))
+def _ty(v):t=type(v).__name__;return t+("["+type(v[0]).__name__+"]" if t in ("list","tuple") and v and all(type(e) is type(v[0]) for e in v) else "")
+def _sq(a,b):it=iter(b);return all(c in it for c in a)
+def iof(sp):
+ R=[(sp.rows[r],sp.T[r]) for r in sorted(sp.T) if r<len(sp.rows)];F={f"nx:{min(len(R),4)}"}
+ if not R:return F
+ O=[o for _,o in R];F|={"ot:"+_ty(o) for o in O};F|={f"it{k}:{_ty(x)}" for a,_ in R for k,x in enumerate(a[:3])};F|={"ob:mixed"} if all(type(o) is bool for o in O) and len(set(O))>1 else set()
+ Q=lambda f:all(_safe(f,a,o) for a,o in R)
+ for k in range(min(3,len(R[0][0]))):
+  for nm,f in (("leneq",lambda a,o:hasattr(o,"__len__") and hasattr(a[k],"__len__") and len(o)==len(a[k])),("longer",lambda a,o:hasattr(o,"__len__") and hasattr(a[k],"__len__") and len(o)>len(a[k])),("shorter",lambda a,o:hasattr(o,"__len__") and hasattr(a[k],"__len__") and len(o)<len(a[k])),("substr",lambda a,o:type(o) is str and type(a[k]) is str and o in a[k]),("subseq",lambda a,o:type(o) in (str,list) and type(a[k]) is type(o) and _sq(o,a[k])),("perm",lambda a,o:type(o) in (str,list) and type(a[k]) is type(o) and sorted(map(repr,o))==sorted(map(repr,a[k]))),("srt",lambda a,o:type(o) is list and type(a[k]) is list and o==sorted(a[k])),("elem",lambda a,o:type(a[k]) in (list,str) and type(o) is not bool and o in a[k]),("chars",lambda a,o:type(o) is str and type(a[k]) is str and set(o)<=set(a[k])),("idx",lambda a,o:type(o) is int and type(o) is not bool and hasattr(a[k],"__len__") and 0<=o<len(a[k])),("lelen",lambda a,o:type(o) is int and hasattr(a[k],"__len__") and 0<=o<=len(a[k])),("same",lambda a,o:repr(o)==repr(a[k])),("inrng",lambda a,o:type(o) in (int,float) and type(a[k]) is list and a[k] and all(type(e) in (int,float) for e in a[k]) and min(a[k])<=o<=max(a[k])),("gt",lambda a,o:type(o) in (int,float) and type(a[k]) in (int,float) and o>a[k]),("lt",lambda a,o:type(o) in (int,float) and type(a[k]) in (int,float) and o<a[k]),("div",lambda a,o:type(o) is int and type(a[k]) is int and o and a[k]%o==0),("up",lambda a,o:type(o) is str and type(a[k]) is str and o.upper()==o!=o.lower()),("low",lambda a,o:type(o) is str and type(a[k]) is str and o.lower()==o!=o.upper())):F|={f"r{k}:{nm}"} if Q(f) else set()
+ ws=[w for w in CR.words(sp.desc) if w not in TS.STOP];F|={"g:"+TS._stem(a)+"_"+TS._stem(b) for a,b in zip(ws,ws[1:])};return F
+def _safe(f,a,o):
+ try:return bool(f(a,o))
+ except Exception:return False
 @functools.lru_cache(None)
 def targets():return tuple(f for f in TS.vocab() if f[0] in "cmops" or f in ("k:key","k:reverse"))
 def labels(code):

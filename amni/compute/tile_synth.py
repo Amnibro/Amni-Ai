@@ -22,7 +22,8 @@ PCFG=dict(x.split("=") for x in ("b=20,idf=1,gw=1,ga=1,gv=1,gr=1,norm=1,agg=sum,
 SKC=dict(x.split("=") for x in ("s=4,b=3,n=4,e=1,eb=1.5,en=3,k=20,"+os.environ.get("TS_SKC","")).split(",") if x)
 PBIAS=dict(x.split("=") for x in ("t=99,dn=-99,rs=0,pat=1,"+os.environ.get("TS_PB","")).split(",") if x)
 SRSS=int(os.environ.get("TS_SRSS","0"))
-X11=dict(x.split("=") for x in ("k=0,t=0,m=0,l=0,s=0,f=0,ff=0.3,fk=12,fn=2,pc=1,b=0,bi=0,bl=6,r=0,rf=0.15,rv=1,rq=0,"+os.environ.get("TS_X11","")).split(",") if x)
+X11=dict(x.split("=") for x in ("cb=0,u=0,k=0,t=0,m=0,l=0,s=0,f=0,ff=0.3,fk=12,fn=2,pc=1,b=0,bi=0,bl=6,r=0,rf=0.15,rv=1,rq=0,"+os.environ.get("TS_X11","")).split(",") if x)
+CBRX=re.compile(r"<=|>=|≤|≥|\d\s*\^\s*\d|\d\s*\*\*\s*\d|^\s*constraints?\s*:?\s*$",re.I)
 class Unsafe(Exception):pass
 class Timeout(Exception):pass
 class Stop(BaseException):pass
@@ -251,6 +252,7 @@ TILE_DEFS=[
 ("zip3","qqq","list(zip({0}, {1}, {2}))",lambda a,b,c:list(zip(a,b,c)),3,"three corresponding elementwise zip combine",""),
 ]
 PATS=(("map","single",1,"each every convert apply"),("filter","single",1,"only filter remove keep select those which contain"),("sortby","single",2,"sort sorted order according"),("sortbyr","single",3,"descending reverse"),("maxby","single",2,"max maximum largest longest most highest"),("minby","single",2,"min minimum smallest shortest least lowest"),("firstidx","single",2,"first index position find"),("dictc","single",3,"dictionary dict mapping"),("flatmap","single",2,"flatten"),("map","pair",2,"pair pairs two close closer distinct"),("map","adj",2,"consecutive adjacent monotonic neighbor next increasing decreasing"),("map","zip",2,"corresponding pairwise elementwise position both"))
+PATS=PATS+((("idxs","single",2,"indices index indexes positions where"),) if X11["t"]=="1" else ())
 FOLDS=(("_a * 10 + _x",lambda a,x:a*10+x,"0",0,"digit digits integer number convert combine join",0),("_a * 2 + _x",lambda a,x:a*2+x,"0",0,"binary bits decimal convert",0),("_a * 10 + int(_x)",lambda a,x:a*10+int(x),"0",0,"digit digits integer number convert combine join",0),("_a * 2 + int(_x)",lambda a,x:a*2+int(x),"0",0,"binary bits decimal convert",0),("_x + _a",lambda a,x:x+a,"''","","reverse reversed backward",0),("_a + _x",op.add,"",None,"sum total add",0),("_a * _x",op.mul,"",None,"product multiply",0),("max(_a, _x)",max,"",None,"max maximum largest greatest",0),("min(_a, _x)",min,"",None,"min minimum smallest least",0),("_a - _x",op.sub,"",None,"subtract difference minus",0),("_a + _x",op.add,"",None,"sum total add running cumulative balance",1),("max(_a, _x)",max,"",None,"max maximum largest greatest rolling highest",1),("min(_a, _x)",min,"",None,"min minimum smallest least lowest",1),("_a * _x",op.mul,"",None,"product multiply",1))
 DIGW="['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']"
 KWC={"vowel":["'aeiou'","'aeiouAEIOU'"],"consonant":["'aeiou'","'aeiouAEIOU'"],"digit":["'0123456789'"],"space":["' '"],"whitespace":["' '"],"comma":["','"],"alphabet":["'abcdefghijklmnopqrstuvwxyz'"],"letter":["'abcdefghijklmnopqrstuvwxyz'"],"underscore":["'_'"],"hyphen":["'-'"],"dash":["'-'"],"parenthes":["'('","')'"],"bracket":["'('","')'","'['","']'"],"pi":["math.pi"],"circle":["math.pi"],"sphere":["math.pi"],"circumference":["math.pi"],"cylinder":["math.pi"],"cone":["math.pi"],"radius":["math.pi"],"two":["2"],"three":["3"],"four":["4"],"five":["5"],"six":["6"],"seven":["7"],"eight":["8"],"nine":["9"],"ten":["10"],"hundred":["100"],"thousand":["1000"],"twice":["2"],"double":["2"],"triple":["3"],"cube":["3"],"binary":["2"],"decimal":["10"],"percent":["100"],"triangle":["3"],"triangular":["3"],"square":["4"],"pentagon":["5"],"pentagonal":["5"],"hexagon":["6"],"hexagonal":["6"],"heptagon":["7"],"octagon":["8"],"octagonal":["8"],"decagon":["10"],"none":["None"],"numeral":[DIGW],"numberal":[DIGW]}
@@ -379,7 +381,7 @@ class Spec:
    try:s.dflt[p]=ast.literal_eval(d)
    except Exception:pass
   s.doc=ast.get_docstring(f) or "";ls=s.doc.splitlines()
-  ex=re.compile(rf"\b{re.escape(s.name)}\s*\(|^\s*assert\b|>>>");s.desc=" ".join(l for k,l in enumerate(ls) if not ex.search(l) and not (k and ">>>" in ls[k-1]))
+  ex=re.compile(rf"\b{re.escape(s.name)}\s*\(|^\s*assert\b|>>>");s.dl=[l for k,l in enumerate(ls) if not ex.search(l) and not (k and ">>>" in ls[k-1])];s.desc=" ".join(s.dl)
   toks=re.findall(r"[a-z]+",(s.desc+" "+re.sub(r"([a-z])([A-Z])",r"\1 \2",s.name).replace("_"," ")).lower())
   s.words=frozenset(w for t in toks for w in (t,t[:-1] if len(t)>3 and t.endswith("s") else t,t[:-2] if len(t)>4 and t.endswith("es") else t))
   nd=[f"_x0eq(({m.group(1)}),(None))" for m in re.finditer(r"^\s*>>>\s*("+re.escape(s.name)+r"\(.*\))\s*\n(?=\s*(?:>>>|$))",s.doc+"\n",re.M)];checks=list(checks)+[c for c in nd if c not in checks]
@@ -414,7 +416,7 @@ class Spec:
   except Exception:return
  def _consts(s):
   out={}
-  req={c for w in s.words&KREQ for c in KWC[w]};lits=[m.group(0) for m in re.finditer(r"(?<![\w.])-?\d+(?:\.\d+)?(?!\w|\.\d)",s.desc)][:8]
+  req={c for w in s.words&KREQ for c in KWC[w]};lits=[m.group(0) for m in re.finditer(r"(?<![\w.])-?\d+(?:\.\d+)?(?!\w|\.\d)"," ".join(l for l in s.dl if not CBRX.search(l)) if X11["cb"]=="1" else s.desc)][:8]
   for code in lits+[repr(a or b) for a,b in re.findall(r"'([^'\n]{1,12})'|\"([^\"\n]{1,12})\"",s.desc)][:6]+[c for w in sorted(s.words) for c in KWC.get(w,())]+([DIGW] if len(s.words&set(ast.literal_eval(DIGW)))>=3 else []):
    try:v,d=_lit(code);out.setdefault(repr(v),(code,v,1,d,"#"+code if (code in lits or code in req) and code not in ("0","1") else ""))
    except Exception:pass
@@ -492,7 +494,7 @@ class Ctx:
   s.add(v+tuple(map(t.sfn,*(x.v[R0:] for x in a))),c,u,d,w,lambda:_rd(t.parts,[x.c for x in a]),cf,t.rel+sum(x.r for x in a) if s.S.bm else 0.0)
 class Search:
  def __init__(z,sp,budget=10.0,recs=(),maxctx=28,only=None):
-  z.sp,z.dl,z.n,z.hits,z.ctxs,z.iters,z.maxctx,z.tried,z.bods,z.c0=sp,time.perf_counter()+budget,0,[],[],[],maxctx,set(),set(),None
+  z.sp,z.dl,z.n,z.hits,z.ctxs,z.iters,z.maxctx,z.tried,z.bods,z.c0,z.sgs=sp,time.perf_counter()+budget,0,[],[],[],maxctx,set(),set(),None,set()
   z.rows=sp.rows+_probes(sp.rows,int(os.environ.get("TS_PROBES","6")));z.RE=len(z.rows);eg=tuple(type(a)() if type(a) in (list,str,tuple,dict) else a for a in sp.rows[0]) if sp.rows else ();z.rows+=[eg] if eg!=sp.rows[0] and repr(eg) not in {repr(r) for r in z.rows} else [];z.R0,z.R=len(sp.rows),len(z.rows)
   z.ex=sorted(sp.T);z.T=sp.T;z.full=(1<<len(z.ex))-1;z.abits=(1<<len(sp.params))-1;z.split_on=len(z.ex)>=3;W=sp.words
   lt,hs=learned_tiles(recs,W,sp);z.hsrc={**HELP,**hs};z.n_learned=len(lt);z.tiles=[t for t in sorted(library(sp)+sp.helper_tiles()+lt,key=lambda t:(-bool(t.hit),t.cost)) if only is None or t.n in only[0] or "p:"+t.n in t.dep];z.pm=sorted({m for t in z.tiles for m in t.p}|{0});z.smask=(1<<len(sp.strong))-1;z.cmask=sum(b for w,b in sp.sb.items() if w[0]=="#")
@@ -599,7 +601,7 @@ class Search:
   (z.fold(c) if not host.depth else None)
  def emit(z,host,cx,nm,Et,c):
   z.tick();xv,ev,X_,I_,xs=cx.xv,Et.v,(z.X if cx.depth==1 else z.X2),(z.I if cx.depth==1 else z.I2),cx.xs;k=Et.k;cl=cx.clause(Et.u);lam=not Et.u&(cx.lb&~cx.xbit);rv=nm=="sortbyr";mx=max if nm=="maxby" else min
-  rf,code=((lambda a,b:list(ev[a:b])),f"[{Et.c} {cl}]") if nm=="map" else ((lambda a,b:[xv[j] for j in range(a,b) if ev[j]]),f"[{X_} {cl} if {Et.c}]") if nm=="filter" and k&B else ((lambda a,b:[xv[j] for j in sorted(range(a,b),key=ev.__getitem__,reverse=rv)]),f"sorted({xs}, key=lambda {X_}: {Et.c}"+(", reverse=True)" if rv else ")")) if nm in ("sortby","sortbyr") and lam and k&(N|S_) else ((lambda a,b:xv[mx(range(a,b),key=ev.__getitem__)]),f"{nm[:3]}({xs}, key=lambda {X_}: {Et.c})") if nm in ("maxby","minby") and lam and k&(N|S_) else ((lambda a,b:next((j-a for j in range(a,b) if ev[j]),-1)),f"next(({I_} for {I_}, {X_} in enumerate({xs}) if {Et.c}), -1)") if nm=="firstidx" and k&B else ((lambda a,b:{xv[j]:ev[j] for j in range(a,b)}),"{"+f"{X_}: {Et.c} {cl}"+"}") if nm=="dictc" else ((lambda a,b:[y for j in range(a,b) for y in ev[j]]),f"[_y {cl} for _y in {Et.c}]") if nm=="flatmap" and k&X and not k&E and cx.depth==1 else (None,None)
+  rf,code=((lambda a,b:list(ev[a:b])),f"[{Et.c} {cl}]") if nm=="map" else ((lambda a,b:[xv[j] for j in range(a,b) if ev[j]]),f"[{X_} {cl} if {Et.c}]") if nm=="filter" and k&B else ((lambda a,b:[xv[j] for j in sorted(range(a,b),key=ev.__getitem__,reverse=rv)]),f"sorted({xs}, key=lambda {X_}: {Et.c}"+(", reverse=True)" if rv else ")")) if nm in ("sortby","sortbyr") and lam and k&(N|S_) else ((lambda a,b:xv[mx(range(a,b),key=ev.__getitem__)]),f"{nm[:3]}({xs}, key=lambda {X_}: {Et.c})") if nm in ("maxby","minby") and lam and k&(N|S_) else ((lambda a,b:next((j-a for j in range(a,b) if ev[j]),-1)),f"next(({I_} for {I_}, {X_} in enumerate({xs}) if {Et.c}), -1)") if nm=="firstidx" and k&B else ((lambda a,b:[j-a for j in range(a,b) if ev[j]]),f"[{I_} for {I_}, {X_} in enumerate({xs}) if {Et.c}]") if nm=="idxs" and k&B else ((lambda a,b:{xv[j]:ev[j] for j in range(a,b)}),"{"+f"{X_}: {Et.c} {cl}"+"}") if nm=="dictc" else ((lambda a,b:[y for j in range(a,b) for y in ev[j]]),f"[_y {cl} for _y in {Et.c}]") if nm=="flatmap" and k&X and not k&E and cx.depth==1 else (None,None)
   v=z.rowmap(lambda ab:rf(*ab),cx.spans,host.R0) if rf else None;v=tuple(ERR if r in cx.bad else x for r,x in enumerate(v)) if v and cx.bad else v
   (host.add(v,c,(Et.u&~cx.lb)|cx.pu,Et.d|cx.pd,Et.w|z.pw[(cx.kind,nm)],code) if v else None)
  def fold(z,c):
@@ -614,13 +616,17 @@ class Search:
    env={k:v for k,v in _load(sp,body).items() if k!="__builtins__"};env["_x0eq"]=_x0eq
    return bool(sp.used) and all(bool(timed(safe_eval,ch,env,t=2.0)) for ch in sp.used)
   except Exception:return False
+ def ucls(z,L):
+  R={}
+  for h in L:R.setdefault(repr(h[1].v[z.R0:]),[]).append(h)
+  return [min(g,key=lambda h:(h[1].s,h[0])) for g in R.values()]
  def pick(z,c,n=1):
-  out=[]
-  for e,t in sorted([h for h in z.hits if h[0]<=c],key=lambda h:(h[0],-bin(h[1].w).count("1"),h[1].s))[:30]:
-   if len(out)>=n:break
-   b=z.body(t)
-   if b in z.bods:continue
-   z.bods.add(b);(out.append((e,t,b)) if z.verify(b) else z.vfail.update(x[2:] for x in t.d if x.startswith("h:t_")))
+  out,k,u=[],0,X11["u"]=="1"
+  for e,t in (lambda L:z.ucls(L) if u else L[:30])(sorted([h for h in z.hits if h[0]<=c],key=lambda h:(h[0],-bin(h[1].w).count("1"),h[1].s))):
+   if len(out)>=n or k>=30:break
+   b=z.body(t);g=repr(t.v[z.R0:]) if u else ""
+   if b in z.bods or g in z.sgs:continue
+   k+=u;z.bods.add(b);(out.append((e,t,b)),z.sgs.add(g) if u else None) if z.verify(b) else z.vfail.update(x[2:] for x in t.d if x.startswith("h:t_"))
   z.pe=out[0][0] if out and z.pe is None else z.pe;z.hits=[h for h in z.hits if h[0]>c];return out
  def run(z,n=1):
   out=[]
@@ -745,7 +751,7 @@ def sketch(z,nbs):
 def _focus(sp,b,Sr):
  T=list(sp.fx[1]);k,n,out=int(X11["fk"]),max(1,int(X11["fn"])),[]
  for j in range(n):
-  try:S2=Search(sp,b/n,(),only=sk_only(T[:k*(j+1)]));S2.bods=Sr.bods;out+=[(e,t,bd) for e,t,bd in S2.run(max(4,TOPN//2))]
+  try:S2=Search(sp,b/n,(),only=sk_only(T[:k*(j+1)]));S2.bods,S2.sgs=Sr.bods,Sr.sgs;out+=[(e,t,bd) for e,t,bd in S2.run(max(4,TOPN//2))]
   except Exception:pass
  return out
 LOOPW=(set("until repeat repeatedly persistence steps step times iterations iterate reach reaches keep process single collatz".split()),set("sequence recursive recursion term terms series nth fibonacci tribonacci recurrence".split()))
@@ -770,7 +776,7 @@ def _recall(sp,Sr,b):
  if not _jailed():return []
  ms=__import__("amni.compute.code_steer",fromlist=["x"]).recall(sp,min(16,int(X11["r"])));nq=int(X11["rq"]);gs=list(dict.fromkeys(o for o in (sk_only(feats(m["src"])) for m in ms) if o[0] or o[1]))[:nq] if nq else [];out=[];_asguard()
  for o in gs:
-  try:S2=Search(sp,b*0.6/len(gs),(),only=o);S2.bods=Sr.bods;out+=[(e,t,bd,{"sk":1,"nb":[],"how":"memsk"}) for e,t,bd in S2.run(int(SKC["n"]))]
+  try:S2=Search(sp,b*0.6/len(gs),(),only=o);S2.bods,S2.sgs=Sr.bods,Sr.sgs;out+=[(e,t,bd,{"sk":1,"nb":[],"how":"memsk"}) for e,t,bd in S2.run(int(SKC["n"]))]
   except Exception:pass
  dl=time.perf_counter()+b*(0.4 if gs else 1)
  for m in ms:
