@@ -232,6 +232,7 @@ scripts/*
 !scripts/v19_rust_eval.py
 !scripts/x0_code_eval.py
 !scripts/v20_presubmit.py
+!scripts/adam_nightly.py
 !scripts/__init__.py
 
 # Root-level run/diagnostic output + scratch/runtime dumps (local only, never ship)
