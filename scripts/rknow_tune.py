@@ -7,11 +7,11 @@ import amni.compute.rknow as RK
 EV=ROOT/"data"/"concepts"/"eval"/"rknow"
 def has(x:str,gs:list)->bool:
  n=AN.NORM(x);return any(re.search(r"(?<!\S)"+re.escape(g)+r"(?!\S)",n) for g in gs)
-def dump(split:str,out:str,shard:str)->int:
+def dump(split:str,out:str,shard:str,noq:bool=False)->int:
  bl=AN.netguard();i,n=map(int,shard.split("/"));D=json.loads(Path(split).read_text())[i::n];T=RK.RL._kx()[1];Z=[]
  for x in D:
-  skip=not RK.askq(x["q"]);qt,O,_=RK.occ(x["q"]) if not skip else ("skip",[],[]);R=RK.feats(qt,O,T,q=x["q"]) if O else [];gs=[g for g in map(AN.NORM,x.get("answers",[])) if g]
-  Z.append({"q":x["q"],"gold":x.get("answers",[]),"qt":qt,"R":[{"v":z["v"],"sp":RK.span(qt,z["v"],T),"t":z["t"],"x":z["x"],"y":has(RK.span(qt,z["v"],T),gs),"y0":has(z["v"],gs)} for z in R]})
+  q=x["q"].rstrip("?").strip() if noq else x["q"];skip=not RK.askq(q);qt,O,_=RK.occ(q) if not skip else ("skip",[],[]);R=RK.feats(qt,O,T,q=q) if O else [];gs=[g for g in map(AN.NORM,x.get("answers",[])) if g]
+  Z.append({"q":q,"gold":x.get("answers",[]),"qt":qt,"R":[{"v":z["v"],"sp":RK.span(qt,z["v"],T),"t":z["t"],"x":z["x"],"y":has(RK.span(qt,z["v"],T),gs),"y0":has(z["v"],gs),"ya":has(RK.span(qt,z["v"],T),gs) or (qt in ("person","place","other") and any(has(a,gs) for a in RK.alias(z["v"],T)))} for z in R]})
  pickle.dump(Z,open(out,"wb"));return len(Z)
 def load(pat:str)->list:return [z for f in sorted(glob.glob(pat)) for z in pickle.load(open(f,"rb"))]
 def mat(Z:list)->tuple:
@@ -27,9 +27,31 @@ def curve(S:np.ndarray,H:np.ndarray,n:int)->list:
 def oof(Z:list,l2:float,k:int=5)->list:return [r for f in range(k) for r in qrows([z for i,z in enumerate(Z) if i%k==f],fit(*mat([z for i,z in enumerate(Z) if i%k!=f])[:2],l2))]
 def evalw(Z:list,w:np.ndarray,v:np.ndarray)->dict:
  Q=qrows(Z,w);S=np.array([1/(1+np.exp(-(a@v))) for a,_,_ in Q]);H=np.array([h for _,h,_ in Q]);return {"n":len(Z),"top1":int(H.sum()),"oracle":sum(any(c["y"] for c in z["R"]) for z in Z),"curve":curve(S,H,len(Z)),"at":{str(t):{"answered":int((S>=t).sum()),"correct":int(H[S>=t].sum()),"precision":round(float(H[S>=t].mean()),4) if (S>=t).any() else None} for t in (0.4,0.5,0.6,0.7,0.8)}}
+FX=list(RK.FEAT)+["hnv","hng","hna","gq"];REL=["s0","cov","fx","share","pw","lc","sup","n","fw","gq"]
+def gmat(Z:list,lab:str="y")->tuple:
+ m={"feat":FX,"rel":REL};Q=[(i,z) for i,z in enumerate(Z) if z["R"]];return np.vstack([RK.gbx(z["R"],m) for _,z in Q]),np.array([c[lab] for _,z in Q for c in z["R"]],float),np.array([i for i,z in Q for _ in z["R"]])
+def export(h,base:dict={})->dict:
+ F,T,Lf,Rt,V,ro,off,dep=[],[],[],[],[],[],0,0
+ for p in h._predictors:nd=p[0].nodes;ro.append(off);F+=[-1 if lf else int(x) for x,lf in zip(nd["feature_idx"],nd["is_leaf"])];T+=nd["num_threshold"].tolist();Lf+=(nd["left"].astype(np.int64)+off).tolist();Rt+=(nd["right"].astype(np.int64)+off).tolist();V+=nd["value"].tolist();dep=max(dep,int(nd["depth"].max()));off+=len(nd)
+ return {**base,"feat":FX,"rel":REL,"base":float(np.ravel(h._baseline_prediction)[0]),"f":F,"t":T,"l":Lf,"r":Rt,"v":V,"roots":ro,"depth":dep}
+def gfit(X:np.ndarray,y:np.ndarray)->dict:
+ from sklearn.ensemble import HistGradientBoostingClassifier as HG
+ m=export(HG(max_iter=400,max_leaf_nodes=31,learning_rate=0.05,l2_regularization=1.0,min_samples_leaf=40,random_state=0).fit(X,y));m.update({k:np.asarray(m[k]) for k in ("f","t","l","r","v","roots")});return m
+def granked(Z:list,m:dict)->list:return [(z,sorted([{**c,"s":float(s)} for c,s in zip(z["R"],RK.gbp(RK.gbx(z["R"],m),m))],key=lambda c:-c["s"])) for z in Z if z["R"]]
+def tiers(Z:list,m:dict,cw:np.ndarray,c:float,c2:float,lab:str="y")->dict:
+ T={"high":[0,0],"medium":[0,0],"low":[0,0]};n=len(Z)
+ for z,R in granked(Z,m):f=RK.qfeat(z["qt"],R,z["q"]);p=1/(1+np.exp(-np.dot(cw,[f[k] for k in RK.CF])));vt=RK.veto(R[0],f,z["q"]);t="high" if p>=c and not vt else "medium" if p>=c2 and not vt else "low";T[t][0]+=1;T[t][1]+=bool(R[0][lab])
+ return {"n":n,"top1":round(sum(v[1] for v in T.values())/n,4),**{k:{"n":v[0],"acc":round(v[1]/max(1,v[0]),4)} for k,v in T.items()}}
+def gbfit(tr:list,te:dict,out:str,lab:str="ya",l2c:float=1e-2,k:int=5,pr1:float=0.85,pr2:float=0.5)->dict:
+ X,y,q=gmat(tr,lab);m=gfit(X,y);Q=[i for i,z in enumerate(tr) if z["R"]];oof=[r for f in range(k) for r in granked([tr[i] for i in Q if i%k==f],gfit(*[a[np.isin(q,[i for i in Q if i%k!=f])] for a in (X,y)]))]
+ A=np.array([[RK.qfeat(z["qt"],R,z["q"])[kk] for kk in RK.CF] for z,R in oof]);H=np.array([bool(R[0]["y"]) for z,R in oof],float);V=np.array([RK.veto(R[0],RK.qfeat(z["qt"],R,z["q"]),z["q"]) for z,R in oof]);cw=fit(A,H,l2c,6000);P=1/(1+np.exp(-np.einsum("ij,j->i",A,cw)))
+ pick=lambda pr:min([t for t in np.round(np.arange(0.05,0.96,0.01),2) if (~V&(P>=t)).sum()>=20 and H[~V&(P>=t)].mean()>=pr] or [0.95]);c,c2=pick(pr1),pick(pr2)
+ r={"c":float(c),"c2":float(c2),"curve":[(float(t),int((~V&(P>=t)).sum()),round(float(H[~V&(P>=t)].mean()),4)) for t in np.round(np.arange(0.1,0.95,0.05),2) if (~V&(P>=t)).any()],"cw":[round(float(x),4) for x in cw],"lab":lab,"oof":tiers([z for z,_ in oof],m,cw,c,c2),"test":{s:tiers(Z,m,cw,c,c2) for s,Z in te.items()}}
+ out and json.dump({**{kk:(v.tolist() if isinstance(v,np.ndarray) else v) for kk,v in m.items()},**{kk:r[kk] for kk in ("c","c2","cw","lab")}},open(out,"w"),separators=(",",":"));return r
 def main():
- ap=argparse.ArgumentParser();ap.add_argument("cmd",choices=["dump","fit"]);ap.add_argument("--split");ap.add_argument("--dump");ap.add_argument("--shard",default="0/1");ap.add_argument("--train");ap.add_argument("--test");ap.add_argument("--l2",type=float,default=3e-4);ap.add_argument("--l2c",type=float,default=1e-2);ap.add_argument("--oof",type=int,default=1);ap.add_argument("--out");a=ap.parse_args()
- if a.cmd=="dump":print(json.dumps(dump(a.split,a.dump,a.shard)));return
+ ap=argparse.ArgumentParser();ap.add_argument("cmd",choices=["dump","fit","gbfit"]);ap.add_argument("--split");ap.add_argument("--dump");ap.add_argument("--shard",default="0/1");ap.add_argument("--train");ap.add_argument("--test");ap.add_argument("--l2",type=float,default=3e-4);ap.add_argument("--l2c",type=float,default=1e-2);ap.add_argument("--oof",type=int,default=1);ap.add_argument("--out");ap.add_argument("--noq",action="store_true");a=ap.parse_args()
+ if a.cmd=="dump":print(json.dumps(dump(a.split,a.dump,a.shard,a.noq)));return
+ if a.cmd=="gbfit":r=gbfit(load(a.train),{t:load(t) for t in a.test.split(",")},a.out);print(json.dumps({k:v for k,v in r.items() if k!="cw"},indent=1));return
  Ztr,Zte=load(a.train),load(a.test);X,y,_=mat(Ztr);w=fit(X,y,a.l2);Q=oof(Ztr,a.l2) if a.oof else qrows(Ztr,w);v=fit(np.array([f for f,_,_ in Q]),np.array([h for _,h,_ in Q],float),a.l2c,6000);r={"feat":RK.FEAT,"w":[round(float(x),4) for x in w],"cf":RK.CF,"v":[round(float(x),4) for x in v],"l2":a.l2,"l2c":a.l2c,"train":evalw(Ztr,w,v),"test":evalw(Zte,w,v)};a.out and json.dump(r,open(a.out,"w"),indent=1)
  print(json.dumps({k:{"n":r[k]["n"],"top1":r[k]["top1"],"oracle":r[k]["oracle"],"curve":[(c["answered"],c["precision"],c["th"]) for c in r[k]["curve"]],"at":r[k]["at"]} for k in ("train","test")}))
 if __name__=="__main__":main()

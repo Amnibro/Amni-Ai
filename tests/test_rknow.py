@@ -14,10 +14,11 @@ def test_entities_and_places():
 @pytest.mark.skipif(not HAVE,reason="index_rknow missing")
 def test_search_and_cited_answer(monkeypatch):
  monkeypatch.setattr(urllib.request,"urlopen",_nonet);I=RK.ix();h=I.search("hot tub time machine film",5);assert h and "Hot Tub Time Machine" in I.text(h[0][1])[0]
- r=RK.ask("who directed the film hot tub time machine?",gate=False);assert r and r["reply"].endswith(").") and "(Source: Wikipedia, " in r["reply"] and r["license"]=="CC BY-SA 4.0"
+ r=RK.ask("who directed the film hot tub time machine?");assert r and r["tier"]=="high" and r["reply"].endswith(").") and "(Source: Wikipedia, " in r["reply"] and r["license"]=="CC BY-SA 4.0"
 @pytest.mark.skipif(not HAVE,reason="index_rknow missing")
-def test_personal_and_temporal_declined():
- for q in ["who is my sister's boss?","what is my bank password?","who is the current president of france?"]:assert RK.ask(q) is None
+def test_personal_declined_temporal_hedged():
+ for q in ["who is my sister's boss?","what is my bank password?"]:assert RK.ask(q) is None
+ r=RK.ask("who is the current president of france?");assert r and r["tier"]!="high" and r["reply"].startswith("As of my Wikipedia snapshot") and "(Source: Wikipedia, " in r["reply"]
 def test_route_order(monkeypatch):
  import amni.serve.gguf_runtime as g,amni.serve.user_memory as um,amni.compute.ray_field as rf
  calls=[];monkeypatch.setattr(rf,"engine",lambda *a,**k:type("E",(),{"impl":"py","v19":True})());monkeypatch.setattr(g,"_ray_guide",lambda e,m:None);monkeypatch.setattr(g,"_ray_learned",lambda m:None);monkeypatch.setattr(g,"_rknow",lambda m:(calls.append(m) or {"reply":"Steve Pink (Source: Wikipedia, Hot Tub Time Machine)."},True));monkeypatch.setenv("AMNI_RAY_LEARN","0");monkeypatch.setenv("AMNI_RCHAT","0")
@@ -55,7 +56,7 @@ def test_question_parse_and_slots():
 def test_wide_gate():
  for q in ["the name given to the noble class of russia is?","who sings i'm never going to give you up?","when did if you wannabe my lover come out?","who is the current president of france?"]:assert RK.factq(q,True),q
  for q in ["Do you have a favorite season?","what time is it?","what are we having for dinner tonight?","who is my sister's boss?","how old are you?","I started learning guitar last month."]:assert not RK.factq(q,True),q
- assert not RK.askq("who is the current president of france?") and RK.askq("the name given to the noble class of russia is?")
+ assert not RK.factq("who is the current president of france?") and RK.askq("who is the current president of france?") and RK.askq("the name given to the noble class of russia is?")
 def test_scorer_normalization():
  import importlib,sys as _s
  _s.path.insert(0,os.path.join(_H0,"scripts"));AN=importlib.import_module("adam_nightly");D=__import__("re").compile("not sure")
@@ -65,3 +66,18 @@ def test_factual_skips_guide_and_learn(monkeypatch):
  seen=[];monkeypatch.setattr(rf,"engine",lambda *a,**k:type("E",(),{"impl":"py","v19":True})());monkeypatch.setattr(g,"_ray_guide",lambda e,m:seen.append("guide"));monkeypatch.setattr(g,"_ray_learned",lambda m:seen.append("learned"));monkeypatch.setattr(RL,"learn",lambda *a:seen.append("learn"));monkeypatch.setattr(g,"_rchat",lambda *a,**k:seen.append("rchat") or "chat reply");monkeypatch.setattr(g,"_rknow",lambda m:(None,False));monkeypatch.setattr(um,"turn",lambda *a,**k:{"pre":"","hist":[],"reply":None,"route":True})
  assert "".join(g._ray_stream("the name given to the noble class of russia is?"))=="I'm not sure about that one yet." and seen==[]
  assert "".join(g._ray_stream("who is the current chief justice of the supreme court?"))=="I'm not sure about that one yet." and seen==[]
+def test_statement_gate_and_chat_negatives():
+ for q in ["the name given to the noble class of russia is","largest producer of mica in the world is","voice of toph in avatar the last airbender","names of characters in back to the future","how many us aircraft carriers do we have","who sings i wanna be like you jungle book 2016","where is the continental divide on i 70","is the vena cava a vein or artery"]:assert RK.askq(q),q
+ for q in ["long day at work","that movie was amazing","the kids are driving me crazy","who made you","how old are you?","tell me a joke","what do you think about camping?","is pineapple on pizza okay","which is the best season","who do you think will win the game tonight?"]:assert not RK.askq(q),q
+ E=os.path.join(_H0,"data","concepts","eval","rknow");bad=[x["q"] for f in ("chat_neg_dev.json","chat_neg_dev2.json") if os.path.exists(os.path.join(E,f)) for x in json.load(open(os.path.join(E,f))) if RK.askq(x["q"])];assert not bad,bad
+@pytest.mark.skipif(not HAVE,reason="index_rknow missing")
+def test_always_answer_tiers(monkeypatch):
+ import re,importlib,sys as _s
+ monkeypatch.setattr(urllib.request,"urlopen",_nonet);_s.path.insert(0,os.path.join(_H0,"scripts"));DC=importlib.import_module("v19_eval_run").DECLINE
+ for q in ["who plays general gage in sons of liberty","competition commission of india comes under which ministry","when was the first harry potter movie released","who directed the film hot tub time machine"]:
+  r=RK.ask(q);assert r and r["tier"] in ("high","medium","low") and "(Source: Wikipedia, " in r["reply"] and not DC.search(r["reply"].lower()),q
+ assert RK.ask("who directed the film hot tub time machine")["tier"]=="high" and RK.ask("qwxz zzkq blorf flarn") is None
+ assert RK.alias("Peter Ostrum")>={"Peter Ostrum","Peter Gardner Ostrum"}
+def test_gbdt_ranker_loaded():
+ if RK.GBM is None:pytest.skip("rknow_rank.json missing")
+ X=np.zeros((3,len(RK.GBM["feat"])+len(RK.GBM["rel"])));p=RK.gbp(X);assert p.shape==(3,) and np.all((p>0)&(p<1)) and RK.CWTS["bias"]==RK.GBM["cw"][0]
