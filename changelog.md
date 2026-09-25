@@ -1,3 +1,41 @@
+## 2026-09-25 F11: generalization to unseen phrasing: D3/D4 suites, v19h GEN parser flag, chat9g/chat9h, v19h/v19i (gate not met, not promoted)
+- New locked suites, written by two fresh subagents that saw neither D nor D2 nor the generator:
+  - D3 (dev): `data/concepts/eval/d3/d3.jsonl`, 400 items, lock `d3_lock.json` (splits_hash 817e12c9…).
+  - D4 (held-out, never read): `data/concepts/eval/d4/d4.jsonl`, 200 items, lock `d4_lock.json` (splits_hash 525600dd…).
+  - Both use the D2 format and kinds; twohop is same-as chains plus city-to-region chains.
+  - `scripts/v19_rust_eval.py` takes `SUITES=chat3,D,D2,D3,D4`. Each Dx checks its lock against the main data root.
+- Parser flag `GEN=1` (pack json `"gen": 1`, needs `LATEST=1`). The rules are listed in `crates/README.md` under "v19h generalized relation layer".
+  - Relation table `crates/adam-ray/src/v19_rel.tsv`, built by `scripts/v19_relmine.py` from WordNet synsets plus typed-argument and pair-bootstrap mining on clean2. Lookups only.
+  - Same-as, share-with and as-old-as chains; appositive and "part of" region facts; compound and relation-word entities; question freeze after `?`; typed values and a type fallback; negation.
+  - Flag-off outputs are identical. The seven v19 probes pass, including the new `probe_gen`. v19f and v19f+latest reproduce their F10 numbers exactly with the new engine.
+- `amni/serve/user_memory.py` mirrors the GEN rules behind the pack flag (`AMNI_UMEM_GN`). It matches the Rust ring on 2,792 dialogues with the flags off, with latest only and with latest+gen. `tests/test_user_memory_gen.py` has 5 tests; `test_user_memory.py` still passes 22/22.
+- Generator `V19H=1`:
+  - paraphrases from the table;
+  - WordNet entity nouns and compound owners;
+  - WordNet value pools with a 15% held-out slice for the hold split;
+  - WordNet city-to-region pairs;
+  - same-as and appositive twohops;
+  - filler noise;
+  - unknown templates whose first sentence declines.
+  - D2/D3/D4 values are excluded, and every disjointness assert still holds.
+- Data: `data/chat9g` (36,969 dialogues after the gen-parser filter) and `data/chat9h` (seed 90821, heavier question prefixes and suffixes, unknown 28%). Decontam finds 0 concept-group units in either corpus (6 and 5 cross-boundary units against D3/D4 were cut). chat3 unit overlap is 0.63% and 0.56%; chat8e had 0.91%.
+- Training on Antman (GPU lock row registered and then removed; no other `adam-train` was running; neither run was interrupted):
+  - `rayhash_v19h_clean_chat9g_s40k`: 40k steps from v19f, 1,511 s, best val 0.2898 bpb.
+  - `rayhash_v19i_clean_chat9h_s20k`: 20k steps from v19h at LR 1.5e-3, 816 s, best val 0.2872 bpb.
+  - v19i was chosen as the candidate on D3 before anyone looked at D2 or D4.
+- Strict results (stream, maxb 240, lock, stop-sentence, rep 1). Columns: chat3 / D / D2 known-unknown-twohop / D3 known-unknown-twohop / D4 known-unknown-twohop / F7 smoke.
+
+  | model | chat3 | D | D2 k-u-t | D3 k-u-t | D4 k-u-t | F7 |
+  |---|---|---|---|---|---|---|
+  | v19f (serve) | 93.8 | 82.25 | 16.6-66.7-0 | 27.5-48.3-1.7 | 52.9-76.7-10 | 4/6 |
+  | v19f + latest | 95.9 | 90.75 | 33.1-70-0 | 43.2-53.3-8.3 | 63.6-90-13.3 | – |
+  | v19f + latest + gen (parser only) | 95.9 | 89.75 | 36.6-71.7-26 | 57.5-55-43.3 | 69.3-90-20 | – |
+  | v19h | 97.4 | 94.75 | 37.2-90-26 | 60.4-70-41.7 | 72.1-86.7-16.7 | 5/6 |
+  | v19i (candidate) | 96.0 | 93.25 | 39.0-86.7-26 | 59.3-75-40 | 69.3-86.7-16.7 | 5/6 |
+
+  - v19i chat3 by kind: simple 96.8, multi 98.5, twohop 91.3 (−2.0 vs v19f), longgap 94, unknown 98, correction 97, pronoun 95.
+- Gate: chat3 ≥ 93 and the category drops pass. D2 unknown ≥ 85 passes. D2 known ≥ 60 fails (39.0), D2 twohop ≥ 30 fails (26), D4 twohop fails (16.7), and the F7 smoke is 5/6. Not promoted; serving stays v19f.
+- D3 parser-only candidate accuracy is 66% (lt 46.5%, v19f 32.8%). The rest is phrasing the rules don't cover: hypotheticals, indirect questions ("what's parked in X's garage"), values stated before their entity, same-as chains stated before the source fact, and domain idioms ("breaks out in hives around", "swears by").
 ## 2026-09-25 R-KNOW2: relational reading of retrieved passages, calibrated confidence, factual serving path
 Adam's local Wikipedia answers now come from (entity, relation, value) facts read out of the retrieved passages, and the answer threshold is calibrated for precision.
 - `amni/compute/rknow.py`:

@@ -194,6 +194,23 @@ The signal comes from `W19` at every Adam-reply position (`qon == 1`), using the
 - Copy-lock: the entity candidate (gate 15) only locks after "your", so "I d…" is not forced into "I dog".
 - `tests/v19_probe.rs::probe_latest` checks all of the above against the same input with the flag off. `v19_fwd` reads `latest` from the pack. `examples/v19_dump` takes several `\0`-separated texts and prints one block per text.
 
+## v19h generalized relation layer
+
+`GEN=1` (trainer env, needs `LATEST=1` and `COPY=16`) switches on the v19h parser rules. The trainer writes `"gen": 1` into the pack's `.json`, and `adam_ray` reads it with `pack::pflag` next to a `"latest": 1` pack. Every rule is gated on `Geo::gn`, so v16, v18 and v19d/e/f/g packs keep their exact outputs (`probe_gen` checks the new rules against the flag-off parser; the other probes are unchanged).
+
+- Relation table `src/v19_rel.tsv`, built by `scripts/v19_relmine.py` and compiled into `Lx19` with `include_str!`. Lookups only, no matmul:
+  - relation verbs, nouns and adjectives from WordNet synsets (for example reside/dwell/inhabit, adore/cherish/relish, despise/loathe/abhor/resent, enroll/matriculate, dub/christen, occupation/profession/vocation, pastime/avocation, cuisine/snack/treat, shade/tint/hue), plus patterns mined from clean2 by typed-argument counting and argument-pair bootstrapping (for example "lived in", "resides in", "worked as", "was employed as", "studied", "majored in");
+  - bigram keys (`hash(prev) * 0x9E3779B1 ^ hash(word)`), so "can't stand" is the negated tolerate synset and becomes dislike (rid 102 only fires after a negation);
+  - value types (colour, food, occupation, activity, discipline) from WordNet hyponym closures, a verb class, person/animal/artifact nouns, measure nouns and adverbs.
+  - Table words never override a word that the base lexicon already knows; new relation nouns only act as relation nouns after a possessive, "favourite", "what/which" or "same", and table verbs inside an open value stay part of the value.
+- Entities: a relation word right after "my/your/his/her/their/'s" is deferred for one word, so "my study buddy" and "my business partner" are compound entities while "my job is" keeps the relation. Possessive chains keep hashing through "'s" ("my sister's husband" is its own entity), and a second noun after a head extends the compound only when the words are adjacent.
+- Values: a clause with no relation gets one from its value's type; "born in <place>" becomes a place fact; a capitalized or numeric value stops at the next lowercase word, adverb or "but/although/…"; "a plate of X" keeps X; a number drops a pending pre-value word; age and month values keep only the typed tail.
+- Chains: "the same <noun> as <entity>", "shares a <noun> with <entity>" and "as old as <entity>" commit the other entity's latest value for that relation. "X, a city in Y", "X, which is in Y", "X, in Y" and "X is part of Y" add the region fact that the hop candidates use. A relative "which/who" after a comma no longer marks the clause as a question.
+- Questions: once a `?` is seen, later sentences in the turn ("I forget.", "Just checking.") cannot change the question entity or relation. "where … go" keeps the place relation. With no candidate of the asked relation, a stored fact whose value type equals the asked relation is used.
+- Negation: "not/never/n't" before a like or food relation stores a dislike; other negated statements (except allergies) are not committed.
+
+`amni/serve/user_memory.py` mirrors all of this behind the serving pack's `"gen": 1` flag (`AMNI_UMEM_GN` overrides); its facts match the Rust ring on D3, chat3, the chat8e hold and suite D with the flags off, with `LATEST` only and with `LATEST` + `GEN`.
+
 ## Trainer (R2): `adam-train`
 
 `adam-train` replaces `scripts/ray_hash_field_ti_v16.py`, `ray_hash_field_ti_v18.py` and the v19c working-memory trainer (`ray_hash_field_ti_v19.py`, parser-fix revision). It reads the same environment, samples the same batches (numpy PCG64), and writes the same `exports/gf17_continuum/rayhash_<TAG>{.json,_dp.npy,_sid.npy,_sw.npy,_bias.npy}`. Those files load in `adam_ray`, in the Taichi `RayField`, and in the Taichi trainers (`PAGES=`).

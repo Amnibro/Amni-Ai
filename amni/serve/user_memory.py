@@ -20,6 +20,24 @@ def _put(w:str,bit:int,r:int=0):
 [_put(w,b,r) for d,b in (("color:10 colors:10 colour:10 food:11 meal:11 hobby:7 hobbies:7 job:5 jobs:5 car:9 cars:9 ride:9 allergy:8 allergies:8 birthday:15 born:15 month:15 age:14 name:6 school:13 college:13 university:13 degree:12 city:4 town:4 apartment:4 anything:11 everything:11 trade:5",256),("live:4 lives:4 lived:4 living:4 based:4 base:4 moved:4 move:4 moving:4 work:5 works:5 worked:5 working:5 allergic:8 react:8 reacts:8 reacted:8 major:12 majored:12 graduate:13 graduated:13 turned:14 turn:14 went:13 go:13 goes:13 going:13",512),("like:7 likes:7 liked:7 love:7 loves:7 loved:7 drive:9 drives:9 drove:9 driving:9 eat:11 eats:11 eating:11 order:11 orders:11 ordered:11 studied:12 study:12 studying:12 bought:9 buy:9 pick:7 picks:7 into:7",1024)) for w,r in (x.split(':') for x in d.split()) for r in [int(r)]]
 [GX.setdefault(i,(int(b),int(r))) for w,b,r in [x.split(':') for x in "employed:512:5 lands:512:15 passionate:1024:7 alma:256:13 profession:256:5 professions:256:5 occupation:256:5 career:256:5 shade:256:10 hue:256:10 birth:256:15 located:512:4 reside:512:4 resides:512:4 enjoy:1024:7 enjoys:1024:7 enjoyed:1024:7 hate:1024:2 hates:1024:2 hated:1024:2 dislike:1024:2 dislikes:1024:2 detest:1024:2 detests:1024:2 loathe:1024:2 loathes:1024:2".split()]+[(c,2048,10) for c in "red orange yellow green blue purple pink brown black white gray grey silver gold golden beige teal navy maroon violet scarlet crimson indigo turquoise magenta lavender burgundy charcoal cerulean chartreuse cobalt emerald fuchsia ivory khaki lilac mauve ochre periwinkle sapphire sepia taupe terracotta ultramarine vermilion aquamarine azure bronze copper cyan mahogany chestnut gunmetal pewter platinum amethyst goldenrod seafoam aqua celadon puce umber russet cornflower heliotrope".split()] for i in _both(w)]
 H_FAMILY,H_RELATIVES,H_FOLKS=(bh(w.encode()) for w in ('family','relatives','folks'))
+BSAME,BQDONE,BSHR=1<<23,1<<25,1<<26;BKEEP|=BQDONE;GK=0x9E3779B1
+H_SAME,H_THE,H_WHAT,H_WHICH,H_NEVER,H_NOTHING,H_OLD,H_AS,H_WITH,H_PART,H_OF,H_ON,H_NOT2,H_GO2,H_GOES2,H_WENT2,H_GOING2=(bh(w.encode()) for w in 'same the what which never nothing old as with part of on not go goes went going'.split())
+STOPV={bh(w.encode()) for w in 'but although whenever whereas unless until since though'.split()};SHARE={bh(w.encode()) for w in 'share shares shared sharing'.split()};RELW={bh(w.encode()) for w in 'which who where whose'.split()};POSW={bh(w.encode()) for w in 'my your his her their s'.split()}
+_STOPW="the a an and or of to in on for with is are was were be been being do does did what why how whom which when where can could would should will shall may might must i you me my your it its this that these those there their they them he she his her we our us as at by from about into than then so if not no yes please tell give explain describe there here just also some any my i'm i is are was in at to of the a an and called named works as from actually oh well now really anyway okay ok yeah hey btw recently fun fact guess what though"
+_G=None
+def _gtab():
+    global _G
+    if _G is None:
+        rows=[(r[1],r[2],int(r[3]),int(r[4])) for r in (l.split('\t') for l in open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'crates','adam-ray','src','v19_rel.tsv'),encoding='utf-8').read().splitlines()) if len(r)>=5]
+        stop={i for w in _STOPW.split() for i in _both(w)};prot=set("home work call called calls calling name names named where when who old into than fan baby grad alum most favorite favourite fav been have has got had going went go goes born birth same".split())
+        known=lambda w:(lambda i:CLS.get(i,0)!=0 or i in FUN or i in stop or w in prot or i in GX)(bh(w.encode())&WM);gt={}
+        for p,w,c,r in rows:
+            if c<4096 and (p or not known(w)):gt.setdefault(bh(w.encode()) if not p else ((bh(p.encode())*GK)&0xFFFFFFFF)^bh(w.encode()),(c,r))
+        vt={}
+        for p,w,c,r in rows:
+            if c==8192:vt.setdefault(bh(w.encode()),r)
+        _G=(gt,vt,{bh(w.encode()) for p,w,c,r in rows if c==4096 and not known(w)},{bh(w.encode()) for p,w,c,r in rows if c==16384},{bh(w.encode()) for p,w,c,r in rows if c==32768},{bh(w.encode()) for p,w,c,r in rows if c==65536 and not known(w)}|{H_NOTHING})
+    return _G
 WQS=[bh(w.encode()) for w in 'what where who when which how why whose do does did can could would will remind is are'.split()];WIM={bh(w.encode()) for w in 'give tell list write explain describe create make find identify classify provide generate summarize translate compare suggest recommend show define calculate build reply label choose name rewrite extract categorize imagine'.split()};WCM={bh(w.encode()) for w in 'actually correction scratch update updated wrong oops misspoke fix mixed instead now moved changed switched longer anymore traded sorry wait corrected new'.split()}
 _LTC={}
 def _pflag(p:str)->bool:
@@ -28,6 +46,15 @@ def _pflag(p:str)->bool:
         try:_LTC[j]='"latest": 1' in open(j,encoding='utf-8',errors='replace').read()
         except OSError:_LTC[j]=False
     return _LTC[j]
+def _gn()->bool:
+    v=os.environ.get('AMNI_UMEM_GN')
+    if v is not None:return v!='0'
+    from amni.compute.ray_field import DEFAULT_PACK
+    p=os.environ.get('AMNI_RAY_PACK') or DEFAULT_PACK;j=(p[:-8] if p.endswith('_sid.npy') else p[:-5] if p.endswith('.gf17') else p)+'.json'
+    if j+'#gen' not in _LTC:
+        try:_LTC[j+'#gen']='"gen": 1' in open(j,encoding='utf-8',errors='replace').read()
+        except OSError:_LTC[j+'#gen']=False
+    return _pflag(p) and _LTC[j+'#gen']
 def _lt()->bool:
     v=os.environ.get('AMNI_UMEM_LT')
     if v is not None:return v!='0'
@@ -36,8 +63,9 @@ def _lt()->bool:
 WCH=frozenset(b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_')
 _TRIM=(b" last year",b" this year",b" the most",b" these days",b" by the way",b" the",b" of",b" now",b" again");_TRIML=_TRIM+(b" the moment",b" right")
 class _P:
-    def __init__(s,lt=None):
-        s.flg=s.pre=s.subj=s.meta=s.ante=s.own=s.pbd=s.inv=s.poss=s.entc=s.relc=s.gapc=s.qent=s.qrel=s.clk=s.nps=s.we=s.ph=s.pph=s.sw=s.cw=s.hw=0;s.lav=-9;s.wq=s.tcm=False;s.lt=_lt() if lt is None else lt;s.vb=bytearray();s.facts=[];s.names={SELFK:'I'};s.kin={};s.ments=set();s.t=b''
+    def __init__(s,lt=None,gn=None):
+        s.gn=_gn() if gn is None else gn;s.lt=s.lt_=(_lt() if lt is None else lt) or s.gn;s.sms=s.prn=s.apv=s.cwt=s.vty=s.vwn=0;s.cms=s.vms=s.pcm=s.gbg=False;s.vws=[0]*8;s.vwt=[0]*8
+        s.flg=s.pre=s.subj=s.meta=s.ante=s.own=s.pbd=s.inv=s.poss=s.entc=s.relc=s.gapc=s.qent=s.qrel=s.clk=s.nps=s.we=s.ph=s.pph=s.sw=s.cw=s.hw=0;s.lav=-9;s.wq=s.tcm=False;s.vb=bytearray();s.facts=[];s.names={SELFK:'I'};s.kin={};s.ments=set();s.t=b''
     def b(s,m):return s.flg&m!=0
     def on(s,*m):
         for x in m:s.flg|=x
@@ -46,30 +74,47 @@ class _P:
     def reset(s):s.poss=s.entc=s.relc=s.gapc=s.inv=s.meta=s.subj=0;s.vb.clear();s.flg&=BKEEP
     def latest(s,pred):return max((f for f in s.facts if pred(f)),key=lambda f:f[3],default=None)
     def commit(s):
+        if s.b(BSAME):
+            src,rel=s.entc,s.relc;f=s.latest(lambda f:src and src!=s.sms and f[0]==src and (f[1]==rel or rel==0))
+            if f:s.vb[:]=f[2];s.relc=f[1];s.entc=s.sms;s.on(BSOL,BENTK)
+            else:s.vb.clear()
         for _ in range(4):
             t=next((t for t in (_TRIML if s.lt else _TRIM) if len(s.vb)>len(t) and s.vb.endswith(t)),None)
             if t:del s.vb[-len(t):]
+        if s.gn and s.b(BSOL) and s.vb and s.vwn>1 and s.relc in (14,15) and s.vws[s.vwn-1]<=len(s.vb):
+            i=s.vwn
+            while i>0 and s.vwt[i-1]==s.relc:i-=1
+            if 0<i<s.vwn:del s.vb[:s.vws[i]]
+        if s.gn and s.b(BSOL) and s.vb:s.relc=s.vty if s.relc==0 else 4 if s.relc==15 and s.vty not in (14,15) and s.vb[:1].isupper() else s.relc
         rel=s.relc;ent=s.subj if rel==ISINK else s.entc
         if s.b(BSOL) and s.vb and rel==0 and (s.b(BFAV) or s.b(BMOST)):f=s.latest(lambda f:f[0]==ent and f[1]>=4);rel=f[1] if f else rel;s.relc=rel
         if s.b(BSOL) and rel==7 and s.b(BMOST):f=s.latest(lambda f:f[0]==ent and f[1] in (10,11));rel=f[1] if f else rel;s.relc=rel
-        if s.b(BSOL) and s.vb and (2 if s.lt else 3)<=rel<=15 and ent and (rel==ISINK or ent==SELFK or s.b(BENTK)):s.clk+=1;s.facts.append([ent,rel,bytes(s.vb),s.clk,s.names.get(ent,'')])
+        if s.b(BSOL) and s.vb and (2 if s.lt else 3)<=rel<=15 and not (s.gn and s.b(BNEG) and rel not in (2,8,ISINK)) and ent and (rel==ISINK or ent==SELFK or s.b(BENTK)):s.clk+=1;s.facts.append([ent,rel,bytes(s.vb),s.clk,s.names.get(ent,'')])
         s.reset()
     def setrel(s,r,noun,force):
+        if s.gn and r==13 and not noun and s.b(BWHE) and s.hw in (H_GO2,H_GOES2,H_WENT2,H_GOING2):return
+        r=2 if s.gn and r in (7,11) and s.b(BNEG) else r
         s.relc=r if force or noun or s.relc==0 else s.relc
-        if noun:s.qrel=r;s.on(BQLOCK)
+        if s.gn and s.b(BQDONE):pass
+        elif noun:s.qrel=r;s.on(BQLOCK)
         elif (not s.b(BQLOCK) and not (s.lt and s.qrel==2)) or (s.lt and r==2):s.qrel=r
         if not s.b(BSOL) and s.b(BPRE):s.vb.clear()
         s.off(BJOB,BHAV,BPRE)
     def person(s,e,kin):
         if e==0:return
         if not s.b(BFRO) and not s.b(BSOL):s.vb.clear()
-        s.entc=e;s.poss=0;s.inv=0;s.own=e if e!=SELFK else SELFK;s.ante=e if e!=SELFK else s.ante;s.qent=e;e!=SELFK and s.ments.add(e)
+        s.entc=e;s.poss=0;s.inv=0;s.own=e if e!=SELFK else SELFK;s.ante=e if e!=SELFK else s.ante;s.qent=s.qent if s.gn and s.b(BQDONE) else e;e!=SELFK and s.ments.add(e)
         s.on(BENTK) if kin or e==SELFK else s.off(BENTK)
     def push(s,sep,w):
+        s.vwn=0 if not s.vb else s.vwn
+        if s.gbg and s.vwn>0:s.vwt[s.vwn-1]=s.cwt
+        if s.vwn<8:s.vws[s.vwn],s.vwt[s.vwn]=min(len(s.vb)+(1 if s.vb and sep is not None else 0),24),s.cwt;s.vwn+=1
         if sep is not None and 0<len(s.vb)<24:s.vb.append(sep)
-        s.vb+=w[:16][:max(0,24-len(s.vb))]
+        s.vb+=w[:16][:max(0,24-len(s.vb))];s.vty,s.vms=s.cwt,len(s.vb)==min(len(w),16) and s.cms
     def addv(s,w,cap,cls):
-        if s.lt and not s.vb and s.relc==0 and not cap and 5<=len(w)<=16 and w.endswith(b'ing'):s.on(BFRO);return
+        if s.lt and not s.vb and s.relc==0 and not cap and 5<=len(w)<=16 and w.endswith(b'ing'):
+            if s.gn and s.b(BFAV):s.setrel(7,False,False)
+            else:s.on(BFRO);return
         if s.b(BFRO) or (not s.b(BSOL) and (cls&4 or cls&1) and not cap) or (s.b(BSOL) and cls&1 and not cap):return
         s.push(45 if s.pbd==1 else 39 if s.pbd==2 else 32,w);s.lav=s.sw;s.on(BSOL);s.off(BART,BPRE)
         if s.b(BJOB) and s.relc==0:s.setrel(13 if cap else 5,False,False)
@@ -81,11 +126,35 @@ class _P:
         s.vb[:]=f[2][:24];s.on(BSOL,BFRO,BVOP);s.relc=s.relc or 4
     def cmp(s,p,cap):
         s.ph=((s.pph*83492791)&0xFFFFFFFF)^p if s.lt and s.pph and not cap else p;return s.ph
+    def rnoun(s,rid):
+        if s.lt and s.b(BSOL) and not s.b(BFRO) and s.lav==s.sw-1 and s.vb[:1].islower() and 32 not in s.vb:s.vb.clear();s.off(BSOL)
+        if s.poss:s.person(s.own or SELFK,True)
+        if rid in (10,11) and s.b(BFAV) and not s.b(BSOL):
+            pe=s.entc or s.own or s.ante;f=s.latest(lambda f:pe and f[0]==pe and f[1]==7)
+            if f:f[1]=rid
+        s.setrel(rid,True,False);s.poss=0
+    def rflush(s):
+        pr,c=s.prn&255,s.prn>>8;s.prn=0
+        if c&256:s.rnoun(pr)
+        elif c&512:s.setrel(pr,False,False);s.poss=0
+        else:s.setrel(pr,False,pr==11 and s.relc==7);s.poss=0;s.on(BVOP);s.off(BCALL)
     def name(s,e,kin,w=None):s.names[e]=(w or s.t[s.nps:s.we]).decode('latin-1').strip(' ,');s.kin[e]=kin
     def step(s,w,whw,p4w):
-        n=len(w);lw=w[:16].lower();ix=whw&WM;cls,rid=GX.get(ix,(CLS.get(ix,0),RID.get(ix,0))) if s.lt else (CLS.get(ix,0),RID.get(ix,0));fun,ew=ix in FUN,s.hw if s.lt else p4w;cap=n>=2 and 65<=w[0]<=90;num=n>0 and w[:16].isdigit();pre=s.pre;b=s.b
+        n=len(w);lw=w[:16].lower();ix=whw&WM;hw=s.hw;G=_gtab() if s.gn else None;bk=((s.pre*GK)&0xFFFFFFFF)^hw;s.gbg=bool(s.gn and bk in G[0])
+        gg=(G[0].get(bk) or G[0].get(hw)) if s.gn else None;gg=gg if gg and (not gg[0]&1536 or not s.b(BSOL) or s.b(BFRO)) and (gg[0]!=256 or s.poss or s.b(BFAV) or s.pre in (H_WHAT,H_WHICH,H_SAME)) else None
+        cls,rid=((CLS.get(ix,0)&~3840)|gg[0],gg[1]) if gg else (1,0) if s.gn and CLS.get(ix,0)==0 and hw in G[5] else GX.get(ix,(CLS.get(ix,0),RID.get(ix,0))) if s.lt_ else (CLS.get(ix,0),RID.get(ix,0))
+        neg=s.b(BNEG) or s.pre in (H_NEVER,H_NOT);cls,rid=((cls,2) if neg else (cls&~1024,0)) if s.gn and rid==102 else (cls,rid)
+        fun,ew=ix in FUN,s.hw if s.lt else p4w;cap=n>=2 and 65<=w[0]<=90;num=n>0 and w[:16].isdigit();pre=s.pre;b=s.b
         P=lambda k,p:n==k and lw.startswith(p)
         hd=cls&32 or (n>=3 and not fun and cls&2015==0);r=1
+        if s.gn:
+            s.cms=hw in G[4]
+            if hw in (H_NOT2,H_NEVER):s.on(BNEG)
+            s.cwt=14 if num else 15 if cls&64 else 10 if cls&2048 else G[1].get(hw,0)
+            if s.prn:
+                if s.poss and (cls&32 or hw in G[3]) and not cls&3840 and not cap and hw not in G[2]:s.prn=0
+                else:s.rflush()
+            if b(BSOL) and not b(BFRO) and s.vb and not b(BSAME) and ((((s.vb[:1].isupper() and not cap and n>=4 and not cls&128 and s.relc in (4,6,13,15)) or s.vb[:1].isdigit()) and not fun and not num) or (cls&1 and not cap) or hw in STOPV):s.on(BFRO)
         if b(BSKMU) and not (P(3,b'you') or P(2,b'me') or P(5,b'ab') or P(2,b'to') or P(4,b'that')):s.off(BSKMU)
         if s.meta==1 and not P(1,b'i') and not P(3,b'you'):s.meta=0
         if s.meta in (2,3) and not cls&16:
@@ -94,7 +163,7 @@ class _P:
         if s.meta==8 and not (P(2,b'me') or P(3,b'him') or P(3,b'her') or P(4,b'them')):s.meta=0
         if s.meta>=9:
             s.meta=0
-            if hd and s.pbd!=2:s.poss=1;s.own=s.ante or s.own
+            if hd and s.pbd!=2 and not (s.gn and cap):s.poss=1;s.own=s.ante or s.own
             else:s.person(s.ante or s.entc,True)
         if b(BACO) and P(3,b'not'):s.on(BSKNO);s.off(BACO)
         elif b(BACO) and not s.lt:s.off(BACO)
@@ -115,19 +184,33 @@ class _P:
         elif s.meta==7:s.meta=0
         elif s.meta==8 and P(2,b'me'):s.person(SELFK,True);s.meta=0
         elif s.meta==8 and n in (3,4):s.person(s.ante,True);s.meta=0
+        elif s.gn and hw in (H_ON,H_WITH) and s.relc and not b(BSOL) and not b(BFRO):
+            if b(BPRE):s.vb.clear();s.off(BPRE)
+            s.on(BVOP)
+        elif s.gn and s.vms and b(BSOL) and not b(BFRO) and lw==b'of':s.vb.clear();s.vms=False;s.off(BSOL)
+        elif s.gn and s.apv and s.entc==0 and lw==b'in' and not b(BSOL):s.subj=s.entc=s.apv;s.relc=ISINK;s.vb.clear();s.apv=0;s.off(BSOL,BFRO);s.on(BVOP)
+        elif s.gn and not b(BSAME) and ((hw==H_AS and pre==H_OLD) or (hw==H_WITH and b(BSHR))):
+            if hw==H_AS:s.relc=14
+            s.on(BSAME);s.sms=s.sms or s.entc or SELFK;s.vb.clear();s.off(BSOL,BFRO,BPRE)
+        elif s.gn and hw in SHARE and s.entc and not b(BSOL):s.on(BSHR);s.sms=s.entc
+        elif s.gn and s.inv==2 and s.vb and hw==H_OF and pre==H_PART:
+            fw=bh(bytes(c for c in s.vb[:4] if c!=32));s.name(fw,False,bytes(s.vb));s.subj=s.entc=fw;s.relc=3;s.vb.clear();s.off(BSOL,BFRO);s.on(BVOP);s.inv=0
+        elif s.gn and s.inv==2 and s.vb and not cap and (hw in G[4] or hw==H_PART):r=1
+        elif s.gn and hw==H_SAME and pre==H_THE and not b(BSAME):s.on(BSAME);s.sms=s.entc or SELFK;s.vb.clear();s.off(BSOL,BFRO,BPRE)
         elif s.pbd==2 and b(BSOL) and not b(BFRO):s.push(39,w)
         elif s.pbd==2 and P(1,b't'):s.on(BNEG)
         elif s.pbd==2 and n==1 and (lw in (b'm',b'r') or (lw==b's' and s.poss==0)):
             s.gapc=1;s.inv=2 if s.inv==1 else s.inv
             if b(BPRE) and s.vb:s.on(BSOL,BFRO,BVOP);s.off(BPRE)
-        elif s.pbd==2 and lw==b's' and s.poss:s.gapc=1;s.own=s.entc or s.own
+        elif s.pbd==2 and lw==b's' and s.poss:s.gapc=1;s.own=s.entc or s.own;s.ph=s.pph if s.gn else s.ph
         elif s.pbd==2 and n==1:r=1
         elif cls&2 and not b(BSOL) and not b(BVOP) and not P(3,b'f') and not P(2,b'in'):r=1
         elif P(2,b'my') and s.relc==9 and pre==H_TO and not b(BSOL):r=1
         elif P(2,b'my') or P(4,b'your') or P(1,b'i'):
             if not P(1,b'i') and s.inv==2 and s.vb:s.freeze()
-            if b(BSOL) and not b(BFRO) and s.relc==0:s.on(BFRO)
-            elif b(BSOL) and not b(BFRO):s.commit()
+            if b(BSOL) and not b(BFRO) and s.relc==0 and not b(BSAME):s.on(BFRO)
+            elif b(BSOL) and not b(BFRO) and not b(BSAME):s.reset() if s.gn and s.wq and not P(1,b'i') else s.commit()
+            if s.gn and not P(1,b'i'):s.off(BKINL)
             if P(1,b'i'):s.person(SELFK,True)
             else:s.poss=1;s.own=SELFK if n==2 else s.ante;s.nps=s.we;s.qent=s.qent or (SELFK if n==2 else 0)
         elif P(2,b'me') and pre in (H_LET,H_TELL,H_ASK):r=1
@@ -137,12 +220,13 @@ class _P:
         elif P(2,b'he') or P(3,b'she') or P(4,b'they') or P(2,b'it') or P(3,b'him'):
             e=s.own if P(2,b'it') and s.own else s.ante
             if e:s.person(e,True)
-        elif (n==3 and lw[:1]==b'h' and lw[2:3]==b'r') or P(3,b'his') or P(5,b'thei'):
+        elif (n==3 and lw[:1]==b'h' and lw[2:3]==b'r') or P(3,b'his') or P(5,b'thei') or (s.gn and P(3,b'its')):
             if s.inv==2 and s.vb:s.freeze()
             s.meta=9 if n==3 and lw[2:3]==b'r' else 10 if n==3 else 11;s.nps=s.we
         elif s.lt and cls&2048 and s.entc and s.gapc==1 and s.relc==0 and not b(BSOL):s.poss=0;s.setrel(10,False,False);s.addv(w,cap,0)
         elif s.lt and s.entc==SELFK and not b(BSOL) and s.hw in (H_FAMILY,H_RELATIVES,H_FOLKS):s.name(H_FAMILY,True,b'family');s.person(H_FAMILY,True)
         elif num:
+            if s.gn and b(BPRE):s.vb.clear();s.off(BPRE)
             if s.relc in (0,14):s.setrel(14,True,False)
             s.addv(w,False,0)
         elif P(3,b'old'):
@@ -161,23 +245,19 @@ class _P:
         elif P(5,b'wher'):s.on(BWHE);s.setrel(4,False,False)
         elif P(4,b'when'):s.on(BWHEN);s.setrel(15,False,False)
         elif P(3,b'who'):s.on(BWHO);s.setrel(6,False,False)
-        elif cls&64 and cap and s.entc==0 and s.gapc==0 and not b(BVOP) and not b(BART) and s.inv==0:s.vb[:]=w[:16];s.subj=p4w;s.inv=1
+        elif cls&64 and cap and s.entc==0 and s.gapc==0 and not b(BVOP) and not b(BART) and s.inv==0:s.vb.clear();s.push(None,w);s.subj=p4w;s.inv=1
         elif cls&64 and (b(BART) or s.gapc==1 or b(BVOP) or (s.entc and s.relc in (0,15,4))):
             if s.relc in (0,15) or (s.relc==4 and not b(BSOL)):s.setrel(15,True,False)
             s.addv(w,cap,0)
+        elif b(BSAME) and cls&256 and s.entc==s.sms:s.setrel(rid,True,True);s.poss=0
         elif b(BSTUD) and not b(BFRO) and n>2 and not fun and not cls&2 and not cls&8 and not P(6,b'sc') and not P(7,b'col') and not P(10,b'u'):s.addv(w,cap,0)
         elif cls&256 and n in (6,7,10) and (b(BSTUD) or s.relc in (12,13)) and pre in (H_AT,H_IN,H_FROM,H_TO):r=1
         elif cls&256 and n in (6,7) and s.entc==0 and not b(BSOL) and pre==H_IN:r=1
         elif cls&256 and s.qrel==12 and pre==H_IN and not b(BSTUD):r=1
         elif cls&256 and cap and b(BSOL) and n in (4,6,7,10):s.addv(w,True,0)
         elif s.lt and cls&256 and b(BVOP) and not b(BFRO) and s.relc and s.relc!=rid and not s.poss and not b(BSOL) and not s.wq:s.addv(w,cap,0)
-        elif cls&256:
-            if s.lt and b(BSOL) and not b(BFRO) and s.lav==s.sw-1 and s.vb[:1].islower() and 32 not in s.vb:s.vb.clear();s.off(BSOL)
-            if s.poss:s.person(s.own or SELFK,True)
-            if rid in (10,11) and b(BFAV) and not b(BSOL):
-                pe=s.entc or s.own or s.ante;f=s.latest(lambda f:pe and f[0]==pe and f[1]==7)
-                if f:f[1]=rid
-            s.setrel(rid,True,False);s.poss=0
+        elif s.gn and cls&1792 and s.poss and s.pbd==0 and not b(BSOL) and not s.prn and pre in POSW:s.prn=rid|(cls&1792)<<8;s.ph=hw
+        elif cls&256:s.rnoun(rid)
         elif cls&512:
             if n==5 and lw[:1]==b'm':s.on(BSTUD)
             s.setrel(5 if n>=6 and pre==H_A and rid==4 else rid,False,False);s.poss=0
@@ -199,10 +279,10 @@ class _P:
         elif P(4,b'been'):s.off(BHAV);s.gapc=1
         elif b(BART) and b(BHAV) and cls&32 and not cap:s.name(ew,True,w);s.person(ew,True);s.off(BHAV,BART)
         elif P(4,b'most'):s.on(BMOST)
-        elif P(8,b'fav'):s.on(BFAV)
+        elif P(8,b'fav') or (s.gn and n==9 and lw==b'favourite'):s.on(BFAV)
         elif s.poss and (P(3,b'bi') or P(4,b'be') or (P(6,b'l') and (not s.lt or lw[1:3] in (b'it',b'ov',b'on',b'at'))) or P(3,b'new')):r=1
         elif s.poss and s.pbd==1 and P(2,b'in'):r=1;s.ph=s.pph
-        elif s.poss and hd and not (b(BKINL) and not cls&32 and s.pbd!=1):
+        elif s.poss and hd and not (b(BKINL) and not cls&32 and s.pbd!=1 and not (s.gn and s.pph and hw in G[3])):
             e=s.cmp(ew,cap);s.name(e,bool(cls&32));s.person(e,bool(cls&32) or s.lt);s.poss=1
             if cls&32 or s.lt:s.on(BKINL)
         elif s.poss and hd:s.poss=0;r=0
@@ -249,6 +329,7 @@ class _P:
             if s.relc==0:s.setrel(6,False,False)
             s.addv(w,True,0)
         elif P(3,b'the') and b(BVOP) and not b(BSOL) and s.relc!=3:s.addv(w,False,0)
+        elif s.gn and hw in G[2] and s.entc and s.relc==0 and not b(BSOL) and not b(BVOP) and s.poss==0 and s.gapc==0:s.on(BVOP)
         elif s.entc and s.poss==0 and not b(BSOL) and s.gapc==0 and not b(BVOP) and not b(BFRO) and not b(BCALL) and not fun and not cls&11 and hd:
             if not s.vb:s.push(None,w)
             s.on(BPRE)
@@ -260,29 +341,38 @@ class _P:
             if cap and s.gapc==1 and not b(BART) and s.relc in (0,6):s.setrel(6,False,False)
             s.addv(w,cap,cls)
         elif b(BSOL) and b(BVOP) and not b(BFRO) and not cls&11 and not fun:s.addv(w,cap,cls)
-        elif cap and s.entc==0 and s.poss==0 and not fun:s.vb[:]=w[:16];s.subj=p4w;s.inv=1
+        elif cap and s.entc==0 and s.poss==0 and not fun:s.vb.clear();s.push(None,w);s.subj=p4w;s.inv=1
         elif b(BPRE) and cap:s.push(32,w)
         s.lt and s.off(BACO)
         return r
     def word(s,w):
         whw,p4w=bh(w),bh(w[:4]);s.hw=bh(w[:16].lower())
-        s.pph,s.ph,s.wq,s.sw,s.cw,s.tcm=s.ph,0,(s.hw in WQS[:16] or s.hw in WIM or (s.sw==0 and s.hw in WQS)) if s.cw==0 else s.wq,s.sw+1,s.cw+1,s.tcm or (s.lt and s.hw in WCM)
+        s.pph,s.ph,s.wq,s.sw,s.cw,s.tcm=s.ph,0,(s.hw in WQS[:16] or s.hw in WIM or (s.sw==0 and s.hw in WQS)) if s.cw==0 and not (s.gn and s.pcm and s.hw in RELW) else s.wq,s.sw+1,s.cw+1,s.tcm or (s.lt and s.hw in WCM);s.pcm=False
         for _ in range(2):
             if s.step(w,whw,p4w)==1:break
         s.pre=bh(w[:16].lower())
     def finish_q(s):
+        if s.gn and s.b(BQDONE):return
         s.qent=s.qent or (SELFK if s.b(BMETI) else 0);s.qrel=s.qrel or (6 if s.b(BWHO) else 15 if s.b(BWHEN) else 4 if s.b(BWHE) else 5 if s.b(BDO) else 0)
     def punct(s,c):
+        if s.prn:s.rflush()
         end,nq=c in (46,33,63,10),s.lt and (c==63 or s.wq)
         if s.meta==5 and c==44:s.meta=0
         elif s.b(BSKNO) and end:s.off(BSKNO);s.reset()
-        elif c==44 and not s.b(BSOL):s.poss=0;s.off(BKINL,BVOP,BPRE);s.gapc=0;s.inv=0;s.vb.clear()
+        elif c==44 and not s.b(BSOL):
+            s.poss=0;s.off(BKINL,BVOP,BPRE);s.gapc=0;s.gn and s.off(BNEG)
+            if not (s.gn and s.inv==1):s.inv=0;s.vb.clear()
         elif c==63 and not s.b(BSOL):s.finish_q();s.off(BVOP);s.gapc=0;s.inv=0;s.vb.clear()
-        elif c==44:s.reset() if nq else (s.commit(),s.on(BACO))
+        elif c==44:
+            ap=bh(bytes(x for x in s.vb[:4] if x!=32)) if s.gn and s.relc==4 and s.vb[:1].isupper() else 0
+            s.reset() if nq else (s.commit(),s.on(BACO));s.apv=ap
         elif end:
             if c==63:s.finish_q()
             s.reset() if nq else s.commit()
+        if s.gn and c==63:s.on(BQDONE)
         if s.lt and (end or c==44):s.sw,s.cw,s.wq=0 if end else s.sw,0,False
+        if end:s.apv=0
+        s.pcm=c==44
     def turn(s,t):
         s.qent=s.qrel=s.flg=s.pbd=s.ph=s.sw=s.cw=0;s.wq=s.tcm=False;s.reset();s.ments=set();s.t=t=t+b'\n';w=bytearray();f0=len(s.facts)
         for i,c in enumerate(t):
