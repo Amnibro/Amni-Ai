@@ -3,8 +3,8 @@ import numpy as np
 from pathlib import Path
 from numpy.lib.stride_tricks import sliding_window_view as swv
 ROOT=Path(__file__).resolve().parents[2];EVD=ROOT/"data"/"concepts"/"eval";CACHE=EVD/".decontam_cache";VER=3;SEED=17;KEEP=4;MIN_DISTINCT=4
-PATS=("data/concepts/eval/**/*.json*","data/rchat/eval/conv_*.jsonl","data/webeval/*","data/code_eval/*.jsonl","data/chat*/hold_eval.jsonl","data/concepts/eval/v20_m13/*","data/concepts/eval/v20_m15/**/*","data/math/gsm8k/test*.jsonl","data/math/svamp/*.json")
-SKIP=re.compile(r"(?i)report|nightly|_stub|harvested_tiles|(^|_)meta\.json$|\.(log|pid|md|tmp|tgz|gz|zip|npz|npy|bin|pt|txt)$")
+PATS=("data/concepts/eval/**/*.json*","data/rchat/eval/conv_*.jsonl","data/webeval/*","data/code_eval/*.jsonl","data/chat*/hold_eval.jsonl","data/concepts/eval/v20_m13/*","data/concepts/eval/v20_m15/**/*","data/math/gsm8k/test*.jsonl","data/math/svamp/*.json","data/adam_t/eval/**/*.json*")
+SKIP=re.compile(r"(?i)report|nightly|_stub|harvested_tiles|prereg_lock|(^|_)meta\.json$|\.(log|pid|md|tmp|tgz|gz|zip|npz|npy|bin|pt|txt)$")
 TOK=re.compile(r"[^\W_]+");_MEMO={}
 class Index:
  __slots__=("n","V","R","H","M","groups","files","key","stats")
