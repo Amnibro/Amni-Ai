@@ -24,6 +24,6 @@ def main():
  P=[p for p in PROMPTS for _ in CONTS];C=[c for _ in PROMPTS for c in CONTS];r["score"]=e.score(P,C);t=time.time()
  r["stream"]=np.frombuffer("".join(e.stream("User: What is the capital of France?\nAdam:",max_bytes=160,temp=0.6,topk=8,stop=("\n\n","\nUser:","\nAdam:"),seed=11)).encode(),np.uint8)
  r["guided"]=np.frombuffer("".join(e.stream("User: How do bees make honey?\nAdam:",max_bytes=160,temp=0.6,topk=8,stop=("\n\n","\nUser:","\nAdam:"),seed=11,guide=b" Bees collect nectar from flowers and store it in the hive.",beta=6.0)).encode(),np.uint8)
- r["beam"]=np.frombuffer(e.beam("User: What is gravity?\nAdam:",width=4,expand=3,maxlen=40).encode(),np.uint8);r["bpb"]=np.array([e.bpb(hold=os.path.join(HOME,"data","big2","hold.bin"),batches=1,ctx=32,bs=16)])
+ r["beam"]=np.frombuffer(e.beam("User: What is gravity?\nAdam:",width=4,expand=3,maxlen=40).encode(),np.uint8);r["bpb"]=np.array([e.bpb(hold=os.path.join(HOME,"data","clean1","hold.bin"),batches=1,ctx=32,bs=16)])
  np.savez(out,**r);print(tag,{k:v.shape for k,v in r.items()},bytes(r["stream"]).decode(),"|",bytes(r["guided"]).decode(),"|",bytes(r["beam"]).decode(),r["bpb"])
 if __name__=="__main__":main()

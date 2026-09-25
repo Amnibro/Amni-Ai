@@ -119,7 +119,7 @@ class RayField:
  def logits_for(self,data:bytes)->np.ndarray:
   self._reset(1,self.cur);return np.stack([self._advance([0],[c],True)[0] for c in data])
  def bpb(self,hold:str=None,batches:int=60,ctx:int=128,bs:int=256,seed:int=1234)->float:
-  d=np.memmap(hold or os.path.join(_H0,"data","big2","hold.bin"),dtype=np.uint8,mode="r");g=np.random.default_rng(seed);tot=0.0;n=0
+  d=np.memmap(hold or os.path.join(_H0,"data","clean1","hold.bin"),dtype=np.uint8,mode="r");g=np.random.default_rng(seed);tot=0.0;n=0
   for _ in range(batches):
    ix=g.integers(0,len(d)-ctx-1,bs);x=np.stack([np.asarray(d[i:i+ctx]) for i in ix]).astype(np.int64);y=np.stack([np.asarray(d[i+1:i+1+ctx]) for i in ix]).astype(np.int64);self._reset(bs,self.cur)
    for t in range(ctx):
