@@ -100,7 +100,7 @@ fn run(c: &Cfg, bench: usize) -> io::Result<String> {
         "ndarray" => train::<Autodiff<NdArray>>(c, NdArrayDevice::Cpu, bench),
         #[cfg(feature = "candle")]
         "candle" => train::<Autodiff<burn::backend::Candle>>(c, burn::backend::candle::CandleDevice::Cpu, bench),
-        _ => train::<Autodiff<Wgpu>>(c, WgpuDevice::DiscreteGpu(0), bench),
+        _ => if var("GCKPT").map(|v| v == "1").unwrap_or(false) { train::<Autodiff<Wgpu, burn::backend::autodiff::checkpoint::strategy::BalancedCheckpointing>>(c, WgpuDevice::DiscreteGpu(0), bench) } else { train::<Autodiff<Wgpu>>(c, WgpuDevice::DiscreteGpu(0), bench) },
     }
 }
 fn main() -> io::Result<()> {
@@ -147,6 +147,7 @@ fn main() -> io::Result<()> {
             let dir = a.get(2).ok_or_else(|| io::Error::other("adam-t export <run dir>"))?.clone();
             let mut cc = Cfg::from_dir(&dir)?;
             cc.par = var("PARITY_WINDOWS").ok().and_then(|v| v.parse().ok()).unwrap_or(1);
+            cc.tern.then_some(()).ok_or_else(|| io::Error::other("export needs a ternary (TERN=1) run"))?;
             let step = fs::read_to_string(format!("{dir}/ckpt/state.txt"))?.trim().parse::<usize>().map_err(io::Error::other)?;
             let od = format!("{dir}/eval/step{step}");
             fs::create_dir_all(&od)?;
