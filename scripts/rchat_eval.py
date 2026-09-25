@@ -237,8 +237,8 @@ def respond(split:Path,systems:list,out:Path)->dict:
  os.environ.update(AMNI_GEN_BACKEND="ray",AMNI_UMEM_DIR=tempfile.mkdtemp(prefix="rchat_umem_",dir=os.environ.get("TMPDIR")),AMNI_LEARN_WEB="0")
  from amni.serve import gguf_runtime as G
  rows=[json.loads(l) for l in split.open()];orig=G._rchat;log={}
- def wrap(message,history=None,user=None,session=None,e=None):
-  t=time.perf_counter();r=orig(message,history,user,session,e);log["rc"]=r;log["rc_ms"]=(time.perf_counter()-t)*1000;return r
+ def wrap(message,history=None,user=None,session=None,e=None,fb=True):
+  t=time.perf_counter();r=orig(message,history,user,session,e,fb);log["rc"]=r if r or "rc" not in log else log["rc"];log["rc_ms"]=log.get("rc_ms",0.0)+(time.perf_counter()-t)*1000;return r
  G._rchat=wrap;res={s:[] for s in systems}
  for s in systems:
   for k in set().union(*SYS.values()):os.environ.pop(k,None)

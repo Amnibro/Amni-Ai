@@ -2,20 +2,24 @@ import os,re,sys,json,gzip,math,time,zlib,threading,collections
 import numpy as np
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 D=os.environ.get("AMNI_RCHAT_DIR",os.path.join(_H0,"data","rchat"));IDX=os.path.join(D,"index.npz");LEX=os.path.join(_H0,"data","clean1")
-LIC={"oasst1":("OASST1","Apache-2.0"),"oasst2":("OASST2","Apache-2.0"),"dolly":("databricks-dolly-15k","CC BY-SA 3.0"),"aya":("Aya Dataset","Apache-2.0"),"own":("Amni seed replies","CC0")};SRCS=list(LIC)
+LIC={"oasst1":("OASST1","Apache-2.0"),"oasst2":("OASST2","Apache-2.0"),"dolly":("databricks-dolly-15k","CC BY-SA 3.0"),"aya":("Aya Dataset","Apache-2.0"),"own":("Amni seed replies","CC0"),"se":("Stack Exchange","CC BY-SA"),"topical":("Topical-Chat","CDLA-Sharing-1.0")};SRCS=list(LIC);FREE={"Apache-2.0","CC0"};XTRA=os.path.join(D,"extra.jsonl.gz");CATF=os.path.join(D,"nouncat.json")
+CATS=(("mammal","mammal.n.01"),("bird","bird.n.01"),("fish","fish.n.01"),("reptile","reptile.n.01"),("insect","insect.n.01"),("animal","animal.n.01"),("dish","dish.n.02"),("baked","baked_goods.n.01"),("fruit","edible_fruit.n.01"),("veg","vegetable.n.01"),("meat","meat.n.01"),("dessert","dessert.n.01"),("sweet","sweet.n.03"),("meal","meal.n.01"),("drink","beverage.n.01"),("food","food.n.01","food.n.02"),("flower","flower.n.01"),("herb","herb.n.01"),("tree","tree.n.01"),("plant","plant.n.02"),("instrument","musical_instrument.n.01"),("vehicle","vehicle.n.01"),("sport","sport.n.01"),("game","game.n.01","board_game.n.01"),("subject","discipline.n.01"),("language","language.n.01"),("job","professional.n.01","worker.n.01"),("season","season.n.02"),("weekday","day_of_the_week.n.01"),("month","calendar_month.n.01"),("room","room.n.01"),("place","building.n.01","establishment.n.04"),("city","city.n.01"),("country","country.n.02","state.n.04"),("landform","geological_formation.n.01"),("water","body_of_water.n.01"),("clothing","clothing.n.01"),("furniture","furniture.n.01"),("device","electronic_equipment.n.01","computer.n.01"),("appliance","home_appliance.n.01"),("toy","plaything.n.01"),("holiday","holiday.n.01"),("color","chromatic_color.n.01"))
+HANDCAT={"ordeal":"exam test quiz final midterm interview presentation speech recital audition meeting deadline appointment race tournament competition performance","hobby":"painting drawing knitting sewing crochet gardening cooking baking photography hiking running jogging swimming cycling biking yoga pilates reading writing journaling fishing camping dancing singing pottery woodworking chess gaming climbing skating skiing surfing crafting scrapbooking","media":"book novel movie film show series podcast song album documentary audiobook comic manga anime","event":"party wedding birthday anniversary reunion graduation shower barbecue picnic concert festival vacation trip","food":"groceries grocery"};COARSE={"food","plant","job","place"};SACT={"se":{"advice","fact","other"},"topical":{"opinion"}}
+KG=["mom mother mum dad father parent stepmom stepdad","grandma grandmother grandpa grandfather","sister brother sibling stepsister stepbrother","son daughter kid child","wife husband girlfriend boyfriend partner spouse fiance fiancee","aunt uncle niece nephew"];KG={w:i for i,g in enumerate(KG) for w in g.split()};TG=["today tomorrow tonight yesterday","monday tuesday wednesday thursday friday saturday sunday","morning evening afternoon","weekend"];TG={w:i for i,g in enumerate(TG) for w in g.split()};DAYS=set("monday tuesday wednesday thursday friday saturday sunday".split())
+FB={"feel-":[("That sounds really hard. What's been the toughest part of {x} for you?","That sounds really hard. What's been the toughest part for you?"),("I'm sorry you're dealing with {x}. How long has it been weighing on you?","I'm sorry you're dealing with that. How long has it been weighing on you?"),("That's a lot to carry. Do you want to talk through what's going on with {x}?","That's a lot to carry. Do you want to talk through what's going on?"),("I hear you, and that sounds exhausting. What would help even a little with {x} right now?","I hear you, and that sounds exhausting. What would help even a little right now?")],"feel+":[("That's so good to hear! What's the best part of {x}?","That's so good to hear! What's the best part?"),("I love that for you! How are you going to celebrate?","I love that for you! How are you going to celebrate?"),("That's wonderful! How are you feeling about {x} now?","That's wonderful! How are you feeling about it now?")],"feel0":[("Thanks for telling me. How are you feeling about {x}?","Thanks for telling me. How are you feeling about it?"),("I'm glad you shared that. What's been on your mind about {x}?","I'm glad you shared that. What's been on your mind?")],"share-":[("Aw, that sounds rough. What happened with {x}?","Aw, that sounds rough. What happened?"),("Oh no. How are you feeling about {x}?","Oh no. How are you feeling about it?"),("That sounds hard. What would help most with {x} right now?","That sounds hard. What would help most right now?")],"share+":[("That's great news! How are you feeling about {x}?","That's great news! How are you feeling?"),("Oh, that's exciting! Tell me more about {x}!","Oh, that's exciting! Tell me more!"),("I love hearing that! How are you going to celebrate?","I love hearing that! How are you going to celebrate?")],"share0":[("Oh, {x}! How's that been going?","Oh! How's that been going?"),("Tell me more about {x}. How do you feel about it?","Tell me more. How do you feel about it?"),("Ooh, {x}! What's the story there?","Ooh, what's the story there?")],"like":[("That sounds lovely! What do you enjoy most about {x}?","That sounds lovely! What do you enjoy most about it?"),("Oh, I love that! How did you get into {x}?","Oh, I love that! How did you get into it?")],"normal":[("You're definitely not the only one wondering about {x}. What's got you thinking about it?","You're definitely not the only one wondering that. What's got you thinking about it?"),("That's a really common thing to wonder about. How has {x} been for you?","That's a really common thing to wonder about. How has it been for you?")],"decide":[("Ooh, tough call! What's pulling you toward each option for {x}?","Ooh, tough call! What's pulling you toward each option?"),("Both sound good! What matters most to you with {x}?","Both sound good! What matters most to you here?")],"advice":[("That's a good thing to think through. What have you tried with {x} so far?","That's a good thing to think through. What have you tried so far?"),("Happy to think about {x} with you. What matters most to you here?","Happy to think it through with you. What matters most to you here?"),("Good question. What part of {x} feels hardest right now?","Good question. What part feels hardest right now?")],"opinion":[("Ooh, {x}! That's a fun one to think about. What do you like about it?","Ooh, that's a fun one to think about! What's your take?"),("I can see the appeal of {x}. What's your take?","I can see both sides of that. What's your take?"),("Now I'm curious. What got you thinking about {x}?","Now I'm curious. What got you thinking about that?")],"other":[("Tell me more about {x}. What's on your mind?","Tell me more. What's on your mind?"),("That's an interesting one. What got you thinking about {x}?","That's an interesting one. What got you thinking about it?"),("I'd love to hear more. What's the story behind {x}?","I'd love to hear more. What's the story there?")],"fact":[("I'm not sure about {x} yet. What got you curious about it?","I'm not sure about that one yet. What got you curious about it?"),("I don't know that one for certain. What made you wonder about {x}?","I don't know that one for certain. What made you wonder?")],"task":[("I can't do that one well yet, but I'd love to hear what it's for. What's the occasion?",)*2],"greet":[("Hi! It's good to hear from you. How's your day going?",)*2],"howru":[("I'm doing well, thanks for asking! How about you?",)*2],"thanks":[("You're welcome! Anything else on your mind?",)*2],"bye":[("Take care! Talk soon.",)*2]}
 OWN=[("bye","Bye for now","Bye for now! Take care."),("bye","Good night","Good night! Sleep well."),("bye","See you later","See you later! It was nice talking with you."),("bye","Talk soon","Talk soon! Have a good one."),("howru","How are you?","I'm doing well, thanks for asking! How about you?"),("howru","How's your day going?","Pretty good so far, thanks! How's yours going?"),("greet","Hi","Hi there! What's on your mind today?"),("greet","Hey","Hey! Good to hear from you. What's up?"),("thanks","Thank you","You're welcome! Happy to help."),("thanks","Thanks a lot","Anytime! Glad it was useful."),("share","I got the job!","Congratulations! That's wonderful news. How are you feeling about it?"),("share","I finally did it!","That's amazing, well done! How does it feel?"),("feel","I'm so excited!","That's so exciting! What are you looking forward to most?"),("feel","I'm having a rough week.","That sounds really tough. Do you want to talk about what's been going on?"),("feel","I feel so alone lately.","I'm sorry you're feeling that way. What has been weighing on you?"),("share","I started something new.","That's great! How did you get into it?")]
-PHATIC={"greet","howru","thanks","bye"};PHW=set("welcome glad happy anytime pleasure hello hi hey thank morning doing well fine today ask anything else day night sleep care bye later soon talk chat nice meet assist always feel free let".split());COMPAT={"advice":{"advice","other","feel","share"},"opinion":{"opinion","other","share","feel"},"feel":{"feel","share","advice","other"},"share":{"share","feel","other","opinion"},"other":{"other","advice","opinion","share","feel","fact"},"fact":{"fact","other"},"task":{"task"}};GENERIC=set("feel feeling hear sound sorry talk happen happened going tell more help want day time today life people someone friend plan hope worry wonderful happy proud congratulation exciting excited news hard tough normal understand way anything else sad lonely stress better bit alright glad love nice awesome amazing fun sound sounds great good bad".split())
+PHATIC={"greet","howru","thanks","bye"};FIRST={"feel","share","opinion","greet","howru","thanks","bye"};CELEB=re.compile(r"(?i)\W*(congrat\w*|i'?m so (proud|happy|excited) (of|for) you|so proud|how exciting|what (great|exciting|amazing|wonderful) news|that'?s (amazing|awesome|fantastic|wonderful|great) news|yay|woo|(that'?s|how) (so |really )?(rewarding|exciting|cool|fun|great|awesome|amazing|wonderful|fantastic)!|(amazing|awesome|huge|nice) (win|job|work)!|well done)");OPOK=set("feel feeling hear sound sorry talk happen happened going tell more want way anything else okay normal understand hard tough day today time really".split());PHW=set("welcome glad happy anytime pleasure hello hi hey thank morning doing well fine today ask anything else day night sleep care bye later soon talk chat nice meet assist always feel free let".split());COMPAT={"advice":{"advice","other","feel","share"},"opinion":{"opinion","other","share","feel"},"feel":{"feel","share","advice","other"},"share":{"share","feel","other","opinion"},"other":{"other","advice","opinion","share","feel","fact"},"fact":{"fact","other"},"task":{"task"}};NGEN=set("adult person individual somebody minute hour week month year second time couple lot bit side type kind part example matter level number thing way stuff back while end point case sort piece bunch half rest top bottom front start beginning moment".split());GENERIC=set("feel feeling hear sound sorry talk happen happened going tell more help want day time today life people someone friend plan hope worry wonderful happy proud congratulation exciting excited news hard tough normal understand way anything else sad lonely stress better bit alright glad love nice awesome amazing fun sound sounds great good bad".split())
 OPEN=re.compile(r"(?i)^(oh no|i'?m (so |really |very )?(sorry|glad|happy) (to hear|for you|that)|i'?m (so |really |very )?sorry|that'?s (a )?(great|awesome|wonderful|amazing|exciting|big|fantastic|huge) (news|achievement|accomplishment|step|milestone)|well done|good for you|that sounds (like )?(really |so |very )?(hard|tough|difficult|rough|stressful|frustrating|painful|awful|great|amazing|wonderful|exciting|fun|awesome|lovely)|that'?s (so |really )?(great|awesome|wonderful|amazing|exciting|tough|hard|rough)|congratulations|congrats|i understand|it'?s (completely |totally )?(normal|okay|ok|understandable))")
 CONN=re.compile(r"^(however|but|also|so|additionally|furthermore|moreover|that said|in addition|then|and|anyway|otherwise|instead),?\s+",re.I)
 ACTS=("greet","howru","thanks","bye","feel","advice","opinion","share","fact","task","other");CHATTY={"greet","howru","thanks","bye","feel","advice","opinion","share","other"}
 STOP=set("a an the and or but of to in on at for with from by about as into than then so if not no yes please is are was were be been being am do does did done doing have has had having i me my mine myself you your yours yourself he him his she her hers it its we us our they them their this that these those there here what which who whom whose when where why how can could would should will shall may might must just really very also too much many more most some any all each every other such own same only even still well now ok okay oh hey hi hello thanks thank lot lots get got gets getting make makes made go going goes went gone thing things something anything nothing everything someone anyone one ones like want wanted know think thought say said tell told im ive id dont doesnt didnt cant wont isnt arent wasnt youre its thats whats lets gonna wanna yeah yep kind sort way good bad great new need use used advice tip tips suggestion suggestions idea ideas help recommend recommendation question answer best better easy easiest try trying after before during while since until again always never often ever maybe probably actually lately right sure".split())
 TOK=re.compile(r"[A-Za-z][A-Za-z']*");SENT=re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])");W=re.compile(r"[A-Za-z']+|[^A-Za-z'\s]+|\s+")
-KIN_F="sister mom mother aunt grandma grandmother niece daughter wife girlfriend fiancee stepmom stepsister girl woman lady mum".split();KIN_M="brother dad father uncle grandpa grandfather nephew son husband boyfriend fiance stepdad stepbrother boy man guy".split();KIN=dict(zip(KIN_F,KIN_M));KIN.update({v:k for k,v in list(KIN.items())});KIN.update({w:w for w in "partner spouse parent sibling kid child friend coworker colleague boss roommate neighbor teacher".split()})
-TIMEW=set("today tomorrow tonight yesterday weekend morning evening afternoon monday tuesday wednesday thursday friday saturday sunday".split())
+KIN_F="sister mom mother aunt grandma grandmother niece daughter wife girlfriend fiancee stepmom stepsister girl woman lady mum".split();KIN_M="brother dad father uncle grandpa grandfather nephew son husband boyfriend fiance stepdad stepbrother boy man guy".split();KIN=dict(zip(KIN_F,KIN_M));KIN.update({v:k for k,v in list(KIN.items())});KIN.update({w:w for w in "partner spouse parent sibling kid child friend coworker colleague boss roommate neighbor teacher".split()});FAM=set(KIN_F+KIN_M+"partner spouse parent sibling kid child".split())-{"girl","woman","lady","boy","man","guy"}
+TIMEW=set("today tomorrow tonight yesterday weekend morning evening afternoon monday tuesday wednesday thursday friday saturday sunday".split());NGEN|=TIMEW
 PRO_F={"she":"he","her":"his","hers":"his","herself":"himself"};PRO_M={"he":"she","him":"her","his":"her","himself":"herself"}
 SWAP={**PRO_F,**PRO_M}
-NEG=re.compile(r"(?i)\b(unmotivated|lazy|stuck|lost|homesick|insecure|jealous|guilty|ashamed|embarrassed|disappointed|sad|stress(ed|ful)?|anxious|anxiety|lonely|alone|tired|exhausted|depress(ed|ing)|upset|angry|mad|furious|worried|worry|nervous|scared|afraid|overwhelmed|frustrat(ed|ing)|hurt|heartbroken|broke up|dumped|miserable|awful|terrible|down|bored|burn(ed|t) out|rough|hard time|struggl(e|ing)|lost my|passed away|died|grief|grieving|fail(ed)?|fired|rejected|sick|cry|crying)\b")
-POS=re.compile(r"(?i)\b(happy|excited|thrilled|glad|proud|great news|good news|finally|got (the|a|my) (job|promotion|offer)|passed|won|engaged|married|promoted|love it|amazing|awesome|celebrat\w*|new (job|puppy|kitten|baby|house|car)|adopted|graduat\w*)\b")
+NEG=re.compile(r"(?i)\b(unmotivated|lazy|stuck|lost|homesick|insecure|jealous|guilty|ashamed|embarrassed|disappointed|sad|stress(ed|ful)?|anxious|anxiety|lonely|alone|tired|exhausted|depress(ed|ing)|upset|angry|mad|furious|worried|worry|nervous|scared|afraid|overwhelmed|frustrat(ed|ing)|hurt|heartbroken|broke up|dumped|miserable|awful|terrible|down|bored|burn(ed|t) out|rough|hard time|struggl(e|ing)|lost my|trouble|problems?|forgot|escaped|missing|flat tire|argument|fight|fought|stuck|dying|burn(ed|t)|ruin(ed|s)?|messed up|broke|broken|disaster|went wrong|passed away|died|grief|grieving|fail(ed)?|fired|rejected|sick|cry|crying)\b")
+POS=re.compile(r"(?i)\b(happy|excited|thrilled|glad|proud|great news|good news|finally|accepted|got (in|into)|made it|did it|nailed it|personal (best|record)|scored|landed|got a raise|honeymoon|vacation|got back from|got (the|a|my) (job|promotion|offer)|passed|won(?!')|engaged|married|promoted|love it|amazing|awesome|celebrat\w*|new (job|puppy|kitten|baby|house|car)|adopted|graduat\w*)\b")
 R_GREET=re.compile(r"(?i)^\W*(hi+|hello+|hey+|heya|yo|howdy|hiya|greetings|good (morning|afternoon|evening|day)|sup)\b");R_HOWRU=re.compile(r"(?i)\b(how are (you|u|things)|how'?s it going|how(\s+is|\s+was|'s) (your|ur) (day|week|weekend|morning|night)|what'?s up|how have you been|how (are )?you doing|how do you do|hows life|how is life)\b")
 R_THANKS=re.compile(r"(?i)\b(thanks|thank (you|u)|thx|ty|much appreciated|appreciate (it|that|you)|that help(s|ed)|helpful)\b");R_BYE=re.compile(r"(?i)\b(bye|goodbye|good night|goodnight|see (you|ya)|talk (to you )?(later|soon)|gotta go|take care|later)\b")
 R_TASK=re.compile(r"(?i)^\W*((ok(ay)?|alright|sure|great|thanks|thank you|cool|now|so|and|also|then|next)[\s,!.]+)*(please\s+)?(write|create|generate|make me|list|give me (a|an|the|some|\d)|translate|summari[sz]e|rewrite|rephrase|paraphrase|code|implement|draft|compose|calculate|compute|solve|convert|design|outline|describe|classify|extract|sort|name (a|some|\d)|provide|show me|tell me (a|an) (story|joke|poem))\b|^\W*(can|could|would|will) you (please )?(write|create|generate|list|give|provide|add|make|translate|summari[sz]e|rewrite|describe|explain|show|enrich|code|draft|compose|calculate|convert|name|expand|elaborate|format|fix|modify|continue|tell me (a|an) (story|joke|poem))\b|```|\bdef \w+\(|\b(python|javascript|java|c\+\+|sql|regex|html|css|bash)\b")
@@ -24,7 +28,7 @@ R_OPIN=re.compile(r"(?i)\b(what'?s something (that )?(always )?(makes|cheers|get
 R_FACT=re.compile(r"(?i)^\W*(what|who|when|where|which|why|how) (is|are|was|were|did|does|do|many|much|long|far|old|big|tall|fast|often|come)\b|^\W*(what|who)'s\b|^\W*(explain|define|what does)\b|\b(meaning of|definition of|difference between|history of|capital of|population of)\b")
 R_FEEL=re.compile(r"(?i)\b(i'?m|i am|i feel|i'?ve been|i have been|i was|feeling|i get|i got|makes me|made me)\b.{0,30}"+NEG.pattern[4:]+"|"+r"\b(i'?m|i am|i feel|feeling)\b.{0,20}"+POS.pattern[4:])
 R_FIRST=re.compile(r"(?i)\b(i|i'm|i've|i'd|my|me|we|our)\b")
-HARD=r"sex|sexual|sexy|porn\w*|nude|naked|horny|fetish|erotic|penis|vagina|genital\w*|orgasm|masturbat\w*|rape|incest|nazi\w*|hitler|nigg\w*|fag\w*|retard\w*|whore|slut|cunt|cocaine|heroin|meth|lsd|gun|guns|firearm|rifle|pistol|ammo|malware|shoplift\w*|suicid\w*|self[- ]?harm|cutting myself";UNSAFE_Q=re.compile(r"(?i)\b("+HARD+r")\b");UNSAFE=re.compile(r"(?i)\b("+HARD+r"|bitch|fuck\w*|shit\w*|asshole|dick|weed|marijuana|drunk|vodka|hack(ing|er)?|exploit|password|steal|cheat(ing)? on|revenge|hate (him|her|them|you)|stupid|idiot|dumb|kill\w*|die|dead|death|slur)\b")
+HARD=r"kidnap\w*|sex|sexual|sexy|porn\w*|nude|naked|horny|fetish|erotic|penis|vagina|genital\w*|orgasm|masturbat\w*|rape|incest|nazi\w*|hitler|nigg\w*|fag\w*|retard\w*|whore|slut|cunt|cocaine|heroin|meth|lsd|gun|guns|firearm|rifle|pistol|ammo|malware|shoplift\w*|suicid\w*|self[- ]?harm|cutting myself";UNSAFE_Q=re.compile(r"(?i)\b("+HARD+r")\b");UNSAFE=re.compile(r"(?i)\b("+HARD+r"|bitch|fuck\w*|shit\w*|asshole|dick|weed|marijuana|drunk|vodka|hack(ing|er)?|exploit|password|steal|cheat(ing)? on|revenge|hate (him|her|them|you)|stupid|idiot|dumb|kill\w*|die|dead|death|slur)\b")
 URGENT=re.compile(r"(?i)\b(not (answering|answer|breathing|responding|waking up|moving)|unconscious|passed out|(laying|lying) on the floor|bleeding|emergency|overdos\w*|chest pain|can'?t breathe|seizure|choking|heart attack|stroke|911|poison\w*|abus\w*|hurt me|hits me|threaten\w*)\b");META=re.compile(r"(?i)\b(as an ai|an ai (language )?model|language model|i am an ai|i'?m an ai|i am a (computer program|machine|chatbot|bot)|i'?m (just )?a (computer program|machine|chatbot|bot)|i (do not|don'?t) have (personal |any )?(opinions|feelings|emotions|preferences|beliefs|experiences|a body|the ability)|i (cannot|can'?t) (feel|experience|have opinions)|i (do not|don'?t) have (thoughts|desires|a physical form|hobbies|free time|a favou?rite)|i do not exist|my (training|programming|knowledge cutoff)|trained on|as of my|open ?assistant|laion)\b")
 STALE=re.compile(r"(?i)\b((19|20)\d\d|currently|as of|latest|this year|last year|recently|right now|nowadays|today's|at the moment|up to date|the above|above answer|previous answer|my last (answer|response|message)|as i (said|mentioned)|in the code|the code above|following code|your code)\b")
 LISTY=re.compile(r"(?:^|\s)(?:\d{1,2}[.)]|[-*•])\s+[A-Z]")
@@ -32,8 +36,12 @@ LEAD=re.compile(r"(?i)^(sure|certainly|of course|absolutely|great question|good 
 WARM=set("sorry understand feel feeling hope glad happy care okay normal proud congratulations congrats wonderful sounds tough hard support love kind gentle yourself alone deserve valid hug heart luck best wish".split());PLAY=set("haha lol fun funny joke silly awesome cool wow yay hehe fantastic exciting adventure delicious".split())
 _lk=threading.Lock();_S={};_RECENT=collections.defaultdict(lambda:collections.deque(maxlen=64))
 def stem(w:str)->str:
- w=w.lower().strip("'");w=w[:-2] if w.endswith("'s") else w
- return w[:-2] if w.endswith("oes") else (w[:-3]+"y" if w.endswith("ies") and len(w)>4 else (w[:-1] if w.endswith("s") and not w.endswith(("ss","us","is")) and len(w)>3 else w))
+ w=w.lower().strip("'");w=w[:-2] if w.endswith("'s") else w;w=w[:-2] if w.endswith("oes") else (w[:-3]+"y" if w.endswith("ies") and len(w)>4 else (w[:-1] if w.endswith("s") and not w.endswith(("ss","us","is")) and len(w)>3 else w))
+ return _lem(w) if len(w)>5 and w.endswith(("ing","ed")) else w
+def _lem(w:str)->str:
+ L=_S.setdefault("lem",{})
+ if w not in L:c=_cat();V=c["verbs"];L[w]=w if w in c["nouns"] else next((b for b in ([w[:-3]+"e",w[:-3],w[:-4]] if w.endswith("ing") else [w[:-3]+"y"] if w.endswith("ied") else [w[:-1],w[:-2],w[:-3]]) if len(b)>2 and b in V),w)
+ return L[w]
 def toks(t:str)->list:return TOK.findall(t or "")
 def cwords(t:str)->list:return [s for s in (stem(w) for w in toks(t)) if len(s)>1 and s not in STOP and s.replace("'","") not in STOP]
 def tk(x:str)->str:return x[:int(os.environ.get("AMNI_RCHAT_TRUNC","6"))] if len(x)>int(os.environ.get("AMNI_RCHAT_TRUNC","6")) else x
@@ -58,12 +66,41 @@ def names_set()->set:
   try:_S["names"]=NAMES|set(np.load(IDX,allow_pickle=True)["names"])
   except Exception:return NAMES
  return _S["names"]
-def _anc(k:tuple,x:dict)->set:
- a=[k[0],k[1]];[a.append(x["par"].get(a[-1],-1)) for _ in range(2)];return set(a)-{-1}
+def build_cats(out:str=CATF)->dict:
+ import nltk;nltk.data.path.insert(0,os.path.join(_H0,"data","concepts","nltk_data"));from nltk.corpus import wordnet as wn
+ RT={r:n for n,*rs in CATS for r in rs};al=wn.synset("alcohol.n.01");C={};N=set();cnt=lambda w,p:sum(l.count() for x in wn.synsets(w,p) for l in x.lemmas() if l.name().lower()==w)
+ for w in sorted({l.lower() for l in wn.all_lemma_names("n") if l.isalpha()}):
+  ss=wn.synsets(w,"n");nv=cnt(w,"n");ov=max(cnt(w,"v"),cnt(w,"a")+cnt(w,"s"))
+  bv=max([cnt(b,"v") for b in (w[:-3],w[:-3]+"e",w[:-4],w[:-2],w[:-1]) if len(b)>2] or [0]) if w.endswith(("ing","ed")) else 0
+  if not ss or nv<ov or (nv==0 and ov==0 and len(ss)<len(wn.synsets(w,"v"))+len(wn.synsets(w,"a"))) or bv>nv:continue
+  N.add(w);cl=set(ss[0].closure(lambda x:x.hypernyms()+x.instance_hypernyms()))|{ss[0]};c=sorted({RT[x.name()] for x in cl if x.name() in RT})
+  c and al not in cl and C.__setitem__(w,c)
+ [(C.setdefault(w,[]).append(k),N.add(w)) for k,v in HANDCAT.items() for w in v.split() if k not in C.get(w,[])];os.makedirs(os.path.dirname(out),exist_ok=True);V=sorted({l.lower() for l in wn.all_lemma_names("v") if l.isalpha()});json.dump({"cat":C,"nouns":sorted(N),"verbs":V},open(out,"w"));[_S.pop(k,None) for k in ("cat","lem")];return {"cat":len(C),"nouns":len(N),"verbs":len(V)}
+def _cat()->dict:
+ if "cat" not in _S:
+  try:z=json.load(open(CATF))
+  except Exception:z={"cat":{},"nouns":[],"verbs":[]}
+  _S["nouns"]=set(z["nouns"]);_S["verbs"]=set(z.get("verbs",[]));_S["csz"]=collections.Counter(c for v in z["cat"].values() for c in v);_S["cat"]={k:frozenset(v) for k,v in z["cat"].items()}
+ return _S
 def classes(w:str)->set:
- s=stem(w);x=_lex();k=x["syn"].get(s) or x["syn"].get(w.lower())
- if "fan" not in x:x["fan"]=collections.Counter(i for v in x["syn"].values() if v[0]//100000000==1 for i in _anc(v,x))
- return ({"kin"} if s in KIN else set())|({i for i in _anc(k,x) if x["fan"][i]<=int(os.environ.get("AMNI_RCHAT_FAN","1000"))} if k and k[0]//100000000==1 else set())
+ s=stem(w);lo=w.lower();c=_cat()["cat"]
+ return ({"kin"} if s in KIN else set())|({"t%d"%TG[lo]} if lo in TG else set())|set(c.get(lo) or c.get(s) or ())
+def cmatch(a:str,b:str)->set:
+ x,y=classes(a),classes(b);z=x&y;sa,sb=stem(a),stem(b);z=z-{"kin"} if "kin" in z and sa!=sb and not (sa in KG and KG.get(sa)==KG.get(sb)) else z
+ return set() if not z or (z<=COARSE and (x-COARSE or y-COARSE)) else z
+def nouns(t:str,ex:set=frozenset())->set:
+ N=_cat()["nouns"];return {s for w in toks(t) for s in [stem(w)] if len(s)>1 and s not in STOP and s in N and s not in GENERIC and s not in NGEN and s not in ex and not (w.lower().endswith(("ing","ed")) and s!=w.lower())}
+def head(m:str):
+ P=nouns(m);Q={stem(x) for g in re.findall(r"(?i)\b(?:my|our)\s+([a-z]+)(?:\s+([a-z]+))?",m) for x in g if x}&P;return max(Q or P,key=lambda x:(not x.endswith("ing"),widf(x))) if P else None
+def hmatch(h:str,t:str)->bool:return not h or any(h==x or syns(h)&syns(x) or cmatch(h,x) for x in cwords(t))
+def qmass(m:str,q:str)->float:
+ P=nouns(m);Q=nouns(q);mt=lambda p,x:p==x or bool({y for y in syns(p) if y[0]=="s"}&syns(x)) or bool(cmatch(p,x))
+ return 1.0 if not Q else sum(widf(x) for x in Q if any(mt(p,x) for p in P))/sum(widf(x) for x in Q)
+def topic(m:str,t:str,ctx:str="")->bool:
+ P=nouns(m+" "+ctx);T=nouns(t,PHW)
+ if not P or not T:return True
+ mt=lambda p,x:p==x or bool({y for y in syns(p) if y[0]=="s"}&syns(x)) or bool(cmatch(p,x));hit=[p for p in P if any(mt(p,x) for x in T)];th=[x for x in T if any(mt(p,x) for p in P)]
+ return bool(hit) and (max(P,key=widf) in hit or sum(widf(p) for p in hit)>=float(os.environ.get("AMNI_RCHAT_TOPIC","0.5"))*sum(widf(p) for p in P)) and sum(widf(x) for x in th)>=float(os.environ.get("AMNI_RCHAT_TMASS","0.2"))*sum(widf(x) for x in T)
 def syns(w:str)->set:
  k=_lex()["syn"].get(w)
  return {"s%d"%k[0],"h%d"%k[1]} if k else set()
@@ -76,32 +113,34 @@ def feats(a:str)->list:
 def keys(q:str,ctx:str="",a:str="",ac:str="",md:int=0,cw:float=0.3)->dict:
  k={};cf=cwords(q);cq=[tk(x) for x in cf]
  put=lambda t,w:k.__setitem__(t,max(k.get(t,0.0),w))
- [put("w:"+x,1.0) for x in cq];[put("b:"+x+" "+y,1.5) for x,y in zip(cq,cq[1:])];[put(s,0.35) for x in cf for s in syns(x)];[put("w:"+tk(x),cw) for x in cwords(ctx)];[put("w:"+tk(x),0.25) for x in cwords(a[:300])]
+ [put("w:"+x,1.0) for x in cq];[put("b:"+x+" "+y,1.5) for x,y in zip(cq,cq[1:])];[put(s,0.35) for x in cf for s in syns(x)];nc=nouns(ctx) if cw>=0.7 else set();[put("w:"+tk(x),1.0 if x in nc else cw) for x in cwords(ctx)];[put("w:"+tk(x),0.25) for x in cwords(a[:300])]
  ac and put("a:"+ac,0.8);md and put("m:%d"%md,0.5);return k
 def _h(t:str)->int:return zlib.crc32(t.encode())
 def _docs(split:str="train")->list:
+ return _docs5(split)+([(r["src"],r["id"],[tuple(x) for x in r["ex"]],r["ctx"],r["att"]) for r in map(json.loads,gzip.open(XTRA,"rt"))] if split=="train" and os.path.exists(XTRA) and os.environ.get("AMNI_RCHAT_XTRA","1")=="1" else [])
+def _docs5(split:str="train")->list:
  os.environ.setdefault("HF_DATASETS_OFFLINE","1");os.environ.setdefault("HF_HUB_OFFLINE","1");sys.path.insert(0,_H0)
  import scripts.build_chat5_corpus as B
  st=collections.Counter();att={};[att.setdefault(r["id"],r["split"]) for r in map(json.loads,gzip.open(os.path.join(_H0,"data","chat5","attribution.jsonl.gz"),"rt")) if r["src"]!="gen"]
  ex=re.compile(r"User: ([^\n]*)\nAdam: ([^\n]*)\n\n");tr=set(ex.findall(open(os.path.join(_H0,"data","chat5",split+".bin"),"rb").read().decode("ascii")))
- return [(s,i,e) for s,i,t,_,_ in B.oasst(st)+B.dolly(st)+B.aya(st) for e in [ex.findall(t)] if att.get(i)==split and e and all(x in tr for x in e)]
+ return [(s,i,e,"","") for s,i,t,_,_ in B.oasst(st)+B.dolly(st)+B.aya(st) for e in [ex.findall(t)] if att.get(i)==split and e and all(x in tr for x in e)]
 def safe(t:str,q:bool=False)->bool:
  from amni.serve.harm_semantic import _KW
  from scripts.neutral_filter import DEFAULT_FILTER as NF
  return bool(t.strip()) and not _KW.search(t) and not (UNSAFE_Q if q else UNSAFE).search(t) and NF.clean(t)[0]==t.strip()
 def build(out:str=IDX)->dict:
- t0=time.time();docs=_docs()+[("own","own:%d"%i,[(q,a)]) for i,(_,q,a) in enumerate(OWN)];U=[];st=collections.Counter()
- for di,(s,i,ex) in enumerate(docs):
+ t0=time.time();cs=build_cats();docs=_docs()+[("own","own:%d"%i,[(q,a)],"","") for i,(_,q,a) in enumerate(OWN)];U=[];st=collections.Counter()
+ for di,(s,i,ex,cx,xa) in enumerate(docs):
   for j,(q,a) in enumerate(ex):
-   a=re.sub(r"\s+"," ",a).strip();ok=len(toks(a))>=3 and len(a)>=12 and safe(q) and safe(a) and not re.search(r"https?://|www\.|\[email\]|\[phone\]",a);st["kept" if ok else "drop"]+=1
-   ok and U.append((q,a,ex[j-1][0] if j else "",ex[j-1][1] if j else "",di,j,SRCS.index(s)))
+   a=re.sub(r"\s+"," ",a).strip();ok=len(toks(a))>=3 and len(a)>=12 and safe(q) and safe(a) and not re.search(r"https?://|www\.|\[email\]|\[phone\]",a) and not re.search(r"(?i)which of (these|the following)|classify|categori[sz]e|the following|:\s*[\w' -]+(,\s*[\w' -]+){3,}",q);st["kept" if ok else "drop"]+=1
+   ok and U.append((q,a,ex[j-1][0] if j else cx,ex[j-1][1] if j else "",di,j,SRCS.index(s),xa.replace(")","")))
  n=len(U);ac=[act(u[0]) for u in U];md=[mood(u[0]) for u in U];K=[];P=[];WT=[];nm=np.zeros(n,np.float32)
  for x,u in enumerate(U):
   k=keys(u[0],u[2],u[1],ac[x],md[x]);K+=[_h(t) for t in k];P+=[x]*len(k);WT+=list(k.values());nm[x]=math.sqrt(max(1,sum(1 for t in k if t[:2] in ("w:","b:") and k[t]>=1.0)))
  K=np.array(K,np.uint32);P=np.array(P,np.int32);WT=np.array(WT,np.float16);o=np.lexsort((P,K));K,P,WT=K[o],P[o],WT[o];uk,st0,df=np.unique(K,return_index=True,return_counts=True)
  blob=lambda i:(lambda b:(np.frombuffer(b"".join(b),np.uint8),np.cumsum([0]+[len(x) for x in b]).astype(np.int64)))([u[i].encode() for u in U])
- (qb,qo),(ab,ao),(cb,co),(pb,po)=blob(0),blob(1),blob(2),blob(3);os.makedirs(os.path.dirname(out),exist_ok=True)
- np.savez(out+".part.npz",qb=qb,qo=qo,ab=ab,ao=ao,cb=cb,co=co,pb=pb,po=po,doc=np.array([u[4] for u in U],np.int32),turn=np.array([u[5] for u in U],np.int8),src=np.array([u[6] for u in U],np.int8),act=np.array([ACTS.index(a) for a in ac],np.int8),mood=np.array(md,np.int8),feat=np.array([feats(u[1]) for u in U],np.float32),ids=np.array([d[1] for d in docs],dtype=object),K=uk,ptr=np.r_[st0,len(K)].astype(np.int64),P=P,WT=WT,idf=np.log((n+1)/(df+0.5)).astype(np.float32),norm=nm,**_banks(U,md),names=np.array(_pool_names(),dtype=object),meta=np.frombuffer(json.dumps({"units":n,"docs":len(docs),"stats":dict(st),"by_src":dict(collections.Counter(SRCS[u[6]] for u in U)),"by_act":dict(collections.Counter(ac)),"chat5_manifest":zlib.crc32(open(os.path.join(_H0,"data","chat5","manifest.json"),"rb").read()),"built":time.strftime("%Y-%m-%dT%H:%M:%S"),"s":round(time.time()-t0,1)}).encode(),np.uint8))
+ (qb,qo),(ab,ao),(cb,co),(pb,po),(xb,xo)=blob(0),blob(1),blob(2),blob(3),blob(7);os.makedirs(os.path.dirname(out),exist_ok=True)
+ np.savez(out+".part.npz",qb=qb,qo=qo,ab=ab,ao=ao,cb=cb,co=co,pb=pb,po=po,xb=xb,xo=xo,doc=np.array([u[4] for u in U],np.int32),turn=np.array([u[5] for u in U],np.int8),src=np.array([u[6] for u in U],np.int8),act=np.array([ACTS.index(a) for a in ac],np.int8),mood=np.array(md,np.int8),feat=np.array([feats(u[1]) for u in U],np.float32),ids=np.array([d[1] for d in docs],dtype=object),K=uk,ptr=np.r_[st0,len(K)].astype(np.int64),P=P,WT=WT,idf=np.log((n+1)/(df+0.5)).astype(np.float32),norm=nm,**_banks(U,md),names=np.array(_pool_names(),dtype=object),meta=np.frombuffer(json.dumps({"units":n,"docs":len(docs),"stats":dict(st),"by_src":dict(collections.Counter(SRCS[u[6]] for u in U)),"by_act":dict(collections.Counter(ac)),"chat5_manifest":zlib.crc32(open(os.path.join(_H0,"data","chat5","manifest.json"),"rb").read()),"extra":zlib.crc32(open(XTRA,"rb").read()) if os.path.exists(XTRA) else None,"cats":cs,"built":time.strftime("%Y-%m-%dT%H:%M:%S"),"s":round(time.time()-t0,1)}).encode(),np.uint8))
  os.replace(out+".part.npz",out);_S.pop("ix",None);return json.loads(np.load(out,allow_pickle=True)["meta"].tobytes())
 def _banks(U:list,md:list)->dict:
  op=[];qs=[]
@@ -128,12 +167,12 @@ def index()->Index:
 def widf(x:str)->float:
  ix=_S.get("ix");c=_S.setdefault("widf",{})
  if ix is None:return 1.0+math.log(1+len(x))
- if x not in c:h=_h("w:"+x);j=int(np.searchsorted(ix.K,h));c[x]=float(ix.idf[j]) if j<len(ix.K) and ix.K[j]==h else float(ix.idf.max())
+ if x not in c:h=_h("w:"+tk(x));j=int(np.searchsorted(ix.K,h));c[x]=float(ix.idf[j]) if j<len(ix.K) and ix.K[j]==h else float(ix.idf.max())
  return c[x]
-def warm()->Index:ix=index();words_set();classes("cat");names_set();return ix
+def warm()->Index:ix=index();words_set();_cat();_lex();names_set();safe("hi");return ix
 def cover(q:str,c:str,must:bool=False,ex:str=""):
- a={tk(x):x for x in cwords(q)};cb=cwords(c);b={tk(x) for x in cb};bs=set().union(*[syns(x) for x in cb]) if cb else set();be={tk(x) for x in cwords(ex)};hit=lambda x:1.0 if x in b else 0.6 if syns(a[x])&bs else float(os.environ.get("AMNI_RCHAT_EXW","0.4")) if x in be else 0.0;v=sum(widf(x)*hit(x) for x in a)/max(1e-9,sum(widf(x) for x in a)) if a else 0.0
- return (v,not a or sum(x in b or bool(syns(a[x])&bs) for x in a)>=math.ceil(len(a)*0.6)) if must else v
+ a={tk(x):x for x in cwords(q)};cb=cwords(c);b={tk(x) for x in cb};bs=set().union(*[syns(x) for x in cb]) if cb else set();be={tk(x) for x in cwords(ex)};cm=lambda x:any(cmatch(a[x],y) for y in cb);hit=lambda x:1.0 if x in b else 0.6 if syns(a[x])&bs else float(os.environ.get("AMNI_RCHAT_CATW","0.5")) if cm(x) else float(os.environ.get("AMNI_RCHAT_EXW","0.4")) if x in be else 0.0;v=sum(widf(x)*hit(x) for x in a)/max(1e-9,sum(widf(x) for x in a)) if a else 0.0
+ return (v,not a or sum(x in b or bool(syns(a[x])&bs) or cm(x) for x in a)>=math.ceil(len(a)*0.6)) if must else v
 def _case(src:str,w:str)->str:return w.upper() if src.isupper() and len(src)>1 else w[:1].upper()+w[1:] if src[:1].isupper() else w
 def _plural(src:str,w:str)->str:return w if w.endswith("s") or not (src.lower().endswith("s") and not src.lower().endswith("ss")) else (w[:-1]+"ies" if w.endswith("y") and w[-2:-1] not in "aeiou" else w+"es" if w.endswith(("sh","ch","x")) else w+"s")
 def edit(a:str,rq:str,rc:str,m:str,ctx:str)->tuple:
@@ -142,13 +181,13 @@ def edit(a:str,rq:str,rc:str,m:str,ctx:str)->tuple:
  for r in sorted(rw-set(cw)):
   cr=classes(r)
   if not cr or not re.search(r"(?i)\b"+re.escape(r),a):continue
-  best=[c for c in cw if c not in rw and c not in mp.values() and cr&classes(c) and ("kin" not in cr or c in KIN) and ("time" not in cr or c in TIMEW)]
+  best=sorted([c for c in cw if c not in rw and c not in mp.values() and cmatch(r,c) and ("kin" not in cr or c in KIN) and ("time" not in cr or c in TIMEW)],key=lambda c:min(_cat()["csz"].get(x,1) for x in cmatch(r,c)))
   best and mp.__setitem__(r,cw[best[0]])
  gc,gr=gender(cur),gender(ref);sw=gc and gr and gc!=gr;nm=names_set();cn=[x for x in toks(cur) if x in nm and x!="Adam"];rn={x for x in toks(ref) if x in nm}
  out=[];tk=W.findall(a)
  for i,t in enumerate(tk):
   s=stem(t) if t[:1].isalpha() else "";lo=t.lower()
-  if s in mp:v=_case(t,_plural(t,mp[s]));E.append("sub:%s>%s"%(t,v));out.append(v)
+  if s in mp:v=_case(t,_plural(t,mp[s]));v=v[:1].upper()+v[1:] if v.lower() in DAYS else v;E.append("sub:%s>%s"%(t,v));out.append(v)
   elif sw and lo in SWAP and ((lo in PRO_F) if gc<0 else (lo in PRO_M)):
    nx=next((x for x in tk[i+1:] if x.strip()),"");v=("his" if lo=="her" and nx[:1].isalpha() and nx.lower() not in STOP else "him" if lo=="her" else SWAP[lo]);v=_case(t,v);E.append("pro:%s>%s"%(t,v));out.append(v)
   elif t in rn and t not in cn and len(set(cn))==1:E.append("name:%s>%s"%(t,cn[0]));out.append(cn[0])
@@ -158,12 +197,14 @@ def edit(a:str,rq:str,rc:str,m:str,ctx:str)->tuple:
  for x in bad:t2=re.sub(r",?\s*\b%s\b(?=[.!?,])"%re.escape(x),"",t);E.append("drop:"+x) if t2!=t else None;t=t2
  return t,E,bool({x for x in toks(t) if x in nm and x not in cn and x!="Adam"})
 def _ol(a:str)->str:
+ d=re.match(r"\s*-\s+(.*)",a);it=[x.strip(" .;") for x in re.split(r"\s+-\s+",d.group(1))] if d else []
+ if len(it)>=2:it=[x[:1].lower()+x[1:] for x in it if 1<=len(toks(x))<=8][:3];return "A few ideas: "+", ".join(it[:-1])+(", and " if len(it)>2 else " and ")+it[-1]+"." if len(it)>=2 else a
  m=re.search(r"(?:^|\s)1[.)]\s",a)
  if not m or not re.search(r"\s2[.)]\s",a[m.end():]):return a
  it=[re.split(r"(?<=[.!?:])\s",x.strip(),maxsplit=1)[0].strip(" .:;?") for x in re.split(r"\s\d{1,2}[.)]\s"," "+a[m.start():].strip())[1:]];it=[x[:1].lower()+x[1:] if not re.match(r"[A-Z]{2}|I\b",x) else x for x in it if 1<=len(toks(x))<=10][:3];intro=a[:m.start()].strip().rstrip(":").strip()
  return a if len(it)<2 else (intro+": " if intro else "A few ideas: ")+", ".join(it[:-1])+(", and " if len(it)>2 else " and ")+it[-1]+"."
 def trim(a:str,tone:str,ac:str)->str:
- a=_ol(LEAD.sub("",a).strip());a=a[:1].upper()+a[1:];ss=[s for s in SENT.split(a) if s.strip()];keep=[s for s in ss if not META.search(s)] or ss;keep=[s for s in keep if not STALE.search(s)] or keep
+ a=_ol(LEAD.sub("",re.sub(r"\s*(?<!\w)[:;]-?[()DPp](?!\w)"," ",a)).strip());a=a[:1].upper()+a[1:];ss=[s for s in SENT.split(a) if s.strip()];keep=[s for s in ss if not META.search(s)] or ss;keep=[s for s in keep if not STALE.search(s)] or keep
  mx={"concise":(2,200),"warm":(3,380),"playful":(3,300)}.get(tone,(3,320))
  o=""
  for s in keep:
@@ -191,27 +232,44 @@ def tone_of(m:str,tone:str=None)->str:
 def pmi(e,prompt:str,texts:list,span:int=120)->np.ndarray:
  c=[t.encode()[:span] for t in texts];n=np.array([max(1,len(x)) for x in c],float);return (np.asarray(e.score([prompt.encode()]*len(c),c))-np.asarray(e.score([b"User: \nAdam: "]*len(c),c)))/n
 def _pick(ix:Index,u:np.ndarray,m:np.ndarray,t:np.ndarray,md:int,msg:str,rec,seed:int)->tuple:
- w=set(cwords(msg));k=[i for i in range(len(u)) if m[i]==md and int(u[i]) not in rec and {x for x in cwords(t[i]) if NEG.search(x) or POS.search(x)}<=w]
+ w=set(cwords(msg));k=[i for i in range(len(u)) if m[i]==md and int(u[i]) not in rec and {x for x in cwords(t[i]) if NEG.search(x) or POS.search(x)}<=w and set(cwords(t[i]))-w<=OPOK]
  return None if not k else (lambda b:(int(u[b]),re.sub(r"\s*[:;]-?[()]\.?$",".",str(t[b]))))(max(k,key=lambda i:(len(set(cwords(t[i]))&w),-abs(len(toks(t[i]))-9),zlib.crc32(("%d:%d"%(seed,i)).encode()))))
-def reply(message:str,history=None,tone:str=None,session=None,e=None,k:int=None)->dict:
+def reflect(m:str)->str:
+ h=head(m);T=toks(m);i=next((j for j,x in enumerate(T) if stem(x)==h),None) if h else None
+ if i is None:return h or ""
+ N=_cat()["nouns"];ok=lambda x:x.lower() not in STOP and stem(x) not in GENERIC and x[:1].islower();a=i-1 if i>0 and ok(T[i-1]) and not T[i-1].lower().endswith(("ed","ing")) and (stem(T[i-1]) in N or T[i-1].lower().endswith(("y","al","ful","ous","ic","ive"))) else i;b=i+1 if i+1<len(T) and ok(T[i+1]) and not T[i+1].lower().endswith("ed") and (stem(T[i+1]) in N or T[i+1].lower().endswith("ing")) else i;pre=T[a-1].lower() if a>0 else ""
+ ph=" ".join(x.lower() if x[:1].isupper() and not x.isupper() and stem(x) in N and j>0 else x for j,x in [(i,T[k]) for k in range(a,b+1)])
+ return ("your " if pre in ("my","our") else "the " if pre in ("a","an","the","this","that","your","his","her","their","its") else "")+ph
+def celeb(a:str)->bool:
+ s0=(SENT.split(a.strip()) or [""])[0];return bool(CELEB.match(a)) or (s0.rstrip().endswith("!") and len(toks(s0))<=5)
+def fallback(m:str,ac:str,md:int,seed:int=0)->str:
+ k="normal" if re.search(r"(?i)\bis (it|that|this) (normal|okay|ok|weird|bad|wrong|rude|strange|common)\b",m) else "fact" if ac in ("fact","other") and "?" in m and re.search(r"(?i)\b(what|who|whom|whose|when|where|which|why|how (many|much|long|far|old|big))\b|\b(can|could) you (tell|explain|show)|\bdo you know\b",m) and not re.search(r"(?i)\b(you|your)\b(?! (tell|explain|show|know))",m) else "decide" if ac in ("advice","opinion","other") and re.search(r"(?i)\b(should i|which|better|or)\b",m) and re.search(r"(?i)\bor\b",m) and "?" in m else "like" if ac in ("share","opinion") and md>=0 and re.search(r"(?i)\bi (really |just |totally )?(love|enjoy|like|adore)\b",m) else ac+("-" if md<0 else "+" if md>0 else "0") if ac in ("feel","share") else ac;L=FB.get(k) or FB["other"];lk=re.search(r"(?i)\bi (?:really |just |totally )?(?:love|enjoy|like|adore) ([a-z][a-z' ]{1,40}?)(?=[.!?,;]| on | in | at | with | when | because |$)",m) if k=="like" else None;x=lk.group(1).strip() if lk and not re.match(r"(?i)(it|that|this|you|him|her|them)\b",lk.group(1)) else reflect(m);x="the "+x if x and ac!="opinion" and " " not in x and x.islower() and not x.endswith(("s","ing")) else x;t=L[seed%len(L)]
+ return t[0].format(x=x) if x else t[1]
+def reply(message:str,history=None,tone:str=None,session=None,e=None,k:int=None,fb:bool=True)->dict:
  m=str(message or "").strip();h=[(str(u),str(a)) for u,a in (history or [])][-3:]
  if not m or not safe(m,True) or any(not safe(u,True) for u,_ in h[-1:]) or URGENT.search(m):return None
- ix=index();ac=act(m);md=mood(m);tn=tone_of(m,tone);ctx=" ".join(u for u,_ in h[-2:]);lastA=h[-1][1] if h else "";fu=bool(h) and len(set(cwords(m)))<=3 and ac not in PHATIC;rec=_RECENT[str(session or "default")];seed=len(rec)+zlib.crc32(m.encode())
+ ix=index();ac=act(m);md=mood(m)
+ if fb=="first" and ac not in FIRST:return None
+ tn=tone_of(m,tone);ctx=" ".join(u for u,_ in h[-2:]);lastA=h[-1][1] if h else "";fu=bool(h) and len(set(cwords(m)))<=3 and ac not in PHATIC;rec=_RECENT[str(session or "default")];seed=len(rec)+zlib.crc32(m.encode())
  if ac in PHATIC:cands=np.nonzero(ix.act==ACTS.index(ac))[0];sc=np.ones(ix.n,np.float32);top=1.0
  else:
-  cands,sc=ix.search(keys(m,ctx,"",ac,md,0.7 if fu else 0.3),int(k or os.environ.get("AMNI_RCHAT_K","60")));top=float(sc[cands[0]]) if len(cands) else 1.0
+  cands,sc=ix.search(keys(h[-1][0]+" "+m if fu else m,ctx,"",ac,md,0.7 if fu else 0.3),int(k or os.environ.get("AMNI_RCHAT_K","60")));top=float(sc[cands[0]]) if len(cands) else 1.0
+ hd=(head(m) or (head(h[-1][0]) if fu and ("?" in m or ac in ("advice","opinion")) else None)) if ac not in PHATIC else None
  R=[]
  for c in cands[:int(os.environ.get("AMNI_RCHAT_RERANK","24"))] if ac not in PHATIC else cands:
   q=ix.txt("q",c);a=ix.txt("a",c);f=ix.feat[c];ca=ACTS[ix.act[c]];cov,mk=(1.0,True) if ac in PHATIC else cover(m+" "+ctx,q+" "+ix.txt("c",c),True,a[:400]) if fu else cover(m,q,True,a[:400]);ar=1.0 if ac in PHATIC else cover(m,a[:400]);ccov=cover(m+" "+ctx,q+" "+ix.txt("c",c)) if ctx else cov
-  if (ac in PHATIC and (f[4] or f[0]>30 or f[3] or not set(cwords(a))<=GENERIC|PHW)) or not mk or (ca not in COMPAT.get(ac,{ca}) and ca!=ac and cov<0.8) or re.search(r"---|\|\s*\||[{}<>=]{2}|;\s*$|\w\.\w+\(|\(\)|=>|\bdef |\bimport ",a) or (ac=="opinion" and not re.search(r"(?i)\b(i|i'm|i'd|i've|my|me)\b",a[:240]) and ca!="opinion"):continue
+  hh=bool(hd) and (fu or ac not in ("share","feel")) and hmatch(hd,q+" "+ix.txt("c",c) if fu else q);A0={tk(x) for x in cwords(m) if x not in NGEN and x not in GENERIC and x not in ("last","next","first")};n0=len(A0&{tk(x) for x in cwords(q)});mk=mk or hh or (ac in ("share","feel") and n0>=2 and n0>=0.5*len(A0))
+  if ac not in PHATIC and qmass(m+" "+ctx if fu else m,q)<float(os.environ.get("AMNI_RCHAT_QMASS","0.55")):continue
+  cm=int(ix.mood[c])
+  if (not h and ix.turn[c]>0 and len(set(cwords(q)))<=2) or ac not in SACT.get(SRCS[ix.src[c]],{ac}) or cm*md<0 or (cm<0 and not md) or (cm and not md and (ac not in ("share","feel") or cov<float(os.environ.get("AMNI_RCHAT_MOODCOV","0.6")))) or (md<=0 and ac not in ("share","feel") and celeb(a)) or (md<0 and celeb(a)) or (md>0 and ac in ("share","feel") and cm<=0) or (md<0 and ac in ("share","feel") and cm>=0 and not f[1]) or (ac in PHATIC and (f[4] or f[0]>30 or f[3] or not set(cwords(a))<=GENERIC|PHW)) or not mk or (ca not in COMPAT.get(ac,{ca}) and ca!=ac and cov<0.8) or re.search(r"---|\|\s*\||[{}<>=]{2}|;\s*$|\w\.\w+\(|\(\)|=>|\bdef |\bimport ",a) or (ac=="opinion" and not re.search(r"(?i)\b(i|i'm|i'd|i've|my|me)\b",a[:240]) and ca!="opinion"):continue
   s=0.9*float(sc[c])/max(top,1e-9)+1.2*cov+0.3*ccov+(0.6 if ca==ac else 0.2 if ca in COMPAT.get(ac,()) else -0.6)-(0.3 if ix.turn[c]>0 and not fu else 0)+(0.3 if ix.mood[c]==md and md else 0)+(0.2 if fu and ix.turn[c]>0 else 0)+0.5*ar+(0.3 if re.search(r"(?i)\b(i|i'm|i'd|my|me)\b",a[:200]) else -0.5 if ac=="opinion" else 0)-0.7*f[4]-0.35*f[3]-0.25*min(2.0,f[5])-(1.5 if int(c) in rec else 0)+{"warm":0.25*f[1],"playful":0.3*f[2],"concise":0.3/(1+f[0]/30)}.get(tn,0)-(0.2 if f[0]>90 else 0)+(0.05*(zlib.crc32(("%d:%d"%(seed,c)).encode())%100)/100 if ac in PHATIC else 0)
   cp=1.0 if ac in PHATIC else cover(q,m+" "+ctx) if fu else cover(q,m)
   if cp<float(os.environ.get("AMNI_RCHAT_CP","0.25")):continue
-  s+=0.5*cp;R.append((s,int(c),q,a,(cov+0.3*max(0.0,ar-cov) if ar<=cov+0.3 or cov>=0.3 else cov) if ac not in PHATIC else cov))
+  s+=0.5*cp+(float(os.environ.get("AMNI_RCHAT_HEADB","0.3")) if hh else 0);R.append((s,int(c),q,a,max((cov+0.3*max(0.0,ar-cov) if ar<=cov+0.3 or cov>=0.3 else cov) if ac not in PHATIC else cov,float(os.environ.get("AMNI_RCHAT_HEADCOV","0.5")) if hh else 0.0)))
  R.sort(key=lambda r:-r[0]);O=[]
  for s,c,q,a,cov in R[:int(os.environ.get("AMNI_RCHAT_EDIT","12"))]:
   t=trim(a,tn,ac);t,E,alien=edit(t,q,ix.txt("c",c),m,ctx+" "+lastA);nw=nonword(t)
-  if alien or not safe(t) or nw>0.12 or len(toks(t))<2:continue
+  if alien or not safe(t) or nw>0.12 or len(toks(t))<2 or (ac not in PHATIC and not topic(m,t,ctx)):continue
   O.append([s+0.15*len([x for x in E if x[:4] in ("sub:","pro:","name")])-1.5*nw,c,q,t,E,cov])
  if e is not None and len(O)>1 and os.environ.get("AMNI_RCHAT_RAY","0")=="1":
   pr="".join(f"User: {u.strip()}\nAdam: {a.strip()}\n\n" for u,a in h)+f"User: {m}\nAdam: ";p=pmi(e,pr,[o[3] for o in O]);p=(p-p.mean())/(p.std()+1e-6);[o.__setitem__(0,o[0]+float(os.environ.get("AMNI_RCHAT_RAY_W","0.3"))*float(v)) for o,v in zip(O,p)]
@@ -219,11 +277,14 @@ def reply(message:str,history=None,tone:str=None,session=None,e=None,k:int=None)
  op=_pick(ix,ix.opu,ix.opm,ix.ops,md,m,rec,seed) if md and ac in ("feel","share","advice","other","opinion") else None;U=[]
  if ok:
   s,c,q,t,E,cov=ok[0];U=[c];w1=set(x.lower() for x in toks(SENT.split(t)[0]))
-  if op and tn=="warm" and not (w1&WARM or OPEN.match(t)) and len(SENT.split(t))<4:t=op[1].rstrip()+" "+t;E=E+["open:%d"%op[0]];U=[op[0],c]
- elif op and ac in ("feel","share"):
+  if op and ac=="feel" and tn=="warm" and not (w1&WARM or OPEN.match(t)) and len(SENT.split(t))<4:t=op[1].rstrip()+" "+t;E=E+["open:%d"%op[0]];U=[op[0],c]
+ elif op and ac=="feel" and fb:
   qq=_pick(ix,ix.qsu,ix.qsm,ix.qss,md,m,rec,seed) or _pick(ix,ix.qsu,ix.qsm,ix.qss,md,m,(),seed);t=op[1]+(" "+qq[1] if qq else "");s,cov,q,E=0.0,0.0,"",["compose:%d"%op[0]]+(["ask:%d"%qq[0]] if qq else []);U=[op[0]]+([qq[0]] if qq else [])
+ elif fb and os.environ.get("AMNI_RCHAT_FALLBACK","1")=="1":
+  t=fallback(m,ac,md,seed);s,cov,q,E,U=0.0,0.0,"",["fallback"],[]
+  if not safe(t):return None
  else:return None
- srcs=sorted({SRCS[ix.src[u]] for u in U});a0=" ".join(ix.txt("a",u) for u in U);vr=run(t,a0);lcs=[LIC[x] for x in srcs];att=" (Adapted from human-written replies in "+", ".join(f"{a}, {b}" for a,b in lcs)+".)" if any(b.startswith("CC BY") for _,b in lcs) or vr>12 else "";[rec.append(u) for u in U]
- return {"text":t,"attribution":att.strip(),"out":t+att,"src":"+".join(srcs),"license":"; ".join(b for _,b in lcs),"id":",".join(str(ix.ids[ix.doc[u]]) for u in U),"units":U,"score":round(float(s),3),"cov":round(float(cov),3),"act":ac,"tone":tn,"edits":E,"verbatim_run":vr,"matched_prompt":q}
+ srcs=sorted({SRCS[ix.src[u]] for u in U}) or ["own"];ou=[u for u in U if SRCS[ix.src[u]]!="own"];a0=" ".join(ix.txt("a",u) for u in ou);vr=run(t,a0) if ou else 0;lcs=[LIC[x] for x in srcs if x!="own"];xa=[x for u in ou for x in [ix.txt("x",u) if getattr(ix,"xo",None) is not None else ""] if x];att=" (Adapted from human-written replies in "+"; ".join(dict.fromkeys(xa+[f"{a}, {b}" for s0,(a,b) in zip([x for x in srcs if x!="own"],lcs) if s0 not in ("se","topical")]))+".)" if any(b not in FREE for _,b in lcs) or vr>12 else "";[rec.append(u) for u in U]
+ return {"text":t,"attribution":att.strip(),"out":t+att,"src":"+".join(srcs),"license":"; ".join(LIC[x][1] for x in srcs),"id":",".join(str(ix.ids[ix.doc[u]]) for u in U) or "fallback","units":U,"score":round(float(s),3),"cov":round(float(cov),3),"act":ac,"tone":tn,"edits":E,"verbatim_run":vr,"matched_prompt":q}
 if __name__=="__main__":
  a=sys.argv[1:];print(json.dumps(build() if a[:1]==["build"] else reply(" ".join(a)),indent=1,default=str))

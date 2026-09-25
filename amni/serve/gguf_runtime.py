@@ -58,10 +58,10 @@ def _ray_learned(message:str):
         from amni.compute.ray_learn import Learned
         _learned[0]=_learned[0] or Learned();return _learned[0].find(message)
     except Exception:return None
-def _rchat(message:str,history=None,user=None,session=None,e=None):
+def _rchat(message:str,history=None,user=None,session=None,e=None,fb=True):
     try:
         from amni.compute.rchat import reply
-        r=reply(message,history,session=session or user,e=e);return r['out'] if r else None
+        r=reply(message,history,session=session or user,e=e,fb=fb);return r['out'] if r else None
     except Exception:return None
 def _rknow(message:str)->tuple:
     try:
@@ -87,6 +87,8 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     rk,fq=_rknow(message) if os.environ.get('AMNI_RAY_RKNOW','1')=='1' and (fg or not PERSONAL.search(message)) else (None,False)
     if rk:yield rk['reply'];return
     fg=fg or (gd and fq)
+    rc=_rchat(message,mem['hist'],user,session,e,'first') if not fg and os.environ.get('AMNI_RCHAT','1')=='1' and os.environ.get('AMNI_RCHAT_FIRST','1')=='1' else None
+    if rc:yield rc;return
     h=None if fg else _ray_guide(e,message);g=h[3] if h else None;src=f" (Source: {_cite(h[5])})" if h and len(h)>5 and h[5] else ''
     if g is None and not fg:
         lr=_ray_learned(message)
