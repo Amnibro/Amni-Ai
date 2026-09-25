@@ -73,6 +73,11 @@ def _factq(message:str)->bool:
         from amni.compute.rknow import factq
         return factq(message,True)
     except Exception:return False
+def _chatq(message:str,history=None,fg:bool=False)->bool:
+    try:
+        from amni.compute.rchat import chatty
+        return os.environ.get('AMNI_RCHAT','1')=='1' and os.environ.get('AMNI_RCHAT_ROUTE','1')=='1' and chatty(message,history,fg)
+    except Exception:return False
 def _memq(m:str,history=None,user=None)->bool:
     from amni.serve.user_memory import turn
     return turn(m,history,user,dry=True)['route']
@@ -82,8 +87,9 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     if mem['reply']:yield mem['reply'];return
     e=engine();getattr(e,'impl','')=='rust' and e.load()
     from amni.compute.ray_learn import learn,Learned,PERSONAL
-    gd=os.environ.get('AMNI_RKNOW_FACT_GUARD','1')=='1';fg=gd and _factq(message)
-    if getattr(e,'v19',False) and mem['route'] and not (fg and not mem['pre'] and not mem['hist']):yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','1.0')),topk=int(os.environ.get('AMNI_RAY_MEM_TOPK','1')),stop=('\n\n','\nUser:','\nAdam:'),veto=os.environ.get('AMNI_RAY_MEM_VETO','0')=='1',**({'lock':os.environ.get('AMNI_RAY_MEM_LOCK','1')=='1','stop_sentence':os.environ.get('AMNI_RAY_MEM_STOP_SENTENCE','1')=='1','rep':float(os.environ.get('AMNI_RAY_MEM_REP','1.0'))} if getattr(e,'impl','')=='rust' else {}));return
+    gd=os.environ.get('AMNI_RKNOW_FACT_GUARD','1')=='1';fg=gd and _factq(message);ch=_chatq(message,mem['hist'],fg)
+    if getattr(e,'v19',False) and mem['route'] and not ch and not (fg and not mem['pre'] and not mem['hist']):yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','1.0')),topk=int(os.environ.get('AMNI_RAY_MEM_TOPK','1')),stop=('\n\n','\nUser:','\nAdam:'),veto=os.environ.get('AMNI_RAY_MEM_VETO','0')=='1',**({'lock':os.environ.get('AMNI_RAY_MEM_LOCK','1')=='1','stop_sentence':os.environ.get('AMNI_RAY_MEM_STOP_SENTENCE','1')=='1','rep':float(os.environ.get('AMNI_RAY_MEM_REP','1.0'))} if getattr(e,'impl','')=='rust' else {}));return
+    if ch:yield _rchat(message,mem['hist'],user,session,e) or "I'm not sure about that one yet.";return
     rk,fq=_rknow(message) if os.environ.get('AMNI_RAY_RKNOW','1')=='1' and (fg or not PERSONAL.search(message)) else (None,False)
     if rk:yield rk['reply'];return
     fg=fg or (gd and fq)
