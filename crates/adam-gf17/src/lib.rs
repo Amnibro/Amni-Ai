@@ -25,7 +25,7 @@ pub struct Table { pub name: String, pub dt: usize, pub ord: bool, pub exact: bo
 pub struct Ent { pub t: u32, pub l: u32, pub p: u32, pub k: u8, pub rows: u32, pub c0: u64, pub c1: u64, pub off: u64, pub len: u64 }
 pub struct Pl { lut: Vec<u32>, pub off: Vec<u32>, pub hs: Vec<u32> }
 pub struct Writer { pub f: File, pub tabs: Vec<Table>, pub ents: Vec<Ent>, loc: Vec<Vec<usize>>, drop: bool, pub tile: usize, sp: Option<(File, String)>, so: u64 }
-pub struct Store { pub path: String, f: File, map: Mmap, pub tabs: Vec<Table>, pub ents: Vec<Ent>, loc: Vec<Vec<usize>>, pub budget: usize, pub used: usize, nx: Vec<u32>, pv: Vec<u32>, seen: Vec<u16>, pub hits: u64, pub miss: u64, pub ev: u64, cs: Option<(usize, usize)>, pub tile: usize, tb: Vec<Vec<usize>>, tiles: HashMap<usize, Arc<(Vec<u8>, usize)>>, pls: HashMap<usize, Arc<Pl>>, free: Vec<Vec<u8>> }
+pub struct Store { pub path: String, f: File, map: Mmap, pub tabs: Vec<Table>, pub ents: Vec<Ent>, loc: Vec<Vec<usize>>, pub budget: usize, pub used: usize, nx: Vec<u32>, pv: Vec<u32>, seen: Vec<u16>, pub hits: u64, pub miss: u64, pub ev: u64, cs: Option<(usize, usize)>, pub tile: usize, tb: Vec<Vec<usize>>, tiles: HashMap<usize, Arc<(Vec<u8>, usize)>>, pls: HashMap<usize, Arc<Pl>>, free: Vec<Vec<u8>>, pub pcap: usize }
 struct Sp(*mut u8);
 unsafe impl Sync for Sp {}
 unsafe impl Send for Sp {}
@@ -203,10 +203,19 @@ pub fn write(out: &str, items: &[(Table, &[u8])], tile: usize) -> io::Result<()>
     w.finish()
 }
 #[cfg(feature = "npy")]
+pub fn npy(path: &str) -> io::Result<(String, Vec<usize>, Mmap, usize)> {
+    let m = unsafe { Mmap::map(&File::open(path)?)? };
+    (m.len() > 12 && &m[..6] == b"\x93NUMPY").then_some(()).ok_or_else(|| bad(format!("{path}: bad npy magic")))?;
+    let (hl, hs) = if m[6] == 1 { (u16::from_le_bytes([m[8], m[9]]) as usize, 10) } else { (u32::from_le_bytes(m[8..12].try_into().unwrap()) as usize, 12) };
+    let h = String::from_utf8_lossy(m.get(hs..hs + hl).ok_or_else(|| bad(format!("{path}: npy header past end")))?).to_string();
+    let f = |k: &str, e: char| h.find(k).and_then(|i| h[i + k.len()..].split(e).next().map(str::to_string)).unwrap_or_default();
+    (!h.contains("'fortran_order': True")).then_some(()).ok_or_else(|| bad(format!("{path}: fortran order unsupported")))?;
+    Ok((f("'descr': '", '\''), f("'shape': (", ')').split(',').filter_map(|v| v.trim().parse().ok()).collect(), m, hs + hl))
+}
+#[cfg(feature = "npy")]
 pub fn pack(prefix: &str, out: &str, ord: bool, tile: usize) -> io::Result<Vec<Table>> {
-    let zs = CKPT.iter().map(|(s, _)| adam_ray::npy::Npz::open(&format!("{prefix}_{s}.npy"))).collect::<io::Result<Vec<_>>>()?;
-    let arrs = zs.iter().map(|z| z.get("")).collect::<io::Result<Vec<_>>>()?;
-    let items = CKPT.iter().zip(&arrs).map(|((s, ex), a)| { let dt: usize = a.descr[2..].parse().map_err(|_| bad(format!("{s}: dtype {}", a.descr)))?; (!a.descr.starts_with('>') && matches!(dt, 1 | 2 | 4)).then_some(()).ok_or_else(|| bad(format!("{s}: dtype {} unsupported", a.descr)))?; Ok((Table { name: s.to_string(), dt, ord: ord && dt == 2, exact: *ex, shape: a.shape.clone() }, &a.data[..a.n() * dt])) }).collect::<io::Result<Vec<_>>>()?;
+    let arrs = CKPT.iter().map(|(s, _)| npy(&format!("{prefix}_{s}.npy"))).collect::<io::Result<Vec<_>>>()?;
+    let items = CKPT.iter().zip(&arrs).map(|((s, ex), (descr, shape, m, o))| { let dt: usize = descr[2..].parse().map_err(|_| bad(format!("{s}: dtype {descr}")))?; (!descr.starts_with('>') && matches!(dt, 1 | 2 | 4)).then_some(()).ok_or_else(|| bad(format!("{s}: dtype {descr} unsupported")))?; let n = shape.iter().product::<usize>() * dt; (m.len() >= o + n).then_some(()).ok_or_else(|| bad(format!("{s}: truncated npy")))?; Ok((Table { name: s.to_string(), dt, ord: ord && dt == 2, exact: *ex, shape: shape.clone() }, &m[*o..o + n])) }).collect::<io::Result<Vec<_>>>()?;
     write(out, &items, tile)?;
     Ok(items.into_iter().map(|x| x.0).collect())
 }
@@ -232,7 +241,7 @@ impl Store {
         let mut acc = 0usize;
         let tb: Vec<Vec<usize>> = tabs.iter().map(|t| (0..t.lv() * t.np()).map(|i| { let x = if tile > 0 { t.tiles(i % t.np(), tile) } else { 0 }; acc += x; acc - x }).collect()).collect();
         let n = if tile > 0 { acc } else { map.len().div_ceil(TILE) };
-        Ok(Store { path: path.into(), f, map, loc: locs(&tabs, &ents), nx: vec![n as u32; n + 1], pv: vec![n as u32; n + 1], seen: vec![0; n], tabs, ents, budget: budget.max(if tile > 0 { 4 * tile * tile } else { TILE }), used: 0, hits: 0, miss: 0, ev: 0, cs, tile, tb, tiles: HashMap::new(), pls: HashMap::new(), free: vec![] })
+        Ok(Store { path: path.into(), f, map, loc: locs(&tabs, &ents), nx: vec![n as u32; n + 1], pv: vec![n as u32; n + 1], seen: vec![0; n], tabs, ents, budget: budget.max(if tile > 0 { 4 * tile * tile } else { TILE }), used: 0, hits: 0, miss: 0, ev: 0, cs, tile, tb, tiles: HashMap::new(), pls: HashMap::new(), free: vec![], pcap: (budget / 8 / (68 << RB)).max(64) })
     }
     pub fn table(&self, name: &str) -> Option<usize> { self.tabs.iter().position(|t| t.name == name) }
     pub fn len(&self) -> usize { self.map.len() }
@@ -261,6 +270,7 @@ impl Store {
         v.into_iter().for_each(|a| self.recyc(a));
     }
     pub fn cold(&mut self) { self.reset(2) }
+    pub fn unmap(&self) { self.adv(0, self.map.len(), libc::MADV_DONTNEED) }
     fn hl(&self, e: usize) -> usize { let x = &self.ents[e]; 8 + 2 * FT + 8 * self.tabs[x.t as usize].tiles(x.p as usize, self.tile) + 4 }
     pub fn pl(&self, e: usize) -> io::Result<Pl> { let x = &self.ents[e]; parse(self.plane(e), self.tabs[x.t as usize].tiles(x.p as usize, self.tile)).map_err(|er| bad(format!("{}: {} level {} page {} d{}: {er}", self.path, self.tabs[x.t as usize].name, x.l, x.p, x.k))) }
     fn span(&self, e: usize, q: &Pl, ti: usize) -> (usize, usize) { (self.ents[e].off as usize + q.off[ti] as usize, (q.off[ti + 1] - q.off[ti]) as usize) }
@@ -280,7 +290,7 @@ impl Store {
         Ok(o)
     }
     fn getc(&mut self, q: &[(usize, usize, usize)], tiers: usize) -> io::Result<Vec<u16>> {
-        (self.pls.len() > (self.budget / 8 / (68 << RB)).max(64)).then(|| self.pls.clear());
+        (self.pls.len() > self.pcap).then(|| self.pls.clear());
         let (tw, ts) = (self.tile, self.tile * self.tile);
         let lc: Vec<(usize, usize, usize)> = q.iter().map(|&(t, l, w)| { let (px, n) = (w % PX, if self.tabs[t].exact { 4 } else { tiers }); ((self.tb[t][l * self.tabs[t].np() + w / PX] + px / PW / tw * (PW / tw) + px % PW / tw), px / PW % tw * tw + px % tw, n) }).collect();
         let mut need: HashMap<usize, (usize, usize, usize, usize, usize)> = HashMap::new();

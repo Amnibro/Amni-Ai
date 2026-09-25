@@ -3,6 +3,20 @@
 version = 4
 
 [[package]]
+name = "adam-gf17"
+version = "0.1.0"
+dependencies = [
+ "adam-ray",
+ "adam-train",
+ "half",
+ "libc",
+ "memmap2",
+ "numpy",
+ "pyo3",
+ "rayon",
+]
+
+[[package]]
 name = "adam-qa"
 version = "0.1.0"
 dependencies = [
@@ -15,8 +29,10 @@ dependencies = [
 name = "adam-ray"
 version = "0.1.0"
 dependencies = [
+ "adam-gf17",
  "bytemuck",
  "half",
+ "libc",
  "memmap2",
  "pollster",
  "rayon",

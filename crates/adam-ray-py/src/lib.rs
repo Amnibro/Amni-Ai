@@ -17,8 +17,13 @@ fn hit<'py>(py: Python<'py>, h: Hit) -> (f64, f64, String, Bound<'py, PyBytes>, 
 #[pymethods]
 impl RayField {
     #[new]
-    #[pyo3(signature = (path=None, syn=None, words=None, wcnt=None, arch=None, home=None))]
-    fn new(path: Option<String>, syn: Option<String>, words: Option<String>, wcnt: Option<String>, arch: Option<String>, home: Option<String>) -> Self { RayField { e: Arc::new(Mutex::new(Core::new(path, syn, words, wcnt, arch, home))) } }
+    #[pyo3(signature = (path=None, syn=None, words=None, wcnt=None, arch=None, home=None, pages=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn new(path: Option<String>, syn: Option<String>, words: Option<String>, wcnt: Option<String>, arch: Option<String>, home: Option<String>, pages: Option<String>) -> Self { RayField { e: Arc::new(Mutex::new(Core::new(pages.or(path), syn, words, wcnt, arch, home))) } }
+    #[getter]
+    fn pages(&self) -> Option<String> { let p = self.e.lock().path.clone(); p.ends_with(".gf17").then_some(p) }
+    #[staticmethod]
+    fn page_stats() -> Vec<u64> { ray::src_gf17::stats().to_vec() }
     fn load(slf: Py<Self>, py: Python<'_>) -> PyResult<Py<Self>> { lk(py, &slf.borrow(py).e).map(drop)?; Ok(slf) }
     #[getter]
     fn path(&self) -> String { self.e.lock().path.clone() }

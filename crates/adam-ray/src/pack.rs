@@ -14,7 +14,7 @@ pub const TOPIC_A: f32 = 0.99;
 #[derive(Clone)]
 pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize, pub mr: usize }
 pub struct Lex { pub lex: Vec<[u32; 4]>, pub trig: Vec<[f32; 2]> }
-pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex, pub cw: Vec<u16> }
+pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex, pub cw: Vec<u16>, pub src: crate::src_gf17::Src }
 impl Geo {
     pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0, mr: 0 } }
     pub fn sl(&self, u: u32, v: u32, l: usize) -> u32 { crate::cpu::hm(u, v, (l as u32 + 1).wrapping_add(self.salt.wrapping_mul(1000003))) % self.t }
@@ -26,6 +26,12 @@ impl Geo {
 }
 fn h16(x: f32) -> u32 { f16::from_f32(x).to_bits() as u32 }
 pub fn tap(c: [u32; 2], s: usize, half: bool) -> (usize, f32) { let u = (c[0] >> 24) as i32; let t = [u / 25, u / 5 % 5, u % 5][s] - 2; let m = if t == 0 { 0.0 } else if half { f16::from_bits((c[1] >> 16) as u16).to_f32() * if t.abs() == 1 { 0.5 } else { 1.0 } } else { f16::from_bits((c[1] >> (16 * (t.abs() - 1))) as u16).to_f32() }; ((c[0] >> (8 * s) & 255) as usize, if t < 0 { -m } else { m }) }
+pub fn mkcell(sid: &[u8], sw: &[u16]) -> [u32; 2] {
+    let v: [f32; 3] = std::array::from_fn(|j| { let x = f16::from_bits(sw[j]).to_f32(); if x.is_nan() { 0.0 } else { x.clamp(f32::MIN, f32::MAX) } });
+    let mx = v.iter().fold(0f32, |m, x| m.max(x.abs()));
+    let tr = v.map(|x| if x.abs() < 0.5 * mx { 0 } else { (1 + (x.abs() >= 0.75 * mx) as i32) * ((x > 0.0) as i32 - (x < 0.0) as i32) });
+    [sid[0] as u32 | (sid[1] as u32) << 8 | (sid[2] as u32) << 16 | (((tr[0] + 2) * 25 + (tr[1] + 2) * 5 + tr[2] + 2) as u32) << 24, h16(0.5 * mx) | h16(mx) << 16]
+}
 pub fn scale16(lo: f64, hi: f64) -> [f32; 16] { std::array::from_fn(|s| if s > 0 { 2f32.powf(lo as f32 + ((s as f32 - 1.0) / 14.0) * (hi - lo) as f32) } else { 0.0 }) }
 pub fn load_syn(path: &str, n: usize) -> Vec<Vec<u32>> {
     let mut ts = vec![vec![0u32; WM as usize + 1]; n];
@@ -40,8 +46,9 @@ pub fn load_syn(path: &str, n: usize) -> Vec<Vec<u32>> {
 }
 pub fn copies(l: usize) -> (usize, usize) { match l.wrapping_sub(BASE + 3 + HOPS) { c @ (4 | 9 | 13 | 16) => (c, 0), c @ 14..=15 => (13, c - 13), c @ 17..=18 => (16, c - 16), _ => (0, 0) } }
 pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
-    let raw = path.ends_with("_sid.npy");
-    let (l, t, rows, dp, cells, bias, cw) = if raw {
+    let gf = path.ends_with(".gf17");
+    let raw = gf || path.ends_with("_sid.npy");
+    let (l, t, rows, dp, cells, bias, cw, src) = if gf { crate::src_gf17::open(path)? } else if raw {
         let pre = &path[..path.len() - 8];
         let (dz, sz, wz) = (Npz::open(&format!("{pre}_dp.npy"))?, Npz::open(path)?, Npz::open(&format!("{pre}_sw.npy"))?);
         let (d, s, w) = (dz.get("")?, sz.get("")?, wz.get("")?);
@@ -50,15 +57,10 @@ pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
         let dv = d.vec::<u16>();
         let dp: Vec<u16> = dv[..V * V].iter().chain(&dv[d.shape[1] * V..2 * d.shape[1] * V]).copied().collect();
         let (sid, sw) = (s.data, w.vec::<u16>());
-        let cells = (0..l * t).into_par_iter().map(|c| {
-            let v: [f32; 3] = std::array::from_fn(|j| { let x = f16::from_bits(sw[c * 3 + j]).to_f32(); if x.is_nan() { 0.0 } else { x.clamp(f32::MIN, f32::MAX) } });
-            let mx = v.iter().fold(0f32, |m, x| m.max(x.abs()));
-            let tr = v.map(|x| if x.abs() < 0.5 * mx { 0 } else { (1 + (x.abs() >= 0.75 * mx) as i32) * ((x > 0.0) as i32 - (x < 0.0) as i32) });
-            [sid[c * 3] as u32 | (sid[c * 3 + 1] as u32) << 8 | (sid[c * 3 + 2] as u32) << 16 | (((tr[0] + 2) * 25 + (tr[1] + 2) * 5 + tr[2] + 2) as u32) << 24, h16(0.5 * mx) | h16(mx) << 16]
-        }).collect();
+        let cells = (0..l * t).into_par_iter().map(|c| mkcell(&sid[c * 3..c * 3 + 3], &sw[c * 3..c * 3 + 3])).collect();
         let c0 = BASE + 3;
         let cw = (0..copies(l).0 * t).map(|i| { let x = sw[((c0 + i / t) * t + i % t) * 3]; if f16::from_bits(x).is_nan() { 0 } else { x } }).collect();
-        (l, t, V + d.shape[1], dp, cells, Npz::open(&format!("{pre}_bias.npy"))?.get("")?.f32s(), cw)
+        (l, t, V + d.shape[1], dp, cells, Npz::open(&format!("{pre}_bias.npy"))?.get("")?.f32s(), cw, crate::src_gf17::Src::Npy)
     } else {
         let z = Npz::open(path)?;
         let (ss, n) = (z.get("sshape")?.i64s(), z.get("trit_n")?.i64s()[0] as usize);
@@ -74,12 +76,12 @@ pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
             [ids[c * 3] as u32 | (ids[c * 3 + 1] as u32) << 8 | (ids[c * 3 + 2] as u32) << 16 | u << 24, h16(h) | h16(2.0 * h) << 16]
         }).collect();
         let bp = path.replace("_pk_q5_i8.npz", "_bias.npy");
-        (l, t, dd.n() / V, dp, cells, if Path::new(&bp).exists() { Npz::open(&bp)?.get("")?.f32s() } else { vec![0.0; V] }, vec![])
+        (l, t, dd.n() / V, dp, cells, if Path::new(&bp).exists() { Npz::open(&bp)?.get("")?.f32s() } else { vec![0.0; V] }, vec![], crate::src_gf17::Src::Npy)
     };
     let (cp, mr) = if raw { copies(l) } else { (0, 0) };
     let qt = l == BASE + HOPS + 3 || cp > 0;
     let g = Geo::eng(t, qt);
-    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, mr, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw })
+    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, mr, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw, src })
 }
 pub fn lexicon(syn: &str, wcnt: Option<&str>) -> Lex {
     let (sy, wc) = (load_syn(syn, 2), wcnt.map_or_else(|| vec![0; WM as usize + 1], |w| load_syn(w, 1).remove(0)));

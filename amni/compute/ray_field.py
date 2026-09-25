@@ -164,4 +164,4 @@ class RayField:
     if all(s[-1]==10 for _,s,_ in beams):break
    return bytes(max(beams,key=norm)[1][len(p0):]).decode("utf-8","replace")
 def engine(path:str=None)->RayField:
- _eng[path]=_eng.get(path) or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0) if os.environ.get("AMNI_RAY_IMPL",DEFAULT_IMPL)=="rust" else r)(RayField(path));return _eng[path]
+ _eng[path]=_eng.get(path) or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0,pages=os.environ.get("AMNI_RAY_PAGES") or None) if os.environ.get("AMNI_RAY_IMPL",DEFAULT_IMPL)=="rust" else r)(RayField(path));return _eng[path]
