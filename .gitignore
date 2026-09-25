@@ -228,6 +228,8 @@ scripts/*
 !scripts/amni_serve.py
 !scripts/lane_a_fpa_distill_v0.py
 !scripts/v19_rust_eval.py
+!scripts/x0_code_eval.py
+!scripts/__init__.py
 
 # Root-level run/diagnostic output + scratch/runtime dumps (local only, never ship)
 /*.log
