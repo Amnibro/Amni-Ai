@@ -1,0 +1,17 @@
+{
+ "splits": {
+  "data/adam_t/eval/bench/arc_easy_500.jsonl": "5381a0b7b47b5e28169095106d0ca3ed1878361581888fcde0c99676785aaa31",
+  "data/adam_t/eval/bench/meta.json": "0912904e5109f7de0fb12950bbc7297555c66196581ba9e1a3166d13a40a7198",
+  "data/adam_t/eval/bench/piqa_500.jsonl": "e457b9250d5d65383b737b356ec0b9a3117d9f6dee671cae7600289af49c9220",
+  "data/adam_t/eval/d3dev.jsonl": "d308be209c8a6009a345f15e628591c6d7f4a45f0ee4e327f300c49a6ba7e28e",
+  "data/adam_t/eval/nq_mc.json": "0f4aaf6e661d31b110333daa0fa54956d5ae077f83bf419f9d355f603a9d441a",
+  "data/adam_t/eval/rc_dev.json": "0bc70377ead555224ff2389a43b58e2e4611c5aaf419033a2c0a477659b1a941",
+  "data/clean2/hold.bin": "c10ae502dafca8f6f8eb16ae6600d9eb20878263163604a2d97fa58ee477428c",
+  "data/concepts/eval/rknow/nq_dev_hold.json": "3656e7e93dc20f6abcf7d62ba2935dae61a22cc4480de34bba266403b735674a",
+  "data/concepts/eval/rknow/nq_dev_tune.json": "fea321e3e51b3ae54b41f494fed1b66d98c24d9ffb6e9811c468ccf1e340cbc9",
+  "docs/adam_t/eval_prereg.md": "17c4e88b98bd5a30e454fd58985dbb1908417c03475e56034f2469d4ed7c71f3"
+ },
+ "splits_hash": "0941e2ff689f737602acd43a8f4cf9304be3c1fb1f28afe017046fb72d75c99c",
+ "n": 10,
+ "locked": "2026-09-25T12:54:48-0400"
+}
