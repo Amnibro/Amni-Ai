@@ -1,23 +1,23 @@
 pub mod bpe;
 pub mod lut;
 use adam_ray::rng::Pcg64;
-use burn::{module::{AutodiffModule, Module, Param}, nn::loss::CrossEntropyLossConfig, optim::{grad_clipping::GradientClippingConfig, AdamWConfig, GradientsParams, Optimizer}, record::{BinFileRecorder, FullPrecisionSettings, Recorder}, tensor::{activation::relu, backend::{AutodiffBackend, Backend}, module::{attention, embedding}, ops::AttentionModuleOptions, Distribution, Int, Tensor, TensorData}};
+use burn::{module::{AutodiffModule, Module, Param}, nn::loss::CrossEntropyLossConfig, optim::{grad_clipping::GradientClippingConfig, AdamWConfig, GradientsAccumulator, GradientsParams, Optimizer}, record::{BinFileRecorder, FullPrecisionSettings, Recorder}, tensor::{activation::relu, backend::{AutodiffBackend, Backend}, module::{attention, embedding}, ops::AttentionModuleOptions, Distribution, Int, Tensor, TensorData}};
 use memmap2::Mmap;
 use std::{env::var, fs, io::{self, Write}, path::Path, time::Instant};
 #[derive(Clone, Debug)]
-pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64, pub v: usize, pub bpe: String }
+pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64, pub v: usize, pub bpe: String, pub micro: usize }
 impl Cfg {
     pub fn env() -> Cfg {
         let e = |k: &str, d: &str| var(k).unwrap_or_else(|_| d.into());
         let p = |k: &str, d: &str| e(k, d).trim().parse::<f64>().unwrap_or_else(|_| panic!("bad {k}"));
         let (home, d, tag, bpe) = (e("AMNI_HOME", "/home/anmire/ai/Amni-Ai"), p("D", "256") as usize, e("TAG", "smoke"), e("BPE", ""));
-        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", "2e-3"), lrm: p("LR_MEM", &e("LR", "2e-3")), wd: p("WD", "0.05") as f32, warm: p("WARM", "200") as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", "500") as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", "clean2"), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), v: if bpe.is_empty() { 256 } else { serde_json::from_str::<serde_json::Value>(&fs::read_to_string(&bpe).unwrap_or_default()).ok().and_then(|j| j["vocab_size"].as_u64()).unwrap_or_else(|| panic!("bad BPE {bpe}")) as usize }, bpe, home }
+        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", "2e-3"), lrm: p("LR_MEM", &e("LR", "2e-3")), wd: p("WD", "0.05") as f32, warm: p("WARM", "200") as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", "500") as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", "clean2"), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), v: if bpe.is_empty() { 256 } else { serde_json::from_str::<serde_json::Value>(&fs::read_to_string(&bpe).unwrap_or_default()).ok().and_then(|j| j["vocab_size"].as_u64()).unwrap_or_else(|| panic!("bad BPE {bpe}")) as usize }, bpe, micro: p("MICRO", "1") as usize, home }
     }
     pub fn from_dir(dir: &str) -> io::Result<Cfg> {
         let l = fs::read_to_string(format!("{dir}/log.jsonl"))?.lines().next().unwrap_or("").to_string();
         let j: serde_json::Value = serde_json::from_str(&l).map_err(io::Error::other)?;
         let (g, u) = (&j["cfg"], |k: &str| j["cfg"][k].as_u64().ok_or_else(|| io::Error::other(format!("cfg.{k} missing in {dir}/log.jsonl"))).map(|v| v as usize));
-        Ok(Cfg { d: u("d")?, l: u("l")?, h: u("h")?, t: u("ctx")?, ff: u("ff")?, rb: u("mem_log2")? as u32, tern: g["tern"].as_bool().unwrap_or(true), mem: g["mem"].as_bool().unwrap_or(false), ns: g["ngrams"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect()).unwrap_or_default(), out: dir.into(), v: g["v"].as_u64().unwrap_or(256) as usize, bpe: g["bpe"].as_str().unwrap_or("").into(), ..Cfg::env() })
+        Ok(Cfg { d: u("d")?, l: u("l")?, h: u("h")?, t: u("ctx")?, ff: u("ff")?, rb: u("mem_log2")? as u32, tern: g["tern"].as_bool().unwrap_or(true), mem: g["mem"].as_bool().unwrap_or(false), ns: g["ngrams"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect()).unwrap_or_default(), out: dir.into(), v: g["v"].as_u64().unwrap_or(256) as usize, bpe: g["bpe"].as_str().unwrap_or("").into(), corpus: g["corpus"].as_str().unwrap_or("clean2").into(), ..Cfg::env() })
     }
     pub fn k(&self) -> usize { if self.mem { self.ns.len() } else { 0 } }
     pub fn rows(&self) -> usize { self.k() << self.rb }
@@ -25,7 +25,7 @@ impl Cfg {
     pub fn core_params(&self) -> usize { self.v * self.d + self.t * self.d + self.l * (4 * self.d * self.d + 2 * self.d * self.ff) + self.d * self.v }
     pub fn bpe(&self) -> io::Result<Option<bpe::Bpe>> { (!self.bpe.is_empty()).then(|| bpe::Bpe::open(&self.bpe)).transpose() }
     pub fn data(&self, split: &str) -> io::Result<Dat> { let d = format!("{}/data/{}", self.home, self.corpus); Ok(if self.v == 256 { Dat::B(mmap(&format!("{d}/{split}.bin"))?) } else { Dat::W(mmap(&format!("{d}/{split}.bpe{}.u16", self.v))?) }) }
-    pub fn json(&self) -> String { format!("{{\"d\": {}, \"l\": {}, \"h\": {}, \"ctx\": {}, \"ff\": {}, \"tern\": {}, \"mem\": {}, \"ngrams\": {:?}, \"mem_log2\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_mem\": {}, \"wd\": {}, \"warm\": {}, \"seed\": {}, \"corpus\": \"{}\", \"v\": {}, \"bpe\": \"{}\", \"core_params\": {}, \"mem_params\": {}, \"symbols_per_step\": {}}}", self.d, self.l, self.h, self.t, self.ff, self.tern, self.mem, self.ns, self.rb, self.bs, self.steps, self.lr, self.lrm, self.wd, self.warm, self.seed, self.corpus, self.v, self.bpe, self.core_params(), self.rows() * self.d, self.bs * self.t) }
+    pub fn json(&self) -> String { format!("{{\"d\": {}, \"l\": {}, \"h\": {}, \"ctx\": {}, \"ff\": {}, \"tern\": {}, \"mem\": {}, \"ngrams\": {:?}, \"mem_log2\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_mem\": {}, \"wd\": {}, \"warm\": {}, \"seed\": {}, \"corpus\": \"{}\", \"v\": {}, \"bpe\": \"{}\", \"micro\": {}, \"core_params\": {}, \"mem_params\": {}, \"symbols_per_step\": {}}}", self.d, self.l, self.h, self.t, self.ff, self.tern, self.mem, self.ns, self.rb, self.bs, self.steps, self.lr, self.lrm, self.wd, self.warm, self.seed, self.corpus, self.v, self.bpe, self.micro, self.core_params(), self.rows() * self.d, self.bs * self.t) }
 }
 #[derive(Module, Debug)]
 pub struct Lin<B: Backend> { pub w: Param<Tensor<B, 2>> }
@@ -92,8 +92,9 @@ pub fn load<B: Backend>(c: &Cfg, dev: &B::Device) -> io::Result<(Core<B>, Option
 pub fn ce<B: Backend>(lg: Tensor<B, 2>, y: &[u32], dev: &B::Device) -> Tensor<B, 1> { CrossEntropyLossConfig::new().init(dev).forward(lg, Tensor::from_data(TensorData::new(y.iter().map(|&v| v as i32).collect::<Vec<i32>>(), [y.len()]), dev)) }
 pub fn f1<B: Backend, const D: usize>(t: Tensor<B, D>) -> Vec<f32> { t.into_data().iter::<f32>().collect() }
 pub fn eval<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, lens: &[u32], nb: usize, dev: &B::Device) -> f64 {
-    let (mut g, th, q) = (Pcg64::new(Some(1234)), thr(&c.thf), 32 * c.t);
-    let v: Vec<(f64, f64)> = (0..nb).flat_map(|_| { let (x, y) = hold.hold(&mut g, 128, c.t); (0..4).map(|k| { let t0 = Instant::now(); let r = f1(ce(logits(c, core, mem, &x[k * q..(k + 1) * q], 32, dev), &y[k * q..(k + 1) * q], dev))[0] as f64 * q as f64; nap(th, t0.elapsed().as_secs_f64() * 1e3, c.unit); (r, y[k * q..(k + 1) * q].iter().map(|&t| lens[t as usize] as f64).sum::<f64>()) }).collect::<Vec<_>>() }).collect();
+    let e = 1usize << (c.bs / c.micro.max(1)).clamp(1, 32).ilog2();
+    let (mut g, th, q) = (Pcg64::new(Some(1234)), thr(&c.thf), e * c.t);
+    let v: Vec<(f64, f64)> = (0..nb).flat_map(|_| { let (x, y) = hold.hold(&mut g, 128, c.t); (0..128 / e).map(|k| { let t0 = Instant::now(); let r = f1(ce(logits(c, core, mem, &x[k * q..(k + 1) * q], e, dev), &y[k * q..(k + 1) * q], dev))[0] as f64 * q as f64; nap(th, t0.elapsed().as_secs_f64() * 1e3, c.unit); (r, y[k * q..(k + 1) * q].iter().map(|&t| lens[t as usize] as f64).sum::<f64>()) }).collect::<Vec<_>>() }).collect();
     adam_ray::rng::pairwise(&v.iter().map(|x| x.0).collect::<Vec<_>>()) / adam_ray::rng::pairwise(&v.iter().map(|x| x.1).collect::<Vec<_>>())
 }
 pub fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0) }
@@ -104,6 +105,7 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
     Path::new(&c.thf).exists().then_some(()).ok_or_else(|| io::Error::other(format!("THROTTLE_FILE {} missing: refusing to train without the GPU governor", c.thf)))?;
     let (ckd, rec) = (format!("{}/ckpt", c.out), BinFileRecorder::<FullPrecisionSettings>::new());
     fs::create_dir_all(&ckd)?;
+    B::seed(&dev, c.seed);
     let mut core = Core::<B>::new(c, &dev);
     let mut mem = c.mem.then(|| Mem::<B>::new(c, &dev));
     let mut oc = AdamWConfig::new().with_weight_decay(c.wd).with_beta_2(0.95).with_grad_clipping(Some(GradientClippingConfig::Norm(1.0))).init::<B, Core<B>>();
@@ -124,17 +126,29 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
     let (t0, mut th, mut tm, mut du, mut lt, mut last, mut acc) = (Instant::now(), 0.0, 0.0f64, 1.0f64, 0.0f64, String::new(), (0.0f64, 0.0f64, 0usize));
     for it in start..steps {
         th = thr(&c.thf);
-        let ts = Instant::now();
         let (x, y) = tb(&tr, c.seed, it, c.bs, c.t);
-        let loss = ce(logits(c, &core, mem.as_ref(), &x, c.bs, &dev), &y, &dev);
-        let lv = (it % 50 == 49 || it + 1 == steps || it == 4).then(|| f1(loss.clone())[0] as f64);
-        let mut gr = loss.backward();
-        let (gc, lr) = (GradientsParams::from_module(&mut gr, &core), c.lr * c.mult(it));
-        core = oc.step(lr, core, gc);
-        mem = mem.map(|m| { let gm = GradientsParams::from_module(&mut gr, &m); om.step(c.lrm * c.mult(it), m, gm) });
-        B::sync(&dev).map_err(|e| io::Error::other(format!("{e:?}")))?;
-        let ms = ts.elapsed().as_secs_f64() * 1e3;
-        let sl = nap(th, ms, c.unit);
+        let (mb, want) = (c.micro.max(1), it % 50 == 49 || it + 1 == steps || it == 4);
+        let (q, se) = (c.bs / mb * c.t, |e: burn::tensor::backend::ExecutionError| io::Error::other(format!("{e:?}")));
+        let (mut ac, mut am, mut ls, mut ms, mut sl) = (GradientsAccumulator::<Core<B>>::new(), GradientsAccumulator::<Mem<B>>::new(), 0f64, 0f64, 0f64);
+        for k in 0..mb {
+            let tk = Instant::now();
+            let loss = ce(logits(c, &core, mem.as_ref(), &x[k * q..(k + 1) * q], c.bs / mb, &dev), &y[k * q..(k + 1) * q], &dev);
+            ls += if want { f1(loss.clone())[0] as f64 / mb as f64 } else { 0.0 };
+            let mut gr = loss.div_scalar(mb as f64).backward();
+            ac.accumulate(&core, GradientsParams::from_module(&mut gr, &core));
+            if let Some(m) = mem.as_ref() { am.accumulate(m, GradientsParams::from_module(&mut gr, m)); }
+            B::sync(&dev).map_err(se)?;
+            let t = tk.elapsed().as_secs_f64() * 1e3;
+            (ms, sl) = (ms + t, sl + nap(th, t, c.unit));
+            th = thr(&c.thf);
+        }
+        let (to, lr) = (Instant::now(), c.lr * c.mult(it));
+        core = oc.step(lr, core, ac.grads());
+        mem = mem.map(|m| om.step(c.lrm * c.mult(it), m, am.grads()));
+        B::sync(&dev).map_err(se)?;
+        let t = to.elapsed().as_secs_f64() * 1e3;
+        (ms, sl) = (ms + t, sl + nap(th, t, c.unit));
+        let lv = want.then_some(ls);
         acc = if it < start + 3 { acc } else { (acc.0 + ms, acc.1 + sl, acc.2 + 1) };
         if let Some(l) = lv { lt = l; (tm, du) = if acc.2 > 0 { (acc.0 / acc.2 as f64, acc.0 / (acc.0 + acc.1)) } else { (tm, du) }; acc = (0.0, 0.0, 0); }
         let (done, wall) = (it + 1 == steps, bench == 0 && c.wall > 0.0 && t0.elapsed().as_secs_f64() > c.wall * 60.0);
@@ -157,6 +171,6 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
         println!("{r}");
         return Ok(r);
     }
-    if c.tern { lut::finish(c, &core.valid(), mem.as_ref().map(|m| m.valid()).as_ref(), &ho, &lens, &dev, &mut log)?; }
+    if c.tern { lut::finish(c, &core.valid(), mem.as_ref().map(|m| m.valid()).as_ref(), &ho, &lens, &dev, &mut log, &format!("{}/model.gf17", c.out))?; }
     Ok(last)
 }

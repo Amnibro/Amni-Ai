@@ -135,12 +135,26 @@ fn main() -> io::Result<()> {
             let lm = gf.then(|| lut::Lm::open(&pth, 1 << 30)).transpose()?;
             let dir = if gf { std::path::Path::new(&pth).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default() } else { pth.clone() };
             let cc = (!gf).then(|| Cfg::from_dir(&dir)).transpose()?;
-            let step = fs::read_to_string(format!("{dir}/ckpt/state.txt")).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0usize);
+            let meta: Value = fs::read_to_string(format!("{dir}/meta.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(json!({}));
+            let step = meta["step"].as_u64().map(|v| v as usize).or_else(|| fs::read_to_string(format!("{dir}/ckpt/state.txt")).ok().and_then(|s| s.trim().parse().ok())).unwrap_or(0usize);
             let fw: Fw = match (&lm, &cc) { (Some(lm), _) => Box::new(move |xs: &[Vec<u32>]| xs.par_iter().map(|w| lm.fwd(w)).collect()), (_, Some(cc)) => if var("BACKEND").map(|b| b == "ndarray").unwrap_or(false) { burn_fw::<NdArray>(cc, NdArrayDevice::Cpu)? } else { burn_fw::<Wgpu>(cc, WgpuDevice::DiscreteGpu(0))? }, _ => unreachable!() };
             let bp = match (&lm, &cc) { (Some(l), _) => l.bpe.as_ref().map(|b| Bpe::new(adam_t::bpe::PAT, b.merges.clone())).transpose()?, (_, Some(c)) => c.bpe()?, _ => None };
-            let sv = Srv { t: lm.as_ref().map(|l| l.t).or(cc.as_ref().map(|c| c.t)).unwrap_or(256), v: lm.as_ref().map(|l| l.v).or(cc.as_ref().map(|c| c.v)).unwrap_or(256), bp, fw, lm: lm.as_ref(), name: std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(), step };
+            let sv = Srv { t: lm.as_ref().map(|l| l.t).or(cc.as_ref().map(|c| c.t)).unwrap_or(256), v: lm.as_ref().map(|l| l.v).or(cc.as_ref().map(|c| c.v)).unwrap_or(256), bp, fw, lm: lm.as_ref(), name: meta["name"].as_str().map(String::from).unwrap_or_else(|| std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()), step };
             let mut so = io::stdout().lock();
             for l in io::stdin().lock().lines() { let l = l?; if l.trim().is_empty() { continue; } let (r, bye) = sv.req(&l).unwrap_or_else(|e| (json!({"error": e.to_string()}), false)); writeln!(so, "{r}")?; so.flush()?; if bye { break; } }
+        }
+        "export" => {
+            let dir = a.get(2).ok_or_else(|| io::Error::other("adam-t export <run dir>"))?.clone();
+            let mut cc = Cfg::from_dir(&dir)?;
+            cc.par = var("PARITY_WINDOWS").ok().and_then(|v| v.parse().ok()).unwrap_or(1);
+            let step = fs::read_to_string(format!("{dir}/ckpt/state.txt"))?.trim().parse::<usize>().map_err(io::Error::other)?;
+            let od = format!("{dir}/eval/step{step}");
+            fs::create_dir_all(&od)?;
+            let (core, mem) = load::<NdArray>(&cc, &NdArrayDevice::Cpu)?;
+            let (ho, lens) = (cc.data("hold")?, cc.bpe()?.map(|b| b.lens()).unwrap_or_else(|| vec![1; 256]));
+            let mut lg = fs::OpenOptions::new().create(true).append(true).open(format!("{od}/export.jsonl"))?;
+            lut::finish(&cc, &core, mem.as_ref(), &ho, &lens, &NdArrayDevice::Cpu, &mut lg, &format!("{od}/model.gf17"))?;
+            fs::write(format!("{od}/meta.json"), json!({"name": std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()), "step": step, "run": dir}).to_string())?;
         }
         "tokenize" => {
             let (bp, src, dst) = (Bpe::open(&a[2])?, mmap(&a[3])?, &a[4]);

@@ -89,8 +89,7 @@ pub fn am(r: &[f32]) -> usize { r.iter().enumerate().fold(0, |b, (i, &v)| if v >
 pub fn hold_windows(hold: &Dat, n: usize, t: usize) -> (Vec<u32>, Vec<u32>) { let mut g = Pcg64::new(Some(1234)); let (x, y) = hold.hold(&mut g, 128, t); (x[..n * t].to_vec(), y[..n * t].to_vec()) }
 pub fn bpb(v: &[f64], y: &[u32], lens: &[u32]) -> f64 { v.iter().sum::<f64>() / y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / std::f64::consts::LN_2 }
 pub fn cpu_eval(lm: &Lm, x: &[u32], y: &[u32], lens: &[u32]) -> io::Result<(Vec<f32>, f64, f64)> { let t0 = Instant::now(); let lg = x.chunks(lm.t).map(|w| lm.fwd(w)).collect::<io::Result<Vec<_>>>()?.concat(); let s = t0.elapsed().as_secs_f64(); Ok((lg.clone(), bpb(&nll(&lg, y), y, lens), y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / s)) }
-pub fn finish<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, lens: &[u32], dev: &B::Device, log: &mut fs::File) -> io::Result<()> {
-    let p = format!("{}/model.gf17", c.out);
+pub fn finish<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, lens: &[u32], dev: &B::Device, log: &mut fs::File, p: &str) -> io::Result<()> {
     let (it, tr) = tabs(c, core, mem);
     adam_gf17::write(&p, &it.iter().map(|(t, b)| (t.clone(), b.as_slice())).collect::<Vec<_>>(), 128)?;
     let st = Store::open(&p, 64 << 20)?;
@@ -99,9 +98,9 @@ pub fn finish<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &
     let (nt, nz) = tr.iter().fold((0usize, 0usize), |(n, z), (t, _, _)| (n + t.len(), z + t.iter().filter(|v| **v == 0.0).count()));
     let (raw, sz, tb_) = (it.iter().map(|x| x.1.len()).sum::<usize>(), fs::metadata(&p)?.len(), it.iter().filter(|x| x.0.name.starts_with('w')).map(|x| x.1.len()).sum::<usize>());
     drop(st);
-    let lm = Lm::open(&p, 256 << 20)?;
-    let (x, y) = hold_windows(hold, c.par, c.t);
-    let gl = f1(logits(c, core, mem, &x, c.par, dev));
+    let lm = Lm::open(p, 256 << 20)?;
+    let (x, y) = hold_windows(hold, c.par.max(1), c.t);
+    let gl = f1(logits(c, core, mem, &x, c.par.max(1), dev));
     let (cl, cb, bps) = cpu_eval(&lm, &x, &y, lens)?;
     let (mx, sm, agree) = gl.chunks_exact(c.v).zip(cl.chunks_exact(c.v)).fold((0f32, 0f64, 0usize), |(m, s, a), (g, q)| (g.iter().zip(q).fold(m, |m, (u, v)| m.max((u - v).abs())), s + g.iter().zip(q).map(|(u, v)| (u - v).abs() as f64).sum::<f64>(), a + (am(g) == am(q)) as usize));
     let gb = bpb(&nll(&gl, &y), &y, lens);
