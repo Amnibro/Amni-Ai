@@ -58,7 +58,12 @@ def run_in_sandbox(code,harness='',timeout=8,allow_dangerous=False):
         open(path,'w',encoding='utf-8').write(src)
         env={'PYTHONIOENCODING':'utf-8','PATH':os.environ.get('PATH',''),'SYSTEMROOT':os.environ.get('SYSTEMROOT',''),'TEMP':workdir,'TMP':workdir}
         from amni.serve.code_safety import run_capped
-        cr=run_capped([sys.executable,'-I','-B',path],timeout=timeout,max_output_bytes=int(os.environ.get('AMNI_SANDBOX_MAX_OUTPUT','200000')),env=env,cwd=workdir,mem_mb=int(os.environ.get('AMNI_SANDBOX_MEM_MB','256')))
+        mb=int(os.environ.get('AMNI_SANDBOX_MEM_MB','256'));argv=[sys.executable,'-I','-B',path]
+        try:
+            from scripts.x0_code_eval import _bwrap_cmd
+            argv=_bwrap_cmd(workdir,['/usr/bin/prlimit','--nproc=0']+argv,cpu=int(timeout)+2,mem=mb<<20) if sys.platform.startswith('linux') and os.path.exists('/usr/bin/bwrap') else argv
+        except Exception:pass
+        cr=run_capped(argv,timeout=timeout,max_output_bytes=int(os.environ.get('AMNI_SANDBOX_MAX_OUTPUT','200000')),env=env,cwd=workdir,mem_mb=mb,nproc=None if argv[0].endswith('bwrap') else 0)
         killed=cr['killed']
         return {'ran':True,'returncode':cr['returncode'],'stdout':(cr['stdout'] or '')[-2000:],'stderr':(cr['stderr'] or '')[-2000:],'ok':cr['returncode']==0 and killed is None and not (cr['stderr'] or '').strip(),'killed':killed,'timed_out':killed=='timeout','capped':killed=='output-cap'}
     except Exception as e:return {'ran':False,'ok':False,'error':f'{type(e).__name__}: {e}'}

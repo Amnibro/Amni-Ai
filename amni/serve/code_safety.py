@@ -55,7 +55,7 @@ def is_safe(code):
     d=danger_scan(code)
     high=[x for x in d if x['severity']=='HIGH']
     return (not high,d)
-def run_capped(argv,timeout=8,max_output_bytes=200000,env=None,cwd=None,mem_mb=256):
+def run_capped(argv,timeout=8,max_output_bytes=200000,env=None,cwd=None,mem_mb=256,nproc=0):
     """Run a subprocess with resource caps so a memory/output bomb can't exhaust the host:
     - output cap: stream stdout/stderr, KILL the process tree once total bytes exceed max_output_bytes;
     - wall-clock timeout: kill on expiry;
@@ -70,7 +70,7 @@ def run_capped(argv,timeout=8,max_output_bytes=200000,env=None,cwd=None,mem_mb=2
             if res is not None:
                 try:resource.setrlimit(res,(val,val))
                 except Exception:pass
-        try:resource.setrlimit(resource.RLIMIT_NPROC,(0,0))
+        try:resource.setrlimit(resource.RLIMIT_NPROC,(nproc,nproc)) if nproc is not None else None
         except Exception:pass
         try:os.setsid()
         except Exception:pass
