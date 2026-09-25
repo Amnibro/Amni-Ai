@@ -63,7 +63,7 @@ impl Lm {
     }
 }
 pub fn nll(lg: &[f32], y: &[u8]) -> Vec<f64> { lg.chunks_exact(256).zip(y).map(|(r, &t)| { let mx = r.iter().fold(f32::MIN, |a, &v| a.max(v)) as f64; mx + r.iter().map(|&v| (v as f64 - mx).exp()).sum::<f64>().ln() - r[t as usize] as f64 }).collect() }
-fn am(r: &[f32]) -> usize { r.iter().enumerate().fold(0, |b, (i, &v)| if v > r[b] { i } else { b }) }
+pub fn am(r: &[f32]) -> usize { r.iter().enumerate().fold(0, |b, (i, &v)| if v > r[b] { i } else { b }) }
 pub fn hold_windows(hold: &[u8], n: usize, t: usize) -> (Vec<u8>, Vec<u8>) { let mut g = Pcg64::new(Some(1234)); let (x, y) = adam_train::batch(hold, &mut g, 128, t, None); (x[..n * t].to_vec(), y[..n * t].to_vec()) }
 pub fn cpu_eval(lm: &Lm, x: &[u8], y: &[u8]) -> io::Result<(Vec<f32>, f64, f64)> { let t0 = Instant::now(); let lg = x.chunks(lm.t).map(|w| lm.fwd(w)).collect::<io::Result<Vec<_>>>()?.concat(); let s = t0.elapsed().as_secs_f64(); let v = nll(&lg, y); Ok((lg, v.iter().sum::<f64>() / v.len() as f64 / std::f64::consts::LN_2, x.len() as f64 / s)) }
 pub fn finish<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &[u8], dev: &B::Device, log: &mut fs::File) -> io::Result<()> {

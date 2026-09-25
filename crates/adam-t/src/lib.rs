@@ -12,6 +12,12 @@ impl Cfg {
         let (home, d, tag) = (e("AMNI_HOME", "/home/anmire/ai/Amni-Ai"), p("D", "256") as usize, e("TAG", "smoke"));
         Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", "2e-3"), lrm: p("LR_MEM", &e("LR", "2e-3")), wd: p("WD", "0.05") as f32, warm: p("WARM", "200") as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", "500") as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", "clean2"), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), home }
     }
+    pub fn from_dir(dir: &str) -> io::Result<Cfg> {
+        let l = fs::read_to_string(format!("{dir}/log.jsonl"))?.lines().next().unwrap_or("").to_string();
+        let j: serde_json::Value = serde_json::from_str(&l).map_err(io::Error::other)?;
+        let (g, u) = (&j["cfg"], |k: &str| j["cfg"][k].as_u64().ok_or_else(|| io::Error::other(format!("cfg.{k} missing in {dir}/log.jsonl"))).map(|v| v as usize));
+        Ok(Cfg { d: u("d")?, l: u("l")?, h: u("h")?, t: u("ctx")?, ff: u("ff")?, rb: u("mem_log2")? as u32, tern: g["tern"].as_bool().unwrap_or(true), mem: g["mem"].as_bool().unwrap_or(false), ns: g["ngrams"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect()).unwrap_or_default(), out: dir.into(), ..Cfg::env() })
+    }
     pub fn k(&self) -> usize { if self.mem { self.ns.len() } else { 0 } }
     pub fn rows(&self) -> usize { self.k() << self.rb }
     pub fn mult(&self, it: usize) -> f64 { let pr = ((it as f64 - self.warm as f64) / (self.steps.saturating_sub(self.warm)).max(1) as f64).clamp(0.0, 1.0); if it < self.warm { (it as f64 + 1.0) / self.warm as f64 } else { 0.1 + 0.45 * (1.0 + (std::f64::consts::PI * pr).cos()) } }
@@ -70,6 +76,8 @@ fn sm(mut z: u64) -> u64 { z = z.wrapping_add(0x9E37_79B9_7F4A_7C15); z = (z ^ z
 pub fn tb(d: &[u8], seed: u64, it: usize, bs: usize, t: usize) -> (Vec<u8>, Vec<u8>) { let ix: Vec<usize> = (0..bs).map(|j| (sm(seed << 40 ^ (it as u64) << 12 ^ j as u64) % (d.len() - t - 1) as u64) as usize).collect(); (ix.iter().flat_map(|&i| d[i..i + t].iter().copied()).collect(), ix.iter().flat_map(|&i| d[i + 1..i + 1 + t].iter().copied()).collect()) }
 pub fn it2<B: Backend>(v: Vec<i32>, s: [usize; 2], dev: &B::Device) -> Tensor<B, 2, Int> { Tensor::from_data(TensorData::new(v, s), dev) }
 pub fn logits<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u8], b: usize, dev: &B::Device) -> Tensor<B, 2> { core.fwd(it2(x.iter().map(|&v| v as i32).collect(), [b, c.t], dev), mem.map(|m| m.fwd(it2(hix(x, b, c.t, &c.ns, c.rb), [b, c.t * c.k()], dev), c.k())), c.h, c.tern) }
+pub fn infer<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u8], b: usize, dev: &B::Device) -> Vec<f32> { let n = x.len() / b; f1(core.fwd(it2(x.iter().map(|&v| v as i32).collect(), [b, n], dev), mem.map(|m| m.fwd(it2(hix(x, b, n, &c.ns, c.rb), [b, n * c.k()], dev), c.k())), c.h, c.tern)) }
+pub fn load<B: Backend>(c: &Cfg, dev: &B::Device) -> io::Result<(Core<B>, Option<Mem<B>>)> { let (rec, le) = (BinFileRecorder::<FullPrecisionSettings>::new(), |e: burn::record::RecorderError| io::Error::other(format!("{e:?}"))); Ok((Core::<B>::new(c, dev).load_file(format!("{}/ckpt/core", c.out), &rec, dev).map_err(le)?, c.mem.then(|| Mem::<B>::new(c, dev).load_file(format!("{}/ckpt/mem", c.out), &rec, dev).map_err(le)).transpose()?)) }
 pub fn ce<B: Backend>(lg: Tensor<B, 2>, y: &[u8], dev: &B::Device) -> Tensor<B, 1> { CrossEntropyLossConfig::new().init(dev).forward(lg, Tensor::from_data(TensorData::new(y.iter().map(|&v| v as i32).collect::<Vec<i32>>(), [y.len()]), dev)) }
 pub fn f1<B: Backend, const D: usize>(t: Tensor<B, D>) -> Vec<f32> { t.into_data().iter::<f32>().collect() }
 pub fn eval<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &[u8], nb: usize, dev: &B::Device) -> f64 {

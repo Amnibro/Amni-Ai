@@ -80,6 +80,7 @@ dependencies = [
  "memmap2",
  "pollster",
  "rayon",
+ "serde_json",
  "wgpu 24.0.5",
 ]
 

@@ -1,6 +1,7 @@
-use adam_t::{lut, train, Cfg};
+use adam_t::{infer, load, lut, nap, thr, train, Cfg};
 use burn::{backend::{ndarray::NdArrayDevice, wgpu::WgpuDevice, Autodiff, NdArray, Wgpu}, tensor::{backend::Backend, Distribution, Tensor}};
-use std::{env::{args, var}, io, time::Instant};
+use serde_json::{json, Value};
+use std::{env::{args, var}, io::{self, BufRead, Write}, time::Instant};
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, *};
 const MM: &str = "@group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
@@ -43,6 +44,34 @@ fn mm_burn<B: Backend>(dev: B::Device, m: usize, n: usize, k: usize, it: usize) 
     let _ = s.into_data();
     2.0 * (m * n * k * it) as f64 / t0.elapsed().as_secs_f64() / 1e9
 }
+type Fw<'a> = Box<dyn Fn(&[Vec<u8>]) -> io::Result<Vec<Vec<f32>>> + 'a>;
+fn opt(a: &[String], k: &str) -> Option<String> { a.iter().position(|x| x == k).and_then(|i| a.get(i + 1).cloned()) }
+fn burn_fw<'a, B: burn::tensor::backend::Backend>(c: &'a Cfg, dev: B::Device) -> io::Result<Fw<'a>> {
+    let (core, mem) = load::<B>(c, &dev)?;
+    Ok(Box::new(move |xs: &[Vec<u8>]| { let t0 = Instant::now(); let x: Vec<u8> = xs.iter().flat_map(|w| w.iter().copied().chain(std::iter::repeat(b' ').take(c.t - w.len()))).collect(); let lg = infer(c, &core, mem.as_ref(), &x, xs.len(), &dev); nap(thr(&c.thf), t0.elapsed().as_secs_f64() * 1e3, c.unit); Ok(xs.iter().enumerate().map(|(i, w)| lg[i * c.t * 256..(i * c.t + w.len()) * 256].to_vec()).collect()) }))
+}
+fn serve(mode: &str, t: usize, f: &Fw) -> io::Result<()> {
+    let (mut so, lines) = (io::stdout().lock(), io::stdin().lock().lines().collect::<io::Result<Vec<String>>>()?);
+    let js: Vec<Value> = lines.iter().filter(|l| !l.trim().is_empty()).map(|l| serde_json::from_str(l).unwrap_or_else(|_| json!({"prompt": l, "context": l}))).collect();
+    let nb = var("LP_BATCH").ok().and_then(|v| v.parse().ok()).unwrap_or(16usize);
+    for ch in js.chunks(if mode == "gen" { 1 } else { nb }) {
+        let out: Vec<Value> = if mode == "gen" {
+            let (j, mut x) = (&ch[0], ch[0]["prompt"].as_str().unwrap_or("").as_bytes().to_vec());
+            let (mx, stop, p0) = (j["max_new"].as_u64().unwrap_or(64) as usize, j["stop"].as_str().unwrap_or("\n").as_bytes().to_vec(), x.len().max(1));
+            x = if x.is_empty() { vec![b'\n'] } else { x };
+            for _ in 0..mx { let w = x[x.len().saturating_sub(t)..].to_vec(); let lg = f(&[w.clone()])?.remove(0); x.push(lut::am(&lg[(w.len() - 1) * 256..]) as u8); if !stop.is_empty() && x[p0..].ends_with(&stop) { break; } }
+            let g = &x[p0..];
+            vec![json!({"prompt": j["prompt"], "completion": String::from_utf8_lossy(if !stop.is_empty() && g.ends_with(&stop) { &g[..g.len() - stop.len()] } else { g }), "new_bytes": g.len()})]
+        } else {
+            let sq: Vec<(Vec<u8>, usize)> = ch.iter().map(|j| { let (cx, co) = (j["context"].as_str().unwrap_or("").as_bytes(), j["continuation"].as_str().unwrap_or("").as_bytes()); let s = [if cx.is_empty() { &b"\n"[..] } else { cx }, co].concat(); (s[s.len().saturating_sub(t + 1)..].to_vec(), co.len().min(t)) }).collect();
+            let lg = f(&sq.iter().map(|(s, _)| s[..s.len() - 1].to_vec()).collect::<Vec<_>>())?;
+            sq.iter().zip(&lg).zip(ch).map(|(((s, n), l), j)| { let (y, k) = (&s[1..], s.len() - 1 - n); let v = lut::nll(&l[k * 256..], &y[k..]); let gr = (k..y.len()).all(|p| lut::am(&l[p * 256..(p + 1) * 256]) == y[p] as usize); json!({"context": j["context"], "continuation": j["continuation"], "logprob": -v.iter().sum::<f64>(), "n_bytes": n, "greedy": gr, "truncated": s.len() == t + 1}) }).collect()
+        };
+        out.iter().try_for_each(|o| writeln!(so, "{o}"))?;
+        so.flush()?;
+    }
+    Ok(())
+}
 fn run(c: &Cfg, bench: usize) -> io::Result<String> {
     match var("BACKEND").unwrap_or_else(|_| "wgpu".into()).as_str() {
         "ndarray" => train::<Autodiff<NdArray>>(c, NdArrayDevice::Cpu, bench),
@@ -76,6 +105,17 @@ fn main() -> io::Result<()> {
             let (x, y) = lut::hold_windows(&hold, nw, lm.t);
             let (_, bpb, bps) = lut::cpu_eval(&lm, &x, &y)?;
             println!("{{\"model\": \"{p}\", \"windows\": {nw}, \"cpu_lut_bpb\": {bpb:.5}, \"bytes_per_s\": {bps:.1}}}");
+        }
+        m @ ("gen" | "logprob") => {
+            let (ck, gf) = (opt(&a, "--ckpt"), opt(&a, "--gf17"));
+            let lm = gf.as_ref().map(|p| lut::Lm::open(p, 256 << 20)).transpose()?;
+            let cc = ck.as_ref().map(|d| Cfg::from_dir(d)).transpose()?;
+            let f: Fw = match (&lm, &cc) {
+                (Some(lm), _) => Box::new(move |xs: &[Vec<u8>]| xs.iter().map(|w| lm.fwd(w)).collect()),
+                (_, Some(cc)) => if var("BACKEND").map(|b| b == "ndarray").unwrap_or(false) { burn_fw::<NdArray>(cc, NdArrayDevice::Cpu)? } else { burn_fw::<Wgpu>(cc, WgpuDevice::DiscreteGpu(0))? },
+                _ => return Err(io::Error::other("adam-t gen|logprob --ckpt <run dir> | --gf17 <model.gf17>")),
+            };
+            serve(m, lm.as_ref().map(|l| l.t).or(cc.as_ref().map(|c| c.t)).unwrap_or(256), &f)?;
         }
         _ => { run(&c, 0)?; }
     }
