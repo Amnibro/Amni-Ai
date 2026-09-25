@@ -26,7 +26,7 @@ impl Gpu {
         (0..lv as u32).for_each(|l| wt(&tx.sid, l, 4096, rows, 4, bytemuck::cast_slice(&init)));
         let mut b = HashMap::new();
         let (st, cs, cd) = (BufferUsages::STORAGE, BufferUsages::COPY_SRC, BufferUsages::COPY_DST);
-        for (k, n, u) in [("xy", npos, st | cd), ("stb", npos * 40, st), ("pi", m, st | cd), ("pw", m, st | cd), ("uk", m, st), ("ud", 2 * DE, st), ("ga", m * 6, st), ("best", m, st), ("dg", (V + DE) * V * 2, st), ("cnt", lv * te, st), ("ctr", 4, st | cd), ("ag", 6, st | BufferUsages::INDIRECT), ("dl", npos * V, st | cs), ("pl", npos, st | cs), ("cpb", npos * c.copy.max(1), st | cd), ("lq", 2 * lv, st | cs | cd), ("dm", 2 * DE * V, st | cs), ("dv", 2 * DE * V, st | cs), ("sm", lv * te * KS, st | cs), ("sv", lv * te * KS, st | cs), ("bp", npos.div_ceil(V) * V, st), ("rd", (CH / 4) as usize, BufferUsages::MAP_READ | cd)] {
+        for (k, n, u) in [("xy", npos, st | cd), ("stb", npos * 40, st), ("pi", m, st | cd), ("pw", m, st | cd), ("uk", m, st), ("ud", 2 * DE, st), ("ga", m * 6, st), ("best", m, st), ("dg", (V + DE) * V * 2, st), ("cnt", lv * te, st), ("ctr", 4, st | cd), ("ag", 6, st | BufferUsages::INDIRECT), ("dl", npos * V, st | cs), ("pl", npos, st | cs), ("cpb", npos * c.copy.max(1), st | cd), ("lq", 2 * lv, st | cs | cd), ("dm", 2 * DE * V, st | cs | cd), ("dv", 2 * DE * V, st | cs | cd), ("sm", lv * te * KS, st | cs | cd), ("sv", lv * te * KS, st | cs | cd), ("bp", npos.div_ceil(V) * V, st), ("rd", (CH / 4) as usize, BufferUsages::MAP_READ | cd)] {
             b.insert(k, dev.create_buffer(&BufferDescriptor { label: Some(k), size: (n * 4) as u64, usage: u, mapped_at_creation: false }));
         }
         let fl = |t: &Texture, d: TextureViewDimension| t.create_view(&TextureViewDescriptor { dimension: Some(d), ..Default::default() });
@@ -187,7 +187,7 @@ impl Engine for Gpu {
             Part::Bias => self.wtex(&self.tx.bi, 0, V as u32, 1, bytemuck::cast_slice(v)),
             Part::Sid => (0..lv).for_each(|l| { let pk: Vec<u32> = v[l * te * 3..(l + 1) * te * 3].chunks(3).map(|s| s[0] as u32 | (s[1] as u32) << 8 | (s[2] as u32) << 16).collect(); self.wtex(&self.tx.sid, l as u32, 4096, r, bytemuck::cast_slice(&pk)) }),
             Part::Sw => (0..lv).for_each(|l| (0..3).for_each(|s| { let w: Vec<f32> = (0..te).map(|e| v[(l * te + e) * 3 + s]).collect(); self.wtex(&self.tx.sw, (l * 3 + s) as u32, 4096, r, bytemuck::cast_slice(&w)) })),
-            _ => unreachable!(),
+            Part::Dm | Part::Dv | Part::Sm | Part::Sv | Part::Lq => { let k = [(Part::Dm, "dm"), (Part::Dv, "dv"), (Part::Sm, "sm"), (Part::Sv, "sv"), (Part::Lq, "lq")].iter().find(|x| x.0 == p).unwrap().1; bytemuck::cast_slice::<f32, u8>(v).chunks(CH as usize).enumerate().for_each(|(i, d)| { self.q.write_buffer(&self.b[k], i as u64 * CH, d); self.q.submit([]); }); }
         }
         self.q.submit([]);
     }

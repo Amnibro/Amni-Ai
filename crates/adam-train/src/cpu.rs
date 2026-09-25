@@ -143,6 +143,6 @@ impl Engine for Cpu {
         r.into_iter().enumerate().for_each(|(l, (a, b))| (t.lq[l], t.lq[lv + l]) = (a, b));
     }
     fn get(&mut self, p: Part) -> Vec<f32> { let t = &self.t; match p { Part::Dp => t.dp.clone(), Part::Dm => t.dm.clone(), Part::Dv => t.dv.clone(), Part::Sid => t.sid.iter().map(|&v| v as f32).collect(), Part::Sw => t.sw.clone(), Part::Sm => t.sm.clone(), Part::Sv => t.sv.clone(), Part::Bias => t.bias.clone(), Part::Lq => t.lq.clone() } }
-    fn put(&mut self, p: Part, v: &[f32]) { let t = &mut self.t; match p { Part::Dp => t.dp.copy_from_slice(v), Part::Sid => t.sid.iter_mut().zip(v).for_each(|(a, &b)| *a = b as u8), Part::Sw => t.sw.copy_from_slice(v), Part::Bias => t.bias.copy_from_slice(v), _ => unreachable!() } }
+    fn put(&mut self, p: Part, v: &[f32]) { let t = &mut self.t; match p { Part::Dp => t.dp.copy_from_slice(v), Part::Sid => t.sid.iter_mut().zip(v).for_each(|(a, &b)| *a = b as u8), Part::Sw => t.sw.copy_from_slice(v), Part::Bias => t.bias.copy_from_slice(v), Part::Dm => t.dm.copy_from_slice(v), Part::Dv => t.dv.copy_from_slice(v), Part::Sm => t.sm.copy_from_slice(v), Part::Sv => t.sv.copy_from_slice(v), Part::Lq => t.lq.copy_from_slice(v) } }
     fn name(&self) -> String { format!("cpu x{}", rayon::current_num_threads()) }
 }
