@@ -1,0 +1,17 @@
+[package]
+name = "adam-rknow"
+version = "0.1.0"
+edition = "2021"
+description = "R-KNOW passage index over the local Wikipedia fetch store: hashed-term BM25 postings (delta varint), title-in-passage, built with bounded threads and RSS"
+[[bin]]
+name = "adam-rknow"
+path = "src/main.rs"
+[dependencies]
+rayon = "1"
+zstd = "0.13"
+memmap2 = "0.9"
+serde_json = "1"
+unicode-normalization = "0.1"
+[profile.release]
+opt-level = 3
+[workspace]

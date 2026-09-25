@@ -1,3 +1,35 @@
+## 2026-09-25 R-KNOW: local Wikipedia QA (BM25 passage index + typed span extraction), cited, gated; KS defaults moved to ks2-clean1 / store_clean
+Adam now answers some factual questions from local Wikipedia (CC BY-SA 4.0) with no web and cites the article. The reply is the answer span followed by `(Source: Wikipedia, <title>).` For person answers it adds the article's full name, e.g. "David Henrie (full name David Clayton Henrie)".
+- `crates/adam-rknow` (standalone crate, own `[workspace]`): `adam-rknow build data/ks/fetch/wikipedia data/ks/index_rknow/wiki_v2 6` builds a hashed-term passage index over all 5,898,359 articles in 82 s on 6 threads (peak RSS 4.5 GB).
+  - 39,272,597 passages (paragraphs merged to at least 60 words, split above 150 words), title tokens included in every passage, 9,663,632 terms, 1.77 B postings.
+  - Files: `pid.u32`, `tf.u8`, `ptr/terms/df`, `p_doc/p_off/p_len/p_ntok`, `d_first.u32`. The index is 9.0 GB on disk.
+  - The tokenizer (`rk1`: NFKD, strip marks, lowercase, alnum runs, s/ies stem, stop list, FNV-1a 64) is bit-identical in Rust and Python; a test checks this.
+- `amni/compute/rknow.py`:
+  - Retrieval: BM25 (k1 0.9, b 0.4). Terms with df above 300K only rescore. Question n-grams are title-linked through `titles.npz` and get a boost.
+  - Extraction: answer-typed candidates (dates and numbers from `ray_learn.cands`, plus a new entity/span extractor with initials, connectors and "City, Country").
+  - Features: role patterns ("X as <char>", "<char> played by X"), possessive-role confusion ("Melinda's mother"), an occupation check against the candidate's own article lead, and question-token overlap.
+  - Scoring: a feature ranker, then a question-level confidence model. Both are linear-logistic, fit on 2,000 NQ-open train questions (`data/ks/index_rknow/weights_v1.json`). Answers only when confidence >= `AMNI_RKNOW_C` (0.5).
+  - Gate `factq`: wh-question form, `rchat.act` in {fact, other}, no you/opinion/advice, and the PERSONAL and temporal guards. It passes 87% of NQ and 0/108 chit-chat.
+  - Latency p50 0.07 s, p95 0.2 s (search is `pread`-only). RSS about 0.7 GB after 200 questions.
+- `gguf_runtime._ray_stream` (backup `.v_rknow.bak`): memory → guide → learned → rknow (gated) → learn → rchat → decline.
+  - A factual question that knowledge declines no longer falls through to R-CHAT (`AMNI_RKNOW_FACT_GUARD=1`); it gets the decline.
+  - `AMNI_RAY_RKNOW=0` turns the hook off.
+- Dev splits (`scripts/rknow_dev.py`, NQ-open train, CC BY-SA 3.0): tune 400, hold 400, hold2 400, fit 2000. They are 5-gram-disjoint from every locked split (decontam) and from the 13-gram eval pool. `chat_neg_dev.json` holds 108 chit-chat negatives (68 R-CHAT dev plus 40 own).
+- Dev results (rknow alone; strict token-boundary scoring as in `adam_nightly`):
+  - Baseline serve path, tune: acc 0.5%, decline 97.25%, precision 18%.
+  - rknow, tune: acc 2.25%, decline 97.0%, precision 75%.
+  - rknow, hold: acc 1.75%, precision 64%.
+  - rknow, unseen hold2: acc 2.75%, decline 95.25%, precision 58%.
+  - Chit-chat: 0/108 answered.
+  - The 90% precision target is not met.
+- Locked NQ, single dry look (`adam_nightly.py --dry`): acc 2.0%, EM 1.5%, decline 95.0% (the first prod night was 0.5% and 99.5%). Peak RSS 4.66 GB.
+- KS defaults:
+  - `ks_codec.KSCodec()` now defaults to `ks2-clean1` (`AMNI_KS_CODER`), and `KStore` defaults to that coder.
+  - `ks_retrieve.STORE` = `store_clean` (`AMNI_KS_STORE`). `ks_wiki_defs` and `ks_ingest` now default to `store_clean`; the legacy store needs an explicit `--store store`, which pins ks1-v16.
+  - `ray_learn.idf` word weights now come from `data/clean1/wordcounts.txt` (`AMNI_LEARN_WC_LEX`), matching the ks2-clean1 lexicon.
+  - `ks_retrieve.Titles` keeps `titles.npz` in memory (a lookup took 50-150 ms before).
+- `AMNI_LEARN_SRCS` stays `wikipedia`. Adding gutenberg, arxiv_abs, openwebmath and fineweb_edu gave identical dev results (4 answered, 25% precision), and `decide(lc=True)` labels every local hit as Wikipedia / CC BY-SA 4.0, so the attribution would be wrong.
+- Tests: `tests/test_rknow.py` (8), `tests/test_ks_codec.py::test_default_coder_is_clean`. user_memory, gguf_product, ray_learn, rchat and ray_field_backend all pass.
 ## 2026-09-25 NIGHTLY: locked nightly eval of the serving defaults -> Haven KPI
 `scripts/adam_nightly.py` runs once a night (`amni-adam-nightly.timer`, 03:30, `Persistent=true`) on `ray_field.DEFAULT_PACK`, `BASE_PACK` and `DEFAULT_LEX`. It runs three CPU child phases (6 threads, nice 10) under a watchdog that kills a phase at RSS > 6 GB, MemAvailable < 12 GB or 88 min total.
 - Phases:

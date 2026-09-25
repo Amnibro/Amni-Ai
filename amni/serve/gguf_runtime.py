@@ -62,6 +62,11 @@ def _rchat(message:str,history=None,user=None,session=None,e=None):
         from amni.compute.rchat import reply
         r=reply(message,history,session=session or user,e=e);return r['out'] if r else None
     except Exception:return None
+def _rknow(message:str)->tuple:
+    try:
+        from amni.compute.rknow import ask,factq
+        f=factq(message);return (ask(message) if f else None),f
+    except Exception:return None,False
 def _memq(m:str,history=None,user=None)->bool:
     from amni.serve.user_memory import turn
     return turn(m,history,user,dry=True)['route']
@@ -76,10 +81,12 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
         lr=_ray_learned(message)
         if lr:yield (f"{lr['span']}. " if lr.get('span') else '')+f"{lr['a']} (I learned this earlier from {_cite(lr.get('title'),lr.get('src') or '') if lr.get('local') else lr.get('title') or 'the web'}.)";return
     from amni.compute.ray_learn import learn,Learned,PERSONAL
+    rk,fq=_rknow(message) if g is None and os.environ.get('AMNI_RAY_RKNOW','1')=='1' and not PERSONAL.search(message) else (None,False)
+    if rk:yield rk['reply'];return
     if g is None and os.environ.get('AMNI_RAY_LEARN','1')=='1' and not PERSONAL.search(message):
         _learned[0]=_learned[0] or Learned();r=learn(message,_learned[0])
         if r:yield (f"{r['span']}. " if r.get('span') else '')+f"{r['a']} (Source: {_cite(r.get('title'),r.get('src') or '') if r.get('local') else r.get('title') or 'Wikipedia'}. I'll remember this.)";return
-    rc=_rchat(message,mem['hist'],user,session,e) if g is None and os.environ.get('AMNI_RCHAT','1')=='1' else None
+    rc=_rchat(message,mem['hist'],user,session,e) if g is None and os.environ.get('AMNI_RCHAT','1')=='1' and not (fq and os.environ.get('AMNI_RKNOW_FACT_GUARD','1')=='1') else None
     if rc:yield rc;return
     if g is None and os.environ.get('AMNI_RAY_QA_DECLINE','1')=='1':yield "I'm not sure about that one yet.";return
     yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','20')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))

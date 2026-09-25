@@ -3,7 +3,7 @@ import numpy as np,pyarrow as pa,pyarrow.parquet as pq
 from amni.compute.ray_field import RayField,LEGACY_PACK,BASE_PACK,MAXB,_H0
 from amni.compute.reffelt4 import encode_ids_to_rgba2,decode_rgba2_to_ids
 PAGE=4096;CMAX=2*PAGE+8;TOT=1<<16;TOP=1<<24;BOT=1<<16;M32=(1<<32)-1;QK=64;DMAX=QK*24;EXPC=1057095000;START=10;MAGIC=b"AKS1";ATW=4096;SEPS=(b"\n\n",b"\n",b". ",b" ");CODER="ksc1";TIERS=["verified","endorsed","unverified","rejected"];DEF={"score":0.5,"stale":False,"date":""};CW=np.arange(1,8);LEXF=("synsets.txt","words.txt","wordcounts.txt")
-CODERS={"ks1-v16":(LEGACY_PACK,"big2"),"ks2-clean1":(BASE_PACK,"clean1")}
+CODERS={"ks1-v16":(LEGACY_PACK,"big2"),"ks2-clean1":(BASE_PACK,"clean1")};DEFAULT_VER=os.environ.get("AMNI_KS_CODER","ks2-clean1")
 LUT=np.array([1<<30]+[0]*DMAX,np.int64);[LUT.__setitem__(d,int(LUT[d-1])*EXPC>>30) for d in range(1,DMAX+1)]
 def paginate(b:bytes,cap:int=PAGE)->list:
  out=[];i=0
@@ -24,7 +24,7 @@ def pack_files(path:str,lex:str="big2")->list:
 def pack_id(path:str,lex:str="big2")->str:return digest(pack_files(path,lex))
 class KSCodec:
  def __init__(self,pack:str=None,arch:str=None,nb:int=MAXB,impl:str=None,ver:str=None,lex:str=None,ks:str=None):
-  self.pack,self.lex=CODERS[ver] if ver else (pack or LEGACY_PACK,lex or os.environ.get("AMNI_RAY_LEX","big2"));self.ver=ver or next((k for k,v in CODERS.items() if v==(self.pack,self.lex)),"custom");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","cpu");self.impl=impl or os.environ.get("AMNI_RAY_IMPL","rust" if importlib.util.find_spec("adam_ray") else "taichi");self.nb=min(nb,MAXB);self.pid=None;self.lid=None;self.stats=False;self.nll=[0.0];self._e=None;self.ks=ks or os.environ.get("AMNI_KS_IMPL","rust" if importlib.util.find_spec("adam_ks") else "python");self._k=None
+  ver=ver or (None if pack or lex else DEFAULT_VER);self.pack,self.lex=CODERS[ver] if ver else (pack or LEGACY_PACK,lex or os.environ.get("AMNI_RAY_LEX","big2"));self.ver=ver or next((k for k,v in CODERS.items() if v==(self.pack,self.lex)),"custom");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","cpu");self.impl=impl or os.environ.get("AMNI_RAY_IMPL","rust" if importlib.util.find_spec("adam_ray") else "taichi");self.nb=min(nb,MAXB);self.pid=None;self.lid=None;self.stats=False;self.nll=[0.0];self._e=None;self.ks=ks or os.environ.get("AMNI_KS_IMPL","rust" if importlib.util.find_spec("adam_ks") else "python");self._k=None
  def ident(self)->dict:self.pid=self.pid or pack_id(self.pack,self.lex);self.lid=self.lid or digest(lex_files(self.lex));return {"coder":f"{CODER}:{self.impl}-{self.arch}:{os.path.basename(self.pack)}:{self.pid[:12]}","ver":self.ver,"pack":os.path.basename(self.pack),"pack_id":self.pid,"lex":self.lex,"lex_id":self.lid,"impl":self.impl,"arch":self.arch,"qk":QK,"dmax":DMAX,"expc":EXPC,"tot":TOT,"start":START,"page":PAGE}
  def eng(self):
   f=[os.path.join(_H0,"data",self.lex,x) for x in LEXF];self._e=self._e or (__import__("adam_ray").RayField(self.pack,*f,self.arch,_H0) if self.impl=="rust" else (lambda r:(setattr(r,"wcnt_path",f[2]),r)[1])(RayField(self.pack,f[0],f[1],self.arch))).load();return self._e
@@ -84,7 +84,7 @@ class KStore:
   if zlib.crc32(pay)!=hd["crc32"]:raise ValueError("KS index corrupt: directory crc32 mismatch")
   d=np.frombuffer(pa.decompress(pay,hd["raw"],codec="zstd",asbytes=True),np.uint8).reshape(12,-1).T;self.clen,self.nby,self.crc=_dir_unpack(d);self.off=np.r_[0,np.cumsum(self.clen)];self.pages=np.memmap(os.path.join(path,"pages.bin"),np.uint8,"r") if self.off[-1] else np.zeros(0,np.uint8)
   if len(self.clen)!=hd["n"] or self.off[-1]!=len(self.pages) or (self.nby>PAGE).any() or (self.clen>CMAX).any():raise ValueError("KS index corrupt: directory does not match pages.bin")
-  dt=pq.read_table(os.path.join(path,"docs.parquet"));self.src=dt["src"].to_numpy();self.title=dt["title"].to_pylist();self.first=dt["first"].to_numpy().astype(np.int64);self.pm=pq.read_table(os.path.join(path,"pagemeta.parquet"));self.coder=self.pm["coder"].to_numpy();self.codecs=list(codec) if isinstance(codec,(list,tuple)) else [codec];self.codec=self.codecs[0];self.check=check
+  dt=pq.read_table(os.path.join(path,"docs.parquet"));self.src=dt["src"].to_numpy();self.title=dt["title"].to_pylist();self.first=dt["first"].to_numpy().astype(np.int64);self.pm=pq.read_table(os.path.join(path,"pagemeta.parquet"));self.coder=self.pm["coder"].to_numpy();self.codecs=list(codec) if isinstance(codec,(list,tuple)) else [codec or KSCodec()];self.codec=self.codecs[0];self.check=check
   if len(self.coder)!=len(self.clen) or (self.coder>=len(self.meta["coders"])).any():raise ValueError("KS index corrupt: page metadata does not match directory")
  def __len__(self)->int:return len(self.clen)
  def doc_of(self,i:int)->int:return int(np.searchsorted(self.first,i,"right")-1)

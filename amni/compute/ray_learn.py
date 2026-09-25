@@ -51,7 +51,7 @@ def descs(ts:list,lc:bool=False)->dict:
 _WC={}
 def _wc()->dict:
  if not _WC:
-  for l in open(os.path.join(_H0,"data","big2","wordcounts.txt"),"rb"):
+  for l in open(os.path.join(_H0,"data",os.environ.get("AMNI_LEARN_WC_LEX","clean1"),"wordcounts.txt"),"rb"):
    a=l.rsplit(None,1);_WC[a[0].decode("utf-8","replace")]=int(a[1]) if len(a)==2 and a[1].isdigit() else 0
   _WC[""]=sum(_WC.values())
  return _WC
