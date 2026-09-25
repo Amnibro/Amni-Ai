@@ -70,19 +70,19 @@ Storage buffers hold only what the kernel writes: the per-beam driver state (dou
 
 ## v19 inference (R1b)
 
-`RayField` detects a v19 raw pack from its level count: L=41 is COPY=13 (question tori 21..23, copy 24..36, hops 37..40), L=42/43 is COPY=13 plus 1/2 memory-result levels (v19d, see below), L=37 is COPY=9, L=32 is COPY=4. The Python getters `copy` and `v19` report it; nothing else changes for callers.
+`RayField` detects a v19 raw pack from its level count: L=41 is COPY=13 (question tori 21..23, copy 24..36, hops 37..40), L=42/43 is COPY=13 plus 1/2 memory-result levels (v19d, see below), L=44..46 is COPY=16 plus 0..2 memory-result levels (v19e echo and entity candidates, see below), L=37 is COPY=9, L=32 is COPY=4. The Python getters `copy` and `v19` report it; nothing else changes for callers.
 
 - The copy band (levels 24..24+COPY) is kept as raw f16 slot-0 weights and never goes through the cell ternarizer.
 - `v19::W19` is one beam's v19 state: the 40-u32 core state, the parser scalars (question words and their 4-byte prefixes, working-memory cursors, fact-question clock, pronoun subject), the current-word buffer, the 128x4 set-associative working memory and the 64-entry entity ring (about 31 KB). `W19::step` is the per-byte update, `W19::gates` the copy-candidate emit. The trainer's `Drv19` runs the same two calls per position.
 - `v19::Host` holds 2 x 256 `W19` (double-buffered like the core state) plus the lexicons. Each step copies the parent beam's state into the child slot and steps it, so beams fork with their memory.
 - CPU path: bias, dense, planned taps, then the copy gates (`CG` x the sum of the gate cells' slot-0 weights, added to the candidate byte), then the four hops. This is the trainer's forward order.
-- GPU path: the CPU steps every beam and uploads, per want-step and beam, the core state, 13 (byte, gate) pairs and the 2 memory-result cell entries (`EX = 68` u32, `u32::MAX` = off). The kernel skips its own state update, plans and gathers from the uploaded state, adds the gates, the memory-result cells and runs the hops. Steps without logits are not dispatched.
+- GPU path: the CPU steps every beam and uploads, per want-step and beam, the core state, 16 (byte, gate) pairs (unused ones off) and the 2 memory-result cell entries (`EX = 74` u32, `u32::MAX` = off). The kernel skips its own state update, plans and gathers from the uploaded state, adds the gates, the memory-result cells and runs the hops. Steps without logits are not dispatched.
 - v19 packs use the trainer's topic constant (`1 - 0.99f32`). v16/v18 keep the Taichi engine's `(1 - 0.99f64) as f32`, which drifts from the trainer's by 1e-9 and can move a topic cell on long inputs.
 
 ```bash
 cd crates && cargo test --release -j 8 -p adam-train --test v19_fwd --no-run
 AMNI_HOME=/home/anmire/ai/Amni-Ai ADAM_V19_PACK=<rayhash_..._sid.npy> [ADAM_V19_TEXTS=<\0-separated file>] \
-  [ADAM_V19_REF=<taichi npz>] [ADAM_V19_GREEDY=90] ADAM_RAY_ARCHS=cpu,vulkan target/release/deps/v19_fwd-* --nocapture
+  [ADAM_V19_REF=<taichi npz>] [ADAM_V19_GREEDY=90] [ADAM_V19_LEX=clean1] ADAM_RAY_ARCHS=cpu,vulkan target/release/deps/v19_fwd-* --nocapture
 AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_continuum/rayhash_v19c2_chat3_rust_s20k v19c2_rust
 ```
 
@@ -102,7 +102,7 @@ AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_c
 
 `stream(..., lock, stop_sentence, rep)` and `beam(..., lock, stop_sentence)` take the Rust `Dec` options (Python keywords `lock`, `stop_sentence` and `rep`). All of them default to off, and with them off the outputs are byte-identical to the previous engine.
 
-- `lock` works on v19 packs with `COPY >= 13`. At each step, a copy candidate (direct, hop or chain) is eligible when all of the following hold:
+- `lock` works on v19 packs with `COPY >= 13`. At each step, a copy candidate (direct, hop, chain, and on COPY=16 packs echo or entity) is eligible when all of the following hold:
   - its gate byte is valid and its gate logit is positive;
   - the current word has at least one byte, and the character before the word is not an apostrophe or a hyphen;
   - its next value byte is the model's own argmax;
@@ -142,6 +142,32 @@ The signal comes from `W19` at every Adam-reply position (`qon == 1`), using the
 - Anchor: in training batches a window that does not start at a dialogue separator (byte 30) has an incomplete memory, so `W19::q.anc` is false until the first byte 30 and the memory-result taps stay off. `W19::begin` (inference, `Engine::logits`) sets it true.
 
 `crates/adam-train/tests/v19_probe.rs::probe_mr` checks the gating (answer only, anchor) and the empty / one states; `tests/v19_mstate.rs` (`ADAM_V19_MSTATE=<\0-separated kind\x01text>`) tabulates the state over an eval set.
+
+## v19e echo and entity candidates
+
+`COPY=16` (trainer env, `VER=19`) adds three copy candidates to the 13 of v19c/v19d, with their own 4-cell gate levels right after the chain gate, so the hops and memory-result levels move up by three.
+
+| levels | L=46 (`COPY=16 MR=2`) |
+|---|---|
+| 24..36 | copy gates 0..12 (direct 0..7, hop 8..11, chain 12) |
+| 37..38 | gates 13, 14: echo, the newest and second-newest facts committed in the current user turn (ring stamp above `qclk`) |
+| 39 | gate 15: entity, the surface form of the current turn's possessed entity phrase ("brother", "sister-in-law", "lab partner") |
+| 40..43 | belief hops |
+| 44..45 | memory results A and B |
+
+- Direct candidates exclude the current turn by design, so after a statement ("My brother works as a pilot.") only the echo candidates carry the new value, and the entity candidate carries "brother" for "Oh, your brother is a pilot?". After a question the entity candidate lets "Your ___" copy the asked-about person.
+- The entity surface is captured by the parser: after `my`/`your`, every word while the possessive stays open is appended (with its `-`, `'` or space separator), and the buffer is committed whenever the word becomes the entity. It is reset at every `User: `.
+- On COPY=16 packs, value offsets also advance across `-` inside a value ("sister-in-law", "cross-stitch").
+- Gate cells on COPY=16 packs (all 16 candidates): cell 0 is `hm(kind, rank, ctx)` with `ctx = 1` inside a word and `2 + (pw1 & 4095)·2 + [last byte is a space]` at a word start, so the first-byte gate is conditioned on the previous word ("is a", "in", "Your"); cell 2 adds 4 to the question type when the user turn had no `?`, so gates learn separate statement-ack and answer behavior. Kinds: 0 direct, 1 hop, 2 chain, 3 echo, 4 entity. COPY=13 packs keep the v19d keys bit-exact.
+- A pronoun in the turn ("He drives a Rivian.", "What does he drive?") reuses the surface of the last committed entity when the pronoun resolves to it, so the entity candidate still says "brother".
+- Memory-result levels on COPY=16 packs:
+  - `mstate()` adds 144 when the user turn had no `?`, so statement acknowledgements and answers get separate memory-result keys (question keys are unchanged from v19d).
+  - Level A uses position slot 24 instead of `min(ap, 23)` at a value end (the current word completes a live direct, hop, echo or entity value), so "value just ended" is one dense key per state and last byte.
+  - Level B, once a value has ended in the reply (`Q::vp` = bytes since the value end + 1), keys on `hm(k, 8 + min(d, 15))` and only the bytes typed after the value (`d` = bytes since the end), so the template tail (", if I remember right.", "! Nice to meet you.") does not depend on the value's own bytes.
+- Copy-lock on COPY=16 packs can also lock at a word start (`n == 0`, value offset 0) when the candidate's gate is what makes its first byte the argmax (the argmax minus the gate is below the runner-up), so "Anthony" is not split into an article "A" plus a later copy. On every v19 pack, the stop-at-banned-value rule no longer fires right after an apostrophe ("Your sister's ...").
+- The GPU engine uploads 16 (byte, gate) pairs plus the 2 memory-result entries per beam (`EX = NS + 34`).
+- `PAGES=<v19d pack>` with `COPY=16` warm-starts levels 0..36 and moves hops and memory results from 37..42 to 40..45; levels 37..39 start fresh.
+- `tests/v19_probe.rs::probe_echo` checks the echo, entity, hyphen and key layout; `examples/v19_dump.rs <pack> <lexicon dir> <text file> [bytes]` prints the ring, the question state, every live gate and a per-stage logit breakdown (dense, tori, question tori, gates, memory results, hops) at the end of the text.
 
 ## Trainer (R2): `adam-train`
 

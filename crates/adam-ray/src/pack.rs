@@ -38,7 +38,7 @@ pub fn load_syn(path: &str, n: usize) -> Vec<Vec<u32>> {
     }
     ts
 }
-pub fn copies(l: usize) -> (usize, usize) { match l.wrapping_sub(BASE + 3 + HOPS) { c @ (4 | 9 | 13) => (c, 0), c @ 14..=15 => (13, c - 13), _ => (0, 0) } }
+pub fn copies(l: usize) -> (usize, usize) { match l.wrapping_sub(BASE + 3 + HOPS) { c @ (4 | 9 | 13 | 16) => (c, 0), c @ 14..=15 => (13, c - 13), c @ 17..=18 => (16, c - 16), _ => (0, 0) } }
 pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
     let raw = path.ends_with("_sid.npy");
     let (l, t, rows, dp, cells, bias, cw) = if raw {

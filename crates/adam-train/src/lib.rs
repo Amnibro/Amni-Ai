@@ -2,7 +2,7 @@ pub mod cfg;
 pub mod cpu;
 pub mod gpu;
 pub mod v19;
-use adam_ray::{npy::Npz, rng::{pairwise, Pcg64}};
+use adam_ray::{npy::Npz, pack::copies, rng::{pairwise, Pcg64}};
 use cfg::*;
 use cpu::sid0;
 use half::f16;
@@ -49,7 +49,16 @@ pub fn load_pages(c: &Cfg, e: &mut dyn Engine) -> io::Result<()> {
     e.put(Part::Bias, &npz_f32(&format!("{pre}_bias.npy"))?.1);
     let ((sh, sid), (_, sw)) = (npz_f32(&format!("{pre}_sid.npy"))?, npz_f32(&format!("{pre}_sw.npy"))?);
     assert!(sh[1] == c.te && sh[2] == KS, "pages shape {sh:?}");
-    if mode == 0 { let n = c.lv * c.te * KS; let (fs, fw) = (sid0(c.lv * c.te)[sid.len()..].iter().map(|&v| v as f32).collect::<Vec<_>>(), vec![0f32; n - sw.len()]); e.put(Part::Sid, &[&sid[..], &fs].concat()); e.put(Part::Sw, &[&sw[..], &fw].concat()); println!("loaded slots {p} levels {} of {}", sh[0], c.lv); return Ok(()); }
+    if mode == 0 {
+        let (n, oc, l) = (c.te * KS, copies(sh[0]).0, sh[0]);
+        let k = if oc > 0 && oc < c.copy { c.geo.c0() + oc } else { l };
+        let (mut si, mut ww): (Vec<f32>, Vec<f32>) = (sid0(c.lv * c.te).iter().map(|&v| v as f32).collect(), vec![0f32; c.lv * n]);
+        [(0, 0, k), (k, c.geo.hb(), l - k)].iter().for_each(|&(a, b, m)| { si[b * n..(b + m) * n].copy_from_slice(&sid[a * n..(a + m) * n]); ww[b * n..(b + m) * n].copy_from_slice(&sw[a * n..(a + m) * n]); });
+        e.put(Part::Sid, &si);
+        e.put(Part::Sw, &ww);
+        println!("loaded slots {p} levels {} of {}{}", l, c.lv, if k < l { format!(" (copy {oc} -> {}: 0..{} kept, {k}..{} -> {}.., fresh {k}..{})", c.copy, k - 1, l - 1, c.geo.hb(), c.geo.hb() - 1) } else { String::new() });
+        return Ok(());
+    }
     let (tl, c0, hb, n, hops, l) = (c.tl(), c.geo.c0(), c.geo.hb(), c.te * KS, c.geo.hops, sh[0]);
     let (k, hs) = [(0, 0), ((tl + 1).min(l), tl + 1), (c0.min(l), c0), (24.min(c0).min(l), l.saturating_sub(hops))][mode];
     let nh = hops.min(l.saturating_sub(hs));

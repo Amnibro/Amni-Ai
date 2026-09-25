@@ -16,7 +16,7 @@ impl Cfg {
         assert!(l2 >= 16 && g::<usize>(src, "SLOTS", "3") == KS && f("GATE", "0") == 0.0, "LOG2_ENTRIES>=16, SLOTS=3 and GATE=0 are required");
         let (te, ta, bs, home, corpus) = (1usize << l2, f("TOPIC_ALPHA", "0.99"), g::<usize>(src, "BS", "256"), e("AMNI_HOME", "."), e("CORPUS", "big"));
         let (ver, cp) = (g::<u32>(src, "VER", "18"), g::<i64>(src, "COPY", "4"));
-        let copy = if ver != 19 { 0 } else if cp >= 13 { 13 } else if cp >= 9 { 9 } else if cp <= 0 { 0 } else { 4 };
+        let copy = if ver != 19 { 0 } else if cp >= 16 { 16 } else if cp >= 13 { 13 } else if cp >= 9 { 9 } else if cp <= 0 { 0 } else { 4 };
         let geo = Geo { base, hops, t: te as u32, qt, salt: 0, ta, tc: 1.0 - ta, copy, mr: if copy >= 13 { g::<usize>(src, "MR", "0").min(2) } else { 0 } };
         let tag = e("TAG", &format!("v16_e{l2}_bs{bs}"));
         let (tern, cell) = (e("TERN", "0") == "1", e("TERN_SCOPE", "level") == "cell");
