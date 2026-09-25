@@ -14,9 +14,9 @@ CONC=ROOT/"data"/"concepts"
 SEMM=os.environ.get("TS_SEM","wn")
 PEN={k:float(v) for k,v in (x.split("=") for x in ("intent=5,cidx=2,fconst=2,crash=1,redund=2,edge=0.5,rel=0,"+os.environ.get("TS_PEN","")).split(",") if x)}
 AFT,REL_T,SPHT,COVT=0.75,(1,2,9,14,15),float(os.environ.get("TS_SPHT","0.99999")),float(os.environ.get("TS_COVT","0.75"))
-TOPN,XLV,XS=int(os.environ.get("TS_TOPN","8")),int(os.environ.get("TS_XLV","2")),float(os.environ.get("TS_XS","3"))
+TOPN,XLV,XS=int(os.environ.get("TS_TOPN","16")),int(os.environ.get("TS_XLV","2")),float(os.environ.get("TS_XS","3"))
 NATP=ray_field.BASE_PACK
-RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,cons=off,cn=99,cw=1,ct=1,cx=d,ci=a,cz=2,cm=x,cp=0,ca=0,cab=x,sx=0,sb=0,sk=20,sm=sub,sw=1,sl=0,so=0,sp=0,x10=off,"+os.environ.get("TS_RANK","")).split(",") if x)
+RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,cons=off,cn=99,cw=1,ct=1,cx=d,ci=a,cz=2,cm=x,cp=0,ca=0,cab=x,sx=0,sb=0,sk=20,sm=sub,sw=1,sl=0,so=0,sp=0,x10=on,"+os.environ.get("TS_RANK","")).split(",") if x)
 PRIORP=os.environ.get("TS_PRIOR",str(ROOT/"data"/"pycode"/"x5_prior.npz"))
 PCFG=dict(x.split("=") for x in ("b=20,idf=1,gw=1,ga=1,gv=1,gr=1,norm=1,agg=sum,mode=pmi,fc=cmkops,"+os.environ.get("TS_PCFG","")).split(",") if x)
 SKC=dict(x.split("=") for x in ("s=4,b=3,n=4,e=1,eb=1.5,en=3,k=20,"+os.environ.get("TS_SKC","")).split(",") if x)
