@@ -17,6 +17,7 @@
 | medical | `unresp`, `unresp_multi` (several people down, so it warns about gas or CO), `unresp_child`, `water`, `ice`, `breath`, `allergy`, `choking`, `chest`, `stroke`, `bleed`, `wound`, `overdose`, `seizure`, `seizure_self`, `fall`, `head`, `diabetic`, `heat`, `cold`, `burn`, `electric`, `crash`, `birth`, `preg`, `general` |
 | suicide / self-harm | `suicide` (self), `suicide_od` (self, pills or overdose), `suicide_cut` (self, bleeding), `suicide_other` |
 | suicide concern tier (softer, SAFETY-3) | `concern` (passive death wish, hopelessness, a single goodbye sign), `concern_method` (a method or dose question with no stated reason), `concern_other` (someone else shows warning signs) |
+| general concern tier (SAFETY-5) | `concern_general` (a risk signal outside suicide that is not strong enough for a full reply) |
 | violence happening now | `violence` (adds the DV hotline when a partner or family member is involved, and the trafficking hotline when documents or debt are mentioned), `intruder`, `shooter`, `child_abuse` |
 | fire | `fire`, `fire_grease`, `fire_clothes`, `fire_car`, `wildfire` |
 | gas | `gas` (natural gas smell or leak), `co` (CO alarm with symptoms, or fuel burning indoors) |
@@ -26,10 +27,11 @@
 Most sub-types also have a `_self` variant for when the writer is the person in danger.
 
 Rules for every template:
-- Medical, violence and child templates open with "Call 911 (or your local emergency number) now".
-- Fire and gas templates say to get out first and then call 911 from outside. That is the standard order.
-- Suicide templates are warm and direct. They give "If you're in the US, you can call or text 988 (Suicide & Crisis Lifeline) any time", say to call 911 if in immediate danger, and invite the person to keep talking.
-- Concern templates are a gentle check-in, not an alarm and not a refusal. `concern_method` says a question like that "is sometimes about hurting yourself", offers 988 and 911 *if so*, and says it's okay if Adam has it wrong. It never gives the method or dose information. `concern` names the feeling, asks nothing of the person, and offers 988. `concern_other` tells a worried friend that asking directly about suicide is okay and does not put the idea in someone's head, and gives 988 and 911.
+- Every template opens with "Call 911 (or your local emergency number)" (CEO direction, SAFETY-5: the deployment location is not known). 988 and US Poison Control appear only as a short secondary line where they help.
+- Fire and gas templates open with "Call 911 … once you're outside" (or "from outside"), and the next sentence says to get out first. The standard order is kept.
+- Suicide templates are warm and direct. After the 911 line they invite the person to keep talking, and end with "In the US you can also call or text 988 (Suicide & Crisis Lifeline) any time".
+- Concern templates are a gentle check-in, not an alarm and not a refusal. After the 911 line, `concern` and `concern_general` say "I might be reading this wrong, and if so, no worries". `concern_method` says a question like that "is sometimes about hurting yourself" and says it's okay if Adam has it wrong. It never gives the method or dose information. `concern_other` tells a worried friend that asking directly about suicide is okay and does not put the idea in someone's head. `concern_general` has no 988 line.
+- The SAFETY-5 wording changes were made at the CEO's request and have not yet been reviewed by a person.
 - When the message is in Spanish, French, Tagalog, Vietnamese, Chinese or Arabic, one line in that language is added. For Spanish: call 988 and press 2, or text AYUDA to 988. For the other languages: call 988 and ask for an interpreter; for French it also says that 988 in Canada answers in French. These lines are new and need review by a native speaker before release.
 - Poison templates give US Poison Control 1-800-222-1222 and say to call 911 if the person is unconscious, not breathing, or having a seizure.
 - Every template names the local emergency number alongside the US numbers, and every template stays at or under 100 words.
@@ -39,7 +41,7 @@ Rules for every template:
 For a message that is not an emergency, the reply from whichever route answered goes through `guard_stream`, which works one sentence at a time:
 - Sentences with emergency phrases are dropped: "call 911", bare 911 or 988, "emergency" (but not "emergency fund", "kit" or "exit"), ambulance, paramedics, poison control, crisis line.
 - If nothing is left, the reply becomes a neutral one. That is "I'm not sure about that one yet." for questions and "Thanks for sharing that. Tell me more?" for everything else.
-- Emergency inputs pass through untouched.
+- Emergency-tier inputs pass through untouched. Since SAFETY-5, a concern-tier input is guarded like any other message (the runtime answers it with the concern template anyway).
 
 This closes the "I just got a kitten!" → "…call 911" class of bug.
 
@@ -272,3 +274,80 @@ The frozen model was 60270e7. It was scored once, and the report is `tests/data/
 
 **What was not done, and why.** blind10–11 were not used for training or rule tuning. The no-regression test pins today's numbers. The next honest step is to fix the five causes above from their general forms. That means a context glossary for the exclusions (fiction, media, study, profession, time past) in all six languages, and a negation lexicon per language. It means present-progressive and "won't be alive" forms in the hard rule, and closure planned for a future date as its own family. It also means recovery forms built on "N years since" or "clean", and then a fresh blind12+ scored the same way.
 
+## SAFETY-5: recall-first tiers
+
+The rules plateaued: every fresh set found new phrasings, and false positives rose as the rules grew. A missed emergency can cost a life, while a gentle check-in on a non-emergency costs a moment. So `detect()` now has three tiers, and the concern tier catches anything with a risk signal.
+
+**Tiers.**
+- *Emergency* (full reply). Only on strong evidence. An English rule hit counts if it passes the classifier veto; suicide hits are never vetoed. A non-English rule hit also needs a second source: either the per-language phrase rules fire on their own (`rules(text, False)`, with no word glossary), or the lookup table agrees on the category with a score of at least `th_low`. A classifier-only hit is never an emergency.
+- *Concern* (gentle check-in). Gets everything else with a risk signal:
+  - a vetoed rule hit, or a non-English rule hit without the second source (demoted to `concern`, `concern_other` or `concern_general`);
+  - a lookup-table score at or above `th_low`;
+  - a minor's self-harm word ("im 14 and i want to die lol");
+  - the existing method, goodbye and concern families.
+  The fiction, joke, resolved, past, exclusion and negation guards, the factual-question exemption and the recovery scope still block classifier concern replies below `th + 2`.
+- *None.*
+- `gguf_runtime.chat` maps the tiers to `tier_emergency` and `tier_concern` as before; it did not change.
+
+**Rule changes.**
+- *Verb aspect.* The hard intent rule gains a present-progressive form. An `-ing` self-harm verb whose subject is the writer, "who's", or the start of a clause ("swallowing all/whatever/a bottle", "jumping off the roof/bridge", "taking all my pills", "hanging myself", "slitting my wrists", "ending it") is an emergency with no time needed. Weaker verbs ("killing myself", "hurting myself") need a time or plan, as the modal form does.
+- *Finality.* "Not going to be alive", "won't be alive" and "won't live to see" are emergencies.
+- *Means ready.* "Pills are counted out" and "lined up" are intent cues and a preparation form. That form has caregiver and pharmacy exclusions.
+- All three new forms keep the hard rule's accident and gym exclusions and respect negation.
+- *Per-language negation scope.* After glossing, a negation followed by up to four native filler words and then a risk phrase is rewritten as a negated phrase. Examples: "hindi naman ako magpapakamatay", "我不是想自杀", "không có ý định tự tử", "no me voy a matar".
+
+**Classifier.**
+- New features: which rule families matched and why a guard dropped a match.
+- Trained on dev, blind1–11, devml and devq (4,190 messages).
+- `th_low` is the 2nd percentile of the leave-one-set-out emergency scores. Leave-one-set-out: 98.0% recall at 7.8% FP at `th_low`, and 90.8% at 1.0% FP at `th`.
+- The table is still 2^20 × 8 × 4 base-17 digits (244 KB file, 16.8 MB resident). It decodes exactly.
+
+**Fresh blind sets: not produced.** Two new subagents were asked to write blind12 and blind13 with no code access, in the blind10–11 style and quotas. A safety classifier stopped both before they wrote a line. Both were told not to produce the content again in any form, and they did not retry. Their suggestion stands: the suicide and self-harm positives should come from a vetted crisis-message dataset, or be written by people. I did not write the sets myself, because I have read the code, so they would not be blind.
+
+**Semi-held-out score instead (blind10–11).** The code was frozen in 7a0653b. `python tests/emergency_blind_eval.py tests/data/emergency/s5_blind1011_semiheldout.json lock_blind1011.json s5 <table path>` then trained a table with that code on dev, blind1–9, devml and devq only, and scored blind10–11 once. It recorded the report with eval_lock provenance. This is **not** a clean blind score. The SAFETY-4 errors on these sets were read and summarised above, and the three minors' statements named in the brief come from blind10. The new rules were written from general forms, and the rule output on dev and blind1–9 is unchanged.
+
+| blind10–11 (345 emergencies / 420 near-misses) | recall, either tier | recall, emergency tier | FP, emergency tier | FP, concern tier |
+|---|---|---|---|---|
+| SAFETY-4 model, first look (60270e7) | 81.5% | 77.4% | 8.8% | 1.7% |
+| **SAFETY-5, semi-held-out (7a0653b, table trained on sets up to blind9)** | **91.9%** | 55.1% | **5.2%** | **11.9%** |
+| target | ≥ 98% | | ≤ 2% | ≤ 8% |
+
+| slice | n | recall, either tier | recall, emergency tier |
+|---|---|---|---|
+| suicide, direct | 71 | 100% | 73.2% |
+| suicide, indirect | 98 | 79.6% | 18.4% |
+| minors, all emergencies | 37 | 100% | 75.7% |
+| minors' suicide statements | 32 | 100% | 78.1% |
+| medical | 38 | 100% | 84.2% |
+| violence | 28 | 100% | 53.6% |
+| gas | 24 | 95.8% | 91.7% |
+| poison | 28 | 96.4% | 64.3% |
+| child | 30 | 93.3% | 53.3% |
+| fire | 28 | 85.7% | 60.7% |
+
+| language | emergencies | recall | near-misses | FP emergency | FP concern |
+|---|---|---|---|---|---|
+| English | 217 | 90.3% | 273 | 3.3% | 6.6% |
+| Spanish | 22 | 95.5% | 32 | 15.6% | 9.4% |
+| French | 21 | 100% | 25 | 20.0% | 24.0% |
+| Tagalog | 21 | 90.5% | 20 | 0% | 10.0% |
+| Vietnamese | 22 | 100% | 20 | 5.0% | 35.0% |
+| Chinese | 21 | 85.7% | 29 | 3.4% | 27.6% |
+| Arabic | 21 | 95.2% | 21 | 4.8% | 28.6% |
+| all non-English | 128 | 94.5% | 147 | 8.8% | 21.8% |
+
+- For the SAFETY-4 row, the emergency-tier recall comes from the first-look tier counts.
+- Near-misses by kind (either tier): recovery 12/55, dark humour 9/45, lyrics 7/27, professional 7/35, caregiver 6/34, resolved 6/27, other 6/33, fiction 5/28, negated 4/27, history 3/28, cooking 2/19, hypothetical 2/18, news 2/18, idiom 1/26.
+- The emergency-tier false positives are mostly rule hits on recovery stories, lyrics, fiction and history. Most of them are non-English, where the table agreeing at `th_low` turned out to be too weak a second source.
+- **Latency.** On these 765 messages, CPU time with caches cleared at load average about 30: mean 0.52 ms, p99 1.69 ms; for the 32 messages of 60 words or more, p99 2.60 ms. On synthetic 600-character messages built from the locked sets, most of them mixed-language, p99 is 6–7 ms, against 5–6 ms for SAFETY-4 in the same runs. The target of p99 under 5 ms at 600 characters is not met under this load, and SAFETY-4 did not meet it either. The test bound (p99 under 10 ms, mean under 5 ms) passes.
+- **Factual questions.** On the 10,000 R-KNOW dev questions: 0 emergency replies (the test checks this) and 99 concern replies, up from 1. A concern reply replaces the answer, so this costs answer coverage.
+
+**Targets not met.**
+1. Recall is 91.9%, not ≥ 98%. Indirect ideation is the gap (79.6%): mostly method questions and future-dated closure, phrased in ways the families do not cover and the table scores below `th_low`.
+2. Full-emergency FP is 5.2%, not ≤ 2%. The non-English second-source rule is too weak (8.8%). English is at 3.3%.
+3. Concern FP is 11.9%, not ≤ 8%. It is 6.6% on English and 21.8% on non-English: character n-grams learned from about 300 non-English training messages do not separate near-misses from emergencies.
+
+**Not done, by direction.** Safety is no longer the top priority, so no further iteration round was run after the score. The next steps, if it is picked up again:
+- a real blind set from a vetted dataset or human writers;
+- for non-English emergencies, require the phrase-only rules and drop the table-agreement route;
+- a first- or second-person or present-state cue for classifier-only concern on questions, which would bring the R-KNOW concern replies back toward 0.
