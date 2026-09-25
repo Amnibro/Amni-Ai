@@ -15,7 +15,7 @@ PEN={k:float(v) for k,v in (x.split("=") for x in ("intent=5,cidx=2,fconst=2,cra
 AFT,REL_T,SPHT,COVT=0.75,(1,2,9,14,15),float(os.environ.get("TS_SPHT","0.99999")),float(os.environ.get("TS_COVT","0.75"))
 TOPN,XLV,XS=int(os.environ.get("TS_TOPN","8")),int(os.environ.get("TS_XLV","2")),float(os.environ.get("TS_XS","3"))
 NATP=ray_field.BASE_PACK
-RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,cons=off,cn=99,cw=1,ct=1,cx=d,ci=a,cz=2,cm=x,cp=0,ca=0,cab=x,sx=0,sb=0,sk=20,sm=sub,sw=1,sl=0,so=0,sp=0,"+os.environ.get("TS_RANK","")).split(",") if x)
+RANK=dict(x.split("=") for x in ("nat=off,w=0,pw=1,lw=0,tb=0,af=off,at=-99,anl=0,ap=0,pv=0,pz=0,pm=99,cons=off,cn=99,cw=1,ct=1,cx=d,ci=a,cz=2,cm=x,cp=0,ca=0,cab=x,sx=0,sb=0,sk=20,sm=sub,sw=1,sl=0,so=0,sp=0,x10=off,"+os.environ.get("TS_RANK","")).split(",") if x)
 PRIORP=os.environ.get("TS_PRIOR",str(ROOT/"data"/"pycode"/"x5_prior.npz"))
 PCFG=dict(x.split("=") for x in ("b=20,idf=1,gw=1,ga=1,gv=1,gr=1,norm=1,agg=sum,mode=pmi,fc=cmkops,"+os.environ.get("TS_PCFG","")).split(",") if x)
 SKC=dict(x.split("=") for x in ("s=4,b=3,n=4,e=1,eb=1.5,en=3,k=20,"+os.environ.get("TS_SKC","")).split(",") if x)
@@ -750,12 +750,13 @@ def consensus(cs,k,kind=""):
  E=(A[:,None,:]==A[None,:,:])|(((A[:,None,:]<0)|(A[None,:,:]<0))&(k["cx"]=="w"));G=E.all(-1) if k["cm"]=="x" else E.mean(-1) if k["cm"]=="a" else E.mean(-1)>=float(k["cm"]);sc=np.array([c["score"] for c in cs[:n]],float)
  w=(np.ones(n) if k["cw"]=="1" else np.exp(-(sc-sc[0])/float(k["ct"])) if k["cw"]=="s" else 1/np.maximum(1,np.array([c["cost"] for c in cs[:n]],float)) if k["cw"]=="c" else 1/(1+np.arange(n)))*ok;S=np.round((G*w[None,:]).sum(1)*ok,9);j=int(np.argmax(S))
  return j,float(S[j]/max(1e-12,w.sum())),(G[j]>=1-1e-9).tolist()
-def rerank(r,prompt=None,cfg=None):
+def rerank(r,prompt=None,cfg=None,checks=None):
  k={**RANK,**(cfg or {})};cs=r.get("cands") or [];(natural(prompt,cs) if prompt is not None and cs and "nat_lp" not in cs[0] else None)
  tb=float(k["tb"]);pr=np.array([c.get("pri",0.0) for c in cs]);pr=(pr-pr.mean())/(pr.std()+1e-9) if k["pz"]=="1" and len(cs)>1 else pr;su=support(cs,r.get("sk_nb") or [],k) if cs and float(k["sb"]) else np.zeros(len(cs));kk=[bool(c.get("sk")) for c in cs];ne=all(kk);el=[not q or k["sx"]=="1" or ne for q in kk];ks=k["sp"]=="1" and any(a and b for a,b in zip(el,kk));el=[a and (b or not ks) for a,b in zip(el,kk)];j=min(range(len(cs)),key=lambda i:(not el[i],cs[i]["cost"]-float(k["sb"])*su[i]+float(k["pw"])*(cs[i]["score"]-cs[i]["cost"])+float(k["lw"])*(cs[i]["loo_fail"] or 0)-float(k["w"])*_nf(cs[i],k["nat"])-float(k["pv"])*pr[i]*(cs[i]["score"]<=cs[0]["score"]+float(k["pm"])),-tb*cs[i].get("cov",0),-(k["so"]=="1")*kk[i],tb*cs[i]["cost"],-tb*_nf(cs[i],k["nat"]),i)) if cs else 0;c=cs[j] if cs else {}
  j,sh,_=consensus(cs,k,r.get("beh_kind","")) if cs and (k["cons"]!="off" or k["cp"]=="1") else (j,1.0,None);c=cs[j] if cs else {}
+ x9,x10=j,(__import__("amni.compute.code_rank",fromlist=["x"]).rank(prompt,checks,cs,j,k["x10"]) if cs and prompt is not None and checks is not None and k["x10"]!="off" else None);j=x10["pick"] if x10 else j
  ax=bool(cs) and (k["ap"]=="1" or (c["loo_fail"]>0 if c["loo_fail"] is not None else k["anl"]=="1")) and _nf(c,k["af"])<float(k["at"]);ac=bool(cs) and sh<float(k["ca"]);ab={"x":ax,"c":ac,"o":ax or ac,"a":ax and ac}[k["cab"]]
- return {**r,"cshare":sh,**({"body":c.get("body",""),"expr":c["expr"],"cost":c["cost"],"score":c["score"],"loo_fail":c["loo_fail"],"size":_nodes(c["expr"])} if cs else {}),"pick":j,"abstain":ab,"nat":_nf(c,k["nat"]) if cs else None,"rank":k}
+ return {**r,"cshare":sh,**({"body":cs[j].get("body",""),"expr":cs[j]["expr"],"cost":cs[j]["cost"],"score":cs[j]["score"],"loo_fail":cs[j]["loo_fail"],"size":_nodes(cs[j]["expr"])} if cs else {}),"pick":j,"x9_pick":x9,**({"x10":x10} if x10 else {}),"abstain":ab,"nat":_nf(c,k["nat"]) if cs else None,"rank":k}
 def _limit():
  vs=int(open("/proc/self/statm").read().split()[0])*os.sysconf("SC_PAGE_SIZE");resource.setrlimit(resource.RLIMIT_AS,(vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30),resource.RLIM_INFINITY))
 def pool(jobs=1):return ProcessPoolExecutor(max(1,jobs),mp_context=get_context("spawn"),initializer=_limit)
