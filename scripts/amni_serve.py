@@ -368,7 +368,10 @@ def main():
             if t and _hmac.compare_digest(t,_AUTH_TOKEN):return await call_next(request)
             return _AuthJR(status_code=401,content={'error':'unauthorized','auth_required':True,'hint':'Adam access token required (X-Amni-Token header, ?token=, or amni_token cookie).'})
         print('[amni_serve] AUTH GATE ON — token required for everything but the app shell + /healthz',flush=True)
-    else:print('[amni_serve] auth gate OFF — set AMNI_AUTH_TOKEN before exposing Adam beyond localhost (it can run shell/file/PC ops)',flush=True)
+    else:
+        _bind=str(getattr(args,'host',DEFAULT_HOST) or DEFAULT_HOST)
+        if _bind not in ('127.0.0.1','localhost','::1') and os.environ.get('AMNI_ALLOW_INSECURE_BIND','0')!='1':raise SystemExit(f'[amni_serve] refusing to bind {_bind} without AMNI_AUTH_TOKEN (set AMNI_ALLOW_INSECURE_BIND=1 to override)')
+        print('[amni_serve] auth gate OFF — localhost-only posture',flush=True)
     class ChatRequest(BaseModel):
         message:str
         session_id:Optional[str]=None
@@ -632,7 +635,7 @@ def main():
                 with open(_ppf,'a',encoding='utf-8') as _ppfh:_ppfh.write(_ppj.dumps({'ts':time.time(),'to_gen_ms':round((time.time()-t0)*1000,1),'facts_n':len(user_facts),'hist_n':len(history_pairs),'pre_web':bool(_pre_web_supplemented),'cot':bool(apply_cot),'cat':category})+'\n')
             except Exception:pass
             yield f'event: status\ndata: {_json.dumps({"stage":"reasoning" if apply_cot else "writing"})}\n\n'
-            _genstream=adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True)
+            _genstream=__import__('amni.serve.user_memory',fromlist=['bound']).bound(adam.chat_persona_stream(req.message,system=sys_p,history=history_pairs,facts=user_facts,is_private=is_private,max_new_tokens=max_new,do_sample=True),request.headers.get('x-amni-user') or None,conv.session_id)
             try:
                 for chunk in _genstream:
                     full.append(chunk);_out_bytes+=len(chunk.encode('utf-8') if isinstance(chunk,str) else chunk)
@@ -1024,6 +1027,7 @@ def main():
         return {'ok':True,'branch':branch,'behind':nb,'ahead':na,'current':cur_sha,'remote':rem_sha,'update_available':nb>0,'dirty':bool((dirty.stdout or '').strip()) if dirty else False,'incoming':[l for l in (log.stdout or '').splitlines() if l][:5],'fetch_ok':bool(fetch and fetch.returncode==0),'version':APP_VERSION}
     @app.post('/update/apply')
     def _update_apply():
+        if os.environ.get('AMNI_ALLOW_UPDATE_APPLY','0')!='1':return {'ok':False,'error':'update/apply disabled; set AMNI_ALLOW_UPDATE_APPLY=1 (and run with auth) to enable'}
         head=_git('rev-parse','--abbrev-ref','HEAD')
         if head is None or head.returncode!=0:return {'ok':False,'error':'not a git repo or git unavailable'}
         branch=(head.stdout or '').strip() or 'main'

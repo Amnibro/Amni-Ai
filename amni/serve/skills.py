@@ -887,7 +887,7 @@ def _skill_shell(args,ctx,reg):
     _g=_gate_shell(args,ctx,reg)
     if _g:return {'error':f'blocked: {_g}','cmd':args.get('cmd','')}
     cmd=args['cmd'];timeout=int(args.get('timeout',15));t0=time.time()
-    r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
+    r=subprocess.run(shlex.split(cmd,posix=os.name!='nt'),shell=False,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
     dur=round(time.time()-t0,3)
     log_shell_run('shell',cmd,r.returncode,r.stdout,r.stderr,str(reg.workdir),dur)
     return {'cmd':cmd,'returncode':r.returncode,'stdout':r.stdout[:8000],'stderr':r.stderr[:4000],'duration_s':dur}
