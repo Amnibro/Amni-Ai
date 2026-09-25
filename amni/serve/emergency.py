@@ -578,6 +578,9 @@ GQ={'fic1':lambda t:bool(FIC.search(SOC.sub(' on social',HLP.sub(' ',t))) and no
 @lru_cache(32768)
 def _q(k:str,t:str):return GQ[k](t)
 def _info(t:str)->bool:return bool(INFQ.search(t) and not INFX.search(t))
+QPC=re.compile(r"\b(?:i|i'm|im|i've|ive|i'll|me|my|mine|myself|we|us|our|you|your|you're|youre|he's|hes|she's|shes|they're|theyre|he is|she is|they are|right now|tonight|today)\b");QWD=re.compile(r"^\s*(?:who|what|when|where|which|why|how|whose|whom|is|are|was|were|do|does|did|can|could|should|would|will|has|have|had)\b")
+QWA=re.compile(r"\b(?:who|what|when|where|which|why|how|whose|whom)\b")
+def _qnp(x:str)->bool:t=norm(x);return bool((QWD.search(t) or x.rstrip().endswith('?') or QWA.search(' '.join(t.split()[:8]))) and not QPC.search(t)) and os.environ.get('AMNI_EMERGENCY_QNP','1')!='0'
 def _guarded(t,h,b):
     s=h['sub'];sui=s.startswith(('suicide','ind'));ind=s.startswith('ind');mth=s in ('ind_meth','ind_beh');mn=sui and h.get('mn')
     if not sui and _info(t):return 'info'
@@ -632,7 +635,7 @@ def _msh(t:str)->bool:
 @lru_cache(2048)
 def detect(text:str)->Optional[dict]:
     r=rules(text);z=_lut();lg=lang(text);t=norm(text);ok=r and (r['category']=='suicide' or not VETO or z is None or len(t.split())<=4 or lut_score(text)[0]>=z[2] or lut_score(text)[1]==r['category'] and lut_score(text)[0]>=EVF)
-    c=None if r else classify(text);d=(r if ok and (r['kind'] in CONC or lg is None or z is not None and lut_score(text)[1]==r['category'] and lut_score(text)[0]>=z[4] or (rules(text,False) or {'kind':'concern'})['kind'] not in CONC) else _dem(r,t)) if r else _dem(c,t) if c else {'category':'suicide','kind':'concern','reply':T['concern'],'match':'','norm':t.strip(),'src':'minor'} if _msh(t) else None
+    c=None if r else classify(text);c=None if c and c['kind'] in CONC and _qnp(text) else c;d=(r if ok and (r['kind'] in CONC or lg is None or z is not None and lut_score(text)[1]==r['category'] and lut_score(text)[0]>=z[4] or (rules(text,False) or {'kind':'concern'})['kind'] not in CONC) else _dem(r,t)) if r else _dem(c,t) if c else {'category':'suicide','kind':'concern','reply':T['concern'],'match':'','norm':t.strip(),'src':'minor'} if _msh(t) else None
     return {**d,'tier':'concern' if d['kind'] in CONC else 'emergency','lang':lg,'reply':d['reply']+(' '+LT[lg][d['category']!='suicide'] if lg in LT else '')} if d else None
 def respond(text:str)->Optional[str]:
     d=detect(text or '');return d['reply'] if d else None
