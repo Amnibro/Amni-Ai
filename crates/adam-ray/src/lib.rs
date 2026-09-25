@@ -4,5 +4,6 @@ pub mod gpu;
 pub mod npy;
 pub mod pack;
 pub mod rng;
+pub mod src_gf17;
 pub mod v19;
 pub use field::{Dec, RayField, Stream};

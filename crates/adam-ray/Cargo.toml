@@ -10,5 +10,13 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 half = "2"
 memmap2 = "0.9"
 rayon = "1"
+adam-gf17 = { path = "../adam-gf17", optional = true }
+libc = { version = "0.2", optional = true }
+[features]
+default = ["gf17"]
+gf17 = ["dep:adam-gf17", "dep:libc"]
 [dev-dependencies]
 half = "2"
+[[example]]
+name = "pages"
+required-features = ["gf17"]

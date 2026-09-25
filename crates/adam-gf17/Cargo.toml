@@ -8,10 +8,9 @@ name = "adam_gf17"
 crate-type = ["rlib", "cdylib"]
 [features]
 default = ["npy"]
-npy = ["dep:adam-ray"]
+npy = []
 py = ["npy", "dep:pyo3", "dep:numpy"]
 [dependencies]
-adam-ray = { workspace = true, optional = true }
 half = "2"
 memmap2 = "0.9"
 rayon = "1"

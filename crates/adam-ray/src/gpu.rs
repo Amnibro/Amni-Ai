@@ -23,7 +23,7 @@ impl Gpu {
             t.create_view(&TextureViewDescriptor { dimension: Some(if arr { TextureViewDimension::D2Array } else { TextureViewDimension::D2 }), ..Default::default() })
         };
         let views = vec![
-            mk(TW, tb.t.div_ceil(TW), tb.l, TextureFormat::Rg32Uint, 8, true, &|z| bytemuck::cast_slice(&tb.cells[z * tb.t..(z + 1) * tb.t]).to_vec()),
+            mk(TW, tb.t.div_ceil(TW), tb.l, TextureFormat::Rg32Uint, 8, true, &|z| tb.level_cells(z)),
             mk(TW, tb.rows.div_ceil(16), 1, TextureFormat::R16Float, 2, false, &|_| bytemuck::cast_slice(&tb.dp).to_vec()),
             mk(1024, 1024, 1, TextureFormat::Rgba32Uint, 16, false, &|_| bytemuck::cast_slice(&tb.lx.lex).to_vec()),
             mk(V, 1, 1, TextureFormat::R32Float, 4, false, &|_| bytemuck::cast_slice(&tb.bias).to_vec()),
