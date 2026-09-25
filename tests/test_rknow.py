@@ -86,7 +86,7 @@ def test_web_second_pass_verifies_and_stores_only_licensed(monkeypatch,tmp_path)
  E=lambda v,u,ns=2,rs=2.0:(v.lower(),{"v":v,"ns1":ns,"rs":rs,"best":("%s did it."%v,"Page",u)})
  base=lambda:{"span":"Steve Pink","title":"Hot Tub Time Machine","url":"u","evidence":"Directed by Steve Pink.","conf":0.4,"tier":"medium","license":"CC BY-SA 4.0","reply":"x"}
  monkeypatch.setattr(RK.RL,"evidence",lambda q:("person",[E("Steve Pink","https://en.wikipedia.org/wiki/Steve_Pink")],[],[]))
- r=RK.webx("who directed hot tub time machine","person",[],base());assert r["web"]=="agree" and r["tier"]=="high" and r["pre"]["tier"]=="medium" and RK.learned().find("who directed hot tub time machine")
+ r=RK.webx("who directed hot tub time machine","person",[],base());assert r["web"]=="agree" and r["tier"]=="medium" and r["pre"]["tier"]=="medium" and RK.learned().find("who directed hot tub time machine")
  monkeypatch.setattr(RK.RL,"evidence",lambda q:("person",[E("Jane Roe","https://example.com/x",3,3.0)],[],[]))
  r=RK.webx("who produced some obscure film","person",[{"v":"Jane Roe","t":"Obscure Film","y":"Produced by Jane Roe."}],base());assert r["web"]=="switch" and r["span"]=="Jane Roe" and "Source: Wikipedia, Obscure Film" in r["reply"]
  n=len(RK.learned().rows);r=RK.webx("who edited some obscure film","person",[],base());assert r["web"]=="switch" and r["license"] is None and "Source: web, example.com" in r["reply"] and len(RK.learned().rows)==n

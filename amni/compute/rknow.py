@@ -267,7 +267,7 @@ def askq(q:str)->bool:return factq(q,True)
 C2=float(os.environ.get("AMNI_RKNOW_C2",(GBM or {}).get("c2",0.3)));HEDGE={"high":"%s%s (Source: Wikipedia, %s).","medium":"%sI believe it's %s (Source: Wikipedia, %s).","low":"%sMy best guess is %s, but I'm unsure (Source: Wikipedia, %s)."}
 def near(q:str,P:list)->tuple:
  qw=[w for w in dict.fromkeys(toks(q)) if w not in QSTOP];I=ix();W={w:I.idf(w) for w in qw};return max(((sum(W[w] for w in qw if w in set(toks(y)))/(sum(W.values()) or 1.0),y,t) for _,_,t,x in P[:3] for y in ss(x)[:6]),default=(0.0,"",""))
-UP={"low":"medium","medium":"high","high":"high"};_LR=[]
+UP={"low":"medium","medium":"medium","high":"high"};_LR=[]
 def learned()->RL.Learned:
  p=os.environ.get("AMNI_RAY_LEARNED",RL.STORE);(_LR and _LR[0].path==p) or (_LR.clear(),_LR.append(RL.Learned(p)));return _LR[0]
 def samek(a:str,b:str)->bool:a,b=AN_NORM(a or ""),AN_NORM(b or "");return bool(a and b) and (a==b or " %s "%a in " %s "%b or " %s "%b in " %s "%a)
@@ -278,9 +278,9 @@ def webx(q:str,qt:str,R:list,r:dict,tp:str="")->dict:
  if ag:k=UP[r["tier"]] if not tp else "medium";r.update(tier=k,web="agree",reply=HEDGE[k]%(tp.rstrip(", ")+": " if tp and k=="high" else tp,span(qt,r["span"]),r["title"]))
  elif st:
   c=next((z for z in R[:10] if samek(z["v"],E[0]["v"])),None);w=E[0]["best"];wk="wikipedia.org/wiki/" in w[2];ti=c["t"] if c else w[1] if wk else re.sub(r"^www\.","",RL.urllib.parse.urlparse(w[2]).netloc)
-  r.update(span=c["v"] if c else E[0]["v"],title=ti,url=KR.wurl(ti) if c or wk else w[2],evidence=c["y"] if c else w[0],tier="medium",web="switch",license="CC BY-SA 4.0" if c or wk else None,reply=("%sI believe it's %s (Source: %s, %s)."%(tp,span(qt,c["v"]) if c else E[0]["v"],"Wikipedia" if c or wk else "web",ti)))
+  r.update(span=c["v"] if c else E[0]["v"],title=ti,url=KR.wurl(ti) if c or wk else w[2],evidence=c["y"] if c else w[0],tier=r["pre"]["tier"] if r["pre"]["tier"]!="none" else "low",web="switch",license="CC BY-SA 4.0" if c or wk else None,reply=("%sI believe it's %s (Source: %s, %s)."%(tp,span(qt,c["v"]) if c else E[0]["v"],"Wikipedia" if c or wk else "web",ti)) if r["pre"]["tier"]=="medium" else "%sMy best guess is %s, but I'm unsure (Source: %s, %s)."%(tp,span(qt,c["v"]) if c else E[0]["v"],"Wikipedia" if c or wk else "web",ti))
  else:r["web"]="none"
- r["web"]!="none" and r.get("license") and r.get("span") and learned().add(q,r["evidence"],r["title"],r["url"],span=r["span"],tier=r["tier"],license=r["license"],local=True)
+ r["web"]!="none" and r["tier"]!="low" and r.get("license") and r.get("span") and learned().add(q,r["evidence"],r["title"],r["url"],span=r["span"],tier=r["tier"],license=r["license"],local=True)
  return r
 def ask(q:str,hedge:bool=True)->dict:
  if not askq(q):return None
