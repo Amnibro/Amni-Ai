@@ -5,6 +5,7 @@ or POST /models/activate.
 """
 import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
+from amni.serve.emergency import respond as _em_respond,guard as _em_guard,guard_stream as _em_stream
 RAY_MODEL='adam:ray-v19f-clean'
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
@@ -92,6 +93,10 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','20')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))
     if src:yield src
 def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
+    em=_em_respond(message)
+    if em:return {'answer':em,'tier':'tier_emergency','tokens':len(em.encode('utf-8'))}
+    r=_chat(message,system,history,facts,max_new_tokens,do_sample,user,session);r['answer']=_em_guard(message,r.get('answer') or '');return r
+def _chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
     if backend_name()=='ray':
         t=''.join(_ray_stream(message,history,max_new_tokens,do_sample,user,session));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
     url=server_url()+'/v1/chat/completions'
@@ -109,6 +114,10 @@ def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=51
     usage=r.get('usage') or {}
     return {'answer':ans,'tier':'tier_gguf','tokens':int(usage.get('completion_tokens') or 0),'raw':r}
 def chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Iterator[str]:
+    em=_em_respond(message)
+    if em:yield em;return
+    yield from _em_stream(message,_chat_stream(message,system,history,facts,max_new_tokens,do_sample,user,session))
+def _chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Iterator[str]:
     if backend_name()=='ray':
         yield from _ray_stream(message,history,max_new_tokens,do_sample,user,session);return
     url=server_url()+'/v1/chat/completions'
