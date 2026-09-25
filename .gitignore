@@ -245,3 +245,4 @@ crates/amni_ai_core/target/
 .venv-linux/
 !crates/*/tests/
 !crates/*/examples/
+/adam_gf17*.so
