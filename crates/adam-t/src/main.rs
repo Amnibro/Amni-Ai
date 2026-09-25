@@ -59,11 +59,14 @@ fn main() -> io::Result<()> {
         "mm" => {
             let it = 50;
             [(16384usize, 1024usize, 256usize), (16384, 256, 1024), (16384, 768, 256)].iter().for_each(|&(m, n, k)| {
+                let t0 = Instant::now();
                 let w = mm_wgsl(m, n, k, it).unwrap_or(-1.0);
                 let b = mm_burn::<Wgpu>(WgpuDevice::DiscreteGpu(0), m, n, k, it);
                 let h = mm_burn::<Wgpu<burn::tensor::f16>>(WgpuDevice::DiscreteGpu(0), m, n, k, it);
+                let th = adam_t::thr(&c.thf);
+                let s = adam_t::nap(th, t0.elapsed().as_secs_f64() * 1e3, c.unit);
                 let cpu = if var("MM_CPU").is_ok() { mm_burn::<NdArray>(NdArrayDevice::Cpu, m, n, k, 3) } else { 0.0 };
-                println!("{{\"m\": {m}, \"n\": {n}, \"k\": {k}, \"handwritten_wgsl_gflops\": {w:.0}, \"burn_wgpu_f32_gflops\": {b:.0}, \"burn_vulkan_f16_gflops\": {h:.0}, \"burn_ndarray_cpu_gflops\": {cpu:.0}}}");
+                println!("{{\"m\": {m}, \"n\": {n}, \"k\": {k}, \"handwritten_wgsl_gflops\": {w:.0}, \"burn_wgpu_f32_gflops\": {b:.0}, \"burn_vulkan_f16_gflops\": {h:.0}, \"burn_ndarray_cpu_gflops\": {cpu:.0}, \"throttle_s\": {th}, \"slept_ms\": {s:.0}}}");
             });
         }
         "lut" => {

@@ -4,13 +4,13 @@ use burn::{module::{AutodiffModule, Module, Param}, nn::loss::CrossEntropyLossCo
 use memmap2::Mmap;
 use std::{env::var, fs, io::{self, Write}, path::Path, time::Instant};
 #[derive(Clone, Debug)]
-pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize }
+pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64 }
 impl Cfg {
     pub fn env() -> Cfg {
         let e = |k: &str, d: &str| var(k).unwrap_or_else(|_| d.into());
         let p = |k: &str, d: &str| e(k, d).trim().parse::<f64>().unwrap_or_else(|_| panic!("bad {k}"));
         let (home, d, tag) = (e("AMNI_HOME", "/home/anmire/ai/Amni-Ai"), p("D", "256") as usize, e("TAG", "smoke"));
-        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", "2e-3"), lrm: p("LR_MEM", &e("LR", "2e-3")), wd: p("WD", "0.05") as f32, warm: p("WARM", "200") as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", "500") as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", ""), corpus: e("CORPUS", "clean2"), par: p("PARITY_WINDOWS", "8") as usize, home }
+        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", "2e-3"), lrm: p("LR_MEM", &e("LR", "2e-3")), wd: p("WD", "0.05") as f32, warm: p("WARM", "200") as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", "500") as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", "clean2"), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), home }
     }
     pub fn k(&self) -> usize { if self.mem { self.ns.len() } else { 0 } }
     pub fn rows(&self) -> usize { self.k() << self.rb }
@@ -73,14 +73,16 @@ pub fn logits<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u8
 pub fn ce<B: Backend>(lg: Tensor<B, 2>, y: &[u8], dev: &B::Device) -> Tensor<B, 1> { CrossEntropyLossConfig::new().init(dev).forward(lg, Tensor::from_data(TensorData::new(y.iter().map(|&v| v as i32).collect::<Vec<i32>>(), [y.len()]), dev)) }
 pub fn f1<B: Backend, const D: usize>(t: Tensor<B, D>) -> Vec<f32> { t.into_data().iter::<f32>().collect() }
 pub fn eval<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &[u8], nb: usize, dev: &B::Device) -> f64 {
-    let mut g = Pcg64::new(Some(1234));
-    let v: Vec<f64> = (0..nb).map(|_| { let (x, y) = adam_train::batch(hold, &mut g, 128, c.t, None); (0..4).map(|q| f1(ce(logits(c, core, mem, &x[q * 32 * c.t..(q + 1) * 32 * c.t], 32, dev), &y[q * 32 * c.t..(q + 1) * 32 * c.t], dev))[0] as f64).sum::<f64>() / 4.0 }).collect();
+    let (mut g, th) = (Pcg64::new(Some(1234)), thr(&c.thf));
+    let v: Vec<f64> = (0..nb).map(|_| { let (x, y) = adam_train::batch(hold, &mut g, 128, c.t, None); (0..4).map(|q| { let t0 = Instant::now(); let r = f1(ce(logits(c, core, mem, &x[q * 32 * c.t..(q + 1) * 32 * c.t], 32, dev), &y[q * 32 * c.t..(q + 1) * 32 * c.t], dev))[0] as f64; nap(th, t0.elapsed().as_secs_f64() * 1e3, c.unit); r }).sum::<f64>() / 4.0 }).collect();
     adam_ray::rng::pairwise(&v) / nb as f64
 }
-fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0) }
+pub fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0) }
+pub fn nap(th: f64, ms: f64, unit: f64) -> f64 { let s = if th > 0.0 { th * 1e3 * (ms / unit).max(1.0) } else { 0.0 }; (s > 0.0).then(|| std::thread::sleep(std::time::Duration::from_secs_f64(s / 1e3))); s }
 pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::Result<String> {
     let d = format!("{}/data/{}", c.home, c.corpus);
     let (tr, ho) = (mmap(&format!("{d}/train.bin"))?, mmap(&format!("{d}/hold.bin"))?);
+    Path::new(&c.thf).exists().then_some(()).ok_or_else(|| io::Error::other(format!("THROTTLE_FILE {} missing: refusing to train without the GPU governor", c.thf)))?;
     let (ckd, rec) = (format!("{}/ckpt", c.out), BinFileRecorder::<FullPrecisionSettings>::new());
     fs::create_dir_all(&ckd)?;
     let mut core = Core::<B>::new(c, &dev);
@@ -100,9 +102,10 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
     let steps = if bench > 0 { bench + 5 } else { c.steps };
     println!("=== adam-t [{}] {} | {}", std::any::type_name::<B>().split("::").last().unwrap_or(""), c.tag, c.json());
     writeln!(log, "{{\"cfg\": {}, \"start\": {start}}}", c.json())?;
-    let (t0, mut tl, mut th, mut tm, mut lt, mut last, mut lg) = (Instant::now(), Instant::now(), 0.0, 0.0f64, 0.0f64, String::new(), 0usize);
+    let (t0, mut th, mut tm, mut du, mut lt, mut last, mut acc) = (Instant::now(), 0.0, 0.0f64, 1.0f64, 0.0f64, String::new(), (0.0f64, 0.0f64, 0usize));
     for it in start..steps {
-        th = if it % 50 == 0 && !c.thf.is_empty() { thr(&c.thf) } else { th };
+        th = if it % 50 == 0 || it == start { thr(&c.thf) } else { th };
+        let ts = Instant::now();
         let (x, y) = tb(&tr, c.seed, it, c.bs, c.t);
         let loss = ce(logits(c, &core, mem.as_ref(), &x, c.bs, &dev), &y, &dev);
         let lv = (it % 50 == 49 || it + 1 == steps || it == 4).then(|| f1(loss.clone())[0] as f64);
@@ -110,24 +113,28 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
         let (gc, lr) = (GradientsParams::from_module(&mut gr, &core), c.lr * c.mult(it));
         core = oc.step(lr, core, gc);
         mem = mem.map(|m| { let gm = GradientsParams::from_module(&mut gr, &m); om.step(c.lrm * c.mult(it), m, gm) });
-        if th > 0.0 { std::thread::sleep(std::time::Duration::from_secs_f64(th)); }
-        if let Some(l) = lv { lt = l; tm = if it > lg && lg > 0 { tl.elapsed().as_secs_f64() * 1e3 / (it - lg) as f64 } else { tm }; (tl, lg) = (Instant::now(), it); }
-        let done = it + 1 == steps;
+        B::sync(&dev).map_err(|e| io::Error::other(format!("{e:?}")))?;
+        let ms = ts.elapsed().as_secs_f64() * 1e3;
+        let sl = nap(th, ms, c.unit);
+        acc = if it < start + 3 { acc } else { (acc.0 + ms, acc.1 + sl, acc.2 + 1) };
+        if let Some(l) = lv { lt = l; (tm, du) = if acc.2 > 0 { (acc.0 / acc.2 as f64, acc.0 / (acc.0 + acc.1)) } else { (tm, du) }; acc = (0.0, 0.0, 0); }
+        let (done, wall) = (it + 1 == steps, bench == 0 && c.wall > 0.0 && t0.elapsed().as_secs_f64() > c.wall * 60.0);
         if bench == 0 && ((it + 1) % c.ev == 0 || done) {
             let va = eval(c, &core.valid(), mem.as_ref().map(|m| m.valid()).as_ref(), &ho, c.evb, &dev);
-            last = format!("{{\"step\": {}, \"bytes\": {}, \"train_nats\": {:.4}, \"val_nats\": {:.4}, \"val_bits_per_byte\": {:.4}, \"ms_per_step\": {:.1}, \"bytes_per_s\": {:.0}, \"lr\": {:.2e}, \"throttle_s\": {th}, \"elapsed_s\": {:.1}}}", it + 1, (it + 1) * c.bs * c.t, lt, va, va / std::f64::consts::LN_2, tm, (c.bs * c.t) as f64 * 1e3 / tm.max(1e-9), lr, t0.elapsed().as_secs_f64());
+            last = format!("{{\"step\": {}, \"bytes\": {}, \"train_nats\": {:.4}, \"val_nats\": {:.4}, \"val_bits_per_byte\": {:.4}, \"gpu_ms_per_step\": {:.1}, \"gpu_bytes_per_s\": {:.0}, \"self_duty\": {:.3}, \"lr\": {:.2e}, \"throttle_s\": {th}, \"elapsed_s\": {:.1}}}", it + 1, (it + 1) * c.bs * c.t, lt, va, va / std::f64::consts::LN_2, tm, (c.bs * c.t) as f64 * 1e3 / tm.max(1e-9), du, lr, t0.elapsed().as_secs_f64());
             println!("{last}");
             writeln!(log, "{last}")?;
         }
-        if bench == 0 && c.ck > 0 && ((it + 1) % c.ck == 0 || done) {
+        if bench == 0 && c.ck > 0 && ((it + 1) % c.ck == 0 || done || wall) {
             core.clone().save_file(format!("{ckd}/core"), &rec).map_err(le)?;
             rec.record(oc.to_record(), format!("{ckd}/oc").into()).map_err(le)?;
             if let Some(m) = mem.as_ref() { m.clone().save_file(format!("{ckd}/mem"), &rec).map_err(le)?; rec.record(om.to_record(), format!("{ckd}/om").into()).map_err(le)?; }
             fs::write(&st, format!("{}\n", it + 1))?;
         }
+        if wall && !done { let r = format!("{{\"paused_at\": {}, \"wall_min\": {}, \"elapsed_s\": {:.1}}}", it + 1, c.wall, t0.elapsed().as_secs_f64()); println!("{r}"); writeln!(log, "{r}")?; return Ok(r); }
     }
     if bench > 0 {
-        let r = format!("{{\"bench\": \"{}\", \"tern\": {}, \"mem\": {}, \"steps\": {bench}, \"ms_per_step\": {:.1}, \"bytes_per_s\": {:.0}, \"loss\": {:.4}, \"core_params\": {}}}", std::any::type_name::<B>(), c.tern, c.mem, tm, (c.bs * c.t) as f64 * 1e3 / tm.max(1e-9), lt, c.core_params());
+        let r = format!("{{\"bench\": \"{}\", \"tern\": {}, \"mem\": {}, \"steps\": {bench}, \"gpu_ms_per_step\": {:.1}, \"gpu_bytes_per_s\": {:.0}, \"self_duty\": {du:.3}, \"throttle_s\": {th}, \"loss\": {:.4}, \"core_params\": {}}}", std::any::type_name::<B>(), c.tern, c.mem, tm, (c.bs * c.t) as f64 * 1e3 / tm.max(1e-9), lt, c.core_params());
         println!("{r}");
         return Ok(r);
     }
