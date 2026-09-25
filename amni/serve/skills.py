@@ -3,12 +3,15 @@ Built-ins: time, calc, mem, web, file_read, file_write, code_edit, shell, scan.
 Asimov gating: every call passes through `_gate(args, ctx)` returning rejection reason or None.
 calc / web / mem are thin aliases over Adam's existing tiers — file_*/shell/code_edit/scan are I/O primitives.
 v6.1.0: file gates use a roots LIST instead of single workdir. `unrestricted=True` adds drive roots so Adam reaches any file."""
-import os,re,ast,json,time,string,subprocess,shlex,math
+import os,re,ast,json,time,string,subprocess,shlex,math,sys
 from pathlib import Path
 from dataclasses import dataclass,asdict,field
 from typing import Callable,Dict,Any,Optional,List
 _SHELL_ALLOW={'ls','dir','cat','type','pwd','cd','git','python','python3','py','pip','pip3','where','which','echo','head','tail','wc','find'}
-_SHELL_BLOCK_ARGS={'rm','del','rmdir','rd','format','mkfs','dd','shutdown','reboot','kill','taskkill','--force','-rf','-f'}
+_SHELL_BLOCK_ARGS={'rm','del','rmdir','rd','format','mkfs','dd','shutdown','reboot','kill','taskkill','--force','-rf','-f','-exec','-execdir','-ok','-okdir','-delete','-fprint','-fprint0','-fprintf','-fls'}
+_GIT_BAD=re.compile(r'^(?:-c.*|--config-env.*|--exec-path.*|--output.*|--ext-diff|--textconv|--upload-pack.*|--receive-pack.*|--git-dir.*|--work-tree.*|--namespace.*|-C)$',re.IGNORECASE)
+_GIT_CFG_READ={'--get','--get-all','--get-regexp','--list','-l'}
+_GIT_CFG_FLAGS=_GIT_CFG_READ|{'--show-origin','--show-scope','--name-only','--null','-z','--global','--local','--system'}
 _SHELL_META=re.compile(r'[;&|<>`$\n\r]')
 _SHELL_WINENV=re.compile(r'%\w+%')
 _PY_BASES={'python','python3','py'}
@@ -112,7 +115,16 @@ def _security_protected(path)->bool:
     if os.environ.get('AMNI_ALLOW_SECURITY_EDIT','0')=='1':return False
     p=Path(path)
     return p.name.lower() in _SECURITY_CORE and p.parent.name.lower()=='serve'
+def _git_blocked(args):
+    a=[str(x).strip('\'"') for x in args]
+    bad=next((x for x in a if _GIT_BAD.match(x)),None)
+    if bad:return f'git arg {bad!r} refused (config override / output file / external command / repo redirect)'
+    sub=next((x for x in a if not x.startswith('-')),'')
+    rest=a[a.index(sub)+1:] if sub else [];fl={x for x in rest if x.startswith('-')}
+    if sub.lower() not in _GIT_SAFE_CMDS:return f'git subcommand {sub!r} not in the read-only allowlist'
+    return None if sub!='config' or (fl<=_GIT_CFG_FLAGS and fl&_GIT_CFG_READ) or (rest and rest[0] in ('get','list')) else 'git config is read-only here (use --get/--get-all/--get-regexp/--list)'
 def _write_protected(path):
+    if '.git' in Path(str(path)).parts:return 'git metadata (.git/)'
     if _law_protected(path):return 'Asimov/integrity law file'
     if _security_protected(path):return 'core security-enforcement module'
     return None
@@ -137,8 +149,12 @@ def _gate_shell(args,ctx,reg:'SkillRegistry')->Optional[str]:
         if base in _PIP_BASES:
             _sub=next((a.lower() for a in parts[1:] if not a.startswith('-')),'')
             if _sub not in _PIP_SAFE_SUB and not ({a.lower() for a in parts[1:]}<=_PY_SAFE_FLAGS):return 'pip via shell is limited to read-only subcommands (list/show/freeze/check); install/uninstall/download run arbitrary setup code (set AMNI_SHELL_ALLOW_EXEC=1 to override)'
+    if base=='git':
+        try:_gb=_git_blocked(shlex.split(cmd,posix=os.name!='nt')[1:])
+        except Exception:return 'unparseable cmd'
+        if _gb:return _gb
     for p in parts[1:]:
-        if p.lower() in _SHELL_BLOCK_ARGS:return f'blocked arg: {p}'
+        if p.strip('\'"').lower() in _SHELL_BLOCK_ARGS:return f'blocked arg: {p}'
         if '..' in p or p.startswith('/') or (len(p)>1 and p[1]==':'):
             if not reg._in_allowed_roots(p):return f'arg path outside allowed roots: {p}'
     return None
@@ -163,36 +179,46 @@ def _try_python_eval(expr:str)->Optional[float]:
     e=re.sub(r'[^0-9+\-*/().\s%]','',e)
     if not e.strip() or not re.search(r'[\d]',e):return None
     if not re.search(r'[+\-*/%]',e):return None
-    try:v=eval(e,{'__builtins__':{}},{});return float(v) if isinstance(v,(int,float)) else None
+    from amni.serve.code_safety import safe_arith
+    try:v=safe_arith(e)
+    except OverflowError:return False
+    except Exception:return None
+    try:return float(v) if isinstance(v,(int,float)) else None
     except Exception:return None
 _CALC_VERBS={'solve':'solve','expand':'expand','factor':'factor','simplify':'simplify','derivative':'diff','differentiate':'diff','diff':'diff','integrate':'integrate','integral':'integrate'}
-def _sympy_calc(expr:str)->Optional[str]:
-    try:import sympy as sp
+_SYMPY_JOB=("import json,sympy as sp\nj=json.loads(J);v=j['verb'];b=j['body'];S=sp.sympify\n"
+"def _t(f,p):return sp.Symbol(p[1]) if len(p)>1 else (sorted(f.free_symbols,key=str)[0] if f.free_symbols else sp.Symbol('x'))\n"
+"if v=='solve':\n l,_,r=b.partition('=');print(sp.solve(sp.Eq(S(l),S(r)) if r.strip() else S(b)))\n"
+"elif v in ('diff','integrate'):\n p=[q.strip() for q in b.split(',')];f=S(p[0]);print(getattr(sp,v)(f,_t(f,p)))\n"
+"elif v=='eval':\n x=S(b);f=None if x.free_symbols else float(sp.N(x));print(x if f is None else (int(f) if f==int(f) else round(f,8)))\n"
+"else:print(getattr(sp,v)(S(b)))\n")
+_SOLVE_JOB=("import json,re,sympy as sp\nj=json.loads(J);e=j['eq'];F={'ln','log','exp','sin','cos','tan','sqrt','asin','acos','atan','pi','abs'}\n"
+"L={n:sp.Symbol(n) for n in set(re.findall(r'[A-Za-z_]\\w*',e)) if n not in F}\n"
+"l,_,r=e.partition('=');q=sp.Eq(sp.sympify(l,locals=L),sp.sympify(r,locals=L))\n"
+"s={sp.Symbol(k):v for k,v in j['known'].items()}\n"
+"s.update({sp.Symbol(k):v for k,v in j['const'].items() if sp.Symbol(k) in q.free_symbols and k not in j['known']})\n"
+"q2=q.subs(s);u=sorted(q2.free_symbols,key=str);t=sp.Symbol(j['target']) if j['target'] else (u[0] if len(u)==1 else None)\n"
+"def f(x):\n try:return round(float(sp.N(x)),6) if not x.free_symbols else str(x)\n except Exception:return str(x)\n"
+"print(json.dumps({'unk':[str(x) for x in u]} if t is None else {'solve_for':str(t),'vals':[f(x) for x in sp.solve(q2,t)],'used':{str(k):v for k,v in s.items()}}))\n")
+def _sympy_jail(prog:str,job:dict,timeout:int=8)->Optional[str]:
+    try:from amni.serve import self_debug as _sd
     except Exception:return None
+    r=_sd.run_in_sandbox(f'J={json.dumps(job)!r}\n'+prog,timeout=timeout)
+    out=[l.strip() for l in (r.get('stdout') or '').splitlines() if l.strip()]
+    return out[-1] if r.get('returncode')==0 and not r.get('killed') and out else None
+def _sympy_calc(expr:str)->Optional[str]:
     el=expr.lower();e=_norm_math(expr.strip())
     e=re.sub(r'(?i)\b(what\s+is|whats|compute|calculate|evaluate|the\s+value\s+of|find)\b','',e).strip(' ?.')
     verb=next((v for k,v in _CALC_VERBS.items() if re.search(r'\b'+k+r'\b',el)),None)
-    try:
-        if verb:
-            body=re.sub(r'(?i)\b('+'|'.join(_CALC_VERBS)+r')\b','',e).strip(' ?=.')
-            if verb=='solve':
-                lhs,_,rhs=body.partition('=');eq=sp.Eq(sp.sympify(lhs),sp.sympify(rhs)) if rhs.strip() else sp.sympify(body);sol=sp.solve(eq);return str(sol)
-            if verb=='diff':
-                parts=[p.strip() for p in body.split(',')];f=sp.sympify(parts[0]);v=sp.Symbol(parts[1]) if len(parts)>1 else (sorted(f.free_symbols,key=str)[0] if f.free_symbols else sp.Symbol('x'));return str(sp.diff(f,v))
-            if verb=='integrate':
-                parts=[p.strip() for p in body.split(',')];f=sp.sympify(parts[0]);v=sp.Symbol(parts[1]) if len(parts)>1 else (sorted(f.free_symbols,key=str)[0] if f.free_symbols else sp.Symbol('x'));return str(sp.integrate(f,v))
-            return str(getattr(sp,verb)(sp.sympify(body)))
-        if '=' in e and re.search(r'[a-zA-Z]',e):
-            lhs,_,rhs=e.partition('=');return str(sp.solve(sp.Eq(sp.sympify(lhs),sp.sympify(rhs))))
-        val=sp.sympify(e)
-        if val.free_symbols:return str(val)
-        f=float(sp.N(val));return str(int(f)) if f==int(f) else str(round(f,8))
-    except Exception:return None
+    body=re.sub(r'(?i)\b('+'|'.join(_CALC_VERBS)+r')\b','',e).strip(' ?=.') if verb else e
+    job={'verb':verb,'body':body} if verb else ({'verb':'solve','body':e} if '=' in e and re.search(r'[a-zA-Z]',e) else {'verb':'eval','body':e})
+    return _sympy_jail(_SYMPY_JOB,job) if job['body'] and len(job['body'])<=2000 else None
 def _skill_calc(args,ctx,reg):
     adam=ctx.get('adam')
     expr=args.get('expr') or args.get('query','')
     if not expr:return {'error':'missing expr'}
     fast=_try_python_eval(expr)
+    if fast is False:return {'error':'refused: result exceeds the exact-arithmetic size guard (exponent/product too large)','tier':'guard','tokens':0}
     if fast is not None:
         out=int(fast) if fast==int(fast) else round(fast,8)
         return {'value':str(out),'tier':'fast_eval','tokens':0}
@@ -423,29 +449,20 @@ def _skill_random(args,ctx,reg):
         return {'error':'op: dice|coin|int|pick|shuffle|sample|uuid'}
     except Exception as e:return {'error':f'random: {e}'}
 def _skill_solve(args,ctx,reg):
-    import sympy as sp
     raw=str(args.get('equation') or args.get('name') or args.get('query','')).strip()
     knowns=args.get('values') or {};target=args.get('solve_for') or args.get('for')
     eqstr=(_EQ[raw.lower()][0] if raw.lower() in _EQ else raw).replace('^','**')
     if '=' not in eqstr:return {'error':'need an equation with = , or a named one: '+', '.join(list(_EQ)[:8])}
-    try:
-        _fns={'ln','log','exp','sin','cos','tan','sqrt','asin','acos','atan','pi','abs'}
-        _loc={n:sp.Symbol(n) for n in set(re.findall(r'[A-Za-z_]\w*',eqstr)) if n not in _fns}
-        lhs,_,rhs=eqstr.partition('=');eq=sp.Eq(sp.sympify(lhs,locals=_loc),sp.sympify(rhs,locals=_loc))
-        subs={sp.Symbol(k):float(v) for k,v in knowns.items()}
-        for cn,(cv,_,_) in _CONST.items():
-            s=sp.Symbol(cn)
-            if s in eq.free_symbols and cn not in knowns:subs[s]=cv
-        eq2=eq.subs(subs);unk=sorted(eq2.free_symbols,key=str)
-        if target:tgt=sp.Symbol(target)
-        elif len(unk)==1:tgt=unk[0]
-        else:return {'error':'specify solve_for; unknowns: '+','.join(map(str,unk))}
-        sol=sp.solve(eq2,tgt);vals=[]
-        for s in sol:
-            try:vals.append(round(float(sp.N(s)),6) if not s.free_symbols else str(s))
-            except Exception:vals.append(str(s))
-        return {'equation':eqstr,'solve_for':str(tgt),'solution':(vals[0] if len(vals)==1 else vals),'used':{str(k):v for k,v in subs.items()}}
-    except Exception as e:return {'error':f'solve: {e}'}
+    if target and not re.fullmatch(r'[A-Za-z_]\w{0,40}',str(target)):return {'error':'solve: solve_for must be a variable name'}
+    try:kn={str(k):float(v) for k,v in knowns.items()}
+    except Exception as e:return {'error':f'solve: values must be numeric ({e})'}
+    out=_sympy_jail(_SOLVE_JOB,{'eq':eqstr,'known':kn,'const':{cn:cv for cn,(cv,_,_) in _CONST.items()},'target':str(target) if target else ''})
+    try:d=json.loads(out) if out else None
+    except Exception:d=None
+    if d is None:return {'error':'solve: could not solve (sandboxed sympy failed or timed out)'}
+    if 'unk' in d:return {'error':'specify solve_for; unknowns: '+','.join(d['unk'])}
+    vals=d['vals']
+    return {'equation':eqstr,'solve_for':d['solve_for'],'solution':(vals[0] if len(vals)==1 else vals),'used':d['used']}
 def _skill_roman(args,ctx,reg):
     v=str(args.get('value') or args.get('query','')).strip().upper()
     RR=[(1000,'M'),(900,'CM'),(500,'D'),(400,'CD'),(100,'C'),(90,'XC'),(50,'L'),(40,'XL'),(10,'X'),(9,'IX'),(5,'V'),(4,'IV'),(1,'I')]
@@ -900,6 +917,8 @@ def _skill_git(args,ctx,reg):
     parts=['git']+cmd.split()
     if args.get('file'):parts.append(str(args['file']))
     if args.get('n') and head in ('log','shortlog','reflog'):parts[2:2]=['-n',str(int(args['n']))]
+    _gb=_git_blocked(parts[1:])
+    if _gb:return {'error':_gb}
     try:
         from amni.serve.shell_audit import log_shell_run
         t0=time.time();r=subprocess.run(parts,capture_output=True,text=True,timeout=20,cwd=str(reg.workdir));dur=round(time.time()-t0,3)
@@ -1260,18 +1279,29 @@ def _detect_test_runner(workdir):
             if re.search(r'^test\s*:',mk,re.MULTILINE):return ('make test','make')
         except Exception:pass
     return (None,None)
+_JAIL_SKIP_DIRS={'.git','node_modules','target','__pycache__','.venv','.venv-linux','.adam-venvs','.mypy_cache','.pytest_cache'}
+_TEST_PY={'pytest':['-m','pytest'],'py.test':['-m','pytest']}
+def _project_jail_args(wd,max_files=200000):
+    w=Path(wd).resolve();out=[x for d in ('.git','.adam-venvs') if (w/d).is_dir() and not (w/d).is_symlink() for x in ('--ro-bind',str(w/d),str(w/d))];n=0
+    for root,dirs,files in os.walk(w):
+        dirs[:]=[d for d in dirs if d not in _JAIL_SKIP_DIRS and not os.path.islink(os.path.join(root,d))];n+=len(files)
+        out+=[x for f in files if _is_secret_file(f) and not os.path.islink(os.path.join(root,f)) for x in ('--ro-bind','/dev/null',os.path.join(root,f))]
+        if n>max_files:break
+    return out
 def _skill_test_run(args,ctx,reg):
     explicit=args.get('cmd');timeout=int(args.get('timeout',60))
-    if explicit:cmd=explicit;flavor='custom'
-    else:
-        cmd,flavor=_detect_test_runner(reg.workdir)
-        if not cmd:return {'error':'no test runner detected. Pass cmd= explicitly. Tried: Cargo.toml/package.json/pyproject.toml/go.mod/Makefile'}
+    cmd,flavor=(explicit,'custom') if explicit else _detect_test_runner(reg.workdir)
+    if not cmd:return {'error':'no test runner detected. Pass cmd= explicitly. Tried: Cargo.toml/package.json/pyproject.toml/go.mod/Makefile'}
     try:
-        r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(reg.workdir))
-        passed=r.returncode==0
-        out=(r.stdout or '')[-3000:];err=(r.stderr or '')[-1500:]
-        return {'cmd':cmd,'flavor':flavor,'passed':passed,'returncode':r.returncode,'stdout':out,'stderr':err}
-    except subprocess.TimeoutExpired:return {'error':f'tests exceeded {timeout}s timeout','cmd':cmd,'flavor':flavor,'passed':False}
+        parts=shlex.split(cmd) if isinstance(cmd,str) else [str(x) for x in cmd]
+        if not parts:return {'error':'empty test command','cmd':cmd,'flavor':flavor,'passed':False}
+        parts=[sys.executable,*_TEST_PY[parts[0]],*parts[1:]] if parts[0] in _TEST_PY else ([sys.executable,*parts[1:]] if parts[0] in _PY_BASES else parts)
+        from amni.serve.self_debug import jail_run
+        wd=str(Path(reg.workdir).resolve())
+        cr=jail_run(parts,wd,timeout=timeout,mem_mb=int(os.environ.get('AMNI_TEST_MEM_MB','2048')),nproc=int(os.environ.get('AMNI_TEST_NPROC','256')),extra=_project_jail_args(wd),fsize_mb=256,max_output=2000000)
+        k=cr.get('killed')
+        if k in ('no-jail','timeout'):return {'error':cr['stderr'] if k=='no-jail' else f'tests exceeded {timeout}s timeout','cmd':cmd,'flavor':flavor,'passed':False}
+        return {'cmd':cmd,'flavor':flavor,'passed':cr['returncode']==0 and k is None,'returncode':cr['returncode'],'stdout':(cr['stdout'] or '')[-3000:],'stderr':(cr['stderr'] or '')[-1500:],'sandbox':'bwrap' if cr.get('jailed') else 'none','killed':k}
     except Exception as e:return {'error':f'{type(e).__name__}: {e}','cmd':cmd,'flavor':flavor,'passed':False}
 _DANGEROUS_PYTHON=re.compile(r'\b(?:os\.system|subprocess\.|os\.remove|os\.unlink|os\.rmdir|shutil\.rmtree|__import__\([\'"]os|exec\s*\(|eval\s*\(|open\s*\([^)]*[\'"]w|requests\.|urllib\.|socket\.|os\.environ\[|os\.setuid|os\.fork)\b')
 def _skill_run_python(args,ctx,reg):
@@ -1645,6 +1675,7 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
             if args.get('question') and pca=='screenshot':extra={**(extra or {}),'question':args.get('question')}
             return _pca.propose(pca,tgt,extra)
         if action=='confirm':
+            if not ctx.get('owner'):return {'error':'confirm must come from the owner (CONFIRM button or typing "confirm <token>"), not from a model/tool call'}
             tok=args.get('token','')
             if not tok:return {'error':'token required'}
             res=_pca.confirm(tok)

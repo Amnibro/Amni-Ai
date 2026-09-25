@@ -1,7 +1,7 @@
 """venv_manager — sandboxed Python virtual environments for Adam's self-improvement experiments.
 All venvs live under <workdir>/.adam-venvs/<name>/. Names sanitized to [a-z0-9_-]{1,32}. Operations
 audited via shell_audit (v6.10.22). Hard cap of 8 concurrent experimental venvs."""
-import re,subprocess,sys,time,shutil,os
+import re,subprocess,sys,time,shutil,os,shlex
 from pathlib import Path
 from typing import Dict,Any,List,Optional
 _NAME_RE=re.compile(r'^[a-z0-9_-]{1,32}$')
@@ -60,12 +60,17 @@ def run(workdir:Path,name:str,cmd:str,timeout:int=_TIMEOUT_RUN)->Dict[str,Any]:
     if not interp.exists():return {'error':f'venv interpreter missing at {interp}'}
     if not (cmd or '').strip():return {'error':'cmd required'}
     if re.search(r'(?:^|[;&|`$])\s*(?:rm\s+-rf|del\s+/[sf]|format\s+|shutdown)',cmd,re.IGNORECASE):return {'error':'cmd appears destructive (rm -rf / format / shutdown); refuse'}
-    env={**os.environ,'VIRTUAL_ENV':str(vd),'PATH':str(vd/('Scripts' if os.name=='nt' else 'bin'))+os.pathsep+os.environ.get('PATH','')}
+    try:parts=shlex.split(cmd)
+    except ValueError as e:return {'error':f'unparseable cmd: {e}'}
+    from amni.serve.self_debug import jail_run
+    from amni.serve.skills import _project_jail_args
+    wd=str(Path(workdir).resolve());vb=str(Path(vd).absolute()/('Scripts' if os.name=='nt' else 'bin'))
     t0=time.time();timeout=int(min(max(5,timeout),_TIMEOUT_RUN))
-    try:r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout,cwd=str(workdir),env=env)
-    except subprocess.TimeoutExpired:return {'error':f'cmd timed out after {timeout}s','timeout':True}
-    dur=round(time.time()-t0,2);log_shell_run('venv',f'{name}: {cmd}',r.returncode,r.stdout,r.stderr,str(workdir),dur)
-    return {'name':name,'cmd':cmd,'returncode':r.returncode,'stdout':r.stdout[-8000:],'stderr':r.stderr[-4000:],'duration_s':dur,'ok':r.returncode==0}
+    cr=jail_run(parts,wd,timeout=timeout,mem_mb=int(os.environ.get('AMNI_TEST_MEM_MB','2048')),nproc=int(os.environ.get('AMNI_TEST_NPROC','256')),extra=['--setenv','PATH',vb+':/usr/bin:/bin','--setenv','VIRTUAL_ENV',str(Path(vd).absolute())]+_project_jail_args(wd),fsize_mb=256,max_output=2000000)
+    if cr['killed'] in ('no-jail','timeout'):return {'error':cr['stderr'] if cr['killed']=='no-jail' else f'cmd timed out after {timeout}s','timeout':cr['killed']=='timeout'}
+    rc,so,se=cr['returncode'],cr['stdout'] or '',cr['stderr'] or ''
+    dur=round(time.time()-t0,2);log_shell_run('venv',f'{name}: {cmd}',rc,so,se,str(workdir),dur)
+    return {'name':name,'cmd':cmd,'returncode':rc,'stdout':so[-8000:],'stderr':se[-4000:],'duration_s':dur,'ok':rc==0 and cr['killed'] is None,'sandbox':'bwrap' if cr['jailed'] else 'none'}
 def remove(workdir:Path,name:str)->Dict[str,Any]:
     from amni.serve.shell_audit import log_shell_run
     vd=_venv_path(workdir,name)

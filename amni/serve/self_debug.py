@@ -37,12 +37,26 @@ def static_check(code):
                 if isinstance(op,(ast.Eq,ast.NotEq)) and isinstance(comp,ast.Constant) and comp.value is None:
                     issues.append({'line':n.lineno,'rule':'eq-none','msg':'compare to None with "is"/"is not", not "=="/"!="'})
     return issues
-def run_in_sandbox(code,harness='',timeout=8,allow_dangerous=False):
-    """Run its own code in a real terminal (subprocess) with an optional test harness. HARDENED: a static
-    AST danger-scan refuses high-risk code (shell/network/file-mutation/dynamic-exec) before any run, and
-    execution is isolated — `python -I -B` (no env/user-site/pyc), a stripped env (no secrets/keys), and a
-    throwaway temp cwd so generated/crawled code can't touch the project or leak the environment."""
-    import tempfile,subprocess,sys,os
+_BWRAP='/usr/bin/bwrap'
+_JAIL_ENV={'PATH':'/usr/bin:/bin','LANG':'C.UTF-8'}
+def jail_run(argv,workdir,timeout=8,mem_mb=256,nproc=0,extra=(),fsize_mb=16,max_output=None):
+    import sys,os
+    from pathlib import Path
+    from amni.serve.code_safety import run_capped
+    _r=str(Path(__file__).resolve().parents[2]);sys.path.append(_r) if _r not in sys.path else None
+    try:from scripts.x0_code_eval import _bwrap_cmd,RO
+    except Exception:_bwrap_cmd,RO=None,[]
+    linux=sys.platform.startswith('linux');jailed=linux and _bwrap_cmd is not None and os.path.exists(_BWRAP) and os.path.exists('/usr/bin/prlimit')
+    if linux and not jailed and os.environ.get('AMNI_SANDBOX_ALLOW_UNJAILED','0')!='1':return {'returncode':None,'stdout':'','stderr':'sandbox unavailable: the bwrap jail needs /usr/bin/bwrap, /usr/bin/prlimit and scripts/x0_code_eval.py (AMNI_SANDBOX_ALLOW_UNJAILED=1 overrides)','killed':'no-jail','jailed':False}
+    cmd=_bwrap_cmd(workdir,['/usr/bin/prlimit',f'--nproc={int(nproc)}']+list(argv),cpu=int(timeout)+2,mem=int(mem_mb)<<20) if jailed else list(argv)
+    i=cmd.index('--die-with-parent') if jailed else 0
+    w=Path(workdir).resolve();ro=[x for d in RO if Path(d).resolve().is_relative_to(w) for x in ('--ro-bind',str(Path(d).resolve()),str(Path(d).resolve()))]
+    cmd=[_BWRAP]+cmd[1:i]+ro+list(extra)+cmd[i:] if jailed else cmd
+    env=dict(_JAIL_ENV) if jailed else {'PYTHONIOENCODING':'utf-8','PATH':os.environ.get('PATH',''),'SYSTEMROOT':os.environ.get('SYSTEMROOT',''),'TEMP':workdir,'TMP':workdir}
+    cr=run_capped(cmd,timeout=timeout,max_output_bytes=int(max_output or os.environ.get('AMNI_SANDBOX_MAX_OUTPUT','200000')),env=env,cwd=workdir,mem_mb=mem_mb,nproc=None if jailed or nproc else 0,fsize_mb=fsize_mb)
+    return {**cr,'jailed':jailed}
+def run_in_sandbox(code,harness='',timeout=8,allow_dangerous=False,keep=2000):
+    import tempfile,sys,os,shutil
     _nonet=os.environ.get('AMNI_SANDBOX_NO_NET','1')!='0'
     _user=code+(('\n\n'+harness) if harness else '')
     if not allow_dangerous:
@@ -56,21 +70,12 @@ def run_in_sandbox(code,harness='',timeout=8,allow_dangerous=False):
     path=os.path.join(workdir,'_run.py')
     try:
         open(path,'w',encoding='utf-8').write(src)
-        env={'PYTHONIOENCODING':'utf-8','PATH':os.environ.get('PATH',''),'SYSTEMROOT':os.environ.get('SYSTEMROOT',''),'TEMP':workdir,'TMP':workdir}
-        from amni.serve.code_safety import run_capped
-        mb=int(os.environ.get('AMNI_SANDBOX_MEM_MB','256'));argv=[sys.executable,'-I','-B',path]
-        try:
-            from scripts.x0_code_eval import _bwrap_cmd
-            argv=_bwrap_cmd(workdir,['/usr/bin/prlimit','--nproc=0']+argv,cpu=int(timeout)+2,mem=mb<<20) if sys.platform.startswith('linux') and os.path.exists('/usr/bin/bwrap') else argv
-        except Exception:pass
-        cr=run_capped(argv,timeout=timeout,max_output_bytes=int(os.environ.get('AMNI_SANDBOX_MAX_OUTPUT','200000')),env=env,cwd=workdir,mem_mb=mb,nproc=None if argv[0].endswith('bwrap') else 0)
+        cr=jail_run([sys.executable,'-I','-B',path],workdir,timeout=timeout,mem_mb=int(os.environ.get('AMNI_SANDBOX_MEM_MB','256')),extra=['--ro-bind',workdir,workdir])
         killed=cr['killed']
-        return {'ran':True,'returncode':cr['returncode'],'stdout':(cr['stdout'] or '')[-2000:],'stderr':(cr['stderr'] or '')[-2000:],'ok':cr['returncode']==0 and killed is None and not (cr['stderr'] or '').strip(),'killed':killed,'timed_out':killed=='timeout','capped':killed=='output-cap'}
+        if killed=='no-jail':return {'ran':False,'ok':False,'error':cr['stderr'],'jailed':False}
+        return {'ran':True,'returncode':cr['returncode'],'stdout':(cr['stdout'] or '')[-keep:],'stderr':(cr['stderr'] or '')[-keep:],'ok':cr['returncode']==0 and killed is None and not (cr['stderr'] or '').strip(),'killed':killed,'timed_out':killed=='timeout','capped':killed=='output-cap','jailed':cr['jailed']}
     except Exception as e:return {'ran':False,'ok':False,'error':f'{type(e).__name__}: {e}'}
-    finally:
-        try:
-            import shutil;shutil.rmtree(workdir,ignore_errors=True)
-        except Exception:pass
+    finally:shutil.rmtree(workdir,ignore_errors=True)
 def review(code,func_name=None,harness=''):
     """Layered debug step: SECURITY danger-scan (refuse to run high-risk code) + static lint + real sandbox
     execution + adversarial runtime probe."""
@@ -95,24 +100,32 @@ def _arity1_funcs(ns):
         req=[p for p in sig.parameters.values() if p.default is inspect._empty and p.kind in (p.POSITIONAL_ONLY,p.POSITIONAL_OR_KEYWORD)]
         if len(req)==1:out.append((k,v))
     return out
-def adversarial_probe(code,func_name=None):
+_PROBE_MARK='@@AMNI_PROBE@@'
+def _probe_local(code,func_name,probes):
+    ns={}
+    try:exec(code,ns)
+    except Exception as e:return {'ok':False,'stage':'compile','error':f'{type(e).__name__}: {e}'[:300],'failures':[]}
+    funcs=_arity1_funcs(ns)
+    name,fn=(func_name,ns.get(func_name)) if (func_name and callable(ns.get(func_name))) else (funcs[0] if funcs else (None,None))
+    if fn is None:return {'ok':True,'skipped':'no single-arg function to probe — needs custom test inputs','func':None,'failures':[]}
+    failures=[]
+    for label,inp in probes:
+        try:fn(inp)
+        except Exception as e:failures.append({'probe':label,'input':repr(inp)[:48],'error':f'{type(e).__name__}: {e}'[:160]})
+    return {'ok':len(failures)==0,'func':name,'probes_run':len(probes),'failures':failures}
+def adversarial_probe(code,func_name=None,timeout=8):
+    import json
     try:
         from amni.serve.code_safety import danger_scan
         high=[d for d in danger_scan(code) if d['severity']=='HIGH']
         if high:return {'ok':False,'blocked':True,'stage':'danger','dangers':high,'func':None,'failures':[],'error':'refused to exec high-risk code: '+', '.join(sorted({d['rule'] for d in high}))}
     except Exception:pass
-    ns={}
-    try:exec(code,ns)
-    except Exception as e:return {'ok':False,'stage':'compile','error':f'{type(e).__name__}: {e}','failures':[]}
-    funcs=_arity1_funcs(ns)
-    target=(func_name,ns.get(func_name)) if (func_name and callable(ns.get(func_name))) else (funcs[0] if funcs else (None,None))
-    name,fn=target
-    if fn is None:return {'ok':True,'skipped':'no single-arg function to probe — needs custom test inputs','func':None,'failures':[]}
-    failures=[]
-    for label,inp in _SEQ_PROBES:
-        try:fn(inp)
-        except Exception as e:failures.append({'probe':label,'input':repr(inp)[:48],'error':f'{type(e).__name__}: {e}'})
-    return {'ok':len(failures)==0,'func':name,'probes_run':len(_SEQ_PROBES),'failures':failures}
+    try:prog='import inspect,json\n'+inspect.getsource(_arity1_funcs)+inspect.getsource(_probe_local)+f"print('\\n{_PROBE_MARK}'+json.dumps(_probe_local({code!r},{func_name!r},{_SEQ_PROBES!r}),default=str))\n"
+    except Exception as e:return {'ok':True,'skipped':f'probe source unavailable: {e}','func':None,'failures':[]}
+    r=run_in_sandbox(prog,timeout=timeout,allow_dangerous=True,keep=20000)
+    line=next((l[len(_PROBE_MARK):] for l in reversed((r.get('stdout') or '').splitlines()) if l.startswith(_PROBE_MARK)),None)
+    try:return json.loads(line) if line else ({'ok':False,'stage':'timeout','func':None,'failures':[{'probe':'timeout','input':'','error':f'probe run exceeded {timeout}s (infinite loop or very slow on edge cases)'}]} if r.get('timed_out') else {'ok':True,'skipped':'sandboxed probe produced no result: '+(r.get('error') or (r.get('stderr') or '')[-200:] or str(r.get('killed'))),'func':None,'failures':[]})
+    except Exception:return {'ok':True,'skipped':'sandboxed probe result unparseable','func':None,'failures':[]}
 def debug_report(code,func_name=None):
     r=review(code,func_name)
     if r['clean']:return f'[debug] {r.get("func") or "code"}: clean — passed static lint + runtime probes'

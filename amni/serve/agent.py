@@ -695,7 +695,7 @@ class AmniAgent:
         out={'answer':ans,'tier':_tier,'tokens':_tok,'session_id':sid,'skill_calls':calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':'trading'}
         if imgs:out['images']=imgs
         return out
-    def chat(self,message:str,session_id:Optional[str]=None,use_skills:bool=True,writeback:bool=True,brief:bool=False)->Dict[str,Any]:
+    def chat(self,message:str,session_id:Optional[str]=None,use_skills:bool=True,writeback:bool=True,brief:bool=False,owner:bool=False)->Dict[str,Any]:
         t0=time.time()
         conv=self.store.get(session_id);__import__('amni.serve.user_memory',fromlist=['bind']).bind(session=conv.session_id)
         conv.append('user',message)
@@ -755,7 +755,7 @@ class AmniAgent:
             if det is None:det=self._detect_skill(message)
             if det is not None:
                 name,args=det
-                r=self.skills.call(name,args,ctx={'adam':self.adam,'agent':self,'conv':conv,'store':self.store,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None),'file_watcher':getattr(self,'file_watcher',None)})
+                r=self.skills.call(name,args,ctx={'owner':owner,'adam':self.adam,'agent':self,'conv':conv,'store':self.store,'coach_atlas':self.coach_atlas,'personal_atlas':self.personal_atlas,'scheduler':getattr(self,'scheduler',None),'learning_daemon':getattr(self,'learning_daemon',None),'knowledge_graph':getattr(self,'knowledge_graph',None),'task_registry':getattr(self,'task_registry',None),'vision':getattr(self,'vision',None),'file_watcher':getattr(self,'file_watcher',None)})
                 skill_calls.append({'skill':name,'args':args,'result':r.to_dict()})
                 if r.ok:
                     skill_answer=self._format_skill_output(name,r.output)

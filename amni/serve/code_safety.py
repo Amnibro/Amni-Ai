@@ -1,7 +1,7 @@
 """code_safety — static danger scan for code Adam runs (generated OR crawled). AST-based so it survives
 obfuscation a regex misses (e.g. getattr(__import__('os'),'system')). Flags filesystem mutation, shell,
 network, dynamic exec, and sandbox-escape primitives. Used to REFUSE high-risk code before any subprocess run."""
-import ast,re
+import ast,re,operator
 _DANGER_MODULES={'subprocess','socket','ctypes','shutil','pty','smtplib','ftplib','telnetlib','pickle','marshal','requests','urllib','http','multiprocessing','mmap','fcntl','winreg','_winreg','xmlrpc','asyncio','curses','cffi','importlib','dill','shelve','code','aiohttp','httpx','paramiko'}
 _POWERFUL_ROOTS=('os','sys','subprocess','builtins','importlib','ctypes','socket','shutil','pickle','marshal')
 _DANGER_OS_CALLS={'system','popen','remove','unlink','rmdir','removedirs','rename','replace','kill','fork','forkpty','exec','execl','execle','execlp','execv','execve','execvp','execvpe','spawn','spawnl','spawnv','spawnve','startfile','chmod','chown','setuid','setgid','putenv','unsetenv','abort','_exit','open','write','dup','dup2','pipe','symlink','link','chdir','chroot','truncate','ftruncate','mkfifo','mknod','setegid','seteuid','setreuid','setpgid','umask'}
@@ -55,7 +55,19 @@ def is_safe(code):
     d=danger_scan(code)
     high=[x for x in d if x['severity']=='HIGH']
     return (not high,d)
-def run_capped(argv,timeout=8,max_output_bytes=200000,env=None,cwd=None,mem_mb=256,nproc=0):
+_ARITH_OPS={ast.Add:operator.add,ast.Sub:operator.sub,ast.Mult:operator.mul,ast.Div:operator.truediv,ast.FloorDiv:operator.floordiv,ast.Mod:operator.mod,ast.Pow:operator.pow,ast.USub:operator.neg,ast.UAdd:operator.pos}
+def safe_arith(expr,max_bits=8192):
+    def ev(n):
+        if isinstance(n,ast.Expression):return ev(n.body)
+        if isinstance(n,ast.Constant) and type(n.value) in (int,float):return n.value
+        if isinstance(n,ast.UnaryOp) and type(n.op) in _ARITH_OPS:return _ARITH_OPS[type(n.op)](ev(n.operand))
+        if not (isinstance(n,ast.BinOp) and type(n.op) in _ARITH_OPS):raise ValueError('unsupported arithmetic expression')
+        a,b=ev(n.left),ev(n.right);ints=type(a) is int and type(b) is int
+        if ints and ((isinstance(n.op,ast.Pow) and abs(a)>1 and b>0 and b*a.bit_length()>max_bits) or (isinstance(n.op,ast.Mult) and a.bit_length()+b.bit_length()>max_bits)):raise OverflowError('result exceeds the arithmetic size guard')
+        return _ARITH_OPS[type(n.op)](a,b)
+    if not isinstance(expr,str) or len(expr)>2000:raise ValueError('expression missing or too long')
+    return ev(ast.parse(expr.strip(),mode='eval'))
+def run_capped(argv,timeout=8,max_output_bytes=200000,env=None,cwd=None,mem_mb=256,nproc=0,fsize_mb=16):
     """Run a subprocess with resource caps so a memory/output bomb can't exhaust the host:
     - output cap: stream stdout/stderr, KILL the process tree once total bytes exceed max_output_bytes;
     - wall-clock timeout: kill on expiry;
@@ -66,7 +78,7 @@ def run_capped(argv,timeout=8,max_output_bytes=200000,env=None,cwd=None,mem_mb=2
     def _limits():
         import resource
         m=int(mem_mb)*1024*1024
-        for res,val in ((getattr(resource,'RLIMIT_AS',None),m),(getattr(resource,'RLIMIT_DATA',None),m),(getattr(resource,'RLIMIT_CPU',None),int(timeout)+2),(getattr(resource,'RLIMIT_FSIZE',None),16*1024*1024)):
+        for res,val in ((getattr(resource,'RLIMIT_AS',None),m),(getattr(resource,'RLIMIT_DATA',None),m),(getattr(resource,'RLIMIT_CPU',None),int(timeout)+2),(getattr(resource,'RLIMIT_FSIZE',None),int(fsize_mb)*1024*1024)):
             if res is not None:
                 try:resource.setrlimit(res,(val,val))
                 except Exception:pass

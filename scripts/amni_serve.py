@@ -395,7 +395,7 @@ def main():
         if len(req.message or '')>_MAX_INPUT_CHARS:raise HTTPException(status_code=413,detail=f'message too large ({len(req.message)} chars > {_MAX_INPUT_CHARS}); split it up')
         if req.client_lat is not None:agent._client_lat=req.client_lat
         if req.client_lon is not None:agent._client_lon=req.client_lon
-        try:return agent.chat(req.message,session_id=req.session_id,use_skills=req.use_skills,writeback=req.writeback)
+        try:return agent.chat(req.message,session_id=req.session_id,use_skills=req.use_skills,writeback=req.writeback,owner=True)
         finally:agent._client_lat=None;agent._client_lon=None
     @app.post('/chat/stream')
     async def chat_stream(req:ChatRequest,request:Request):
@@ -497,7 +497,7 @@ def main():
                 _sk_persona=agent.personas.for_session(conv.session_id) if agent.use_persona else None
                 _sk_persona_name=_sk_persona.name if _sk_persona else 'Adam'
                 try:
-                    _sr=skills.call(_sname,_sargs,ctx={'adam':adam,'conv':conv})
+                    _sr=skills.call(_sname,_sargs,ctx={'owner':True,'adam':adam,'conv':conv})
                     if _sr.ok and (_formatted:=agent._format_skill_output(_sname,_sr.output)) is not None:
                         _sk_cat=tone_atlas.classify_intent(req.message,skill_used=_sname) if hasattr(tone_atlas,'classify_intent') else 'factual'
                         _wrapped=tone_atlas.wrap(_formatted,_sk_cat,_sk_persona,seed=req.message) if _sk_persona and hasattr(tone_atlas,'wrap') else _formatted
@@ -1165,7 +1165,7 @@ def main():
     def list_skills():return {'skills':skills.list_skills()}
     @app.post('/skills/{name}')
     def call_skill(name:str,req:SkillRequest):
-        r=skills.call(name,req.args,ctx={'adam':adam,'agent':agent,'personas':personas,'store':store,'conv':None,'coach_atlas':getattr(agent,'coach_atlas',None),'personal_atlas':getattr(agent,'personal_atlas',None),'scheduler':getattr(agent,'scheduler',None),'learning_daemon':getattr(agent,'learning_daemon',None),'knowledge_graph':getattr(agent,'knowledge_graph',None),'task_registry':getattr(agent,'task_registry',None),'vision':getattr(agent,'vision',None),'file_watcher':getattr(agent,'file_watcher',None)})
+        r=skills.call(name,req.args,ctx={'owner':True,'adam':adam,'agent':agent,'personas':personas,'store':store,'conv':None,'coach_atlas':getattr(agent,'coach_atlas',None),'personal_atlas':getattr(agent,'personal_atlas',None),'scheduler':getattr(agent,'scheduler',None),'learning_daemon':getattr(agent,'learning_daemon',None),'knowledge_graph':getattr(agent,'knowledge_graph',None),'task_registry':getattr(agent,'task_registry',None),'vision':getattr(agent,'vision',None),'file_watcher':getattr(agent,'file_watcher',None)})
         if not r.ok:raise HTTPException(status_code=400,detail=r.to_dict())
         return r.to_dict()
     import re as _re_sid
