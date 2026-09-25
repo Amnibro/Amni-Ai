@@ -5,7 +5,7 @@ or POST /models/activate.
 """
 import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
-RAY_MODEL='adam:ray-v19e-clean'
+RAY_MODEL='adam:ray-v19d-chat6c-clean'
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
 def enabled()->bool:
