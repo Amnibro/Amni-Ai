@@ -934,7 +934,7 @@ class AmniAgent:
             preface=(f'[User facts]\n{facts_block}\n\n' if facts_block else '')+(f'[Prior turns]\n{hist_block}\n\n' if hist_block else '')
             framed=f'{preface}[New Question]\n{message}' if preface else message
             if apply_cot:framed=f'{cot_scaffold}\nQuery: {framed}'
-            effective_writeback=writeback and not is_private and not history_pairs
+            effective_writeback=writeback and not is_private and not detect_personal(message,'egress') and not history_pairs
             fb=self.adam.ask(framed,writeback=effective_writeback)
             raw_ans=fb.get('answer') or '';tier=fb.get('tier','?')+(f'_cot_{cot_tag}' if apply_cot else '');tokens=fb.get('tokens',0)
         wrapped=tone_atlas.wrap(raw_ans,category,persona,seed=message)

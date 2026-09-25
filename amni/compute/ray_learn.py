@@ -2,12 +2,12 @@ import os,re,json,math,collections,time,fcntl,hashlib,threading,urllib.error,url
 from concurrent.futures import ThreadPoolExecutor
 from amni.compute.ray_qa import words,hard,STOP
 import amni.compute.ks_retrieve as KR
+from amni.serve.conversation import PERSONAL,detect_personal
 try:from ddgs import DDGS
 except Exception:DDGS=None
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STORE=os.environ.get("AMNI_RAY_LEARNED",os.path.join(_H0,"data","learned","qa_learned.jsonl"));UA={"User-Agent":"AmniAdam/1.0 (https://amni-scient.com/; learn-on-miss bot)"}
 CACHE=os.environ.get("AMNI_WIKI_CACHE",os.path.join(_H0,"data","learned","wiki_cache"));API="https://en.wikipedia.org/w/api.php?";_LK=collections.defaultdict(threading.Lock)
-PERSONAL=re.compile(r"(?i)\b(my|our)\s+(sister|brother|mom|mother|dad|father|wife|husband|partner|spouse|son|daughter|kids?|children|friend|boss|coworker|neighbou?r|roommate|aunt|uncle|cousin|niece|nephew|grand\w+|family|dog|cat|pet|name|age|birthday|job|salary|car|address|phone|email|password|account|bank|doctor|diagnosis|health|house|home|school|teacher)\b|\b(i\s+(am|was|live|work|have|had|drive|study|studied)|i'm|about\s+me|do\s+i|did\s+i|am\s+i|should\s+i)\b")
 def _pace(h:str):
  os.makedirs(CACHE,exist_ok=True)
  with _LK[h],open(os.path.join(CACHE,".pace_"+h),"a+") as f:fcntl.flock(f,fcntl.LOCK_EX);f.seek(0);t=f.read().strip();time.sleep(max(0.0,float(t or 0)+float(os.environ.get("AMNI_WIKI_GAP","1.05"))-time.time()));f.seek(0);f.truncate();f.write(repr(time.time()));f.flush();fcntl.flock(f,fcntl.LOCK_UN)
@@ -166,7 +166,7 @@ def decide(q:str,lc:bool=False)->dict:
  e=R[0];e2=R[1] if len(R)>1 else {"rs":0.0,"ns1":0};g=e["ns1"]-e2["ns1"];m=e["rs"]/(e["rs"]+e2["rs"]+1e-9)
  return {"a":e["best"][0],"title":e["best"][1],"src":e["best"][2],"span":e["span"],"confidence":round(m*(1-0.5**g),3),"evidence":e["ev"],"qtype":qt,**({"local":True,"license":"CC BY-SA 4.0"} if lc else {})} if (e["ns1"]>=2 and m>=0.65 and (g>=3 or e2["ns1"]==0) and (not lc or e["ns1"]>=3 or any(bool(tw) and tw<=set(words(q.encode())) for u in e["ev"] for tw in [set(words(urllib.parse.unquote(u.rsplit("/",1)[-1]).replace("_"," ").encode()))]))) or (lc and e["ns1"]>=1 and e["mx"]>=float(os.environ.get("AMNI_LEARN_MX","0.7")) and e["mx"]>=e2.get("mx",0.0)+0.1 and bool(set(words(e["best"][1].encode()))) and set(words(e["best"][1].encode()))<=set(words(q.encode()))) else None
 def learn(q:str,store:Learned)->dict:
- if PERSONAL.search(q) or TEMPORAL.search(q):return None
+ if detect_personal(q,'learn') or TEMPORAL.search(q):return None
  try:h=(decide(q,True) if os.environ.get("AMNI_LEARN_LOCAL","1")=="1" else None) or (decide(_scrub(q)) if os.environ.get("AMNI_LEARN_WEB","0")=="1" else None)
  except Exception:return None
  return store.add(q,h.pop("a"),h.pop("title"),h.pop("src"),**h) if h else None

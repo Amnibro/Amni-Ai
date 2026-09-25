@@ -1062,6 +1062,8 @@ def main():
     es.add_argument('--output','-o',default=None,help='Output path (default: <sid>.<ext>)')
     es.add_argument('--strip-personal',action='store_true',help='Drop turns flagged is_personal before export')
     es.set_defaults(func=cmd_export_session)
+    pg=__import__('amni.serve.retention',fromlist=['add_args']).add_args(sub.add_parser('purge',help='Purge old conversation transcripts, serve logs and audit JSONL (never user memory)'))
+    pg.set_defaults(func=lambda a:__import__('amni.serve.retention',fromlist=['run_cli']).run_cli(a))
     iss=sub.add_parser('import-session',help='Import a session from Markdown/JSON/JSONL')
     iss.add_argument('input',help='Path to .md / .json / .jsonl session file')
     iss.add_argument('--conv-root',default='experiences/conversations')

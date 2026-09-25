@@ -1310,6 +1310,7 @@ body.theme-min #adam-core{opacity:.6}
 <script>
 (function(){
   try{var u=new URL(location.href);var qt=u.searchParams.get('token');if(qt){try{localStorage.setItem('amni_token',qt)}catch(_){}u.searchParams.delete('token');try{history.replaceState(null,'',u.pathname+(u.search||'')+u.hash)}catch(_){}}}catch(_){}
+  try{var _ct=localStorage.getItem('amni_token')||'';if(_ct)document.cookie='amni_token='+encodeURIComponent(_ct)+';path=/;SameSite=Strict'+(location.protocol==='https:'?';Secure':'')}catch(_){}
   var _F=window.fetch.bind(window);
   window.fetch=function(input,init){
     init=init||{};
@@ -2054,8 +2055,7 @@ function _delveRun(arg){
   tm?(target=tm[1].toLowerCase(),text=tm[2]):dm?(target='debate',rounds=parseInt(dm[1]||'3',10),text=dm[2]):null;
   bubble('user','/delve '+arg,'<span class="badge">delve</span>');
   if(_delveES){try{_delveES.close()}catch(_){}_delveES=null}
-  let tok='';try{tok=localStorage.getItem('amni_token')||''}catch(_){}
-  const es=new EventSource('/api/delve/stream'+(tok?('?token='+encodeURIComponent(tok)):''));_delveES=es;
+  const es=new EventSource('/api/delve/stream');_delveES=es;
   _delveThinking('delve roundtable engaging…');
   es.onmessage=e=>{
     let d={};try{d=JSON.parse(e.data)}catch(_){return}

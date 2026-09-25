@@ -13,9 +13,13 @@ def _struct_pii(text):
     return bool(_scrub_cc(text)[1] or _scrub_ssn(text)[1])
 _PII_ADDRESS=re.compile(r"\b\d{1,5}\s+(?:[A-Z][a-zA-Z]+\.?\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle|Hwy|Highway|Pkwy|Parkway|Sq|Square)\b\.?(?:,?\s*(?:Apt|Suite|Ste|Unit|#)\s*\w+)?",re.IGNORECASE)
 _PII_SOFT=re.compile(r"\b(?:date\s+of\s+birth|my\s+(?:dob|age|username|user\s*name|handle|github|gitlab|twitter|x\s+handle|instagram|insta|discord|telegram|tiktok|snapchat|linkedin|license|passport|account\s+(?:number|no)|routing\s+number|card\s+number|iban|maiden\s+name|home\s+town|hometown|pet'?s?\s+name|mother'?s?\s+maiden)|\bdob\s*[:=]|born\s+(?:on|in)\s+(?:\d|[A-Z][a-z]+\s+\d)|i'?m\s+\d{1,3}\s+years?\s+old|i\s+am\s+\d{1,3}\s+years?\s+old|driver'?s?\s+licen[cs]e|passport\s+(?:no\.?|number|#)|\bzip\s*(?:code)?\s*[:=]?\s*\d{5}|\b\d{5}(?:-\d{4})?\s*,?\s*(?:USA|United States)\b)",re.IGNORECASE)
-def detect_personal(text:str)->bool:
+_P_POSS=r"\b(my|our)\s+(sister|brother|mom|mother|dad|father|wife|husband|partner|spouse|son|daughter|kids?|children|friend|boss|coworker|neighbou?r|roommate|aunt|uncle|cousin|niece|nephew|grand\w+|family|dog|cat|pet|name|age|birthday|job|salary|car|address|phone|email|password|account|bank|doctor|diagnosis|health|house|home|school|teacher)\b"
+_P_SELF=r"\b(i\s+(am|was|live|work|have|had|drive|study|studied)|i'm|about\s+me|do\s+i|did\s+i|am\s+i|should\s+i)\b"
+PERSONAL=re.compile(_P_POSS+'|'+_P_SELF,re.I);PERSONAL_POSS=re.compile(_P_POSS,re.I)
+def detect_personal(text:str,scope:str='pii')->bool:
     if not text:return False
-    return bool(_PII_MARKERS.search(text) or _PII_NAME.search(text) or _PII_HARD.search(text) or _PII_ADDRESS.search(text) or _PII_SOFT.search(text) or _struct_pii(text))
+    pii=bool(_PII_MARKERS.search(text) or _PII_NAME.search(text) or _PII_HARD.search(text) or _PII_ADDRESS.search(text) or _PII_SOFT.search(text) or _struct_pii(text))
+    return pii or (scope=='egress' and bool(PERSONAL_POSS.search(text))) or (scope=='learn' and bool(PERSONAL.search(text)))
 class Conversation:
     def __init__(self,session_id:str,path:Path):
         self.session_id=session_id;self.path=path;self.turns:List[Dict[str,Any]]=[]

@@ -229,10 +229,10 @@ def main():
     ap.add_argument('--audit-log',default='logs/agent_skill_calls.jsonl')
     ap.add_argument('--workdir',default=None,help='Primary skill workdir (defaults to cwd). Use --root for additional roots.')
     ap.add_argument('--root',action='append',default=[],help='Additional allowed root for file_*/code_edit/scan/shell. Repeatable.')
-    ap.add_argument('--unrestricted-files',action='store_true',help='Drop workdir gating and allow file ops on ANY drive. Use with care.')
+    ap.add_argument('--unrestricted-files',action='store_true',help='Drop workdir gating and allow file ops on ANY drive. Only honoured with AMNI_UNRESTRICTED_FILES=1 and AMNI_AUTH_TOKEN set.')
     ap.add_argument('--web-restricted',action='store_true',default=bool(os.environ.get('AMNI_WEB_RESTRICTED')),help='Limit web crawler to the 255-domain trusted-source allowlist (Wikipedia, StackOverflow, .gov, .edu, major dev docs and news). Default is unrestricted — any DDG result is fair game.')
     ap.add_argument('--seed',action='store_true',help='seed lessons with default bank if file missing')
-    ap.add_argument('--cors',action='store_true',help='enable permissive CORS for dev')
+    ap.add_argument('--cors',action='store_true',help='enable CORS for localhost origins plus AMNI_CORS_ORIGINS (comma list)')
     ap.add_argument('--persona-bank',default='experiences/personas.json',help='Persona store path (learned personas + per-session map)')
     ap.add_argument('--default-persona',default=None,help='Default persona name (preset or learned). e.g. rikku, yoda, neutral')
     ap.add_argument('--no-persona',action='store_true',help='Disable persona layer entirely (raw Adam responses)')
@@ -313,6 +313,9 @@ def main():
             _warmup_state['coding']=True
         _th.Thread(target=_bg_warmup,daemon=True).start()
     else:_warmup_state['done']=True;_warmup_state['coding']=True
+    from amni.serve import serve_policy as _sp,retention as _ret
+    _AUTH_TOKEN=_sp.load_token();args.root,args.unrestricted_files,_uwhy=_sp.resolve_roots(args.root,args.unrestricted_files,_AUTH_TOKEN,args.workdir)
+    if _uwhy:print(f'[amni_serve] {_uwhy}',flush=True)
     skills=default_registry(workdir=args.workdir,roots=args.root,audit_log=args.audit_log,unrestricted=args.unrestricted_files)
     store=ConversationStore(root=args.conv_root)
     personas=PersonaStore(adam=adam,bank_path=args.persona_bank)
@@ -342,31 +345,10 @@ def main():
             try:d=_egress(d) if isinstance(d,str) else d
             except Exception:pass
             return _JR(status_code=exc.status_code,content={'detail':d},headers=getattr(exc,'headers',None))
-    if args.cors:
-        from fastapi.middleware.cors import CORSMiddleware
-        app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=True,allow_methods=['*'],allow_headers=['*'])
-    _AUTH_TOKEN=(os.environ.get('AMNI_AUTH_TOKEN') or '').strip()
-    if not _AUTH_TOKEN:
-        _atf=(os.environ.get('AMNI_AUTH_TOKEN_FILE') or '').strip()
-        if _atf and Path(_atf).exists():
-            try:_AUTH_TOKEN=Path(_atf).read_text(encoding='utf-8').strip()
-            except Exception:_AUTH_TOKEN=''
+    _pol=_sp.install(app,cors=args.cors,token=_AUTH_TOKEN)
+    print(f'[amni_serve] serve policy: {_pol}',flush=True)
+    _ret.start_background(conv_root=args.conv_root)
     if _AUTH_TOKEN:
-        import hmac as _hmac
-        from fastapi.responses import JSONResponse as _AuthJR
-        _AUTH_OPEN={'/','/unified','/jarvis','/hud','/healthz','/manifest.webmanifest','/sw.js','/favicon.ico'}
-        _AUTH_OPEN_PFX=('/assets/','/icons/')
-        @app.middleware('http')
-        async def _auth_gate(request,call_next):
-            p=request.url.path
-            if request.method=='OPTIONS' or p in _AUTH_OPEN or any(p.startswith(x) for x in _AUTH_OPEN_PFX):return await call_next(request)
-            t=request.headers.get('x-amni-token','')
-            if not t:
-                _h=request.headers.get('authorization','')
-                if _h[:7].lower()=='bearer ':t=_h[7:].strip()
-            if not t:t=request.query_params.get('token','') or request.cookies.get('amni_token','')
-            if t and _hmac.compare_digest(t,_AUTH_TOKEN):return await call_next(request)
-            return _AuthJR(status_code=401,content={'error':'unauthorized','auth_required':True,'hint':'Adam access token required (X-Amni-Token header, ?token=, or amni_token cookie).'})
         print('[amni_serve] AUTH GATE ON — token required for everything but the app shell + /healthz',flush=True)
     else:
         _bind=str(getattr(args,'host',DEFAULT_HOST) or DEFAULT_HOST)
@@ -553,7 +535,7 @@ def main():
                 user_facts=['Local now: '+time.strftime('%A, %B %d, %Y %I:%M %p',time.localtime())+'.']+user_facts
             else:
                 user_facts=['The current local date and time is '+time.strftime('%A, %B %d, %Y at %I:%M %p',time.localtime())+'. Use this exact value for any date, time, "today", "now", or current-year reasoning — never guess or invent a date. For live system stats (CPU/memory/disk) or weather, rely on the tool widgets, never fabricate numbers.']+user_facts
-            is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall)
+            is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall);_egress_private=is_private or _dp(req.message,'egress')
             sl=getattr(adam,'sem_lut',None)
             _has_correction=False
             _persona_query=bool(persona and persona.name and persona.name.lower() in req.message.lower() and len(req.message.split())>=3)
@@ -561,7 +543,7 @@ def main():
             try:
                 _is_fresh=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message)) or bool(_RESEARCH_WEB_RE.search(req.message))
                 _is_introsp=(_intent_label in ('greeting','introspection')) or bool(_INTROSPECT_NO_WEB_RE.search(req.message))
-                if (not is_private) and skills.has('web') and _is_fresh and not _is_introsp:
+                if (not _egress_private) and skills.has('web') and _is_fresh and not _is_introsp:
                     _enriched_pre=_enrich_web_query(req.message,conv,getattr(agent,'profile',None))
                     yield f'event: status\ndata: {_json.dumps({"stage":"web"})}\n\n'
                     yield f'event: web_lookup\ndata: {_json.dumps({"trigger":"pre_fetch","query":_enriched_pre[:200],"enriched_from":req.message[:80]})}\n\n'
@@ -784,7 +766,7 @@ def main():
                         except Exception as e:yield f'event: exec\ndata: {_json.dumps({"error":_egress(str(e))})}\n\n'
             _introspect_no_web=(_intent_label in ('greeting','introspection')) or bool(_INTROSPECT_NO_WEB_RE.search(req.message))
             _needs_fresh_info=(_intent_label=='needs_fresh_info') or bool(_NEEDS_FRESH_INFO_RE.search(req.message)) or bool(_RESEARCH_WEB_RE.search(req.message))
-            if (not is_private) and skills.has('web') and not _memory_recall and not _profile_authoritative and not _introspect_no_web and not _pre_web_supplemented and (raw_final or final) and _UNCERTAIN_RE.search(raw_final or final or ''):
+            if (not _egress_private) and skills.has('web') and not _memory_recall and not _profile_authoritative and not _introspect_no_web and not _pre_web_supplemented and (raw_final or final) and _UNCERTAIN_RE.search(raw_final or final or ''):
                 _enriched_q=_enrich_web_query(req.message,conv,getattr(agent,'profile',None))
                 if len(_enriched_q.split())<4:
                     yield f'event: web_supplement_skipped\ndata: {_json.dumps({"reason":"query too vague even after enrichment","query":_enriched_q})}\n\n'
@@ -811,7 +793,7 @@ def main():
             if getattr(agent,'atlas',None) is not None and final and final.strip():
                 try:agent.atlas.record(conv.session_id,req.message,final,is_personal=is_private)
                 except Exception as _re:print(f'[amni_serve] /chat/stream atlas record failed: {_re}',flush=True)
-            if (not is_private) and (not history_pairs) and final and len(final.strip())>=20 and category not in ('greeting','introspect') and 'block' not in tier_final and '_promoted' not in tier_final:
+            if (not _egress_private) and (not history_pairs) and final and len(final.strip())>=20 and category not in ('greeting','introspect') and 'block' not in tier_final and '_promoted' not in tier_final:
                 try:adam.teach(req.message,final)
                 except Exception as _te:print(f'[amni_serve] /chat/stream lesson writeback failed: {_te}',flush=True)
             yield f'event: done\ndata: {_json.dumps({"tier":tier_final,"wall_s":round(time.time()-t0,3),"persona":persona_name,"category":category})}\n\n'
@@ -825,7 +807,7 @@ def main():
         if len(req.question or '')+len(req.answer or '')>_MAX_INPUT_CHARS:raise HTTPException(status_code=413,detail=f'teach payload too large (>{_MAX_INPUT_CHARS} chars)')
         try:
             from amni.serve.conversation import detect_personal as _dp
-            if _dp(req.question) or _dp(req.answer):
+            if _dp(req.question,'egress') or _dp(req.answer,'egress'):
                 return {'taught':False,'rejected':'personal/PII detected — lessons are PTEX-stored and federation-eligible, so personal data must not enter. Keep it in a local session instead.'}
         except Exception:pass
         _bus=getattr(agent,'memory_bus',None)
