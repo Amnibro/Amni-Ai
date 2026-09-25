@@ -12,11 +12,11 @@ pub const MAXB: usize = 256;
 pub const TW: usize = 4096;
 pub const TOPIC_A: f32 = 0.99;
 #[derive(Clone)]
-pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize, pub mr: usize, pub mv: bool, pub lt: bool }
+pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize, pub mr: usize, pub mv: bool, pub lt: bool, pub gn: bool }
 pub struct Lex { pub lex: Vec<[u32; 4]>, pub trig: Vec<[f32; 2]> }
 pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex, pub cw: Vec<u16>, pub src: crate::src_gf17::Src }
 impl Geo {
-    pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0, mr: 0, mv: false, lt: false } }
+    pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0, mr: 0, mv: false, lt: false, gn: false } }
     pub fn sl(&self, u: u32, v: u32, l: usize) -> u32 { crate::cpu::hm(u, v, (l as u32 + 1).wrapping_add(self.salt.wrapping_mul(1000003))) % self.t }
     pub fn c0(&self) -> usize { self.base + 3 * self.qt as usize }
     pub fn hb(&self) -> usize { self.c0() + self.copy }
@@ -81,8 +81,9 @@ pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
     };
     let (cp, mr) = if raw { copies(l) } else { (0, 0) };
     let (qt, mv, lt) = (l == BASE + HOPS + 3 || cp > 0, cp >= 16 && pflag(path, "maskv"), cp >= 16 && pflag(path, "latest"));
+    let gn = lt && pflag(path, "gen");
     let g = Geo::eng(t, qt);
-    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, mr, mv, lt, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw, src })
+    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, mr, mv, lt, gn, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw, src })
 }
 pub fn lexicon(syn: &str, wcnt: Option<&str>) -> Lex {
     let (sy, wc) = (load_syn(syn, 2), wcnt.map_or_else(|| vec![0; WM as usize + 1], |w| load_syn(w, 1).remove(0)));

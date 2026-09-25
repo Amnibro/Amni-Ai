@@ -245,3 +245,17 @@ fn probe_latest() {
     assert!((0..64).filter(|&i| w.m.stamp[i] > 0 && w.m.rel[i] == 4).count() == 2 && w.m.cor.iter().filter(|&&c| c).count() == 1 && w.q.mq == 1);
     println!("PROBE latest: correction supersedes (question turn, same turn), ack keeps old, junk w/o marker keeps old, -ing freeze, no facts from questions, in-law/lab-partner compounds, stopword-only question, object entities + color, synonyms + dislike, history kept");
 }
+#[test]
+fn probe_gen() {
+    let kv = [("VER", "19"), ("COPY", "16"), ("MR", "2"), ("MASKV", "1"), ("QT", "1"), ("LEVELS", "21"), ("HOPS", "4"), ("LOG2_ENTRIES", "16"), ("BS", "1"), ("CTX", "768"), ("LATEST", "1")];
+    let (mut r, mut r0) = (R::new(&[&kv[..], &[("GEN", "1")]].concat()), R::new(&kv));
+    assert!(r.c.geo.gn && !r0.c.geo.gn && !R::new(&[("VER", "19"), ("COPY", "16"), ("MR", "2"), ("GEN", "1")]).c.geo.gn);
+    let last = |r: &mut R, t: &[u8]| r.run(t).0[t.len() - 1].clone();
+    let q = |x: &[u8]| [x, b"\nAdam: "].concat();
+    let cases: [(&[u8], u8); 5] = [(b"User: My aunt lives in Tromso.\nAdam: Nice.\n\nUser: My cousin lives in the same town as my aunt.\nAdam: Ok.\n\nUser: Where does my cousin live?", b'T'), (b"User: My horse can't stand fireworks.\nAdam: Ok.\n\nUser: What does my horse hate?", b'f'), (b"User: My study buddy is a court reporter.\nAdam: Ok.\n\nUser: What does my study buddy do for a living?", b'c'), (b"User: My sister lives in Oslo.\nAdam: Ok.\n\nUser: Where does my sister live? I forget.", b'O'), (b"User: My uncle adores bonsai.\nAdam: Ok.\n\nUser: What does my uncle love?", b'b')];
+    for (t, c) in cases { let t = q(t); let (a, a0) = (last(&mut r, &t), last(&mut r0, &t)); assert!(a[0] == c as i32 && a0[0] != c as i32, "{:?} {a:?} {a0:?}", String::from_utf8_lossy(&t)); }
+    let reg = q(b"User: My neighbour lives in Ipoh, a city in Malaysia.\nAdam: Ok.\n\nUser: Which country does my neighbour live in?");
+    let (a, a0) = (last(&mut r, &reg), last(&mut r0, &reg));
+    assert!(a[8] == b'M' as i32 && a0[8] < 0, "{a:?} {a0:?}");
+    println!("PROBE gen: same-as chain, negated tolerate -> dislike, relation-word compound entity, question freeze past '?', WordNet verb, appositive region hop");
+}
