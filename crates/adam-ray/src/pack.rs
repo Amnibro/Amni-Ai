@@ -12,11 +12,11 @@ pub const MAXB: usize = 256;
 pub const TW: usize = 4096;
 pub const TOPIC_A: f32 = 0.99;
 #[derive(Clone)]
-pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize, pub mr: usize }
+pub struct Geo { pub base: usize, pub hops: usize, pub t: u32, pub qt: bool, pub salt: u32, pub ta: f32, pub tc: f32, pub copy: usize, pub mr: usize, pub mv: bool }
 pub struct Lex { pub lex: Vec<[u32; 4]>, pub trig: Vec<[f32; 2]> }
 pub struct Tables { pub l: usize, pub t: usize, pub rows: usize, pub dp: Vec<u16>, pub cells: Vec<[u32; 2]>, pub bias: Vec<f32>, pub geo: Geo, pub lx: Lex, pub cw: Vec<u16> }
 impl Geo {
-    pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0, mr: 0 } }
+    pub fn eng(t: usize, qt: bool) -> Geo { Geo { base: BASE, hops: HOPS, t: t as u32, qt, salt: 0, ta: TOPIC_A, tc: (1.0f64 - 0.99) as f32, copy: 0, mr: 0, mv: false } }
     pub fn sl(&self, u: u32, v: u32, l: usize) -> u32 { crate::cpu::hm(u, v, (l as u32 + 1).wrapping_add(self.salt.wrapping_mul(1000003))) % self.t }
     pub fn c0(&self) -> usize { self.base + 3 * self.qt as usize }
     pub fn hb(&self) -> usize { self.c0() + self.copy }
@@ -39,6 +39,7 @@ pub fn load_syn(path: &str, n: usize) -> Vec<Vec<u32>> {
     ts
 }
 pub fn copies(l: usize) -> (usize, usize) { match l.wrapping_sub(BASE + 3 + HOPS) { c @ (4 | 9 | 13 | 16) => (c, 0), c @ 14..=15 => (13, c - 13), c @ 17..=18 => (16, c - 16), _ => (0, 0) } }
+pub fn maskv(sid: &str) -> bool { std::fs::read_to_string(format!("{}.json", sid.trim_end_matches("_sid.npy"))).is_ok_and(|s| s.contains("\"maskv\": 1")) }
 pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
     let raw = path.ends_with("_sid.npy");
     let (l, t, rows, dp, cells, bias, cw) = if raw {
@@ -77,9 +78,9 @@ pub fn load(path: &str, syn: &str, wcnt: &str) -> io::Result<Tables> {
         (l, t, dd.n() / V, dp, cells, if Path::new(&bp).exists() { Npz::open(&bp)?.get("")?.f32s() } else { vec![0.0; V] }, vec![])
     };
     let (cp, mr) = if raw { copies(l) } else { (0, 0) };
-    let qt = l == BASE + HOPS + 3 || cp > 0;
+    let (qt, mv) = (l == BASE + HOPS + 3 || cp > 0, cp >= 16 && maskv(path));
     let g = Geo::eng(t, qt);
-    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, mr, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw })
+    Ok(Tables { l, t, rows, dp, cells, bias, geo: Geo { copy: cp, mr, mv, tc: if cp > 0 { 1.0 - TOPIC_A } else { g.tc }, ..g }, lx: lexicon(syn, qt.then_some(wcnt)), cw })
 }
 pub fn lexicon(syn: &str, wcnt: Option<&str>) -> Lex {
     let (sy, wc) = (load_syn(syn, 2), wcnt.map_or_else(|| vec![0; WM as usize + 1], |w| load_syn(w, 1).remove(0)));
