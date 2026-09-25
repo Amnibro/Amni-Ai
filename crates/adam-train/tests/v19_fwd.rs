@@ -10,7 +10,7 @@ fn v19_forward() {
     let home = var("AMNI_HOME").unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/../..").to_string());
     let texts: Vec<Vec<u8>> = var("ADAM_V19_TEXTS").map_or_else(|_| TEXTS.iter().map(|t| t.to_vec()).collect(), |f| std::fs::read(f).unwrap().split(|&c| c == 0).map(<[u8]>::to_vec).collect());
     let sh = Npz::open(&pk).unwrap().get("").unwrap().shape.clone();
-    let (syn, l2, (cp, mr)) = (format!("{home}/data/big2/synsets.txt"), sh[1].trailing_zeros().to_string(), copies(sh[0]));
+    let (syn, l2, (cp, mr)) = (format!("{home}/data/{}/synsets.txt", var("ADAM_V19_LEX").unwrap_or_else(|_| "big2".into())), sh[1].trailing_zeros().to_string(), copies(sh[0]));
     let (cp, mr) = (cp.to_string(), mr.to_string());
     let c = Cfg::with(&[("VER", "19"), ("COPY", &cp), ("MR", &mr), ("LEVELS", "21"), ("HOPS", "4"), ("QT", "1"), ("TERN", "1"), ("TERN_SCOPE", "cell"), ("QLEV", "5"), ("LOG2_ENTRIES", &l2), ("BS", "1"), ("CTX", "8192"), ("ARCH", "cpu"), ("PAGES", &pk), ("AMNI_HOME", &home), ("SYNSETS", &syn)]);
     let t0 = Instant::now();
@@ -26,7 +26,7 @@ fn v19_forward() {
     if var("ADAM_RAY_ARCHS").map_or(true, |a| a.contains("vulkan")) { if let Ok(mut gt) = Gpu::new(&c) { load_pages(&c, &mut gt).unwrap(); let (gl, cl): (Vec<Vec<f32>>, Vec<Vec<f32>>) = texts.iter().zip(&tr).map(|(t, r)| (gt.logits(t), r[(t.len() - 1) * 256..].to_vec())).unzip(); let (w, _) = row("adam-train gpu vs cpu (last byte)", &gl, &cl); ok &= w < 1e-4; } }
     for arch in var("ADAM_RAY_ARCHS").unwrap_or_else(|_| "cpu,vulkan".into()).split(',') {
         let t1 = Instant::now();
-        let mut e = RayField::new(Some(pk.clone()), Some(syn.clone()), None, None, Some(arch.into()), Some(home.clone()));
+        let mut e = RayField::new(Some(pk.clone()), Some(syn.clone()), None, Some(syn.replace("synsets.txt", "wordcounts.txt")), Some(arch.into()), Some(home.clone()));
         e.load().unwrap();
         let lt = t1.elapsed().as_secs_f64();
         let t2 = Instant::now();

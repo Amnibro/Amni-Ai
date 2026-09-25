@@ -11,6 +11,7 @@ var<push_constant> p: P;
 @group(0) @binding(8) var<storage, read> ex: array<u32>;
 const V19 = $V19;
 const EX = $EXu;
+const NG = $NGu;
 const MAXB = 256u;
 var<workgroup> pl: array<vec4<u32>, 32>;
 var<workgroup> tx: array<vec2<u32>, 32>;
@@ -59,8 +60,8 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) c
     }
     if (V19) {
         let o = (p.io + b) * EX + NS;
-        for (var k = 0u; k < 13u; k++) { if (ex[o + 2u * k] == c) { a += bitcast<f32>(ex[o + 2u * k + 1u]); } }
-        for (var i = 0u; i < MR; i++) { let e = ex[o + 26u + i]; if (e != 0xffffffffu) { let t = cl(MB + i, e); for (var s = 0u; s < 3u; s++) { if (((t.x >> (8u * s)) & 255u) == c) { a += MG * sw(t, s); } } } }
+        for (var k = 0u; k < NG; k++) { if (ex[o + 2u * k] == c) { a += bitcast<f32>(ex[o + 2u * k + 1u]); } }
+        for (var i = 0u; i < MR; i++) { let e = ex[o + 2u * NG + i]; if (e != 0xffffffffu) { let t = cl(MB + i, e); for (var s = 0u; s < 3u; s++) { if (((t.x >> (8u * s)) & 255u) == c) { a += MG * sw(t, s); } } } }
     }
     for (var h = 0u; h < 4u; h++) {
         lg[c] = a;

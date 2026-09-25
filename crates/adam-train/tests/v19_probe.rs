@@ -120,3 +120,52 @@ fn probe_mr() {
     assert!(w[w.len() - 1] == [MG; 2] && k / 4 % 3 == 1);
     println!("PROBE MR taps gated by answer and anchor, cand states known {k}");
 }
+#[test]
+fn probe_echo() {
+    let mut r = R::new(&[("VER", "19"), ("COPY", "16"), ("MR", "2"), ("QT", "1"), ("LEVELS", "21"), ("HOPS", "4"), ("LOG2_ENTRIES", "16"), ("BS", "1"), ("CTX", "768")]);
+    let (c0, hb) = (r.c.geo.c0(), r.c.geo.hb());
+    assert!(r.c.copy == 16 && hb == 40 && r.c.geo.mb() == 44 && r.c.lv == 46);
+    let ack: &[u8] = b"User: My brother works as a pilot.\nAdam: ";
+    let (cpb, idx) = r.run(ack);
+    let row = &cpb[ack.len() - 1];
+    assert!(row[13] == b'p' as i32 && row[14] < 0 && row[15] == b'b' as i32 && row[..13].iter().all(|&v| v < 0), "{row:?}");
+    assert_eq!(idx[ack.len() - 1][(c0 + 13) * 4], r.sl(hm(3, 0, 2 + (bh(b"Adam") & 4095) * 2 + 1), 0, c0 + 13));
+    assert_eq!(idx[ack.len() - 1][(c0 + 13) * 4 + 2], r.sl(hm(4, 0, 2), 0, c0 + 13));
+    let pil = [ack, b"Oh, a pil"].concat();
+    assert_eq!(r.run(&pil).0[pil.len() - 1][13], b'o' as i32);
+    let cor: &[u8] = b"User: My sister lives in Denver.\nAdam: Nice.\n\nUser: Actually, my sister moved to Austin.\nAdam: ";
+    let row = r.run(cor).0[cor.len() - 1].clone();
+    assert!(row[0] == b'D' as i32 && row[13] == b'A' as i32 && row[15] == b's' as i32, "{row:?}");
+    let q: &[u8] = b"User: My sister lives in Denver.\nAdam: Nice.\n\nUser: Where does my sister live?\nAdam: ";
+    let (cpb, idx) = r.run(q);
+    let row = &cpb[q.len() - 1];
+    assert!(row[0] == b'D' as i32 && row[13] < 0 && row[15] == b's' as i32 && idx[q.len() - 1][c0 * 4 + 2] == r.sl(hm(2, 1, 2), 0, c0), "{row:?}");
+    let inl: &[u8] = b"User: My sister-in-law lives in Denver.\n\nUser: Where does my sister-in-law live?\nAdam: Your sister-";
+    let row = r.run(inl).0[inl.len() - 1].clone();
+    assert!(row[15] == b'i' as i32 && row[0] == b'D' as i32, "{row:?}");
+    let lab: &[u8] = b"User: My lab partner drives a Rivian.\n\nUser: What does my lab partner drive?\nAdam: Your lab ";
+    let row = r.run(lab).0[lab.len() - 1].clone();
+    assert!(row[15] == b'p' as i32 && r.run(&lab[..lab.len() - 4]).0[lab.len() - 5][15] == b'l' as i32, "{row:?}");
+    let me: &[u8] = b"User: My name is Anthony.\nAdam: ";
+    let row = r.run(me).0[me.len() - 1].clone();
+    assert!(row[13] == b'A' as i32 && row[15] < 0, "{row:?}");
+    let pr: &[u8] = b"User: My brother works as a pilot.\nAdam: Nice.\n\nUser: He drives a Rivian.\nAdam: ";
+    let row = r.run(pr).0[pr.len() - 1].clone();
+    assert!(row[13] == b'R' as i32 && row[15] == b'b' as i32, "{row:?}");
+    let pq: &[u8] = b"User: My brother works as a pilot.\nAdam: Nice.\n\nUser: What does he drive?\nAdam: ";
+    assert_eq!(r.run(pq).0[pq.len() - 1][15], b'b' as i32);
+    let (st, qs) = ([ack, b"O"].concat(), [q, b"Y"].concat());
+    let mut w = adam_train::v19::W19::new(16);
+    let (g, lx) = (r.c.geo.clone(), adam_train::v19::Lx19::new());
+    st.iter().for_each(|&b| w.step(&g, &r.lex, &lx, b));
+    let (ks, pil) = (w.mstate(), [ack, b"Oh, a pilot"].concat());
+    let mut w2 = adam_train::v19::W19::new(16);
+    qs.iter().for_each(|&b| w2.step(&g, &r.lex, &lx, b));
+    let mut w3 = adam_train::v19::W19::new(16);
+    pil.iter().for_each(|&b| w3.step(&g, &r.lex, &lx, b));
+    let a3 = |w: &adam_train::v19::W19, ap: u32, v: u32| { let m = w.mstate() * 16 + if w.m.cand[0] >= 0 { w.m.rel[w.m.cand[0] as usize] } else { w.m.qrel }; r.sl(hm(m / 64, if v == 1 { 24 } else { ap }, 139), w.s[0], r.c.geo.mb()) };
+    assert!(ks >= 144 && w2.mstate() < 144 && w3.mtaps(&g)[0] == Some(a3(&w3, w3.q.ap.min(23) as u32, 1)), "{ks} {}", w2.mstate());
+    let vq = |t: &[u8]| { let mut w = adam_train::v19::W19::new(16); t.iter().for_each(|&b| w.step(&g, &r.lex, &lx, b)); w.q.vp };
+    assert!(w3.q.vp == 1 && vq(&[pil.as_slice(), b"! Nic"].concat()) == 6 && vq(&[ack, b"Oh, a pil"].concat()) == 0 && vq(ack) == 0);
+    println!("PROBE echo pilot/entity brother, correction ack Austin echo + old Denver direct, question entity sister, sister-in-law, lab partner, name echo");
+}
