@@ -34,7 +34,7 @@ def phase_mem(limit:int)->dict:
  sys.argv=[sys.argv[0],DEFAULT_PACK,"nightly"];os.environ.update({**MEM_ENV,"LEX":DEFAULT_LEX})
  import v19_rust_eval as R
  c3=R.rows(R.C3);d=R.rows(os.path.join(str(R.ev.EVAL),"recall.jsonl"),lambda r:"unknown" if r["answer"]=="UNKNOWN" else "known");th=R.rows(os.path.join(str(R.ev.EVAL),"twohop.jsonl"),lambda r:"twohop");cut=lambda x:x[:limit] if limit else x
- d2,v2=R.d2()
+ d2,v2=R.dx("D2")
  return {"chat3":R.suite(cut(c3),"chat3_hold"),"D":R.suite(cut(d)+cut(th),"D"),"D2":R.suite(cut(d2),"D2",v2),"pack":R.P,"engine":f"adam_ray {R.e.backend} L={R.e.L} copy={R.e.copy}","decode":{"dec":R.DEC,"maxb":R.MAXB,"lock":R.LOCK,"stop_sentence":R.SS,"rep":R.REP,"beam_w":R.BW,"veto":R.VETO,"ctx":R.CTX,"lex":DEFAULT_LEX}}
 def phase_bpb(limit:int)->dict:
  from amni.compute.ray_field import engine
