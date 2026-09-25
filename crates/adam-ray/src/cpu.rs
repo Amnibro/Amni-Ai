@@ -103,7 +103,7 @@ impl Cpu {
             let (tb, pa, by) = (&self.tb, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb]);
             let sink: Vec<Option<&mut [f32]>> = if w { out[o..o + nb * V].chunks_mut(V).map(Some).collect() } else { (0..nb).map(|_| None).collect() };
             match h.as_deref_mut() {
-                Some(h) => h.step(*cur, pa, by, sink, |d, g, cw, lg| if let Some(lg) = lg { logits(tb, &d.s, lg, &d.gv(g, cw), &d.mtaps(g)) }),
+                Some(h) => h.step(*cur, pa, by, sink, |d, g, cw, lg| if let Some(lg) = lg { logits(tb, &d.s, lg, &d.gv(g, cw, false), &d.mtaps(g)) }),
                 None => dst[..nb].par_iter_mut().zip(sink).enumerate().with_min_len(4).for_each(|(b, (d, lg))| { *d = update(&tb.lx, &tb.geo, &src[pa[b] as usize], by[b] as u32); if let Some(lg) = lg { logits(tb, d, lg, &[], &[]) } }),
             }
             o += if w { nb * V } else { 0 };

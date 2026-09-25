@@ -7,7 +7,8 @@ const ISINK: u32 = 3;
 const NT: usize = 48;
 const FM: u32 = 0b11_0011_1110;
 macro_rules! hc { ($($n:ident = $w:literal),*) => { $(const $n: u32 = bh($w);)* } }
-hc!(MY = b"my", OUR = b"our", HIS = b"his", HER = b"her", THEIR = b"their", ITS = b"its", I = b"i", ME = b"me", MYSELF = b"myself", MINE = b"mine", HE = b"he", SHE = b"she", THEY = b"they", HIM = b"him", THEM = b"them", IT = b"it", IS = b"is", AM = b"am", ARE = b"are", WOULD = b"would", HAVE = b"have", WILL = b"will", THE = b"the", AND = b"and", BUT = b"but", SO = b"so", WHILE = b"while", WHEREAS = b"whereas", SAME = b"same", SHARE = b"share", SHARES = b"shares", SHARED = b"shared", SHARING = b"sharing", AS = b"as", OLD = b"old", WITH = b"with", IF = b"if", THAT = b"that", THERE = b"there", HERE = b"here", WHAT = b"what", WHERE = b"where", WHO = b"who", WHEN = b"when", HOW = b"how", REMIND = b"remind", TELL = b"tell", LET = b"let", ASK = b"ask", GIVE = b"give", SHOW = b"show", IN = b"in", ON = b"on", AT = b"at", TO = b"to", OF = b"of", FROM = b"from", ABOUT = b"about", FOR = b"for", BY = b"by", INTO = b"into", ALLERGY = b"allergy", ALLERGIC = b"allergic", ALLERGIES = b"allergies", EPIPEN = b"epipen", HIVES = b"hives", THING = b"thing", ONE = b"one", HOME = b"home", DO = b"do", DOES = b"does", DID = b"did", DOING = b"doing", AGE = b"age", A = b"a", AN = b"an", SAYS = b"says", SAID = b"said", THINKS = b"thinks", RECKONS = b"reckons", TOLD = b"told", FALLS = b"falls", COMES = b"comes", LANDS = b"lands", AROUND = b"around", EVERY = b"every", BEEN = b"been", HAS = b"has", HAD = b"had", CITY = b"city", TOWN = b"town", VILLAGE = b"village", LOCATED = b"located", OVER = b"over", PART = b"part", SITUATED = b"situated", RIGHT = b"right", JUST = b"just", UP = b"up", DOWN = b"down", OUT = b"out", ACTUALLY = b"actually", ALSO = b"also", STATE = b"state", COUNTRY = b"country", REGION = b"region", PROVINCE = b"province", PREFECTURE = b"prefecture", COUNTY = b"county", WHICH = b"which", STUDY = b"study", STUDIED = b"studied", DEGREE = b"degree", SCHOOL = b"school", COLLEGE = b"college", UNIVERSITY = b"university", ENROLLED = b"enrolled", OTHER = b"other", BEST = b"best");
+hc!(MY = b"my", OUR = b"our", HIS = b"his", HER = b"her", THEIR = b"their", ITS = b"its", I = b"i", ME = b"me", MYSELF = b"myself", MINE = b"mine", HE = b"he", SHE = b"she", THEY = b"they", HIM = b"him", THEM = b"them", IT = b"it", IS = b"is", AM = b"am", ARE = b"are", WOULD = b"would", HAVE = b"have", WILL = b"will", THE = b"the", AND = b"and", BUT = b"but", SO = b"so", WHILE = b"while", WHEREAS = b"whereas", SAME = b"same", SHARE = b"share", SHARES = b"shares", SHARED = b"shared", SHARING = b"sharing", AS = b"as", OLD = b"old", WITH = b"with", IF = b"if", THAT = b"that", THERE = b"there", HERE = b"here", WHAT = b"what", WHERE = b"where", WHO = b"who", WHEN = b"when", HOW = b"how", REMIND = b"remind", TELL = b"tell", LET = b"let", ASK = b"ask", GIVE = b"give", SHOW = b"show", IN = b"in", ON = b"on", AT = b"at", TO = b"to", OF = b"of", FROM = b"from", ABOUT = b"about", FOR = b"for", BY = b"by", INTO = b"into", ALLERGY = b"allergy", ALLERGIC = b"allergic", ALLERGIES = b"allergies", EPIPEN = b"epipen", HIVES = b"hives", THING = b"thing", ONE = b"one", HOME = b"home", DO = b"do", DOES = b"does", DID = b"did", DOING = b"doing", AGE = b"age", A = b"a", AN = b"an", SAYS = b"says", SAID = b"said", THINKS = b"thinks", RECKONS = b"reckons", TOLD = b"told", FALLS = b"falls", COMES = b"comes", LANDS = b"lands", AROUND = b"around", EVERY = b"every", BEEN = b"been", HAS = b"has", HAD = b"had", CITY = b"city", TOWN = b"town", VILLAGE = b"village", LOCATED = b"located", OVER = b"over", PART = b"part", SITUATED = b"situated", RIGHT = b"right", JUST = b"just", UP = b"up", DOWN = b"down", OUT = b"out", ACTUALLY = b"actually", ALSO = b"also", STATE = b"state", COUNTRY = b"country", REGION = b"region", PROVINCE = b"province", PREFECTURE = b"prefecture", COUNTY = b"county", WHICH = b"which", STUDY = b"study", STUDIED = b"studied", DEGREE = b"degree", SCHOOL = b"school", COLLEGE = b"college", UNIVERSITY = b"university", ENROLLED = b"enrolled", OTHER = b"other", BEST = b"best", THAN = b"than", WORK = b"work");
+const BUYW: [u32; 5] = [bh(b"bought"), bh(b"buy"), bh(b"buys"), bh(b"purchased"), bh(b"purchase")];
 const MON: [u32; 12] = [bh(b"january"), bh(b"february"), bh(b"march"), bh(b"april"), bh(b"may"), bh(b"june"), bh(b"july"), bh(b"august"), bh(b"september"), bh(b"october"), bh(b"november"), bh(b"december")];
 const FAV: [u32; 7] = [bh(b"favourite"), bh(b"favorite"), bh(b"fave"), bh(b"fav"), bh(b"go-to"), bh(b"all-time"), bh(b"top")];
 const ADV: [u32; 22] = [bh(b"really"), bh(b"just"), bh(b"also"), bh(b"always"), bh(b"still"), bh(b"truly"), bh(b"totally"), bh(b"absolutely"), bh(b"seriously"), bh(b"pretty"), bh(b"super"), bh(b"so"), bh(b"very"), bh(b"actually"), bh(b"even"), bh(b"currently"), bh(b"usually"), bh(b"sometimes"), bh(b"often"), bh(b"mostly"), bh(b"definitely"), bh(b"honestly")];
@@ -81,8 +82,8 @@ impl G2 {
         let capx: Vec<bool> = t.iter().map(|z| z.cap || (!z.bd && z.l > 0 && z.r[0].is_ascii_digit())).collect();
         let wd = |i: usize| i < n && !t[i].bd;
         let mut cl = vec![0usize; n];
-        let mut c = 0;
-        for i in 0..n { if t[i].bd || ([AND, BUT, SO, WHILE, WHEREAS].contains(&hs[i]) && i + 1 < n && [MY, OUR, I, HE, SHE, THEY, HIS, HER, THEIR].contains(&hs[i + 1])) { c += 1; } cl[i] = c; }
+        let (mut c, mut cs) = (0, 0);
+        for i in 0..n { if t[i].bd || ([AND, BUT, SO, WHILE, WHEREAS].contains(&hs[i]) && i + 1 < n && [MY, OUR, I, HE, SHE, THEY, HIS, HER, THEIR].contains(&hs[i + 1]) && !(hs[i] == AND && (i + 1..n).take_while(|&z| !t[z].bd).any(|z| hs[z] == SAME) && (cs..i).all(|z| !x.fb(hs[z], 5) && !x.fb(hs[z], 6) && !x.verb.contains(&hs[z]) && !x.cf.contains(&hs[z])))) { c += 1; cs = i; } cl[i] = c; }
         let neg: Vec<bool> = t.iter().map(|z| z.neg || x.fb(z.h, 10)).collect();
         let (mut ifr, mut hyp) = (vec![false; n], vec![false; n]);
         let mut inif = false;
@@ -97,6 +98,11 @@ impl G2 {
             }
             (fav && (k >= n || !wd(k) || x.fb(hs[k], 5) || x.stop.contains(&hs[k]))).then_some((k, 0, fav))
         };
+        let favx = |j: usize| -> Option<(usize, u32, bool)> {
+            let (mut k, mut fav) = (j, false);
+            while k < n && wd(k) && x.md.contains(&hs[k]) && k - j < 3 { fav |= FAV.contains(&hs[k]); k += 1; }
+            (fav && k < n && wd(k) && !cap[k] && !num[k] && !t[k].pos && x.f(hs[k]) == 0 && !x.stop.contains(&hs[k]) && !x.md.contains(&hs[k]) && !x.head.contains(&hs[k]) && (k + 1 >= n || !wd(k + 1) || x.fb(hs[k + 1], 5) || x.stop.contains(&hs[k + 1]))).then_some((k + 1, 16, true))
+        };
         let npend = |j: usize, inv: bool| -> usize {
             let (mut k, mut hd) = (j, false);
             while k < n && k - j < 4 && wd(k) {
@@ -105,7 +111,7 @@ impl G2 {
                 if k == j && (x.verb.contains(&h) || x.cf.contains(&h)) && !t[k].pos && !(k + 1 < n && wd(k + 1) && x.f(hs[k + 1]) == 0 && !x.stop.contains(&hs[k + 1]) && !cap[k + 1]) { break; }
                 if k > j {
                     let isv = x.verb.contains(&h) || x.cf.contains(&h) || (!x.head.contains(&h) && ((r.ends_with(b"s") && !r.ends_with(b"ss")) || r.ends_with(b"ed") || r.ends_with(b"ing"))) || (inv && x.vany.contains(&h) && (k + 1 >= n || !wd(k + 1) || ((x.f(hs[k + 1]) != 0 || x.stop.contains(&hs[k + 1])) && !x.fb(hs[k + 1], 6) && !x.fb(hs[k + 1], 5))));
-                    if inv && hd && x.vany.contains(&h) && !x.head.contains(&h) { break; }
+                    if (inv && hd && x.vany.contains(&h) && (!x.head.contains(&h) || x.cf.contains(&h))) || x.ty.get(&h).is_some_and(|y| y.0 == 10) { break; }
                     if isv && !(k + 1 < n && wd(k + 1) && x.head.contains(&hs[k + 1]) && x.f(hs[k + 1]) == 0 && !cap[k + 1] && !t[k].pos && !(inv && (k + 2 >= n || !wd(k + 2)))) { break; }
                 }
                 hd = hd || x.head.contains(&h);
@@ -121,6 +127,7 @@ impl G2 {
             ks.last().copied().unwrap_or(ante)
         };
         let ocue = |i: usize| i > 0 && x.cue.get(&hs[i - 1]).is_some_and(|v| v.iter().any(|y| y.1 & 1 != 0));
+        let txt = |a: usize, b: usize| -> Vb { let mut o: Vec<u8> = Vec::new(); for z in a..b { if z > a { o.push(32); } o.extend_from_slice(t[z].raw()); } vb(&o) };
         let mut i = 0;
         while i < n {
             let h = hs[i];
@@ -130,7 +137,7 @@ impl G2 {
                 let own = if h == MY || h == OUR { SELFK } else { resolve(&men, i, 1) };
                 let (mut j, mut key, inv, dit) = (i + 1, None::<u32>, i > 0 && x.fb(hs[i - 1], 6), i > 0 && (DIT.contains(&hs[i - 1]) || DIT2.contains(&hs[i - 1])));
                 while j < n {
-                    let r = rnmatch(j).filter(|r| !(r.1 == 9 && t[r.0 - 1].pos));
+                    let r = rnmatch(j).filter(|r| !(r.1 == 9 && t[r.0 - 1].pos)).or_else(|| favx(j));
                     if let Some(r) = r {
                         rnh.push(Rh { j0: j, j1: r.0, rel: r.1, own: key.unwrap_or(own), fav: r.2, st: i });
                         (j..r.0).for_each(|z| cov[z] = 2);
@@ -167,6 +174,11 @@ impl G2 {
                 if e != 0 { men.push(Mn { a: i, b: i + 1, k: e, kd: if h == IT { 4 } else { 2 } }); cov[i] = 1; }
                 i += 1;
                 continue;
+            }
+            if cap[i] && cov[i] == 0 && x.f(h) == 0 && (i == 0 || !wd(i - 1) || x.fb(hs[i - 1], 6) || x.fb(hs[i - 1], 8) || x.fb(hs[i - 1], 9)) {
+                let mut k = i;
+                while k < n && wd(k) && cap[k] && k - i < 3 { k += 1; }
+                if let Some((b, e)) = (i + 1..=k).rev().find_map(|b| mem.findval(vs(&txt(i, b))).filter(|z| z.1 == 6 && z.0 != 0).map(|z| (b, z.0))) { men.push(Mn { a: i, b, k: e, kd: 0 }); (i..b).for_each(|z| cov[z] = 1); i = b; continue; }
             }
             i += 1;
         }
@@ -245,8 +257,8 @@ impl G2 {
             if t[b - 1].raw().ends_with(b"ing") && !cap[a] && t[b - 1].l >= 5 { return 7; }
             x.ty.get(&hs[a]).filter(|y| !(y.1 & 1 != 0 && !cap[a])).map_or(0, |y| y.0)
         };
-        let txt = |a: usize, b: usize| -> Vb { let mut o: Vec<u8> = Vec::new(); for z in a..b { if z > a { o.push(32); } o.extend_from_slice(t[z].raw()); } vb(&o) };
-        let near = |men: &Vec<Mn>, i: usize, j: usize| -> u32 {
+        let okey = |j0: usize, j1: usize, own: u32| -> u32 { let b = pk(&(j0..j1).filter(|&z| !x.md.contains(&hs[z])).map(|z| hs[z]).collect::<Vec<_>>()); if own == 0 || own == SELFK { b } else { b.wrapping_mul(K) ^ own } };
+        let near =|men: &Vec<Mn>, i: usize, j: usize| -> u32 {
             let ms: Vec<&Mn> = men.iter().filter(|m| !(m.a <= i && i < m.b) && m.kd != 3).collect();
             ms.iter().rev().find(|m| m.b <= i && cl[m.a] == cl[i]).or_else(|| ms.iter().find(|m| m.a >= j && cl[m.a] == cl[i])).or_else(|| ms.iter().rev().find(|m| m.b <= i)).map_or(0, |m| m.k)
         };
@@ -254,14 +266,14 @@ impl G2 {
             let mut q = j;
             if q < n && cov[q] == 3 { q += 1; }
             let mut m = men.iter().find(|m| m.a == q && m.kd != 3).copied();
-            if m.is_none() { if let Some(z) = rnh.iter().find(|z| z.j0 == q && z.rel == 9) { return (pk(&(z.j0..z.j1).filter(|&y| !x.md.contains(&hs[y])).map(|y| hs[y]).collect::<Vec<_>>()), z.j1); } }
+            if m.is_none() { if let Some(z) = rnh.iter().find(|z| z.j0 == q && z.rel == 9) { return (okey(z.j0, z.j1, z.own), z.j1); } }
             if m.is_none() { m = men.iter().find(|m| m.a == q).copied(); while let Some(mm) = m { if mm.kd != 3 { break; } match men.iter().find(|z| z.a == mm.b) { Some(&m2) => m = Some(m2), None => break } } }
             m.map_or((0, q), |m| (m.k, m.b))
         };
         let (mut used, mut out) = (vec![false; n], Vec::<(u32, u32, Vb, u32)>::new());
         let put = |used: &mut Vec<bool>, out: &mut Vec<(u32, u32, Vb, u32)>, e: u32, r: u32, a: usize, b: usize, vt: u32| {
             if e == 0 || !(2..=15).contains(&r) { return; }
-            if ([4, 6, 13].contains(&r) && !capx[a]) || (r == 14 && !num[a]) || (r == 15 && !(MON.contains(&hs[a]) || cap[a])) || (r == 9 && !(cap[a] || vt == 9)) { return; }
+            if ([4, 6, 13].contains(&r) && !capx[a]) || (r == 14 && !num[a]) || (r == 15 && !(MON.contains(&hs[a]) || cap[a] || (num[a] && t[a].l == 4))) || (r == 9 && !(cap[a] || vt == 9)) { return; }
             (a..b).for_each(|z| used[z] = true);
             out.push((e, r, txt(a, b), vt));
         };
@@ -278,6 +290,16 @@ impl G2 {
         }
         self.pend = None;
         if !nq {
+            for i in 0..n {
+                if !(wd(i) && BUYW.contains(&hs[i]) && !ifr[i] && !hyp[i] && !(0..n).any(|z| neg[z] && cl[z] == cl[i])) { continue; }
+                let mut k = i + 1;
+                while k < n && wd(k) && [THE, A, AN, MY].contains(&hs[k]) { k += 1; }
+                let k0 = k;
+                while k < n && wd(k) && !cap[k] && !num[k] && x.f(hs[k]) == 0 && !x.stop.contains(&hs[k]) && k - k0 < 4 { k += 1; }
+                if !(k > k0 && k + 1 < n && hs[k] == IN && wd(k + 1) && cap[k + 1]) { continue; }
+                let e = men.iter().find(|m| m.b == k && m.kd != 3).map(|m| m.k).or_else(|| rnh.iter().find(|z| z.j1 == k && z.rel == 9).map(|z| okey(z.j0, z.j1, z.own))).unwrap_or(hs[k - 1]);
+                if let Some((a, b)) = vspo(k + 1, 4) { put(&mut used, &mut out, e, 4, a, b, vtype(a, b)); }
+            }
             let fr_all: Vec<Rh> = rnh.iter().copied().chain(free.iter().map(|&(a, b, r)| Rh { j0: a, j1: b, rel: r, own: 0, fav: false, st: a })).collect();
             for rh in fr_all {
                 let Rh { j0, j1, rel, own, fav, st } = rh;
@@ -291,17 +313,19 @@ impl G2 {
                 let mut q = st as isize - 1;
                 while q >= 0 && wd(q as usize) && [THE, BEST, A, AN].contains(&hs[q as usize]) { q -= 1; }
                 if sp.is_none() && q >= 0 && x.fb(hs[q as usize], 5) { sp = vback(q as usize, &used); }
+                if sp.is_none() && rel == 15 && sk > 0 && q >= 0 && [HAS, HAVE, HAD].contains(&hs[q as usize]) { sp = vspo(k, rel); }
                 if sp.is_some() && own == 0 && men.is_empty() && st >= 2 && hs[st - 1] == BEST { own = SELFK; }
-                if sp.is_none() && rel != 0 && st >= 2 && (hs[st - 2] == IT || hs[st - 2] == THAT) && x.fb(hs[st - 1], 5) && own != 0 {
+                if sp.is_none() && rel != 0 && rel != 16 && st >= 2 && (hs[st - 2] == IT || hs[st - 2] == THAT) && x.fb(hs[st - 1], 5) && own != 0 {
                     if let Some(tv) = self.tf.iter().rev().find(|z| z.0 == own) { if tv.1 != rel { out.push((own, rel, tv.2, tv.3)); } }
                     continue;
                 }
                 let Some((a, b)) = sp else { continue };
-                if (a..b).any(|z| used[z]) { continue; }
+                if (a..b).any(|z| used[z]) || (rel == 9 && cst.iter().any(|&c| c >= j1 && c <= a && cl[c] == cl[j0])) { continue; }
                 let vt = vtype(a, b);
                 let mut r2 = if rel != 0 { rel } else { vt };
                 if r2 == 0 && fav { r2 = mem.lrel(if own != 0 { own } else { near(&men, j0, j1) }, &like3); }
-                if rel == 9 && (vt == 10 || vt == 14) { own = pk(&(j0..j1).filter(|&z| !x.md.contains(&hs[z])).map(|z| hs[z]).collect::<Vec<_>>()); r2 = vt; }
+                if rel == 9 && (vt == 10 || vt == 14) { own = okey(j0, j1, own); r2 = vt; }
+                if rel == 16 { own = okey(j0, j1, own); r2 = 7; }
                 if ifr[a] || hyp[j0] || (0..n).any(|z| neg[z] && cl[z] == cl[j0]) { continue; }
                 let e = if own != 0 { own } else { near(&men, j0, j1) };
                 put(&mut used, &mut out, e, r2, a, b, vt);
@@ -344,15 +368,17 @@ impl G2 {
                 let vt = vtype(a, b);
                 if f & 2 != 0 && !(vt == rel || (rel == 14 && num[a]) || (rel == 15 && MON.contains(&hs[a])) || (rel == 12 && (vt == 12 || vt == 13)) || (rel == 9 && cap[a] && a > 0 && (hs[a - 1] == A || hs[a - 1] == AN) && !MON.contains(&hs[a]))) { continue; }
                 if f & 2 != 0 && rel == 12 && vt == 13 { rel = 13; }
-                if f & 8 != 0 { let fr: Vec<u32> = free.iter().map(|z| z.2).filter(|z| *z == 10 || *z == 11).collect(); rel = if let Some(&z) = fr.first() { z } else if vt == 10 { 10 } else if vt == 11 { 11 } else if vt == 7 { 7 } else { rel }; }
+                if f & 8 != 0 { let fr: Vec<u32> = free.iter().filter(|z| !(vt == 7 && z.0 > 0 && hs[z.0 - 1] == THAN)).map(|z| z.2).filter(|z| *z == 10 || *z == 11).collect(); rel = if let Some(&z) = fr.first() { z } else if vt == 10 { 10 } else if vt == 11 { 11 } else if vt == 7 { 7 } else { rel }; }
                 if f & 32 != 0 && alg { rel = 8; }
                 if rel == 4 && vt == 15 { continue; }
                 if rel == 15 && vt != 15 && vt != 0 && cap[a] { rel = 4; }
                 if rel == 6 && b < n && wd(b) && hs[b] == HOME { rel = 4; }
                 if ng && f & (4 | 128) == 0 { if like3.contains(&rel) { rel = 2; } else { continue; } }
                 if (ifr[a] && ifr[i0]) || hyp[i0] { continue; }
-                let e = if e0 != 0 { e0 } else { near(&men, i0, i1) };
+                let ob = if e0 == 0 && (rel == 6 || rel == 10) { rnh.iter().filter(|z| z.rel == 9 && z.j1 <= i0 && cl[z.j0] == cl[i0] && !men.iter().any(|m| cl[m.a] == cl[i0] && m.a < i0 && m.b != z.j0 && m.kd != 3)).last().map(|z| okey(z.j0, z.j1, z.own)) } else { None };
+                let e = ob.unwrap_or(if e0 != 0 { e0 } else { near(&men, i0, i1) });
                 put(&mut used, &mut out, e, rel, a, b, vt);
+                if rel == 5 && e != 0 && used[a] && b + 1 < n && wd(b) && hs[b] == IN && wd(b + 1) && cap[b + 1] { if let Some((a2, b2)) = vspo(b + 1, 4) { put(&mut used, &mut out, e.wrapping_mul(K) ^ WORK, 4, a2, b2, vtype(a2, b2)); } }
             }
             let mut cls: Vec<usize> = cl.clone();
             cls.dedup();
@@ -415,9 +441,9 @@ impl G2 {
                 let own: Vec<u32> = rnh.iter().filter(|z| cl[z.j0] == c0 && z.own != 0).map(|z| z.own).collect();
                 if src.is_empty() && !own.is_empty() && !tg.is_empty() && *own.last().unwrap() != tg[0] { src = vec![*own.last().unwrap()]; }
                 if tg.is_empty() && !own.is_empty() && !src.is_empty() { tg = vec![own[0]]; }
-                if tg.is_empty() || src.is_empty() || rel == 0 { continue; }
-                let mut pairs = vec![(tg[0], *src.last().unwrap())];
-                if tg.len() >= 2 && tg[1] != tg[0] { pairs = vec![(tg[0], tg[1]), (tg[1], tg[0])]; } else if [SHARE, SHARES, SHARED, SHARING].contains(&hs[sm]) && hs.contains(&WITH) { pairs.push((*src.last().unwrap(), tg[0])); }
+                let two = tg.len() >= 2 && tg[1] != tg[0];
+                if tg.is_empty() || (src.is_empty() && !two) || rel == 0 { continue; }
+                let pairs = if two { vec![(tg[0], tg[1]), (tg[1], tg[0])] } else if [SHARE, SHARES, SHARED, SHARING].contains(&hs[sm]) && hs.contains(&WITH) { vec![(tg[0], *src.last().unwrap()), (*src.last().unwrap(), tg[0])] } else { vec![(tg[0], *src.last().unwrap())] };
                 for (ta, sa) in pairs {
                     if ta == sa { continue; }
                     self.links.push((ta, rel, sa));
@@ -431,7 +457,9 @@ impl G2 {
             owners.sort_by_key(|z| z.0);
             let mut e = owners.iter().rev().find(|z| z.1 != SELFK).map_or(if !owners.is_empty() || mself { SELFK } else { 0 }, |z| z.1);
             let mut rnq: Vec<Rh> = rnh.clone();
-            if let Some(v9) = rnh.iter().rev().find(|z| z.rel == 9) { if cues.iter().any(|c| c.2.first().is_some_and(|y| y.0 != 9 && y.1 & 2 == 0)) || free.iter().any(|z| z.2 != 9) { e = pk(&(v9.j0..v9.j1).filter(|&z| !x.md.contains(&hs[z])).map(|z| hs[z]).collect::<Vec<_>>()); rnq.retain(|z| z.rel != 9); } }
+            if let Some(v9) = rnh.iter().rev().find(|z| z.rel == 9) { if cues.iter().any(|c| c.2.first().is_some_and(|y| y.0 != 9 && y.1 & 2 == 0)) || free.iter().any(|z| z.2 != 9) { e = okey(v9.j0, v9.j1, v9.own); rnq.retain(|z| z.rel != 9); } }
+            let fx = rnh.iter().rev().find(|z| z.rel == 16).copied();
+            if let Some(v) = fx { e = okey(v.j0, v.j1, v.own); rnq.retain(|z| z.rel != 16); }
             let r1: Vec<u32> = rnq.iter().filter(|z| z.own == e && z.rel != 0).map(|z| z.rel).collect();
             let ng = neg.iter().any(|&z| z);
             let ep = owners.iter().filter(|z| z.1 == e).map(|z| z.0 as isize).max().unwrap_or(-1);
@@ -443,7 +471,7 @@ impl G2 {
                 let rows = if a.is_empty() { c.2.iter().copied().filter(|y| y.1 & 2 == 0 && y.1 & (4 | 128) == 0).collect() } else { a };
                 if let Some(&(r, f)) = rows.first() {
                     let fr: Vec<u32> = free.iter().map(|z| z.2).filter(|z| *z == 10 || *z == 11).collect();
-                    let r = if f & 8 != 0 && !fr.is_empty() && (r == 7 || r == 11) { fr[0] } else { r };
+                    let r = if f & 8 != 0 && !fr.is_empty() && (r == 7 || r == 11) { fr[0] } else if f & 8 != 0 && free.is_empty() && r == 7 { match mem.lrel(e, &like3) { 0 => r, z => z } } else { r };
                     let r = if ng && (r == 7 || r == 11) && f & (4 | 128) == 0 { 2 } else { r };
                     cr.push(if f & 32 != 0 && (alg || (mem.latest(e, 8).is_some() && mem.latest(e, 2).is_none())) { 8 } else { r });
                 }
@@ -453,8 +481,11 @@ impl G2 {
             let mut r4 = if wh.contains(&WHERE) { 4 } else if wh.contains(&WHEN) { 15 } else if (wh.contains(&HOW) && hs.contains(&OLD)) || hs.contains(&AGE) { 14 } else if wh.contains(&WHO) { 6 } else { 0 };
             if r4 == 0 && r1.is_empty() && cr.is_empty() && fr.is_empty() && hs[n.saturating_sub(2)..].iter().any(|h| [DO, DOES, DID, DOING].contains(h)) && wh.contains(&WHAT) { r4 = 5; }
             let mut rel = r1.last().copied().or(cr.first().copied()).or(fr.first().copied()).unwrap_or(r4);
-            if wh.contains(&WHERE) && [12, 0, 13].contains(&rel) { rel = if rel == 12 || rel == 13 || hs.iter().any(|h| [STUDY, STUDIED, DEGREE, SCHOOL, COLLEGE, UNIVERSITY, ENROLLED].contains(h)) { 13 } else { 4 }; }
+            if rel == 5 && e != 0 && fr.contains(&4) { (e, rel) = (e.wrapping_mul(K) ^ WORK, 4); }
+            if wh.contains(&WHERE) && [12, 0, 13, 15].contains(&rel) { rel = if rel == 12 || rel == 13 || hs.iter().any(|h| [STUDY, STUDIED, DEGREE, SCHOOL, COLLEGE, UNIVERSITY, ENROLLED].contains(h)) { 13 } else { 4 }; }
             if let Some(&z) = r1.last() { if e != 0 { self.pend = Some((e, z)); } }
+            if fx.is_some() && rel == 0 { rel = 7; }
+            if wh.contains(&WHERE) && rel == 9 { if let Some(v9) = rnh.iter().rev().find(|z| z.rel == 9) { (e, rel) = (okey(v9.j0, v9.j1, v9.own), 4); } }
             (self.qe, self.qr) = (e, rel);
         }
         let lp: Vec<usize> = (1..n).filter(|&z| capx[z] && cov[z] == 0 && wd(z - 1) && [IN, TO, AT, FROM].contains(&hs[z - 1])).collect();

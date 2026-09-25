@@ -646,7 +646,7 @@ impl W19 {
         let key = if dcl { [(hm(9001, ap.min(23), 147), 0), (hm(9002, ab, 149), hm(s[0] | s[1] << 8 | s[2] << 16, s[3], 143))] } else { [(hm(k / 64, if m.xe && m.vend(self.q.cwl) > 0 { 24 } else { ap.min(23) }, 139), s[0]), if m.xe && self.q.vp > 0 { let d = self.q.vp - 1; (hm(k, 8 + d.min(15) as u32, 141), hm((0..4).filter(|&i| i < d).fold(0, |h, i| h | s[i as usize] << (8 * i)), d.min(4) as u32, 143)) } else { (hm(k, ab, 141), hm(s[0] | s[1] << 8 | s[2] << 16, s[3], 143)) }] };
         std::array::from_fn(|i| (g.copy >= 13 && self.q.anc && self.q.mq == 1 && i < g.mr).then(|| g.sl(key[i].0, key[i].1, g.mb() + i)))
     }
-    pub fn gv(&self, g: &Geo, cw: &[u16]) -> [(i32, f32); NG] { let mut o = [(-1, 0f32); NG]; self.gates(g, |k, b, e, n| o[k] = (b, if b >= 0 { CG * e[..n].iter().fold(0f32, |a, &x| a + f16::from_bits(cw[k * g.t as usize + x as usize]).to_f32()) } else { 0.0 })); o }
+    pub fn gv(&self, g: &Geo, cw: &[u16], all: bool) -> [(i32, f32); NG] { let mut o = [(-1, 0f32); NG]; self.gates(g, |k, b, e, n| o[k] = (b, if b >= 0 || all { CG * e[..n].iter().fold(0f32, |a, &x| a + f16::from_bits(cw[k * g.t as usize + x as usize]).to_f32()) } else { 0.0 })); o }
     pub fn cv(&self, k: usize) -> (Vec<u8>, usize) { let (m, q) = (&self.m, &self.q); if k != 12 { let (v, ln) = m.cval(k).unwrap_or((&m.esb, 0)); (v[..ln.clamp(0, 24) as usize].to_vec(), (m.woff[k] + q.cwl).max(0) as usize) } else { let s = m.vs(m.wm_find(q.ap4), 0, q.qclk).max(0) as usize; (m.wmb[s][0][..m.wml[s][0].clamp(0, 16) as usize].to_vec(), q.cwl.max(0) as usize) } }
 }
 pub struct Host { pub g: Geo, pub lex: Lex, pub lx: Lx19, pub cw: Vec<u16>, pub w: Vec<W19> }

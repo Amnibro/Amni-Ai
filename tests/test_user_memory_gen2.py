@@ -14,6 +14,18 @@ def test_gen2_pending_same_as_link():
     p=U._P(lt=True,gn=True,g2=True);p.turn(b"My tortoise shares a name with my gecko.");p.turn(b"My gecko is called Biscuit.");p.turn(b"What do we call my tortoise?");assert [f[2] for f in p.facts if f[0]==p.qent and f[1]==6]==[b"Biscuit"]
 def test_gen2_region_hop_and_names():
     p=U._P(lt=True,gn=True,g2=True);f=p.turn(b"My lab partner lives over in Kalamazoo, a town in Michigan.");assert [(x[1],x[2]) for x in f]==[(4,b"Kalamazoo"),(3,b"Michigan")] and p.names[f[0][0]]=="lab partner"
+def test_gen2_f13_rules():
+    def qa(*ts):
+        p=U._P(lt=True,gn=True,g2=True)
+        for t in ts:p.turn(t.encode())
+        return [f[2].decode() for f in p.facts if f[0]==p.qent and f[1]==p.qrel]
+    assert qa("My sister was born in 1993.","What is my sister's birth year?")==["1993"] and qa("My son was born in Denver.","Where was my son born?")==["Denver"]
+    assert qa("My car is called Bolt.","What is my car called?")==["Bolt"] and qa("My sister's car is called Daisy.","My car is called Bolt.","What is my sister's car called?")==["Daisy"] and qa("My truck is called Big Red.","What is my truck called?")==["Big Red"]
+    assert qa("My friend likes tea.","What does my friend like?")==["tea"] and qa("I like sushi.","What hobby do I like?")==[]
+    assert qa("My parrot is called Kiwi.","Kiwi only eats seeds.","What does my parrot eat?")==["seeds"] and qa("I bought the coral bag in Miami.","Where did I buy my bag?")==["Miami"]
+    assert qa("My favourite drink is iced tea.","What's my favorite drink?")==["iced tea"] and qa("My brother has a birthday in May.","When is my brother's birthday?")==["May"]
+    assert qa("I work as a plumber in Chicago.","In which state do I work as a plumber?")==["Chicago"] and qa("My uncle is a pilot.","What does my uncle do all day?")==["pilot"]
+    assert qa("My coworker's sister and my neighbour can't stand the same thing.","My neighbour hates gossip.","What can't my coworker's sister stand?")==["gossip"]
 def test_gen2_flag_follows_pack(monkeypatch):
     monkeypatch.setenv("AMNI_UMEM_G2","0");assert not U._g2();monkeypatch.setenv("AMNI_UMEM_G2","1");assert U._g2()
 def test_gen2_migrates_old_entity_keys(monkeypatch):

@@ -10,7 +10,7 @@ fn main() {
         let (m, s, st) = (&w.m, w.s, |b: &[u8]| String::from_utf8_lossy(b).into_owned());
         (0..64).filter(|&i| m.stamp[i] > 0).for_each(|i| println!("ring {i:2} ent {:10} rel {:2} stamp {:3} val {:?}", m.ent[i], m.rel[i], m.stamp[i], st(&m.val[i][..m.vlen[i] as usize])));
         println!("qent {} qrel {} qtyp {} cand {:?} mstate {} ap {} vp {} mv {} tail {:?} state {:?}", m.qent, m.qrel, m.qtyp, m.cand, w.mstate(), w.q.ap, w.q.vp, g.mv, st(&txt[txt.len().saturating_sub(40)..]), st(&s[..16].iter().rev().map(|&c| c as u8).collect::<Vec<_>>()));
-        let gv = w.gv(&g, &tb.cw);
+        let gv = w.gv(&g, &tb.cw, false);
         gv.iter().enumerate().filter(|x| x.1 .0 >= 0).for_each(|(k, &(b, v))| { let (cv, p) = w.cv(k); println!("gate {k:2} byte {:?} val {v:+.3} cand {:?}@{p}", b as u8 as char, st(&cv)) });
         let (b1, b2) = (s[0], s[1]);
         let (r1, r2) = (b1 as usize * V, (256 + b2 * 256 + b1) as usize * V);

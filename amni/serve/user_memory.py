@@ -79,6 +79,11 @@ def _pk(hs):
     for h in hs[1:]:k=((k*GK)&0xFFFFFFFF)^h
     return k
 def _fb(h,b):return G2F.get(h,0)>>b&1
+def _tw(bd,a,b):
+    z=a
+    while z<b and not bd[z]:z+=1
+    return range(a,z)
+_BUYW=frozenset(bh(w.encode()) for w in 'bought buy buys purchased purchase'.split())
 _MON2,_FAV2,_ADV2,_DIT2=({bh(w.encode()) for w in x.split()} for x in ("january february march april may june july august september october november december","favourite favorite fave fav go-to all-time top","really just also always still truly totally absolutely seriously pretty super so very actually even currently usually sometimes often mostly definitely honestly literally basically","give gave feed fed buy bought get got bring brought make made send sent offer hand cook cooked"))
 G2C,G2R,G2T,G2HD,G2V,G2M,G2S,G2X,G2Y,G2K,G2J,G2F,G2CF,G2A={},{},{},set(),set(),set(),set(),set(),set(),set(),set(),{},set(),set()
 def _g2init():
@@ -117,9 +122,9 @@ class _G2:
     def run(s,T,nq,mem):
         n=len(T);hs=[t[0] for t in T];bd=[t[6] for t in T];cap=[t[2] for t in T];num=[t[3] for t in T];capx=[t[2] or (not t[6] and 48<=t[1][0]<=57) for t in T]
         wd=lambda i:0<=i<n and not bd[i]
-        cl=[0]*n;c=0
+        cl=[0]*n;c=cs=0
         for i in range(n):
-            if bd[i] or (hs[i] in (_H2['and'],_H2['but'],_H2['so'],_H2['while'],_H2['whereas']) and i+1<n and (hs[i+1] in (_H2['my'],_H2['our'],_H2['i'],_H2['he'],_H2['she'],_H2['they'],_H2['his'],_H2['her'],_H2['their']))):c+=1
+            if bd[i] or (hs[i] in (_H2['and'],_H2['but'],_H2['so'],_H2['while'],_H2['whereas']) and i+1<n and (hs[i+1] in (_H2['my'],_H2['our'],_H2['i'],_H2['he'],_H2['she'],_H2['they'],_H2['his'],_H2['her'],_H2['their'])) and not (hs[i]==_H2['and'] and any(hs[z]==_H2['same'] for z in _tw(bd,i+1,n)) and all(not _fb(hs[z],5) and not _fb(hs[z],6) and hs[z] not in G2V and hs[z] not in G2CF for z in range(cs,i)))):c+=1;cs=i
             cl[i]=c
         neg=[t[5] or _fb(t[0],10) for t in T]
         ifr=[False]*n;inif=False
@@ -139,6 +144,10 @@ class _G2:
                 else:break
             if fav and (k>=n or not wd(k) or _fb(hs[k],5) or hs[k] in G2S):return (k,0,fav)
             return None
+        def favx(j):
+            k=j;fav=False
+            while k<n and wd(k) and hs[k] in G2M and k-j<3:fav=fav or hs[k] in _FAV2;k+=1
+            return (k+1,16,True) if fav and k<n and wd(k) and not cap[k] and not num[k] and not T[k][4] and not G2F.get(hs[k],0) and hs[k] not in G2S and hs[k] not in G2M and hs[k] not in G2HD and (k+1>=n or not wd(k+1) or _fb(hs[k+1],5) or hs[k+1] in G2S) else None
         def npend(j,inv):
             k=j;hd=False
             while k<n and k-j<4 and wd(k):
@@ -147,7 +156,7 @@ class _G2:
                 if k==j and (h in G2V or h in G2CF) and not T[k][4] and not (k+1<n and wd(k+1) and not G2F.get(hs[k+1],0) and hs[k+1] not in G2S and not cap[k+1]):break
                 if k>j:
                     isv=h in G2V or h in G2CF or (k>j and h not in G2HD and ((r.endswith(b's') and not r.endswith(b'ss')) or r.endswith(b'ed') or r.endswith(b'ing'))) or (inv and k>j and h in G2A and (k+1>=n or not wd(k+1) or ((G2F.get(hs[k+1],0) or hs[k+1] in G2S) and not _fb(hs[k+1],6) and not _fb(hs[k+1],5))))
-                    if inv and hd and h in G2A and h not in G2HD:break
+                    if (inv and hd and h in G2A and (h not in G2HD or h in G2CF)) or G2T.get(h,(0,0))[0]==10:break
                     if isv and not (k+1<n and wd(k+1) and hs[k+1] in G2HD and not G2F.get(hs[k+1],0) and not cap[k+1] and not T[k][4] and not (inv and (k+2>=n or not wd(k+2)))):break
                 hd=hd or h in G2HD;k+=1
                 if T[k-1][4]:break
@@ -168,6 +177,7 @@ class _G2:
                 while j<n:
                     r=rnmatch(j)
                     if r and r[1]==9 and T[r[0]-1][4]:r=None
+                    r=r or favx(j)
                     if r:
                         rnh.append((j,r[0],r[1],key if key is not None else own,r[2],i));[cov.__setitem__(x,2) for x in range(j,r[0])]
                         if men and men[-1][1]==j and men[-1][3]==3:men[-1][3]=0
@@ -191,6 +201,14 @@ class _G2:
                 e=men[-2][2] if rp else resolve(i,2 if h in (_H2['him'],_H2['them'],_H2['her']) or (h==_H2['it'] and ocue) else 1)
                 if e:men.append([i,i+1,e,4 if h==_H2['it'] else 2]);cov[i]=1
                 i+=1;continue
+            if cap[i] and not cov[i] and not G2F.get(h,0) and (i==0 or not wd(i-1) or _fb(hs[i-1],6) or _fb(hs[i-1],8) or _fb(hs[i-1],9)):
+                k=i
+                while k<n and wd(k) and cap[k] and k-i<3:k+=1
+                hit=next(((b,z[0]) for b in range(k,i,-1) for z in [mem.findval(b' '.join(T[x][1] for x in range(i,b))[:24])] if z and z[1]==6 and z[0]),None)
+                if hit:
+                    men.append([i,hit[0],hit[1],0])
+                    for x in range(i,hit[0]):cov[x]=1
+                    i=hit[0];continue
             i+=1
         cues=[];i=0
         while i<n:
@@ -273,12 +291,15 @@ class _G2:
             c0=cl[i];ms=[m for m in men if not (m[0]<=i<m[1]) and m[3]!=3]
             L=[m for m in ms if m[1]<=i and cl[m[0]]==c0];R=[m for m in ms if m[0]>=j and cl[m[0]]==c0];L2=[m for m in ms if m[1]<=i]
             return L[-1][2] if L else R[0][2] if R else L2[-1][2] if L2 else 0
+        def okey(j0,j1,own):
+            b=_pk([hs[z] for z in range(j0,j1) if hs[z] not in G2M])
+            return b if own in (0,SELFK) else ((b*83492791)&0xFFFFFFFF)^own
         def after_men(j):
             q=j
             if q<n and cov[q]==3:q+=1
             m=next((m for m in men if m[0]==q and m[3]!=3),None)
             if m is None and any(x[0]==q and x[2]==9 for x in rnh):
-                x=next(x for x in rnh if x[0]==q and x[2]==9);return (_pk([hs[z] for z in range(x[0],x[1]) if hs[z] not in G2M]),x[1])
+                x=next(x for x in rnh if x[0]==q and x[2]==9);return (okey(x[0],x[1],x[3]),x[1])
             if m is None:
                 m=next((m for m in men if m[0]==q),None)
                 while m is not None and m[3]==3:
@@ -292,7 +313,7 @@ class _G2:
             v=txt(a,b)
             if r in (4,6,13) and not capx[a]:return False
             if r==14 and not num[a]:return False
-            if r==15 and not (hs[a] in _MON2 or cap[a]):return False
+            if r==15 and not (hs[a] in _MON2 or cap[a] or (num[a] and len(T[a][1])==4)):return False
             if r==9 and not (cap[a] or vt==9):return False
             for x in range(a,b):used[x]=1
             out.append((e,r,v,vt));return True
@@ -312,6 +333,17 @@ class _G2:
             if sp:put(s.pend[0],s.pend[1],sp[0],sp[1],vtype(*sp))
         s.pend=None
         if not nq:
+            for i in range(n):
+                if not (wd(i) and hs[i] in _BUYW and not ifr[i] and not hyp[i] and not any(neg[z] and cl[z]==cl[i] for z in range(n))):continue
+                k=i+1
+                while k<n and wd(k) and hs[k] in (_H2['the'],_H2['a'],_H2['an'],_H2['my']):k+=1
+                k0=k
+                while k<n and wd(k) and not cap[k] and not num[k] and not G2F.get(hs[k],0) and hs[k] not in G2S and k-k0<4:k+=1
+                if not (k>k0 and k+1<n and hs[k]==_H2['in'] and wd(k+1) and cap[k+1]):continue
+                m=next((m for m in men if m[1]==k and m[3]!=3),None);z=next((z for z in rnh if z[1]==k and z[2]==9),None)
+                e=m[2] if m else okey(z[0],z[1],z[3]) if z else hs[k-1]
+                sp=vspan(k+1,4)
+                if sp:put(e,4,sp[0],sp[1],vtype(*sp))
             for (j0,j1,rel,own,fav,st) in rnh+[(x[0],x[1],x[2],0,False,x[0]) for x in free]:
                 if cl[j0] in scl or any(j0<=c[0]<j1 for c in cues):continue
                 k=j1;sk=0
@@ -325,15 +357,17 @@ class _G2:
                 q=st-1
                 while q>=0 and wd(q) and hs[q] in (_H2['the'],_H2['best'],_H2['a'],_H2['an']):q-=1
                 if sp is None and q>=0 and _fb(hs[q],5):sp=vback(q)
+                if sp is None and rel==15 and sk and q>=0 and hs[q] in (_H2['has'],_H2['have'],_H2['had']):sp=vspan(k,rel)
                 if sp and own==0 and not men and st>=2 and hs[st-1]==_H2['best']:own=SELFK
-                if sp is None and rel and st>=2 and hs[st-2] in (_H2['it'],_H2['that']) and _fb(hs[st-1],5) and own:
+                if sp is None and rel and rel!=16 and st>=2 and hs[st-2] in (_H2['it'],_H2['that']) and _fb(hs[st-1],5) and own:
                     tv=next((x for x in reversed(s.tf) if x[0]==own),None)
                     if tv and tv[1]!=rel:out.append((own,rel,tv[2],tv[3]))
                     continue
-                if not sp or any(used[x] for x in range(*sp)):continue
+                if not sp or any(used[x] for x in range(*sp)) or (rel==9 and any(j1<=c<=sp[0] and cl[c]==cl[j0] for c in cst)):continue
                 a,b=sp;vt=vtype(a,b);r2=rel or vt
                 if r2==0 and fav:r2=mem.lrel(own or near(j0,j1),(7,10,11)) or 0
-                if rel==9 and vt in (10,14):own=_pk([hs[x] for x in range(j0,j1) if hs[x] not in G2M]);r2=vt
+                if rel==9 and vt in (10,14):own=okey(j0,j1,own);r2=vt
+                if rel==16:own=okey(j0,j1,own);r2=7
                 if ifr[a] or hyp[j0] or any(neg[x] and cl[x]==cl[j0] for x in range(n)):continue
                 put(own or near(j0,j1),r2,a,b,vt)
             for (i0,i1,rs) in cues:
@@ -370,7 +404,7 @@ class _G2:
                 if f&2 and not (vt==rel or (rel==14 and num[a]) or (rel==15 and hs[a] in _MON2) or (rel==12 and vt in (12,13)) or (rel==9 and cap[a] and a>0 and hs[a-1] in (_H2['a'],_H2['an']) and hs[a] not in _MON2)):continue
                 if f&2 and rel==12 and vt==13:rel=13
                 if f&8:
-                    fr=[x[2] for x in free if x[2] in (10,11)]
+                    fr=[x[2] for x in free if x[2] in (10,11) and not (vt==7 and x[0]>0 and hs[x[0]-1]==_H2['than'])]
                     rel=fr[0] if fr else 10 if vt==10 else 11 if vt==11 else 7 if vt==7 else rel
                 if f&32:rel=8 if alg else rel
                 if rel==4 and vt==15:continue
@@ -380,7 +414,11 @@ class _G2:
                     if rel in (7,10,11):rel=2
                     else:continue
                 if (ifr[a] and ifr[i0]) or hyp[i0]:continue
-                put(e0 or near(i0,i1),rel,a,b,vt)
+                ob=[okey(z[0],z[1],z[3]) for z in rnh if z[2]==9 and z[1]<=i0 and cl[z[0]]==cl[i0] and not any(cl[m[0]]==cl[i0] and m[0]<i0 and m[1]!=z[0] and m[3]!=3 for m in men)] if not e0 and rel in (6,10) else []
+                e=ob[-1] if ob else e0 or near(i0,i1)
+                if put(e,rel,a,b,vt) and rel==5 and e and b+1<n and wd(b) and hs[b]==_H2['in'] and wd(b+1) and cap[b+1]:
+                    sp=vspan(b+1,4)
+                    if sp:put(((e*83492791)&0xFFFFFFFF)^_H2['work'],4,sp[0],sp[1],vtype(*sp))
             for c0 in sorted(set(cl)):
                 if c0 in scl or any(cl[x]==c0 and used[x] for x in range(n)):continue
                 idx=[x for x in range(n) if cl[x]==c0]
@@ -439,9 +477,10 @@ class _G2:
                 own=[x[3] for x in rnh if cl[x[0]]==c0 and x[3]]
                 if not src and own and tg and own[-1]!=tg[0][2]:src=[(0,0,own[-1],0)]
                 if not tg and own and src:tg=[(0,0,own[0],0)]
-                if not tg or not src or not rel:continue
-                pairs=[(tg[0][2],src[-1][2])]
-                if len(tg)>=2 and tg[1][2]!=tg[0][2]:pairs=[(tg[0][2],tg[1][2]),(tg[1][2],tg[0][2])]
+                two=len(tg)>=2 and tg[1][2]!=tg[0][2]
+                if not tg or (not src and not two) or not rel:continue
+                pairs=[(tg[0][2],src[-1][2])] if not two else []
+                if two:pairs=[(tg[0][2],tg[1][2]),(tg[1][2],tg[0][2])]
                 elif hs[sm] in (_H2['share'],_H2['shares'],_H2['shared'],_H2['sharing']) and _H2['with'] in hs:pairs.append((src[-1][2],tg[0][2]))
                 for t_,s_ in pairs:
                     if t_==s_:continue
@@ -449,12 +488,14 @@ class _G2:
                     v=mem.latest(s_,rel) or next((mem.latest(s_,r) for r in (7,11,10) if rel in (7,10,11) and r!=rel and mem.latest(s_,r) is not None),None)
                     if v is not None:mem.put(t_,rel,v[0],v[1]);s.fire(t_,rel,v[0],mem)
         else:
-            owners=[m for m in men if m[3]!=3]+[(x[0],x[1],x[3],0) for x in rnh if x[3]]
+            owners=[m for m in men if m[3]!=3]+[(x[0],x[1],x[3],0) for x in rnh if x[3]];rnhq=rnh
             owners.sort(key=lambda m:m[0])
             ns=[m for m in owners if m[2]!=SELFK];e=ns[-1][2] if ns else SELFK if owners or mself else 0
             v9=[x for x in rnh if x[2]==9]
             if v9 and (any(x[0]!=9 and not x[1]&2 for c in cues for x in c[2][:1]) or any(x[2]!=9 for x in free)):
-                e=_pk([hs[x] for x in range(v9[-1][0],v9[-1][1]) if hs[x] not in G2M]);rnh=[x for x in rnh if x[2]!=9]
+                e=okey(v9[-1][0],v9[-1][1],v9[-1][3]);rnh=[x for x in rnh if x[2]!=9]
+            fx=[x for x in rnh if x[2]==16]
+            if fx:e=okey(fx[-1][0],fx[-1][1],fx[-1][3]);rnh=[x for x in rnh if x[2]!=16]
             r1=[x[2] for x in rnh if x[3]==e and x[2]]
             ng=any(neg)
             cr=[];ep=max([m[0] for m in owners if m[2]==e],default=-1)
@@ -462,7 +503,7 @@ class _G2:
                 rows=[x for x in rs if not x[1]&2 and bool(x[1]&(4|128))==ng] or [x for x in rs if not x[1]&2 and not x[1]&(4|128)]
                 if rows:
                     r,f,_=rows[0];fr=[x[2] for x in free if x[2] in (10,11)]
-                    r=fr[0] if f&8 and fr and r in (7,11) else r
+                    r=fr[0] if f&8 and fr and r in (7,11) else (mem.lrel(e,(7,10,11)) or r) if f&8 and not free and r==7 else r
                     r=2 if ng and r in (7,11) and not f&(4|128) else r
                     cr.append(8 if f&32 and (alg or (mem.latest(e,8) is not None and mem.latest(e,2) is None)) else r)
             fr=[x[2] for x in free]
@@ -470,8 +511,13 @@ class _G2:
             r4=4 if _H2['where'] in wh else 15 if _H2['when'] in wh else 14 if (_H2['how'] in wh and _H2['old'] in hs) or _H2['age'] in hs else 6 if _H2['who'] in wh else 0
             if not r4 and not r1 and not cr and not fr and any(h in (_H2['do'],_H2['does'],_H2['did'],_H2['doing']) for h in hs[-2:]) and _H2['what'] in wh:r4=5
             rel=r1[-1] if r1 else cr[0] if cr else fr[0] if fr else r4
-            if _H2['where'] in wh and rel in (12,0,13):rel=13 if rel in (12,13) or any(h in (_H2['study'],_H2['studied'],_H2['degree'],_H2['school'],_H2['college'],_H2['university'],_H2['enrolled']) for h in hs) else 4
+            if rel==5 and e and 4 in fr:e,rel=((e*83492791)&0xFFFFFFFF)^_H2['work'],4
+            if _H2['where'] in wh and rel in (12,0,13,15):rel=13 if rel in (12,13) or any(h in (_H2['study'],_H2['studied'],_H2['degree'],_H2['school'],_H2['college'],_H2['university'],_H2['enrolled']) for h in hs) else 4
             if r1 and e:s.pend=(e,r1[-1])
+            if fx and not rel:rel=7
+            if _H2['where'] in wh and rel==9:
+                v=[x for x in rnhq if x[2]==9]
+                if v:e,rel=okey(v[-1][0],v[-1][1],v[-1][3]),4
             s.qe,s.qr=e,rel
         lp=[x for x in range(1,n) if capx[x] and not cov[x] and wd(x-1) and hs[x-1] in (_H2['in'],_H2['to'],_H2['at'],_H2['from'])]
         if lp:

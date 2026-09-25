@@ -66,7 +66,7 @@ impl Gpu {
                 let (mut xb, mut c) = (vec![0u32; (t1 - t0) * nb * EX], *cur);
                 for (t, xr) in (t0..t1).zip(xb.chunks_mut(nb * EX)) {
                     let sink: Vec<Option<&mut [u32]>> = if want[t] { xr.chunks_mut(EX).map(Some).collect() } else { (0..nb).map(|_| None).collect() };
-                    h.step(c, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb], sink, |d, g, cw, r| if let Some(r) = r { r[..NS].copy_from_slice(&d.s); d.gv(g, cw).iter().enumerate().for_each(|(k, &(b, v))| (r[NS + 2 * k], r[NS + 2 * k + 1]) = (b as u32, v.to_bits())); r[EX - 2..EX].copy_from_slice(&d.mtaps(g).map(|e| e.unwrap_or(u32::MAX))); });
+                    h.step(c, &par[t * nb..t * nb + nb], &byt[t * nb..t * nb + nb], sink, |d, g, cw, r| if let Some(r) = r { r[..NS].copy_from_slice(&d.s); d.gv(g, cw, false).iter().enumerate().for_each(|(k, &(b, v))| (r[NS + 2 * k], r[NS + 2 * k + 1]) = (b as u32, v.to_bits())); r[EX - 2..EX].copy_from_slice(&d.mtaps(g).map(|e| e.unwrap_or(u32::MAX))); });
                     c = 1 - c;
                 }
                 self.q.write_buffer(ex, 0, bytemuck::cast_slice(&xb));
