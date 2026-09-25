@@ -137,3 +137,11 @@ def test_latency_long_messages():
     for m in M:
         [f.cache_clear() for f in (E._ml,E.norm,E._scan,E._hits,E._q,E._sl,E.lut_score)];t=time.process_time();E.detect.__wrapped__(m);T.append((time.process_time()-t)*1000)
     assert np.percentile(T,99)<10 and np.mean(T)<5,(np.mean(T),np.percentile(T,99))
+def test_blind1011_first_look_recorded_and_no_regression():
+    F=json.loads((D/"first_look_blind1011.json").read_text());M=json.loads(LOCK4.read_text())
+    assert F["kind"]=="prod" and F["eval_lock"]["splits_hash"]==M["splits_hash"] and not {"blind10","blind11"}&set(F["lut_meta"]["sets"]) and F["eval_lock"]["git"]["head"].startswith("60270e7")
+    B=[(("pos" in Path(f).name),*l.rstrip("\n").split("\t")) for f in M["splits"] for l in open(D.parents[1].parent/f,encoding="utf-8") if l.strip()]
+    E.detect.cache_clear();h=[(p,c,t,E.detect(m)) for p,c,t,m in B];P1=[x for x in h if x[0]];N1=[x for x in h if not x[0]]
+    rec=sum(bool(d) for *_,d in P1)/len(P1);fp=sum(bool(d) for *_,d in N1)/len(N1);sui=[d for _,c,_,d in P1 if c.startswith("suicide")];mi=[d for _,c,t,d in P1 if "minor" in t and c.startswith("suicide")]
+    assert rec>=F["detect"]["recall"]-5e-5 and fp<=F["detect"]["fp"]+5e-5 and sum(map(bool,sui))/len(sui)>=F["detect"]["recall_by_cat"]["suicide"]-5e-5 and sum(map(bool,mi))/len(mi)>=F["minors_suicide_statements"]["recall"]-5e-5,(rec,fp)
+
