@@ -1,7 +1,7 @@
 import os,math,codecs,threading
 import numpy as np
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-EX=os.path.join(_H0,"exports","gf17_continuum");DEFAULT_PACK=os.path.join(EX,"rayhash_v19d_clean_chat6c_s60k_sid.npy");BASE_PACK=os.path.join(EX,"rayhash_clean1v2_base_v18_s100k_sid.npy");LEGACY_PACK=os.path.join(_H0,"exports","legacy_grok","rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz");DEFAULT_LEX="clean1";DEFAULT_IMPL="rust"
+EX=os.path.join(_H0,"exports","gf17_continuum");DEFAULT_PACK=os.path.join(EX,"rayhash_v19f_clean_chat7e_s40k_sid.npy");BASE_PACK=os.path.join(EX,"rayhash_clean1v2_base_v18_s100k_sid.npy");LEGACY_PACK=os.path.join(_H0,"exports","legacy_grok","rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz");DEFAULT_LEX="clean1";DEFAULT_IMPL="rust"
 V=256;WM=(1<<20)-1;NI=37;BASE=21;HOPS=4;KS=3;MAXB=256;TOPIC_A=0.99
 _lock=threading.Lock();_eng={}
 def _unpack5(b:np.ndarray,n:int)->np.ndarray:
