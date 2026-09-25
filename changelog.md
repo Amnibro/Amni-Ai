@@ -1,3 +1,42 @@
+## 2026-09-25 clean2: clean1 rebuilt with the M05 sources, the CTO mix and no Grokipedia
+`data/clean2/{train,hold}.bin` (4.21 GB train, 86.7 MB hold, 4.30 GB total), in the same format as clean1. Train with `CORPUS=clean2`. It took 707 s on 5 workers. The actual mix matches the locked `CLEAN_MIX=cosmo:0.29,wiki:0.26,fineweb:0.18,gutenberg:0.10,arxiv:0.06,openwebmath:0.06,pycode:0.05` to within 0.01 for every source.
+- `scripts/build_clean1_corpus.py` (backup `backups/build_clean1_corpus.py.v_clean2.bak`):
+  - Grokipedia is removed from the source loop.
+  - New sources:
+    - `gutenberg` streams `common-pile/project_gutenberg`. It keeps only rows whose metadata says Public Domain and English. Per book, the PG header and footer are cut and every paragraph that mentions Project Gutenberg is dropped. It takes the first `GUT_PIECES` (default 6) pieces of about 60 KB, attributes them to `https://www.gutenberg.org/ebooks/<id>`, and splits hold by book.
+    - `arxiv` and `openwebmath` read the M05 parquet from `M05_KS` and then continue the same HF stream (`M05_STREAM`), skipping URLs already taken from the parquet.
+  - Meta adds `mix_actual`, per-source `drops` and the full env command.
+- `scripts/build_pycode_corpus.py` (backup `.v_clean2.bak`):
+  - `own()` now owns the foreign-header and grok-path skips and adds an eval-builder path skip (`EVALB`). It returns per-reason skip counts.
+  - `Chunks`, `pmap` and `CODE_LIC` moved here and are shared with clean1.
+  - The corpus build is streamed and parallel, and mpl-2.0 is dropped. Prose comes from `PY_PROSE` (default clean1) instead of a fixed file. The hold is a 0.5% hash split, and output goes to `PY_OUT`.
+  - A smoke build ran; the full data/pycode build was not rebuilt.
+- `tests/test_clean1_corpus.py`: `CLEAN_OUT` selects the corpus. Checks added: the URL on each gutenberg, arxiv and openwebmath attribution row, and no PG-trademark paragraph plus a us-pd ebook URL on each gutenberg probe doc. `CLEAN_OUT=clean2 pytest` gives 4 passed.
+- Decontam: `python -m amni.compute.decontam scan data/clean2/train.bin data/clean2/hold.bin` found 0 dirty units out of 10.9M train and 225k hold, against 58 eval files including chat4, chat4e, chat6c, chat7e, gsm8k, svamp, m13 and m15. clean1 now fails `test_probe_no_eval_13gram_overlap` against the current, larger eval set.
+- Word tables: `CORPUS=clean2 python -m scripts.build_word_tables` wrote 1.37M words and 195k synsets.
+
+## 2026-09-25 chat5: license-clean dialogue corpus; chat6c memory corpus without chat2
+chat2 (the distractor and chat source for chat3, chat4c and chat4e) was about 60% Llama 3.1 output (smoltalk everyday-conversations and smol-magpie-ultra). chat5 replaces it with human-written, commercially usable dialogue only. Checklist: `docs/checklists/checklist_chat5_clean_dialogues_v1.md`.
+- `scripts/build_chat5_corpus.py` (`python -m scripts.build_chat5_corpus`; env `CHAT5_OUT`, `SEED`, `GEN_N`, `HOLD_PCT`, `MAXT`, `OASST_ALT`, `CHAT5_HOLDS`) writes `data/chat5/{train,hold,pairs}.bin`, `manifest.json`, `meta.json` and `attribution.jsonl.gz`.
+  - Sources:
+    - OASST1 and OASST2 (Apache-2.0; English, reviewed, not deleted, not synthetic, bad labels and toxicity <= 0.5). Each tree gives its deepest multi-turn thread (up to 6 exchanges) plus 2 other root replies.
+    - dolly-15k no-context rows (CC BY-SA 3.0; share-alike applies to chat5).
+    - Aya `eng` original-annotations (Apache-2.0; re-annotations excluded).
+    - 6,000 own template memory dialogues (byte-30 prefixed).
+  - Rejected sets and the reasons are listed in `manifest.json` `rejected`: smoltalk, UltraChat, hh-rlhf, SODA, ProsocialDialog, Synthetic-Persona-Chat, HelpSteer2, WildChat, OpenOrca, OpenHermes, the non-commercial sets (DailyDialog, EmpatheticDialogues, no_robots) and the sets with unclear licenses.
+  - Filters: `neutral_filter` must leave each exchange unchanged; an identity regex (OpenAssistant, LAION, ChatGPT, "as an AI language model") drops 513 exchanges; code-fenced answers are dropped; email and phone numbers are scrubbed; ASCII-folded. Then dedupe, 13-gram decontamination against every eval set, exact eval user-line decontamination, and a 2% hold split by tree.
+  - Size: 14.8 MB train (oasst1 30%, oasst2 17%, dolly 17%, aya 4%, gen 32%), 5,404 distractor pairs. Two builds were byte-identical, before the 01:33 evalhyg decontam refactor.
+- `scripts/v19_train_dialogues.py`: new `DISTRACT=<corpus>` (default `chat2`, so the output does not change; a chat4c rebuild is byte-identical). Distractors come from `data/$DISTRACT/pairs.bin` (or `train.bin`), and the chat share comes from `train.bin`, repeated when it is too small (`distract_repeat` in meta). Backup: `backups/v19_train_dialogues.py.chat6c.bak`.
+- `data/chat6c` (`CHAT=chat4c OUTNAME=chat6c PROSE=clean1 DISTRACT=chat5`): 71.1 MB, with the same kinds and quota as chat4c. No chat3, chat4c or chat6c hold prompt and no suite D prompt appears in train.bin.
+- `rayhash_v19d_clean_chat6c_s60k`: the same recipe as `v19d_clean_chat4c_s60k` (PAGES_V18 clean1v2 base, COPY=13, MR=2, 60k steps). It reached 0.2796 bits/byte on the chat6c hold in 2,600 s.
+  - Strict eval (`DEC=stream MAXB=240 LOCK=1 SS=1 REP=1 LEX=clean1`). Reports: `report_v19d_clean_chat6c_strict_lexclean1.json`, and `..._chat4c_...` as the baseline re-run, which is identical to `report_v19d_clean_strict.json`.
+    - chat3 hold: 0.899 strict (chat4c 0.883). By kind: simple 0.896 (0.86), multi 0.94 (0.91), twohop 0.893 (0.853), pronoun 0.91 (0.90), longgap 0.88 (0.87), unknown 0.96 (0.97), correction 0.78 (0.84).
+    - Suite D strict: known 0.744 (0.712), unknown 0.84 (0.86), twohop 0.78 (0.80), all 0.765 (0.7525).
+  - Held-out human dialogue (eval-only adam-train, bits/byte):
+    - oasst2 and aya hold docs, which neither pack saw: 1.857 (chat4c 1.867).
+    - All human hold docs: 1.899 (chat4c 1.673). chat2 already held dolly and the oasst1 root replies, so chat4c had seen most of this set.
+  - Open-domain chat is still weak for both packs. chat6c sometimes echoes memorized OASST text, because the chat share repeats chat5 about twice.
+
 ## 2026-09-25 KS2: license-clean Knowledge Store coder `ks2-clean1`
 The clean base `rayhash_clean1v2_base_v18_s100k` (with lexicon `data/clean1`) is now a registered KS coder. Results: `docs/ks/ks1_results.md` (KS2 section). Checklist: `docs/checklists/checklist_ks2_clean_coder_v1.md`. Council: `docs/guardian_councils/guardian_council_ks2_clean_coder.md`.
 - `ks_codec.py`: `CODERS` registry (`ks1-v16`, `ks2-clean1`); `KSCodec(ver=, lex=)`; the frozen identity adds `ver`, `lex` and `lex_id`; `pack_id(path, lex)` hashes the chosen lexicon (v16 id unchanged); the engine loads the codec's own lexicon; `KStore` accepts a list of codecs and routes each page by its coder record; the wrong coder or lexicon is refused.
