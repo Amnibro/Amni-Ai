@@ -6,7 +6,7 @@ or POST /models/activate.
 import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
 from amni.serve.emergency import respond as _em_respond,detect as _em_detect,guard as _em_guard,guard_stream as _em_stream
-RAY_MODEL='adam:ray-v19f-clean'
+RAY_MODEL='adam:ray-v19i-clean'
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
 def enabled()->bool:
