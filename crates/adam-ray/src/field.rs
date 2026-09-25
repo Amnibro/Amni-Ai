@@ -4,10 +4,12 @@ pub enum Back { Cpu(Cpu), Gpu(Gpu) }
 pub struct RayField { pub path: String, pub syn: String, pub words_path: String, pub wcnt_path: String, pub arch: String, pub home: String, pub ready: bool, pub l: usize, pub t: usize, pub qt: bool, pub copy: usize, pub backend: String, pub ok: [bool; V], back: Option<Back>, h19: Option<Host>, cur: usize, words: Vec<Vec<u8>>, wtried: bool }
 pub struct Stream { seq: Vec<u8>, lg: Vec<f32>, g: Pcg64, out: Vec<u8>, gp: usize, guide: Vec<u8>, pend: Vec<char>, ub: Vec<u8>, stop: Vec<Vec<char>>, hold: usize, left: usize, temp: f64, topk: usize, veto: bool, beta: f64, done: bool, dec: Dec, lk: Lock }
 #[derive(Clone, Copy, Default)]
-pub struct Dec { pub lock: bool, pub stop_sentence: bool, pub rep: f64 }
+pub struct Dec { pub lock: bool, pub stop_sentence: bool, pub rep: f64, pub dlock: bool }
 #[derive(Clone, Default)]
 pub struct Lock { v: Vec<u8>, p: usize, k: usize, ban: Vec<Vec<u8>>, chain: bool, end: bool, fin: bool }
-impl Lock { fn on(&self) -> bool { self.p < self.v.len() } fn push(&mut self, c: u8) { if self.on() && self.v[self.p] == c { self.p += 1; (!self.on()).then(|| { self.ban.push(self.v.to_ascii_lowercase()); (self.chain, self.end) = (self.k == 12, true); }); } } }
+impl Lock { fn on(&self) -> bool { self.p < self.v.len() } fn push(&mut self, c: u8) { if self.on() && self.v[self.p] == c { self.p += 1; (!self.on()).then(|| { (self.k < 16).then(|| self.ban.push(self.v.to_ascii_lowercase())); (self.chain, self.end) = (self.k == 12, true); }); } } }
+const DOP: &[u8] = b" I'm not sure";
+const AM: f64 = 2.0;
 fn close(o: &[u8], p0: usize) -> (usize, bool) { let k = o.iter().rposition(|c| !b" ,;:-\n".contains(c)).map_or(p0, |i| (i + 1).max(p0)); (k, k > p0 && !b".!?".contains(&o[k - 1])) }
 fn send(o: &[u8]) -> bool { o.len() >= 2 && matches!(o[o.len() - 1], 32 | 10) && b".!?".contains(&o[o.len() - 2]) && o[..o.len() - 2].iter().any(|&x| wordch(x as u32)) }
 fn lse(r: &[f32]) -> f64 { let m = r.iter().fold(f64::NEG_INFINITY, |m, &x| m.max(x as f64)); pairwise(&r.iter().map(|&x| (x as f64 - m).exp()).collect::<Vec<_>>()).ln() + m }
@@ -82,14 +84,16 @@ impl RayField {
         if al(c) { let k = [cur, &[c]].concat(); let i = self.words.partition_point(|x| x.as_slice() < k.as_slice()); i < self.words.len() && self.words[i].starts_with(&k) || cur.len() >= 24 } else { cur.len() <= 1 || has(cur) || has(&cur.to_ascii_lowercase()) }
     }
     #[allow(clippy::too_many_arguments)]
-    fn lockz(&self, b: usize, lk: &mut Lock, out: &[u8], z: &mut [f64], t: f64) -> Option<u8> {
+    fn lockz(&self, b: usize, lk: &mut Lock, out: &[u8], z: &mut [f64], t: f64, dl: bool) -> Option<u8> {
         if lk.on() { return Some(lk.v[lk.p]); }
         if std::mem::take(&mut lk.end) { (0..V).filter(|&c| wordch(c as u32)).for_each(|c| z[c] = -1e9); return None; }
         let h = self.h19.as_ref()?;
         let (w, n) = (&h.w[self.cur * MAXB + b], out.iter().rev().take_while(|&&x| wordch(x as u32)).count());
-        let (gv, am, sep) = (w.gv(&h.g, &h.cw), z.iter().enumerate().fold(0, |a, (c, &x)| if x > z[a] { c } else { a }), out.len() == n || !matches!(out[out.len() - n - 1], 39 | 45));
+        let (gv, am, sep) = (w.gv(&h.g, &h.cw, false), z.iter().enumerate().fold(0, |a, (c, &x)| if x > z[a] { c } else { a }), out.len() == n || !matches!(out[out.len() - n - 1], 39 | 45));
         let pw = { let o = &out[..out.len() - n]; let o = o.strip_suffix(b" ").unwrap_or(o); o[o.len() - o.iter().rev().take_while(|&&c| wordch(c as u32)).count()..].to_ascii_lowercase() };
         let eok = |k: usize| !h.g.lt || k != 15 || pw == b"your";
+        let (m, q) = (&w.m, &w.q);
+        if dl && out.iter().all(|&c| c == b' ') && q.mq == 1 && h.g.g2 && m.isq != 0 && m.qent != 0 && m.qrel != 0 && m.cand[0] < 0 && m.cand[8] < 0 { (lk.v, lk.p, lk.k) = (DOP[out.is_empty() as usize ^ 1..].to_vec(), 0, 99); return Some(lk.v[0]); }
         let cs: Vec<(usize, f32, Vec<u8>, usize)> = (0..h.g.copy).filter(|&k| gv[k].0 >= 0).map(|k| { let (v, p) = w.cv(k); (k, gv[k].1, v, p) }).filter(|x| x.3 < x.2.len() && x.2[x.3] as i32 == gv[x.0].0).collect();
         let ban = lk.ban.clone();
         let bn = |v: &[u8]| ban.contains(&v.to_ascii_lowercase());
@@ -97,7 +101,14 @@ impl RayField {
         let best = cs.iter().filter(|x| x.1 > 0.0 && eok(x.0) && x.2[x.3] as usize == am && (n >= 1 && sep || lk.chain && x.0 == 12 && out.last() == Some(&32) || h.g.copy >= 16 && n == 0 && x.3 == 0 && sep && z[am] - x.1 as f64 / t < sec) && !bn(&x.2)).fold(None, |a: Option<&(usize, f32, Vec<u8>, usize)>, x| if a.is_none_or(|a| x.1 > a.1) { Some(x) } else { a });
         lk.chain &= n == 0;
         if let Some(x) = best { (lk.v, lk.p, lk.k) = (x.2.clone(), x.3, x.0); return Some(lk.v[lk.p]); }
-        lk.fin = n == 0 && out.last() != Some(&39) && cs.iter().any(|x| x.1 > 0.0 && x.3 == 0 && x.2[0] as usize == am && bn(&x.2)) && !cs.iter().any(|x| (8..13).contains(&x.0) && x.1 > 0.0 && !bn(&x.2));
+        let top = if dl && q.mq == 1 && q.ap > 0 { let ga = w.gv(&h.g, &h.cw, true); (0..h.g.copy.min(12)).map(|k| (k, ga[k].1, w.cv(k).0)).filter(|x| x.1 > 0.0 && x.2.first().is_some_and(u8::is_ascii_alphabetic) && !bn(&x.2)).fold(None, |a: Option<(usize, f32, Vec<u8>)>, x| if a.as_ref().is_none_or(|a| x.1 > a.1) { Some(x) } else { a }) } else { None };
+        if let Some((k, _, v)) = top {
+            let (vw, aw, (sp, nn)) = (b"aeiou".contains(&v[0].to_ascii_lowercase()), n == 1 && sep && out[out.len() - 1] | 32 == b'a', (b' ' as usize, b'n' as usize));
+            if aw && vw && am != nn && (!wordch(am as u32) || z[nn] >= z[am] - AM) { return Some(b'n'); }
+            if aw && !vw && ((am == nn && z[sp] >= z[nn] - AM) || (!wordch(am as u32) && am != sp)) { return Some(b' '); }
+            if n == 0 && out.last() == Some(&b' ') && (pw == b"a" || pw == b"an") { (lk.v, lk.p, lk.k) = (v, 0, k); return Some(lk.v[0]); }
+        }
+        lk.fin = n == 0 && out.last() != Some(&39) && cs.iter().any(|x| x.1 > 0.0 && x.3 == 0 && x.2[0] as usize == am && bn(&x.2)) && !cs.iter().any(|x| (8..13).contains(&x.0) && x.1 > 0.0 && !bn(&x.2)) && !(dl && cs.iter().any(|x| x.0 < 8 && x.1 > 0.0 && x.3 == 0 && !bn(&x.2)));
         cs.iter().filter(|x| x.1 > 0.0 && bn(&x.2)).for_each(|x| z[x.2[x.3] as usize] -= x.1 as f64 / t);
         let cur = out[out.len() - n..].to_ascii_lowercase();
         lk.ban.iter().filter(|v| v.len() > n && v[..n] == cur[..] && n + 1 >= v.len().min(3)).for_each(|v| { z[v[n] as usize] = -1e9; z[v[n].to_ascii_uppercase() as usize] = -1e9; });
@@ -126,7 +137,7 @@ impl RayField {
                 let mut z: Vec<f64> = (0..V).map(|c| lgs[b * V + c] as f64 + lp[c]).collect();
                 rep4(seq).then(|| z[seq[seq.len() - 1] as usize] -= 6.0);
                 let mut lk = lk0.clone();
-                let fc = if dec.lock { self.lockz(b, &mut lk, &seq[p0.len()..], &mut z, 1.0) } else { None };
+                let fc = if dec.lock { self.lockz(b, &mut lk, &seq[p0.len()..], &mut z, 1.0, dec.dlock) } else { None };
                 if dec.stop_sentence && lk.fin { let (k, d) = close(seq, p0.len()); cand.push((*sc, [&seq[..k], if d { &b"."[..] } else { &b""[..] }, &[10]].concat(), b, lk)); continue; }
                 let m = z.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
                 let e: Vec<f64> = z.iter().map(|x| (x - m).exp()).collect();
@@ -177,7 +188,7 @@ impl Stream {
             if let Some(g) = gb { z[g] += self.beta; }
             let n = self.out.len();
             (self.dec.rep > 0.0 && n >= 5).then(|| (0..V).filter(|&c| find(&self.out, &[&self.out[n - 5..], &[c as u8][..]].concat(), 0).is_some()).for_each(|c| z[c] -= self.dec.rep));
-            let fc = if self.dec.lock { f.lockz(0, &mut self.lk, &self.out, &mut z, self.temp) } else { None };
+            let fc = if self.dec.lock { f.lockz(0, &mut self.lk, &self.out, &mut z, self.temp, self.dec.dlock) } else { None };
             if self.dec.stop_sentence && self.lk.fin {
                 self.done = true;
                 let (k, d) = close(&self.out, 0);

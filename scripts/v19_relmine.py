@@ -173,7 +173,7 @@ G2CUE="""4::live~ in|live~ over in|live~ out in|live~ way out in|live~ all the w
 4:16:live~|base~|settle~|stay~|move~|call home|reside~|stationed|is located
 5::work~ as|employ~ as|earn~ a living as|make~ a living as|train~ as|qualified as|serve~ as|for a living|for work|day job|by day|job title|line of work|work~ full-time as|work~ part-time as|freelance~ as|job as|career as
 5:64:by trade|by profession
-5:16:earn~ a living|make~ a living|do~ for work|do~ for a living|do~ professionally|do~ for money|work~|employed|do~ all day at work
+5:16:earn~ a living|make~ a living|do~ for work|do~ for a living|do~ professionally|do~ for money|work~|employed|do~ all day at work|do~ all day
 6::go~ by|answer~ to|respond~ to the name|respond~ to|known as|go~ by the name|name on|called|is called|goes by the name of
 6:1:call~|nickname~|christen~|dub~|name~|baptise~|baptize~|rename~
 11:8:we would have|happier than|crazy about|nuts about|mad about|go~ crazy for|could eat|love~ to eat
@@ -216,11 +216,12 @@ G2RN="""4:home|house|place|flat|apartment|city|town|hometown|country|state|provi
 12:major|degree|field|subject|academic background|background|studies|area of study|field of study|diploma|masters|phd|doctorate|specialty|speciality|discipline|degree subject|academic field
 13:school|college|university|uni|alma mater|old school|undergrad|campus
 14:age
-15:birthday|birth month|birthday month|big day|bday|birth day
+15:birthday|birth month|birthday month|big day|bday|birth day|birth year|year of birth|birthdate|birth date|date of birth
 2:pet peeve|pet hate|biggest fear|fear|phobia|nemesis|least favourite thing|least favorite thing|nerves
 11:food-wise
 13:school-wise|college-wise|academically
 5:work-wise|job-wise
+6:name-wise
 10:colour-wise|color-wise
 0:thing|one"""
 G2MOD="favourite favorite fave fav go-to all-time biggest big top usual current new main real actual true one only preferred absolute very first own chosen current usual regular"
@@ -270,7 +271,7 @@ def gen2():
   elif c in (512,1024) and r==102:rows.append(("rel1",ph,1,2,4))
   elif c in (512,1024) and 1<r<16:rows+=[("rel1",ph,1,r,8 if r==7 else 0)]+([("rel1",ph+" of",1,r,0)] if f[0]=="wnres" else [])
   elif c==2048:rows.append(("rel1",ph,3,10,0))
- mined=os.environ.get("RELMINE_G2MINE")=="1" and g2mine() or []
+ mined=os.environ.get("RELMINE_G2MINE")=="1" and g2mine() or [tuple(int(x) if x.isdigit() else x for x in l.split("\t")) for l in (Path(os.environ["RELMINE_G2KEEP"]).read_text().splitlines() if os.environ.get("RELMINE_G2KEEP") else []) if l.startswith("mined2\t")]
  rows+=mined;dd=set();fin=[]
  for o in rows:
   if (o[1],o[2],o[3]) not in dd:dd.add((o[1],o[2],o[3]));fin.append(o)

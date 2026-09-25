@@ -89,7 +89,7 @@ AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_c
 - `v19_fwd` compares `RayField::logits_for` (each arch) with the `adam-train` CPU forward of the same checkpoint, and with a Taichi reference when given. The Taichi reference is `Amni-Ai-v19/tests/ray_field_ref.py` with `REF_SCRIPT=ray_hash_field_ti_v19.py LOG2_ENTRIES=16 COPY=13 TI_FAST_MATH=0 TI_ADVANCED_OPTIMIZATION=0`. It compiles in about 1.8 GB at LOG2_ENTRIES=16. Never compile it at LOG2_ENTRIES=20, which needs more than 29 GB.
 - `ADAM_V19_GREEDY=n` also greedy-decodes n bytes per text through `prime`/`advance` and through the trainer's full recompute, and counts identical outputs.
 - `v19_rust_eval.py` runs chat3 `hold_eval` and suite D (`recall.jsonl` split into known and unknown, plus `twohop.jsonl`) and writes `data/concepts/eval/report_<tag>.json` under `AMNI_HOME`. `LEX` picks the lexicon under `data/` (default `clean1`; `big2` only for the retired packs in `exports/legacy_grok`). `C3_N` (default 0, meaning all 1000 dialogues) limits chat3, `EVAL_N` limits suite D, and `AMNI_RAY_ARCH` picks the backend (default cpu).
-  - Decoding: `DEC=greedy` (default) is the raw argmax loop, which stops at byte 10 or 30. `DEC=stream` is `stream(topk=1)` and `DEC=beam` is `beam(BEAM_W, 4)`, both with `LOCK`, `SS` (`stop_sentence`), `REP` (stream only), `VETO` and `MAXB` (default 90 bytes).
+  - Decoding: `DEC=greedy` (default) is the raw argmax loop, which stops at byte 10 or 30. `DEC=stream` is `stream(topk=1)` and `DEC=beam` is `beam(BEAM_W, 4)`, both with `LOCK`, `SS` (`stop_sentence`), `DLOCK`, `REP` (stream only), `VETO` and `MAXB` (default 90 bytes).
   - Every reply gets two scores. The lenient one (`hit`) counts a reply as correct if it contains the value. The strict one (`strict`) needs all of the following:
     - the first sentence, up to the first `.`, `!` or `?` followed by whitespace or the end, contains the value as whole words (hyphens count as word characters);
     - no conflicting value appears anywhere, except after `not`, `instead of`, `rather than` or `changed/switched/moved (it) from`;
@@ -100,7 +100,7 @@ AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_c
 
 ## Copy-lock decoding
 
-`stream(..., lock, stop_sentence, rep)` and `beam(..., lock, stop_sentence)` take the Rust `Dec` options (Python keywords `lock`, `stop_sentence` and `rep`). All of them default to off, and with them off the outputs are byte-identical to the previous engine.
+`stream(..., lock, stop_sentence, rep, dlock)` and `beam(..., lock, stop_sentence, dlock)` take the Rust `Dec` options (Python keywords `lock`, `stop_sentence`, `rep` and `dlock`). All of them default to off, and with them off the outputs are byte-identical to the previous engine.
 
 - `lock` works on v19 packs with `COPY >= 13`. At each step, a copy candidate (direct, hop, chain, and on COPY=16 packs echo or entity) is eligible when all of the following hold:
   - its gate byte is valid and its gate logit is positive;
@@ -114,8 +114,13 @@ AMNI_HOME=/home/anmire/ai/Amni-Ai python scripts/v19_rust_eval.py exports/gf17_c
   - when `stop_sentence` is also on and no hop candidate is still pending, a word start whose argmax re-opens a banned value ends the reply ("In Austin Austin" becomes "In Austin.").
 - `stop_sentence` stops at the first `.`, `!` or `?` followed by a space or newline once a full word has been emitted, and never inside a locked value.
 - `rep` is subtracted from the logit of every byte that would repeat a 6-byte sequence already in the reply.
+- `dlock` (needs `lock`) adds four rules for memory questions on gen2 packs:
+  - in the decline state (a parsed entity and relation with no direct or hop candidate, the same test as the pooled decline keys), the reply opens with a forced `I'm not sure`;
+  - the top live candidate is the direct or hop candidate (0 to 11) with the highest positive gate logit, computed without the next-byte condition, whose value is not banned and starts with a letter. When the current word is the article `a`, a vowel-initial candidate forces `n` and a consonant-initial one forces the space, if the model's own choice is within 2 logits of it or is punctuation;
+  - right after an `a` or `an` article, the top live candidate is locked even when its first byte is not the argmax;
+  - the banned-value stop only fires when no live, unused direct candidate is still pending ("Your aunt drives" no longer stops before "a Dacia Duster" because the entity echo started with the same letter as the next word).
 - Everything is deterministic: a forced byte skips the sampler.
-- The server's memory route (`amni/serve/gguf_runtime.py`) defaults to greedy, `lock`, `stop_sentence`, `rep=1` and `veto` off. The knobs are `AMNI_RAY_MEM_LOCK`, `AMNI_RAY_MEM_STOP_SENTENCE`, `AMNI_RAY_MEM_REP`, `AMNI_RAY_MEM_TOPK`, `AMNI_RAY_MEM_TEMP`, `AMNI_RAY_MEM_VETO` and `AMNI_RAY_MEM_BYTES`. The Taichi engine ignores the lock options.
+- The server's memory route (`amni/serve/gguf_runtime.py`) defaults to greedy, `lock`, `stop_sentence`, `rep=1` and `veto` off. `dlock` is off unless `AMNI_RAY_MEM_DLOCK=1`. The knobs are `AMNI_RAY_MEM_LOCK`, `AMNI_RAY_MEM_STOP_SENTENCE`, `AMNI_RAY_MEM_DLOCK`, `AMNI_RAY_MEM_REP`, `AMNI_RAY_MEM_TOPK`, `AMNI_RAY_MEM_TEMP`, `AMNI_RAY_MEM_VETO` and `AMNI_RAY_MEM_BYTES`. The Taichi engine ignores the lock options.
 
 ## v19d memory-result levels
 
@@ -242,6 +247,23 @@ The signal comes from `W19` at every Adam-reply position (`qon == 1`), using the
 - Candidate fallback by value type ignores dislike and allergy facts under gen2.
 - Decline keys: when a question has a parsed entity and relation but no direct or hop candidate, both memory-result levels switch to pooled keys. Level A is `hm(9001, min(ap, 23), 147)` with slot key 0, and level B is `hm(9002, ab, 149)` over the last four reply bytes. The decline template therefore trains as one family and does not depend on question framing or the opener bytes.
 - `amni/serve/user_memory.py` mirrors all of this behind the pack's `"gen2": 1` flag (`AMNI_UMEM_G2` overrides). Its facts and question state match the Rust parser on 7,392 dialogues (D3, chat3-style, V19H- and V19J-style generator output, chat8e hold). `crates/adam-train/tests/v19_probe.rs::probe_gen2` and `tests/test_user_memory_gen2.py` cover the rules.
+
+## F13 gen2 additions
+
+These rules are part of the gen2 analyzer (`Geo::g2`), so packs without `"gen2": 1` are unchanged. Regenerate the table with `RELMINE_GEN2=1 RELMINE_G2KEEP=<old v19_gen2.tsv>` to reuse its mined rows without re-mining clean2; the output then differs from the old table only by the new seed rows.
+
+- Birth years: a 4-digit number is a valid birthday value (`born in 1993`). `birth year`, `year of birth`, `birthdate`, `birth date` and `date of birth` are birthday nouns, and `where` with a birthday relation asks for the place (`Where was my son born?`). `has a birthday in May` stores the month.
+- Objects (relation-9 nouns such as car, truck, bike): a name or colour cue whose clause subject is the object binds to the object (`My car is called Bolt`, `My truck is called Big Red`), and the relation-9 reading no longer takes a value that starts at a cue. Object keys fold in a non-self owner, so `my sister's car` and `my car` are separate. `where` with an object asks for the object's place.
+- `bought/buy/purchased <the/my> <noun> in <City>` stores the city as the place of that noun's key (`Where did I buy my bag?`).
+- A capitalised word that equals a stored name value acts as a mention of that entity at a clause start or after an auxiliary, a conjunction or a question word (`Kiwi only eats seeds`, `What does Luna eat?`).
+- `favourite <noun>` for a noun that is not a relation noun and not a person, animal or artifact head becomes an object key (the noun without modifiers, owner folded) with a like fact, in statements and questions (`My favourite drink is iced tea`).
+- A question whose relation comes from a generic like-cue (`What does my friend like?`), with no relation noun anywhere in the question, asks for the entity's latest like-family relation (like, colour or food). `What hobby do I like?` is not changed.
+- `than anything` no longer makes a hobby value (`-ing` or hobby type) a food fact; other values keep the food reading (`loves patatas bravas more than anything`).
+- Compound mentions end before a colour word or, in inverted questions, before a cue verb (`I painted my ukulele teal`, `What does my goat go crazy for?`).
+- `X and Y ... the same Z` keeps both subjects in one clause when the part before `and` has no verb or cue word, and links them both ways.
+- `I work as X in <City>` also stores the city on a workplace key (entity folded with `work`); a job question with a place noun (`In which state do I work as a plumber?`) asks that key's place, so the region hop answers it.
+- `do all day` is a question-only job cue and `name-wise` is a name noun.
+- Mirror, probes and tests: `user_memory.py` matches Rust on 10,741 dialogues (D, D3, chat3, chat8e, chat9h and chat10j holds, 3,000 chat10j and 3,000 chat9h train dialogues, the F13 probe list). On the chat10j train sample the new rules change no stored fact and 3 question states. `probe_gen2` and `tests/test_user_memory_gen2.py::test_gen2_f13_rules` cover the rules.
 
 ## Trainer (R2): `adam-train`
 

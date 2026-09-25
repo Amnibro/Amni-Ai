@@ -4,13 +4,13 @@ _H0=os.path.dirname(os.path.dirname(os.path.abspath(__file__)));H=os.environ.get
 import adam_ray
 import v19_eval_run as ev
 P=sys.argv[1];P=P if P.endswith("_sid.npy") else P+"_sid.npy";P=P if os.path.isabs(P) or os.path.exists(P) else os.path.join(H,P);TAG=sys.argv[2] if len(sys.argv)>2 else "v19_rust";N=int(os.environ.get("EVAL_N","0"));CTX=int(os.environ.get("CTX","1048576"));B=os.path.join(H,"data",os.environ.get("LEX","clean1"))
-DEC,MAXB,LOCK,SS,REP,BW,VETO=os.environ.get("DEC","greedy"),int(os.environ.get("MAXB","90")),os.environ.get("LOCK","0")=="1",os.environ.get("SS","0")=="1",float(os.environ.get("REP","0")),int(os.environ.get("BEAM_W","4")),os.environ.get("VETO","0")=="1"
+DEC,MAXB,LOCK,SS,REP,BW,VETO,DLOCK=os.environ.get("DEC","greedy"),int(os.environ.get("MAXB","90")),os.environ.get("LOCK","0")=="1",os.environ.get("SS","0")=="1",float(os.environ.get("REP","0")),int(os.environ.get("BEAM_W","4")),os.environ.get("VETO","0")=="1",os.environ.get("DLOCK","0")=="1"
 C3=os.path.join(H,"data","chat3","hold_eval.jsonl");DX=("D2","D3","D4");SUITES=os.environ.get("SUITES","chat3,D").split(",")
 e=adam_ray.RayField(P,os.path.join(B,"synsets.txt"),os.path.join(B,"words.txt"),os.path.join(B,"wordcounts.txt"),os.environ.get("AMNI_RAY_ARCH","cpu"),H).load()
 def gen(prompt:str,maxb:int=MAXB)->str:
  s=prompt.encode("ascii","replace")[-(CTX-maxb):];out=b""
- if DEC=="beam":return e.beam(s.decode("ascii"),BW,4,maxb,16,VETO,lock=LOCK,stop_sentence=SS).split("\n")[0].strip()
- if DEC=="stream":return "".join(e.stream(s.decode("ascii"),max_bytes=maxb,temp=1.0,topk=1,stop=["\n"],veto=VETO,lock=LOCK,stop_sentence=SS,rep=REP)).strip()
+ if DEC=="beam":return e.beam(s.decode("ascii"),BW,4,maxb,16,VETO,lock=LOCK,stop_sentence=SS,**({"dlock":True} if DLOCK else {})).split("\n")[0].strip()
+ if DEC=="stream":return "".join(e.stream(s.decode("ascii"),max_bytes=maxb,temp=1.0,topk=1,stop=["\n"],veto=VETO,lock=LOCK,stop_sentence=SS,rep=REP,**({"dlock":True} if DLOCK else {}))).strip()
  lg=e.prime(s)[0]
  for _ in range(maxb):
   c=int(np.argmax(lg))
@@ -43,6 +43,6 @@ def dx(k:str)->tuple:
 if __name__=="__main__":
  t=time.time();c3n=int(os.environ.get("C3_N","0"));c3=rows(C3);d=rows(os.path.join(str(ev.EVAL),"recall.jsonl"),lambda r:"unknown" if r["answer"]=="UNKNOWN" else "known")
  d=d[:N] if N else d;th=rows(os.path.join(str(ev.EVAL),"twohop.jsonl"),lambda r:"twohop");th=th[:N] if N else th
- rep={**({"chat3":suite(c3[:c3n] if c3n else c3,"chat3_hold")} if "chat3" in SUITES else {}),**({"D":suite(d+th,"D")} if "D" in SUITES else {}),**{k:(lambda rv:suite(rv[0][:N] if N else rv[0],k,rv[1]))(dx(k)) for k in DX if k in SUITES},"pack":P,"engine":f"adam_ray {e.backend} L={e.L} copy={e.copy}","decode":{"dec":DEC,"maxb":MAXB,"lock":LOCK,"stop_sentence":SS,"rep":REP,"beam_w":BW,"veto":VETO}}
+ rep={**({"chat3":suite(c3[:c3n] if c3n else c3,"chat3_hold")} if "chat3" in SUITES else {}),**({"D":suite(d+th,"D")} if "D" in SUITES else {}),**{k:(lambda rv:suite(rv[0][:N] if N else rv[0],k,rv[1]))(dx(k)) for k in DX if k in SUITES},"pack":P,"engine":f"adam_ray {e.backend} L={e.L} copy={e.copy}","decode":{"dec":DEC,"maxb":MAXB,"lock":LOCK,"stop_sentence":SS,"rep":REP,"beam_w":BW,"veto":VETO,"dlock":DLOCK}}
  rep["wall_s"]=round(time.time()-t);dst=os.path.join(str(ev.EVAL),f"report_{TAG}.json");json.dump(rep,open(dst,"w"),indent=1)
  print(json.dumps({**{k:{"acc_strict":[round(rep[k]["acc"],4),round(rep[k]["strict"],4)],"by_kind":{c:[v,rep[k]["strict_by_kind"][c]] for c,v in rep[k]["by_kind"].items()},"groups":rep[k]["strict_groups"]} for k in ("chat3","D")+DX if k in rep},"decode":rep["decode"],"wall_s":rep["wall_s"],"dst":dst}))

@@ -430,6 +430,13 @@ seed	doing all day at work	1	5	16
 seed	dooed all day at work	1	5	16
 seed	dooing all day at work	1	5	16
 seed	dos all day at work	1	5	16
+seed	do all day	1	5	16
+seed	doed all day	1	5	16
+seed	does all day	1	5	16
+seed	doing all day	1	5	16
+seed	dooed all day	1	5	16
+seed	dooing all day	1	5	16
+seed	dos all day	1	5	16
 seed	go by	1	6	0
 seed	goed by	1	6	0
 seed	goes by	1	6	0
@@ -1840,6 +1847,11 @@ seed	birthday month	2	15	0
 seed	big day	2	15	0
 seed	bday	2	15	0
 seed	birth day	2	15	0
+seed	birth year	2	15	0
+seed	year of birth	2	15	0
+seed	birthdate	2	15	0
+seed	birth date	2	15	0
+seed	date of birth	2	15	0
 seed	pet peeve	2	2	0
 seed	pet hate	2	2	0
 seed	biggest fear	2	2	0
@@ -1855,6 +1867,7 @@ seed	college-wise	2	13	0
 seed	academically	2	13	0
 seed	work-wise	2	5	0
 seed	job-wise	2	5	0
+seed	name-wise	2	6	0
 seed	colour-wise	2	10	0
 seed	color-wise	2	10	0
 seed	thing	2	0	0
