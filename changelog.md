@@ -1,3 +1,20 @@
+## 2026-09-25 F13b: gen2 parser fixes for suite D, dlock decode flag (parser-only meets the promotion rule; dlock does not; the CTO decides)
+- Restart of F13 from `feat/f13` (diagnosis, relmine WIP, `examples/v19_facts.rs`). No retraining; all numbers use the v19j2 weights (`rayhash_v19j2_clean_chat10j_s30k`).
+- Parser (gen2 only; rules in `crates/README.md`, "F13 gen2 additions"): 4-digit birth years, birth-year nouns, `where ... born` asks the place, `has a birthday in May`; names and colours bind to relation-9 objects (`My car is called Bolt`) and object keys fold the owner; a generic like-cue question falls back to the latest like-family relation; stored names act as mentions (`Kiwi only eats seeds`); `bought X in City`; `favourite <noun>` object facts; `than anything` keeps hobbies as hobbies; colour words and inverted-question cue verbs end compound mentions; `X and Y ... the same Z` links both ways; `I work as X in City` feeds the region hop; `do all day`, `name-wise`.
+- Mirror: `amni/serve/user_memory.py`, 0 mismatches against Rust on 10,741 dialogues. The table regenerates byte-identically except the 13 new seed rows (`RELMINE_G2KEEP` reuses the mined rows). On 3,000 chat10j train dialogues no stored fact changes and 3 question states change.
+- `dlock` (eval `DLOCK=1`, serve `AMNI_RAY_MEM_DLOCK=1`, default off): decline opener in the decline state, article agreement with the top live candidate, candidate lock after an article, no banned-value stop while a live direct candidate is unused. With it off, chat3/D/D3 outputs are byte-identical to the parser-only run.
+- Strict results (stream, maxb 240, lock, stop-sentence, rep 1). Groups are known-unknown-twohop. D2 and D4 were run once per configuration, at the end.
+
+  | config | chat3 | D | D2 k-u-t | D3 k-u-t | D4 k-u-t | F7 smoke |
+  |---|---|---|---|---|---|---|
+  | v19j2 (serve) | 96.6 | 87.0 | 47.6-93.3-46 | 90.0-90.0-80.0 | 85.7-100-43.3 | 4/6 in the F13 harness (the smoke parses identically, so equal to the next row) |
+  | + F13b parser | 96.6 | 97.5 | 48.6-93.3-46 | 92.1-90.0-86.7 | 85.7-100-63.3 | 4/6 |
+  | + F13b parser + dlock | 98.2 | 99.5 | 51.0-91.7-46 | 95.0-91.7-90.0 | 86.4-100-63.3 | 6/6 |
+
+  - Parser only: no category on D2 or D4 is worse than v19j2 (D2 simple 42.5 -> 45, pronoun 24 -> 26; D4 twohop 43.3 -> 63.3), chat3 is item-identical to v19j2, and D is 97.5. The promotion rule is met.
+  - Parser + dlock: better on every chat3, D and D3 category and on D2 simple/multi/pronoun/correction and D4 pronoun, but D2 unknown drops 93.3 -> 91.7 (one item), so it does not meet the rule. It was not tuned on D2.
+- Left alone: D #32 (`What hobby do I like?` after `I like sushi`, kept a decline because D3 #303 needs one) and D #302 (the name is given after the fact). The smoke's uncle question declines only under dlock.
+- Tests: `probe_gen2` has 9 F13 cases (8/8 probes pass); `tests/test_user_memory_gen2.py` has `test_gen2_f13_rules`; the gen, gen2 and main user_memory tests pass (13 + 22).
 ## 2026-09-25 F12: v19j gen2 clause analyzer, pooled decline keys, chat10j, v19j2 (meets the promotion rule; not promoted, the CTO decides)
 - Parser flag `GEN2=1` (pack json `"gen2": 1`, needs `GEN=1` and `LATEST=1`). The rules are in `crates/README.md`, "v19j clause analyzer (GEN2)" (`crates/adam-ray/src/g2.rs`).
   - It is a sentence-level analyzer: order-free value/entity binding, possessive chains, indirect and object questions, an if-clause and hypothetical filter, a negation filter, pending same-as links in either order, and region facts.
