@@ -4,9 +4,9 @@ from amni.compute.ks_codec import KSCodec,KStore,write_store,paginate,table,PAGE
 _H0=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEXT=("Adam stores coordinates, not numbers. "*40+"\n\n").encode()+"Ünïcödé ✓ 漢字テキスト Ελληνικά עברית 🚀🧪\n\n".encode()*20+open(os.path.join(_H0,"amni","compute","ks_codec.py"),"rb").read()[:6000]
 PAGES=[b"",b"x",b"\n",TEXT[:PAGE],"—ñ€𝄞".encode()*200,open(os.path.join(_H0,"amni","compute","ray_qa.py"),"rb").read()[:3000],bytes(random.Random(7).getrandbits(8) for _ in range(1500))]+paginate(TEXT)
-SNIP="import hashlib;from amni.compute.ks_codec import KSCodec;from tests.test_ks_codec import PAGES;print(hashlib.sha256(b''.join(KSCodec(ver='ks1-v16',arch='cpu').encode(PAGES))).hexdigest())"
+SNIP="import hashlib;from amni.compute.ks_codec import KSCodec;from tests.test_ks_codec import PAGES;print(hashlib.sha256(b''.join(KSCodec(ver='ks2-clean1',arch='cpu').encode(PAGES))).hexdigest())"
 @pytest.fixture(scope="module")
-def codec():return KSCodec(ver="ks1-v16",arch="cpu")
+def codec():return KSCodec(ver="ks2-clean1",arch="cpu")
 def test_paginate_exact():
  ps=paginate(TEXT);assert b"".join(ps)==TEXT and all(0<len(p)<=PAGE for p in ps) and paginate(b"")==[b""]
 def test_table_integer_deterministic():
@@ -35,7 +35,9 @@ def test_corrupt_index_guard(tmp_path,codec,how):
 def test_frozen_coder_guard(tmp_path,codec):
  out=_store(tmp_path,codec);m=json.load(open(os.path.join(out,"meta.json")));m["coders"][0]["pack_id"]="0"*32;json.dump(m,open(os.path.join(out,"meta.json"),"w"))
  with pytest.raises(ValueError,match="frozen-coder"):KStore(out,codec).get([0])
-def test_coder_version_guard(tmp_path,codec):
+@pytest.mark.skipif(not os.path.exists(CODERS["ks1-v16"][0]),reason="legacy_grok retired: ks1-v16 coder deleted")
+def test_coder_version_guard(tmp_path):
+ codec=KSCodec(ver="ks1-v16",arch="cpu")
  ks2=KSCodec(ver="ks2-clean1",arch="cpu");lx=KSCodec(pack=CODERS["ks1-v16"][0],lex="clean1",arch="cpu");a,b,c=codec.ident(),ks2.ident(),lx.ident();out=_store(tmp_path,codec)
  assert a["ver"]=="ks1-v16" and b["ver"]=="ks2-clean1" and b["lex"]=="clean1" and len({a["pack_id"],b["pack_id"],c["pack_id"]})==3 and a["lex_id"]!=b["lex_id"]==c["lex_id"] and a["coder"]!=b["coder"]
  for w in (ks2,lx):
