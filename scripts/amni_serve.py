@@ -954,14 +954,14 @@ def main():
     @app.post('/models/activate')
     def activate_model(req:_ActivateReq):
         from amni.inference.gguf_catalog import list_ggufs
-        from amni.serve.gguf_runtime import activate
+        from amni.serve.gguf_runtime import activate,RAY_MODEL
         path=req.path
         if not path and req.id:
             hit=next((m for m in list_ggufs() if m['id']==req.id),None)
             if hit is None:raise HTTPException(status_code=404,detail=f'unknown model {req.id!r}')
             path=hit['path']
         path=path or (__import__('amni.compute.ray_field',fromlist=['DEFAULT_PACK']).DEFAULT_PACK if req.backend=='ray' else None)
-        model=req.model if req.backend!='ray' or req.model!='qwen38-27b-aggressive' else 'adam:ray-v16'
+        model=req.model if req.backend!='ray' or req.model!='qwen38-27b-aggressive' else RAY_MODEL
         if not path:raise HTTPException(status_code=400,detail='need id or path')
         if req.backend=='bake':
             os.environ['AMNI_GEN_BACKEND']='bake'

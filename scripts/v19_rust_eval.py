@@ -3,7 +3,7 @@ from collections import Counter
 _H0=os.path.dirname(os.path.dirname(os.path.abspath(__file__)));H=os.environ.get("AMNI_HOME",_H0);sys.path[:0]=[_H0,os.path.join(_H0,"scripts"),os.path.join(H,"scripts")]
 import adam_ray
 import v19_eval_run as ev
-P=sys.argv[1];P=P if P.endswith("_sid.npy") else P+"_sid.npy";P=P if os.path.isabs(P) or os.path.exists(P) else os.path.join(H,P);TAG=sys.argv[2] if len(sys.argv)>2 else "v19_rust";N=int(os.environ.get("EVAL_N","0"));CTX=int(os.environ.get("CTX","1048576"));B=os.path.join(H,"data",os.environ.get("LEX","big2"))
+P=sys.argv[1];P=P if P.endswith("_sid.npy") else P+"_sid.npy";P=P if os.path.isabs(P) or os.path.exists(P) else os.path.join(H,P);TAG=sys.argv[2] if len(sys.argv)>2 else "v19_rust";N=int(os.environ.get("EVAL_N","0"));CTX=int(os.environ.get("CTX","1048576"));B=os.path.join(H,"data",os.environ.get("LEX","clean1"))
 DEC,MAXB,LOCK,SS,REP,BW,VETO=os.environ.get("DEC","greedy"),int(os.environ.get("MAXB","90")),os.environ.get("LOCK","0")=="1",os.environ.get("SS","0")=="1",float(os.environ.get("REP","0")),int(os.environ.get("BEAM_W","4")),os.environ.get("VETO","0")=="1"
 C3=os.path.join(H,"data","chat3","hold_eval.jsonl")
 e=adam_ray.RayField(P,os.path.join(B,"synsets.txt"),os.path.join(B,"words.txt"),os.path.join(B,"wordcounts.txt"),os.environ.get("AMNI_RAY_ARCH","cpu"),H).load()

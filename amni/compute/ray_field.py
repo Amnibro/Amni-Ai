@@ -1,7 +1,7 @@
 import os,math,codecs,threading
 import numpy as np
 _H0=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_PACK=os.path.join(_H0,"exports","gf17_continuum","rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz")
+EX=os.path.join(_H0,"exports","gf17_continuum");DEFAULT_PACK=os.path.join(EX,"rayhash_v19e_clean_chat4e_r4_s30k_sid.npy");BASE_PACK=os.path.join(EX,"rayhash_clean1v2_base_v18_s100k_sid.npy");LEGACY_PACK=os.path.join(_H0,"exports","legacy_grok","rayhash_v16_big2_L21_e20_hop4_q5_s150k_pk_q5_i8.npz");DEFAULT_LEX="clean1";DEFAULT_IMPL="rust"
 V=256;WM=(1<<20)-1;NI=37;BASE=21;HOPS=4;KS=3;MAXB=256;TOPIC_A=0.99
 _lock=threading.Lock();_eng={}
 def _unpack5(b:np.ndarray,n:int)->np.ndarray:
@@ -26,7 +26,7 @@ def load_syn(path:str,n:int=2)->tuple:
  return tuple(ts)
 class RayField:
  def __init__(self,path:str=None,syn:str=None,words:str=None,arch:str=None):
-  self.path=path or os.environ.get("AMNI_RAY_PACK",DEFAULT_PACK);LX=os.path.join(_H0,"data",os.environ.get("AMNI_RAY_LEX","big2"));self.syn=syn or os.path.join(LX,"synsets.txt");self.words_path=words or os.path.join(LX,"words.txt");self.wcnt_path=os.path.join(LX,"wordcounts.txt");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","vulkan");self.ready=False;self.words=set();self.pref=set();self.ok=np.array([(32<=c<127) or c in (9,10) for c in range(V)])
+  self.path=path or os.environ.get("AMNI_RAY_PACK",DEFAULT_PACK);LX=os.path.join(_H0,"data",os.environ.get("AMNI_RAY_LEX",DEFAULT_LEX));self.syn=syn or os.path.join(LX,"synsets.txt");self.words_path=words or os.path.join(LX,"words.txt");self.wcnt_path=os.path.join(LX,"wordcounts.txt");self.arch=arch or os.environ.get("AMNI_RAY_ARCH","vulkan");self.ready=False;self.words=set();self.pref=set();self.ok=np.array([(32<=c<127) or c in (9,10) for c in range(V)])
  def load(self):
   if self.ready:return self
   import taichi as ti
@@ -164,4 +164,4 @@ class RayField:
     if all(s[-1]==10 for _,s,_ in beams):break
    return bytes(max(beams,key=norm)[1][len(p0):]).decode("utf-8","replace")
 def engine(path:str=None)->RayField:
- _eng[path]=_eng.get(path) or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0) if os.environ.get("AMNI_RAY_IMPL","taichi")=="rust" else r)(RayField(path));return _eng[path]
+ _eng[path]=_eng.get(path) or (lambda r:__import__("adam_ray").RayField(r.path,r.syn,r.words_path,r.wcnt_path,r.arch,_H0) if os.environ.get("AMNI_RAY_IMPL",DEFAULT_IMPL)=="rust" else r)(RayField(path));return _eng[path]

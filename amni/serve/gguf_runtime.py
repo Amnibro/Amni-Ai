@@ -5,6 +5,7 @@ or POST /models/activate.
 """
 import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
+RAY_MODEL='adam:ray-v19e-clean'
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
 def enabled()->bool:
@@ -14,7 +15,7 @@ def server_url()->str:
         return (os.environ.get('AMNI_OLLAMA_URL') or 'http://127.0.0.1:11434').rstrip('/')
     return (os.environ.get('AMNI_GGUF_URL') or os.environ.get('LLAMA_SERVER_URL') or 'http://127.0.0.1:8787').rstrip('/')
 def model_id()->str:
-    if backend_name()=='ray':return (os.environ.get('AMNI_RAY_MODEL') or 'adam:ray-v16').strip()
+    if backend_name()=='ray':return (os.environ.get('AMNI_RAY_MODEL') or RAY_MODEL).strip()
     return (os.environ.get('AMNI_GGUF_MODEL') or os.environ.get('AMNI_OLLAMA_MODEL') or 'qwen38-27b-aggressive').strip()
 def _post(url:str,body:dict,timeout:int=300)->dict:
     data=json.dumps(body).encode('utf-8')
@@ -50,7 +51,7 @@ def _ray_guide(e,message:str):
     if not os.path.exists(p):return None
     _qa[0]=_qa[0] or QA(p);return guide(e,_qa[0],message,full=True)
 _learned=[None]
-def _cite(title:str,url:str='')->str:return ('Grokipedia' if 'grokipedia' in url else 'Wikipedia')+(f' — {title}' if title else '')
+def _cite(title:str,url:str='')->str:return 'Wikipedia'+(f' — {title}' if title else '')
 def _ray_learned(message:str):
     try:
         from amni.compute.ray_learn import Learned
