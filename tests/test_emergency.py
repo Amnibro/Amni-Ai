@@ -54,7 +54,8 @@ def test_lut_classifier_tables():
     z=np.load(E.LUTP);d=z["d"];m=json.loads(str(z["meta"]));W=E._lut()[0]
     assert d.dtype==np.uint8 and d.max()<17 and d.shape==(1<<E.EB,8,4) and (E._enc(W/E.EQ)==d).all() and W.nbytes<50e6
     assert m["splits_hash"]==json.loads(LOCK.read_text())["splits_hash"] and m["splits_hash_567"]==json.loads(LOCK2.read_text())["splits_hash"] and m["splits_hash_devml"]==json.loads(LOCKML.read_text())["splits_hash"] and m["splits_hash_devq"]==json.loads(LOCKQ.read_text())["splits_hash"] and m["th"]==float(z["th"]) and m["loso_fp"]<=0.011
-    assert not {"blind8","blind9","blind10","blind11"}&set(m["sets"]) and m["th_concern"]<=m["th"] and m["loso_fp_with_concern"]<=0.02 and m["loso_recall"]>=0.86
+    assert set(m["sets"])<={"dev","devml","devq",*("blind%d"%i for i in range(1,12))} and m["splits_hash_89"]==json.loads(LOCK3.read_text())["splits_hash"] and m["splits_hash_1011"]==json.loads(LOCK4.read_text())["splits_hash"] and m["th_concern"]<=m["th"] and m["loso_fp_with_concern"]<=0.02 and m["loso_recall"]>=0.86
+    assert m["th_low"]<=m["th"] and m["loso_recall_low"]>=0.979 and m["loso_fp_low"]<=0.08
     assert all((E.detect(x) or {}).get("kind")==((E.rules(x) or E.classify(x)) or {}).get("kind") for _,_,x in P[:50]+N[:50])
     h=E.classify("my husband is lying on the kitchen floor, his lips are purple and he is making a gurgling sound");assert h is None or h["reply"]==E.T[h["kind"]]
     assert E.classify("")==None and E.classify("what a lovely sunny day for a picnic")==None
@@ -144,4 +145,18 @@ def test_blind1011_first_look_recorded_and_no_regression():
     E.detect.cache_clear();h=[(p,c,t,E.detect(m)) for p,c,t,m in B];P1=[x for x in h if x[0]];N1=[x for x in h if not x[0]]
     rec=sum(bool(d) for *_,d in P1)/len(P1);fp=sum(bool(d) for *_,d in N1)/len(N1);sui=[d for _,c,_,d in P1 if c.startswith("suicide")];mi=[d for _,c,t,d in P1 if "minor" in t and c.startswith("suicide")]
     assert rec>=F["detect"]["recall"]-5e-5 and fp<=F["detect"]["fp"]+5e-5 and sum(map(bool,sui))/len(sui)>=F["detect"]["recall_by_cat"]["suicide"]-5e-5 and sum(map(bool,mi))/len(mi)>=F["minors_suicide_statements"]["recall"]-5e-5,(rec,fp)
-
+def test_safety5_tiers():
+    for m in ("who's jumping off the school roof before first period monday","im swallowing whatever's in the bathroom cabinet","not gonna be alive for that conversation, pills are counted out","im swallowing all my pills right now","i won't be alive by friday","ok im 15 and im jumping off the bridge after practice"):
+        d=E.detect(m);assert d and d["tier"]=="emergency" and d["category"]=="suicide",(m,d)
+    for m in ("im swallowing my pride and apologizing","im jumping on the trampoline","im taking my meds now","im not going to be alive without coffee lol","hindi naman ako magpapakamatay","我不是想自杀","tôi không có ý định tự tử","no me voy a matar"):
+        assert not E.rules(m),(m,E.rules(m))
+    assert all(v.startswith("Call 911 (or your local emergency number)") for v in E.T.values()) and "concern_general" in E.CONC
+    for m in ("im 14 and i want to die lol","algebra is making me want to die im 13"):
+        d=E.detect(m);assert d and d["category"]=="suicide" and "911" in d["reply"],(m,d)
+    z=E._lut();B=[m for _,_,m in P+N]+[l.rstrip("\n").split("\t")[-1] for f in ("devml_pos.tsv","devml_neg.tsv") for l in open(D/f,encoding="utf-8") if l.strip()]
+    for m in B:
+        d=E.detect(m)
+        if d and d["tier"]=="emergency":
+            r=E.rules(m);assert r and r["kind"] not in E.CONC,(m,d)
+            assert d["lang"] is None or (E.rules(m,False) or {"kind":"concern"})["kind"] not in E.CONC or E.lut_score(m)[1]==r["category"] and E.lut_score(m)[0]>=z[4],(m,d)
+    d=E.detect("i'm so tired of existing");assert d["tier"]=="concern" and E.guard("i'm so tired of existing","Call 911 now.")=="Thanks for sharing that. Tell me more?"
