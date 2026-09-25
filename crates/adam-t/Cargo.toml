@@ -1,0 +1,21 @@
+[package]
+name = "adam-t"
+version = "0.1.0"
+edition = "2021"
+description = "Adam-T: homegrown ternary transformer core with PTEX hashed n-gram memory; float/STE training on wgpu (burn), lookup-only CPU inference from GF(3)/GF(17) pages"
+[[bin]]
+name = "adam-t"
+path = "src/main.rs"
+[features]
+default = []
+candle = ["burn/candle"]
+[dependencies]
+burn = { version = "0.21", default-features = false, features = ["std", "wgpu", "vulkan", "autodiff", "autotune", "fusion", "ndarray"] }
+adam-gf17 = { path = "../adam-gf17", default-features = false }
+adam-ray = { workspace = true }
+adam-train = { path = "../adam-train" }
+wgpu = "24"
+pollster = "0.4"
+bytemuck = "1"
+memmap2 = "0.9"
+rayon = "1"
