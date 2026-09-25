@@ -104,7 +104,7 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
     writeln!(log, "{{\"cfg\": {}, \"start\": {start}}}", c.json())?;
     let (t0, mut th, mut tm, mut du, mut lt, mut last, mut acc) = (Instant::now(), 0.0, 0.0f64, 1.0f64, 0.0f64, String::new(), (0.0f64, 0.0f64, 0usize));
     for it in start..steps {
-        th = if it % 50 == 0 || it == start { thr(&c.thf) } else { th };
+        th = thr(&c.thf);
         let ts = Instant::now();
         let (x, y) = tb(&tr, c.seed, it, c.bs, c.t);
         let loss = ce(logits(c, &core, mem.as_ref(), &x, c.bs, &dev), &y, &dev);
