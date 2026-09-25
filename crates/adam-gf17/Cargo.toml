@@ -1,0 +1,23 @@
+[package]
+name = "adam-gf17"
+version = "0.1.0"
+edition = "2021"
+description = "Lossless GF(17) Reffelt RGBA page store for Adam's tables: planar d3..d0 tier streams, mmap reader with a hot-page LRU, SSD streaming"
+[lib]
+name = "adam_gf17"
+crate-type = ["rlib", "cdylib"]
+[features]
+default = ["npy"]
+npy = ["dep:adam-ray"]
+py = ["npy", "dep:pyo3", "dep:numpy"]
+[dependencies]
+adam-ray = { workspace = true, optional = true }
+half = "2"
+memmap2 = "0.9"
+rayon = "1"
+libc = "0.2"
+pyo3 = { version = "0.24", features = ["extension-module"], optional = true }
+numpy = { version = "0.24", optional = true }
+[dev-dependencies]
+adam-ray = { workspace = true }
+adam-train = { path = "../adam-train" }
