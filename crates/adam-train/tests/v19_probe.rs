@@ -259,3 +259,20 @@ fn probe_gen() {
     assert!(a[8] == b'M' as i32 && a0[8] < 0, "{a:?} {a0:?}");
     println!("PROBE gen: same-as chain, negated tolerate -> dislike, relation-word compound entity, question freeze past '?', WordNet verb, appositive region hop");
 }
+#[test]
+fn probe_gen2() {
+    let kv = [("VER", "19"), ("COPY", "16"), ("MR", "2"), ("MASKV", "1"), ("QT", "1"), ("LEVELS", "21"), ("HOPS", "4"), ("LOG2_ENTRIES", "16"), ("BS", "1"), ("CTX", "768"), ("LATEST", "1"), ("GEN", "1")];
+    let (mut r, mut r0) = (R::new(&[&kv[..], &[("GEN2", "1")]].concat()), R::new(&kv));
+    assert!(r.c.geo.g2 && !r0.c.geo.g2 && !R::new(&[("VER", "19"), ("COPY", "16"), ("MR", "2"), ("LATEST", "1"), ("GEN2", "1")]).c.geo.g2);
+    let last = |r: &mut R, t: &[u8]| r.run(t).0[t.len() - 1].clone();
+    let q = |x: &[u8]| [x, b"\nAdam: "].concat();
+    let cases: [(&[u8], i32); 4] = [(b"User: My study buddy rents a little flat in Napier.\nAdam: Ok.\n\nUser: Can you tell me where my study buddy lives?", b'N' as i32), (b"User: My goddaughter breaks out in hives around strawberries.\nAdam: Ok.\n\nUser: What triggers my goddaughter's allergy?", b's' as i32), (b"User: If you ever go to Tainan, that's where my partner lives.\nAdam: Ok.\n\nUser: Where does my partner live?", b'T' as i32), (b"User: My tortoise shares a name with my gecko.\nAdam: Ok.\n\nUser: My gecko is called Biscuit.\nAdam: Ok.\n\nUser: What do we call my tortoise?", b'B' as i32)];
+    for (t, c) in cases { let t = q(t); let (a, a0) = (last(&mut r, &t), last(&mut r0, &t)); assert!(a[0] == c && a0[0] != c, "{:?} {a:?} {a0:?}", String::from_utf8_lossy(&t)); }
+    let hy = q(b"User: If my brother were a pilot, he would be thrilled.\nAdam: Ok.\n\nUser: Pop quiz: what does my brother do for work? I forget.");
+    assert!(last(&mut r, &hy)[0] < 0);
+    let (g, lx) = (r.c.geo.clone(), adam_train::v19::Lx19::new());
+    let mut w = adam_train::v19::W19::new(16);
+    q(b"User: My aunt lives in Oslo.\nAdam: Ok.\n\nUser: Random question, but what does my uncle drive? I forget.").iter().for_each(|&b| w.step(&g, &r.lex, &lx, b));
+    assert!(w.m.cand[0] < 0 && w.m.qrel == 9 && w.m.qent > 1 && w.mtaps(&g)[0] == Some(g.sl(hm(9001, 0, 147), 0, g.mb())), "{:?} {} {}", w.m.cand, w.m.qent, w.m.qrel);
+    println!("PROBE gen2: flat/hives idioms, value before entity, pending same-as link, hypothetical not stored + framing-robust question, pooled decline keys");
+}

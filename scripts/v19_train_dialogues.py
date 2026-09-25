@@ -305,6 +305,45 @@ if H9:
    S["ex"][(h,"city")]=(C,"",None);S["two"]=C;return mix(R,[[(u,R.choice(GACK),[(h,"city",C),("#"+C,"region",CITY[C][0])])]],dis(R,D,*DK["twohop"])),(h,"city"),[]
   return _ktwo(R,S,D)
  OBJ.extend(w for w in NNO if w not in OBJ);KB["sameas"]=k_same;KINDS.clear();KINDS.update({"simple":.14,"multi":.13,"correction":.12,"pronoun":.09,"twohop":.10,"sameas":.09,"longgap":.10,"unknown":.23});KINDS.update({k:float(v) for k,v in (x.split(":") for x in os.environ.get("KINDS_W","").split(",") if x)});DK["sameas"]=(0,2)
+J10=H9 and os.environ.get("V19J")=="1"
+if J10:
+ XJ={"city":("{H} rents a small place in {V}.;{H} has a flat in {V}.;Home for {j} is {V}.;{V} is where {h} lives now.;If you ever visit {V}, that's where {h} lives.;{H} ended up settling in {V}.;{H} is a local in {V} these days.","I rent a small place in {V}.;Home for me is {V}.;{V} is where I live now.;I ended up settling in {V}.","What's the name of the town my {P} lives in?;Where is my {P}'s place?;Where did my {P} end up settling?;Where's my {P}'s home these days?","Where did I end up settling?;Where's my place again?"),
+ "job":("{H} pays the bills working as {a} {V}.;{H} trained as {a} {V} and still does it.;{G} day job is {V}.;By day, {h} is {a} {V}.;{G} job title is {V}.;{H} makes a living as {a} {V}.","I pay the bills working as {a} {V}.;I trained as {a} {V}.;My day job is {V}.","What line of work is my {P} in?;What does my {P} do professionally?;What's my {P}'s day job?;How does my {P} earn a living?","What line of work am I in?;What's my day job?"),
+ "name":("Everyone calls {j} {V}.;We all call {j} {V}.;{H} answers to {V}.;{H} only responds to the name {V}.;The name {h} goes by is {V}.","Everyone calls me {V}.;I answer to {V}.","What does my {P} answer to?;What do we call my {P}?;What name does my {P} go by?","What do people call me?"),
+ "like":("{H} is big on {V}.;The thing {h} does to unwind is {V}.;{H} spends most weekends on {V}.;In {p} free time, {h} does a lot of {V}.;{H} picked up {V} last year and is hooked.;Whenever {h} has a spare hour, it's {V}.","I'm big on {V}.;The thing I do to unwind is {V}.;I spend most weekends on {V}.","What does my {P} do to unwind?;What keeps my {P} busy on weekends?;What does my {P} do in {p2} free time?;What makes my {P} happiest?","What do I do to unwind?;What keeps me busy on weekends?"),
+ "allergy":("{H} breaks out in hives around {V}.;{H} carries an EpiPen because of {V}.;{H} reacts badly to {V}, it's an allergy.;The only thing {h} is allergic to is {V}.;{H} gets itchy from {V}, it's an allergy.","I break out in hives around {V}.;I carry an EpiPen because of {V}.;The only thing I'm allergic to is {V}.","What should I keep away from my {P}?;What triggers my {P}'s allergy?;Which allergy does my {P} have?;What can't my {P} be around because of an allergy?","What triggers my allergy?;Which allergy do I have?"),
+ "drive":("{G} daily driver is {a} {V}.;{H} gets around in {a} {V}.;{H} is the proud owner of {a} {V}.;{H} keeps {a} {V} in the garage.;{H} commutes in {a} {V}.","My daily driver is {a} {V}.;I get around in {a} {V}.;I'm the proud owner of {a} {V}.","What's parked in my {P}'s garage?;What does my {P} get around in?;What's my {P}'s daily driver?;What does my {P} commute in?","What's my daily driver?;What do I get around in?"),
+ "color":("{G} colour of choice is {V}.;{H} would pick {V} over any other colour.;If {h} had to pick one colour, it'd be {V}.;{H} buys everything in {V}, it's {p} favourite.","My colour of choice is {V}.;If I had to pick one colour, it'd be {V}.","What's my {P}'s colour of choice?;If my {P} had to pick one colour, what would it be?;Which shade does my {P} like most?","What's my colour of choice?"),
+ "food":("{G} go-to comfort food is {V}.;{H} has a real weakness for {V}.;If {h} could only eat one thing forever, it'd be {V}.;Nothing makes {j} happier than a big plate of {V}.;{H} always orders {V} when we eat out.","My go-to comfort food is {V}.;I have a real weakness for {V}.","What's my {P}'s go-to meal?;What does my {P} have a weakness for?;What should I cook for my {P}?;What does my {P} like eating most?","What's my go-to meal?;What do I have a weakness for?"),
+ "study":("{H} did {p} masters in {V}.;{H} has a background in {V}.;{H} got {p} diploma in {V}.;{G} field is {V}.;{H} read {V} at university.","I did my masters in {V}.;I have a background in {V}.;My field is {V}.","What's my {P}'s academic background?;What field is my {P} in, academically?;What did my {P} get {p2} degree in?","What's my academic background?;What field am I in?"),
+ "school":("{H} spent four years at {V}.;{H} is an alum of {V}.;{H} did {p} undergrad at {V}.;{H} is a proud graduate of {V}.;{G} alma mater is {V}.","I spent four years at {V}.;I did my undergrad at {V}.;I'm a proud graduate of {V}.","Where did my {P} get {p2} degree?;Where is my {P} enrolled?;What's my {P}'s alma mater?","What's my alma mater?;Where did I get my degree?"),
+ "age":("{H} has just hit {V}.;{H} is a good {V} years old.;{G} age is {V}.","I've just hit {V}.;My age is {V}.","What age is my {P}?;How old would my {P} be now?","What age am I?"),
+ "birthday":("{G} big day is in {V}.;{G} birthday comes around every {V}.;We celebrate {g} birthday every {V}.;{H} was born one {V}, a while back now.","My big day is in {V}.;My birthday comes around every {V}.","When should I get my {P} a birthday present?;Which month does my {P} celebrate in?;When is my {P}'s big day?","When is my big day?"),
+ "dislike":("{G} biggest pet peeve is {V}.;{H} has zero patience for {V}.;{H} gets grumpy about {V}.;If there's one thing {h} despises, it's {V}.;The one thing {h} can't stand is {V}.;{H} goes berserk over {V}.","My biggest pet peeve is {V}.;I have zero patience for {V}.;The one thing I can't stand is {V}.","What sets my {P} off?;What's my {P}'s biggest pet peeve?;What can't my {P} stand?;What gets on my {P}'s nerves?","What's my biggest pet peeve?;What can't I stand?")}
+ _eqj={norm(q) for q in EV_Q}
+ for r,(a3,a1,q3,q1) in XJ.items():
+  q3,q1=q3.replace("{p2}","their").replace("{p}","their"),q1.replace("{p2}","my")
+  if r in REL:REL[r]["t3"]=REL[r]["t3"]+[x for x in T(a3) if x not in REL[r]["t3"]];REL[r]["t1"]=REL[r]["t1"]+[x for x in T(a1) if x not in REL[r]["t1"]];REL[r]["u3"]=REL[r]["u3"]+[x for x in T(q3) if x not in REL[r]["u3"] and norm(x) not in _eqj];REL[r]["u1"]=REL[r]["u1"]+[x for x in T(q1) if x not in REL[r]["u1"] and norm(x) not in _eqj]
+ NOISEP=[x+" " for x in T("Pop quiz:;Memory test:;Quick one:;Random question, but;Out of curiosity,;Real quick,;Test time:;Don't laugh, but;Okay so,;Um,;Hmm, quick check:;Just wondering,;So, uh,;Question for you:;Right, so")];NOISES=T("I forget.;Any idea?;Just checking.;Can't recall.;I blanked on it.;If you know.;No pressure.;Remind me.;I lost track.;Do you remember?")
+ def typo(R,s):
+  ws=s.split(" ");i=R.randrange(len(ws));w=ws[i]
+  if len(w)>=5 and w.isalpha():j=R.randrange(1,len(w)-2);ws[i]=w[:j]+w[j+1]+w[j]+w[j+2:]
+  return " ".join(ws)
+ _ask3=ask
+ def ask(R,h,rel):
+  q=_ask3(R,h,rel);p,sx=R.choice(NOISEP) if R.random()<float(os.environ.get("NOISE_P",".35")) else "",R.choice(NOISES) if R.random()<float(os.environ.get("NOISE_P",".35")) else ""
+  p,sx=(typo(R,p) if p and R.random()<.3 else p),(typo(R,sx) if sx and R.random()<.3 else sx)
+  return p+(q[:1].lower()+q[1:] if p and not q.startswith(("I ","I'")) else q)+(" "+sx if sx else "")
+ HYP={"city":"{H} wants to move to {V} someday.;{H} doesn't live in {V} anymore.;If {h} lived in {V}, {s} would love it.","job":"{H} would love to be {a} {V} one day.;{H} isn't {a} {V}, despite what people think.","drive":"{H} is thinking about getting {a} {V}.;{H} doesn't drive {a} {V}.","like":"{H} wants to try {V} someday.","food":"{H} has never tried {V}.","school":"{H} almost went to {V}.","allergy":"{H} isn't allergic to {V}, it turns out.","study":"{H} is thinking about studying {V}."}
+ _kunk=k_unk
+ def k_unk(R,S,D):
+  body,(h,rel),iq=_kunk(R,S,D);u=R.random()
+  if h!="I" and h not in OBJ and u<.3:
+   h2=h+"'s "+R.choice([x for x in PERSONS+PETK if " " not in x and x not in h]);body=mix(R,body,[unit(R,S,h2,rel)])
+  elif rel in HYP and h!="I" and u<.5:
+   v=pv(R,S,rel,h);g=gd(R,S,h);body=mix(R,body,[[(fm(R.choice(T(HYP[rel])),ctx(h,g,v,False,rel)).replace("I wants","I want").replace("I doesn't","I don't").replace("I would","I would").replace("I isn't","I'm not").replace("I has","I have").replace("I is","I am").replace("I lived","I lived"),R.choice(GACK),[])]])
+  return body,(h,rel),iq
+ KB["unknown"]=k_unk
 def turn(u,a):return f"User: {u}\nAdam: {a}\n\n"
 def one(R,kind,D):
  S={"g":{},"ex":{},"vals":[]};body,(h,rel),iq=KB[kind](R,S,D);tu=[t for u in body for t in u];asks=[]
