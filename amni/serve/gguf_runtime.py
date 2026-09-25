@@ -3,7 +3,7 @@
 Does not replace the Granite bake. Activate with AMNI_GEN_BACKEND=gguf
 or POST /models/activate.
 """
-import json,os,re,urllib.request,urllib.error
+import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
@@ -56,15 +56,15 @@ def _ray_learned(message:str):
         from amni.compute.ray_learn import Learned
         _learned[0]=_learned[0] or Learned();return _learned[0].find(message)
     except Exception:return None
-_SELF=re.compile(r"(?i)\bmy\b|\bmine\b|\bi(?:'m|'ve| am| have| live| work| drive| like| love| hate| studied| was born| moved)\b|\b(?:where|what|which|who|when) (?:do|did|am|was) i\b|\bhow old am i\b")
-_RECALL=re.compile(r"(?i)^\W*(?:hey|so|ok(?:ay)?|um|and|also|wait)?[, ]*(?:where|what|which|who|when|whom|how old|how many|how long|remind me|do you (?:remember|know)|did i|can you (?:remind|tell) me)\b")
-_PRON=re.compile(r"(?i)^\W*(?:actually,? |also,? |and )?(?:he|she|they)(?:'s| is| was| has| drives| works| lives| moved| likes| loves| studied| goes)\b")
-def _memq(m:str)->bool:return bool(_SELF.search(m)) and (not m.strip().endswith('?') or bool(_RECALL.search(m))) or bool(_PRON.search(m)) and not m.strip().endswith('?')
-def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
-    from amni.compute.ray_field import engine
-    h=(history or [])[-int(os.environ.get('AMNI_RAY_HIST','24')):];prompt=''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in h)+f'User: {message.strip()}\nAdam:'
+def _memq(m:str,history=None,user=None)->bool:
+    from amni.serve.user_memory import turn
+    return turn(m,history,user,dry=True)['route']
+def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Iterator[str]:
+    from amni.compute.ray_field import engine;from amni.serve.user_memory import turn
+    mem=turn(message,history,user,session);prompt=mem['pre']+''.join(f'User: {u.strip()}\nAdam: {a.strip()}\n\n' for u,a in mem['hist'])+f'User: {message.strip()}\nAdam:'
+    if mem['reply']:yield mem['reply'];return
     e=engine();getattr(e,'impl','')=='rust' and e.load()
-    if getattr(e,'v19',False) and _memq(message):yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','1.0')),topk=int(os.environ.get('AMNI_RAY_MEM_TOPK','1')),stop=('\n\n','\nUser:','\nAdam:'),veto=os.environ.get('AMNI_RAY_MEM_VETO','0')=='1',**({'lock':os.environ.get('AMNI_RAY_MEM_LOCK','1')=='1','stop_sentence':os.environ.get('AMNI_RAY_MEM_STOP_SENTENCE','1')=='1','rep':float(os.environ.get('AMNI_RAY_MEM_REP','1.0'))} if getattr(e,'impl','')=='rust' else {}));return
+    if getattr(e,'v19',False) and mem['route']:yield from e.stream(prompt,max_bytes=int(os.environ.get('AMNI_RAY_MEM_BYTES','240')),temp=float(os.environ.get('AMNI_RAY_MEM_TEMP','1.0')),topk=int(os.environ.get('AMNI_RAY_MEM_TOPK','1')),stop=('\n\n','\nUser:','\nAdam:'),veto=os.environ.get('AMNI_RAY_MEM_VETO','0')=='1',**({'lock':os.environ.get('AMNI_RAY_MEM_LOCK','1')=='1','stop_sentence':os.environ.get('AMNI_RAY_MEM_STOP_SENTENCE','1')=='1','rep':float(os.environ.get('AMNI_RAY_MEM_REP','1.0'))} if getattr(e,'impl','')=='rust' else {}));return
     h=_ray_guide(e,message);g=h[3] if h else None;src=f" (Source: {_cite(h[5])})" if h and len(h)>5 and h[5] else ''
     if g is None:
         lr=_ray_learned(message)
@@ -76,9 +76,9 @@ def _ray_stream(message:str,history=None,max_new_tokens:int=512,do_sample:bool=T
     if g is None and os.environ.get('AMNI_RAY_QA_DECLINE','1')=='1':yield "I'm not sure about that one yet.";return
     yield from e.stream(prompt,guide=(b' '+g) if g else None,beta=float(os.environ.get('AMNI_RAY_BETA','20')),max_bytes=max(16,min(max(int(max_new_tokens),900),int(os.environ.get('AMNI_RAY_MAX_BYTES','900')))),temp=float(os.environ.get('AMNI_RAY_TEMP','0.7')) if do_sample else 0.35,topk=int(os.environ.get('AMNI_RAY_TOPK','12')),stop=('\n\n','\nUser:','\nAdam:'))
     if src:yield src
-def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Dict:
+def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
     if backend_name()=='ray':
-        t=''.join(_ray_stream(message,history,max_new_tokens,do_sample));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
+        t=''.join(_ray_stream(message,history,max_new_tokens,do_sample,user,session));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
     url=server_url()+'/v1/chat/completions'
     body={
         'model':model_id(),
@@ -93,9 +93,9 @@ def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=51
     ans=((choice.get('message') or {}).get('content') or '').strip()
     usage=r.get('usage') or {}
     return {'answer':ans,'tier':'tier_gguf','tokens':int(usage.get('completion_tokens') or 0),'raw':r}
-def chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True)->Iterator[str]:
+def chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Iterator[str]:
     if backend_name()=='ray':
-        yield from _ray_stream(message,history,max_new_tokens,do_sample);return
+        yield from _ray_stream(message,history,max_new_tokens,do_sample,user,session);return
     url=server_url()+'/v1/chat/completions'
     body={
         'model':model_id(),

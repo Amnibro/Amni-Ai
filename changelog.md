@@ -1,3 +1,32 @@
+## 2026-09-25 Lane M1: permanent per-user memory at the server layer (v6.21.16)
+Facts that a user states survive past the 24-turn window and across sessions. They are stored as GF(17) PTEX pages, one file per user, and replayed into the v19 working memory as synthetic turns. `crates/` is untouched. Checklist: `docs/checklists/checklist_m1_user_memory_v1.md`. Council: `docs/guardian_councils/guardian_council_m1_user_memory.md`.
+- `amni/serve/user_memory.py`:
+  - **Parser:** a faithful Python mirror of the `crates/adam-ray/src/v19.rs` `Mem` parser, with the same `Lx19` lexicon hashes, the same branch chain, `commit_fact`, pronoun carry and favourite/most rewrites. It extracts (entity p4-hash, relation 3..15, value ≤24 B), plus the entity surface.
+  - **Filter:** requests, question sentences, non-contiguous values, truncated values and gerund/function-word values are not stored.
+  - **Store:** `experiences/user_memory/<sha256(salt+identity)[:32]>.ptex`, mode 0600, in a 0700 directory. Header: `AMUM`, version, page geometry, directory `(bytes, crc32)` per page, header crc32. Pages are 64×64 RGBA, two bytes per pixel as four Reffelt digits (`reffelt4.pack_rgba4_page`); decode checks every digit is below 17. Records hold `ent, rel, clk, ts, turn, sid(sha256[:8]), val, name`. Latest wins per (entity, relation) and older values are kept. The file is written atomically.
+  - **Recall:** a question gets a preamble of `User: <canonical sentence>\nAdam: Got it.\n\n` turns, one per latest fact. Each sentence is verified by re-parsing it to the same triple. The preamble skips keys already present in the history and is capped at `min(AMNI_UMEM_CAP=64, 64 − facts in the history window)`. The most relevant facts (the question's entity and relation, then two-hop `X is in Y`) go last.
+  - **Forget:** `forget(key, ent=None, rel=None)`, plus the commands "forget where my X lives", "forget what I told you about my X" and "forget everything". Earlier history turns carrying forgotten facts are also dropped from the prompt.
+  - **Switch and identity:** `AMNI_USER_MEMORY=1` by default. Identity comes from `bind()`/`bound()`, then `AMNI_USER_ID`, then `owner`.
+  - **Routing gate (CTO fix):** a question goes to memory only if its entity is known from history user statements or the store, or is a family/pet word. Self questions need a strict self-recall form plus a known self fact. A statement goes to memory only if it yields a stored fact, or is a bare pronoun statement. The six web queries that were misrouted now stay on QA.
+- `gguf_runtime.py` (CRLF kept): `_memq` delegates to the gate, `_ray_stream` builds its prompt from `user_memory.turn()`, and `chat`/`chat_stream` accept `user=`/`session=`. `agent.py` binds `conv.session_id`. In `amni_serve.py`, `/chat/stream` wraps the generator in `bound(...)`, with an optional `X-Amni-User` header.
+- Gates (`scripts/v19_umem_eval.py`, through `gguf_runtime.chat()`, v19d_clean pack, CPU, strict metric; report `data/concepts/eval/report_umem_m1.json`):
+  - **Cross-session strict:** 0.891, against in-session 0.879 in the same run. By kind:
+    - simple 0.856
+    - multi 0.905
+    - twohop 0.867
+    - longgap 0.89
+    - correction 0.92
+    - pronoun 0.90
+  - **Unknowns:** 0.95, equal to in-session.
+  - **Isolation:** 0 leaks and 0 non-empty preambles for other users (n = 1,000).
+  - **Long gap:** 40 dialogues and 91 facts for one user, then 1,000 chat2 distractor turns: 0 facts lost, recall 0.825 (33/40). That equals cross-session on the same rows; in-session was 31/40.
+- Tests: `tests/test_user_memory.py`, 16 passing.
+
+## 2026-09-25 — M07 trust + StackExchange quarantine
+- Added `amni/compute/trust_gauntlet.py`, `scripts/m07_trust_gauntlet.py`.
+- Quarantine corpus + gold/eval under `data/ks/quarantine/stackexchange/` (136846 answers; verified precision 1.0 PASS).
+- Docs: checklist_m07_trust_stackexchange_v1, guardian_council_m07, status/M07.md.
+
 ## 2026-09-24 License-clean coverage: Wikipedia definitions, offline learn-on-miss, attribution (v6.21.15)
 Only CC BY-SA Wikipedia from the clean KS store; no downloads. Checklist: `docs/checklists/checklist_wiki_defs_local_learn_v6.21.15.md`.
 - `scripts/ks_wiki_defs.py` (`scan`, `store0`, `titles`, `select`): per-doc zstd fetch store `data/ks/fetch/wikipedia/<seg>/` (7.6 GB, page counts match the index on all 41 segments; segment 00000 decoded from the KS1 store, crc-checked) + `titles.npz` (5,552,940 titles); lead candidates through filter v2 (`ks_retrieve.lead`); 1,278,049 pairs from the top 1.2M articles by length (`data/ks/defs/wiki_defs.jsonl`: "What is X?" / "Who was X?" + 78,049 "What does x mean?"; disambiguated and media titles keep their qualifier; single-letter titles skipped; ASCII-folded because the ray decoder emits ASCII only).

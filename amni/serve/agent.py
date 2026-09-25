@@ -697,7 +697,7 @@ class AmniAgent:
         return out
     def chat(self,message:str,session_id:Optional[str]=None,use_skills:bool=True,writeback:bool=True,brief:bool=False)->Dict[str,Any]:
         t0=time.time()
-        conv=self.store.get(session_id)
+        conv=self.store.get(session_id);__import__('amni.serve.user_memory',fromlist=['bind']).bind(session=conv.session_id)
         conv.append('user',message)
         if getattr(self,'learning_daemon',None) is not None:
             try:self.learning_daemon.signal_user_activity()
