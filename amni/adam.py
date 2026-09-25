@@ -143,6 +143,11 @@ class Adam:
         for f in (facts or []):h.update(f.encode('utf-8','ignore'));h.update(b'\x1d')
         return f'PERSONA::{system[:80]}::{h.hexdigest()}::{message}'
     def chat_persona_stream(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True,history:Optional[List[Tuple[str,str]]]=None,facts:Optional[List[str]]=None,is_private:bool=False):
+        from amni.serve.emergency import respond as _em_respond
+        em=_em_respond(message)
+        if em:
+            for chunk in [em[i:i+24] for i in range(0,len(em),24)]:yield chunk
+            return
         bus=getattr(self,'bus',None)
         if bus is not None and not is_private:
             try:v,home,c=bus.recall(message)
@@ -183,6 +188,9 @@ class Adam:
         except Exception as e:yield f'[stream error: {e}]'
     def chat_persona(self,message:str,system:str,max_new_tokens:int=120,do_sample:bool=True,history:Optional[List[Tuple[str,str]]]=None,facts:Optional[List[str]]=None,is_private:bool=False)->Dict[str,Any]:
         t0=time.time()
+        from amni.serve.emergency import respond as _em_respond
+        em=_em_respond(message)
+        if em:return {'answer':em,'tier':'tier_emergency','tokens':0,'wall_s':round(time.time()-t0,3)}
         bus=getattr(self,'bus',None)
         if bus is not None and not is_private:
             try:
