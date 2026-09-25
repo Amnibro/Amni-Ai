@@ -6,7 +6,7 @@ from amni.compute import eval_lock as EL
 from amni.compute.ray_field import DEFAULT_PACK,BASE_PACK,DEFAULT_LEX
 EV=ROOT/"data"/"concepts"/"eval";NB=EV/"nightly";MAN=NB/"nightly_lock.json";HIST=EV/"nightly_history.json";F7=NB/"f7_smoke_transcript.json";NQ=EV/"v20_m13"/"nq_v20_m13.json"
 SEED=20260925;NQ_N=200;BPB_BATCHES=64;THREADS=6;RSS_MAX=6<<30;AVAIL_MIN=12<<30;BUDGET=88*60;GB=1<<30
-SPLITS=[ROOT/"data"/"chat3"/"hold_eval.jsonl",EV/"recall.jsonl",EV/"twohop.jsonl",ROOT/"data"/"clean1"/"hold.bin",ROOT/"data"/"clean2"/"hold.bin",NQ,F7]
+SPLITS=[ROOT/"data"/"chat3"/"hold_eval.jsonl",EV/"recall.jsonl",EV/"twohop.jsonl",EV/"d2"/"d2.jsonl",ROOT/"data"/"clean1"/"hold.bin",ROOT/"data"/"clean2"/"hold.bin",NQ,F7]
 CODE=[Path(__file__).resolve(),*[ROOT/p for p in ("scripts/v19_rust_eval.py","scripts/v19_eval_run.py","amni/serve/gguf_runtime.py","amni/serve/user_memory.py","amni/compute/ray_field.py","amni/compute/ray_learn.py","amni/compute/ray_qa.py","amni/compute/ks_retrieve.py","amni/compute/eval_lock.py")],*sorted(ROOT.glob("adam_ray.cpython-*.so"))]
 MEM_ENV={"DEC":"stream","MAXB":"240","LOCK":"1","SS":"1","REP":"1.0","VETO":"0"};PHASES=(("mem",1800),("bpb",900),("chat",2700))
 LOWER={"bpb_clean1":0.02,"bpb_clean2":0.02,"garbles":0};NOALERT={"nq_decline"}
@@ -34,7 +34,8 @@ def phase_mem(limit:int)->dict:
  sys.argv=[sys.argv[0],DEFAULT_PACK,"nightly"];os.environ.update({**MEM_ENV,"LEX":DEFAULT_LEX})
  import v19_rust_eval as R
  c3=R.rows(R.C3);d=R.rows(os.path.join(str(R.ev.EVAL),"recall.jsonl"),lambda r:"unknown" if r["answer"]=="UNKNOWN" else "known");th=R.rows(os.path.join(str(R.ev.EVAL),"twohop.jsonl"),lambda r:"twohop");cut=lambda x:x[:limit] if limit else x
- return {"chat3":R.suite(cut(c3),"chat3_hold"),"D":R.suite(cut(d)+cut(th),"D"),"pack":R.P,"engine":f"adam_ray {R.e.backend} L={R.e.L} copy={R.e.copy}","decode":{"dec":R.DEC,"maxb":R.MAXB,"lock":R.LOCK,"stop_sentence":R.SS,"rep":R.REP,"beam_w":R.BW,"veto":R.VETO,"ctx":R.CTX,"lex":DEFAULT_LEX}}
+ d2,v2=R.d2()
+ return {"chat3":R.suite(cut(c3),"chat3_hold"),"D":R.suite(cut(d)+cut(th),"D"),"D2":R.suite(cut(d2),"D2",v2),"pack":R.P,"engine":f"adam_ray {R.e.backend} L={R.e.L} copy={R.e.copy}","decode":{"dec":R.DEC,"maxb":R.MAXB,"lock":R.LOCK,"stop_sentence":R.SS,"rep":R.REP,"beam_w":R.BW,"veto":R.VETO,"ctx":R.CTX,"lex":DEFAULT_LEX}}
 def phase_bpb(limit:int)->dict:
  from amni.compute.ray_field import engine
  e=engine(BASE_PACK).load();nb=min(limit,BPB_BATCHES) if limit else BPB_BATCHES
@@ -51,8 +52,8 @@ def phase_chat(limit:int)->dict:
  n=max(1,len(qa));qn=[x for x in sm if x["hit"] is not None]
  return {"model":g.model_id(),"backend":g.backend_name(),"nq":{"split":EL.rel(NQ),"n":len(qa),"seed":SEED,"acc":sum(x["hit"] for x in qa)/n,"em":sum(x["em"] for x in qa)/n,"decline":sum(x["decline"] for x in qa)/n,"s_per_q":round(qs/n,2),"items":qa},"smoke":{"id":tr["id"],"turns":len(sm),"garbles":sum(len(x["garbles"]) for x in sm),"garbled_turns":sum(bool(x["garbles"]) for x in sm),"nonwords":sum(len(x["nonwords"]) for x in sm),"hits":sum(bool(x["hit"]) for x in qn),"asked":len(qn),"hit_rate":sum(bool(x["hit"]) for x in qn)/max(1,len(qn)),"items":sm}}
 def flat(r:dict)->dict:
- c,d,b,q,s=(r.get(k) or {} for k in ("chat3","D","bpb","nq","smoke"))
- m={"chat3_strict":c.get("strict"),"D_strict":d.get("strict"),**{f"D_{k}":v for k,v in (d.get("strict_by_kind") or {}).items()},"nq_acc":q.get("acc"),"nq_em":q.get("em"),"nq_decline":q.get("decline"),"bpb_clean1":b.get("bpb_clean1"),"bpb_clean2":b.get("bpb_clean2"),"garbles":s.get("garbles"),"smoke_hits":s.get("hit_rate")}
+ c,d,b,q,s,d2=(r.get(k) or {} for k in ("chat3","D","bpb","nq","smoke","D2"))
+ m={"chat3_strict":c.get("strict"),"D_strict":d.get("strict"),**{f"D_{k}":v for k,v in (d.get("strict_by_kind") or {}).items()},"D2_strict":d2.get("strict"),**{f"D2_{k}":v for k,v in (d2.get("strict_groups") or {}).items()},"nq_acc":q.get("acc"),"nq_em":q.get("em"),"nq_decline":q.get("decline"),"bpb_clean1":b.get("bpb_clean1"),"bpb_clean2":b.get("bpb_clean2"),"garbles":s.get("garbles"),"smoke_hits":s.get("hit_rate")}
  return {k:v for k,v in m.items() if v is not None}
 def alerts(cur:dict,prev:dict)->list:return [{"metric":k,"prev":p,"curr":c,"delta":round(c-p,4)} for k,c in cur.items() for p in [(prev or {}).get(k)] if p is not None and k not in NOALERT and (round(c-p,6)>LOWER[k] if k in LOWER else round((p-c)*100,6)>2.0)]
 def load_hist(p)->dict:
@@ -93,7 +94,7 @@ def main():
    r,st=(None,{"skipped":True}) if name in a.skip.split(",") else run_phase(name,env,a.limit,deadline,to,log);stats[name]=st;res[name]=r or {};r is None and blockers.append(f"phase {name} failed: "+json.dumps(st))
  mem,bp,ch=res.get("mem",{}),res.get("bpb",{}),res.get("chat",{});nb=sorted({h for r in res.values() for h in r.get("net_blocked",[])})
  nb and blockers.append("network attempts blocked: "+",".join(nb[:5]))
- rep={"chat3":mem.get("chat3"),"D":mem.get("D"),"pack":mem.get("pack") or DEFAULT_PACK,"engine":mem.get("engine"),"decode":mem.get("decode"),"bpb":bp or None,"nq":ch.get("nq"),"smoke":ch.get("smoke"),"serve":{"model":ch.get("model"),"backend":ch.get("backend"),"pack":DEFAULT_PACK,"base_pack":BASE_PACK,"lex":DEFAULT_LEX,"web":"off (AMNI_LEARN_WEB=0 + socket guard)","do_sample":False},"resources":{"threads":THREADS,"nice":os.nice(0),"phases":stats,"peak_rss_mb":max([s.get("peak_rss_mb",0) for s in stats.values()] or [0]),"mem_avail_gb_end":round(avail()/GB,1)},"wall_s":round(time.time()-t0)}
+ rep={"chat3":mem.get("chat3"),"D":mem.get("D"),"D2":mem.get("D2"),"pack":mem.get("pack") or DEFAULT_PACK,"engine":mem.get("engine"),"decode":mem.get("decode"),"bpb":bp or None,"nq":ch.get("nq"),"smoke":ch.get("smoke"),"serve":{"model":ch.get("model"),"backend":ch.get("backend"),"pack":DEFAULT_PACK,"base_pack":BASE_PACK,"lex":DEFAULT_LEX,"web":"off (AMNI_LEARN_WEB=0 + socket guard)","do_sample":False},"resources":{"threads":THREADS,"nice":os.nice(0),"phases":stats,"peak_rss_mb":max([s.get("peak_rss_mb",0) for s in stats.values()] or [0]),"mem_avail_gb_end":round(avail()/GB,1)},"wall_s":round(time.time()-t0)}
  cmd=shlex.join([sys.executable]+sys.argv);r,p=finalize(rep,man,EV,HIST,a.date,a.dry or a.limit>0 or bool(a.skip),blockers,CODE,cmd,{"packs":EL.file_hashes(packs(DEFAULT_PACK)+packs(BASE_PACK))})
  print(json.dumps({"report":EL.rel(p),"kind":r["kind"],"wall_s":rep["wall_s"],"m":r["m"],"alerts":r["alerts"],"peak_rss_mb":rep["resources"]["peak_rss_mb"]},indent=1))
 if __name__=="__main__":main()

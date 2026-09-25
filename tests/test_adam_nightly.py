@@ -14,6 +14,9 @@ def test_alerts_thresholds():
  got={a["metric"]:a for a in N.alerts(cur,M)}
  assert set(got)=={"chat3_strict","bpb_clean1","garbles"} and got["chat3_strict"]["prev"]==0.9 and got["bpb_clean1"]["delta"]==0.021
  assert N.alerts({**M,"nq_acc":0.0},M)[0]["metric"]=="nq_acc" and N.alerts({**M,"garbles":0,"bpb_clean1":1.5},M)==[] and N.alerts({"new_metric":0.1},M)==[]
+def test_flat_carries_d2_groups():
+ m=N.flat({**REP,"D2":{"strict":0.3,"strict_groups":{"known":0.31,"unknown":0.7,"twohop":0.0}}});assert m["D2_strict"]==0.3 and m["D2_known"]==0.31 and m["D2_unknown"]==0.7 and m["D2_twohop"]==0.0 and "D2_strict" not in N.flat(REP)
+ assert [a["metric"] for a in N.alerts({**m,"D2_known":0.25},m)]==["D2_known"] and any(str(x).endswith("d2/d2.jsonl") for x in N.SPLITS)
 def test_prod_appends_history_and_alerts_vs_previous_night(tmp_path):
  s,man,h=setup(tmp_path);r,p=N.finalize(REP,man,tmp_path,h,"2026-09-25")
  H=json.loads(h.read_text());assert r["kind"]=="prod" and p.name=="report_nightly_2026-09-25.json" and len(H["runs"])==1 and H["runs"][0]["m"]["chat3_strict"]==0.9 and r["alerts"]==[]
