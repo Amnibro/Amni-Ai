@@ -45,6 +45,11 @@ def save_jsonl(name:str,rows:list)->Path:
  with p.open("w",encoding="utf-8") as f:
   for r in rows:f.write(json.dumps(r,ensure_ascii=False)+"\n")
  return p
+X11DEV=("mbpp_holdout","apps_fn_dev","lcb_easy_fn","apps_fn_lock")
+def load_ds(name:str)->list:
+ import random as _r
+ rs=[r for f in X11DEV for r in load_jsonl(f)] if name=="x11_dev" else load_jsonl(name);sm=os.environ.get("X0_SAMPLE","")
+ q=(sm+"::").split(":");return sorted(_r.Random(int(q[1] or 11)).sample(rs,min(len(rs),int(q[0])))[:int(q[2] or 10**9)],key=rs.index) if sm and name=="x11_dev" else rs
 def load_jsonl(name:str)->list:
  p=DATA/f"{name}.jsonl"
  return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()] if p.exists() else []
@@ -222,9 +227,12 @@ def make_adam_code_gen(pack:str|None=None):
  gen.mode="code";gen.cfg={"pack":e.path,"arch":e.arch,"n":n,"temp":temp,"topk":topk,"max_bytes":mb,"trim":trim,"retry":retry};return gen
 def make_adam_tiles_gen():
  from amni.compute import tile_synth as TS
- E=os.environ.get;[os.environ.setdefault(k,v) for k,v in (("AMNI_RAY_IMPL","rust"),("AMNI_RAY_ARCH","cpu"))];mode=E("TS_MODE","fresh");cur=mode=="curriculum";store=E("TS_STORE",str(DATA/"learned_tiles.jsonl"));jobs=1 if cur else int(E("TS_JOBS","8"));budget=float(E("TS_BUDGET","10"));kw={"budget":budget,"store":store if cur else E("TS_XSTORE") or None,"learn":cur};cache={};X=__import__("x8_sketch").Index() if E("TS_SK","off")!="off" else None;po=X.post if X else (lambda r:r);it=lambda p,c:(p,c,{"nbs":X.nbs(p,c)}) if X else (p,c)
+ E=os.environ.get;[os.environ.setdefault(k,v) for k,v in (("AMNI_RAY_IMPL","rust"),("AMNI_RAY_ARCH","cpu"))];mode=E("TS_MODE","fresh");cur=mode=="curriculum";store=E("TS_STORE",str(DATA/"learned_tiles.jsonl"));jobs=1 if cur else int(E("TS_JOBS","8"));budget=float(E("TS_BUDGET","10"));kw={"budget":budget,"store":store if cur else E("TS_XSTORE") or None,"learn":cur};cache={};X=__import__("x8_sketch").Index() if E("TS_SK","off")!="off" else None;po=X.post if X else (lambda r:r);it=lambda p,c:(p,c,{"nbs":X.nbs(p,c,k=int(E("TS_SKK","20")),kp=int(E("TS_SKP","8")))}) if X else (p,c)
  ([Path(x).unlink(missing_ok=True) for x in (store,TS.qpath(store))] if cur and E("TS_RESET")=="1" else None);ex=TS.pool(jobs)
- def prefetch(prompts):cache.update(zip(prompts,[TS.rerank(po(r),p,checks=selfchecks(p)) for p,r in zip(prompts,TS.solve_many(ex,[it(p,selfchecks(p)) for p in prompts],**kw))])) if jobs>1 else None
+ def prefetch(prompts):
+  if jobs<=1:return
+  rs=TS.solve_many(ex,[it(p,selfchecks(p)) for p in prompts],**kw)
+  with ThreadPoolExecutor(int(E("X0_RRJ","3"))) as tp:cache.update(zip(prompts,tp.map(lambda pr:TS.rerank(po(pr[1]),pr[0],checks=selfchecks(pr[0])),zip(prompts,rs))))
  def gen(prompt:str)->dict:
   r=cache.pop(prompt,None) or TS.rerank(po(TS.solve_many(ex,[it(prompt,selfchecks(prompt))],**kw)[0]),prompt,checks=selfchecks(prompt));cs=r.get("cands") or [];bs=[c["body"] for c in cs] or [r["body"]]
   return {"samples":bs,"pick":r["pick"],"n_checks":r["n_checks"],"scores":[r["n_checks"] if r["found"] else 0]*len(bs),"compiles":[bool(b) for b in bs],"meta":{**{f"ts_{k}":v for k,v in r.items() if k not in ("body","cands")},"ts_cands":[{k:v for k,v in c.items() if k!="body"} for c in cs],**({"ts_bodies":bs,"ts_checks":selfchecks(prompt)} if E("X0_KEEP_BODIES")=="1" else {})}}
@@ -245,7 +253,7 @@ def problem_prompt(prob:dict,mode:str="")->str:
  sc=prob.get("starter_code") or ""
  return f"Solve this programming problem. Read from stdin and write to stdout.\n\n{prob.get('prompt','')}\n\n{('Starter code:\n'+sc) if sc else ''}"
 def run_eval(dataset:str,gen_name:str,gen,limit:int=0,tag:str="",plus:bool=False)->dict:
- probs=load_jsonl(dataset);probs=probs[:limit] if limit else probs;hp={r["id"]:r for r in load_jsonl("humanevalplus")} if plus and dataset=="humaneval" else {}
+ probs=load_ds(dataset);probs=probs[:limit] if limit else probs;hp={r["id"]:r for r in load_jsonl("humanevalplus")} if plus and dataset=="humaneval" else {}
  results=[];fails=[];walls=[];n_pass=0;(gen.prefetch([problem_prompt(p,getattr(gen,"mode","")) for p in probs]) if hasattr(gen,"prefetch") else None)
  for i,prob in enumerate(probs):
   prompt=problem_prompt(prob,getattr(gen,"mode",""));t0=time.perf_counter();d=None
@@ -278,7 +286,7 @@ def free_available_gb()->float:
 def main():
  ap=argparse.ArgumentParser();ap.add_argument("--prepare",action="store_true");ap.add_argument("--force-prepare",action="store_true")
  ap.add_argument("--gen",choices=["oracle_check","adam_ray","adam_code","adam_tiles","reference_small","all"],default="oracle_check")
- ap.add_argument("--dataset",choices=["humaneval","mbpp","mbpp_holdout","mbpp_fresh","livecodebench","lcb_easy_fn","apps_fn_lock","apps_fn_dev","all"],default="all");ap.add_argument("--plus",action="store_true");ap.add_argument("--limit",type=int,default=0);ap.add_argument("--tag",default="");ap.add_argument("--pack",default=None)
+ ap.add_argument("--dataset",choices=["humaneval","mbpp","mbpp_holdout","mbpp_fresh","livecodebench","lcb_easy_fn","apps_fn_lock","apps_fn_dev","apps_x11_lock","lcd_easy_lock","x11_dev","all"],default="all");ap.add_argument("--plus",action="store_true");ap.add_argument("--limit",type=int,default=0);ap.add_argument("--tag",default="");ap.add_argument("--pack",default=None)
  ap.add_argument("--skip-ref-if-slow",action="store_true",default=True);ap.add_argument("--ref-probe",type=int,default=2)
  args=ap.parse_args();TMP.mkdir(parents=True,exist_ok=True)
  if args.prepare or args.force_prepare or not (DATA/"meta.json").exists():prepare_datasets(force=args.force_prepare)

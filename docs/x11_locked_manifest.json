@@ -1,0 +1,13 @@
+{
+ "splits": {
+  "data/code_eval/apps_x11_lock.jsonl": "1761fbf83e54d0dba68e23655541937b47aa11cac270ed8d3fde393b893c9ab5",
+  "data/code_eval/lcd_easy_lock.jsonl": "c42860c60988f15dd4754e2b17b7888ffbe0895f6ffb166fbaff6019848c1f1d"
+ },
+ "splits_hash": "32919b3f2edf314ff0f3159f9b619413e56243dde8c34fcc8ab6144b3002796d",
+ "n": 2,
+ "locked": "2026-09-25T08:56:20-0400",
+ "eval_only": {
+  "data/code_eval/lcd_easy_lock.jsonl": "eval-only (statement copyright: LeetCode statements; LeetCodeDataset card says Apache-2.0). Never used for tile mining, training, or tile/prior/ranker tables.",
+  "data/code_eval/apps_x11_lock.jsonl": "the 23 rows with leetcode.com URLs are LeetCode-derived: eval-only (statement copyright); the whole locked split is never trained on in any case: apps_test/2303, apps_test/2365, apps_test/2466, apps_test/2467, apps_test/2468, apps_test/2469, apps_test/2627, apps_test/2628, apps_test/2629, apps_test/2630, apps_test/2631, apps_test/2632, apps_test/2633, apps_test/2634, apps_test/2637, apps_test/2638, apps_test/2639, apps_test/4533, apps_test/4534, apps_test/4535, apps_test/4536, apps_test/4658, apps_test/4659"
+ }
+}

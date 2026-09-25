@@ -1,4 +1,4 @@
-import ast,builtins,collections,copy,functools,gc,itertools,json,math,operator as op,os,random,re,resource,signal,string,textwrap,threading,time,types,typing,zlib
+import ast,builtins,collections,copy,functools,gc,itertools,json,math,operator as op,os,queue,random,re,resource,shutil,signal,string,subprocess,sys,tempfile,textwrap,threading,time,types,typing,zlib
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
@@ -21,6 +21,8 @@ PRIORP=os.environ.get("TS_PRIOR",str(ROOT/"data"/"pycode"/"x5_prior.npz"))
 PCFG=dict(x.split("=") for x in ("b=20,idf=1,gw=1,ga=1,gv=1,gr=1,norm=1,agg=sum,mode=pmi,fc=cmkops,"+os.environ.get("TS_PCFG","")).split(",") if x)
 SKC=dict(x.split("=") for x in ("s=4,b=3,n=4,e=1,eb=1.5,en=3,k=20,"+os.environ.get("TS_SKC","")).split(",") if x)
 PBIAS=dict(x.split("=") for x in ("t=99,dn=-99,rs=0,pat=1,"+os.environ.get("TS_PB","")).split(",") if x)
+SRSS=int(os.environ.get("TS_SRSS","0"))
+X11=dict(x.split("=") for x in ("k=0,t=0,m=0,l=0,s=0,f=0,ff=0.3,fk=12,fn=2,pc=1,b=0,bi=0,bl=6,r=0,rf=0.15,rv=1,rq=0,"+os.environ.get("TS_X11","")).split(",") if x)
 class Unsafe(Exception):pass
 class Timeout(Exception):pass
 class Stop(BaseException):pass
@@ -69,6 +71,7 @@ def _rep(s,n):return s*n if 0<=n<=64 and len(s)*n<=CAP else _no()
 def _med(a):s=sorted(a);return (s[len(a)//2]+s[(len(a)-1)//2])/2
 HELP={"_dflat":"def _dflat(x):\n    return [z for y in x for z in (_dflat(y) if isinstance(y, (list, tuple)) else [y])]\n","_droot":"def _droot(n):\n    while n > 9:\n        n = sum(int(d) for d in str(n))\n    return n\n","_vmult":"def _vmult(n, k):\n    c = 0\n    while n and k > 1 and n % k == 0:\n        n //= k\n        c += 1\n    return c\n","_tobase":"def _tobase(n, b):\n    s = ''\n    while n > 0 and b > 1:\n        s = str(n % b) + s\n        n //= b\n    return s or '0'\n"}
 HFN={k:safe_exec(v)[k] for k,v in HELP.items()}
+X11_TILES=[("stepk","xi","{0}[::{1}]",lambda a,b:a[::b] if b else _no(),3,"every nth step skip alternate",""),("stepo","xii","{0}[{1}::{2}]",lambda a,b,c:a[b::c] if c else _no(),3,"every nth step offset starting",""),("rstr","ss","{0}.rstrip({1})",str.rstrip,3,"trailing end strip remove right",""),("lstr","ss","{0}.lstrip({1})",str.lstrip,3,"leading start strip remove left",""),("strc","ss","{0}.strip({1})",str.strip,3,"strip trim both",""),("trans","sss","{0}.translate(str.maketrans({1}, {2}))",lambda a,b,c:a.translate(str.maketrans(b,c)) if len(b)==len(c) else _no(),3,"replace translate map convert character substitute",""),("intb","si","int({0}, {1})",lambda a,b:int(a,b) if 2<=b<=36 else _no(),3,"binary base convert decimal hex parse",""),("zfill","si","{0}.zfill({1})",lambda a,b:a.zfill(b) if 0<=b<=64 else _no(),3,"pad zero leading width",""),("rjust","sis","{0}.rjust({1}, {2})",lambda a,b,c:a.rjust(b,c) if 0<=b<=64 and len(c)==1 else _no(),3,"pad align right width fill",""),("ljust","sis","{0}.ljust({1}, {2})",lambda a,b,c:a.ljust(b,c) if 0<=b<=64 and len(c)==1 else _no(),3,"pad align left width fill",""),("hexs","i","hex({0})[2:]",lambda a:hex(a)[2:],3,"hex hexadecimal",""),("sumset","x","sum(set({0}))",lambda a:sum(set(a)),3,"sum unique distinct",""),("rfind","ss","{0}.rfind({1})",str.rfind,3,"last index position find",""),("ndig","i","len(str(abs({0})))",lambda a:len(str(abs(a))),3,"digits number length",""),("isqrt","i","math.isqrt({0})",lambda a:math.isqrt(a) if a>=0 else _no(),3,"square root integer floor","m"),("ceil","n","math.ceil({0})",math.ceil,3,"ceil round up ceiling","m"),("floor","n","math.floor({0})",math.floor,3,"floor round down","m"),("cdiv","ii","(-(-{0} // {1}))",lambda a,b:-(-a//b),3,"ceil ceiling round up divide",""),("dmod","ii","list(divmod({0}, {1}))",lambda a,b:list(divmod(a,b)),3,"quotient remainder divmod",""),("chunk","xi","[{0}[_i:_i + {1}] for _i in range(0, len({0}), {1})]",lambda a,b:[a[i:i+b] for i in range(0,len(a),b)] if 0<b and len(a)//b<=CAP else _no(),3,"chunk split group size pieces parts",""),("cntin","ss","sum((_c in {1}) for _c in {0})",lambda a,b:sum(c in b for c in a),3,"count vowels letters characters how many",""),("sign","n","(({0} > 0) - ({0} < 0))",lambda a:(a>0)-(a<0),3,"sign positive negative",""),("cmp3","nn","(({0} > {1}) - ({0} < {1}))",lambda a,b:(a>b)-(a<b),3,"compare greater less equal","")]
 TILE_DEFS=[
 ("add","nn","({0} + {1})",op.add,2,"sum add plus total more increase added","C"),
 ("sub","nn","({0} - {1})",op.sub,2,"difference subtract minus less decrease between",""),
@@ -322,11 +325,11 @@ class Prior:
 @functools.lru_cache(None)
 def prior(path=None):p=Path(path or PRIORP);return Prior(p) if p.exists() and os.environ.get("TS_PRIOR_OFF")!="1" else None
 class Tm:
- __slots__=("c","v","k","s","u","d","w","f")
- def __init__(s,c,v,k,z,u,d,w,f=0):s.c,s.v,s.k,s.s,s.u,s.d,s.w,s.f=c,v,k,z,u,d,w,f
+ __slots__=("c","v","k","s","u","d","w","f","r","m")
+ def __init__(s,c,v,k,z,u,d,w,f=0,r=0.0):s.c,s.v,s.k,s.s,s.u,s.d,s.w,s.f,s.r,s.m=c,v,k,z,u,d,w,f,r,0
 class Tl:
- __slots__=("n","p","parts","fn","cost","comm","dep","hit","ar","fam","mc","sfn")
- def __init__(s,n,p,parts,fn,cost,comm=False,dep=EMPTY,hit=0,mc=99):s.n,s.p,s.parts,s.fn,s.cost,s.comm,s.dep,s.hit,s.ar,s.fam,s.mc,s.sfn=n,p,parts,fn,cost,comm,dep,hit,len(p),FAM.get(n,0),mc,functools.partial(_try,fn)
+ __slots__=("n","p","parts","fn","cost","comm","dep","hit","ar","fam","mc","sfn","rel")
+ def __init__(s,n,p,parts,fn,cost,comm=False,dep=EMPTY,hit=0,mc=99):s.n,s.p,s.parts,s.fn,s.cost,s.comm,s.dep,s.hit,s.ar,s.fam,s.mc,s.sfn,s.rel=n,p,parts,fn,cost,comm,dep,hit,len(p),FAM.get(n,0),mc,functools.partial(_try,fn),0.0
 def _parts(t):return re.split(r"\{(\d)\}",t)
 def _rd(parts,a):return "".join(p if k%2==0 else a[int(p)] for k,p in enumerate(parts))
 def _call(name,n):return _parts(name+"("+", ".join("{%d}"%k for k in range(n))+")")
@@ -362,8 +365,8 @@ def _edges(rows):
    for e in _ev(b[p]):r=b[:p]+(e,)+b[p+1:];(out.append(r),seen.add(repr(r))) if repr(r) not in seen else None
  return out
 FAM={"add":1,"sub":1,"inc":1,"dec":1,"mul":2,"dbl":2,"div":2,"fdiv":2,"half":2,"halff":2}
-def _bc(sp,n,kw,c):d=max(1,c-(sp is not None and sp.aff(kw)>=AFT));e=max(1,d-(sp.pb(n) if sp is not None else 0));return e,({("b:" if e<d else "B:")+n} if e!=d and PBIAS["rs"]=="1" else EMPTY)
-def library(sp=None):return sorted([Tl(n,tuple(PR[ch] for ch in pv),_parts(tp),fn,_bc(sp,n,kw,c)[0],"C" in fl,frozenset(DEPF[ch] for ch in fl if ch in DEPF)|({"h:"+tp.split("(")[0]} if "h" in fl else EMPTY)|_bc(sp,n,kw,c)[1],sp.hm(kw) if sp else 0) for n,pr,tp,fn,c,kw,fl in TILE_DEFS for pv in pr.split("|")],key=lambda t:(-bool(t.hit),t.cost))
+def _bc(sp,n,kw,c):d=max(1,c-(sp is not None and sp.aff(kw)>=AFT));e=max(1,d-(sp.pb(n) if sp is not None else 0));return e,({("b:" if e<d else "B:")+n} if e!=d and (PBIAS["rs"]=="1" or X11["s"]!="0") else EMPTY)
+def library(sp=None):return sorted([Tl(n,tuple(PR[ch] for ch in pv),_parts(tp),fn,_bc(sp,n,kw,c)[0],"C" in fl,frozenset(DEPF[ch] for ch in fl if ch in DEPF)|({"h:"+tp.split("(")[0]} if "h" in fl else EMPTY)|_bc(sp,n,kw,c)[1],sp.hm(kw) if sp else 0) for n,pr,tp,fn,c,kw,fl in TILE_DEFS+(X11_TILES if X11["t"]=="1" else [])+(mined() if X11["m"]=="1" else []) for pv in pr.split("|")],key=lambda t:(-bool(t.hit),t.cost))
 def _strip_imports(src):return re.sub(r"(?m)^[ \t]*(?:import [\w., ]+|from [\w.]+ import [^\n]+)$","",src)
 def _wrap(fn,cp=True):return (lambda *a:timed(fn,*copy.deepcopy(a),t=0.1)) if cp else (lambda *a:timed(fn,*a,t=0.05))
 def _annp(a):s=(ast.unparse(a) if a is not None else "").lower();return S_ if "str" in s else N if ("int" in s or "float" in s) else Q if ("list" in s or "tuple" in s) else B if "bool" in s else 0
@@ -386,10 +389,10 @@ class Spec:
   [s.ka.__setitem__(k,max(v,s.ka.get(k,0))) for a in s.wa.values() for k,v in a.items()];[sw.setdefault(frozenset(k for k,v in a.items() if v>=0.99) or t,t) for t,a in s.wa.items() if any(a.get(w,0)>=0.8 for w in STRONG)]
   s.strong=(list(sw.values())+[c[4] for c in s.consts if c[4]])[:30];s.sb={w:1<<k for k,w in enumerate(s.strong)};lc=s.desc.lower();ot={type(v) for v in s.T.values()}
   s.cues={k for k,(rx,ty) in CUES.items() if re.search(rx,lc) and (not ty or ot&set(ty))};s.quant=bool(QRX.search(lc)) and not PRX.search(lc);s.cix=re.compile(r"(?<![\w\].)])(?:"+"|".join(map(re.escape,s.params))+r")\[-?\d+\]") if s.params else None
-  P=prior();s.fv=P.fvec(s.toks()) if P else None
+  P=prior();s.fv=P.fvec(s.toks()) if P else None;s.fx=__import__("amni.compute.code_steer",fromlist=["x"]).focus(s,int(X11["fk"])) if X11["s"]!="0" or X11["f"]!="0" or X11["b"]!="0" else None
  def toks(s):return ptoks(s.desc,s.name,s.params,[(_at(ast.unparse(a)) if a is not None else []) or (_vt(s.rows[0][k]) if s.rows else []) for k,a in enumerate(s.ann)],(_at(ast.unparse(s.ret)) if s.ret is not None else []) or (_vt(s.T[min(s.T)]) if s.T else []))
  def pri(s,expr):P=prior();return P.cand(s.fv,expr) if P and s.fv is not None else 0.0
- def pb(s,name):P=prior();v=P.tile(s.fv,name) if P and s.fv is not None else 0.0;return int(v>=float(PBIAS["t"]))-int(v<=float(PBIAS["dn"]))
+ def pb(s,name):P=prior();v=P.tile(s.fv,name) if P and s.fv is not None else 0.0;return int(v>=float(PBIAS["t"]))-int(v<=float(PBIAS["dn"]))+int(X11["s"]!="0" and getattr(s,"fx",None) is not None and _stk(name,s.fx[0]))
  def aff(s,kw):return max((s.ka.get(k,0) for k in kw.split()),default=0)
  def hm(s,kw):ks=kw.split() if isinstance(kw,str) else kw;return functools.reduce(op.or_,(b for t,b in s.sb.items() if t in s.wa and max((s.wa[t].get(k,0) for k in ks),default=0)>=COVT),0)
  def bind(s,a,k):
@@ -415,8 +418,15 @@ class Spec:
   for code in lits+[repr(a or b) for a,b in re.findall(r"'([^'\n]{1,12})'|\"([^\"\n]{1,12})\"",s.desc)][:6]+[c for w in sorted(s.words) for c in KWC.get(w,())]+([DIGW] if len(s.words&set(ast.literal_eval(DIGW)))>=3 else []):
    try:v,d=_lit(code);out.setdefault(repr(v),(code,v,1,d,"#"+code if (code in lits or code in req) and code not in ("0","1") else ""))
    except Exception:pass
+  for code,c in (s._xconsts() if X11["k"]=="1" else []):
+   try:v,d=_lit(code);out.setdefault(repr(v),(code,v,c,d,""))
+   except Exception:pass
   for code,c in GENC:v,d=_lit(code);out.setdefault(repr(v),(code,v,c,d|({"k:"+code} if code in NUMW and not re.search(r"(?<![\w.])"+re.escape(code)+r"(?![\w.])",s.doc) and not NUMW[code]&s.words else EMPTY),""))
   return list(out.values())
+ def _xconsts(s):
+  d="\n".join(l for l in s.doc.splitlines() if not re.search(r"==|=>|->|→|➞|>>>|\b"+re.escape(s.name)+r"\b",l));ins={repr(x) for r in s.rows for x in r}|{repr(v) for v in s.T.values()};so=[s.T[r] for r in sorted(s.T) if type(s.T[r]) is str];q=[a or b or c for a,b,c in re.findall(r"'([^'\n]{1,40})'|\"([^\"\n]{1,40})\"|`([^`'\"\n]{1,40})`",d)];q=[x for x in dict.fromkeys(q) if not re.search(r"\w\(|^\s*$|^\d+$",x) and x not in s.params and repr(x) not in ins and x.isprintable() and sum(not c.isalnum() and c!=" " for c in x)*2<=max(3,len(x))][:10]
+  ls=[m.group(0) for m in re.finditer(r"(?:(['\"])[^'\"\n]{1,20}\1\s*,\s*){2,}(['\"])[^'\"\n]{1,20}\2",d)][:2];pf=os.path.commonprefix(so) if len(so)>=2 else "";sf=os.path.commonprefix([x[::-1] for x in so])[::-1] if len(so)>=2 else ""
+  return [(repr(x),1 if len(x)<=12 else 2) for x in q]+[(repr(list(ast.literal_eval("["+x+"]"))),2) for x in ls]+[(repr(x),1) for x in (pf,sf,pf.rstrip(),sf.lstrip()) if len(x.strip())>=1 and repr(x) not in ins and len(x)<=40]
  def helper_tiles(s):
   if not s.hnodes:return []
   try:g=safe_exec(_strip_imports(s.prompt),TYPING)
@@ -442,14 +452,15 @@ class Ctx:
    for t in s.S.tiles:s.apply(t,c0)
    (s.S.patterns(s,c0) if s.kids or not s.depth else None);s.S.split(s);sq,s.spq=s.spq,[]
    for t in sq:s.S.spawn(s,t)
- def add(s,v,c,u,d,w,code,f=0):
+   (s.S.beam(s,c0) if X11["b"]!="0" else None)
+ def add(s,v,c,u,d,w,code,f=0,r=0.0):
   Sr=s.S;Sr.tick();R0=s.R0
   try:key=repr(v)
   except ValueError:return None
   if key in s.seen or len(key)>200000:return (Sr.on_outer(Tm(code() if callable(code) else code,v,s.seen[key].k,c,u,d,w,f),key,Sr.hk[key],True) if not s.depth and key in Sr.hk and s.seen[key] is not None else None)
   ks=[_kv(x) for x in v[:R0]];pk=[x is ERR or bool(_kv(x)) for x in v[R0:]];s.seen[key]=None
-  if not all(ks):return None
-  v,k=(v if all(pk) else v[:R0]+tuple(x if ok else ERR for x,ok in zip(v[R0:],pk))),functools.reduce(op.and_,ks);t=Tm(code() if callable(code) else code,v,k,c,u,d,w,f);s.seen[key]=t;s.seen[repr(v)]=t;s.lv.setdefault(c,[]).append(t)
+  if not all(ks) or (Sr.pc<1 and R0<len(v) and not s.depth and sum(x is ERR for x in v[R0:Sr.RE])>Sr.pc*max(1,Sr.RE-R0)):return None
+  v,k=(v if all(pk) else v[:R0]+tuple(x if ok else ERR for x,ok in zip(v[R0:],pk))),functools.reduce(op.and_,ks);t=Tm(code() if callable(code) else code,v,k,c,u,d,w,f,r);s.seen[key]=t;s.seen[repr(v)]=t;s.lv.setdefault(c,[]).append(t)
   for m in Sr.pm:(s.idx[m].setdefault(c,[]).append(t) if k&m==m else None)
   Sr.on_outer(t,key) if not s.depth else Sr.on_elem(s,t)
   return t
@@ -478,7 +489,7 @@ class Ctx:
   try:v=tuple(map(t.fn,*(x.v[:R0] for x in a)))
   except TypeError:return
   except Exception:return s.S.partial(s,t,a,c,u,d,w) if not s.depth and s.S.split_on else None
-  s.add(v+tuple(map(t.sfn,*(x.v[R0:] for x in a))),c,u,d,w,lambda:_rd(t.parts,[x.c for x in a]),cf)
+  s.add(v+tuple(map(t.sfn,*(x.v[R0:] for x in a))),c,u,d,w,lambda:_rd(t.parts,[x.c for x in a]),cf,t.rel+sum(x.r for x in a) if s.S.bm else 0.0)
 class Search:
  def __init__(z,sp,budget=10.0,recs=(),maxctx=28,only=None):
   z.sp,z.dl,z.n,z.hits,z.ctxs,z.iters,z.maxctx,z.tried,z.bods,z.c0=sp,time.perf_counter()+budget,0,[],[],[],maxctx,set(),set(),None
@@ -489,12 +500,18 @@ class Search:
   z.fc=2 if W&{"fold","accumulate","running","cumulative","reduce","rolling"} or "acc" in sp.cues else 3;z.loo,z.nex,z.pe,z.hk,z.be,z.vfail={},len(z.ex),None,{},1e9,set();z.fm=[(z.fc+(sp.aff(f[4])<AFT),sp.hm(f[4])) for f in FOLDS if only is None or only[2]];sg={}
   [sg.__setitem__(m.group(0),max(sg.get(m.group(0),0),sp.aff(tl[5]))) for tl in TILE_DEFS for m in [re.search(r"(?<![\w.])[\w.]+\(|\.\w+\(",tl[2])] if m];z.sig=[re.compile(r"(?<![\w.])"+re.escape(k)) for k,a in sg.items() if a<AFT]
   taken=set(sp.params)|{h.name for h in sp.hnodes}|{sp.name};z.X,z.Y,z.I=(next(n for n in ns if n not in taken) for ns in (("x","e","v","w","z"),("y","u","t","o"),("i","j","k","m","p")));taken|={z.X,z.Y,z.I};z.X2,z.I2=(next(n for n in ns if n not in taken) for ns in (("e","v","w","z","q","r"),("j","k","m","p","h")));z.vo=re.compile(rf"\b{z.Y}\b.*\b{z.X}\b")
-  z.outer=Ctx(z,"outer",z.R,z.R0)
+  z.pc,z.bm=float(X11["pc"]),X11["b"]!="0";z.outer=Ctx(z,"outer",z.R,z.R0);z.pruned=0;z.rk=functools.reduce(op.and_,[_kv(v) for v in sp.T.values()])&(N|B|S_|Q|D|E) if sp.T else 0;fx=sp.fx[1] if getattr(sp,"fx",None) else {}
+  for t in z.tiles:t.rel=max((1/(1+math.exp(-fx[f])) for f in _core(tfeats().get(t.n) or x11f().get(t.n,EMPTY)) if f in fx),default=0.0) if fx else 0.0
   for k,p in enumerate(sp.params):z.outer.seed(1,tuple(r[k] for r in z.rows),p,1<<k)
   for code,v,c,d,key in sp.consts:z.outer.seed(c,(v,)*z.R,code,0,d,sp.sb.get(key,0))
+ def beam(z,cx,c0):
+  L=cx.lv.get(c0,[]);B=int(X11["b"]) if not cx.depth else int(X11["bi"])
+  if not B or c0<int(X11["bl"]) or len(L)<=B:return
+  sc=(lambda t:t.r+1.5*bin(t.m).count("1")+(t.u&z.abits>0)+0.5*(t.k&z.rk>0)) if not cx.depth else (lambda t:t.r+(t.u&cx.lb>0));keep={id(t) for t in sorted(L,key=sc,reverse=True)[:B]};cx.lv[c0]=[t for t in L if id(t) in keep];z.pruned+=len(L)-B
+  for ix in cx.idx.values():(ix.__setitem__(c0,[t for t in ix[c0] if id(t) in keep]) if c0 in ix else None)
  def tick(z):
   z.n+=1
-  if not z.n&511 and time.perf_counter()>z.dl:raise Stop
+  if not z.n&511 and (time.perf_counter()>z.dl or SRSS and not z.n&4095 and int(open("/proc/self/statm").read().split()[1])*os.sysconf("SC_PAGE_SIZE")>>20>SRSS):raise Stop
  def rowmap(z,f,it,R0=None):
   out,R0=[],z.R0 if R0 is None else R0
   for r,x in enumerate(it):
@@ -511,9 +528,9 @@ class Search:
  def score(z,t):
   sp,pr,ty=z.sp,t.v[z.R0:z.RE],{type(z.T[r]) for r in z.ex};pv=[repr(x) for x in t.v if x is not ERR]
   if ty and any(x is not ERR and x is not None and type(x) not in ty and not (type(x) in (int,float) and ty<={int,float}) or "count" in sp.cues and x is not ERR and (type(x) is not int or x<0) for x in pr):return None
-  return t.s+5*(len(sp.params)-bin(t.u&z.abits).count("1"))+COVW*bin(z.smask&~t.w&~z.cmask).count("1")+2*bin(z.cmask&~t.w).count("1")+(3 if len(set(pv))==1 and len(pv)-z.R0>=2 and not t.k&B else 0)+(3 if t.c in sp.params else 0)+PEN["intent"]*sum(not re.search(CREQ[k],t.c) for k in sp.cues)+(PEN["cidx"]*min(2,len(sp.cix.findall(t.c))) if sp.quant and sp.cix else 0)+PEN["fconst"]*sum(x[:2]=="k:" for x in t.d)+PEN["crash"]*sum(x is ERR for x in pr)+PEN["redund"]*_redund(t.c)+PEN["edge"]*(z.RE<z.R and t.v[z.RE] is ERR)+PEN["rel"]*min(3,sum(1 for rx in z.sig if rx.search(t.c)))+(sum(x[:2]=="b:" for x in t.d)-sum(x[:2]=="B:" for x in t.d) if PBIAS["rs"]=="1" else 0)+(0.5 if z.vo.search(t.c.split(" for ")[0]) and not re.search(rf"\b{z.X}\b.*\b{z.Y}\b",t.c.split(" for ")[0]) else 0)
+  return t.s+5*(len(sp.params)-bin(t.u&z.abits).count("1"))+COVW*bin(z.smask&~t.w&~z.cmask).count("1")+2*bin(z.cmask&~t.w).count("1")+(3 if len(set(pv))==1 and len(pv)-z.R0>=2 and not t.k&B else 0)+(3 if t.c in sp.params else 0)+PEN["intent"]*sum(not re.search(CREQ[k],t.c) for k in sp.cues)+(PEN["cidx"]*min(2,len(sp.cix.findall(t.c))) if sp.quant and sp.cix else 0)+PEN["fconst"]*sum(x[:2]=="k:" for x in t.d)+PEN["crash"]*sum(x is ERR for x in pr)+PEN["redund"]*_redund(t.c)+PEN["edge"]*(z.RE<z.R and t.v[z.RE] is ERR)+PEN["rel"]*min(3,sum(1 for rx in z.sig if rx.search(t.c)))+(sum(x[:2]=="b:" for x in t.d)-sum(x[:2]=="B:" for x in t.d) if PBIAS["rs"]=="1" or X11["s"]!="0" else 0)+(0.5 if z.vo.search(t.c.split(" for ")[0]) and not re.search(rf"\b{z.X}\b.*\b{z.Y}\b",t.c.split(" for ")[0]) else 0)
  def on_outer(z,t,key=None,m=None,dup=False):
-  m=sum(1<<q for q,r in enumerate(z.ex) if _eqv(t.v[r],z.T[r])) if m is None else m;q=(z.full^m).bit_length()-1;nr=z.nex>=2 and m and bin(m).count("1")==z.nex-1;(z.hk.__setitem__(key,m) if key and (m==z.full or nr) else None)
+  m=sum(1<<q for q,r in enumerate(z.ex) if _eqv(t.v[r],z.T[r])) if m is None else m;t.m=m;q=(z.full^m).bit_length()-1;nr=z.nex>=2 and m and bin(m).count("1")==z.nex-1;(z.hk.__setitem__(key,m) if key and (m==z.full or nr) else None)
   if t.u&z.abits and m==z.full and (not dup or t.s<=z.be) and z.raw_ok(t):e=z.score(t);(z.hits.append((e,t)),setattr(z,"be",min(z.be,e))) if e is not None else None
   elif t.u&z.abits and nr and t.s<z.loo.get(q,1e9):e=z.score(t);(z.loo.__setitem__(q,min(e,z.loo.get(q,1e9))) if e is not None else None)
   if dup:return
@@ -613,13 +630,13 @@ class Search:
     if out and (len(out)>=n or c>=z.c0+XLV):break
   except Stop:pass
   return out+(z.pick(1<<30,n-len(out)) if z.hits and len(out)<n else [])
- def stats(z):return {"terms":sum(len(l) for c in [z.outer]+z.ctxs for l in c.lv.values()),"level":z.outer.level,"n_ctx":len(z.ctxs),"n_learned_tiles":z.n_learned,"n_tiles":len(z.tiles)}
- def edit(z,nb,dl):
+ def stats(z):return {"pruned":z.pruned,"terms":sum(len(l) for c in [z.outer]+z.ctxs for l in c.lv.values()),"level":z.outer.level,"n_ctx":len(z.ctxs),"n_learned_tiles":z.n_learned,"n_tiles":len(z.tiles)}
+ def edit(z,nb,dl,vr=True):
   sp,out=z.sp,[]
   try:F0=ast.parse(nb["src"]).body[0];ps=[a.arg for a in F0.args.args];req=len(ps)-len(F0.args.defaults)
   except Exception:return out
   hm=[(h,c) for h,c in ((t.hit,_core(tfeats().get(t.n,()))) for t in z.tiles) if h and c];kc={repr(v) for _,v,*_ in sp.consts}
-  for V,how in (_variants(F0,sp) if 1<=req<=len(sp.params) else ()):
+  for V,how in ((_variants(F0,sp) if vr else [(F0,"orig")]) if 1<=req<=len(sp.params) else ()):
    for pm in itertools.permutations(sp.params,req):
     if time.perf_counter()>dl or len(out)>=int(SKC["en"]):return out
     b,c,u=_render(V,dict(zip(ps,pm)),ps[req:],sp)
@@ -690,7 +707,17 @@ def _cf(c):
 def _nodes(c):
  try:return sum(1 for _ in ast.walk(ast.parse(c,mode="eval")))
  except SyntaxError:return sum(1 for _ in ast.walk(ast.parse(c)))
-def sk_only(fs):fs=set(fs);c=_core(fs);tf=tfeats();t={n for n,*_ in TILE_DEFS if _core(tf[n]) and _core(tf[n])<=c};return frozenset(t|{x for g in SWAP if g&t for x in g}|({n for n,*_,fl in TILE_DEFS if not _core(tf[n]) and "h" not in fl} if t else set())),frozenset(p for p,k in PK.items() if k<=fs),bool({"p:acc","c:reduce","c:accumulate"}&fs)
+@functools.lru_cache(None)
+def mined():
+ p=Path(os.environ.get("TS_X11_MINED",str(ROOT/"data"/"code_eval"/"x11_mined_tiles.jsonl")));out=[]
+ for r in load_store(p) if p.exists() else []:
+  try:ar=len(r["prims"].split("|")[0]);out.append((r["name"],r["prims"],r["tpl"],_wrap(safe_eval("lambda "+", ".join(f"_m{k}" for k in range(ar))+": "+_rd(_parts(r["tpl"]),[f"_m{k}" for k in range(ar)])),False),3,r["kw"],""))
+  except Exception:pass
+ return out
+@functools.lru_cache(None)
+def x11f():return {n:frozenset(feats(_rd(_parts(tp),["a","b","c"]))) for n,pr,tp,*_ in X11_TILES+(mined() if X11["m"]=="1" else [])}
+def _stk(name,top):f=_core(tfeats().get(name) or x11f().get(name,EMPTY));return bool(f) and f<=set(top)
+def sk_only(fs):fs=set(fs);c=_core(fs);tf=tfeats();t={n for n,*_ in TILE_DEFS if _core(tf[n]) and _core(tf[n])<=c}|({n for n,f in x11f().items() if _core(f) and _core(f)<=c} if X11["t"]=="1" else set());return frozenset(t|{x for g in SWAP if g&t for x in g}|({n for n,*_,fl in TILE_DEFS if not _core(tf[n]) and "h" not in fl} if t else set())),frozenset(p for p,k in PK.items() if k<=fs),bool({"p:acc","c:reduce","c:accumulate"}&fs)
 def _holes(F):return [n for n in ast.walk(F) if isinstance(n,ast.Constant) and type(n.value) in (int,float,str) and len(str(n.value))<=12][:4],[(n,j) for n in ast.walk(F) for j,o in enumerate(n.ops if isinstance(n,ast.Compare) else [n.op] if isinstance(n,(ast.BinOp,ast.BoolOp)) else []) if type(o) in SWO][:6]+[(n,-1) for n in ast.walk(F) if isinstance(n,ast.Name) and n.id in SWN][:3]
 def _variants(F,sp):
  yield F,"orig"
@@ -715,6 +742,42 @@ def sketch(z,nbs):
  dl=time.perf_counter()+float(SKC["eb"])
  for x in nbs.get("pe",[]) if SKC["e"]=="1" else ():out+=z.edit(x,dl)
  return out
+def _focus(sp,b,Sr):
+ T=list(sp.fx[1]);k,n,out=int(X11["fk"]),max(1,int(X11["fn"])),[]
+ for j in range(n):
+  try:S2=Search(sp,b/n,(),only=sk_only(T[:k*(j+1)]));S2.bods=Sr.bods;out+=[(e,t,bd) for e,t,bd in S2.run(max(4,TOPN//2))]
+  except Exception:pass
+ return out
+LOOPW=(set("until repeat repeatedly persistence steps step times iterations iterate reach reaches keep process single collatz".split()),set("sequence recursive recursion term terms series nth fibonacci tribonacci recurrence".split()))
+@functools.lru_cache(None)
+def _ltpl():
+ F=("sum(int(_d) for _d in str(n))","math.prod(int(_d) for _d in str(n))","n // 2 if n % 2 == 0 else 3 * n + 1","n // 10","n // 2","n - 1","n + int(str(n)[::-1])","n * 2","sum(int(_d) ** 2 for _d in str(n))");P=("n < 10","n == 1","n <= 1","n == 0","str(n) == str(n)[::-1]","n <= 0")
+ u=[f"def _t(n):\n    c = 0\n    while not ({p}) and c < 10000:\n        n = {f}\n        c += 1\n    return {r}\n" for f in F for p in P for r in ("c","n")]
+ q=[f"def _t(n):\n    a, b = {a0}, {a1}\n    for _ in range({rg}):\n        a, b = b, {x} * b + {y} * a + {c}\n    return a\n" for x in (1,2,3) for y in (0,1,2) for c in (0,1) for a0 in (0,1,2) for a1 in (1,2) for rg in ("n","n - 1")]+[f"def _t(n):\n    a, b, c = {a}, {b}, {c}\n    for _ in range({rg}):\n        a, b, c = b, c, a + b + c\n    return a\n" for a in (0,1) for b in (0,1) for c in (1,2) for rg in ("n","n - 1")]
+ return u,q
+def _loops(sp,Sr,b):
+ if not _jailed():return []
+ u,q=_ltpl();W=sp.words;dl=time.perf_counter()+b;out=[];_asguard()
+ for src in (u if W&LOOPW[0] else [])+(q if W&LOOPW[1] else []):
+  if time.perf_counter()>dl:break
+  out+=Sr.edit({"src":src,"i":-1},dl,False)
+ return out
+def _jailed():return os.environ.get("TS_IN_JAIL")=="1" or os.environ.get("TS_ALLOW_UNJAILED")=="1"
+def _asguard():
+ s,h=resource.getrlimit(resource.RLIMIT_AS)
+ (_limit() if s==resource.RLIM_INFINITY else None)
+def _recall(sp,Sr,b):
+ if not _jailed():return []
+ ms=__import__("amni.compute.code_steer",fromlist=["x"]).recall(sp,min(16,int(X11["r"])));nq=int(X11["rq"]);gs=list(dict.fromkeys(o for o in (sk_only(feats(m["src"])) for m in ms) if o[0] or o[1]))[:nq] if nq else [];out=[];_asguard()
+ for o in gs:
+  try:S2=Search(sp,b*0.6/len(gs),(),only=o);S2.bods=Sr.bods;out+=[(e,t,bd,{"sk":1,"nb":[],"how":"memsk"}) for e,t,bd in S2.run(int(SKC["n"]))]
+  except Exception:pass
+ dl=time.perf_counter()+b*(0.4 if gs else 1)
+ for m in ms:
+  if time.perf_counter()>dl:break
+  out+=[(e,t,bd,{**x,"how":"mem:"+m["id"]+"|"+x.get("how","")}) for e,t,bd,x in Sr.edit({"src":m["src"],"i":-1},dl,X11["rv"]=="1")][:int(SKC["en"])]
+  if len(out)>=4*int(SKC["en"]):break
+ return out
 def _skmerge(rs,ks):
  eb={b:[] for _,_,b in rs};sd={}
  for e,t,b,m in ks:(eb[b].extend(m["nb"]) if b in eb else sd.setdefault(b,(e,t,b,{**m,"nb":[]}))[3]["nb"].extend(m["nb"]))
@@ -729,7 +792,8 @@ def solve(prompt,checks,budget=None,store=None,learn=False,origin="",topn=None,n
  except Exception as e:return {**base,"reason":f"spec_error {type(e).__name__}","time":time.perf_counter()-t0}
  base.update(n_ex=len(sp.T),n_raw=len(sp.raw))
  if not sp.used:return {**base,"reason":"no_examples","time":time.perf_counter()-t0}
- try:Sr=Search(sp,budget,load_store(store) if store else ());rs=Sr.run(TOPN if topn is None else topn);t1=time.perf_counter()-t0;rs=_skmerge(rs,sketch(Sr,nbs) if nbs else []);r=rs[0] if rs else None;st=Sr.stats();pe,nex,cm=Sr.pe if Sr.pe is not None or not r else r[0],Sr.nex,Sr.cmask;lo=lambda e:sum(v<e for v in Sr.loo.values()) if nex>=2 else None;lf=lo(pe) if r else None;V=set(vocab());cs=[{"body":b,"expr":t.c,"cost":t.s,"score":e,"cov":bin(t.w).count("1"),"loo_fail":lo(e),"pri":sp.pri(t.c),"sk":m["sk"],"nb":list(dict.fromkeys(m["nb"])),"cf":sorted(_cf(t.c)&V),**({"how":m["how"]} if "how" in m else {})} for e,t,b,m in rs];Sr=None;gc.collect();tk=time.perf_counter()-t0-t1;bh=behave(sp,[x[2] for x in rs]) if len(rs)>1 and os.environ.get("TS_BEH","1")=="1" else None;[c.update(beh=v,prop=q) for c,v,q in zip(cs,bh["beh"],bh["prop"])] if bh else None;pg=probation(sp,budget,store,origin,r[1].v if r else None) if learn and store else {}
+ fo=X11["f"]!="0" and getattr(sp,"fx",None) is not None;lo_=X11["l"]=="1" and bool(sp.words&(LOOPW[0]|LOOPW[1]));rc=X11["r"]!="0";ff=float(X11["ff"])*fo+0.1*lo_+float(X11["rf"])*rc
+ try:Sr=Search(sp,budget*(1-ff),load_store(store) if store else ());rs=Sr.run(TOPN if topn is None else topn);rs+=_focus(sp,budget*float(X11["ff"]),Sr) if fo else [];xk=(_loops(sp,Sr,budget*0.1) if lo_ else [])+(_recall(sp,Sr,budget*float(X11["rf"])) if rc else []);t1=time.perf_counter()-t0;rs=_skmerge(rs,(sketch(Sr,nbs) if nbs else [])+xk);r=rs[0] if rs else None;st=Sr.stats();pe,nex,cm=Sr.pe if Sr.pe is not None or not r else r[0],Sr.nex,Sr.cmask;lo=lambda e:sum(v<e for v in Sr.loo.values()) if nex>=2 else None;lf=lo(pe) if r else None;V=set(vocab());cs=[{"body":b,"expr":t.c,"cost":t.s,"score":e,"cov":bin(t.w).count("1"),"loo_fail":lo(e),"pri":sp.pri(t.c),"sk":m["sk"],"nb":list(dict.fromkeys(m["nb"])),"cf":sorted(_cf(t.c)&V),**({"how":m["how"]} if "how" in m else {})} for e,t,b,m in rs];Sr=None;gc.collect();tk=time.perf_counter()-t0-t1;bh=behave(sp,[x[2] for x in rs]) if len(rs)>1 and os.environ.get("TS_BEH","1")=="1" else None;[c.update(beh=v,prop=q) for c,v,q in zip(cs,bh["beh"],bh["prop"])] if bh else None;pg=probation(sp,budget,store,origin,r[1].v if r else None) if learn and store else {}
  except Exception as e:return {**base,"reason":f"search_error {type(e).__name__}: {e}"[:200],"time":time.perf_counter()-t0}
  tm={"time":t1,"time_total":time.perf_counter()-t0,**({"sk_time":tk,"sk_nb":nbs.get("nb",[]),"sk_pe":[x["i"] for x in nbs.get("pe",[])],"sk_guard":nbs.get("guard",{}),"sk_n":sum(bool(c["sk"]) for c in cs)} if nbs else {})}
  if not r:return {**base,**st,**pg,"reason":"no_program",**tm}
@@ -739,9 +803,10 @@ def solve(prompt,checks,budget=None,store=None,learn=False,origin="",topn=None,n
 def _clean(b):
  try:return textwrap.indent(ast.unparse(ast.parse(textwrap.dedent(b))),"    ")+"\n"
  except Exception:return b
+_NL=threading.Lock()
 def natural(prompt,cs,path=None):
  bs=[c["body"].encode() for c in cs];cb=[_clean(c["body"]).encode() for c in cs];n=len(bs);m=list(re.finditer(r"(?m)^def [^\n]*:[ \t]*\n",prompt));P,S=prompt.encode(),prompt[:m[-1].end()].encode() if m else b""
- lp=ray_field.engine(path or os.environ.get("TS_NAT_PACK",NATP)).score([P]*n+[b""]*n+[S]*n+[P]*n,bs+bs+bs+cb) if n else []
+ with _NL:lp=ray_field.engine(path or os.environ.get("TS_NAT_PACK",NATP)).score([P]*n+[b""]*n+[S]*n+[P]*n,bs+bs+bs+cb) if n else []
  [c.update(nat_lp=float(a),nat_lp0=float(b),nat_lps=float(q),nat_lpc=float(w),nat_n=len(x),nat_nc=len(y)) for c,a,b,q,w,x,y in zip(cs,lp[:n],lp[n:2*n],lp[2*n:3*n],lp[3*n:],bs,cb)];return cs
 def _nf(c,m):return -c["score"] if m=="score" else 0.0 if m=="off" or "nat_lp" not in c else c["nat_lp"]/max(1,c["nat_n"]) if m=="byte" else c["nat_lpc"]/max(1,c["nat_nc"]) if m=="cbyte" else c["nat_lp"]-c["nat_lps"] if m=="pmis" else (c["nat_lp"]-c["nat_lp0"])/(max(1,c["nat_n"]) if m=="pmib" else 1)
 def consensus(cs,k,kind=""):
@@ -759,10 +824,64 @@ def rerank(r,prompt=None,cfg=None,checks=None):
  ax=bool(cs) and (k["ap"]=="1" or (c["loo_fail"]>0 if c["loo_fail"] is not None else k["anl"]=="1")) and _nf(c,k["af"])<float(k["at"]);ac=bool(cs) and sh<float(k["ca"]);ab={"x":ax,"c":ac,"o":ax or ac,"a":ax and ac}[k["cab"]]
  return {**r,"cshare":sh,**({"body":cs[j].get("body",""),"expr":cs[j]["expr"],"cost":cs[j]["cost"],"score":cs[j]["score"],"loo_fail":cs[j]["loo_fail"],"size":_nodes(cs[j]["expr"])} if cs else {}),"pick":j,"x9_pick":x9,**({"x10":x10} if x10 else {}),"abstain":ab,"nat":_nf(c,k["nat"]) if cs else None,"rank":k}
 def _limit():
- vs=int(open("/proc/self/statm").read().split()[0])*os.sysconf("SC_PAGE_SIZE");resource.setrlimit(resource.RLIMIT_AS,(vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30),resource.RLIM_INFINITY))
-def pool(jobs=1):return ProcessPoolExecutor(max(1,jobs),mp_context=get_context("spawn"),initializer=_limit)
+ vs=int(open("/proc/self/statm").read().split()[0])*os.sysconf("SC_PAGE_SIZE");h=resource.getrlimit(resource.RLIMIT_AS)[1];resource.setrlimit(resource.RLIMIT_AS,(vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30) if h==resource.RLIM_INFINITY else min(h,vs+int(float(os.environ.get("TS_MEM_GB","1.5"))*2**30)),h))
+def _jd(o):return o.item() if hasattr(o,"item") else sorted(o) if isinstance(o,(set,frozenset)) else str(o)
+def _serve():
+ out=os.fdopen(os.dup(1),"w",buffering=1);os.dup2(2,1);_limit()
+ for l in sys.stdin:
+  try:q=json.loads(l);r=_solve_item(q["item"],**q["kw"])
+  except BaseException as e:r={"found":False,"body":"","n_checks":0,"time":0.0,"size":0,"cost":0,"expr":"","reason":f"worker_error {type(e).__name__}"[:200]}
+  gc.collect();out.write(json.dumps({"i":q.get("i",-1) if isinstance(q,dict) else -1,"r":r},default=_jd)+"\n")
+def _mem():
+ try:return {l.split(":")[0]:int(l.split()[1])>>10 for l in open("/proc/meminfo")}.get("MemAvailable",1<<20)
+ except OSError:return 1<<20
+def _tree_rss(pid):
+ t,st=0,[pid]
+ while st:
+  p=st.pop()
+  try:t+=int(open(f"/proc/{p}/statm").read().split()[1])*os.sysconf("SC_PAGE_SIZE")>>20;st+=[int(c) for d in os.listdir(f"/proc/{p}/task") for c in open(f"/proc/{p}/task/{d}/children").read().split()]
+  except (OSError,ValueError):pass
+ return t
+class JailPool:
+ def __init__(s,jobs=1):
+  E=os.environ.get;s._max_workers=s.n=max(1,jobs);s.rss=float(E("TS_RSS_GB","5.5"))*1024;s.wrss=float(E("TS_WRSS_GB",str(s.rss/1024/s.n)))*1024;s.avail=float(E("TS_MINAVAIL_GB","12"))*1024;s.tmo=float(E("TS_ITEM_TMO","150"));s.ws=[None]*s.n;s.lk=threading.Lock();s.kills=collections.Counter();s.peak=0;s.dir=tempfile.mkdtemp(prefix="tsjail_",dir=str(ROOT/"data"/"code_eval"/"tmp") if (ROOT/"data"/"code_eval"/"tmp").is_dir() else None);s.alive=True;threading.Thread(target=s._watch,daemon=True).start();s.q=queue.Queue();[threading.Thread(target=s._loop,args=(k,),daemon=True).start() for k in range(s.n)]
+ def _cmd(s):
+  sys.path.append(str(ROOT)) if str(ROOT) not in sys.path else None
+  from scripts.x0_code_eval import _bwrap_cmd,PY
+  c=_bwrap_cmd(s.dir,[PY,"-c",f"import sys;sys.path.insert(0,{str(ROOT)!r});from amni.compute import tile_synth as T;T._serve()"],cpu=1<<30,mem=int(float(os.environ.get("TS_JAIL_AS_GB","4"))*2**30));j=c.index("--bind");env=[x for k,v in os.environ.items() if k.startswith(("TS_","AMNI_","X0_")) and k!="TS_IN_JAIL" for x in ("--setenv",k,v)]+["--setenv","TS_IN_JAIL","1"]
+  return c[:j]+["--ro-bind",str(ROOT),str(ROOT)]+env+c[j:]
+ def _spawn(s,k):s.ws[k]=subprocess.Popen(s._cmd(),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open(os.environ["TS_JAIL_ERR"],"a") if os.environ.get("TS_JAIL_ERR") else subprocess.DEVNULL,text=True,bufsize=1,env={"PATH":"/usr/bin:/bin","LANG":"C.UTF-8"});s.ws[k].t0=None;s.ws[k].why=None;return s.ws[k]
+ def _kill(s,k,why):
+  w=s.ws[k]
+  if w is not None and w.poll() is None:s.kills[why]+=1;w.why=why;w.kill()
+ def _watch(s):
+  while s.alive:
+   time.sleep(0.5);ws=[(k,w) for k,w in enumerate(s.ws) if w is not None and w.poll() is None];r={k:_tree_rss(w.pid) for k,w in ws};tot=sum(r.values());s.peak=max(s.peak,tot);av=_mem()
+   for k,w in ws:(s._kill(k,"worker_rss") if r[k]>s.wrss else s._kill(k,"worker_timeout") if w.t0 and time.time()-w.t0>s.tmo else None)
+   (s._kill(max(r,key=r.get),"pool_rss" if tot>s.rss else "low_mem") if r and (tot>s.rss or av<s.avail-1024) else None)
+ def _run1(s,k,i,item,kw):
+  w=s.ws[k] if s.ws[k] is not None and s.ws[k].poll() is None else s._spawn(k)
+  while _mem()<s.avail:time.sleep(1)
+  w.t0=time.time()
+  try:w.stdin.write(json.dumps({"i":i,"item":list(item),"kw":kw},default=_jd)+"\n");w.stdin.flush();l=w.stdout.readline();w.t0=None;return json.loads(l)["r"]
+  except (OSError,ValueError,KeyError):
+   w.t0=None;why=getattr(w,"why",None) or "worker_crash";rc=w.poll();s._kill(k,why);s.ws[k]=None;return {"found":False,"body":"","n_checks":len(item[1]),"time":0.0,"size":0,"cost":0,"expr":"","reason":why,"rc":rc}
+ def _loop(s,k):
+  while s.alive:
+   j=s.q.get()
+   if j is None:return
+   i,it,kw,out,dn=j;out[i]=s._run1(k,i,it,kw);dn.release()
+ def run(s,items,kw):
+  out,dn=[None]*len(items),threading.Semaphore(0);[s.q.put((i,it,kw,out,dn)) for i,it in enumerate(items)];[dn.acquire() for _ in items];return out
+ def shutdown(s,wait=True,cancel_futures=False):
+  s.alive=False;[s.q.put(None) for _ in range(s.n)]
+  for k,w in enumerate(s.ws):
+   if w is not None:(w.stdin.close() if w.poll() is None else None);s._kill(k,"shutdown")
+  shutil.rmtree(s.dir,ignore_errors=True)
+def pool(jobs=1):return JailPool(jobs) if os.environ.get("TS_JAIL","1")=="1" else ProcessPoolExecutor(max(1,jobs),mp_context=get_context("spawn"),initializer=_limit)
 def _solve_item(item,**kw):return solve(item[0],item[1],**{**kw,**(item[2] if len(item)>2 else {})})
 def solve_many(ex,items,**kw):
+ if isinstance(ex,JailPool):return ex.run(items,kw)
  try:return list(ex.map(functools.partial(_solve_item,**kw),items))
  except BrokenProcessPool:
   if len(items)==1:return [{"found":False,"body":"","n_checks":len(items[0][1]),"time":0.0,"size":0,"cost":0,"expr":"","reason":"worker_crash"}]

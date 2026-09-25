@@ -1,0 +1,14 @@
+{
+ "splits": {
+  "data/code_eval/apps_fn_dev.jsonl": "d4ce17a09321d8774687790de1166db318f503f0d26e234e790a85c68ee8c9cb",
+  "data/code_eval/apps_fn_lock.jsonl": "1c65a24114022b298d1ece73c454d0624ca9e1793d587eadd7c24b89a61e228b",
+  "data/code_eval/lcb_easy_fn.jsonl": "9535c96d52f8bb1ce3a6187ebf8123b5cc37ddf4ac55256d422f7a9f59f77fe0",
+  "data/code_eval/mbpp_holdout.jsonl": "e10192bbe7fb29ddabe873820d66930f4ffe3bbea7f459e64bfa3ddd9506999d"
+ },
+ "splits_hash": "9f3782c013c991da2bf6048ce1d778f26d13d36045cecf3960fcfdfb056d212b",
+ "n": 4,
+ "locked": "2026-09-25T08:56:20-0400",
+ "eval_only": {
+  "data/code_eval/lcb_easy_fn.jsonl": "eval-only (statement copyright: LeetCode statements via LiveCodeBench). Dev measurement only; never used for tile mining, training, or tile/prior/ranker tables."
+ }
+}
