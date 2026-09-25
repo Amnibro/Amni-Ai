@@ -1,3 +1,38 @@
+## 2026-09-25 F12: v19j gen2 clause analyzer, pooled decline keys, chat10j, v19j2 (meets the promotion rule; not promoted, the CTO decides)
+- Parser flag `GEN2=1` (pack json `"gen2": 1`, needs `GEN=1` and `LATEST=1`). The rules are in `crates/README.md`, "v19j clause analyzer (GEN2)" (`crates/adam-ray/src/g2.rs`).
+  - It is a sentence-level analyzer: order-free value/entity binding, possessive chains, indirect and object questions, an if-clause and hypothetical filter, a negation filter, pending same-as links in either order, and region facts.
+  - Table `crates/adam-ray/src/v19_gen2.tsv` (`RELMINE_GEN2=1 RELMINE_G2MINE=1 scripts/v19_relmine.py`): WordNet types and heads, the F11 relation rows, seed idioms, and 19 clean2-mined idioms whitelisted by relation lemma.
+  - With the flag off, nothing changes: v19i on D3 and all seven older probes are identical. New `probe_gen2`; 8/8 probes pass.
+- Decline: under gen2, a question with a parsed (entity, relation) and no candidate uses pooled memory-result keys. Level A is position-only with slot key 0; level B is keyed on the reply bytes. The decline does not depend on framing or on the opener bytes.
+- Parser candidate recall on D3: 66.0 -> 97.0 (known 98.2, twohop 88.3, unknown 100).
+  - Generator data never used for tuning: chat3-style 99.5 (old 98.0), V19H-style 97.6 (old 89.3), chat8e hold 99.3 (old 99.7).
+  - Suite D: 88.5 (old 95.8). The known items drop 100 -> 88.4: born-in-year values, `my car is called X`, `favorite drink`.
+- Mirror: `amni/serve/user_memory.py`, behind `"gen2": 1` (`AMNI_UMEM_G2`). Facts and question state match Rust on 7,392 dialogues, 0 mismatches. Entity keys from older parsers migrate on load. `tests/test_user_memory_gen2.py` has 7 tests; the gen tests (5) and the main user_memory tests (22) still pass.
+- Generator `V19J=1` on top of V19H:
+  - gen2 idiom statement and question templates (asks that normalise to an eval ask are filtered out);
+  - framing noise: prefixes and suffixes with typos;
+  - near-miss chained-entity and hypothetical/negated distractors in unknown items.
+  - `data/chat10j` has 39,247 train and 982 hold dialogues after the gen2 pfilter. Every disjointness assert holds. The decontam scan finds 0 after cutting 12 cross-boundary units (7 KB).
+- Training (GPU lock row registered, then removed; no other `adam-train` was running):
+  - `rayhash_v19j_clean_chat10j_s15k`: 15k steps from v19i at LR 2e-3, 465 s.
+  - `rayhash_v19j2_clean_chat10j_s30k`: 15k more at LR 1e-3, 447 s, best val 0.3041 bpb.
+  - The candidate was picked on D3 only, before D2/D4 were run: v19j2 88.5 strict, v19j 87.5.
+- Strict results (stream, maxb 240, lock, stop-sentence, rep 1). Groups are known-unknown-twohop.
+
+  | model | chat3 | D | D2 k-u-t | D3 k-u-t | D4 k-u-t | F7 |
+  |---|---|---|---|---|---|---|
+  | v19i (serve) | 96.0 | 93.25 | 39.0-86.7-26 | 59.3-75-40 | 69.3-86.7-16.7 | 5/6 (F11); 6/6 in the F12 harness |
+  | v19i weights + gen2 parser | – | – | – | 90.4-0-78.3 | – | – |
+  | v19j (15k) | – | – | – | 88.9-91.7-76.7 | – | – |
+  | v19j2 (candidate) | 96.6 | 87.0 | 47.6-93.3-46 | 90.0-90.0-80.0 | 85.7-100-43.3 | 5/6 |
+
+  - v19j2 chat3 by kind, change vs v19i: simple 97.2 (+0.4), multi 99.5 (+1.0), twohop 92 (+0.7), longgap 97 (+3), unknown 99 (+1), correction 96 (−1), pronoun 94 (−1).
+- Promotion rule: v19j2 beats v19i on every D2 and D4 category, chat3 is 96.6 (≥ 95), no chat3 category drops by more than 3, and the smoke is 5/6. The rule is met.
+- Targets not met: D2 known ≥ 60 (47.6), D4 twohop.
+- Risks:
+  - Suite D drops 93.25 -> 87.0; known goes 98 -> 86.4, a parser regression on D phrasing.
+  - The smoke's uncle question does not decline in the serving path: the byte tori push `A` (+6.2) against the decline MR (+3.1) after echo acks.
+  - The emergency layer answers "My sister-in-law lives in San Diego" with its 911 reply.
 ## 2026-09-25 F11: generalization to unseen phrasing: D3/D4 suites, v19h GEN parser flag, chat9g/chat9h, v19h/v19i (gate not met, not promoted)
 - New locked suites, written by two fresh subagents that saw neither D nor D2 nor the generator:
   - D3 (dev): `data/concepts/eval/d3/d3.jsonl`, 400 items, lock `d3_lock.json` (splits_hash 817e12c9…).

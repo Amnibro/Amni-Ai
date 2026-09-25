@@ -867,11 +867,11 @@ def decode(raw:bytes)->list:
         e,r,c,ts,tn,sid,vl,nl=REC.unpack_from(pay,o);o+=REC.size;fs.append(F(e,r,c,ts,tn,sid,pay[o:o+vl],pay[o+vl:o+vl+nl].decode('utf-8','replace')));o+=vl+nl
     return fs
 _EID={}
-def _eid(name:str,lt:bool):
-    k=(name,lt)
-    if k not in _EID:fs=_P(lt=lt).turn(f"My {name} lives in Xq.".encode('latin-1','replace'));_EID[k]=fs[-1][0] if fs and fs[-1][1]==4 else None
+def _eid(name:str,m):
+    k=(name,m)
+    if k not in _EID:fs=(_P() if m=='cur' else _P(lt=m>0,gn=m>1,g2=m>2)).turn(f"My {name} lives in Xq.".encode('latin-1','replace'));_EID[k]=fs[-1][0] if fs and fs[-1][1]==4 else None
     return _EID[k]
-def _mig(fs:list)->list:return [f._replace(ent=n) if f.ent!=SELFK and f.rel!=ISINK and f.name and _eid(f.name,False)==f.ent and (n:=_eid(f.name,True)) else f for f in fs] if _lt() else fs
+def _mig(fs:list)->list:return [f._replace(ent=n) if f.ent!=SELFK and f.rel!=ISINK and f.name and (n:=_eid(f.name,'cur')) and f.ent!=n and f.ent in {_eid(f.name,m) for m in (0,1,2,3)} else f for f in fs] if _lt() else fs
 def load(key:str)->list:
     p=path(key)
     with _lock:

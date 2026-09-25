@@ -16,3 +16,7 @@ def test_gen2_region_hop_and_names():
     p=U._P(lt=True,gn=True,g2=True);f=p.turn(b"My lab partner lives over in Kalamazoo, a town in Michigan.");assert [(x[1],x[2]) for x in f]==[(4,b"Kalamazoo"),(3,b"Michigan")] and p.names[f[0][0]]=="lab partner"
 def test_gen2_flag_follows_pack(monkeypatch):
     monkeypatch.setenv("AMNI_UMEM_G2","0");assert not U._g2();monkeypatch.setenv("AMNI_UMEM_G2","1");assert U._g2()
+def test_gen2_migrates_old_entity_keys(monkeypatch):
+    monkeypatch.setenv("AMNI_UMEM_G2","1");monkeypatch.setenv("AMNI_UMEM_LT","1");U._EID.clear()
+    old,new=U._eid("sister-in-law",2),U._eid("sister-in-law",'cur');assert old and new and old!=new
+    assert U._mig([U.F(old,4,1,0.0,0,b'\0'*8,b'Oslo','sister-in-law')])[0].ent==new;U._EID.clear()
