@@ -1,0 +1,19 @@
+{
+ "protocol": "comparison only, never in the serving path: sentence-transformers/all-MiniLM-L6-v2 mean-pooled L2-normalised embeddings (torch CPU, 4 threads) + sklearn LogisticRegression(C=1.0) trained on the same 5 locked sets (dev, blind1-4), scored once on blind5-7 at p>=0.5 (pre-registered); @fp rows use thresholds taken from the blind negatives (oracle, for curve comparison only); minilm_matched_to_lut_fp sets the MiniLM threshold so its added FP equals the LUT's added FP over rules",
+ "minilm@0.5": {
+  "recall": 0.7991,
+  "fp": 0.0692
+ },
+ "rules_or_minilm@0.5": {
+  "recall": 0.8985,
+  "fp": 0.124
+ },
+ "minilm_matched_to_lut_fp": {
+  "recall_alone": 0.5629,
+  "or_rules_recall": 0.819,
+  "or_rules_fp": 0.0741
+ },
+ "minilm_alone_recall@fp0.01": 0.5298,
+ "minilm_alone_recall@fp0.03": 0.6689,
+ "minilm_alone_recall@fp0.05": 0.766
+}

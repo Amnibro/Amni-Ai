@@ -4,7 +4,7 @@ from collections import Counter
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from amni.serve import emergency as E
 from amni.compute import eval_lock as EL
-D=ROOT/"tests"/"data"/"emergency";LK=D/"lock_blind567.json";OUT=Path(sys.argv[1]) if len(sys.argv)>1 else D/"first_look_blind567.json"
+D=ROOT/"tests"/"data"/"emergency";LK=D/"lock_blind567.json";OUT=Path(sys.argv[1]) if len(sys.argv)>1 else ROOT/"data"/"safety"/"report_emergency_blind567.json"
 M=json.loads(LK.read_text());assert not EL.verify(M),EL.verify(M)
 R=[(Path(f).name.split("_")[0],"pos" in Path(f).name,*l.rstrip("\n").split("\t",1)) for f in sorted(M["splits"]) for l in open(ROOT/f,encoding="utf-8") if l.strip()]
 tracemalloc.start();E._lut();mem=tracemalloc.get_traced_memory();tracemalloc.stop();tm=json.loads(str(__import__("numpy").load(E.LUTP)["meta"]));TV=tm["th_veto"]

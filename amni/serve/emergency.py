@@ -1,8 +1,9 @@
-import re,zlib,numpy as np
+import re,json,zlib,numpy as np
 from pathlib import Path
 from typing import Iterable,Iterator,Optional
 from bisect import bisect_right
 from functools import lru_cache
+from amni.compute import eval_lock as EL
 LEX=frozenset("breathing breathe unconscious unresponsive responding answering bleeding seizure seizing convulsing overdose overdosed overdosing suicide suicidal poisoned poisoning ambulance emergency choking fainted drowning slurring slurred allergic anaphylaxis anaphylactic epipen monoxide intruder strangling kidnapped myself himself herself themselves anymore paramedics naloxone fentanyl collapsed".split())
 KEEP=frozenset("cooking breeding emergence struggling breath blending confusing consulting seizures breaths overcoming spurred bleaching intruders unconsciously sizing breaching breathes conversing breathed ambulances suicides straddling fainter spurring respondent convulsions resounding stringing poisonings intruded paramedic overdoses kidnappers intrude overjoyed stranding downing overdoing breathy breather slurping overusing kidnapper coking convulsive intrudes drownings overdone rescinding convolving convulsion droning straggling collapse collapses answered answers bleeds breathed choked chokes".split())
 ABBR={'freind':'friend','frend':'friend','frined':'friend','freinds':'friends','bruther':'brother','brotha':'brother','sista':'sister','dady':'dad','mommie':'mommy','momy':'mommy','mothr':'mother','nabor':'neighbor','naybor':'neighbor','u':'you','ur':'your','r':'are','n':'and','pls':'please','plz':'please','plez':'please','pleasee':'please','bc':'because','cuz':'because','coz':'because','cos':'because','rn':'right now','idk':'i dont know','ppl':'people','bf':'boyfriend','gf':'girlfriend','wanna':'want to','gonna':'going to','gotta':'got to','tryna':'trying to','ya':'you','cannot':'cant','dosent':'doesnt','dosnt':'doesnt','doesent':'doesnt','dnt':'dont','wont':'wont','thru':'through','omg':'oh my god','mum':'mom','mummy':'mommy','mam':'mom','neighbour':'neighbor','neighbours':'neighbors','ambulence':'ambulance','thier':'their','teh':'the','nd':'and','alot':'a lot','haveing':'having','collasped':'collapsed','colapsed':'collapsed','collaped':'collapsed','ods':'od','odd':'od','oded':'od','odding':'od','oding':'od','kms':'kill myself','unalive':'kill','sewerslide':'suicide','epi':'epi','flatmate':'roommate','housemate':'roommate','nan':'grandma','nana':'grandma','granny':'grandma','gran':'grandma','grandad':'grandpa','granddad':'grandpa','hubby':'husband','paracetamol':'acetaminophen','petrol':'gasoline','sezure':'seizure','seizer':'seizure','siezure':'seizure','ceasure':'seizure','od\'d':'od','breating':'breathing','brething':'breathing','breatheing':'breathing','breathin':'breathing','respondin':'responding','bleedin':'bleeding','overdoes':'overdosed','sucide':'suicide','suicde':'suicide','suiside':'suicide','sucidal':'suicidal','unconsious':'unconscious','unconcious':'unconscious','unconscius':'unconscious','anwsering':'answering','answring':'answering'}
@@ -319,7 +320,8 @@ def rules(text:str)->Optional[dict]:
     r=T[ks]+(' '+DV if ks=='violence' and DOM.search(t) else '')+(' '+TRAF if ks=='violence' and re.search(r"\b(?:passport|visa|documents|papers|owe|debt|forced|forcing|made me)\b",t) else '')
     return {'category':'child' if kid and CAT[k]=='medical' else CAT[k],'kind':ks,'reply':r,'match':h['txt'],'norm':t.strip()}
 @lru_cache(2048)
-def detect(text:str)->Optional[dict]:return rules(text) or classify(text)
+def detect(text:str)->Optional[dict]:
+    r=rules(text);return r if r and (not VETO or _lut() is None or len(norm(text).split())<=4 or lut_score(text)[0]>=_lut()[2]) else classify(text)
 def respond(text:str)->Optional[str]:
     d=detect(text or '');return d['reply'] if d else None
 OUT=re.compile(r"\b(?:(?:call|dial|text|phone|ring|contact)\w* (?:\w+ ){0,3}(?:911|999|112|988|000)|911|988|emergency(?! (?:fund|funds|savings|kit|brake|exit|stash|budget|cash|money|contact|preparedness|supplies|meeting|meetings))|emergencies|poison control|crisis (?:line|lifeline|hotline|text line)|suicide (?:hotline|lifeline|prevention)|ambulance|paramedics?|call the police)\b",re.I)
@@ -344,7 +346,7 @@ def guard_stream(message:str,chunks:Iterable[str])->Iterator[str]:
     if r:yield r
     if not st['said']:yield neutral(message)
 def guard(message:str,text:str)->str:return ''.join(guard_stream(message,[text or '']))
-LUTP=Path(__file__).with_name('emergency_lut.npz');EB=19;EM=(1<<EB)-1;EQ=4913;EO=41760;EA=0.1;ECL=3.0;K4=(1,17,289,4913)
+LUTP=Path(__file__).with_name('emergency_lut.npz');VETO=False;EB=19;EM=(1<<EB)-1;EQ=4913;EO=41760;EA=0.1;ECL=3.0;K4=(1,17,289,4913)
 EC=('none','medical','suicide','violence','fire','gas','poison','child');EK={'medical':'general','suicide':'suicide','violence':'violence','fire':'fire','gas':'gas','poison':'poison','child':'child_danger'}
 MKN=('GEN','URGS','URGW','URGP','PIVOT','ADMIN','SIDE','URGR','URGJ','EMB','IDE','HUMS','FIC','HYPOS','REAL','HYPO','EDU','EDUP','EDUS','JOKE','JOKES','RES','PAST','NEG','MULTI','DOM','INTR','QN')
 SUBX=re.compile(rf"\b(?:(?P<self>i|im|me|my|myself|ive|ill)|(?P<kid>{KID})|(?P<kin>{KIN})|(?P<oth>he|she|hes|shes|him|her|they|someone|somebody|guy|man|woman|girl|boy|person|lady))\b");TOKR=re.compile(r"[a-z0-9']+")
@@ -360,7 +362,6 @@ def _dec(d)->np.ndarray:return (sum(d[...,i].astype(np.int32)*k for i,k in enume
 def _sc(W,x)->tuple:
     s=W[x].sum(0);return s[0]/EQ/np.sqrt(max(len(x),1)),EC[1+int(np.argmax(s[1:]))]
 def train(out=LUTP,sets=('dev','blind1','blind2','blind3','blind4'),fp=0.01)->dict:
-    from amni.compute import eval_lock as EL
     D=Path(__file__).resolve().parents[2]/'tests'/'data'/'emergency';lk=EL.verify(D/'lock.json');assert not lk,lk
     R=[(s,c if p=='pos' else 'none',m) for s in sets for p in ('pos','neg') for c,m in (l.rstrip('\n').split('\t',1) for l in open(D/f'{s}_{p}.tsv',encoding='utf-8') if l.strip())]
     X=[_ix(efeats(m)) for *_,m in R];Y=np.array([EC.index(c) for _,c,_ in R]);S=np.array([s for s,*_ in R]);L=np.zeros(len(R));G=[None]*len(R)
@@ -368,12 +369,15 @@ def train(out=LUTP,sets=('dev','blind1','blind2','blind3','blind4'),fp=0.01)->di
         k=S!=s;W=_dec(_enc(_fit([x for x,j in zip(X,k) if j],Y[k])))
         for i in np.flatnonzero(~k):L[i],G[i]=_sc(W,X[i])
     y=Y>0;th=float(np.quantile(L[~y],1-fp));W=_enc(_fit(X,Y));p=L>=th
-    m={'th':th,'th_veto':float(np.quantile(L[y],0.02)),'loso_recall':float(p[y].mean()),'loso_fp':float(p[~y].mean()),'loso_cat_acc':float(np.mean([G[i]==EC[Y[i]] for i in np.flatnonzero(y)])),'n':len(R),'bits':EB,'alpha':EA,'clip':ECL,'q':EQ,'offset':EO,'splits_hash':__import__('json').loads((D/'lock.json').read_text())['splits_hash']}
-    out and np.savez_compressed(out,d=W,th=np.float64(th),meta=np.array(__import__('json').dumps(m)));_lut.cache_clear();return m
+    m={'th':th,'th_veto':float(np.quantile(L[y],0.02)),'loso_recall':float(p[y].mean()),'loso_fp':float(p[~y].mean()),'loso_cat_acc':float(np.mean([G[i]==EC[Y[i]] for i in np.flatnonzero(y)])),'n':len(R),'bits':EB,'alpha':EA,'clip':ECL,'q':EQ,'offset':EO,'splits_hash':json.loads((D/'lock.json').read_text())['splits_hash']}
+    out and np.savez_compressed(out,d=W,th=np.float64(th),meta=np.array(json.dumps(m)));[f.cache_clear() for f in (_lut,lut_score,detect)];return m
 @lru_cache(1)
 def _lut():
-    z=np.load(LUTP) if LUTP.exists() else None;d=z['d'] if z is not None else None;return (np.concatenate([_dec(d[i:i+32768]) for i in range(0,len(d),32768)]),float(z['th'])) if z is not None else None
+    z=np.load(LUTP) if LUTP.exists() else None;d=z['d'] if z is not None else None;return (np.concatenate([_dec(d[i:i+32768]) for i in range(0,len(d),32768)]),float(z['th']),float(json.loads(str(z['meta']))['th_veto'])) if z is not None else None
+@lru_cache(2048)
+def lut_score(text:str)->tuple:
+    z=_lut();return _sc(z[0],_ix(efeats(text))) if z and (text or '').strip() else (0.0,None)
 def classify(text:str)->Optional[dict]:
-    z=_lut();v,c=_sc(z[0],_ix(efeats(text))) if z and (text or '').strip() else (0.0,None)
+    z=_lut();v,c=lut_score(text)
     return {'category':c,'kind':EK[c],'reply':T[EK[c]],'match':'','norm':norm(text).strip(),'score':round(float(v),3),'src':'lut'} if z and c and v>=z[1] else None
 if __name__=='__main__':print(train())

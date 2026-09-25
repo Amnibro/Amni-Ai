@@ -57,3 +57,11 @@ def test_lut_classifier_tables():
     h=E.classify("my husband is lying on the kitchen floor, his lips are purple and he is making a gurgling sound");assert h is None or h["reply"]==E.T[h["kind"]]
     assert E.classify("")==None and E.classify("what a lovely sunny day for a picnic")==None
     t=time.perf_counter();[E.classify(x) for _,_,x in N];assert (time.perf_counter()-t)*1000/len(N)<5
+def test_blind567_first_look_recorded_and_no_regression():
+    F=json.loads((D/"first_look_blind567.json").read_text());M=json.loads(LOCK2.read_text())
+    assert F["kind"]=="prod" and F["eval_lock"]["splits_hash"]==M["splits_hash"] and F["lut_meta"]["splits_hash"]==json.loads(LOCK.read_text())["splits_hash"]
+    B=[(("pos" in Path(f).name),l.rstrip("\n").split("\t",1)[1]) for f in M["splits"] for l in open(D.parents[1].parent/f,encoding="utf-8") if l.strip()]
+    for v,k in ((False,"rules_or_lut"),(True,"veto")):
+        E.VETO=v;E.detect.cache_clear();h=[(p,bool(E.detect(m))) for p,m in B];rec=sum(x for p,x in h if p)/sum(p for p,_ in h);fp=sum(x for p,x in h if not p)/sum(not p for p,_ in h)
+        assert rec>=F[k]["recall"]-5e-5 and fp<=F[k]["fp"]+5e-5,(k,rec,fp)
+    E.VETO=True;E.detect.cache_clear();miss=[m for _,_,m in P if not E.detect(m)];E.VETO=False;E.detect.cache_clear();assert not miss,miss
