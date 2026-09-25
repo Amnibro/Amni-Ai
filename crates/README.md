@@ -169,6 +169,17 @@ The signal comes from `W19` at every Adam-reply position (`qon == 1`), using the
 - `PAGES=<v19d pack>` with `COPY=16` warm-starts levels 0..36 and moves hops and memory results from 37..42 to 40..45; levels 37..39 start fresh.
 - `tests/v19_probe.rs::probe_echo` checks the echo, entity, hyphen and key layout; `examples/v19_dump.rs <pack> <lexicon dir> <text file> [bytes]` prints the ring, the question state, every live gate and a per-stage logit breakdown (dense, tori, question tori, gates, memory results, hops) at the end of the text.
 
+## v19f value masking
+
+`MASKV=1` (trainer env, needs `COPY=16`) hides a copied value's bytes from the byte and word hashes once the value is complete in a reply. The trainer writes `"maskv": 1` into the pack's `.json`, and `adam_ray` switches it on only when it finds that key next to a COPY=16 `_sid.npy` or its `.gf17` page store, so v16, v18, v19d and v19e packs keep their exact outputs.
+
+- Why: eval values never occur in the training dialogues, so after "…lives in Austin" every byte n-gram, word hash, synset tap and dense bigram that follows sees the value's own letters. Those cells are empty or hold prose statistics ("Austin, Texas"), which produced "Your sister is in Austin, That's.". A training-pool city in the same place gets `.` at +8 from the tori. An unseen one gets +3, and `,` wins.
+- How: `W19` keeps the core state at each of the last 8 word starts. At the byte where a copy candidate's value ends (`Mem::vend` now returns the value's word count), the state is replaced by the state before the value's first word, stepped with one `_` byte. The reply "She lives in Las Cruces, from…" hashes exactly like "She lives in _, from…", including multi-word values, hyphenated entity surfaces ("Your sister-in-law" becomes "Your _") and echo acknowledgements ("Adam: Anthony!" becomes "Adam: _!").
+- The question tori get the same treatment. At `Adam: `, a question word `q1`/`q2` that is a word of any stored value is replaced by the hash of `_`. This matters for statement acks: after "My name is Anthony." the rarest word, and so `q1`, is the value itself.
+- Only reply bytes are masked (`qon == 1`, after `Adam: `), and only complete values. User turns, gates, the entity ring and the copy-lock work on the real bytes. If the word continues past the value ("Austinite"), it continues from the masked state.
+- The trainer driver and the engine share `W19::step`, so the CPU trainer and the engine stay bit-exact, and the GPU paths upload the masked state.
+- `tests/v19_probe.rs::probe_mask` checks the masked tail, the word registers, multi-word, hyphen and echo values, that the taps equal those of a literal `_` reply, and that user-turn values and `MASKV=0` are untouched. `v19_fwd` reads the flag from the pack and has a completed-value text. `examples/v19_dump` prints `vp`, `mv` and the hashed 16-byte state.
+
 ## Trainer (R2): `adam-train`
 
 `adam-train` replaces `scripts/ray_hash_field_ti_v16.py`, `ray_hash_field_ti_v18.py` and the v19c working-memory trainer (`ray_hash_field_ti_v19.py`, parser-fix revision). It reads the same environment, samples the same batches (numpy PCG64), and writes the same `exports/gf17_continuum/rayhash_<TAG>{.json,_dp.npy,_sid.npy,_sw.npy,_bias.npy}`. Those files load in `adam_ray`, in the Taichi `RayField`, and in the Taichi trainers (`PAGES=`).

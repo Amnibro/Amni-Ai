@@ -365,6 +365,7 @@ impl Mem {
         else if bb == 44 { self.commit_fact(); self.bon(BACO); }
         else if end { if bb == 63 { self.finish_q(); } self.commit_fact(); }
     }
+    fn qmask(&self, h: u32) -> u32 { if (0..NR).any(|i| self.stamp[i] > 0 && self.val[i][..self.vlen[i].clamp(0, 24) as usize].split(|&c| c == 32 || c == 45).any(|w| bh(w) == h)) { bh(b"_") } else { h } }
     fn ent_p4(&self, i: usize) -> u32 { let (mut h, mut n) = (0u32, 0); for t in 0..4 { if t < self.vlen[i] && self.val[i][t as usize] != 32 && n < 4 { h = h.wrapping_mul(83492791).wrapping_add(self.val[i][t as usize] as u32 + 1); n += 1; } } h }
     fn cval(&self, k: usize) -> Option<(&[u8; 24], i32)> { if k == 15 { (self.esl > 0).then_some((&self.esb, self.esl)) } else if k != 12 && k < 15 && self.cand[k] >= 0 { Some((&self.val[self.cand[k] as usize], self.vlen[self.cand[k] as usize])) } else { None } }
     fn next_ent(&self, k: usize, n: i32) -> i32 {
@@ -372,7 +373,7 @@ impl Mem {
         if !(off >= 0 && off + n < ln && off + n < 24) { return -1; }
         if (0..16).all(|t| t >= n || (off + t < 24 && self.cwb[t as usize] == v[(off + t) as usize])) { v[(off + n) as usize] as i32 } else { -1 }
     }
-    fn vend(&self, n: i32) -> bool { n > 0 && (0..16).any(|k| self.cval(k).is_some_and(|(v, ln)| { let off = self.woff[k]; off >= 0 && off + n == ln && n <= 16 && (0..n).all(|t| off + t < 24 && self.cwb[t as usize] == v[(off + t) as usize]) })) }
+    fn vend(&self, n: i32) -> usize { if n <= 0 { return 0; } (0..16).filter_map(|k| self.cval(k).filter(|&(v, ln)| { let off = self.woff[k]; off >= 0 && off + n == ln && n <= 16 && (0..n).all(|t| off + t < 24 && self.cwb[t as usize] == v[(off + t) as usize]) }).map(|(v, _)| 1 + v[..self.woff[k] as usize].iter().filter(|&&c| c == 32 || c == 45).count())).max().unwrap_or(0) }
     fn adv_woff(&mut self, n: i32) {
         for k in 0..16 {
             let (off, Some((v, ln))) = (self.woff[k], self.cval(k)) else { continue };
@@ -425,16 +426,17 @@ impl Mem {
 #[derive(Clone, Copy, Default)]
 pub struct Q { qclk: i32, inq: i32, q1: u32, q2: u32, c1: i32, c2: i32, qon: i32, wlen: i32, p4: u32, qp1: u32, qp2: u32, m1: u32, m2: u32, cwl: i32, ap4: u32, acf: i32, subj: u32, fst: i32, pub ap: i32, pub anc: bool, pub vp: i32 }
 #[derive(Clone)]
-pub struct W19 { pub s: St, pub q: Q, pub m: Mem }
+pub struct W19 { pub s: St, pub q: Q, pub m: Mem, ws: [St; 8], wc: usize }
 impl W19 {
-    pub fn new(cp: usize) -> W19 { let mut w = W19 { s: init(), q: Q::default(), m: Mem::new() }; w.begin(cp); w }
-    pub fn begin(&mut self, cp: usize) { (self.s, self.q, self.m.wclk, self.m.xe) = (init(), Q { anc: true, ..Q::default() }, 0, cp >= 16); self.m.wm_clear(); (cp >= 13).then(|| self.m.ent_clr()); }
+    pub fn new(cp: usize) -> W19 { let mut w = W19 { s: init(), q: Q::default(), m: Mem::new(), ws: [init(); 8], wc: 0 }; w.begin(cp); w }
+    pub fn begin(&mut self, cp: usize) { (self.s, self.q, self.m.wclk, self.m.xe, self.wc) = (init(), Q { anc: true, ..Q::default() }, 0, cp >= 16, 0); self.m.wm_clear(); (cp >= 13).then(|| self.m.ent_clr()); }
     pub fn step(&mut self, g: &Geo, lex: &Lex, lx: &Lx19, bx: u8) {
         let (cp, qt, m, g0, mut s) = (g.copy, g.qt, &mut self.m, Geo { qt: false, ..g.clone() }, self.s);
         let Q { mut qclk, mut inq, mut q1, mut q2, mut c1, mut c2, mut qon, mut wlen, mut p4, mut qp1, mut qp2, mut m1, mut m2, mut cwl, mut ap4, mut acf, mut subj, mut fst, mut ap, mut anc, .. } = self.q;
         let bb = bx as u32;
         let (isw, wh) = (wordch(bb), s[16]);
         let ends = !isw && wh != 0;
+        (g.mv && isw && cwl == 0).then(|| { self.ws[self.wc % 8] = s; self.wc += 1; });
         if bb == 30 {
             (inq, qon, q1, q2, c1, c2, qp1, qp2, m1, m2, subj, fst, ap4, acf, qclk, anc) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, m.wclk, true);
             m.wm_clear();
@@ -480,12 +482,14 @@ impl W19 {
             if b1 == 10 && b2 == 10 { qon = 0; inq = 0; }
             if cp >= 13 {
                 if user { (m.qent, m.qrel, m.qtyp, m.ptag, m.flg, m.esl, m.eal, m.eon, m.isq, m.epr) = (0, 0, 0, 0, 0, 0, 0, false, 0, false); m.fact_reset(); }
-                if adam && qon == 1 { m.pick_cands(qclk); }
+                if adam && qon == 1 { m.pick_cands(qclk); if g.mv { (q1, q2) = (m.qmask(q1), m.qmask(q2)); } }
             }
         }
         if cp >= 13 && inq == 1 && (bb == 46 || bb == 44 || bb == 33 || bb == 63 || bb == 10) { m.on_punct(bb); }
         (s[31], s[32], s[35]) = (q1, q2, qon as u32);
-        let vp = if qon == 0 || ap == 0 { 0 } else if m.xe && m.vend(cwl) { 1 } else if self.q.vp > 0 { self.q.vp + 1 } else { 0 };
+        let nw = if qon == 0 || ap == 0 || !m.xe { 0 } else { m.vend(cwl) };
+        let vp = if qon == 0 || ap == 0 { 0 } else if nw > 0 { 1 } else if self.q.vp > 0 { self.q.vp + 1 } else { 0 };
+        (g.mv && nw > 0 && nw <= self.wc.min(8)).then(|| { s = update(lex, &g0, &self.ws[(self.wc - nw) % 8], 95); (s[31], s[32], s[35]) = (q1, q2, qon as u32); });
         (self.s, self.q) = (s, Q { qclk, inq, q1, q2, c1, c2, qon, wlen, p4, qp1, qp2, m1, m2, cwl, ap4, acf, subj, fst, ap, anc, vp });
     }
     pub fn gates(&self, g: &Geo, mut f: impl FnMut(usize, i32, [u32; 4], usize)) {
@@ -519,7 +523,7 @@ impl W19 {
         let (m, ap, s) = (&self.m, self.q.ap as u32, &self.s);
         let k = self.mstate() * 16 + if m.cand[0] >= 0 { m.rel[m.cand[0] as usize] } else { m.qrel };
         let ab = if ap < 4 { ap } else if ap < 8 { 4 } else if ap < 16 { 5 } else if ap < 32 { 6 } else { 7 };
-        let key = [(hm(k / 64, if m.xe && m.vend(self.q.cwl) { 24 } else { ap.min(23) }, 139), s[0]), if m.xe && self.q.vp > 0 { let d = self.q.vp - 1; (hm(k, 8 + d.min(15) as u32, 141), hm((0..4).filter(|&i| i < d).fold(0, |h, i| h | s[i as usize] << (8 * i)), d.min(4) as u32, 143)) } else { (hm(k, ab, 141), hm(s[0] | s[1] << 8 | s[2] << 16, s[3], 143)) }];
+        let key = [(hm(k / 64, if m.xe && m.vend(self.q.cwl) > 0 { 24 } else { ap.min(23) }, 139), s[0]), if m.xe && self.q.vp > 0 { let d = self.q.vp - 1; (hm(k, 8 + d.min(15) as u32, 141), hm((0..4).filter(|&i| i < d).fold(0, |h, i| h | s[i as usize] << (8 * i)), d.min(4) as u32, 143)) } else { (hm(k, ab, 141), hm(s[0] | s[1] << 8 | s[2] << 16, s[3], 143)) }];
         std::array::from_fn(|i| (g.copy >= 13 && self.q.anc && self.q.qon == 1 && i < g.mr).then(|| g.sl(key[i].0, key[i].1, g.mb() + i)))
     }
     pub fn gv(&self, g: &Geo, cw: &[u16]) -> [(i32, f32); NG] { let mut o = [(-1, 0f32); NG]; self.gates(g, |k, b, e, n| o[k] = (b, if b >= 0 { CG * e[..n].iter().fold(0f32, |a, &x| a + f16::from_bits(cw[k * g.t as usize + x as usize]).to_f32()) } else { 0.0 })); o }

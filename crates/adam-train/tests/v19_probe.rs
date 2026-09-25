@@ -169,3 +169,30 @@ fn probe_echo() {
     assert!(w3.q.vp == 1 && vq(&[pil.as_slice(), b"! Nic"].concat()) == 6 && vq(&[ack, b"Oh, a pil"].concat()) == 0 && vq(ack) == 0);
     println!("PROBE echo pilot/entity brother, correction ack Austin echo + old Denver direct, question entity sister, sister-in-law, lab partner, name echo");
 }
+#[test]
+fn probe_mask() {
+    let kv = [("VER", "19"), ("COPY", "16"), ("MR", "2"), ("QT", "1"), ("LEVELS", "21"), ("HOPS", "4"), ("LOG2_ENTRIES", "16"), ("BS", "1"), ("CTX", "768")];
+    let (mut r, mut r0) = (R::new(&[&kv[..], &[("MASKV", "1")]].concat()), R::new(&kv));
+    assert!(r.c.geo.mv && !r0.c.geo.mv && !R::new(&[("VER", "19"), ("COPY", "13"), ("MR", "2"), ("MASKV", "1")]).c.geo.mv);
+    let (g, lx, c0) = (r.c.geo.clone(), adam_train::v19::Lx19::new(), r.c.geo.c0());
+    let pre: &[u8] = b"User: My sister lives in Las Cruces.\nAdam: Nice.\n\nUser: Where does my sister live?\nAdam: She lives in ";
+    let (a, b) = ([pre, b"Las Cruces, from what you told me."].concat(), [pre, b"_, from what you told me."].concat());
+    let ((_, ia), (_, ib), (_, i0)) = (r.run(&a), r.run(&b), r0.run(&a));
+    let run = |t: &[u8]| { let mut w = adam_train::v19::W19::new(16); t.iter().for_each(|&b| w.step(&g, &r.lex, &lx, b)); w };
+    let tail = |w: &adam_train::v19::W19, n: usize| w.s[..n].iter().rev().map(|&c| c as u8).collect::<Vec<u8>>();
+    let (wv, wu) = (run(&a[..pre.len() + 10]), run(b"User: My sister lives in Las Cruces"));
+    assert!(tail(&wv, 10) == b"lives in _" && wv.s[16] == bh(b"_") && wv.q.vp == 1 && tail(&wu, 6) == b"Cruces", "{:?}", String::from_utf8_lossy(&tail(&wv, 16)));
+    let wf = run(&a[..pre.len() + 17]);
+    assert!(tail(&wf, 11) == b"in _, from " && wf.s[17] == bh(b"from") && wf.s[18] == bh(b"_") && wf.s[19] == bh(b"in"), "{:?}", String::from_utf8_lossy(&tail(&wf, 16)));
+    let (ea, eb) = (pre.len() + 9, pre.len());
+    assert!((0..a.len() - ea).all(|d| ia[ea + d][..c0 * 4] == ib[eb + d][..c0 * 4]) && i0[ea][..c0 * 4] != ib[eb][..c0 * 4] && ia[..find(&a, b"Adam:") + 5] == i0[..find(&a, b"Adam:") + 5] && ia[find(&a, b"Adam:") + 5..ea] != i0[find(&a, b"Adam:") + 5..ea]);
+    let inl: &[u8] = b"User: My sister-in-law lives in Denver.\n\nUser: Where does my sister-in-law live?\nAdam: Your sister-in-law";
+    let wi = run(inl);
+    assert!(tail(&wi, 6) == b"Your _" && run(&[inl, b"'s"].concat()).s[17] == bh(b"_"), "{:?}", String::from_utf8_lossy(&tail(&wi, 16)));
+    let ack: &[u8] = b"User: My name is Anthony.\nAdam: Anthony";
+    assert!(tail(&run(ack), 7) == b"Adam: _" && tail(&run(&[ack, b"x"].concat()), 8) == b"Adam: _x");
+    let run0 = |t: &[u8]| { let mut w = adam_train::v19::W19::new(16); t.iter().for_each(|&b| w.step(&r0.c.geo, &r.lex, &lx, b)); w };
+    let (qa, qa0, qq, qq0) = (run(&ack[..ack.len() - 7]), run0(&ack[..ack.len() - 7]), run(&a[..pre.len()]), run0(&a[..pre.len()]));
+    assert!(qa.s[31] == bh(b"_") && qa0.s[31] == bh(b"Anthony") && qq.s[31] == qq0.s[31] && qq.s[32] == qq0.s[32] && qq.s[31] != bh(b"_"), "{} {}", qa.s[31], qa0.s[31]);
+    println!("PROBE mask: reply values collapse to one '_' word (multiword, hyphen entity, echo), question words that are stored values become '_', user-turn bytes and MASKV=0 untouched, masked taps equal a literal '_' reply");
+}
