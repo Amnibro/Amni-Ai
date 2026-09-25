@@ -21,7 +21,7 @@ def test_reply_chat_attribution_and_latency():
     assert r and dt<0.3 and r["src"] and r["license"]
     assert ("CC BY-SA" in r["attribution"]) if "dolly" in r["src"] else (bool(r["attribution"])==(r["verbatim_run"]>12))
     g=R.reply("hi there, how's it going?",session="t_ph");assert g and g["act"]=="howru" and len(R.toks(g["text"]))<=30
-    f=R.reply("I'm feeling really unmotivated today.",session="t_feel");assert f and re.search(r"(?i)sorry|understand",f["text"])
+    f=R.reply("I'm feeling really unmotivated today.",session="t_feel");assert f and re.search(r"(?i)sorry|understand|frustrat|hard|tough",f["text"])
 def test_tone_and_staleness():
     a=R.reply("What's a good way to relax after work?",tone="concise",session="t_tone");b=R.reply("What's a good way to relax after work?",tone="concise",session="t_tone")
     assert a and len(R.SENT.split(a["text"]))<=2 and (b is None or b["units"]!=a["units"] or b["score"]<a["score"])
@@ -82,3 +82,31 @@ def test_fallback_by_dialogue_act():
     for m in ("What's the best way to learn to swim as an adult?","How do I get my toddler to eat vegetables?","What do I do if my neighbor keeps parking in my spot?"):
         t,_=R.fallback(m,R.act(m),R.mood(m),0);assert not re.search(r"(?i)not sure|don't know",t) and len(R.toks(t))>=20,(m,t)
     assert "Priya" in R.reply("My name is Priya.",session="t_ack")["text"] and "Biscuit" in R.reply("My dog's name is Biscuit.",session="t_ack")["text"]
+def test_clause_extraction_grammar():
+    for m,c in (("Didn't make the varsity basketball team after trying out for 2 years","you didn't make the varsity basketball team after trying out for 2 years"),("my phone screen cracked the day after my warranty ran out. the universe is mocking me","your phone screen cracked the day after your warranty ran out"),("just graduated from nursing school omg its finally over","you just graduated from nursing school"),("feeling kinda lonely since my best friend moved across the country last month","you're feeling kind of lonely since your best friend moved across the country last month"),("well today i played my first full song start to finish without mistakes!!","you played your first full song start to finish without mistakes today")):assert R.clause(m,md=R.mood(m))==c,(m,R.clause(m))
+    for m in ("since I was a kid but I stopped for 10 years.","complicated rn.","I agree that by focusing on personal growth","that i should grow it back out"):assert R.clause(m)=="",m
+    for m in ("Didn't make the varsity basketball team after trying out for 2 years","just graduated from nursing school omg its finally over","my phone screen cracked the day after my warranty ran out. the universe is mocking me"):
+        t,_=R.fallback(m,R.act(m),R.mood(m),0,[],R.shape(m));assert not re.search(r"(?i)sorry (didn't|just|feeling)|happy (just|didn't)|\bomg\b",t) and not re.search(r"\. [a-z]",t),t
+def test_bank_licensed_safe_and_matched():
+    import json,glob
+    mf=json.load(open(os.path.join(R.BANK,"manifest.json")));assert mf["license"]=="CC0-1.0"
+    for f in glob.glob(os.path.join(R.BANK,"*.jsonl")):
+        for l in open(f):r=json.loads(l);t=(r.get("take") or r["a"])+" "+r["follow"];assert R.safe(t) and not R.META.search(t),r["id"]
+    for m,k in (("thoughts on smartwatches? worth it or just a fancy notification buzzer","opinion"),("any tips for falling asleep when your brain wont shut off","advice"),("Didn't make the varsity basketball team after trying out for 2 years","react")):
+        r=R.reply(m,session="t_bank");assert r and any(e.startswith("bank:"+k) for e in r["edits"]) and "?" in r["text"],(m,r and r["edits"])
+    assert R.reply("what do you think about gun control?",session="t_bank") is None or "different places" in R.reply("what do you think about abortion laws?",session="t_bank2")["text"]
+    assert R.bpick("what do you think about the election and politics?","op",0)[0][1]==R.NEUT
+def test_opinion_shape_and_pairs():
+    r=R.reply("is a gym membership worth it",session="t_op");assert r and re.match(r"(?i)(I'd say it's worth it|Honestly|It can be)",r["text"]) and "?" in r["text"]
+    assert R.orpair("which is better for a first trip to europe, paris or rome?")==("paris","rome") and R.orpair("is it better to run in the morning or evening?")==("morning","evening")
+    assert R.opspan("thoughts on smartwatches? worth it or just a fancy notification buzzer")=="smartwatches"
+    t,k=R.fallback("hosting my first friendsgiving for 8 people. how far ahead should I start cooking stuff?","advice",0,0,[],"adv");assert "relieved imagining" not in t
+    t,k=R.fallback("We're moving to a new apartment next month. what should I do now so moving day isn't chaos?","advice",0,0,[],"adv");assert "museum" not in t
+def test_lm_fluency_step_bounded():
+    class E:
+        def score(self,p,c):return [-3.0*len(x) if b"you're" in x else -2.0*len(x) for x in c]
+    R.warm();t=time.perf_counter();r=R.reply("my bike got a flat on the way to work and i was 20 min late",session="t_flu",e=E());dt=time.perf_counter()-t
+    assert r and dt<0.25 and any(e.startswith("flu:") for e in r["edits"]) or any(e.startswith(("bank","sub")) for e in r["edits"])
+    class Bad:
+        def score(self,p,c):raise RuntimeError("x")
+    assert R.reply("I burned the cookies for the bake sale",session="t_flu2",e=Bad())

@@ -1,0 +1,10 @@
+{
+ "license": "CC0-1.0",
+ "note": "Original text written for Adam by fresh Claude subagents with no access to code or eval sets; dedicated to the public domain (CC0 1.0).",
+ "files": {
+  "opinion.jsonl": 1020,
+  "advice.jsonl": 3362,
+  "react.jsonl": 1918
+ },
+ "dropped_by_safety_filter": 33
+}
