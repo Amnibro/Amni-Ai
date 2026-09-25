@@ -138,7 +138,8 @@ impl G2 {
                         j = r.0;
                         break;
                     }
-                    let k = if dit { npend(j, inv).min(j + 1) } else { npend(j, inv) };
+                    let k = npend(j, inv);
+                    let k = if dit && k > j + 1 && !(k < n && wd(k) && x.fb(hs[k], 1)) { j + 1 } else { k };
                     if k == j { break; }
                     for z in j..k { key = Some(match key { None => hs[z], Some(q) => q.wrapping_mul(K) ^ hs[z] }); }
                     men.push(Mn { a: j, b: k, k: key.unwrap_or(0), kd: 0 });
@@ -253,6 +254,7 @@ impl G2 {
             let mut q = j;
             if q < n && cov[q] == 3 { q += 1; }
             let mut m = men.iter().find(|m| m.a == q && m.kd != 3).copied();
+            if m.is_none() { if let Some(z) = rnh.iter().find(|z| z.j0 == q && z.rel == 9) { return (pk(&(z.j0..z.j1).filter(|&y| !x.md.contains(&hs[y])).map(|y| hs[y]).collect::<Vec<_>>()), z.j1); } }
             if m.is_none() { m = men.iter().find(|m| m.a == q).copied(); while let Some(mm) = m { if mm.kd != 3 { break; } match men.iter().find(|z| z.a == mm.b) { Some(&m2) => m = Some(m2), None => break } } }
             m.map_or((0, q), |m| (m.k, m.b))
         };
@@ -317,9 +319,11 @@ impl G2 {
                     let mut j2 = j;
                     while j2 < n && wd(j2) && (x.fb(hs[j2], 5) || x.stop.contains(&hs[j2])) && e0 != 0 { j2 += 1; }
                     let mut sp = match vspan(if e0 != 0 { j2 } else { j }, rel, true) { Sp::Cut => continue, Sp::No => None, Sp::S(a, b) => Some((a, b)) };
-                    if sp.is_none() && (j >= n || !wd(j)) {
-                        let q = j + 1;
-                        if q + 1 < n && hs[q] == IT && (x.fb(hs[q + 1], 5) || hs[q + 1] == WOULD) { sp = vspo(q + 2, rel); } else if q + 1 < n && hs[q] == THAT && x.fb(hs[q + 1], 5) { sp = vspo(q + 2, rel); } else if f & 1 == 0 { sp = vback(i0, &used); }
+                    let mut jb = j;
+                    while jb < n && wd(jb) && (x.skip.contains(&hs[jb]) || x.stop.contains(&hs[jb]) || x.md.contains(&hs[jb])) { jb += 1; }
+                    if sp.is_none() && (jb >= n || !wd(jb)) {
+                        let q = jb + 1;
+                        if q + 1 < n && hs[q] == IT && (x.fb(hs[q + 1], 5) || hs[q + 1] == WOULD) { sp = vspo(q + 2, rel); } else if q + 1 < n && hs[q] == THAT && x.fb(hs[q + 1], 5) { sp = vspo(q + 2, rel); } else if f & 1 == 0 && (j >= n || !wd(j)) { sp = vback(i0, &used); }
                     }
                     if sp.is_none() && rel == 8 && (j >= n || !wd(j)) {
                         let e = if e0 != 0 { e0 } else { near(&men, i0, i1) };
@@ -345,7 +349,7 @@ impl G2 {
                 if rel == 4 && vt == 15 { continue; }
                 if rel == 15 && vt != 15 && vt != 0 && cap[a] { rel = 4; }
                 if rel == 6 && b < n && wd(b) && hs[b] == HOME { rel = 4; }
-                if ng && f & (4 | 128) == 0 { if like3.contains(&rel) { rel = 2; } else if rel != 8 { continue; } }
+                if ng && f & (4 | 128) == 0 { if like3.contains(&rel) { rel = 2; } else { continue; } }
                 if (ifr[a] && ifr[i0]) || hyp[i0] { continue; }
                 let e = if e0 != 0 { e0 } else { near(&men, i0, i1) };
                 put(&mut used, &mut out, e, rel, a, b, vt);

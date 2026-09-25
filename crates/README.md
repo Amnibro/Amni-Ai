@@ -211,6 +211,38 @@ The signal comes from `W19` at every Adam-reply position (`qon == 1`), using the
 
 `amni/serve/user_memory.py` mirrors all of this behind the serving pack's `"gen": 1` flag (`AMNI_UMEM_GN` overrides); its facts match the Rust ring on D3, chat3, the chat8e hold and suite D with the flags off, with `LATEST` only and with `LATEST` + `GEN`.
 
+## v19j clause analyzer (GEN2)
+
+`GEN2=1` (trainer env, needs `GEN=1`, `LATEST=1` and `COPY=16`) switches on the gen2 parser in `src/g2.rs`. The trainer writes `"gen2": 1` into the pack's `.json`, and `adam_ray` switches it on only next to `"latest": 1` and `"gen": 1` (`Geo::g2`). With the flag off, every output is unchanged: the seven older probes and the flag-off D3 recall (66.0%) are identical.
+
+- The online word parser still runs (question words, correction markers, entity surface, echo), but under gen2 it no longer writes the ring. Facts and the question state come from a sentence-level analyzer that runs at each `.`, `!`, `?` and newline of a user turn. `,`, `:` and `;` are clause boundaries.
+- Tokens: contractions are normalised (`'s` after a pronoun becomes `is`, otherwise a possessive flag; `n't` sets a negation flag; `'m`, `'re`, `'d`, `'ve` and `'ll` become auxiliaries), and hyphenated words are single tokens.
+- Entities: `my`/`our`/`his`/`her`/`their` start possessive chains (`my wife's brother`). Each noun phrase is keyed by folding its lowercase word hashes (`k·83492791 ^ h`). A chain that ends in a relation noun (`my supervisor's day job`) stores the relation on the owner. Pronouns resolve to the latest non-self mention, and an object pronoun skips the clause subject (`X's parents named her Y`). `I`/`me` count as self, except after a meta verb (`I forget`) or in an imperative (`remind me`).
+- Relations come from the table `src/v19_gen2.tsv`, built by `scripts/v19_relmine.py` with `RELMINE_GEN2=1 RELMINE_G2MINE=1`. It holds:
+  - cue phrases with flags (value after, object then value, value before, typed-only, needs negation, like-family, allergy-if-mentioned, question-only), matched longest-first with adverbs skipped;
+  - relation nouns with modifiers (`favourite`, `go-to`, `biggest`);
+  - value types from WordNet hyponym closures, colour, car-brand and school-keyword lists;
+  - entity heads, verbs, stop and skip words and function-word classes;
+  - the F11 relation rows, plus 19 idioms mined from clean2 by typed-argument counting and whitelisted by relation lemma.
+  Lookups only, no matmul.
+- Binding is order-free:
+  - the value comes after the cue, after a following `it's`/`it'd be`/`that's` clause, or before the cue (`If you ever go to X, that's where Y lives`);
+  - the entity is the nearest mention in the clause, then in the sentence;
+  - relation nouns followed by a copula, or preceded by `V is <poss> favourite`, give facts;
+  - a copula with a typed value gives facts (`is 6`, `is mauve`, `is a/an <job>`).
+- Filters: facts inside an `if`-clause or after a hypothetical marker (`wants`, `almost`, `someday`) are not stored. Negated like and food facts become dislike facts; other negated facts are dropped unless the cue itself needs the negation (`can't stand`).
+- Chains: `same`, `share(s) … with` and `as old as` create links (target, relation, source) in an 8-entry pending-link table. The link resolves immediately if the source has a fact, or later when the source's fact arrives, in either order.
+- Regions: `<Cap> is (a city in|part of|located in|over in) <Cap>`, `<Cap>'s in <Cap>` and appositive `, a town in X` / `, which is in X` / `, in X` store the ISINK region fact that the hop candidates use.
+- Questions: the entity is the last non-self mention or relation-noun owner. The relation is taken in this order:
+  1. a relation noun attached to the entity;
+  2. the cue nearest after the entity;
+  3. a free relation noun;
+  4. the question word.
+  `where` together with study words becomes school. Inverted questions (`does my X <verb>`) end the noun phrase at the verb. The `(qent, qrel)` state is written at each sentence end until the `?` freeze.
+- Candidate fallback by value type ignores dislike and allergy facts under gen2.
+- Decline keys: when a question has a parsed entity and relation but no direct or hop candidate, both memory-result levels switch to pooled keys. Level A is `hm(9001, min(ap, 23), 147)` with slot key 0, and level B is `hm(9002, ab, 149)` over the last four reply bytes. The decline template therefore trains as one family and does not depend on question framing or the opener bytes.
+- `amni/serve/user_memory.py` mirrors all of this behind the pack's `"gen2": 1` flag (`AMNI_UMEM_G2` overrides). Its facts and question state match the Rust parser on 7,392 dialogues (D3, chat3-style, V19H- and V19J-style generator output, chat8e hold). `crates/adam-train/tests/v19_probe.rs::probe_gen2` and `tests/test_user_memory_gen2.py` cover the rules.
+
 ## Trainer (R2): `adam-train`
 
 `adam-train` replaces `scripts/ray_hash_field_ti_v16.py`, `ray_hash_field_ti_v18.py` and the v19c working-memory trainer (`ray_hash_field_ti_v19.py`, parser-fix revision). It reads the same environment, samples the same batches (numpy PCG64), and writes the same `exports/gf17_continuum/rayhash_<TAG>{.json,_dp.npy,_sid.npy,_sw.npy,_bias.npy}`. Those files load in `adam_ray`, in the Taichi `RayField`, and in the Taichi trainers (`PAGES=`).

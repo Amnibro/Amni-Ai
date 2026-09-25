@@ -508,6 +508,33 @@ seed	names	1	6	1
 seed	namied	1	6	1
 seed	namies	1	6	1
 seed	naming	1	6	1
+seed	baptise	1	6	1
+seed	baptised	1	6	1
+seed	baptiseed	1	6	1
+seed	baptisees	1	6	1
+seed	baptiseing	1	6	1
+seed	baptises	1	6	1
+seed	baptisied	1	6	1
+seed	baptisies	1	6	1
+seed	baptising	1	6	1
+seed	baptize	1	6	1
+seed	baptized	1	6	1
+seed	baptizeed	1	6	1
+seed	baptizees	1	6	1
+seed	baptizeing	1	6	1
+seed	baptizes	1	6	1
+seed	baptizied	1	6	1
+seed	baptizies	1	6	1
+seed	baptizing	1	6	1
+seed	rename	1	6	1
+seed	renamed	1	6	1
+seed	renameed	1	6	1
+seed	renamees	1	6	1
+seed	renameing	1	6	1
+seed	renames	1	6	1
+seed	renamied	1	6	1
+seed	renamies	1	6	1
+seed	renaming	1	6	1
 seed	we would have	1	11	8
 seed	happier than	1	11	8
 seed	crazy about	1	11	8
@@ -37240,6 +37267,8 @@ seed	misspoke	8	0	0
 seed	misspoken	8	0	0
 seed	wrote	8	0	0
 seed	typed	8	0	0
+seed	almost	9	0	0
+seed	nearly	9	0	0
 seed	wish	9	0	0
 seed	wishes	9	0	0
 seed	wished	9	0	0
@@ -37619,6 +37648,23 @@ rel1	allergens	2	8	0
 rel1	hypersensitive	1	8	0
 rel1	sensitized	1	8	0
 rel1	sensitised	1	8	0
+rel1	cars	2	9	0
+rel1	auto	2	9	0
+rel1	autos	2	9	0
+rel1	automobile	2	9	0
+rel1	automobiles	2	9	0
+rel1	motorcar	2	9	0
+rel1	bicycle	2	9	0
+rel1	bicycles	2	9	0
+rel1	bike	2	9	0
+rel1	bikes	2	9	0
+rel1	motor vehicle	2	9	0
+rel1	automotive vehicle	2	9	0
+rel1	truck	2	9	0
+rel1	trucks	2	9	0
+rel1	motorcycle	2	9	0
+rel1	motorcycles	2	9	0
+rel1	vehicles	2	9	0
 rel1	shades	2	10	0
 rel1	tint	2	10	0
 rel1	tints	2	10	0
@@ -37687,10 +37733,6 @@ rel1	appellation	2	6	0
 rel1	appellations	2	6	0
 rel1	designation	2	6	0
 rel1	designations	2	6	0
-rel1	baptize	1	6	0
-rel1	baptized	1	6	0
-rel1	baptizing	1	6	0
-rel1	baptised	1	6	0
 rel1	greyness	3	10	0
 rel1	digest	1	2	4
 rel1	digested	1	2	4

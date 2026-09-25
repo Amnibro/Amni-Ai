@@ -172,7 +172,7 @@ class _G2:
                         rnh.append((j,r[0],r[1],key if key is not None else own,r[2],i));[cov.__setitem__(x,2) for x in range(j,r[0])]
                         if men and men[-1][1]==j and men[-1][3]==3:men[-1][3]=0
                         j=r[0];break
-                    k=min(npend(j,inv),j+1) if dit else npend(j,inv)
+                    k=npend(j,inv);k=j+1 if dit and k>j+1 and not (k<n and wd(k) and _fb(hs[k],1)) else k
                     if k==j:break
                     for x in range(j,k):key=hs[x] if key is None else ((key*83492791)&0xFFFFFFFF)^hs[x]
                     men.append([j,k,key,0]);[cov.__setitem__(x,1) for x in range(j,k)];s.nm[key]=b' '.join(T[x][1] for x in range(i+1,k)).removesuffix(b"'s");j=k
@@ -277,6 +277,8 @@ class _G2:
             q=j
             if q<n and cov[q]==3:q+=1
             m=next((m for m in men if m[0]==q and m[3]!=3),None)
+            if m is None and any(x[0]==q and x[2]==9 for x in rnh):
+                x=next(x for x in rnh if x[0]==q and x[2]==9);return (_pk([hs[z] for z in range(x[0],x[1]) if hs[z] not in G2M]),x[1])
             if m is None:
                 m=next((m for m in men if m[0]==q),None)
                 while m is not None and m[3]==3:
@@ -347,11 +349,13 @@ class _G2:
                     while j2<n and wd(j2) and (_fb(hs[j2],5) or hs[j2] in G2S) and e0:j2+=1
                     sp=vspan(j2 if e0 else j,rel,True)
                     if sp==-1:continue
-                    if sp is None and (j>=n or not wd(j)):
-                        q=j+1
+                    jb=j
+                    while jb<n and wd(jb) and (hs[jb] in G2K or hs[jb] in G2S or hs[jb] in G2M):jb+=1
+                    if sp is None and (jb>=n or not wd(jb)):
+                        q=jb+1
                         if q+1<n and hs[q]==_H2['it'] and (_fb(hs[q+1],5) or hs[q+1]==_H2['would']):sp=vspan(q+2,rel)
                         elif q+1<n and hs[q]==_H2['that'] and _fb(hs[q+1],5):sp=vspan(q+2,rel)
-                        elif not f&1:sp=vback(i0)
+                        elif not f&1 and (j>=n or not wd(j)):sp=vback(i0)
                     if sp is None and rel==8 and (j>=n or not wd(j)):
                         e=e0 or near(i0,i1)
                         tv=next((x for x in reversed(s.tf) if x[0]==e and x[1]==2),None) or (s.lastv and (e,2,s.lastv,0))
@@ -374,7 +378,7 @@ class _G2:
                 if rel==6 and b<n and wd(b) and hs[b]==_H2['home']:rel=4
                 if ng and not f&(4|128):
                     if rel in (7,10,11):rel=2
-                    elif rel!=8:continue
+                    else:continue
                 if (ifr[a] and ifr[i0]) or hyp[i0]:continue
                 put(e0 or near(i0,i1),rel,a,b,vt)
             for c0 in sorted(set(cl)):
