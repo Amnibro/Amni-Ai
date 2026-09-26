@@ -11,6 +11,12 @@ default = []
 candle = ["burn/candle"]
 [dependencies]
 burn = { version = "0.21", default-features = false, features = ["std", "wgpu", "vulkan", "autodiff", "autotune", "fusion", "ndarray"] }
+burn-autodiff = "0.21"
+burn-cubecl = { version = "0.21", default-features = false }
+burn-fusion = { version = "0.21", default-features = false }
+burn-ir = { version = "0.21", default-features = false }
+cubecl = { version = "0.10", default-features = false }
+half = "2"
 adam-gf17 = { path = "../adam-gf17", default-features = false }
 adam-ray = { workspace = true }
 adam-train = { path = "../adam-train" }

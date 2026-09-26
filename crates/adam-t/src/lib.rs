@@ -1,6 +1,8 @@
 pub mod bpe;
+pub mod fa;
 pub mod lut;
 use adam_ray::rng::Pcg64;
+use fa::Fa;
 use burn::{module::{AutodiffModule, Module, Param}, nn::loss::CrossEntropyLossConfig, optim::{grad_clipping::GradientClippingConfig, AdamWConfig, GradientsAccumulator, GradientsParams, Optimizer}, record::{BinFileRecorder, FullPrecisionSettings, Recorder}, tensor::{activation::relu, backend::{AutodiffBackend, Backend}, module::{attention, embedding}, ops::AttentionModuleOptions, Distribution, Int, Tensor, TensorData}};
 use memmap2::Mmap;
 use std::{env::var, fs, io::{self, Write}, path::Path, time::Instant};
@@ -40,27 +42,18 @@ pub fn nrm<B: Backend>(x: Tensor<B, 2>) -> Tensor<B, 2> { x.clone() / x.square()
 pub fn tq<B: Backend>(w: Tensor<B, 2>) -> (Tensor<B, 2>, Tensor<B, 2>) { let g = w.clone().abs().mean().reshape([1, 1]).add_scalar(1e-6); let h = g.clone().mul_scalar(0.5); (((w.clone() - h.clone()).sign() + (w + h).sign()).mul_scalar(0.5).round(), g) }
 impl<B: Backend> Lin<B> {
     pub fn new(i: usize, o: usize, sd: f64, dev: &B::Device) -> Self { Lin { w: rnd([i, o], sd, dev) } }
-    pub fn fwd(&self, x: Tensor<B, 2>, q: bool) -> Tensor<B, 2> {
-        let (xn, w) = (nrm(x), self.w.val());
-        if !q { return xn.matmul(w); }
-        let m = xn.clone().abs().max_dim(1).clamp_min(1e-5).detach();
-        let xs = xn * m.clone().recip().mul_scalar(127.0);
-        let xi = xs.clone() + (xs.clone().round().clamp(-128.0, 127.0) - xs).detach();
-        let (t, g) = tq(w.clone().detach());
-        let a = w / g.clone();
-        xi.matmul(a.clone() + (t - a).detach()) * (m * g.mul_scalar(1.0 / 127.0))
-    }
+    pub fn fwd(&self, x: Tensor<B, 2>, q: bool) -> Tensor<B, 2> where B: Fa { fa::tl(x, self.w.val(), q) }
 }
 impl<B: Backend> Core<B> {
     pub fn new(c: &Cfg, dev: &B::Device) -> Self { let so = 0.02 / (2.0 * c.l as f64).sqrt(); Core { emb: rnd([c.v, c.d], 0.02, dev), pos: rnd([c.t, c.d], 0.02, dev), blk: (0..c.l).map(|_| Blk { qkv: Lin::new(c.d, 3 * c.d, 0.02, dev), o: Lin::new(c.d, c.d, so, dev), f1: Lin::new(c.d, c.ff, 0.02, dev), f2: Lin::new(c.ff, c.d, so, dev) }).collect(), head: Lin::new(c.d, c.v, 0.02, dev) } }
     pub fn lins(&self) -> Vec<&Lin<B>> { self.blk.iter().flat_map(|b| [&b.qkv, &b.o, &b.f1, &b.f2]).chain([&self.head]).collect() }
-    pub fn fwd(&self, ids: Tensor<B, 2, Int>, mem: Option<Tensor<B, 3>>, h: usize, q: bool) -> Tensor<B, 2> {
+    pub fn fwd(&self, ids: Tensor<B, 2, Int>, mem: Option<Tensor<B, 3>>, h: usize, q: bool) -> Tensor<B, 2> where B: Fa {
         let ([b, t], d) = (ids.dims(), self.emb.val().dims()[1]);
         let x = embedding(self.emb.val(), ids) + self.pos.val().narrow(0, 0, t).unsqueeze::<3>();
         let x = mem.map_or(x.clone(), |m| x + m).reshape([b * t, d]);
         let x = self.blk.iter().fold(x, |x, k| {
-            let a = k.qkv.fwd(x.clone(), q).reshape([b, t, 3 * h, d / h]).swap_dims(1, 2);
-            let o = attention(a.clone().narrow(1, 0, h), a.clone().narrow(1, h, h), a.narrow(1, 2 * h, h), None, None, AttentionModuleOptions { scale: None, softcap: None, is_causal: true }).swap_dims(1, 2).reshape([b * t, d]);
+            let a = k.qkv.fwd(x.clone(), q);
+            let o = if *fa::FLASH { fa::fa(a, b, t, h) } else { let [aq, ak, av] = fa::split(a, b, t, h); attention(aq, ak, av, None, None, AttentionModuleOptions { scale: None, softcap: None, is_causal: true }).swap_dims(1, 2).reshape([b * t, d]) };
             let x = x + k.o.fwd(o, q);
             x.clone() + k.f2.fwd(relu(k.f1.fwd(x, q)).square(), q)
         });
@@ -86,12 +79,12 @@ impl Dat {
 fn sm(mut z: u64) -> u64 { z = z.wrapping_add(0x9E37_79B9_7F4A_7C15); z = (z ^ z >> 30).wrapping_mul(0xBF58_476D_1CE4_E5B9); z = (z ^ z >> 27).wrapping_mul(0x94D0_49BB_1331_11EB); z ^ z >> 31 }
 pub fn tb(d: &Dat, seed: u64, it: usize, bs: usize, t: usize) -> (Vec<u32>, Vec<u32>) { d.win(&(0..bs).map(|j| (sm(seed << 40 ^ (it as u64) << 12 ^ j as u64) % (d.len() - t - 1) as u64) as usize).collect::<Vec<_>>(), t) }
 pub fn it2<B: Backend>(v: Vec<i32>, s: [usize; 2], dev: &B::Device) -> Tensor<B, 2, Int> { Tensor::from_data(TensorData::new(v, s), dev) }
-pub fn logits<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u32], b: usize, dev: &B::Device) -> Tensor<B, 2> { let n = x.len() / b; core.fwd(it2(x.iter().map(|&v| v as i32).collect(), [b, n], dev), mem.map(|m| m.fwd(it2(hix(x, b, n, &c.ns, c.rb, c.v > 256), [b, n * c.k()], dev), c.k())), c.h, c.tern) }
-pub fn infer<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u32], b: usize, dev: &B::Device) -> Vec<f32> { f1(logits(c, core, mem, x, b, dev)) }
+pub fn logits<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u32], b: usize, dev: &B::Device) -> Tensor<B, 2> { let n = x.len() / b; core.fwd(it2(x.iter().map(|&v| v as i32).collect(), [b, n], dev), mem.map(|m| m.fwd(it2(hix(x, b, n, &c.ns, c.rb, c.v > 256), [b, n * c.k()], dev), c.k())), c.h, c.tern) }
+pub fn infer<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u32], b: usize, dev: &B::Device) -> Vec<f32> { f1(logits(c, core, mem, x, b, dev)) }
 pub fn load<B: Backend>(c: &Cfg, dev: &B::Device) -> io::Result<(Core<B>, Option<Mem<B>>)> { let (rec, le) = (BinFileRecorder::<FullPrecisionSettings>::new(), |e: burn::record::RecorderError| io::Error::other(format!("{e:?}"))); Ok((Core::<B>::new(c, dev).load_file(format!("{}/ckpt/core", c.out), &rec, dev).map_err(le)?, c.mem.then(|| Mem::<B>::new(c, dev).load_file(format!("{}/ckpt/mem", c.out), &rec, dev).map_err(le)).transpose()?)) }
 pub fn ce<B: Backend>(lg: Tensor<B, 2>, y: &[u32], dev: &B::Device) -> Tensor<B, 1> { CrossEntropyLossConfig::new().init(dev).forward(lg, Tensor::from_data(TensorData::new(y.iter().map(|&v| v as i32).collect::<Vec<i32>>(), [y.len()]), dev)) }
 pub fn f1<B: Backend, const D: usize>(t: Tensor<B, D>) -> Vec<f32> { t.into_data().iter::<f32>().collect() }
-pub fn eval<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, lens: &[u32], nb: usize, dev: &B::Device) -> f64 {
+pub fn eval<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, lens: &[u32], nb: usize, dev: &B::Device) -> f64 {
     let e = 1usize << (c.bs / c.micro.max(1)).clamp(1, 32).ilog2();
     let (mut g, th, q) = (Pcg64::new(Some(1234)), thr(&c.thf), e * c.t);
     let v: Vec<(f64, f64)> = (0..nb).flat_map(|_| { let (x, y) = hold.hold(&mut g, 128, c.t); (0..128 / e).map(|k| { let t0 = Instant::now(); let r = f1(ce(logits(c, core, mem, &x[k * q..(k + 1) * q], e, dev), &y[k * q..(k + 1) * q], dev))[0] as f64 * q as f64; nap(th, t0.elapsed().as_secs_f64() * 1e3, c.unit); (r, y[k * q..(k + 1) * q].iter().map(|&t| lens[t as usize] as f64).sum::<f64>()) }).collect::<Vec<_>>() }).collect();
@@ -99,7 +92,7 @@ pub fn eval<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Da
 }
 pub fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0) }
 pub fn nap(th: f64, ms: f64, unit: f64) -> f64 { let s = if th > 0.0 { th * 1e3 * (ms / unit).max(1.0) } else { 0.0 }; (s > 0.0).then(|| std::thread::sleep(std::time::Duration::from_secs_f64(s / 1e3))); s }
-pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::Result<String> {
+pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> io::Result<String> where B::InnerBackend: Fa {
     let (tr, ho, lens) = (c.data("train")?, c.data("hold")?, c.bpe()?.map(|b| b.lens()).unwrap_or_else(|| vec![1; 256]));
     let bpt = { let s = ho.get(0, ho.len().min(1 << 20)); s.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / s.len() as f64 };
     Path::new(&c.thf).exists().then_some(()).ok_or_else(|| io::Error::other(format!("THROTTLE_FILE {} missing: refusing to train without the GPU governor", c.thf)))?;
@@ -151,7 +144,7 @@ pub fn train<B: AutodiffBackend>(c: &Cfg, dev: B::Device, bench: usize) -> io::R
         let lv = want.then_some(ls);
         acc = if it < start + 3 { acc } else { (acc.0 + ms, acc.1 + sl, acc.2 + 1) };
         if let Some(l) = lv { lt = l; (tm, du) = if acc.2 > 0 { (acc.0 / acc.2 as f64, acc.0 / (acc.0 + acc.1)) } else { (tm, du) }; acc = (0.0, 0.0, 0); }
-        let (done, wall) = (it + 1 == steps, bench == 0 && c.wall > 0.0 && t0.elapsed().as_secs_f64() > c.wall * 60.0);
+        let (done, wall) = (it + 1 == steps, bench == 0 && (c.wall > 0.0 && t0.elapsed().as_secs_f64() > c.wall * 60.0 || Path::new(&format!("{}/STOP", c.out)).exists()));
         if bench == 0 && ((it + 1) % c.ev == 0 || done) {
             let va = eval(c, &core.valid(), mem.as_ref().map(|m| m.valid()).as_ref(), &ho, &lens, c.evb, &dev);
             last = format!("{{\"step\": {}, \"symbols\": {}, \"bytes\": {:.0}, \"train_nats\": {:.4}, \"val_nats\": {:.4}, \"val_bits_per_byte\": {:.4}, \"gpu_ms_per_step\": {:.1}, \"gpu_bytes_per_s\": {:.0}, \"self_duty\": {:.3}, \"lr\": {:.2e}, \"throttle_s\": {th}, \"elapsed_s\": {:.1}}}", it + 1, (it + 1) * c.bs * c.t, ((it + 1) * c.bs * c.t) as f64 * bpt, lt, va, va / std::f64::consts::LN_2, tm, (c.bs * c.t) as f64 * bpt * 1e3 / tm.max(1e-9), du, lr, t0.elapsed().as_secs_f64());
