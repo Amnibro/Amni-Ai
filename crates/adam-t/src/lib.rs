@@ -1,33 +1,36 @@
 pub mod bpe;
 pub mod fa;
 pub mod lut;
+pub mod sft;
 use adam_ray::rng::Pcg64;
 use fa::Fa;
 use burn::{module::{AutodiffModule, Module, Param}, nn::loss::CrossEntropyLossConfig, optim::{grad_clipping::GradientClippingConfig, AdamWConfig, GradientsAccumulator, GradientsParams, Optimizer}, record::{BinFileRecorder, FullPrecisionSettings, Recorder}, tensor::{activation::relu, backend::{AutodiffBackend, Backend}, module::{attention, embedding}, ops::AttentionModuleOptions, Distribution, Int, Tensor, TensorData}};
 use memmap2::Mmap;
 use std::{env::var, fs, io::{self, Write}, path::Path, time::Instant};
 #[derive(Clone, Debug)]
-pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64, pub v: usize, pub bpe: String, pub micro: usize }
+pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64, pub v: usize, pub bpe: String, pub micro: usize, pub base: String, pub sw: String, pub ep: f64 }
 impl Cfg {
     pub fn env() -> Cfg {
         let e = |k: &str, d: &str| var(k).unwrap_or_else(|_| d.into());
         let p = |k: &str, d: &str| e(k, d).trim().parse::<f64>().unwrap_or_else(|_| panic!("bad {k}"));
-        let (home, d, tag, bpe) = (e("AMNI_HOME", "/home/anmire/ai/Amni-Ai"), p("D", "256") as usize, e("TAG", "smoke"), e("BPE", ""));
-        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", "2e-3"), lrm: p("LR_MEM", &e("LR", "2e-3")), wd: p("WD", "0.05") as f32, warm: p("WARM", "200") as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", "500") as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", "clean2"), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), v: if bpe.is_empty() { 256 } else { serde_json::from_str::<serde_json::Value>(&fs::read_to_string(&bpe).unwrap_or_default()).ok().and_then(|j| j["vocab_size"].as_u64()).unwrap_or_else(|| panic!("bad BPE {bpe}")) as usize }, bpe, micro: p("MICRO", "1") as usize, home }
+        let (home, d, tag, bpe, base) = (e("AMNI_HOME", "/home/anmire/ai/Amni-Ai"), p("D", "256") as usize, e("TAG", "smoke"), e("BPE", ""), e("BASE", ""));
+        let sd = |a: &'static str, b: &'static str| if base.is_empty() { b } else { a };
+        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", sd("3e-4", "2e-3")), lrm: p("LR_MEM", &e("LR", sd("3e-4", "2e-3"))), wd: p("WD", "0.05") as f32, warm: p("WARM", sd("100", "200")) as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", sd("250", "500")) as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", sd("adam_t/sft", "clean2")), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), v: if bpe.is_empty() { 256 } else { serde_json::from_str::<serde_json::Value>(&fs::read_to_string(&bpe).unwrap_or_default()).ok().and_then(|j| j["vocab_size"].as_u64()).unwrap_or_else(|| panic!("bad BPE {bpe}")) as usize }, bpe, micro: p("MICRO", "1") as usize, sw: e("SRC_W", ""), ep: p("EPOCHS", "0"), base, home }
     }
     pub fn from_dir(dir: &str) -> io::Result<Cfg> {
         let l = fs::read_to_string(format!("{dir}/log.jsonl"))?.lines().next().unwrap_or("").to_string();
         let j: serde_json::Value = serde_json::from_str(&l).map_err(io::Error::other)?;
         let (g, u) = (&j["cfg"], |k: &str| j["cfg"][k].as_u64().ok_or_else(|| io::Error::other(format!("cfg.{k} missing in {dir}/log.jsonl"))).map(|v| v as usize));
-        Ok(Cfg { d: u("d")?, l: u("l")?, h: u("h")?, t: u("ctx")?, ff: u("ff")?, rb: u("mem_log2")? as u32, tern: g["tern"].as_bool().unwrap_or(true), mem: g["mem"].as_bool().unwrap_or(false), ns: g["ngrams"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect()).unwrap_or_default(), out: dir.into(), v: g["v"].as_u64().unwrap_or(256) as usize, bpe: g["bpe"].as_str().unwrap_or("").into(), corpus: g["corpus"].as_str().unwrap_or("clean2").into(), ..Cfg::env() })
+        Ok(Cfg { d: u("d")?, l: u("l")?, h: u("h")?, t: u("ctx")?, ff: u("ff")?, rb: u("mem_log2")? as u32, tern: g["tern"].as_bool().unwrap_or(true), mem: g["mem"].as_bool().unwrap_or(false), ns: g["ngrams"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect()).unwrap_or_default(), out: dir.into(), v: g["v"].as_u64().unwrap_or(256) as usize, bpe: g["bpe"].as_str().unwrap_or("").into(), corpus: g["corpus"].as_str().unwrap_or("clean2").into(), base: g["base"].as_str().unwrap_or("").into(), sw: g["src_w"].as_str().unwrap_or("").into(), ep: g["epochs"].as_f64().unwrap_or(0.0), ..Cfg::env() })
     }
+    pub fn sft(&self) -> bool { !self.base.is_empty() }
     pub fn k(&self) -> usize { if self.mem { self.ns.len() } else { 0 } }
     pub fn rows(&self) -> usize { self.k() << self.rb }
     pub fn mult(&self, it: usize) -> f64 { let pr = ((it as f64 - self.warm as f64) / (self.steps.saturating_sub(self.warm)).max(1) as f64).clamp(0.0, 1.0); if it < self.warm { (it as f64 + 1.0) / self.warm as f64 } else { 0.1 + 0.45 * (1.0 + (std::f64::consts::PI * pr).cos()) } }
     pub fn core_params(&self) -> usize { self.v * self.d + self.t * self.d + self.l * (4 * self.d * self.d + 2 * self.d * self.ff) + self.d * self.v }
     pub fn bpe(&self) -> io::Result<Option<bpe::Bpe>> { (!self.bpe.is_empty()).then(|| bpe::Bpe::open(&self.bpe)).transpose() }
     pub fn data(&self, split: &str) -> io::Result<Dat> { let d = format!("{}/data/{}", self.home, self.corpus); Ok(if self.v == 256 { Dat::B(mmap(&format!("{d}/{split}.bin"))?) } else { Dat::W(mmap(&format!("{d}/{split}.bpe{}.u16", self.v))?) }) }
-    pub fn json(&self) -> String { format!("{{\"d\": {}, \"l\": {}, \"h\": {}, \"ctx\": {}, \"ff\": {}, \"tern\": {}, \"mem\": {}, \"ngrams\": {:?}, \"mem_log2\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_mem\": {}, \"wd\": {}, \"warm\": {}, \"seed\": {}, \"corpus\": \"{}\", \"v\": {}, \"bpe\": \"{}\", \"micro\": {}, \"core_params\": {}, \"mem_params\": {}, \"symbols_per_step\": {}}}", self.d, self.l, self.h, self.t, self.ff, self.tern, self.mem, self.ns, self.rb, self.bs, self.steps, self.lr, self.lrm, self.wd, self.warm, self.seed, self.corpus, self.v, self.bpe, self.micro, self.core_params(), self.rows() * self.d, self.bs * self.t) }
+    pub fn json(&self) -> String { format!("{{\"d\": {}, \"l\": {}, \"h\": {}, \"ctx\": {}, \"ff\": {}, \"tern\": {}, \"mem\": {}, \"ngrams\": {:?}, \"mem_log2\": {}, \"bs\": {}, \"steps\": {}, \"lr\": {}, \"lr_mem\": {}, \"wd\": {}, \"warm\": {}, \"seed\": {}, \"corpus\": \"{}\", \"v\": {}, \"bpe\": \"{}\", \"micro\": {}, \"base\": \"{}\", \"src_w\": \"{}\", \"epochs\": {}, \"core_params\": {}, \"mem_params\": {}, \"symbols_per_step\": {}}}", self.d, self.l, self.h, self.t, self.ff, self.tern, self.mem, self.ns, self.rb, self.bs, self.steps, self.lr, self.lrm, self.wd, self.warm, self.seed, self.corpus, self.v, self.bpe, self.micro, self.base, self.sw, self.ep, self.core_params(), self.rows() * self.d, self.bs * self.t) }
 }
 #[derive(Module, Debug)]
 pub struct Lin<B: Backend> { pub w: Param<Tensor<B, 2>> }
@@ -76,7 +79,7 @@ impl Dat {
     pub fn win(&self, ix: &[usize], t: usize) -> (Vec<u32>, Vec<u32>) { let w: Vec<Vec<u32>> = ix.iter().map(|&i| self.get(i, t + 1)).collect(); (w.iter().flat_map(|v| v[..t].to_vec()).collect(), w.iter().flat_map(|v| v[1..].to_vec()).collect()) }
     pub fn hold(&self, g: &mut Pcg64, bs: usize, t: usize) -> (Vec<u32>, Vec<u32>) { self.win(&adam_train::bix(self.len(), g, bs, t, None).iter().map(|&i| i as usize).collect::<Vec<_>>(), t) }
 }
-fn sm(mut z: u64) -> u64 { z = z.wrapping_add(0x9E37_79B9_7F4A_7C15); z = (z ^ z >> 30).wrapping_mul(0xBF58_476D_1CE4_E5B9); z = (z ^ z >> 27).wrapping_mul(0x94D0_49BB_1331_11EB); z ^ z >> 31 }
+pub fn sm(mut z: u64) -> u64 { z = z.wrapping_add(0x9E37_79B9_7F4A_7C15); z = (z ^ z >> 30).wrapping_mul(0xBF58_476D_1CE4_E5B9); z = (z ^ z >> 27).wrapping_mul(0x94D0_49BB_1331_11EB); z ^ z >> 31 }
 pub fn tb(d: &Dat, seed: u64, it: usize, bs: usize, t: usize) -> (Vec<u32>, Vec<u32>) { d.win(&(0..bs).map(|j| (sm(seed << 40 ^ (it as u64) << 12 ^ j as u64) % (d.len() - t - 1) as u64) as usize).collect::<Vec<_>>(), t) }
 pub fn it2<B: Backend>(v: Vec<i32>, s: [usize; 2], dev: &B::Device) -> Tensor<B, 2, Int> { Tensor::from_data(TensorData::new(v, s), dev) }
 pub fn logits<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, x: &[u32], b: usize, dev: &B::Device) -> Tensor<B, 2> { let n = x.len() / b; core.fwd(it2(x.iter().map(|&v| v as i32).collect(), [b, n], dev), mem.map(|m| m.fwd(it2(hix(x, b, n, &c.ns, c.rb, c.v > 256), [b, n * c.k()], dev), c.k())), c.h, c.tern) }
@@ -93,6 +96,10 @@ pub fn eval<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, le
 pub fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0) }
 pub fn nap(th: f64, ms: f64, unit: f64) -> f64 { let s = if th > 0.0 { th * 1e3 * (ms / unit).max(1.0) } else { 0.0 }; (s > 0.0).then(|| std::thread::sleep(std::time::Duration::from_secs_f64(s / 1e3))); s }
 pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> io::Result<String> where B::InnerBackend: Fa {
+    let bc = c.sft().then(|| Cfg::from_dir(&c.base)).transpose()?;
+    let c = &bc.as_ref().map_or_else(|| c.clone(), |b| Cfg { d: b.d, l: b.l, h: b.h, t: b.t, ff: b.ff, ns: b.ns.clone(), rb: b.rb, tern: b.tern, mem: b.mem, v: b.v, bpe: b.bpe.clone(), ..c.clone() });
+    let sj = bc.as_ref().map(|_| sft::Job::new(c)).transpose()?;
+    let c = &sj.as_ref().map_or_else(|| c.clone(), |j| Cfg { steps: j.steps, ..c.clone() });
     let (tr, ho, lens) = (c.data("train")?, c.data("hold")?, c.bpe()?.map(|b| b.lens()).unwrap_or_else(|| vec![1; 256]));
     let bpt = { let s = ho.get(0, ho.len().min(1 << 20)); s.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / s.len() as f64 };
     Path::new(&c.thf).exists().then_some(()).ok_or_else(|| io::Error::other(format!("THROTTLE_FILE {} missing: refusing to train without the GPU governor", c.thf)))?;
@@ -112,22 +119,27 @@ pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> 
         if let Some(m) = mem.take() { mem = Some(m.load_file(format!("{ckd}/mem"), &rec, &dev).map_err(le)?); om = om.load_record(rec.load(format!("{ckd}/om").into(), &dev).map_err(le)?); }
         println!("resumed {} at step {start}", c.out);
     }
+    if let (0, Some(b)) = (start, bc.as_ref()) { (core, mem) = load::<B>(b, &dev)?; println!("sft init from {} step {}", b.out, fs::read_to_string(format!("{}/ckpt/state.txt", b.out)).unwrap_or_default().trim()); }
+    if bench == 0 { fs::write(format!("{ckd}/steps.txt"), format!("{}\n", c.steps))?; }
     let mut log = fs::OpenOptions::new().create(true).append(true).open(format!("{}/log.jsonl", c.out))?;
     let steps = if bench > 0 { bench + 5 } else { c.steps };
     println!("=== adam-t [{}] {} | {}", std::any::type_name::<B>().split("::").last().unwrap_or(""), c.tag, c.json());
     writeln!(log, "{{\"cfg\": {}, \"start\": {start}}}", c.json())?;
+    if let Some(j) = sj.as_ref() { let r = j.info(); println!("{r}"); writeln!(log, "{r}")?; }
     let (t0, mut th, mut tm, mut du, mut lt, mut last, mut acc) = (Instant::now(), 0.0, 0.0f64, 1.0f64, 0.0f64, String::new(), (0.0f64, 0.0f64, 0usize));
     for it in start..steps {
         th = thr(&c.thf);
-        let (x, y) = tb(&tr, c.seed, it, c.bs, c.t);
+        let (x, y, wm) = sj.as_ref().map_or_else(|| { let (x, y) = tb(&tr, c.seed, it, c.bs, c.t); (x, y, None) }, |j| { let (x, y, m, _) = j.batch(it, c); (x, y, Some(m)) });
         let (mb, want) = (c.micro.max(1), it % 50 == 49 || it + 1 == steps || it == 4);
+        let den = wm.as_ref().map_or(mb as f64, |m| m.iter().map(|&v| v as f64).sum::<f64>().max(1.0));
         let (q, se) = (c.bs / mb * c.t, |e: burn::tensor::backend::ExecutionError| io::Error::other(format!("{e:?}")));
         let (mut ac, mut am, mut ls, mut ms, mut sl) = (GradientsAccumulator::<Core<B>>::new(), GradientsAccumulator::<Mem<B>>::new(), 0f64, 0f64, 0f64);
         for k in 0..mb {
             let tk = Instant::now();
-            let loss = ce(logits(c, &core, mem.as_ref(), &x[k * q..(k + 1) * q], c.bs / mb, &dev), &y[k * q..(k + 1) * q], &dev);
-            ls += if want { f1(loss.clone())[0] as f64 / mb as f64 } else { 0.0 };
-            let mut gr = loss.div_scalar(mb as f64).backward();
+            let (lg, yk) = (logits(c, &core, mem.as_ref(), &x[k * q..(k + 1) * q], c.bs / mb, &dev), &y[k * q..(k + 1) * q]);
+            let loss = match wm.as_ref() { Some(m) => sft::mce(lg, yk, &m[k * q..(k + 1) * q], den, &dev), None => ce(lg, yk, &dev).div_scalar(den) };
+            ls += if want { f1(loss.clone())[0] as f64 } else { 0.0 };
+            let mut gr = loss.backward();
             ac.accumulate(&core, GradientsParams::from_module(&mut gr, &core));
             if let Some(m) = mem.as_ref() { am.accumulate(m, GradientsParams::from_module(&mut gr, m)); }
             B::sync(&dev).map_err(se)?;
@@ -146,8 +158,9 @@ pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> 
         if let Some(l) = lv { lt = l; (tm, du) = if acc.2 > 0 { (acc.0 / acc.2 as f64, acc.0 / (acc.0 + acc.1)) } else { (tm, du) }; acc = (0.0, 0.0, 0); }
         let (done, wall) = (it + 1 == steps, bench == 0 && (c.wall > 0.0 && t0.elapsed().as_secs_f64() > c.wall * 60.0 || Path::new(&format!("{}/STOP", c.out)).exists()));
         if bench == 0 && ((it + 1) % c.ev == 0 || done) {
-            let va = eval(c, &core.valid(), mem.as_ref().map(|m| m.valid()).as_ref(), &ho, &lens, c.evb, &dev);
-            last = format!("{{\"step\": {}, \"symbols\": {}, \"bytes\": {:.0}, \"train_nats\": {:.4}, \"val_nats\": {:.4}, \"val_bits_per_byte\": {:.4}, \"gpu_ms_per_step\": {:.1}, \"gpu_bytes_per_s\": {:.0}, \"self_duty\": {:.3}, \"lr\": {:.2e}, \"throttle_s\": {th}, \"elapsed_s\": {:.1}}}", it + 1, (it + 1) * c.bs * c.t, ((it + 1) * c.bs * c.t) as f64 * bpt, lt, va, va / std::f64::consts::LN_2, tm, (c.bs * c.t) as f64 * bpt * 1e3 / tm.max(1e-9), du, lr, t0.elapsed().as_secs_f64());
+            let (cv, mv) = (core.valid(), mem.as_ref().map(|m| m.valid()));
+            let (va, ex) = sj.as_ref().map_or_else(|| (eval(c, &cv, mv.as_ref(), &ho, &lens, c.evb, &dev), String::new()), |j| j.eval(c, &cv, mv.as_ref(), &lens, &dev));
+            last = format!("{{\"step\": {}, \"symbols\": {}, \"bytes\": {:.0}, \"train_nats\": {:.4}, \"val_nats\": {:.4}, \"val_bits_per_byte\": {:.4}, \"gpu_ms_per_step\": {:.1}, \"gpu_bytes_per_s\": {:.0}, \"self_duty\": {:.3}, \"lr\": {:.2e}, \"throttle_s\": {th}, \"elapsed_s\": {:.1}{ex}}}", it + 1, (it + 1) * c.bs * c.t, ((it + 1) * c.bs * c.t) as f64 * bpt, lt, va, va / std::f64::consts::LN_2, tm, (c.bs * c.t) as f64 * bpt * 1e3 / tm.max(1e-9), du, lr, t0.elapsed().as_secs_f64());
             println!("{last}");
             writeln!(log, "{last}")?;
         }

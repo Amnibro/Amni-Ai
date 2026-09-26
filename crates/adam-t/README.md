@@ -56,6 +56,8 @@ Byte models use symbols equal to bytes. BPE models (`v` > 256) carry their merge
 
 The eval harness uses it like this: `python scripts/adam_t_eval.py run --model proto --proto-cmd "crates/target/release/adam-t serve exports/adam_t/<TAG>/model.gf17"`.
 
+Tuned models (runs made by `adam-t sft`, or an exported `meta.json` with `"fmt": "chat"`) answer `hello` with `"fmt": "chat"`, so the harness uses its `User: …\nAdam:` templates. Their `gen` also always stops at `\n\n` and `\nUser:`, on top of the client's stops, so a reply ends at the end of the Adam turn.
+
 ## Tokenizer (homegrown BPE)
 
 - `crates/adam-t/bpe.py <V>` trains the merges on `data/clean2/train.bin` only and writes `data/clean2/bpe<V>.json`. The merges come out of HF `tokenizers` used as code.
@@ -90,6 +92,23 @@ THROTTLE_FILE=... RUN_DIR=exports/adam_t/<TAG> TAG=<TAG> TERN=1 MEM=1 STEPS=3000
 The throttle file is read every step. The run sleeps `throttle × max(1, gpu_ms/THROTTLE_UNIT_MS)` per step.
 
 At the end, a ternary run exports `model.gf17`. It then checks that the roundtrip is bit-exact and that the LUT output matches the trainer's.
+
+### Supervised tuning (`adam-t sft`)
+
+`adam-t sft` tunes a finished base run on the chat/QA set in `data/adam_t/sft` (see its `meta.json`). `crates/adam-t/sft.sh` is the launcher:
+
+```
+THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt bash crates/adam-t/sft.sh
+```
+
+- **Start:** `BASE=<run dir>` names the base run. On the first launch, `sft.sh` snapshots the base checkpoint (`ckpt/core.bin`, `ckpt/mem.bin`, `state.txt`, and the first `log.jsonl` line) into `$RUN_DIR/base`, and the trainer takes the shape (`d`, `L`, `H`, `ctx`, `ff`, `v`, BPE, PTEX memory) from it. The first step loads the core and the PTEX memory tables from the base. The optimisers start fresh.
+- **Safety checks:** `sft.sh` refuses to start without the throttle file, while an `adam-t` process runs, or while the base unit (`BASE_UNIT`, default `adam-t-30m`) is active. It also refuses to snapshot a base that has no `model.gf17` unless `ALLOW_PARTIAL_BASE=1` is set.
+- **Packing:** whole examples are packed greedily into windows of CTX+1 tokens and never split. The remainder is padded, with mask 0. Examples longer than CTX+1 are skipped and counted.
+- **Loss:** cross-entropy is taken only where the mask is 1 (Adam reply tokens, including the closing `\n\n`). It is normalised by the number of masked tokens in the whole step, so micro-batches add up exactly.
+- **Schedule:** the defaults are `LR` 3e-4, `WARM` 100, then cosine to 0.1×, with `EPOCHS` 2. Set `EPOCHS=0 STEPS=N` for a fixed step count. `ckpt/steps.txt` records the resolved step count for `campaign.sh`.
+- **Sampling:** each epoch is a fresh seeded shuffle. `SRC_W=name=w,...` weights sources by the idx `src` column: each example appears floor(w) times plus once more with probability frac(w), and `w=0` drops the source. Names come from `meta.json`, and indices also work.
+- **Eval:** masked-loss eval runs on the whole hold split every `EVAL_EVERY` steps (default 250), or on `EVAL_BATCHES` × batch windows if that is above 0. It logs `val_nats` (per masked byte), `val_nats_per_tok` and `val_by_src`.
+- **Same as pretraining:** the checkpoint format, `THROTTLE_FILE` every step, `STOP` and `MAX_MIN` pauses, and the final `model.gf17` export. `adam-t serve <sft run dir>`, `adam-t export` and the harness therefore load the tuned model unchanged.
 
 ### Other subcommands
 

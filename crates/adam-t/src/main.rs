@@ -78,7 +78,7 @@ fn fa_cmp<B: AutodiffBackend + Fa>(dev: &B::Device, s: [usize; 3], sd: f64) -> S
     let md = |a: &[f32], b: &[f32]| a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0f32, f32::max);
     format!("{{\"backend\": \"{}\", \"b\": {b}, \"t\": {t}, \"h\": {h}, \"sd\": {sd}, \"out_max_abs_diff\": {:.3e}, \"grad_max_abs_diff\": {:.3e}, \"grad_max_abs\": {:.3e}, \"finite\": {}}}", std::any::type_name::<B>().split('<').nth(1).unwrap_or(""), md(&o1, &o2), md(&g1, &g2), g2.iter().fold(0f32, |m, v| m.max(v.abs())), o1.iter().chain(&g1).all(|v| v.is_finite()))
 }
-struct Srv<'a> { t: usize, v: usize, bp: Option<Bpe>, fw: Fw<'a>, lm: Option<&'a lut::Lm>, name: String, step: usize }
+struct Srv<'a> { t: usize, v: usize, bp: Option<Bpe>, fw: Fw<'a>, lm: Option<&'a lut::Lm>, name: String, step: usize, fmt: String, stop: Vec<Vec<u8>> }
 impl Srv<'_> {
     fn en(&self, b: &[u8]) -> Vec<u32> { self.bp.as_ref().map(|p| p.enc(b)).unwrap_or_else(|| b.iter().map(|&x| x as u32).collect()) }
     fn de(&self, i: &[u32]) -> Vec<u8> { self.bp.as_ref().map(|p| p.dec(i)).unwrap_or_else(|| i.iter().map(|&x| x as u8).collect()) }
@@ -114,9 +114,9 @@ impl Srv<'_> {
         let q: Value = serde_json::from_str(l).map_err(io::Error::other)?;
         let d = |v: &Value| B64.decode(v.as_str().unwrap_or("")).map_err(io::Error::other);
         Ok(match q["op"].as_str().unwrap_or("") {
-            "hello" => (json!({"model": format!("adam-t-{}", self.name), "step": self.step, "fmt": "plain", "ctx": (self.t as f64 * if self.v > 256 { 3.25 } else { 1.0 }) as usize, "ctx_symbols": self.t, "vocab": self.v, "proto": 1}), false),
+            "hello" => (json!({"model": format!("adam-t-{}", self.name), "step": self.step, "fmt": self.fmt, "ctx": (self.t as f64 * if self.v > 256 { 3.25 } else { 1.0 }) as usize, "ctx_symbols": self.t, "vocab": self.v, "proto": 1}), false),
             "lp" => (json!({"lp": self.lp(&q["items"].as_array().cloned().unwrap_or_default().iter().map(|p| Ok((d(&p[0])?, d(&p[1])?))).collect::<io::Result<Vec<_>>>()?)?}), false),
-            "gen" => (json!({"text": B64.encode(self.gen(&d(&q["prompt"])?, q["max"].as_u64().unwrap_or(64) as usize, &q["stop"].as_array().cloned().unwrap_or_default().iter().map(d).collect::<io::Result<Vec<_>>>()?)?)}), false),
+            "gen" => (json!({"text": B64.encode(self.gen(&d(&q["prompt"])?, q["max"].as_u64().unwrap_or(64) as usize, &[q["stop"].as_array().cloned().unwrap_or_default().iter().map(d).collect::<io::Result<Vec<_>>>()?, self.stop.clone()].concat())?)}), false),
             "bye" => (json!({"bye": true}), true),
             o => (json!({"error": format!("bad op {o}")}), false),
         })
@@ -167,7 +167,9 @@ fn main() -> io::Result<()> {
             let step = meta["step"].as_u64().map(|v| v as usize).or_else(|| fs::read_to_string(format!("{dir}/ckpt/state.txt")).ok().and_then(|s| s.trim().parse().ok())).unwrap_or(0usize);
             let fw: Fw = match (&lm, &cc) { (Some(lm), _) => Box::new(move |xs: &[Vec<u32>]| xs.par_iter().map(|w| lm.fwd(w)).collect()), (_, Some(cc)) => if var("BACKEND").map(|b| b == "ndarray").unwrap_or(false) { burn_fw::<NdArray>(cc, NdArrayDevice::Cpu)? } else { burn_fw::<Wgpu>(cc, WgpuDevice::DiscreteGpu(0))? }, _ => unreachable!() };
             let bp = match (&lm, &cc) { (Some(l), _) => l.bpe.as_ref().map(|b| Bpe::new(adam_t::bpe::PAT, b.merges.clone())).transpose()?, (_, Some(c)) => c.bpe()?, _ => None };
-            let sv = Srv { t: lm.as_ref().map(|l| l.t).or(cc.as_ref().map(|c| c.t)).unwrap_or(256), v: lm.as_ref().map(|l| l.v).or(cc.as_ref().map(|c| c.v)).unwrap_or(256), bp, fw, lm: lm.as_ref(), name: meta["name"].as_str().map(String::from).unwrap_or_else(|| std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()), step };
+            let fmt = meta["fmt"].as_str().map(String::from).unwrap_or_else(|| (if cc.as_ref().map(|c| c.sft()).unwrap_or_else(|| Cfg::from_dir(&dir).map(|c| c.sft()).unwrap_or(false)) { "chat" } else { "plain" }).into());
+            let stop = if fmt == "chat" { vec![b"\n\n".to_vec(), b"\nUser:".to_vec()] } else { vec![] };
+            let sv = Srv { t: lm.as_ref().map(|l| l.t).or(cc.as_ref().map(|c| c.t)).unwrap_or(256), v: lm.as_ref().map(|l| l.v).or(cc.as_ref().map(|c| c.v)).unwrap_or(256), bp, fw, lm: lm.as_ref(), name: meta["name"].as_str().map(String::from).unwrap_or_else(|| std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()), step, fmt, stop };
             let mut so = io::stdout().lock();
             for l in io::stdin().lock().lines() { let l = l?; if l.trim().is_empty() { continue; } let (r, bye) = sv.req(&l).unwrap_or_else(|e| (json!({"error": e.to_string()}), false)); writeln!(so, "{r}")?; so.flush()?; if bye { break; } }
         }
@@ -183,7 +185,7 @@ fn main() -> io::Result<()> {
             let (ho, lens) = (cc.data("hold")?, cc.bpe()?.map(|b| b.lens()).unwrap_or_else(|| vec![1; 256]));
             let mut lg = fs::OpenOptions::new().create(true).append(true).open(format!("{od}/export.jsonl"))?;
             lut::finish(&cc, &core, mem.as_ref(), &ho, &lens, &NdArrayDevice::Cpu, &mut lg, &format!("{od}/model.gf17"))?;
-            fs::write(format!("{od}/meta.json"), json!({"name": std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()), "step": step, "run": dir}).to_string())?;
+            fs::write(format!("{od}/meta.json"), json!({"name": std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()), "step": step, "run": dir, "fmt": if cc.sft() { "chat" } else { "plain" }}).to_string())?;
         }
         "tokenize" => {
             let (bp, src, dst) = (Bpe::open(&a[2])?, mmap(&a[3])?, &a[4]);
@@ -238,7 +240,7 @@ fn main() -> io::Result<()> {
             }
         }
         "bpe-enc" => { let mut b = Vec::new(); io::stdin().read_to_end(&mut b)?; println!("{}", Bpe::open(&a[2])?.enc(&b).iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ")); }
-        _ => { run(&c, 0)?; }
+        m => { (c.sft() == (m == "sft")).then_some(()).ok_or_else(|| io::Error::other("adam-t sft needs BASE=<base run dir>, and adam-t train must run without BASE"))?; run(&c, 0)?; }
     }
     Ok(())
 }

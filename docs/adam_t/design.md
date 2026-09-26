@@ -375,6 +375,21 @@ Three custom ops now sit under the trainer (`crates/adam-t/src/fa.rs`). Each is 
 - Greedy generations are empty: the model's first token after `Answer:` is still a newline.
 - The next eval is at the end of segment 4 of this launch.
 
+## 7d. Supervised tuning mode (ADAM-T-SFTMODE, 2026-09-25)
+
+`adam-t sft`, launched by `crates/adam-t/sft.sh`, tunes a finished base run on `data/adam_t/sft` (v2: 167,225 train and 3,436 hold examples, template `User: …\nAdam: …\n\n`, at most 512 tokens each). The details are in the crate README. In short:
+
+- **Start and packing:** the run starts from a snapshot of the base checkpoint, core and PTEX memory tables, with fresh optimisers. Whole examples are packed into CTX+1 windows and never split, and the loss is cross-entropy on mask==1 tokens only.
+- **Schedule and eval:** LR 3e-4 with 100 warm-up steps, then cosine, for 2 epochs by default. Optional per-source weights (`SRC_W`) apply. A masked-loss hold eval reports results per source.
+- **Throughput at ctx 1024:** measured with `SRC_W=hotpot_rc=0.5`, one epoch is 30.9K windows, with packing at about 86% full. That comes to about 1.9K steps at BS 16, or about 1.6 h per epoch at the 30M run's governed 3 s/step.
+- **Serving:** the tuned run answers `hello` with `fmt: chat`. The harness then uses its chat templates, which match the SFT template byte for byte, and `gen` stops at `\n\n` and `\nUser:`.
+- **Tests:** the CPU tests (`cargo test --release -p adam-t --lib`, NdArray backend) cover the following:
+  - packing (no split example, mask and source aligned with every target token);
+  - source-weighted sampling;
+  - the `.npy` index and meta parsing, against the real set;
+  - masked CE against a CPU reference and burn's CE, with zero gradients outside the mask;
+  - an end-to-end CPU run: tiny base → SFT with LR 0 keeps the base weights bit-exactly → SFT halves the masked hold loss → `model.gf17` export → reload.
+
 ## 8. Scaling plan, data plan and compute budget
 
 **Byte-level configurations**, where the core is 12·L·d² plus embeddings:
