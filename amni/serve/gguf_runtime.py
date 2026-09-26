@@ -6,6 +6,7 @@ or POST /models/activate.
 import json,os,urllib.request,urllib.error
 from typing import Dict,Iterator,List,Optional,Tuple
 from amni.serve.emergency import respond as _em_respond,detect as _em_detect,guard as _em_guard,guard_stream as _em_stream
+from amni.serve import adam_t_client as _at
 RAY_MODEL='adam:ray-v19j2-clean'
 def backend_name()->str:
     return (os.environ.get('AMNI_GEN_BACKEND') or os.environ.get('AMNI_GGUF_BACKEND') or 'bake').strip().lower()
@@ -26,7 +27,7 @@ def _post(url:str,body:dict,timeout:int=300)->dict:
 def health()->Dict:
     if backend_name()=='ray':
         from amni.compute.ray_field import engine
-        e=engine();return {'ok':os.path.exists(e.path),'backend':'ray','model':model_id(),'pack':e.path,'loaded':e.ready,'arch':e.arch}
+        e=engine();return {'ok':os.path.exists(e.path),'backend':'ray','model':model_id(),'pack':e.path,'loaded':e.ready,'arch':e.arch,**({'adam_t':_at.client().status()} if _at.on() else {})}
     url=server_url()
     try:
         req=urllib.request.Request(url+'/health' if backend_name()!='ollama' else url+'/api/tags')
@@ -114,6 +115,8 @@ def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=51
     if em:return {'answer':em,'tier':'tier_'+(_em_detect(message) or {}).get('tier','emergency'),'tokens':len(em.encode('utf-8'))}
     r=_chat(message,system,history,facts,max_new_tokens,do_sample,user,session);r['answer']=_em_guard(message,r.get('answer') or '');return r
 def _chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
+    at=_at.answer(message,history,max_new_tokens)
+    if at:return {'answer':at,'tier':'tier_adam_t','tokens':len(at.encode('utf-8'))}
     if backend_name()=='ray':
         t=''.join(_ray_stream(message,history,max_new_tokens,do_sample,user,session));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
     url=server_url()+'/v1/chat/completions'
@@ -135,6 +138,8 @@ def chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens
     if em:yield em;return
     yield from _em_stream(message,_chat_stream(message,system,history,facts,max_new_tokens,do_sample,user,session))
 def _chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Iterator[str]:
+    at=_at.answer(message,history,max_new_tokens)
+    if at:yield at;return
     if backend_name()=='ray':
         yield from _ray_stream(message,history,max_new_tokens,do_sample,user,session);return
     url=server_url()+'/v1/chat/completions'

@@ -7,6 +7,7 @@ from amni.compute import eval_lock as EL
 from adam_nightly import score_qa,NORM
 from v19_eval_run import DECLINE,score_contains
 from amni.serve import emergency as EMG
+from amni.serve.adam_t_client import Proto as ProtoClient,B64,U64
 EV=ROOT/"data"/"adam_t"/"eval";BN=EV/"bench";RK=ROOT/"data"/"concepts"/"eval"/"rknow";D3=ROOT/"data"/"concepts"/"eval"/"d3";PRE=ROOT/"docs"/"adam_t"/"eval_prereg.md";MAN=EV/"prereg_lock.json";STREAM=ROOT/"data"/"adam_t"/"stream"/"manifest.json";C2=ROOT/"data"/"clean2"/"hold.bin"
 SEED=20260925;N_ZS=500;RC_N=400;RC_K=30;RC_MAXB=512;BPB_W=8192;BPB_T=256;MAXB={"qa":64,"rc":64,"mem":80,"chat":400};BATCH=256
 CHD=EV/"chat";CHS=CHD/"chat_src.jsonl";CHF={s:CHD/f"chat_{s}.jsonl" for s in ("dev","test")};CHH=CHD/"chat_human40.json";CHM=CHD/"chat_meta.json";CHL=CHD/"report_test_ledger.jsonl"
@@ -20,10 +21,9 @@ ARC_REV="210d026faf9955653af8916fad021475a3f00453";PIQA_REV="16c6be5562fdf2e56a6
 BENCH={"arc_easy":{"url":[f"https://huggingface.co/datasets/allenai/ai2_arc/resolve/{ARC_REV}/ARC-Easy/test-00000-of-00001.parquet"],"license":"CC BY-SA 4.0 (allenai/ai2_arc dataset card; ARC-Easy test split)"},"piqa":{"url":[PQ+"valid.jsonl",PQ+"valid-labels.lst"],"license":"Academic Free License v3.0 (stated by the authors in ybisk.github.io/piqa/data/README.md; HF mirror card says unknown, upstream README is authoritative)"}}
 NQF=EV/"nq_mc.json";RCF=EV/"rc_dev.json";D3F=EV/"d3dev.jsonl";ZSF={k:BN/f"{k}_{N_ZS}.jsonl" for k in BENCH}
 SPLITS=[RK/"nq_dev_tune.json",RK/"nq_dev_hold.json",NQF,RCF,D3F,C2,*ZSF.values(),BN/"meta.json",PRE,CHS,*CHF.values(),CHH]
-CODE=[Path(__file__).resolve(),*[ROOT/p for p in ("scripts/adam_nightly.py","scripts/v19_eval_run.py","amni/compute/ray_field.py","amni/compute/eval_lock.py","amni/serve/emergency.py")],*sorted(ROOT.glob("adam_ray.cpython-*.so"))]
+CODE=[Path(__file__).resolve(),*[ROOT/p for p in ("scripts/adam_nightly.py","scripts/v19_eval_run.py","amni/compute/ray_field.py","amni/compute/eval_lock.py","amni/serve/emergency.py","amni/serve/adam_t_client.py")],*sorted(ROOT.glob("adam_ray.cpython-*.so"))]
 PUB={"SmolLM2-135M":{"arc_avg":43.9,"piqa":68.4,"hellaswag":42.1,"src":"huggingface.co/HuggingFaceTB/SmolLM2-135M model card (lighteval zero-shot; ARC = mean of Easy+Challenge)"},"SmolLM2-360M":{"arc_avg":53.0,"piqa":71.7,"hellaswag":54.5,"src":"huggingface.co/HuggingFaceTB/SmolLM2-360M model card (lighteval zero-shot; ARC = mean of Easy+Challenge)"},"Qwen2.5-0.5B":{"arc_avg":45.4,"piqa":69.9,"hellaswag":51.2,"src":"SmolLM2-360M model card comparison column (HF lighteval re-run; not from Qwen)"}}
 TPL={"plain":{"qa":"Question: {q}\nAnswer:","rc":"{t}\n{p}\n\nQuestion: {q}\nAnswer:","zs":"Question: {q}\nAnswer:"},"chat":{"qa":"User: {q}\nAdam:","rc":"User: {t}: {p} {q}\nAdam:","zs":"User: {q}\nAdam:"}}
-B64=lambda b:base64.b64encode(b).decode();U64=lambda s:base64.b64decode(s)
 WB=lambda a:r"(?<![A-Za-z0-9])"+re.escape(a)+r"(?![A-Za-z0-9])"
 shape=lambda a:"date" if re.search(r"\b(1\d{3}|20\d\d)\b",a) and re.search(r"(?i)\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b",a) else "year" if re.fullmatch(r"\d{3,4}",a.strip()) else "num" if re.search(r"\d",a) else "cap" if a[:1].isupper() else "low"
 wh=lambda q:next((w for w in ("how many","how much","who","when","where","what year") if re.search(r"\b"+w+r"\b",q.lower())),"other")
@@ -123,14 +123,10 @@ class Ray:
  def gen(s,p:str,n:int)->str:return "".join(s.e.stream(p,max_bytes=n,temp=1.0,topk=1,stop=["\n"],veto=False,**s.kw)).strip()
  def lpb(s,P:list)->list:return [float(x) for i in range(0,len(P),BATCH) for x in s.e.score([a for a,_ in P[i:i+BATCH]],[b for _,b in P[i:i+BATCH]])]
  def logprob(s,c:bytes,x:bytes)->float:return s.lpb([(c,x)])[0]
-class Proto:
- def __init__(s,cmd:str):s.cmd=cmd;s.p=subprocess.Popen(shlex.split(cmd),stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True,bufsize=1);s.info={"cmd":cmd,**s.rpc(op="hello")}
- def rpc(s,**k)->dict:
-  s.p.stdin.write(json.dumps(k)+"\n");s.p.stdin.flush();l=s.p.stdout.readline();r=json.loads(l) if l else {"error":f"server exited rc={s.p.poll()}"};assert "error" not in r,r;return r
- def gen(s,p:str,n:int)->str:return U64(s.rpc(op="gen",prompt=B64(p.encode()),max=n,stop=[B64(b"\n")])["text"]).decode("utf-8","replace").strip()
- def lpb(s,P:list)->list:return [float(x) for i in range(0,len(P),64) for x in s.rpc(op="lp",items=[[B64(a),B64(b)] for a,b in P[i:i+64]])["lp"]]
+class Proto(ProtoClient):
+ def gen(s,p:str,n:int)->str:return s.text(p,n,["\n"]).strip()
+ def lpb(s,P:list)->list:return s.lp(P,64)
  def logprob(s,c:bytes,x:bytes)->float:return s.lpb([(c,x)])[0]
- def close(s):s.p.poll() is None and (s.rpc(op="bye"),s.p.wait(30))
 def serve(m)->None:
  for l in sys.stdin:
   q=json.loads(l);op=q.get("op")
