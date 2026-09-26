@@ -771,7 +771,7 @@ class _P:
             if b(BPRE) and s.vb:s.on(BSOL,BFRO,BVOP);s.off(BPRE)
         elif P(1,b'a') or P(2,b'an'):
             s.on(BART)
-            if (s.gapc==1 or b(BHAV)) and s.relc==0:s.on(BJOB)
+            if s.gapc==1 and s.relc==0:s.on(BJOB)
             if s.gapc==1 or s.relc or s.entc:s.on(BVOP)
         elif s.inv==2 and s.vb and (P(4,b'over') or P(3,b'all') or P(3,b'the') or P(3,b'way')):r=1
         elif s.inv==2 and s.vb and P(2,b'in'):
@@ -866,8 +866,28 @@ class _P:
             elif s.g2 and c in (58,59):s.ga.comma()
         return s.facts[f0:]
 _enc=lambda x:(x if isinstance(x,bytes) else str(x).encode('utf-8','replace'))
-_FORGET=re.compile(r"(?i)^\W*(?:(?:please|ok(?:ay)?|hey|adam|and|also|now)\W+)*(?:forget|erase|delete|remove|wipe)\b(?!\W*(?:it|about it|that)\W*$)")
-_ALL=re.compile(r"(?i)\b(?:everything|all)\b")
+_FORGET=re.compile(r"(?is)^\W*(?:(?:please|pls|ok(?:ay)?|hey|hi|adam|and|also|now|so|actually|oh|um|uh|hmm|well|alright|right|yeah|yes|wait|just)\W+)*(?P<rq>(?:(?:can|could|would|will)\W+you|i\W*(?:want|need|would\W+like|'?d\W+like)\W+you\W+to|you\W+(?:can|should|may|must))\W+(?:(?:please|just)\W+)*)?(?:(?P<f>forget|unlearn|(?:stop|quit)\W+(?:remembering|keeping(?:\W+track\W+of)?|storing|saving|tracking)|(?:(?:you\W+)?(?:do\W*n'?t|do\W+not)\W+(?:need|have)\W+to|no\W+need\W+to|there'?s\W+no\W+need\W+to)\W+(?:remember|keep(?:\W+track\W+of)?|store|save|track))|(?:do\W*n'?t|do\W+not)\W+(?P<n>remember|keep(?:\W+track\W+of)?|store|save|track)|(?P<d>delete|erase|remove|wipe|clear|purge|scrub|drop|discard|disregard|ignore|scratch|never\W*mind|nvm|get\W+rid\W+of|throw\W+(?:out|away)))(?![-'\w])(?:\W+(?P<mo>(?:all\W+(?:of\W+)?)?(?:everything|anything|all|what(?:ever)?|(?:(?:the|any|all|your|those)\W+)?(?:stuff|things?|info\w*|details|facts|data|notes|memor(?:y|ies)))(?![-'\w])(?P<rc>\W+(?:that\W+)?(?:i|you)(?:'?ve|\W+have|\W+had|'?d)?(?:\W+(?:just|ever|already|previously|earlier|once|recently))*\W+(?:said|told|tell|mentioned|mention|shared|share|say|gave|give|typed|wrote|know|knew|learned|learnt|remember|saved|stored|kept|have|got|collected|recorded|noted)(?:\W+(?:you|to\W+you|me|on\W+file|saved|stored|down|so\W+far|before|earlier))*)?))?(?P<pp>\W+(?:about|regarding|re|on|concerning|around|related\W+to|to\W+do\W+with|of)(?![-'\w]))?(?P<x>\W.*)?$")
+_ALL=re.compile(r"(?i)\b(?:everything|all|anything)\b")
+_FGT=re.compile(r"(?i)\W*\b(?:anymore|any\W+more|any\W+longer|from\W+now\W+on|no\W+more|please|pls|for\W+me|entirely|completely|for\W+good|forever|altogether|too|as\W+well|ok(?:ay)?|thanks|thank\W+you|lol|right\W+now|now|then|either)\W*$")
+_FGM=re.compile(r"(?i)\W+(?:from|out\W+of|in|off)\W+(?:(?:your|my|the)\W+)?(?:memory|memories|records?|notes|database|db|mind|brain|head|files?|system|storage)\W*$")
+_FGI=re.compile(r"(?i)(?:'s|s')?\W+(?:info\w*|details|data|facts|records?|entry|entries|memor(?:y|ies)|profile|stuff|things)\W*$")
+_FGX=re.compile(r"(?i)^(?:it|that|this|those|these|all\W+(?:that|this|of\W+(?:it|that|this))|(?:that|this)\W+stuff|the\W+last\W+(?:one|thing|part))$")
+_WHX=re.compile(r"(?i)^(?:where|when|who|whom|what|which|how|whether|why|that)\b")
+def _fg(m:str):
+    g=_FORGET.match(m)
+    if not g or (not g['rq'] and _isq(m)) or (g['n']=='remember' and not re.search(r"(?i)\b(?:any\W*more|any\W+longer|from\W+now\W+on|no\W+more|please)\b",m)):return None
+    x=re.split(r'[.!?;,\n]',(g['x'] or '').strip(' \t'))[0].strip();mo=g['mo'] or '';ctx=bool(mo and (g['rc'] or g['pp']))
+    if mo and not g['rc'] and not g['pp'] and re.fullmatch(r'(?i)what(?:ever)?',mo):x=f'what {x}'.strip()
+    for R in (_FGT,_FGM,_FGT,_FGI,_FGT):y=R.sub('',x);ctx=ctx or (R is not _FGT and y!=x);x=y.strip()
+    a=bool(_ALL.search(mo)) and not re.search(r'(?i)\bmy\b',x) and re.fullmatch(r'(?i)(?:|me|myself|mine|i)',x) is not None;x='me' if re.fullmatch(r'(?i)me|myself|mine|i|my(?:\W+own)?',x) else x
+    if a:return ('',True) if re.fullmatch(r'(?i)forget|unlearn|delete|erase|remove|wipe|clear|purge|scrub',(g['f'] or g['d'] or '').split()[0]) else None
+    if not x or _FGX.match(x) or (g['d'] and not (ctx or _WHX.match(x))):return None
+    return (x+'?' if _WHX.match(x) else f'What about {x}?',False)
+def _fgt(p,m:str):
+    f=_fg(str(m).strip())
+    if not f:return None
+    f[0] and p.turn(_enc(f[0]))
+    return 'all' if f[1] else (p.qent,p.qrel) if p.qent else None
 _PRON=re.compile(r"(?i)^\W*(?:actually,? |also,? |and )?(?:he|she|they)(?:'s| is| was| has| drives| works| lives| moved| likes| loves| studied| goes)\b")
 _REQ=re.compile(r"(?i)^\W*(?:(?:please|hello|hi|hey|ok(?:ay)?)\W+)*(?:give|make|list|classify|write|extract|name me|pretend|create|generate|provide|help|find|show|explain|describe|suggest|recommend|summari[sz]e|translate|tell me|can|could|would)\b")
 _BADV=re.compile(r"(?i)^(?:(?:bulleted |numbered |check)?list|bullet|looking|learning|trying|wondering|thinking|planning|going|doing|find|start|located|write|use|read)\b|\b(?:and|or|in|of|the|a|an|to|for|with|at|on|by)$")
@@ -959,23 +979,22 @@ def preamble(fs:list,p,hk:set,hn:int=0)->str:
     rv=lambda f:2 if f.ent==q and (not qr or f.rel==qr) else 1 if f.ent==q or (f.rel==ISINK and f.ent in vp) else 0
     cap=max(8,min(int(os.environ.get('AMNI_UMEM_CAP','64')),NR-hn));pick=sorted(fs,key=lambda f:(rv(f),f.clk))[-cap:]
     return ''.join(f'User: {t}\nAdam: Got it.\n\n' for f in pick for t in [render(f)] if t)
-def _target(p,m:str):return 'all' if _ALL.search(m) and p.qent in (0,SELFK) and not re.search(r'(?i)\bmy\b',m) else (p.qent,p.qrel) if p.qent else None
 def parse(message:str,history=None):
     p=_P();turns=[];hf=[];hents=set()
     for u,_ in history or []:
-        fs=keep(p.turn(_enc(u).strip()),u);fg=_FORGET.search(str(u)) and _target(p,str(u));turns.append((fs,fg))
-        if not _isq(str(u).strip()):hents|=p.ments
+        fg=_fgt(p,u);fs=[] if fg else keep(p.turn(_enc(u).strip()),u);turns.append((fs,fg))
+        if not fg and not _isq(str(u).strip()):hents|=p.ments
     drop={i for i,(fs,_) in enumerate(turns) for j in range(i+1,len(turns)) for t in [turns[j][1]] if t and fs and (t=='all' or any(f[0]==t[0] and (not t[1] or f[1]==t[1]) for f in fs))}
     for i,(fs,_) in enumerate(turns):hf+=[] if i in drop else fs
-    mf=keep(p.turn(_enc(message).strip()),message);return p,mf,hf,hents,drop
+    p.fg=_fgt(p,message);mf=[] if p.fg else keep(p.turn(_enc(message).strip()),message);return p,mf,hf,hents,drop
 def turn(message:str,history=None,user=None,session=None,dry:bool=False)->dict:
     hist=list(history or []);win=hist[-int(os.environ.get('AMNI_RAY_HIST','24')):];m=str(message).strip();q=_isq(m);p,mf,hf,hents,drop=parse(m if m.endswith('?') or not q else m+'?',win)
     on=enabled();key=user_key(user) if on else None;fs=load(key) if on else [];sess=session if session is not None else _CV.get()[1]
     hwin=[x for i,x in enumerate(win) if i not in drop];out={'route':False,'pre':'','hist':hwin,'reply':None,'facts':[f[:3] for f in mf],'user_key':key}
-    tg=_FORGET.search(m) and not q and _target(p,m)
+    tg=p.fg
     if tg and not dry:
-        nm=p.names.get(tg[0],'') if tg!='all' else '';n=(save(key,[]) or len(fs)) if on and tg=='all' else forget(key,tg[0],tg[1] if any(f.ent==tg[0] and f.rel==tg[1] for f in fs) else 0) if on else 0
-        out['reply']="Okay, I've forgotten everything you told me." if tg=='all' else (f"Okay, I've forgotten what you told me about {'yourself' if tg[0]==SELFK else 'your '+nm}." if n or any(f[0]==tg[0] for f in hf) else "I don't have anything saved about that.");return out
+        nm=p.names.get(tg[0],'') if tg!='all' else '';n=(save(key,[]) or len(fs)) if on and tg=='all' else forget(key,tg[0],tg[1]) if on and any(f.ent==tg[0] and (not tg[1] or f.rel==tg[1]) for f in fs) else 0
+        out['reply']="Okay, I've forgotten everything you told me." if tg=='all' else (f"Okay, I've forgotten what you told me about {'yourself' if tg[0]==SELFK else 'your '+nm}." if n or any(f[0]==tg[0] and (not tg[1] or f[1]==tg[1]) for f in hf) else "I don't have anything saved about that.");return out
     if not q:
         out['route']=bool(mf) or bool(_PRON.search(m))
         if on and mf and not dry:remember(key,mf,sess,len(hist))
