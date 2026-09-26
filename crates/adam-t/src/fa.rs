@@ -1,15 +1,32 @@
 use burn::tensor::{backend::Backend, ops::FloatTensor, DType, Shape, Tensor, TensorData, TensorPrimitive};
 use burn_autodiff::{checkpoint::{base::Checkpointer, strategy::CheckpointStrategy}, grads::Gradients, ops::{Backward, Ops, OpsKind}, Autodiff};
-use burn_cubecl::{kernel::into_contiguous, ops::numeric::empty_device_dtype, tensor::CubeTensor, BoolElement, CubeBackend, CubeRuntime, FloatElement, IntElement};
+use burn_cubecl::{kernel::{into_contiguous, matmul::{matmul, MatmulStrategy}}, ops::numeric::empty_device_dtype, tensor::CubeTensor, BoolElement, CubeBackend, CubeRuntime, FloatElement, IntElement};
 use burn_fusion::{stream::{Operation, OperationStreams}, Fusion, FusionBackend, FusionRuntime};
 use burn_ir::{CustomOpIr, HandleContainer, OperationIr, TensorIr};
-use cubecl::{CubeCount, CubeDim};
+use cubecl::{calculate_cube_count_elemwise, CubeCount, CubeDim};
 use crate::{nrm, tq};
 use std::{marker::PhantomData, sync::LazyLock};
 pub static FLASH: LazyLock<bool> = LazyLock::new(|| std::env::var("ATTN").map(|v| v != "ref").unwrap_or(true));
 pub static FLIN: LazyLock<bool> = LazyLock::new(|| std::env::var("LIN").map(|v| v != "ref").unwrap_or(true));
+pub static XMM: LazyLock<bool> = LazyLock::new(|| std::env::var("XMM").map(|v| v != "0").unwrap_or(true));
 mod kn {
 use cubecl::prelude::*;
+use half::bf16;
+#[cube(launch)]
+pub fn split3_k(x: &Tensor<f32>, o: &mut Tensor<bf16>, c: u32) {
+    let i = ABSOLUTE_POS;
+    if i < x.len() {
+        let cu = c as usize;
+        let v = x[i];
+        let h = bf16::cast_from(v);
+        let r = v - f32::cast_from(h);
+        let m = bf16::cast_from(r);
+        let b = (i / cu) * 3 * cu + i % cu;
+        o[b] = h;
+        o[b + cu] = m;
+        o[b + 2 * cu] = bf16::cast_from(r - f32::cast_from(m));
+    }
+}
 #[cube(launch)]
 pub fn fwd_k(x: &Tensor<f32>, o: &mut Tensor<f32>, lse: &mut Tensor<f32>, t: u32, nh: u32, sc: f32) {
     let (tu, hu, u) = (t as usize, nh as usize, UNIT_POS_X as usize);
@@ -175,15 +192,24 @@ pub fn tl_ref<B: Backend>(x: Tensor<B, 2>, w: Tensor<B, 2>, q: bool) -> Tensor<B
     let a = w / g.clone();
     xi.matmul(a.clone() + (t - a).detach()) * (m * g.mul_scalar(1.0 / 127.0))
 }
-pub fn tl_bwd<B: Backend>(x: Tensor<B, 2>, w: Tensor<B, 2>, dy: Tensor<B, 2>, q: bool) -> (Tensor<B, 2>, Tensor<B, 2>) {
+pub fn tl_fwd<B: Fa>(x: Tensor<B, 2>, w: Tensor<B, 2>, q: bool) -> Tensor<B, 2> {
+    let xn = nrm(x);
+    if !q { return xn.matmul(w); }
+    let m = xn.clone().abs().max_dim(1).clamp_min(1e-5);
+    let (t, g) = tq(w);
+    xmm((xn * m.clone().recip().mul_scalar(127.0)).round().clamp(-128.0, 127.0), t, 1, 1) * (m * g.mul_scalar(1.0 / 127.0))
+}
+pub fn tl_bwd<B: Fa>(x: Tensor<B, 2>, w: Tensor<B, 2>, dy: Tensor<B, 2>, q: bool) -> (Tensor<B, 2>, Tensor<B, 2>) {
     let r = x.clone().square().mean_dim(1).add_scalar(1e-6).sqrt();
     let xn = x / r.clone();
-    let (dn, dw) = if q { let m = xn.clone().abs().max_dim(1).clamp_min(1e-5); let (t, g) = tq(w); let xi = (xn.clone() * m.clone().recip().mul_scalar(127.0)).round().clamp(-128.0, 127.0); (dy.clone().matmul(t.transpose()) * g, xi.transpose().matmul(dy * m.mul_scalar(1.0 / 127.0))) } else { (dy.clone().matmul(w.transpose()), xn.clone().transpose().matmul(dy)) };
+    let (dn, dw) = if q { let m = xn.clone().abs().max_dim(1).clamp_min(1e-5); let (t, g) = tq(w); let xi = (xn.clone() * m.clone().recip().mul_scalar(127.0)).round().clamp(-128.0, 127.0); (xmm(dy.clone(), t.transpose(), 3, 1) * g, xmm(xi.transpose(), dy * m.mul_scalar(1.0 / 127.0), 1, 3)) } else { (dy.clone().matmul(w.transpose()), xn.clone().transpose().matmul(dy)) };
     ((dn.clone() - xn.clone() * (dn * xn).mean_dim(1)) / r, dw)
 }
+pub fn xmm<B: Fa>(a: Tensor<B, 2>, b: Tensor<B, 2>, na: usize, nb: usize) -> Tensor<B, 2> { ft(B::xmm(fp(a), fp(b), na, nb)) }
 pub fn tl<B: Fa>(x: Tensor<B, 2>, w: Tensor<B, 2>, q: bool) -> Tensor<B, 2> { if *FLIN { ft(B::tl(fp(x), fp(w), q)) } else { tl_ref(x, w, q) } }
 pub trait Fa: Backend {
-    fn tl(x: FloatTensor<Self>, w: FloatTensor<Self>, q: bool) -> FloatTensor<Self> { fp(tl_ref::<Self>(ft(x), ft(w), q)) }
+    fn tl(x: FloatTensor<Self>, w: FloatTensor<Self>, q: bool) -> FloatTensor<Self> { fp(tl_fwd::<Self>(ft(x), ft(w), q)) }
+    fn xmm(a: FloatTensor<Self>, b: FloatTensor<Self>, _na: usize, _nb: usize) -> FloatTensor<Self> { fp(ft::<Self, 2>(a).matmul(ft(b))) }
     fn fa_fwd(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> (FloatTensor<Self>, FloatTensor<Self>) { let (o, l) = ref_fwd::<Self>(ft(x), b, t, h); (fp(o), fp(l)) }
     fn fa_bwd(x: FloatTensor<Self>, o: FloatTensor<Self>, lse: FloatTensor<Self>, g: FloatTensor<Self>, b: usize, t: usize, h: usize) -> FloatTensor<Self> { fp(ref_bwd::<Self>(ft(x), ft(o), ft(lse), ft(g), b, t, h)) }
     fn fa(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> FloatTensor<Self> { Self::fa_fwd(x, b, t, h).0 }
@@ -194,6 +220,15 @@ impl Fa for burn::backend::NdArray {}
 impl Fa for burn::backend::Candle {}
 fn ok<R: CubeRuntime>(x: &CubeTensor<R>, t: usize, h: usize) -> bool { x.dtype == DType::F32 && t % 64 == 0 && x.meta.shape()[1] == 3 * 64 * h }
 impl<R: CubeRuntime, F: FloatElement, I: IntElement, BT: BoolElement> Fa for CubeBackend<R, F, I, BT> {
+    fn xmm(a: FloatTensor<Self>, b: FloatTensor<Self>, na: usize, nb: usize) -> FloatTensor<Self> {
+        if !*XMM || a.dtype != DType::F32 || b.dtype != DType::F32 { return fp(ft::<Self, 2>(a).matmul(ft(b))); }
+        let bf = |x: CubeTensor<R>| ft::<Self, 2>(ft::<Self, 2>(x).cast(DType::BF16).into_primitive().tensor());
+        let mm = |x: CubeTensor<R>, y: CubeTensor<R>| matmul(x, y, None, MatmulStrategy::Autotune, DType::F32).expect("xmm");
+        let n = b.meta.shape()[1];
+        if na == 3 { let bb = bf(b); return mm(split3(a), fp(Tensor::cat(vec![bb.clone(), bb.clone(), bb], 0))); }
+        if nb == 3 { let o = ft::<Self, 2>(mm(fp(bf(a)), split3(b))); return fp(o.clone().narrow(1, 0, n) + o.clone().narrow(1, n, n) + o.narrow(1, 2 * n, n)); }
+        mm(fp(bf(a)), fp(bf(b)))
+    }
     fn fa_fwd(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> (FloatTensor<Self>, FloatTensor<Self>) {
         if !ok(&x, t, h) { let (o, l) = ref_fwd::<Self>(ft(x), b, t, h); return (fp(o), fp(l)); }
         let x = into_contiguous(x);
@@ -213,8 +248,20 @@ impl<R: CubeRuntime, F: FloatElement, I: IntElement, BT: BoolElement> Fa for Cub
         dx
     }
 }
+fn split3<R: CubeRuntime>(x: CubeTensor<R>) -> CubeTensor<R> {
+    let x = into_contiguous(x);
+    let ([r, c], cd) = ([x.meta.shape()[0], x.meta.shape()[1]], CubeDim::new_1d(256));
+    let o = empty_device_dtype::<R>(x.client.clone(), x.device.clone(), Shape::new([r, 3 * c]), DType::BF16);
+    kn::split3_k::launch::<R>(&x.client.clone(), calculate_cube_count_elemwise(&x.client, r * c, cd), cd, x.into_tensor_arg(), o.clone().into_tensor_arg(), c as u32);
+    o
+}
 #[derive(Clone, Debug)]
 struct FwdOp<B> { desc: CustomOpIr, s: [usize; 3], _b: PhantomData<B> }
+#[derive(Clone, Debug)]
+struct XmmOp<B> { desc: CustomOpIr, s: [usize; 2], _b: PhantomData<B> }
+impl<B: FusionBackend + Fa> Operation<B::FusionRuntime> for XmmOp<B> {
+    fn execute(&self, hs: &mut HandleContainer<<B::FusionRuntime as FusionRuntime>::FusionHandle>) { let ([a, b], [o]) = self.desc.as_fixed(); let r = B::xmm(hs.get_float_tensor::<B>(a), hs.get_float_tensor::<B>(b), self.s[0], self.s[1]); hs.register_float_tensor::<B>(&o.id, r); }
+}
 #[derive(Clone, Debug)]
 struct BwdOp<B> { desc: CustomOpIr, s: [usize; 3], _b: PhantomData<B> }
 impl<B: FusionBackend + Fa> Operation<B::FusionRuntime> for FwdOp<B> {
@@ -224,6 +271,13 @@ impl<B: FusionBackend + Fa> Operation<B::FusionRuntime> for BwdOp<B> {
     fn execute(&self, hs: &mut HandleContainer<<B::FusionRuntime as FusionRuntime>::FusionHandle>) { let ([x, o, l, g], [dx]) = self.desc.as_fixed(); let [b, t, h] = self.s; let r = B::fa_bwd(hs.get_float_tensor::<B>(x), hs.get_float_tensor::<B>(o), hs.get_float_tensor::<B>(l), hs.get_float_tensor::<B>(g), b, t, h); hs.register_float_tensor::<B>(&dx.id, r); }
 }
 impl<B: FusionBackend + Fa> Fa for Fusion<B> {
+    fn xmm(a: FloatTensor<Self>, b: FloatTensor<Self>, na: usize, nb: usize) -> FloatTensor<Self> {
+        let (c, dt, sh) = (a.client.clone(), a.dtype, Shape::new([a.shape[0], b.shape[1]]));
+        let st = OperationStreams::with_inputs([&a, &b]);
+        let o = TensorIr::uninit(c.create_empty_handle(), sh, dt);
+        let desc = CustomOpIr::new("adam_t_xmm", &[a.into_ir(), b.into_ir()], &[o]);
+        c.register(st, OperationIr::Custom(desc.clone()), XmmOp::<B> { desc, s: [na, nb], _b: PhantomData }).remove(0)
+    }
     fn fa_fwd(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> (FloatTensor<Self>, FloatTensor<Self>) {
         let (c, dt, d) = (x.client.clone(), x.dtype, x.shape[1] / 3);
         let st = OperationStreams::with_inputs([&x]);
