@@ -4,8 +4,10 @@ use burn_cubecl::{kernel::into_contiguous, ops::numeric::empty_device_dtype, ten
 use burn_fusion::{stream::{Operation, OperationStreams}, Fusion, FusionBackend, FusionRuntime};
 use burn_ir::{CustomOpIr, HandleContainer, OperationIr, TensorIr};
 use cubecl::{CubeCount, CubeDim};
+use crate::{nrm, tq};
 use std::{marker::PhantomData, sync::LazyLock};
 pub static FLASH: LazyLock<bool> = LazyLock::new(|| std::env::var("ATTN").map(|v| v != "ref").unwrap_or(true));
+pub static FLIN: LazyLock<bool> = LazyLock::new(|| std::env::var("LIN").map(|v| v != "ref").unwrap_or(true));
 mod kn {
 use cubecl::prelude::*;
 #[cube(launch)]
@@ -163,7 +165,25 @@ pub fn ref_bwd<B: Backend>(x: Tensor<B, 2>, o: Tensor<B, 2>, lse: Tensor<B, 1>, 
     let ds = p * (dp - (g4 * o4).sum_dim(3));
     Tensor::cat(vec![ds.clone().matmul(k).mul_scalar(sc), ds.swap_dims(2, 3).matmul(q).mul_scalar(sc), dv], 1).swap_dims(1, 2).reshape([b * t, 3 * h * dh])
 }
+pub fn tl_ref<B: Backend>(x: Tensor<B, 2>, w: Tensor<B, 2>, q: bool) -> Tensor<B, 2> {
+    let xn = nrm(x);
+    if !q { return xn.matmul(w); }
+    let m = xn.clone().abs().max_dim(1).clamp_min(1e-5).detach();
+    let xs = xn * m.clone().recip().mul_scalar(127.0);
+    let xi = xs.clone() + (xs.clone().round().clamp(-128.0, 127.0) - xs).detach();
+    let (t, g) = tq(w.clone().detach());
+    let a = w / g.clone();
+    xi.matmul(a.clone() + (t - a).detach()) * (m * g.mul_scalar(1.0 / 127.0))
+}
+pub fn tl_bwd<B: Backend>(x: Tensor<B, 2>, w: Tensor<B, 2>, dy: Tensor<B, 2>, q: bool) -> (Tensor<B, 2>, Tensor<B, 2>) {
+    let r = x.clone().square().mean_dim(1).add_scalar(1e-6).sqrt();
+    let xn = x / r.clone();
+    let (dn, dw) = if q { let m = xn.clone().abs().max_dim(1).clamp_min(1e-5); let (t, g) = tq(w); let xi = (xn.clone() * m.clone().recip().mul_scalar(127.0)).round().clamp(-128.0, 127.0); (dy.clone().matmul(t.transpose()) * g, xi.transpose().matmul(dy * m.mul_scalar(1.0 / 127.0))) } else { (dy.clone().matmul(w.transpose()), xn.clone().transpose().matmul(dy)) };
+    ((dn.clone() - xn.clone() * (dn * xn).mean_dim(1)) / r, dw)
+}
+pub fn tl<B: Fa>(x: Tensor<B, 2>, w: Tensor<B, 2>, q: bool) -> Tensor<B, 2> { if *FLIN { ft(B::tl(fp(x), fp(w), q)) } else { tl_ref(x, w, q) } }
 pub trait Fa: Backend {
+    fn tl(x: FloatTensor<Self>, w: FloatTensor<Self>, q: bool) -> FloatTensor<Self> { fp(tl_ref::<Self>(ft(x), ft(w), q)) }
     fn fa_fwd(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> (FloatTensor<Self>, FloatTensor<Self>) { let (o, l) = ref_fwd::<Self>(ft(x), b, t, h); (fp(o), fp(l)) }
     fn fa_bwd(x: FloatTensor<Self>, o: FloatTensor<Self>, lse: FloatTensor<Self>, g: FloatTensor<Self>, b: usize, t: usize, h: usize) -> FloatTensor<Self> { fp(ref_bwd::<Self>(ft(x), ft(o), ft(lse), ft(g), b, t, h)) }
     fn fa(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> FloatTensor<Self> { Self::fa_fwd(x, b, t, h).0 }
@@ -231,7 +251,26 @@ impl<B: Fa> Backward<B, 1> for FaBack {
         if let Some(n) = p { grads.register::<B>(n.id, B::fa_bwd(x, o, l, g, b, t, h)); }
     }
 }
+#[derive(Debug)]
+struct TlBack;
+impl<B: Fa> Backward<B, 2> for TlBack {
+    type State = (FloatTensor<B>, FloatTensor<B>, bool);
+    fn backward(self, ops: Ops<Self::State, 2>, grads: &mut Gradients, _: &mut Checkpointer) {
+        let [px, pw] = ops.parents;
+        let dy = grads.consume::<B>(&ops.node);
+        let (x, w, q) = ops.state;
+        let (dx, dw) = tl_bwd::<B>(ft(x), ft(w), ft(dy), q);
+        if let Some(n) = px { grads.register::<B>(n.id, fp(dx)); }
+        if let Some(n) = pw { grads.register::<B>(n.id, fp(dw)); }
+    }
+}
 impl<B: Fa, C: CheckpointStrategy> Fa for Autodiff<B, C> {
+    fn tl(x: FloatTensor<Self>, w: FloatTensor<Self>, q: bool) -> FloatTensor<Self> {
+        match TlBack.prepare::<C>([x.node.clone(), w.node.clone()]).compute_bound().stateful() {
+            OpsKind::Tracked(prep) => { let y = B::tl(x.primitive.clone(), w.primitive.clone(), q); prep.finish((x.primitive, w.primitive, q), y) }
+            OpsKind::UnTracked(prep) => prep.finish(B::tl(x.primitive, w.primitive, q)),
+        }
+    }
     fn fa(x: FloatTensor<Self>, b: usize, t: usize, h: usize) -> FloatTensor<Self> {
         match FaBack.prepare::<C>([x.node.clone()]).compute_bound().stateful() {
             OpsKind::Tracked(prep) => { let (o, l) = B::fa_fwd(x.primitive.clone(), b, t, h); prep.finish((x.primitive, o.clone(), l, [b, t, h]), o) }

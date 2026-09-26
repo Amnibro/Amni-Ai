@@ -42,16 +42,7 @@ pub fn nrm<B: Backend>(x: Tensor<B, 2>) -> Tensor<B, 2> { x.clone() / x.square()
 pub fn tq<B: Backend>(w: Tensor<B, 2>) -> (Tensor<B, 2>, Tensor<B, 2>) { let g = w.clone().abs().mean().reshape([1, 1]).add_scalar(1e-6); let h = g.clone().mul_scalar(0.5); (((w.clone() - h.clone()).sign() + (w + h).sign()).mul_scalar(0.5).round(), g) }
 impl<B: Backend> Lin<B> {
     pub fn new(i: usize, o: usize, sd: f64, dev: &B::Device) -> Self { Lin { w: rnd([i, o], sd, dev) } }
-    pub fn fwd(&self, x: Tensor<B, 2>, q: bool) -> Tensor<B, 2> {
-        let (xn, w) = (nrm(x), self.w.val());
-        if !q { return xn.matmul(w); }
-        let m = xn.clone().abs().max_dim(1).clamp_min(1e-5).detach();
-        let xs = xn * m.clone().recip().mul_scalar(127.0);
-        let xi = xs.clone() + (xs.clone().round().clamp(-128.0, 127.0) - xs).detach();
-        let (t, g) = tq(w.clone().detach());
-        let a = w / g.clone();
-        xi.matmul(a.clone() + (t - a).detach()) * (m * g.mul_scalar(1.0 / 127.0))
-    }
+    pub fn fwd(&self, x: Tensor<B, 2>, q: bool) -> Tensor<B, 2> where B: Fa { fa::tl(x, self.w.val(), q) }
 }
 impl<B: Backend> Core<B> {
     pub fn new(c: &Cfg, dev: &B::Device) -> Self { let so = 0.02 / (2.0 * c.l as f64).sqrt(); Core { emb: rnd([c.v, c.d], 0.02, dev), pos: rnd([c.t, c.d], 0.02, dev), blk: (0..c.l).map(|_| Blk { qkv: Lin::new(c.d, 3 * c.d, 0.02, dev), o: Lin::new(c.d, c.d, so, dev), f1: Lin::new(c.d, c.ff, 0.02, dev), f2: Lin::new(c.ff, c.d, so, dev) }).collect(), head: Lin::new(c.d, c.v, 0.02, dev) } }

@@ -182,7 +182,16 @@ fn main() -> io::Result<()> {
             let g = |k: &str, d: usize| var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
             let (s, it, md) = ([g("FA_B", 8), g("FA_T", 512), g("FA_H", 8)], g("FA_IT", 20), var("FA_MODE").unwrap_or_else(|_| "check".into()));
             let dev = WgpuDevice::DiscreteGpu(0);
-            if md == "check" {
+            if md == "lin" {
+                let (n, i, o) = (g("FA_N", 4096), g("FA_I", 512), g("FA_O", 2048));
+                [true, false].iter().for_each(|&q| {
+                    let (x, w, r) = (Tensor::<Wgpu, 2>::random([n, i], Distribution::Normal(0.0, 1.0), &dev), Tensor::<Wgpu, 2>::random([i, o], Distribution::Normal(0.0, 0.02), &dev), Tensor::<Wgpu, 2>::random([n, o], Distribution::Normal(0.0, 1.0), &dev));
+                    let run = |f: bool| { let (xa, wa) = (Tensor::<Autodiff<Wgpu>, 2>::from_inner(x.clone()).require_grad(), Tensor::<Autodiff<Wgpu>, 2>::from_inner(w.clone()).require_grad()); let y = if f { fa::tl(xa.clone(), wa.clone(), q) } else { fa::tl_ref(xa.clone(), wa.clone(), q) }; let gr = (y.clone() * Tensor::<Autodiff<Wgpu>, 2>::from_inner(r.clone())).sum().backward(); (f1(y.inner()), f1(xa.grad(&gr).unwrap()), f1(wa.grad(&gr).unwrap())) };
+                    let ((y1, x1, w1), (y2, x2, w2)) = (run(true), run(false));
+                    let md = |a: &[f32], b: &[f32]| (a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0f32, f32::max), b.iter().fold(0f32, |m, v| m.max(v.abs())));
+                    println!("{{\"lin_check\": {{\"tern\": {q}, \"n\": {n}, \"i\": {i}, \"o\": {o}, \"y_maxdiff_maxabs\": {:?}, \"dx_maxdiff_maxabs\": {:?}, \"dw_maxdiff_maxabs\": {:?}}}}}", md(&y1, &y2), md(&x1, &x2), md(&w1, &w2));
+                });
+            } else if md == "check" {
                 [([1usize, 128usize, 2usize], 1.0f64), ([1, 128, 2], 3.0)].iter().for_each(|&(s, sd)| println!("{}", fa_cmp::<Autodiff<NdArray>>(&NdArrayDevice::Cpu, s, sd)));
                 [([2usize, 256usize, 8usize], 1.0f64), ([2, 256, 8], 3.0), ([1, 1024, 8], 1.0), (s, 1.0)].iter().for_each(|&(s, sd)| { println!("{}", fa_cmp::<Autodiff<Wgpu>>(&dev, s, sd)); nap(thr(&c.thf), 200.0, c.unit); });
             } else {
