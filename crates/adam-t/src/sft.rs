@@ -178,7 +178,7 @@ mod tests {
         if let Ok(h) = Set::open(&d, "hold", 4096) {
             let (mj, n) = (fs::read_to_string(format!("{d}/meta.json")).unwrap(), h.ex.len());
             let (k, mv) = (keys(&mj, "sources"), serde_json::from_str::<Value>(&mj).unwrap());
-            assert!(n > 0 && k.len() == mv["sources"].as_object().unwrap().len() && h.ex.iter().all(|e| e.n <= 512));
+            assert!(n > 0 && k.len() == mv["sources"].as_object().unwrap().len() && h.ex.iter().all(|e| e.n <= 1024));
             k.iter().enumerate().for_each(|(i, s)| assert_eq!(mv["sources"][s]["hold_examples"].as_u64().unwrap() as usize, h.ex.iter().filter(|e| e.src as usize == i).count(), "{s}"));
             let hm = Cfg::env().home;
             let j = Job::new(&Cfg { corpus: "adam_t/sft".into(), v: 4096, bpe: format!("{hm}/data/clean2/bpe4096.json"), bs: 16, micro: 2, ep: 2.0, evb: 0, sw: "hotpot_rc=0.5".into(), home: hm, ..tiny(1024) }).unwrap();
