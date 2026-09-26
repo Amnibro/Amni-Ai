@@ -83,6 +83,7 @@ dependencies = [
  "burn-ir",
  "bytemuck",
  "cubecl",
+ "half",
  "memmap2",
  "pollster",
  "rayon",
