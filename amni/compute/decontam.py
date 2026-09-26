@@ -4,7 +4,7 @@ from pathlib import Path
 from numpy.lib.stride_tricks import sliding_window_view as swv
 ROOT=Path(__file__).resolve().parents[2];EVD=ROOT/"data"/"concepts"/"eval";CACHE=EVD/".decontam_cache";VER=3;SEED=17;KEEP=4;MIN_DISTINCT=4
 PATS=("data/concepts/eval/**/*.json*","data/rchat/eval/conv_*.jsonl","data/webeval/*","data/code_eval/*.jsonl","data/chat*/hold_eval.jsonl","data/concepts/eval/v20_m13/*","data/concepts/eval/v20_m15/**/*","data/math/gsm8k/test*.jsonl","data/math/svamp/*.json","data/adam_t/eval/**/*.json*")
-SKIP=re.compile(r"(?i)report|nightly|_stub|harvested_tiles|prereg_lock|(^|_)meta\.json$|\.(log|pid|md|tmp|tgz|gz|zip|npz|npy|bin|pt|txt)$")
+SKIP=re.compile(r"(?i)report|nightly|_stub|harvested_tiles|prereg_lock|(^|[_/])meta\.json$|\.(log|pid|md|tmp|tgz|gz|zip|npz|npy|bin|pt|txt)$")
 TOK=re.compile(r"[^\W_]+");_MEMO={}
 class Index:
  __slots__=("n","V","R","H","M","groups","files","key","stats")
@@ -13,7 +13,7 @@ def rel(p)->str:
  p=Path(p).resolve();return str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p)
 def group(p)->str:
  s=rel(p).split("/");return "m13" if "v20_m13" in s else "m15" if "v20_m15" in s else ("concepts" if s[1]=="concepts" else s[2] if s[1]=="math" and len(s)>3 else s[1]) if s[0]=="data" and len(s)>2 else Path(p).parent.name
-def eval_sources()->list:return sorted({p.resolve() for pat in PATS for p in ROOT.glob(pat) if p.is_file() and not SKIP.search(p.name) and ".decontam_cache" not in p.parts})
+def eval_sources()->list:return sorted({p.resolve() for pat in PATS for p in ROOT.glob(pat) if p.is_file() and not SKIP.search(p.relative_to(ROOT).as_posix()) and ".decontam_cache" not in p.parts})
 def load(p):
  t=Path(p).read_text(encoding="utf-8",errors="replace")
  try:return json.loads(t)
