@@ -96,3 +96,11 @@ At the end, a ternary run exports `model.gf17`. It then checks that the roundtri
 - `adam-t bench`: training-step throughput.
 - `adam-t mm`: GEMM microbenchmark comparing WGSL and burn.
 - `adam-t lut <model.gf17> [windows]`: CPU LUT bits per byte on hold windows.
+- `adam-t fa`: checks and benchmarks the custom GPU ops. `FA_MODE=check` compares flash attention's output and gradients with burn's attention; `FA_MODE=flash|ref` times attention forward+backward (`FA_B`, `FA_T`, `FA_H`, `FA_IT`); `FA_MODE=lin` checks the fused ternary linear against the autodiff STE reference; `FA_MODE=xmm` times the exact bf16 cooperative-matrix GEMMs.
+
+### Custom GPU ops (`src/fa.rs`)
+
+- **Flash attention:** CubeCL kernels (tiled online-softmax forward that stores only the log-sum-exp, and a recompute backward split into a dQ kernel and a dK/dV kernel). They read the fused `qkv` matmul output directly and write `o` in `[B*T, D]` layout, so no head transposes. Registered as a custom op for `CubeBackend`, `Fusion` and `Autodiff`; other backends use the reference formula. Needs head dim 64 and `T % 64 == 0`, otherwise it falls back. `ATTN=ref` restores burn's attention.
+- **Fused ternary linear:** one autodiff op per linear map that saves only `x` and `W` and recomputes RMSNorm, the activation grid and the trits in backward, with the same STE gradients. `LIN=ref` restores the op-by-op autodiff path.
+- **Exact cooperative-matrix GEMMs:** the ternary forward `xi · t` has integer operands (|xi| <= 128, t in {-1,0,1}), so it runs in bf16 on the matrix cores with f32 accumulation and stays bit-exact. Backward operands that are real floats are split by one kernel into three bf16 terms whose sum is the f32 value, so the products are exact too. `XMM=0` falls back to f32 GEMMs.
+- **Pausing a run:** `touch $RUN_DIR/STOP` makes the trainer checkpoint and exit, and `campaign.sh` stops without an eval. `crates/adam-t/t30m.sh` is the 30M launcher.

@@ -278,12 +278,102 @@ The first agent's first 2,500 steps of `smoke_tern` and all of `smoke_tern_mem` 
 - **A throttle read and sleep after every micro-step**, so the governor's cap applies at a finer grain.
 - **ctx 512 tokens (about 1.7 KB)**, with micro-batches of 8 windows. The attention tensors come to about 2.7 GB in total.
 
-**The next kernel step is a hand-written WGSL flash-attention forward/backward.** It removes the T² memory, and it is needed for 120M at ctx ≥ 1K.
+**The flash-attention forward/backward is now in (section 7c).** It removes the T² memory.
 
 **Running the 30M:**
 - It runs through `crates/adam-t/campaign.sh`.
 - Segments are `SEG` minutes long and each ends with a checkpoint.
 - Between segments, the ADAM-T-EVAL harness scores the checkpoint through `adam-t serve <run dir>` (proto 1). The trainer is paused while it runs, so there is still only one GPU job.
+
+## 7c. Phase 2 (ADAM-T-c, 2026-09-25): custom GPU ops and the 30M run
+
+Three custom ops now sit under the trainer (`crates/adam-t/src/fa.rs`). Each is a burn custom op for `CubeBackend`, `Fusion` and `Autodiff`, with a reference path for the other backends and an env switch back to the old path.
+
+**1. Flash attention (`ATTN=ref` to disable).**
+- The kernels are hand-written in CubeCL, burn's kernel language, which compiles to SPIR-V for Vulkan. A raw WGSL source kernel does not run on burn's SPIR-V compiler path.
+- The forward is a tiled online softmax: 64-row query blocks, 64-key K/V tiles in shared memory, two lanes per row, and a subgroup shuffle for the dot products. It stores only the log-sum-exp.
+- The backward recomputes: one kernel for dQ (it also writes rowsum(dO·O)) and one for dK/dV. No atomics are needed.
+- The kernels read the fused `qkv` matmul output and write `o` as `[B·T, D]`, so the head transposes are gone as well.
+- **Gradient check** (`adam-t fa`, random inputs, against burn's attention):
+
+| B×T×H | input sd | max \|Δ out\| | max \|Δ grad\| | max \|grad\| |
+|---|---|---|---|---|
+| 2×256×8 | 1 | 1.4e-6 | 1.7e-6 | 4.7 |
+| 2×256×8 | 3 | 3.5e-5 | 2.0e-4 | 36 |
+| 1×1024×8 | 1 | 1.2e-6 | 1.9e-6 | 4.7 |
+| 8×512×8 | 1 | 1.3e-6 | 2.3e-6 | 5.7 |
+
+  The reference formulas used on CPU match burn's autodiff to 2e-5. Every case is under the 1e-3 bar.
+
+- **Attention alone**, forward and backward for one layer (H=8, head dim 64):
+
+| B×T | flash ms | burn ms | flash VRAM | burn VRAM |
+|---|---|---|---|---|
+| 8×512 | 5.9 | 15.4 | 0.20 GB | 0.80 GB |
+| 32×512 | 20.4 | 52.1 | 0.74 GB | 1.88 GB |
+| 4×1024 | 9.8 | 26.8 | 0.20 GB | 0.94 GB |
+| 16×1024 | 33.7 | 87.9 | 0.73 GB | 3.49 GB |
+
+  A vec4 shared-memory rewrite, with two rows per thread in the forward, measured the same (32.6 ms against 33.7 ms), so the simpler kernel stays.
+
+**2. Fused ternary-STE linear (`LIN=ref` to disable).**
+- One autodiff node per linear map. It saves only `x` and `W`, and the backward recomputes RMSNorm, the 255-level grid and the trits.
+- The gradients are the same STE gradients:
+  - dx̂ = γ·(dy·tᵀ), then the RMSNorm backward;
+  - dW = xiᵀ·(dy·m/127).
+- The forward is bit-identical to the old path. dx agrees to 6e-6 and dW to 1e-3 on values of about 300.
+- This roughly halves activation memory.
+
+**3. Exact cooperative-matrix GEMMs (`XMM=0` to disable).**
+- On RDNA4, burn's matmul with bf16 or f16 inputs and f32 output runs at 17–36 TFLOP/s, against 3.8–5.7 TFLOP/s in f32 (`adam-t mm`).
+- The ternary forward `xi·t` has only integer operands (|xi| ≤ 128, t ∈ {−1,0,1}), which are exact in bf16. The sums stay below 2^24, so the WMMA forward is **bit-exact integer arithmetic**: max \|Δy\| = 0.
+- In the backward, dy is a real float. One CubeCL kernel splits it into three bf16 terms whose sum is the f32 value, then runs one GEMM over K concatenation (dx̂) or N concatenation (dW). The products are exact and accumulate in f32, so this is not a precision reduction.
+- Measured agreement with the f32 path is 2e-5 relative.
+
+**Full 30M training step.** Each step is 16,384 tokens (d 512, L 10, H 8, FF 2048, BPE-4096, ternary, 4 × 2^15 memory rows). Times are GPU ms per step, with throttle sleeps excluded. Peak VRAM includes about 1.2 GB of desktop.
+
+| code | ctx | windows per micro-batch | ms/step | tokens/s (GPU) | peak VRAM |
+|---|---|---|---|---|---|
+| phase 1 (burn attention) | 512 | 8 (MICRO 4) | 1914 | 8.6K | 10.9 GB |
+| phase 1 | 512 | 32 (MICRO 1) | 4290 | 3.8K | 16.9 GB + 16.7 GB GTT spill |
+| + flash | 512 | 8 | 1478 | 11.1K | 9.3 GB |
+| + flash | 512 | 16 | 1197 | 13.7K | 14.3 GB |
+| + flash | 1024 | 8 | 1535 | 10.7K | 15.7 GB + 8.6 GB spill |
+| + fused linear | 512 | 16 | 1097 | 14.9K | 7.5 GB |
+| + fused linear | 1024 | 8 | 1197 | 13.7K | 7.5 GB |
+| + exact WMMA | 512 | 16 | 1036 | **15.8K** | 7.8 GB |
+| + exact WMMA (40-step bench) | 1024 | 8 | 1128 | **14.5K** | 7.5 GB |
+
+**Reading the step table:**
+- **Under the 40% governor**, the live run does 605 steps per 30-minute segment: 2.98 s/step wall, or **5.5K tokens/s**. The card's mean total busy is 40.0%.
+- **The ≥20K tokens/s target is not met.** That holds under the cap (5.5K) and uncapped (14.5–15.8K GPU-time).
+- **What still costs time:**
+  - Attention at ctx 1024 takes about 340 ms/step. The scalar-f32 kernel runs at about 2.4 TFLOP/s.
+  - The three-term backward GEMMs.
+  - Elementwise traffic.
+- **What would reach 20K:** a register-tiled or WMMA attention (exactness for float Q/K needs split terms, 3–9 products). A larger governor cap would also do it.
+
+**The 30M run (`exports/adam_t/t30m_bpe4096`, user unit `adam-t-30m`, launcher `crates/adam-t/t30m.sh`):**
+- **Shape:** d 512, L 10, H 8, FF 2048, ctx **1024**. With flash, ctx 1024 costs only about 9% more than 512.
+- **Batch:** BS 16 × 1024 (MICRO 2).
+- **Optimiser:** LR 2e-3, 1,000 warm-up steps, cosine over 35,000 steps. That is 573M tokens, about 2 GB of text.
+- **Model:** TERN 1, MEM 1, NGRAMS 2,3,4,6, MEM_LOG2 15.
+- **Data:** `adam_t/stream`, the final 12.566B-token file (sha256 97a193ca…b72b). The run sees all of it from step 804 on.
+- **Checkpoints and pauses:** a checkpoint every 250 steps and at each 30-minute segment end. `touch STOP` pauses at a checkpoint.
+- **Harness eval:** every 4 segments, through `adam-t serve <run dir>` on the GPU while training is stopped. One eval takes 21 min, of which bpb is 11.4 min.
+
+**First harness eval, step 804** (13M tokens seen; `data/adam_t/eval/report_adam-t-t30m-bpe4096_804.json`, prod):
+
+| model | NQ MC | RC MC | D3 MC | NQ/RC/D3 gen | bpb clean2 | bpb stream | ARC-E norm | PIQA norm |
+|---|---|---|---|---|---|---|---|---|
+| adam-t 30M @804 | 26.4 | 23.8 | 28.5 | 0 / 0 / 0 | 2.384 | 2.153 | 27.4 | 49.4 |
+| hash-field base v18 | 24.5 | 26.2 | 25.0 | 0 / 0 / 0 | 1.904 | – | 30.4 | 53.4 |
+| v19 memory model | 25.5 | 25.5 | 89.4 | 0 / 0.2 / 89.8 hit | 2.347 | – | 27.8 | 56.4 |
+
+**Reading the eval:**
+- Every accuracy is at chance, as expected at 2% of the schedule, so no milestone is reached yet (S, R, M, K, Z).
+- Greedy generations are empty: the model's first token after `Answer:` is still a newline.
+- The next eval is at the end of segment 4 of this launch.
 
 ## 8. Scaling plan, data plan and compute budget
 
