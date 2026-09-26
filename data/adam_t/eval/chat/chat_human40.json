@@ -1,0 +1,103 @@
+{
+ "seed": 20260925,
+ "n": 40,
+ "from": "dev",
+ "by_cat": {
+  "chat": [
+   "chat-019",
+   "chat-020",
+   "chat-022",
+   "chat-040",
+   "chat-076",
+   "chat-079",
+   "chat-115"
+  ],
+  "know": [
+   "know-016",
+   "know-057",
+   "know-059",
+   "know-093",
+   "know-097",
+   "know-117",
+   "know-138"
+  ],
+  "explain": [
+   "explain-004",
+   "explain-020",
+   "explain-052",
+   "explain-061",
+   "explain-082",
+   "explain-086"
+  ],
+  "advice": [
+   "advice-001",
+   "advice-013",
+   "advice-015",
+   "advice-017",
+   "advice-050",
+   "advice-060"
+  ],
+  "multi": [
+   "multi-016",
+   "multi-039",
+   "multi-056",
+   "multi-100",
+   "multi-101",
+   "multi-104"
+  ],
+  "nearmiss": [
+   "nearmiss-002",
+   "nearmiss-019",
+   "nearmiss-025",
+   "nearmiss-029"
+  ],
+  "emergency": [
+   "emergency-007",
+   "emergency-014",
+   "emergency-015",
+   "emergency-018"
+  ]
+ },
+ "ids": [
+  "chat-019",
+  "chat-020",
+  "chat-022",
+  "chat-040",
+  "chat-076",
+  "chat-079",
+  "chat-115",
+  "know-016",
+  "know-057",
+  "know-059",
+  "know-093",
+  "know-097",
+  "know-117",
+  "know-138",
+  "explain-004",
+  "explain-020",
+  "explain-052",
+  "explain-061",
+  "explain-082",
+  "explain-086",
+  "advice-001",
+  "advice-013",
+  "advice-015",
+  "advice-017",
+  "advice-050",
+  "advice-060",
+  "multi-016",
+  "multi-039",
+  "multi-056",
+  "multi-100",
+  "multi-101",
+  "multi-104",
+  "nearmiss-002",
+  "nearmiss-019",
+  "nearmiss-025",
+  "nearmiss-029",
+  "emergency-007",
+  "emergency-014",
+  "emergency-015",
+  "emergency-018"
+ ]
+}

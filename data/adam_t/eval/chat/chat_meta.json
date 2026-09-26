@@ -1,0 +1,58 @@
+{
+ "n": 616,
+ "by_cat": {
+  "chat": {
+   "dev": 79,
+   "test": 40
+  },
+  "know": {
+   "dev": 102,
+   "test": 51
+  },
+  "explain": {
+   "dev": 59,
+   "test": 30
+  },
+  "advice": {
+   "dev": 59,
+   "test": 30
+  },
+  "multi": {
+   "dev": 71,
+   "test": 35
+  },
+  "nearmiss": {
+   "dev": 27,
+   "test": 13
+  },
+  "emergency": {
+   "dev": 13,
+   "test": 7
+  }
+ },
+ "n_split": {
+  "dev": 410,
+  "test": 206
+ },
+ "dev_frac": 0.6666666666666666,
+ "seed": 20260925,
+ "human40": {
+  "chat": 7,
+  "know": 7,
+  "explain": 6,
+  "advice": 6,
+  "multi": 6,
+  "nearmiss": 4,
+  "emergency": 4
+ },
+ "emergency_detector_fires": {
+  "emergency": 18,
+  "nearmiss": 2
+ },
+ "license": "CC0-1.0 (written from scratch for ADAM-T, 2026-09-25; no dataset text)",
+ "source": "data/adam_t/eval/chat/chat_src.jsonl",
+ "files": {
+  "dev": "data/adam_t/eval/chat/chat_dev.jsonl",
+  "test": "data/adam_t/eval/chat/chat_test.jsonl"
+ }
+}

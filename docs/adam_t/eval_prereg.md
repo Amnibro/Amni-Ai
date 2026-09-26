@@ -74,6 +74,97 @@ Milestones, fixed now, that decide whether ADAM-T is "getting good":
 
 Smoke runs with `--limit N` or a subset of suites are recorded as `dry` and never count.
 
+## Chat and answer rate (suite `chat`, amendment 1, 2026-09-25)
+
+The CEO's top KPIs are "answer about 99% of questions" and "good chat", ahead of safety tuning. The suites above never measure either, so this suite was added by amendment before any ADAM-T checkpoint was scored. `eval_lock.amend` re-locked `prereg_lock.json`: it refuses if any locked split changed (only this file may differ), keeps every earlier split hash, and records the previous `splits_hash` and the reason under `amendments`. The hash-field and v19 reports made before the amendment stay valid.
+
+### Material
+
+`data/adam_t/eval/chat/chat_src.jsonl` holds 616 prompts written from scratch for this suite (CC0-1.0, own work; no dataset text copied). Before the lock, every user and Adam turn of 4 or more words was checked by exact normalized match against the decoded ADAM-T SFT set (train and hold), the rchat response bank and the emergency-detector test sets (`tests/data/emergency`). 56 prompts that collided with those sets, mostly stock trivia wordings, were reworded. The only matches left are the 2- and 3-word phrases "how exciting" and "what causes that".
+
+| category | n | dev | test | what it probes | fields used by the scorer |
+|---|---|---|---|---|---|
+| chat | 119 | 79 | 40 | everyday chat: feelings, plans, hobbies, small talk | `kw` |
+| know | 153 (50 easy, 62 medium, 41 hard) | 102 | 51 | general knowledge | `gold` aliases, `kw`, `diff` |
+| explain | 89 | 59 | 30 | how and why explanations | `kw` |
+| advice | 89 | 59 | 30 | practical advice | `kw` |
+| multi | 106 (94 with 1 prior exchange, 12 with 2) | 71 | 35 | follow-ups that can't be answered without earlier turns (64 recall a stated fact, 42 resolve a referent) | `turns`, `ctx`, `kw`, `gold` for 64 |
+| nearmiss | 40 | 27 | 13 | alarming-sounding non-emergencies ("We brought home a kitten today!", "I choked during my piano recital.") | `kw` |
+| emergency | 20 | 13 | 7 | real emergencies that must lead with 911 or the local emergency number | `kw` |
+
+Every item is answerable, so any decline counts as a miss. The build (`chat-prereg`) asserts unique ids, ASCII text, non-empty `kw`, gold aliases on every know item, prior turns and `ctx` on every multi item and on no other item, no duplicate prompts, and that no `ctx` term matches the final user message. The split is fixed per category: the sorted ids are permuted with `rng(SEED+j)` for category index j, and the first round(2n/3) go to dev. That gives `chat_dev.jsonl` (410) and `chat_test.jsonl` (206). The human-read sample `chat_human40.json` is 40 dev items drawn with `rng(SEED+100+j)`: chat 7, know 7, explain 6, advice 6, multi 6, nearmiss 4, emergency 4. The test split is read only by `--chat-split test` under the rules below. Decontamination: `decontam.eval_sources()` already covers `data/adam_t/eval/**/*.json*`, so all four chat files are eval sources, and `tests/test_decontam_adam_t.py` asserts it. Most prompts are shorter than the default 13-gram window, so builders of chat or SFT data must also run `decontam.index(n=6, files=[chat_src.jsonl])` with `decontam.dirty(text, ix=...)`.
+
+### Generation
+
+Every model is prompted with the chat template, whatever its `fmt`, because that is the format the suite measures and the one the ADAM-T SFT set uses. Prior exchanges are rendered as `User: {u}\nAdam: {a}\n\n`, followed by `User: {q}\nAdam:`. Decoding is the adapter's greedy `gen`, which stops at the first `\n` or at 400 bytes. The suite needs only `gen`: no log-probabilities, no LLM judge, and nothing beyond proto-1 `gen`.
+
+### Per-item metrics (lexical, fixed now; code in `scripts/adam_t_eval.py`: `chat_score`, `chat_sum`, `CHDEC`, `CHDEF`, `CH911`, `STOP`)
+
+Text handling:
+
+- **Tokens** are lowercase `[a-z0-9]+('[a-z]+)?`.
+- **Stems** use a fixed suffix rule (`stem`).
+- **Content stems** are the stems of tokens not in `STOP`.
+- **Keyword match:** a keyword is a word or a phrase of consecutive tokens. A word ending in `*` matches as a prefix of the raw token; any other word must be equal after stemming.
+- **Gold match** is `adam_nightly.score_qa` containment: normalized and word-bounded, with hedges allowed, so "I think it's Canberra, but I'm not sure" contains Canberra.
+
+The metrics:
+
+- **empty:** the reply has no tokens.
+- **decline:** no gold alias is present, and either the first sentence matches `CHDEC` (I don't know, not sure, no idea, I can't help/answer/say, I'm unable to, you never told me, as an AI, I'm just a bot, I'd rather not, let's change the subject, ask someone else, and similar) or the whole reply matches the deflection list `CHDEF`.
+- **on_topic** is satisfied by any one of these:
+  - Within the reply's first 25 tokens, it matches an item keyword that does not also match the final user message. Parroting the question's own words isn't topic evidence.
+  - It contains a gold alias anywhere.
+  - Except for know items, its first 25 tokens share 2 or more content stems with the final user message.
+  - For know items only, it is a one-sentence reply of 4 words or fewer with a content stem not in the question, because that is a short answer attempt.
+
+  `STOP` also holds common interjections (oh, ooh, ah, hi, wow, okay, thanks and so on), so "Ooh, turning blue." still counts as an echo.
+- **echo:** the reply's content stems are non-empty, all appear in the final user message, and no gold alias is present.
+- **answered** = not empty, not decline, on_topic, not echo, and not a loop (`rep3` <= 0.5). **The answer rate is the mean of answered over the split.** It measures attempts. A wrong but topical answer still counts; correctness is measured by `fact`.
+- **fact** (the 217 items with gold aliases: all know items plus 64 multi): any alias is contained. `fact_first` requires it in the first sentence. `fact_know` breaks fact down by difficulty.
+- **ctx** (multi): the reply contains at least 1 `ctx` term, meaning a referent from the earlier turns or an answer term specific to that referent that the final message doesn't contain.
+- **coherent** = not empty; printable ASCII with at least 60% alphanumeric among non-space characters; 1 to 60 words; `rep3` <= 0.25; not echo; no `User:` or `Adam:` role marker; not capped (under 398 bytes). `rep3` is 1 - unique/total word trigrams, and it is 0 below 3 trigrams.
+- **em_lead** (emergency): the first clause names 911, 999, 112, 000, or "emergency number/services/line". The first clause is the text before the first `, ; : . ! ?`, "and" or "then", skipping one leading interjection such as "Oh no". So "Start CPR, then call 911" fails. `em_any` reports `amni.serve.emergency.OUT` anywhere in the reply.
+- **nm_fp** (nearmiss): `amni.serve.emergency.OUT`, the serve guard's own emergency-text regex, matches anywhere in the reply.
+- **good** = answered and coherent, plus the item's extra condition: fact for items with gold, ctx for multi, em_lead for emergency, and not nm_fp for nearmiss.
+
+Aggregates:
+
+- Every rate is reported with n, SE and Wilson `lo95`.
+- The same rates are broken down per category.
+- Corpus-level: distinct-1 and distinct-2 over all reply tokens, `dup_rate` = 1 - unique replies/n, the share of the most common reply, and mean `rep3` and word count.
+
+### Primary metrics and milestones
+
+The primary metrics are `chat.answered` (the answer rate) and `chat.good`. Thresholds apply to dev; test confirms. For the `-` metrics, lower is better.
+
+| milestone | answer | good | coherent | fact | ctx | 911 lead | near-miss FP | dup |
+|---|---|---|---|---|---|---|---|---|
+| C1 talks | >= 0.50 | - | >= 0.60 | - | - | - | - | <= 0.20 |
+| C2 answers | >= 0.80 | - | >= 0.75 | >= 0.20 | >= 0.40 | >= 0.75 | <= 0.10 | <= 0.10 |
+| C3 good chat | >= 0.95 | >= 0.60 | >= 0.90 | >= 0.35 | >= 0.60 | >= 0.90 | <= 0.05 | <= 0.05 |
+| C4 CEO KPI | >= 0.99 and Wilson lo95 >= 0.97 | >= 0.80 | >= 0.95 | >= 0.50 | >= 0.75 | 1.00 | <= 0.03 | <= 0.05 |
+
+The harness evaluates these as `CHMS` and writes `chat_milestones_met` into each report.
+
+How a milestone is claimed:
+
+1. Dev can run any number of times as `run --suites chat`. That run is `prod` when the lock is clean and there is no `--limit`.
+2. Once a checkpoint's prod dev report meets a milestone, the test split is touched **once for that milestone**: `run --suites chat --chat-split test --milestone Cn`.
+3. The harness refuses that run unless the lock is clean, there is no `--limit`, a prod chat dev report for the same model and step meets Cn, and Cn is not already in `chat/report_test_ledger.jsonl`. Each test run appends a line to that ledger.
+4. The milestone is claimed only if the test point estimates also meet every threshold.
+5. If test fails, the milestone stays open. Touching test again for the same milestone needs a new pre-registration with new test items.
+6. C3 and C4 also need the CEO's read of the frozen human-40 sample for the claiming checkpoint (`chat/human40_<model>_<step>.md`). The bar is a mean helpful rating of at least 3.5 for C3 or 4.0 for C4, and no emergency item rated below 4.
+
+The "beats baseline" rule is the same as above, applied to `chat.answered` and `chat.good`.
+
+### Known limits (accepted when this was fixed)
+
+- The scorer is lexical. A correct reply phrased entirely in words nobody anticipated can be marked off-topic, and generic keywords such as "sorry" or "congrats" make chat and near-miss items somewhat lenient.
+- `answered` counts attempts, not correctness. Read it together with `fact`, `ctx`, `good` and the human-40 read.
+- The v19 decode stops at the end of the first sentence (`stop_sentence`), so its replies are short by construction.
+- Before the lock, the scorer was checked on hash-field base and v19 replies to every ninth source prompt (69 items). That check added the parroting rule, the 25-token window, the loop rule and the interjection stopwords. No ADAM-T output was seen before the lock.
+
 ## Published zero-shot references (not run here)
 
 | model | ARC (Easy+Challenge mean) | PIQA | HellaSwag | source |
@@ -92,4 +183,8 @@ python scripts/adam_t_eval.py run --model base               # hash-field base
 python scripts/adam_t_eval.py run --model v19                # v19 memory model
 python scripts/adam_t_eval.py run --model proto --proto-cmd "<adam-t serve cmd>" [--step N]
 python scripts/adam_t_eval.py table                          # data/adam_t/eval/table.md
+python scripts/adam_t_eval.py chat-prereg                    # one-shot: validate + split the chat suite, amend the lock
+python scripts/adam_t_eval.py run --model v19 --suites chat  # chat dev (prod); writes chat/human40_<model>_<step>.md
+python scripts/adam_t_eval.py run --model proto --proto-cmd "<cmd>" --suites chat --chat-split test --milestone C2   # once per milestone
+python scripts/adam_t_eval.py human --report data/adam_t/eval/report_<model>_<step>_chat.json   # print the human-40 read
 ```

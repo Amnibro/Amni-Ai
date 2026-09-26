@@ -16,6 +16,9 @@ def code_hash(files)->str:return hashlib.sha256(json.dumps(file_hashes(files),so
 def lock(split_files,out=None)->dict:
  s=file_hashes(split_files);m={"splits":s,"splits_hash":hashlib.sha256(json.dumps(s,sort_keys=True).encode()).hexdigest(),"n":len(s),"locked":time.strftime("%Y-%m-%dT%H:%M:%S%z")}
  out and (Path(out).parent.mkdir(parents=True,exist_ok=True),Path(out).write_text(json.dumps(m,indent=1)));return m
+def amend(manifest,split_files,reason:str,allow=())->dict:
+ o=json.loads(Path(manifest).read_text());ch=verify(o);al={rel(a) for a in allow};bad=[f for f in ch if f not in al];assert not bad,f"amend refused: locked splits changed {bad}";m=lock(split_files);gone=sorted(set(o["splits"])-set(m["splits"]));assert not gone,f"amend refused: would drop locked splits {gone}"
+ m["amendments"]=o.get("amendments",[])+[{"prev_splits_hash":o["splits_hash"],"prev_locked":o.get("locked"),"changed":sorted(ch),"added":sorted(set(m["splits"])-set(o["splits"])),"reason":reason,"at":m["locked"]}];Path(manifest).write_text(json.dumps(m,indent=1));return m
 def verify(manifest)->dict:
  m=json.loads(Path(manifest).read_text()) if isinstance(manifest,(str,Path)) else manifest;return {f:{"locked":h,"now":sha256(ROOT/f) if (ROOT/f).exists() else None} for f,h in m["splits"].items() if not (ROOT/f).exists() or sha256(ROOT/f)!=h}
 def git_head()->dict:
@@ -32,4 +35,4 @@ def _kind(p)->str:
  except (OSError,ValueError):return "unreadable"
 def prod_reports(pattern=None)->list:return [p for p in sorted(glob.glob(str(pattern or EVD/"report_*.json")),key=os.path.getmtime) if _kind(p)=="prod"]
 if __name__=="__main__":
- a=sys.argv[1:];print(json.dumps(lock(a[2:],a[1]) if a[:1]==["lock"] and len(a)>2 else {p:_kind(p) for p in sorted(glob.glob(str(a[1] if len(a)>1 else EVD/"report_*.json")))} if a[:1]==["kinds"] else {"usage":"python -m amni.compute.eval_lock lock <manifest.json> <split files...> | kinds [glob]"},indent=1))
+ a=sys.argv[1:];print(json.dumps(lock(a[2:],a[1]) if a[:1]==["lock"] and len(a)>2 else amend(a[1],a[3:],a[2]) if a[:1]==["amend"] and len(a)>3 else {p:_kind(p) for p in sorted(glob.glob(str(a[1] if len(a)>1 else EVD/"report_*.json")))} if a[:1]==["kinds"] else {"usage":"python -m amni.compute.eval_lock lock <manifest.json> <split files...> | amend <manifest.json> <reason> <all split files...> | kinds [glob]"},indent=1))
