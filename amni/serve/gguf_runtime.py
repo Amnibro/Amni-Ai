@@ -115,7 +115,7 @@ def chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=51
     if em:return {'answer':em,'tier':'tier_'+(_em_detect(message) or {}).get('tier','emergency'),'tokens':len(em.encode('utf-8'))}
     r=_chat(message,system,history,facts,max_new_tokens,do_sample,user,session);r['answer']=_em_guard(message,r.get('answer') or '');return r
 def _chat(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Dict:
-    at=_at.answer(message,history,max_new_tokens)
+    at=_at.answer(message,history,max_new_tokens,user,session)
     if at:return {'answer':at,'tier':'tier_adam_t','tokens':len(at.encode('utf-8'))}
     if backend_name()=='ray':
         t=''.join(_ray_stream(message,history,max_new_tokens,do_sample,user,session));return {'answer':t.strip(),'tier':'tier_ray','tokens':len(t.encode('utf-8'))}
@@ -138,7 +138,7 @@ def chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens
     if em:yield em;return
     yield from _em_stream(message,_chat_stream(message,system,history,facts,max_new_tokens,do_sample,user,session))
 def _chat_stream(message:str,system:str='',history=None,facts=None,max_new_tokens:int=512,do_sample:bool=True,user=None,session=None)->Iterator[str]:
-    at=_at.answer(message,history,max_new_tokens)
+    at=_at.answer(message,history,max_new_tokens,user,session)
     if at:yield at;return
     if backend_name()=='ray':
         yield from _ray_stream(message,history,max_new_tokens,do_sample,user,session);return

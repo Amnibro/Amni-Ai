@@ -1,7 +1,9 @@
-import os,sys,json,time,subprocess
+import os,re,sys,json,time,types,signal,threading,subprocess
 import pytest
+import amni.compute
 from amni.serve import adam_t_client as C
 from amni.serve import gguf_runtime as G
+from amni.serve import user_memory as U
 STUB=r'''
 import sys,json,base64,os,time
 M=os.environ.get("FAKE_MODE","ok");D=os.environ["FAKE_DIR"];CTX=int(os.environ.get("FAKE_CTX","3328"));b=lambda s:base64.b64decode(s);e=lambda x:base64.b64encode(x).decode()
@@ -27,8 +29,9 @@ for l in sys.stdin:
 EM="My mom and my dad are laying on the floor and do not answer me. I'm scared."
 @pytest.fixture
 def fake(tmp_path,monkeypatch):
-    s=tmp_path/"fake_serve.py";s.write_text(STUB);b=tmp_path/"adam-t";b.write_text(f"#!/bin/sh\nshift\nexec {sys.executable} {s} \"$@\"\n");b.chmod(0o755)
-    [monkeypatch.delenv(k,raising=False) for k in ("AMNI_ADAM_T_BACKEND","AMNI_ADAM_T_CTX","AMNI_ADAM_T_MAX_BYTES")]
+    s=tmp_path/"fake_serve.py";s.write_text(STUB);b=tmp_path/"adamt-fake";b.write_text(f"#!/bin/sh\nshift\nexec {sys.executable} {s} \"$@\"\n");b.chmod(0o755)
+    [monkeypatch.delenv(k,raising=False) for k in ("AMNI_ADAM_T_BACKEND","AMNI_ADAM_T_CTX","AMNI_ADAM_T_MAX_BYTES","AMNI_ADAM_T_CONTEXT","AMNI_USER_MEMORY","AMNI_MATH")+tuple(f"AMNI_ADAM_T_{k}_BYTES" for k in ("MEM","MATH","KNOW","PASSAGE"))]
+    monkeypatch.setenv("AMNI_UMEM_DIR",str(tmp_path/"umem"));monkeypatch.setenv("AMNI_ADAM_T_WARM","0");monkeypatch.setattr(C,"_know",lambda m,n,cap:[]);[monkeypatch.setenv(f"AMNI_UMEM_{k}","1") for k in ("LT","GN","G2")];U._EID.clear()
     monkeypatch.setenv("FAKE_DIR",str(tmp_path));monkeypatch.setenv("AMNI_ADAM_T_BIN",str(b));monkeypatch.setenv("AMNI_ADAM_T_TIMEOUT","2");monkeypatch.setenv("AMNI_ADAM_T_LOAD_TIMEOUT","3");monkeypatch.setenv("AMNI_ADAM_T",str(tmp_path/"run"))
     yield tmp_path
     [c.close() for c in C._C.values()];C._C.clear()
@@ -93,3 +96,71 @@ def test_route_logged_only_to_debug(fake,rules,monkeypatch,caplog):
     recs=[r for r in caplog.records if r.name=="amni.serve.adam_t"];assert [r.levelname for r in recs]==["DEBUG","DEBUG"] and "route=adam_t" in recs[0].getMessage() and "route=fallback:ProtoError" in recs[1].getMessage() and not any("secret" in r.getMessage() for r in caplog.records)
 def test_harness_uses_shared_client():
     src=open(os.path.join(os.path.dirname(C.__file__),"..","..","scripts","adam_t_eval.py")).read();assert "class Proto(ProtoClient)" in src and "Popen" not in src and "amni/serve/adam_t_client.py" in src
+umem=lambda d:sorted((d/"umem").glob("*.ptex")) if (d/"umem").exists() else []
+last=lambda d:prompts(d)[-1]["p"]
+def test_flag_off_skips_context(rules,monkeypatch,tmp_path):
+    monkeypatch.delenv("AMNI_ADAM_T",raising=False);monkeypatch.setenv("AMNI_UMEM_DIR",str(tmp_path/"umem"));monkeypatch.setattr(C,"context",lambda *a,**k:(_ for _ in ()).throw(AssertionError("context ran")))
+    assert G.chat("My brother lives in Paris.")["tier"]=="tier_ray" and G.chat("what is 17*23?")["answer"]=="RULE reply" and umem(tmp_path)==[] and C._C=={}
+def test_memory_facts_as_earlier_turns(fake,rules):
+    assert G.chat("My brother lives in Paris.",user="ann")["tier"]=="tier_adam_t" and len(umem(fake))==1
+    G.chat("Where does my brother live?",user="ann");assert last(fake)=="User: My brother lives in Paris.\nAdam: Got it, thanks for telling me.\n\nUser: Where does my brother live?\nAdam:"
+    G.chat("Where does my brother live?",history=[("My brother lives in Paris.","Nice!")],user="ann");assert last(fake)=="User: My brother lives in Paris.\nAdam: Nice!\n\nUser: Where does my brother live?\nAdam:"
+    G.chat("Where does my brother live?",user="bob");assert last(fake)=="User: Where does my brother live?\nAdam:"
+    n=len(prompts(fake));r=G.chat("Please forget where my brother lives.",user="ann");assert r["tier"]=="tier_adam_t" and "forgotten" in r["answer"] and len(prompts(fake))==n
+    G.chat("Where does my brother live?",user="ann");assert last(fake)=="User: Where does my brother live?\nAdam:" and rules==[]
+def test_math_offered_as_context_not_rule(fake,rules):
+    r=G.chat("what is 17*23?");assert last(fake)=="User: Calculator: 17 x 23 = 391. what is 17*23?\nAdam:" and r["tier"]=="tier_adam_t" and r["answer"]=="ADAM-T heard: Calculator: 17 x 23 = 391. what is 17*23?" and rules==[]
+    G.chat("I just got a kitten!");assert last(fake)=="User: I just got a kitten!\nAdam:"
+def test_knowledge_rc_form_and_budget(fake,rules,monkeypatch):
+    seen=[];P=["Moby-Dick: Moby-Dick is an 1851 novel by Herman Melville.","Herman Melville: "+"Melville was an American novelist. "*30]
+    monkeypatch.setattr(C,"_know",lambda m,n,cap:(seen.append((n,cap)),[clip for clip in (C.clip(x,cap) for x in P)])[1])
+    G.chat("who wrote moby dick?");p=last(fake);assert p.startswith("User: Moby-Dick: Moby-Dick is an 1851 novel by Herman Melville. Herman Melville: Melville") and p.endswith(" who wrote moby dick?\nAdam:") and seen[-1]==(2,550)
+    monkeypatch.setenv("FAKE_CTX","900");C.client().close();H=[(f"old question {i} "+"x"*40,"ok "*10) for i in range(12)]
+    G.chat("who wrote moby dick?",history=H);p=last(fake);b=900-400;n,cap=seen[-1]
+    assert len(p.encode())<=b and cap<=(b-len("User: who wrote moby dick?\nAdam:"))//2 and p.split("User: ")[-1].startswith("Moby-Dick: Moby-Dick is an 1851") and p.endswith("who wrote moby dick?\nAdam:") and "old question 0 " not in p
+    monkeypatch.setenv("AMNI_ADAM_T_KNOW_BYTES","0");G.chat("who wrote moby dick?");assert last(fake)=="User: who wrote moby dick?\nAdam:" and rules==[]
+def test_memory_budget_and_history_priority(fake,rules,monkeypatch):
+    [G.chat(m,user="ann") for m in ("My brother lives in Paris.","My sister works as a nurse.","I am allergic to peanuts.")]
+    H=[(f"old question {i} "+"x"*40,"ok "*10) for i in range(12)];monkeypatch.setenv("FAKE_CTX","800");C.client().close()
+    G.chat("Where does my brother live?",history=H,user="ann");p=last(fake);F=re.findall(r"User: (My [^\n]*|I'm [^\n]*)\nAdam: Got it, thanks for telling me\.",p)
+    assert len(p.encode())<=400 and p.startswith("User: ") and "My brother lives in Paris." in F and p.index("My brother lives in Paris.")<p.index("old question 11") and p.endswith("User: Where does my brother live?\nAdam:") and "old question 0 " not in p
+    monkeypatch.setenv("AMNI_ADAM_T_MEM_BYTES","80");G.chat("Where does my brother live?",user="ann");assert last(fake).count("Got it, thanks")==1 and "My brother lives in Paris." in last(fake)
+def test_context_source_failure_is_contained(fake,rules,monkeypatch,caplog):
+    caplog.set_level("DEBUG",logger="amni.serve.adam_t");monkeypatch.setattr(C,"_mem",lambda *a:1/0);monkeypatch.setattr(C,"_math",lambda m:[][1])
+    r=G.chat("what is 2+2?",history=[("hi","hello!")]);assert r["tier"]=="tier_adam_t" and last(fake)=="User: hi\nAdam: hello!\n\nUser: what is 2+2?\nAdam:" and any("mem_err:ZeroDivisionError" in x.getMessage() and "math_err:IndexError" in x.getMessage() for x in caplog.records)
+def test_emergency_first_no_context(fake,rules,monkeypatch):
+    monkeypatch.setattr(C,"context",lambda *a,**k:(_ for _ in ()).throw(AssertionError("context ran")))
+    r=G.chat(EM,user="ann");assert r["tier"]=="tier_emergency" and "911" in "".join(G.chat_stream("my baby is choking",user="ann")) and prompts(fake)==[] and starts(fake)==[] and umem(fake)==[] and rules==[]
+def test_know_passages_trimmed_and_filtered(monkeypatch):
+    D={1:("Moby-Dick","Moby-Dick is an 1851 novel. It was written by Herman Melville. "+"Filler text goes here. "*40,7),2:("Moby-Dick","Moby Dick again, same article.",7),3:("Pequod","A whaling ship.",8),4:("Herman Melville","Herman Melville wrote Moby Dick.",9)}
+    I=types.SimpleNamespace(widf=lambda w:1.0,search=lambda q,k:[(9.0-i,i) for i in (1,2,3,4)],text=lambda p:D[p])
+    R=types.SimpleNamespace(QSTOP={"who"},toks=lambda t:[w for w in re.findall(r"[a-z0-9]+",t.lower()) if w not in {"the","a","is","by","an","it","was"}],factq=lambda q,w=False:q.endswith("?"),ix=lambda:I)
+    W=types.SimpleNamespace(THR=0.5,TEMPORAL=False,ask=lambda q:{"answer":"Herman Melville","conf":0.9,"e":5},store=lambda:types.SimpleNamespace(label=lambda e:"Moby-Dick"))
+    monkeypatch.setattr(amni.compute,"rknow",R,raising=False);monkeypatch.setitem(sys.modules,"amni.compute.rknow",R);monkeypatch.setitem(sys.modules,"amni.compute.wikifact",W);monkeypatch.delenv("AMNI_RKNOW_WF",raising=False)
+    K=C._know("who wrote moby dick?",2,120);assert K[0]=="Moby-Dick: Herman Melville." and K[1].startswith("Moby-Dick: Moby-Dick is an 1851 novel. It was written by Herman Melville.") and len(K[1])<=120 and K[2]=="Herman Melville: Herman Melville wrote Moby Dick." and len(K)==3
+    assert C._know("I just got a kitten!",2,120)==[] and C._trim(["A b.","Cc dd.","Ee ff gg."],[0,5,0],14)=="A b. Cc dd." and C._trim(["x"*50],[1],20)=="x"*20
+    monkeypatch.setenv("AMNI_RKNOW_WF","0");assert C._know("who wrote moby dick?",1,120)[0].startswith("Moby-Dick: Moby-Dick is")
+def test_ascii_fold_and_clip():
+    assert C.asc("17 × 23 − “q”\n— café [1] 5°") == '17 x 23 - "q" - cafe 5 degrees' and C.clip("aa bb cc",5)=="aa" and C.clip("abcdef",3)=="abc" and C.clip("ok",9)=="ok"
+@pytest.mark.skipif(not os.path.isdir(os.path.join(os.path.dirname(C.__file__),"..","..","data","ks","index_rknow","wiki_v2")),reason="R-KNOW index not present")
+def test_know_real_index():
+    K=C._know("who wrote the novel moby dick?",2,550);assert K and any("Melville" in k for k in K) and all(len(k.encode())<=550 and k.isascii() for k in K) and C._know("I just got a kitten!",2,550)==[]
+def test_child_survives_spawning_thread_exit(fake):
+    c=C.AdamT();th=threading.Thread(target=lambda:c.gen("hi",64));th.start();th.join();time.sleep(0.5)
+    assert c.p.alive() and c.gen("again",64)=="ADAM-T heard: again" and len(starts(fake))==1
+PARENT=r"""
+import os,sys,time,threading
+from amni.serve import adam_t_client as C
+sys.argv[1]=="off" and setattr(C,"_PRCTL",None);c=C.AdamT();threading.Thread(target=lambda:c.gen("hi",64),daemon=True).start()
+while not os.path.exists(os.path.join(os.environ["FAKE_DIR"],"prompts.jsonl")):time.sleep(0.02)
+print(c.p.p.pid,flush=True);time.sleep(120)
+"""
+gone=lambda pid:not os.path.exists(f"/proc/{pid}") or open(f"/proc/{pid}/stat").read().rsplit(")",1)[1].split()[0]=="Z"
+@pytest.mark.skipif(not sys.platform.startswith("linux"),reason="PR_SET_PDEATHSIG is Linux-only")
+@pytest.mark.parametrize("pd",["on","off"])
+def test_child_dies_with_parent(fake,monkeypatch,pd):
+    monkeypatch.setenv("FAKE_MODE","slow");monkeypatch.setenv("AMNI_ADAM_T_TIMEOUT","120");root=os.path.join(os.path.dirname(C.__file__),"..","..")
+    par=subprocess.Popen([sys.executable,"-c",PARENT,pd],stdout=subprocess.PIPE,text=True,env={**os.environ,"PYTHONPATH":os.path.abspath(root)});pid=int(par.stdout.readline());assert not gone(pid)
+    par.send_signal(signal.SIGKILL);par.wait(10);end=time.monotonic()+5
+    while not gone(pid) and time.monotonic()<end:time.sleep(0.05)
+    dead=gone(pid);dead or os.kill(pid,signal.SIGKILL);assert dead==(pd=="on")
