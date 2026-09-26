@@ -77,7 +77,12 @@ dependencies = [
  "adam-train",
  "base64 0.22.1",
  "burn",
+ "burn-autodiff",
+ "burn-cubecl",
+ "burn-fusion",
+ "burn-ir",
  "bytemuck",
+ "cubecl",
  "memmap2",
  "pollster",
  "rayon",
@@ -639,6 +644,7 @@ dependencies = [
  "parking_lot",
  "portable-atomic",
  "spin",
+ "tracing",
 ]
 
 [[package]]

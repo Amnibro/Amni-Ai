@@ -1,5 +1,5 @@
-use adam_t::{bpe::Bpe, infer, load, lut, mmap, nap, thr, train, Cfg, Dat};
-use burn::{backend::{ndarray::NdArrayDevice, wgpu::WgpuDevice, Autodiff, NdArray, Wgpu}, tensor::{backend::Backend, Distribution, Tensor}};
+use adam_t::{bpe::Bpe, f1, fa::{self, Fa}, infer, load, lut, mmap, nap, thr, train, Cfg, Dat};
+use burn::{backend::{ndarray::NdArrayDevice, wgpu::WgpuDevice, Autodiff, NdArray, Wgpu}, tensor::{backend::{AutodiffBackend, Backend}, module::attention, ops::AttentionModuleOptions, Distribution, Tensor}};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rayon::prelude::*;
 use serde_json::{json, Value};
@@ -47,9 +47,23 @@ fn mm_burn<B: Backend>(dev: B::Device, m: usize, n: usize, k: usize, it: usize) 
     2.0 * (m * n * k * it) as f64 / t0.elapsed().as_secs_f64() / 1e9
 }
 type Fw<'a> = Box<dyn Fn(&[Vec<u32>]) -> io::Result<Vec<Vec<f32>>> + 'a>;
-fn burn_fw<'a, B: burn::tensor::backend::Backend>(c: &'a Cfg, dev: B::Device) -> io::Result<Fw<'a>> {
+fn burn_fw<'a, B: Fa>(c: &'a Cfg, dev: B::Device) -> io::Result<Fw<'a>> {
     let (core, mem) = load::<B>(c, &dev)?;
     Ok(Box::new(move |xs: &[Vec<u32>]| { let t0 = Instant::now(); let x: Vec<u32> = xs.iter().flat_map(|w| w.iter().copied().chain(std::iter::repeat(32).take(c.t - w.len()))).collect(); let lg = infer(c, &core, mem.as_ref(), &x, xs.len(), &dev); nap(thr(&c.thf), t0.elapsed().as_secs_f64() * 1e3, c.unit); Ok(xs.iter().enumerate().map(|(i, w)| lg[i * c.t * c.v..(i * c.t + w.len()) * c.v].to_vec()).collect()) }))
+}
+fn fa_go<B: AutodiffBackend + Fa>(x: &Tensor<B::InnerBackend, 2>, r: &Tensor<B::InnerBackend, 2>, s: [usize; 3], fl: bool, rd: bool) -> (Vec<f32>, Vec<f32>) {
+    let ([b, t, h], xa) = (s, Tensor::<B, 2>::from_inner(x.clone()).require_grad());
+    let o = if fl { fa::fa(xa.clone(), b, t, h) } else { let [q, k, v] = fa::split(xa.clone(), b, t, h); attention(q, k, v, None, None, AttentionModuleOptions { scale: None, softcap: None, is_causal: true }).swap_dims(1, 2).reshape([b * t, x.dims()[1] / 3]) };
+    let g = (o.clone() * Tensor::<B, 2>::from_inner(r.clone())).sum().backward();
+    let dx = xa.grad(&g).unwrap();
+    if rd { (f1(o.inner()), f1(dx)) } else { let _ = dx.slice([0..1, 0..1]).into_data(); (vec![], vec![]) }
+}
+fn fa_cmp<B: AutodiffBackend + Fa>(dev: &B::Device, s: [usize; 3], sd: f64) -> String {
+    let [b, t, h] = s;
+    let (x, r) = (Tensor::<B::InnerBackend, 2>::random([b * t, 3 * 64 * h], Distribution::Normal(0.0, sd), dev), Tensor::<B::InnerBackend, 2>::random([b * t, 64 * h], Distribution::Normal(0.0, 1.0), dev));
+    let ((o1, g1), (o2, g2)) = (fa_go::<B>(&x, &r, s, true, true), fa_go::<B>(&x, &r, s, false, true));
+    let md = |a: &[f32], b: &[f32]| a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0f32, f32::max);
+    format!("{{\"backend\": \"{}\", \"b\": {b}, \"t\": {t}, \"h\": {h}, \"sd\": {sd}, \"out_max_abs_diff\": {:.3e}, \"grad_max_abs_diff\": {:.3e}, \"grad_max_abs\": {:.3e}, \"finite\": {}}}", std::any::type_name::<B>().split('<').nth(1).unwrap_or(""), md(&o1, &o2), md(&g1, &g2), g2.iter().fold(0f32, |m, v| m.max(v.abs())), o1.iter().chain(&g1).all(|v| v.is_finite()))
 }
 struct Srv<'a> { t: usize, v: usize, bp: Option<Bpe>, fw: Fw<'a>, lm: Option<&'a lut::Lm>, name: String, step: usize }
 impl Srv<'_> {
@@ -163,6 +177,25 @@ fn main() -> io::Result<()> {
             let ids = bp.enc_file(&src, 4 << 20);
             fs::write(dst, ids.iter().flat_map(|v| v.to_le_bytes()).collect::<Vec<u8>>())?;
             println!("{{\"src\": \"{}\", \"bytes\": {}, \"tokens\": {}, \"bytes_per_token\": {:.4}, \"seconds\": {:.1}, \"out\": \"{dst}\"}}", a[3], src.len(), ids.len(), src.len() as f64 / ids.len() as f64, t0.elapsed().as_secs_f64());
+        }
+        "fa" => {
+            let g = |k: &str, d: usize| var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
+            let (s, it, md) = ([g("FA_B", 8), g("FA_T", 512), g("FA_H", 8)], g("FA_IT", 20), var("FA_MODE").unwrap_or_else(|_| "check".into()));
+            let dev = WgpuDevice::DiscreteGpu(0);
+            if md == "check" {
+                [([1usize, 128usize, 2usize], 1.0f64), ([1, 128, 2], 3.0)].iter().for_each(|&(s, sd)| println!("{}", fa_cmp::<Autodiff<NdArray>>(&NdArrayDevice::Cpu, s, sd)));
+                [([2usize, 256usize, 8usize], 1.0f64), ([2, 256, 8], 3.0), ([1, 1024, 8], 1.0), (s, 1.0)].iter().for_each(|&(s, sd)| { println!("{}", fa_cmp::<Autodiff<Wgpu>>(&dev, s, sd)); nap(thr(&c.thf), 200.0, c.unit); });
+            } else {
+                let [b, t, h] = s;
+                let (x, r) = (Tensor::<Wgpu, 2>::random([b * t, 3 * 64 * h], Distribution::Normal(0.0, 1.0), &dev), Tensor::<Wgpu, 2>::random([b * t, 64 * h], Distribution::Normal(0.0, 1.0), &dev));
+                let fl = md == "flash";
+                let v0 = fs::read_to_string("/sys/class/drm/card1/device/mem_info_vram_used").ok().and_then(|v| v.trim().parse::<f64>().ok()).unwrap_or(0.0);
+                (0..3).for_each(|_| { fa_go::<Autodiff<Wgpu>>(&x, &r, s, fl, false); });
+                let (mut ms, mut sl) = (0f64, 0f64);
+                (0..it).for_each(|_| { let t0 = Instant::now(); fa_go::<Autodiff<Wgpu>>(&x, &r, s, fl, false); let m = t0.elapsed().as_secs_f64() * 1e3; ms += m; sl += nap(thr(&c.thf), m, c.unit); });
+                let v1 = fs::read_to_string("/sys/class/drm/card1/device/mem_info_vram_used").ok().and_then(|v| v.trim().parse::<f64>().ok()).unwrap_or(0.0);
+                println!("{{\"mode\": \"{md}\", \"b\": {b}, \"t\": {t}, \"h\": {h}, \"fwd_bwd_ms\": {:.2}, \"tokens_per_s\": {:.0}, \"vram_delta_gb\": {:.3}, \"slept_ms\": {sl:.0}}}", ms / it as f64, (b * t) as f64 * 1e3 * it as f64 / ms, (v1 - v0) / 1e9);
+            }
         }
         "bpe-enc" => { let mut b = Vec::new(); io::stdin().read_to_end(&mut b)?; println!("{}", Bpe::open(&a[2])?.enc(&b).iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ")); }
         _ => { run(&c, 0)?; }
