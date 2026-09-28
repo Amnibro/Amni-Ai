@@ -1,0 +1,280 @@
+@an_traffic neg annoyances
+U Stuck in traffic again.|ugh, traffic|I've been sitting on the highway for forty minutes.|Traffic is at a total standstill and I'm going to be late.|Bumper to bumper the whole way home today.
+A Sitting still on the highway is the worst kind of waiting.|Traffic like that can eat a whole evening.|Crawling along in traffic would test anyone's patience.|Staring at brake lights is nobody's idea of fun.|Rush hour really showed up today.
+Q Is there an accident up ahead or just rush hour?|Do you know what's causing it?
+> Just normal rush hour.|No idea, it's just slow.
+= The everyday kind is somehow the most annoying.|At least it should start moving once the crowd thins out.
+> Looks like construction.|They closed a lane for roadwork.
+= Lane closures turn everything into a crawl.|Construction season strikes again. Is there another route you can take tomorrow?
+Q Do you have something good to listen to?|Got a podcast or music going?
+> Yeah, a good podcast.|I've got an audiobook on.
+= That helps the time pass a lot.|Good call, a story makes traffic almost bearable.
+> Just the radio, and it's all ads.|Nothing, I'm just staring at brake lights.
+= Maybe queue up a playlist for the rest of the drive.|Ha, that's the full traffic experience right there.
+X Hope the road clears up soon.|Hang in there, you'll get home eventually.|May the rest of your drive be smooth.
+@an_phone_battery neg annoyances
+U My phone battery dies by lunchtime every day.|My phone is always at five percent.|My phone died again in the middle of a call.|Why does my phone battery drain so fast now?
+A A phone that won't last the day is so frustrating.|Dying at the worst possible moment is a phone's favorite trick.|Low battery anxiety is real.|A phone that can't keep up with your day is such a hassle.
+Q How old is the phone?|Have you had it a long time?
+> A few years now.|It's pretty old.
+= Batteries wear out after a few years, so a battery swap might fix it.|That's probably it, the battery is just tired.
+> Only about a year.|It's pretty new, actually.
+= Then an app might be draining it in the background.|Worth checking battery settings to see what's using the most.
+Q Do you carry a charger with you?|Do you have a portable charger?
+> Never remember to.|No, I always forget.
+= A small power bank in your bag could save you.|Maybe leave a spare cable at work.
+> Yes, I'm always plugged in somewhere.|I carry one everywhere.
+= At least you're prepared.|Smart, even if it's annoying to need it.
+X Hope your phone gives you a break soon.|Good luck with the battery situation.|May your phone make it to bedtime tomorrow.
+@an_wifi neg annoyances
+U My wifi keeps dropping every ten minutes.|The internet at home is so slow today.|My wifi went out in the middle of a video call.|ugh the wifi keeps cutting out
+A Wifi that keeps dropping is maddening.|Unreliable internet is the worst when you need it.|Slow internet makes everything take twice as long.|Spotty wifi can wreck a whole afternoon.
+Q Have you tried restarting the router?|Did you reboot the router yet?
+> Yeah, three times.|Already did, didn't help.
+= Then it might be worth calling your internet provider.|Could be an outage in your area.
+> No, I should try that.|Not yet.
+= Unplugging it for a minute fixes it surprisingly often.|That's usually the magic fix, worth a try.
+Q Are you working from home today?|Do you need it for work?
+> Yes, and I have meetings all day.|Yes, which is the problem.
+= Maybe use your phone as a hotspot in a pinch.|That's rough timing, hope it stabilizes before your next call.
+> No, just trying to relax.|Just trying to watch a show.
+= Nothing ruins a show like buffering.|Buffering during a show is so annoying.
+X Hope the connection comes back strong.|Good luck, may the wifi behave.|Fingers crossed it's fixed soon.
+@an_lost_keys neg annoyances
+U I lost my keys again.|Spent twenty minutes looking for my keys this morning.|Can't find my car keys anywhere.|Where do my keys even go?
+A Lost keys always vanish exactly when you're in a rush.|Keys have a real talent for hiding.|Hunting for keys is such a frustrating way to spend your time.|The great key hunt, a classic.
+Q Did you find them?|Have they turned up yet?
+> Yes, in my coat pocket.|Found them in the fridge, somehow.
+= Of course they were there the whole time.|Ha, the fridge is a new one.
+> No, still looking.|Not yet.
+= Try retracing your steps from when you got home.|Check the couch cushions, they love it there.
+Q Do you have a spot where you usually put them?|Do you have a key hook?
+> No, I just drop them anywhere.|Not really.
+= A little bowl by the door could save you a lot of mornings.|A key hook is cheap and weirdly life-changing.
+> Yes, but I never use it.|I have one, I just forget.
+= Old habits are tough to break.|Maybe put it right where you drop your bag.
+X Hope your keys stay put from now on.|Good luck with the search.|May your keys always be where you left them.
+@an_noisy_neighbors neg annoyances
+U My upstairs neighbors stomp around all night.|The people upstairs were moving furniture at midnight.|My neighbors had a loud party until two in the morning.|I can hear every step my upstairs neighbor takes.
+A Noise from upstairs can make it impossible to relax.|Neighbors who don't realize how loud they are can drive anyone up the wall.|Late-night noise through the ceiling is so draining.|Thin ceilings really test your patience.
+Q Have you talked to them about it?|Did you say anything to them?
+> Not yet, I don't want to be rude.|No, I'm avoiding the awkwardness.
+= A friendly note usually goes over better than people expect.|Most people don't realize how much sound carries.
+> Yes, but nothing changed.|I asked nicely and it didn't help.
+= Then it might be worth checking with your landlord.|That's frustrating after asking politely.
+Q Is it keeping you up?|Has it been messing with your sleep?
+> Yes, I'm exhausted.|Totally.
+= Earplugs or a fan might help in the meantime.|Losing sleep over it is rough.
+> A little.|Only sometimes.
+= Good that it's not every night.|Hopefully it stays occasional.
+X Hope you get some peace and quiet soon.|Good luck, may your nights get calmer.|Hang in there, I hope it improves.
+@an_spilled_coffee neg annoyances
+U I just spilled coffee all over my shirt.|Spilled my whole coffee down my shirt on the way to work.|Coffee down the front of my white shirt, great start.|Dumped my coffee right on my shirt this morning.
+A A coffee spill is such a rough way to start the day.|Losing your morning coffee is a double loss.|Coffee always seems to aim straight for your clothes.|That is one annoying morning moment.
+Q Do you have a spare shirt?|Can you change?
+> Nope, stuck with it all day.|No spare, unfortunately.
+= Hopefully it blends in more than you think.|Maybe a jacket can cover the worst of it.
+> Yes, I keep one at work.|I can run home and change.
+= Nice, always good to have a backup.|Good thing you're close.
+Q Did you get another coffee?|Were you able to replace it?
+> Yes, I bought another one.|Got a refill.
+= Good, the day deserved a second chance.|Much better.
+> No, now I'm tired and stained.|Nope.
+= Double whammy, I'm sorry.|Maybe grab one later as a reward.
+X Hope the rest of the day goes better.|Here's to a spill-free afternoon.|May your next cup make it safely.
+@an_missed_bus neg annoyances
+U I missed the bus by like five seconds.|Watched my bus pull away as I got to the stop.|Missed my bus by seconds this morning.|Ran for the bus and it left right in front of me.
+A Missing it by seconds is extra painful.|Watching it pull away is the worst feeling.|So close, and yet so far.|Nothing stings like a near miss at the bus stop.
+Q How long until the next one?|When's the next bus?
+> Twenty minutes.|Half an hour.
+= That's a long wait, hope you have something to read.|Ugh, at least you can grab a coffee.
+> Only five minutes.|Pretty soon.
+= Not bad at all then.|Lucky, short wait.
+Q Are you going to be late?|Will it make you late?
+> Yes, definitely.|A little.
+= Maybe send a quick heads up.|A few minutes late isn't the end of the world.
+> No, I left early.|I'll be fine.
+= Nice, planning ahead paid off.|Good, crisis avoided.
+X Hope the next one comes quick.|Better luck catching the next one.|Hope the rest of the commute is smooth.
+@an_long_line neg annoyances
+U The line at the grocery store is a mile long.|I've been in line at the store for twenty minutes.|Only one checkout open and a huge line.|Waiting in the longest line ever at the post office.
+A One open checkout is a special kind of torture.|Twenty minutes in line would test anyone.|Long lines always seem to happen when you're in a hurry.|That's a lot of standing around.
+Q Are you in a rush?|Do you have somewhere to be?
+> Yes, I'm on my lunch break.|Kind of, yeah.
+= That's the worst time for a long line.|Hopefully it moves faster soon.
+> No, just impatient.|Not really.
+= At least you're not late for anything.|Maybe a good time to scroll or people watch.
+Q Is it moving at all?|Is the line moving?
+> Barely.|Very slowly.
+= Slow lines are the worst, hang in there.|A crawling line is so tedious, I hope it picks up soon.
+> It's starting to move.|A bit faster now.
+= Good, you're almost there.|Progress at last, hang on a little longer.
+X Hope you get through soon.|Good luck, the end is in sight.|May the line move fast.
+@an_printer neg annoyances
+U The printer jammed right before my meeting.|Our office printer is jammed again.|The printer ate my document and I need it now.|Printer jam, again, right when I'm in a hurry.
+A Printers always seem to break at the worst moment.|A jammed printer when you're in a hurry is peak office stress.|Printers have a mind of their own.|That's such a frustrating tech moment.
+Q Were you able to fix it?|Did it start working?
+> Yes, finally.|Got it after a few tries.
+= Nice, printer wrangling is a real skill.|Good, crisis averted.
+> No, still stuck.|Nope.
+= Maybe try printing from another machine.|Ugh, a restart sometimes helps.
+Q Do you really need it printed?|Could you share it digitally instead?
+> Yes, they want paper copies.|It has to be printed.
+= Frustrating when there's no digital option.|Hope someone else has a working printer.
+> I guess I could email it.|Maybe I'll just send it.
+= That might save you a lot of hassle.|Digital copies never jam.
+X Hope the printer cooperates next time.|Good luck with the meeting.|May your documents print smoothly.
+@an_rain_umbrella neg annoyances
+U Got caught in the rain without an umbrella.|I'm completely soaked, it started pouring on my walk home.|Forgot my umbrella and of course it rained.|The forecast said sunny and I got drenched.
+A Getting soaked is such a miserable feeling.|Rain always shows up when the umbrella stays home.|Sunny forecasts are not to be trusted.|That's a rough walk home.
+Q Are you home and dry now?|Did you get to change?
+> Yes, warm clothes on.|Home now, finally dry.
+= Good, a hot drink would finish it off nicely.|Glad you're dry, that's the best part.
+> No, still wet at work.|Sitting here soaked.
+= Hopefully you can dry off a bit soon.|Ugh, I hope the heater's on.
+Q Do you usually carry an umbrella?|Do you keep one with you?
+> Never, I always forget.|Not usually.
+= A little folding one in your bag might help.|Maybe keep a spare at work.
+> Usually, just not today.|Every day except today.
+= Of course, it's always the one day.|Classic timing.
+X Hope you warm up soon.|Stay dry the rest of the day.|Hope the sun comes back tomorrow.
+@an_stubbed_toe neg annoyances
+U I just stubbed my toe on the coffee table.|Stubbed my toe so hard on the bed frame.|OW, I kicked the door frame with my bare foot.|Why does stubbing a toe hurt so much?
+A Stubbing a toe is small but so painful.|Furniture seems to have a sixth sense for toes.|That sharp pain is no joke.|Everyone knows that particular kind of ouch.
+Q Is it feeling better now?|How's the toe?
+> Yeah, it's fading.|A bit better now.
+= Good, the worst part passes quickly.|Glad it's easing up.
+> Still throbbing.|It's pretty sore.
+= Some ice might help it calm down.|Maybe put your foot up for a bit.
+Q Was it the same furniture as last time?|Is that the usual culprit?
+> Yes, every single time.|Same table, always.
+= That table has it out for you.|Maybe it's time to move it an inch.
+> No, a new one.|First time with this one.
+= Ha, a new enemy.|Watch out for that one.
+X Hope your toe feels better soon.|Be careful out there.|May your toes stay safe from now on.
+@an_bad_haircut neg annoyances
+U I got a bad haircut.|My haircut came out way shorter than I asked for.|The barber totally messed up my hair.|My new haircut looks nothing like the picture I showed.
+A A bad haircut can be really frustrating.|Haircut disasters happen to everyone at some point.|That's so disappointing after looking forward to a fresh cut.|Nobody likes leaving the chair unhappy.
+Q Is it fixable?|Can they fix it?
+> Maybe, I'm going back.|They offered to fix it.
+= Good, hopefully they can even it out.|That's decent of them.
+> Not really, it's just short.|No, I just have to wait.
+= The good news is hair grows back.|A few weeks and it'll look totally different.
+Q Have people noticed?|Has anyone said anything?
+> Everyone noticed.|Yes, lots of comments.
+= Comments die down fast once people get used to it.|Owning it with confidence helps a lot.
+> Nobody said anything.|Not yet.
+= It's probably less noticeable than you think.|We notice our own hair way more than others do.
+X Hope it grows out fast.|Hang in there, hair always grows back.|Good luck, I bet it looks better than you think.
+@an_package_delayed neg annoyances
+U My package got delayed again.|The delivery date keeps getting pushed back.|My order was supposed to come today and now it says next week.|Still waiting on a package that shipped two weeks ago.
+A Delivery delays are so frustrating.|Watching that date slip is the worst.|Waiting on a package that never seems to move is so tedious.|That's annoying when you're looking forward to it.
+Q What did you order?|What's in the package?
+> A birthday present.|A gift for a friend.
+= Ugh, stressful when there's a date to hit.|Hopefully it still arrives in time.
+> Just something for myself.|Some new shoes.
+= Makes the wait even more annoying.|The anticipation is killing the fun.
+Q Have you contacted the seller?|Did you reach the shipping company?
+> Yes, they were no help.|I did, but no answers.
+= Sadly, that's common.|Maybe ask for a refund if it keeps slipping.
+> Not yet.|No.
+= Might be worth a quick message.|Could be good to check where it's stuck.
+X Hope your package shows up soon.|Fingers crossed it arrives this week.|Good luck, may the tracking update soon.
+@an_autocorrect neu annoyances
+U Autocorrect just embarrassed me in front of my boss.|My phone changed a word in a text and it came out so weird.|Autocorrect turned my message into total nonsense.|I sent a text to the group chat and autocorrect ruined it.
+A Autocorrect has a real talent for bad timing.|Those autocorrect moments can be so funny afterward.|Phones sometimes think they know better.|That's an awkward little moment.
+Q What did it change it to?|What did the message say?
+> Something really weird.|I can't even repeat it.
+= Ha, that bad? Those are the ones people remember for years.|Oof, those are the ones that live on in the group chat.
+> Just a funny typo.|Nothing terrible, just silly.
+= At least it was harmless.|Silly ones are always good for a laugh.
+Q Did anyone notice?|Did they reply?
+> Yes, and they laughed.|They thought it was hilarious.
+= Then it turned into a good laugh.|At least it made someone's day.
+> Nobody said anything.|No reply.
+= Maybe they didn't even notice.|Probably forgotten already.
+X Here's to fewer autocorrect surprises.|At least it makes a good story.|Hope your next message comes out right.
+@an_lunch_stolen neg annoyances
+U Someone ate my lunch from the office fridge.|My lunch disappeared from the work fridge again.|I brought leftovers and someone took them.|Who eats someone else's lunch from the fridge?
+A Lunch theft is one of the great office crimes.|Losing lunch you were looking forward to is rough.|That's such a frustrating thing to find.|The office fridge mystery strikes again.
+Q Do you have any idea who did it?|Any suspects?
+> I have a guess.|Maybe.
+= Sounds suspicious, maybe label your container next time.|A little note on the container might help.
+> No clue.|No idea.
+= The mystery lunch thief strikes again.|Tough to catch them.
+Q What did you end up eating?|Did you get something else?
+> Vending machine snacks.|Just chips.
+= Not the lunch you deserved at all.|Hope it at least tided you over until dinner.
+> I ordered takeout.|Went out to eat.
+= At least you ended up with something good.|Honestly, that might have been a small upgrade.
+X Hope your lunch is safe tomorrow.|May the lunch thief be caught.|Good luck, maybe bring a tiny lock.
+@an_parking_ticket neg annoyances
+U I got a parking ticket.|Came back to my car and there was a ticket on it.|Parking ticket after being five minutes late.|The meter expired and I got a ticket.
+A A parking ticket is such an annoying surprise.|Getting a ticket really sours an afternoon.|Finding that paper on your windshield is the worst.|Nobody wants to find one of those.
+Q How much is it?|Is it expensive?
+> Fifty bucks.|Not cheap.
+= That's a painful chunk of change.|Expensive lesson.
+> Not too bad.|Pretty small.
+= At least it's not huge.|Small comfort.
+Q Are you going to fight it?|Can you appeal it?
+> Maybe, I think the sign was unclear.|I'm going to try.
+= Worth a shot if the sign was confusing.|Good luck with the appeal.
+> No, I'll just pay it.|Not worth it.
+= Probably easier to just be done with it.|Fair, less hassle.
+X Hope that's your last ticket for a while.|Good luck with it.|May the meters be kind to you.
+@an_slow_cashier neu annoyances
+U The self-checkout kept yelling at me.|The checkout machine kept saying unexpected item in bagging area.|Self-checkout froze on me three times today.|I spent ten minutes fighting with the self-checkout.
+A Checkout troubles are frustrating when you're in a hurry.|Self-checkout machines have strong opinions.|Everyone has battled one of those machines at some point.|That can make a quick errand feel long.
+Q Were you late for something?|Did it make you late?
+> A little.|Yeah, slightly.
+= Ugh, hope it wasn't a big deal.|A few minutes is usually okay.
+> No, just impatient.|Not really.
+= At least no real harm done.|Fair enough.
+Q Do you usually use self-checkout?|Do you prefer self-checkout?
+> Yes, usually.|Always.
+= It's definitely quicker when it cooperates.|Makes sense, it's usually faster, until it starts complaining.
+> No, I'd rather have a person.|Not really.
+= A real person at least never yells about the bagging area.|Makes sense, a friendly cashier is way less stressful.
+X Hope your next shopping trip is quicker.|Good luck with the rest of your errands.|May your checkout lines be short.
+@an_no_milk neg annoyances
+U Poured a bowl of cereal and there's no milk.|We're out of milk and I already poured my cereal.|Cereal in the bowl, and the milk carton is empty.|Someone put an empty milk carton back in the fridge and I found out after pouring my cereal.
+A That's a classic breakfast betrayal.|An empty milk carton in the fridge is so annoying.|Cereal without milk is a sad sight.|Such a small thing, but such a letdown.
+Q What did you do?|Did you find a substitute?
+> Ate it dry.|Just crunched it plain.
+= Dry cereal, the backup breakfast of champions.|Crunchy and determined, I like it.
+> Used water, which was a mistake.|Tried juice, don't ask.
+= Ha, that's a bold choice.|Some breakfast experiments are best left undone.
+Q Do you know who finished it?|Who left the empty carton?
+> My roommate, definitely.|My brother.
+= Time for a friendly reminder.|Maybe a note on the fridge.
+> Honestly, it was me.|Probably me.
+= Ha, then no one to blame.|Fair, we all do it.
+X Hope you get milk soon.|Here's to better breakfasts.|May your fridge always be stocked.
+@an_dog_barking neg annoyances
+U My neighbor's dog barked all night.|The dog next door wouldn't stop barking.|I didn't sleep because of my neighbor's dog.|Barking dog outside my window since midnight.
+A A barking dog all night is exhausting.|Sleep interrupted by barking is miserable.|That's a long night.|Nights like that make mornings so hard.
+Q Have you talked to your neighbor?|Did you say anything to them?
+> Not yet.|No.
+= A friendly mention might help, they may not know.|Maybe they're out and have no idea.
+> Yes, they didn't care.|I did, nothing changed.
+= That's frustrating.|Maybe try the landlord.
+Q Did you get any sleep?|How tired are you?
+> Barely any.|Maybe two hours.
+= Coffee might be your best friend today.|That's rough, maybe take a nap later.
+> Some, with earplugs.|A little.
+= Earplugs are lifesavers.|At least you got some.
+X Hope you get a quiet night soon.|Rest up when you can.|Good luck, may tonight be quiet.
+@an_forgot_password neg annoyances
+U I forgot my password again.|Locked out of my account after too many tries.|Had to reset my password for the third time this month.|Why do I always forget my passwords?
+A Password resets are such a hassle.|Getting locked out is really frustrating.|Passwords have a way of slipping away right when you need them.|Everyone forgets passwords sometimes.
+Q Do you use a password manager?|Do you write them down?
+> No, I just try to remember.|Nope.
+= A password manager could save you a lot of these resets.|Might be worth trying one.
+> Yes, but I didn't save this one.|I have one, just forgot to add it.
+= Always the one you didn't save.|Classic timing.
+Q Did you get back in?|Were you able to reset it?
+> Yes, finally.|Got in eventually.
+= What a relief, welcome back in.|Nice, you're back in business.
+> Still waiting on the reset email.|Not yet.
+= Check the spam folder, it hides there.|Hope it arrives soon.
+X Hope you get back in soon.|Good luck with the passwords.|May your next login be smooth.

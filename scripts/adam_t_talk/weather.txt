@@ -1,0 +1,181 @@
+@we_heatwave neg weather
+U It's been over {temp} degrees all week.|This heat wave is brutal.|Stepped outside and it felt like an oven.|The heat this week is unreal.|Another scorcher today, over {temp} again.
+V temp=95,100,98,102
+A Heat like that wears anyone down.|Heat waves make everything feel twice as hard.|Oven weather is no fun at all.|That kind of heat can drain all your energy.
+Q How are you staying cool?|Any tricks for beating the heat?
+> Fans everywhere and cold showers.|Lots of cold showers.
+= Cold showers are a lifesaver in weather like this.|Smart, and a damp towel in front of a fan helps too.
+> Hiding in the library all afternoon.|Going to the mall for the AC.
+= Honestly, borrowing someone else's AC is a great plan.|Ha, a free cool spot is the move.
+Q Is it supposed to break soon?|When is it supposed to cool down?
+> By the weekend, hopefully.|A few more days.
+= The light at the end of the tunnel, hang in there.|Almost through it, keep drinking lots of water.
+> Not for another week.|No end in sight.
+= Ugh, that's a long stretch, stay hydrated.|Then keep those fans running and the blinds closed during the day.
+X Stay cool out there!|Hope the heat breaks soon.|Drink plenty of water and take it easy.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@we_first_snow pos weather
+U It's snowing for the first time this year!|We got our first snow last night.|I woke up to everything covered in snow.|First snowflakes of the season are falling right now.
+A The first snow always feels a little magical.|Waking up to a white world is such a nice surprise.|First snow of the season, how cozy.|Everything looks so peaceful under fresh snow.
+Q How much did you get?|Is it sticking?
+> Just a dusting.|Only a light layer.
+= A dusting is the prettiest kind, with none of the shoveling.|Perfect, all charm and no hassle.
+> Almost a foot.|A ton, it's still coming down.
+= Wow, that's a real snowfall. Any plans to get out in it?|Time to find the shovel.
+Q Do you like snow?|Are you a snow person?
+> I love it.|Yes, it's my favorite.
+= Then this is your season.|Love that, go enjoy it before it melts.
+> Not really, I hate the cold.|Only for a day or two.
+= Fair, it's best enjoyed from inside with something warm.|The first day is the nice part, after that it's slush.
+X Enjoy the snow!|Stay warm and cozy.|Have fun out there, and bundle up.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@we_rain_week neg weather
+U It has rained every single day this week.|Rain again, I can't remember the last dry day.|Seven days of gray skies and drizzle.|I'm so tired of this rainy week.
+A A whole week of rain can really get to you.|Gray skies day after day are draining.|That kind of stretch makes you forget what sunshine looks like.|Nonstop drizzle is the worst kind of weather.
+Q Is the sun supposed to come back soon?|Any sunshine in the forecast?
+> This weekend, supposedly.|Saturday, if the forecast is right.
+= Fingers crossed it holds, you've earned a nice day.|Something to look forward to at least.
+> Not until next week.|More rain all week.
+= Ugh, that's a long wait for some sun.|Time for cozy indoor plans then.
+Q Have you been stuck inside?|What have you been doing indoors?
+> Mostly reading and napping.|Just lots of movies.
+= Honestly, that's the best use of a rainy day.|Rain is perfect for that.
+> Still out running errands, soaked.|Getting drenched walking to work.
+= Oof, a good umbrella and waterproof shoes are worth it.|Soggy socks all week, that's rough.
+X Hope the sun shows up soon.|Stay dry out there.|Hang in there, the clouds will clear.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@we_thunder_night neg weather
+U A thunderstorm kept me up half the night.|The thunder was so loud last night I barely slept.|There was a huge storm overnight and now I'm exhausted.|Lightning and thunder all night, I got maybe three hours of sleep.
+A Loud storms at night make it impossible to rest.|Getting woken up by thunder over and over is rough.|That kind of night leaves you dragging the next day.|Storms always seem loudest at 3am.
+Q Are you able to rest today?|Can you catch up on sleep?
+> Maybe a nap later.|I'll try to nap after lunch.
+= A short nap could help a lot.|Good plan, even twenty minutes makes a difference.
+> No, I have work all day.|Not a chance, busy day.
+= Ugh, extra coffee then, and an early night tonight.|Hang in there, bed will feel amazing tonight.
+Q Do storms usually bother you?|Are you a light sleeper?
+> Yes, I wake up at every sound.|Very light sleeper.
+= Earplugs or a fan for white noise might help next time.|That makes storms extra tough.
+> Not usually, this one was wild.|Normally I sleep through them.
+= Sounds like it was a big one.|That must have been some storm.
+X Hope you get a good night's sleep tonight.|Rest up when you can.|Here's to a quiet night tonight.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@we_fall_leaves pos weather
+U The leaves are changing and it's gorgeous out.|Fall colors are at their peak around here.|Went for a walk and the trees are all orange and red.|The maple outside my window turned bright red overnight.
+A Fall color season is such a treat.|Orange and red trees make every walk feel special.|That sounds beautiful.|There's something cozy about peak fall.
+Q Do you have a favorite fall activity?|What's your favorite thing about fall?
+> Long walks in the crunchy leaves.|Hiking when it's cool out.
+= Crunchy leaves underfoot are one of the best sounds.|Cool air and color, perfect hiking weather.
+> Anything with apples or pumpkins.|Baking with all the fall flavors.
+= Apple season is the best part.|Fall baking makes the whole house smell amazing.
+Q Did you take any pictures?|Did you get any photos?
+> A bunch, it's so pretty.|Tons.
+= Nice, those will be great to look back on in winter.|Good, the colors never last long.
+> No, I just enjoyed it.|Nope, just soaked it in.
+= Sometimes that's the better way to do it.|Honestly, being present is worth more.
+X Enjoy the fall colors!|Have a lovely autumn walk.|Soak it in while it lasts.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@we_spring_first pos weather
+U First warm day of spring and I'm outside.|It's finally warm enough to go out without a jacket.|The sun is out and it's warm, spring is here!|Spring finally showed up today.
+A The first warm day feels like a reward for surviving winter.|No jacket weather is the best feeling.|Spring arriving is always a mood boost.|Sunshine and warmth, finally.
+Q What are you doing to enjoy it?|Any plans for the nice weather?
+> Sitting in the park.|Just lying in the sun.
+= Perfect, soak up every bit of it.|That's the ideal first spring day.
+> Going for a long bike ride.|A long walk around town.
+= Great way to celebrate the weather.|Love that, get some fresh air in your lungs.
+Q Is anything blooming yet?|Seeing any flowers?
+> The first flowers are popping up.|The cherry trees are starting.
+= That's the best sign of spring.|Blooms make everything feel new.
+> Not yet, still bare trees.|Nothing yet.
+= Give it a week or two.|They'll catch up with the weather soon.
+X Enjoy the sunshine!|Happy spring!|Have a great time outside.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@we_humid neg weather
+U It's so humid my shirt is stuck to me.|The humidity today is unbearable.|Walked two blocks and I'm drenched, this humidity is awful.|My hair has doubled in size from the humidity.
+A Humid days make everything feel sticky and heavy.|That thick, soupy air is the worst.|Sticky weather like that makes everything more tiring.|Some days the air just feels like soup.
+Q Is there any relief coming?|Is it supposed to let up?
+> A storm tonight, maybe.|Rain later might clear it out.
+= A good storm usually breaks the humidity.|Fingers crossed the rain cools things off.
+> Not this week.|Nope, all week.
+= Ugh, stay near the AC as much as you can.|Hang in there, light clothes and cold drinks.
+Q Are you used to this kind of weather?|Is it always like this where you live?
+> Yeah, every summer.|It's normal here, sadly.
+= Then you're a humidity veteran.|Summers like that take some real toughness.
+> No, it's unusual.|Never this bad.
+= That makes it even harder to deal with.|Weird weather year then.
+X Stay cool and dry if you can.|Hope the air clears up soon.|Hang in there, cooler days are coming.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@we_sunny_saturday pos weather
+U It's a perfect sunny Saturday.|Not a cloud in the sky today.|The weather today is absolutely perfect.|Blue skies, light breeze, just a beautiful day.
+A Days like this are a gift.|Perfect weather is the best excuse to get outside.|Blue skies and a breeze sound lovely.|Sounds like a flawless day.
+Q Any plans to get outside?|What are you doing with the nice day?
+> A picnic at the park.|Lunch outside with friends.
+= A picnic is the perfect way to use it.|Eating outside on a day like this is the best.
+> Just yard work, honestly.|Cleaning the garage.
+= At least you get the sunshine while you work.|Productive and sunny, not bad.
+Q Is it supposed to last?|Is tomorrow going to be nice too?
+> All weekend, apparently.|Yes, the whole weekend.
+= Lucky you, two perfect days.|Enjoy both of them.
+> Rain tomorrow.|Only today.
+= Then make the most of today.|Good reason to stay outside as long as you can.
+X Enjoy the beautiful day!|Soak up the sunshine.|Have a great time out there.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@we_windy_hair neg weather
+U The wind today completely wrecked my hair.|Spent twenty minutes on my hair and the wind ruined it in seconds.|So windy out, my hair is a lost cause today.|Did my hair nicely this morning and the wind undid all of it.
+A Wind has zero respect for a good hair day.|A careful hairdo versus one gust is never a fair fight.|Ha, the wind always wins that battle.|Windy days are the natural enemy of a good hairdo.
+Q Is it still that windy?|Has the wind calmed down?
+> Still howling.|Yes, it's still wild out.
+= Maybe a hat or a hood for the trip home.|Sounds like a ponytail kind of day.
+> It's calmer now.|Finally settled down.
+= Good, the worst is behind you.|At least a quick brush might save it now.
+Q Do you have anywhere important to be today?|Anything big going on today?
+> Yeah, a meeting in an hour.|Dinner plans tonight.
+= A quick fix in the restroom mirror and nobody will know.|Windswept can pass as a look, honestly.
+> Nope, just a normal day.|Nothing, thankfully.
+= Then no harm done, just a messy-hair day.|Good, you can let it be wild.
+X Hope the wind calms down for you.|Here's to a calmer day tomorrow.|May tomorrow's hair day go better.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@we_fog_drive neu weather
+U The fog was so thick on my drive this morning.|I could barely see the road through the fog today.|Foggy morning, my commute took twice as long.|Drove to work in pea soup fog.
+A Thick fog makes a drive feel so slow and tense.|Taking it slow in fog is the smart move.|That kind of fog turns a normal commute into a long one.|Foggy mornings can be kind of eerie.
+Q Did it clear up later?|Is it still foggy?
+> Yeah, it burned off by nine.|Cleared up by mid-morning.
+= Nice, the sun usually wins in the end.|Good, at least the drive home should be clear.
+> Still hanging around.|Still pretty thick.
+= Low beams and plenty of space on the way home.|Hopefully it lifts by the afternoon.
+Q Do you get a lot of fog there?|Is fog common where you live?
+> All the time in the fall.|Pretty often.
+= Then you must be a pro at driving in it.|Fall fog is so atmospheric.
+> Hardly ever.|This was rare.
+= That makes it more unsettling when it shows up.|A rare foggy day then.
+X Drive safe on the way home.|Hope tomorrow's commute is clearer.|Take it easy on the road.
+C Thanks!|Ha, fair.|Yeah, true.|Will do.|Thanks, good point.
+@we_car_cold neg weather
+U It was so cold this morning my car barely started.|My car took four tries to start in this cold.|Minus ten this morning and my car was not happy about it.|The cold snap nearly drained my car battery.
+A Cold mornings are tough on car batteries.|Nothing like a sputtering engine to start the day.|That kind of cold is hard on everything.|At least it started in the end.
+Q Is the battery pretty old?|How old is the battery?
+> Probably five years.|It's the original, I think.
+= That's getting up there, might be worth getting it tested.|An old battery and cold weather don't mix.
+> It's pretty new.|Replaced it last year.
+= Then it's probably just the cold, it happens.|Good, it might just need a warmer morning.
+Q Is the cold supposed to last?|How long is this cold snap?
+> Few more days.|Through the weekend.
+= Bundle up and give the car a minute to warm up.|Hang in there, it'll ease up.
+> It warms up tomorrow.|Just today.
+= Good, relief is on the way.|One more cold morning and you're through.
+X Stay warm, and good luck with the car tomorrow.|Hope your car behaves.|Bundle up out there.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@we_snowday_hope pos weather
+U They're predicting a big snowstorm and I'm hoping for a snow day.|Please let tomorrow be a snow day.|Fingers crossed school gets canceled tomorrow for snow.|The forecast says a foot of snow, snow day incoming?
+A The snow day hope is real.|Waiting on the snow day call is so suspenseful.|A surprise day off would be amazing.|A foot of snow sounds promising for a day off.
+Q What would you do with the day off?|Got snow day plans?
+> Sleep in, obviously.|Sleep until noon.
+= The best snow day tradition.|Sleeping in is the whole point.
+> Sledding and hot chocolate.|Build a snowman.
+= Classic snow day perfection.|That sounds like a great day.
+Q Do you usually get snow days there?|How often do you get snow days?
+> Maybe once a year.|Rarely, so this would be special.
+= Then it would be extra sweet.|A rare one is the best kind.
+> A few every winter.|Pretty often.
+= Lucky, that's a nice perk of winter.|Then you know the drill.
+X Fingers crossed for that snow day!|Hope you wake up to good news.|Enjoy the snow either way.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.

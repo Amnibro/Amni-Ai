@@ -1,0 +1,196 @@
+@sp_team_won pos sports
+U My team won last night!|We finally beat our rivals last night.|The home team pulled off a huge win yesterday.|We won last night in the final seconds!|My team won and I'm still buzzing.
+A A win like that makes the whole week better.|Big wins are the reward for all those nervous games.|Few things beat the rush of watching your team win.|Still buzzing the next day is the sign of a great game.|What a night to be a fan.
+Q Did you watch it live?|Were you watching when it happened?
+> Yes, I was at the stadium.|I was there in person.
+= Being in the crowd for a win like that is unforgettable.|The noise must have been incredible. Where were your seats?
+> Watched it at home, yelling at the TV.|At a bar with friends.
+= Yelling at the TV is a proud fan tradition.|Watching with a crowd makes a win even better.
+Q Do you think they can keep it going?|Is this the start of a streak?
+> I hope so, they look great this year.|Definitely, this could be their year.
+= That kind of hope is what makes a season fun.|Here's hoping, it's great when a team finally clicks.
+> Honestly, who knows with this team.|They'll probably lose next week.
+= Ha, the classic fan mix of hope and dread.|Then enjoy this one while it lasts.
+X Enjoy the win, you earned the bragging rights!|Here's to many more wins this season.|Savor it, nights like that don't come every week.
+@sp_team_lost neg sports
+U My team lost again.|Another loss for my team, I can't take it.|We blew a huge lead last night.|My team has lost five games in a row.|Ugh, the home team choked again.
+A Losses like that are tough to watch.|Some games you just want to forget as fast as possible.|Sticking with a team through a rough stretch takes real loyalty.|Some seasons just test a fan's patience.|That kind of game can ruin a whole evening.
+Q What went wrong?|How did they lose it?
+> The defense fell apart.|They couldn't stop anyone.
+= When the defense collapses there's not much anyone can do.|That's rough, hopefully the coaches fix it this week.
+> Too many mistakes at the end.|They got sloppy late.
+= Late mistakes sting the most because they were so close.|Those are the losses that keep you up at night.
+Q Are you still watching the next game?|Will you tune in next week?
+> Of course, I can't help it.|Always, I'm loyal.
+= That's real fandom, through thick and thin.|Loyal fans get the best payoff when things turn around.
+> Taking a break for my sanity.|Maybe not, I need a week off.
+= Fair, a little break might help.|Nobody would blame you after a stretch like this.
+X Hang in there, the comeback will be sweeter for it.|Better days are ahead for your team.|Here's hoping next week goes their way.
+@sp_pickup_basketball pos sports
+U I played pickup basketball after work.|Went to the park for some pickup hoops today.|I joined a pickup basketball game at the gym.|Played basketball with some guys at the court this morning.
+A Pickup basketball is such a fun way to get moving.|A game at the court is a great way to shake off the workday.|Jumping into a game with strangers takes some guts.|Nothing like a few games of hoops to clear your head.
+Q How did you play?|Did your team win?
+> We won most of the games.|My team kept winning.
+= Holding the court is a great feeling.|Nice, sounds like you were on a roll.
+> We got crushed.|Lost every game, but it was fun.
+= Getting crushed is part of pickup, and still a good workout.|Fun is what counts, and you got some exercise.
+Q Do you play often?|Is it a regular thing for you?
+> A couple of times a week.|Every Saturday.
+= That's a great routine for staying active.|Having a regular game is the best.
+> First time in years.|Not since college.
+= Your legs will probably remind you tomorrow.|Welcome back to the court.
+X Enjoy the rest of your day, and stretch those legs.|Nice work getting out there.|Hope you get back on the court soon.
+@sp_5k_training neu sports
+U I'm training for my first 5K.|I signed up for a 5K next month and started running.|I've been doing a couch to 5K program.|I ran two miles without stopping for the first time while training for a 5K.
+A Training for a first 5K is a great goal.|Signing up is often the hardest step.|Building up slowly toward a 5K is the smart way to do it.|Every run gets you closer to race day.
+Q How's the training going?|How are the runs feeling?
+> Better every week.|Getting easier, slowly.
+= That steady progress is exactly how it's supposed to feel.|Sounds like the plan is working.
+> Pretty rough, my legs are sore.|Hard, I'm always out of breath.
+= Sore legs mean they're adapting, and it does get easier.|Slow the pace down, easy runs should feel easy. Are you taking rest days?
+Q Are you running alone or with someone?|Do you have a running buddy?
+> Just me and my music.|Solo.
+= A good playlist goes a long way.|Solo runs can be great thinking time.
+> With a friend.|My neighbor runs with me.
+= A running buddy makes it so much easier to show up.|That's great, it keeps you both honest.
+X Good luck with the training!|You're going to cross that finish line.|Keep it up, race day will be here before you know it.
+@sp_marathon_done pos sports
+U I finished my first marathon!|I ran a full marathon yesterday.|Crossed the marathon finish line this morning.|I did it, twenty-six miles!
+A Finishing a marathon is a huge accomplishment.|Twenty-six miles is no joke, congratulations.|All those months of training paid off.|Crossing that finish line must have felt incredible.
+Q How are your legs feeling?|How's your body doing today?
+> Walking down stairs is a challenge.|Sore everywhere.
+= That's the marathon badge of honor.|Rest up, you earned every ache.
+> Surprisingly okay.|Not bad, actually.
+= Your training must have been really solid.|That's impressive after that distance.
+Q Would you run another one?|Planning another marathon?
+> Absolutely, I'm hooked.|Already looking at the next one.
+= Sounds like the running bug got you.|Hooked after one, that's a great sign.
+> Never again.|One was enough.
+= Fair, you can say you did it forever.|That's totally fair, it's a big one to check off.
+X Congratulations again, enjoy the rest!|What an achievement, be proud.|Rest those legs, you've earned it.
+@sp_gym_pr pos sports
+U I hit a new personal record at the gym today.|Lifted more than I ever have today.|Set a new PR on my main lift this morning!|I finally hit the weight I've been chasing for months.
+A A new personal record is such a great feeling.|Months of work paying off in one lift is the best.|Beating your own best is the most satisfying kind of win.|That's the kind of progress you can really feel.
+Q What was the lift?|Which lift was it?
+> Deadlift.|Squat.
+= That's a big one, strong work.|That takes a lot of strength and focus.
+> Bench press.|Overhead press.
+= Nice, upper body gains are hard earned.|That's a tough lift to move up on.
+Q How long have you been training?|How long have you been lifting?
+> About a year.|A little over a year.
+= A year of consistency really shows.|A year of steady work adds up.
+> Just a few months.|I started recently.
+= A PR that early is fast progress.|Great start, the early gains are fun.
+X Keep it up, the next PR is waiting!|Nice work, enjoy the win.|Congrats, be proud of that lift.
+@sp_kid_soccer pos sports
+U My kid had a soccer game this morning.|Spent the morning cheering at my daughter's soccer game.|My son scored his first goal in soccer today!|Watched my kid's soccer game in the rain.
+A Kids' soccer games are so much fun to watch.|Cheering from the sidelines is a great way to spend a morning.|Little soccer games are full of heart.|Being a soccer parent is a whole lifestyle.
+Q How did they play?|How did the game go?
+> Really well, they had fun.|Great, the whole team played hard.
+= Fun is the whole point at that age.|Sounds like a great game.
+> They lost, but nobody cared.|They got beat, but there were snacks after.
+= The snacks after the game are the real highlight at that age.|Sounds like the right attitude.
+Q Do you enjoy the sideline life?|Do you like going to the games?
+> I love it.|It's the best part of my week.
+= Those sideline mornings are so sweet.|Those mornings go by fast, enjoy them.
+> Early mornings are rough.|I need more coffee for it.
+= Coffee is essential sideline equipment.|Early starts are the hardest part.
+X Enjoy the rest of the season!|Sounds like a fun morning.|Go team, have a great season.
+@sp_golf_dad pos sports
+U I played golf with my dad this weekend.|My dad and I got a round of golf in yesterday.|Went golfing with my dad for the first time in a while.|Spent Saturday morning on the golf course with my dad.
+A A round of golf with your dad sounds like great time together.|Golf is such a good excuse for a long chat outdoors.|Time on the course with family is hard to beat.|Getting a round in with your dad sounds really nice.
+Q Who won?|How did you play?
+> My dad won by six strokes again.|He crushed me on the back nine.
+= Dads always seem to have the edge on the golf course.|Ha, there's always the next round for a rematch.
+> I finally beat him!|I won for once.
+= That's a big win, I bet you'll bring that up for a while.|Bragging rights until the next round, enjoy them.
+Q Do you two play often?|Is it a regular thing?
+> A few times a year.|Not often, but we try.
+= That makes each round special.|Those rounds are worth making time for.
+> Pretty much every weekend.|Most weekends.
+= Weekly golf together is a great tradition.|Sounds like a lovely routine.
+X Enjoy the next round with your dad!|Sounds like a lovely day on the course.|Here's to many more rounds together.
+@sp_swimming neu sports
+U I've been swimming laps before work.|Got back into swimming this month.|Swam forty laps this morning.|I started going to the pool three times a week.
+A Swimming is such a great full-body workout.|The pool is a great place to build a habit.|Laps in the pool are a nice way to clear your head.|Regular swimming does wonders for your energy.
+Q How are the swims going?|How's the swimming feeling?
+> Amazing, I missed it.|Really good.
+= There's nothing quite like the quiet of the water.|Glad it feels good to be swimming again.
+> Exhausting.|I get tired fast.
+= Your stamina will build faster than you think.|It gets easier each time.
+Q When do you usually swim?|What time of day do you swim?
+> Before work.|Early mornings.
+= An early swim is a great way to wake up.|Getting in the pool before sunrise takes dedication.
+> After work.|Evenings, usually.
+= A good way to shake off the day.|An evening swim sounds like a nice way to unwind.
+X Enjoy the swimming!|Keep up the laps, it sounds great.|Have a great swim tomorrow.
+@sp_bike_ride pos sports
+U I went on a really long bike ride today.|Rode forty miles this morning.|I biked all the way to the lake and back.|Did my longest bike ride ever yesterday.
+A That's a big ride, nice work.|A long bike ride is such a great way to spend a day.|Covering that much ground on a bike is impressive.|Your legs must be feeling that one.
+Q How long did it take?|How long were you out?
+> A few hours.|Most of the morning.
+= That's a solid effort.|A good chunk of time in the saddle.
+> About two hours.|A little over two hours.
+= That's moving at a good clip.|That's a great pace for that distance.
+Q Was the weather good for it?|How was the weather?
+> Perfect, sunny and cool.|Beautiful.
+= Sunny and cool is ideal cycling weather.|Lucky, what a day for it.
+> Windy and hot.|A strong headwind the whole way back.
+= A headwind on the way back is brutal.|That makes it even more impressive.
+X Rest up, and enjoy the tired legs!|Great ride, enjoy the rest of your day.|Nice work, happy cycling.
+@sp_yoga pos sports
+U I went to my first yoga class.|Tried a yoga class for the first time today.|I finally went to a beginner yoga class.|Just got back from my very first yoga class.
+A Yoga is a great way to stretch and slow down.|A first yoga class is always a bit of an adventure.|Trying something new like that is worth celebrating.|Good for you for finally giving it a try.
+Q How did it feel?|How was it?
+> Harder than I expected.|Tough, I'm not flexible at all.
+= Flexibility comes with time, everyone starts stiff.|It's harder than it looks, you'll improve fast.
+> So relaxing.|Really good.
+= That calm feeling afterward is the best part.|Glad it's a good fit.
+Q Are you going to keep going?|Will you go back?
+> Definitely.|Yes, I signed up for a few more.
+= That's great, it gets better each time.|Nice, consistency makes all the difference.
+> Maybe, we'll see.|Not sure yet.
+= Try a different style, it might click.|Fair, give it a couple more tries.
+X Enjoy the yoga!|Have a good stretch, and enjoy the calm.|Hope the next class is even better.
+@sp_bowling pos sports
+U We went bowling last night.|Bowling night with friends was a blast.|Had a bowling night with coworkers.|Spent last night at the bowling alley with friends.
+A Bowling night is such a fun way to hang out.|Bowling brings out everyone's competitive side.|A night at the lanes is a classic.|Bowling is fun even when the score isn't.
+Q How was your score?|Did you bowl well?
+> Pretty good, a few strikes.|Better than usual.
+= A few strikes make the whole night.|A better-than-usual night on the lanes is a great feeling.
+> Terrible, mostly gutter balls.|Awful.
+= Gutter balls make for the best stories.|Ha, it's the company that counts.
+Q Do you go bowling often?|Is it a regular thing?
+> Once a month or so.|Pretty often.
+= A monthly bowling night is a fun tradition.|You must be getting good.
+> First time in years.|Rarely.
+= A fun throwback to old bowling nights, then.|Great way to shake things up.
+X Sounds like a fun night!|Enjoy your next bowling night.|Here's to more strikes next time.
+@sp_big_game_party pos sports
+U I'm having friends over to watch the big game.|We're hosting a watch party for the championship game.|Everyone's coming to my place for the game on {day}.|I'm hosting a game day party this weekend.
+A A watch party is the best way to see a big game.|Game day with friends is always a good time.|Hosting the game means you get the best seat.|Big games are better with a crowd.
+Q What snacks are you making?|What's on the menu?
+> Wings and nachos.|Chips, dip, and wings.
+= Wings and nachos, the classics.|That's a solid game day spread.
+> Chili, lots of chili.|A big pot of chili.
+= Chili is perfect for a crowd.|Nothing beats chili on game day.
+Q Who are you rooting for?|Do you have a team in it?
+> My team is in it!|My team, of course.
+= Then it's going to be an intense night.|Fingers crossed for them, and for your nerves.
+> No, I'm just here for the fun.|Nobody really, just the ads.
+= Honestly, that makes it way more relaxing.|The ads and snacks are half the fun.
+X Enjoy the game, and the snacks!|Have a great watch party.|Hope it's a great game.
+@sp_volleyball_league pos sports
+U I joined a rec volleyball league.|I signed up for an adult volleyball league.|Our rec volleyball team had its first game tonight.|I'm playing in a volleyball league now.
+A A rec league is a great way to meet people and stay active.|Volleyball is such a fun team sport.|Joining a league takes a bit of courage.|That sounds like a fun weekly thing.
+Q Have you played before?|Is volleyball new for you?
+> I played in high school.|A little, years ago.
+= It's fun to come back to a sport you know.|The skills come back fast.
+> Never, I'm a total beginner.|First time ever.
+= Rec leagues are great for beginners.|Everyone's there to have fun, you'll pick it up.
+Q How's the team?|Do you like your teammates?
+> Really fun group.|Great people.
+= That's the best part of a league.|A good team makes it worth it.
+> Pretty competitive, actually.|A little too serious.
+= Ha, there's always one intense teammate.|That can be fun, if a little stressful.
+X Have fun at the next game!|Enjoy the league and the new teammates.|Good luck this season, go team.

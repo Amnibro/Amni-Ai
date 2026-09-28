@@ -1,0 +1,177 @@
+@sc_semester_start pos school
+U Classes start again {when}.|The new semester kicks off {when} and I'm kind of excited.|Back to school {when}, I just picked up my schedule.|My fall classes start {when}.|New semester starts {when}, fresh notebooks and everything.
+V when=on Monday,tomorrow,next week,in two days
+A A fresh semester is a nice clean slate.|New notebooks and a new schedule have a certain magic to them.|Getting back into the school rhythm can feel good after a break.|Sounds like you're starting the term in a good mood.|Nothing says new start like a blank planner.
+Q What classes are you taking?|Which courses did you end up with?
+> Mostly required stuff, honestly.|A lot of core classes this time.
+= Getting the requirements out of the way is a smart move.|Core classes aren't always thrilling, but they open the door to the fun ones. Is there one you're dreading?
+> I got into an art elective I really wanted.|I finally got a psychology class I've been waiting for.
+= Getting the class you wanted is such a win.|That's the one that'll make the week fun. What made you want to take it?
+Q Is there one class you're most looking forward to?|Any class you're especially excited about?
+> Yeah, a writing workshop.|The history seminar sounds great.
+= A small, discussion-heavy class can be the highlight of a term.|That sounds like a good one to look forward to each week.
+> Not really, they all look pretty dry.|Honestly, none of them.
+= Sometimes a dull-looking class ends up surprising you.|Fair enough, a good professor can change that fast.
+X Have a great start to the semester!|Here's to a good term.|Good luck, I hope the classes turn out great.
+@sc_group_project neg school
+U My group project partner hasn't done anything.|I'm doing a group project and nobody else is pulling their weight.|Two people in my project group just stopped answering messages.|I swear I'm doing this whole group project by myself.|Group projects are the worst, I'm carrying the whole team.
+A Carrying a whole group project is exhausting.|Group projects have a way of landing on the most responsible person.|Ghosted by your own project group is so frustrating.|That's a rough spot, especially when your grade depends on them.|Doing everyone's share is a lot of extra pressure.
+Q When is it due?|How much time do you have left on it?
+> Next week.|In about ten days.
+= That's enough time to nudge them once more before taking over.|There's still room to split the rest of the work clearly. Have you tried giving each person one specific task?
+> Friday, so basically now.|In two days.
+= With that little time, finishing it yourself might be the least stressful option.|Oof, that's tight, focus on the parts that count most.
+Q Have you said anything to them about it?|Did you bring it up with the group?
+> I sent a message but no one replied.|I tried, but they just ignored it.
+= It might be worth letting your instructor know how the work was split.|Being ignored is so annoying. Does your class have peer evaluations?
+> Not yet, I hate confrontation.|No, I don't want to be the bad guy.
+= A simple message with a clear deadline isn't being the bad guy.|Totally get it, but a quick friendly check-in usually goes better than you'd expect.
+X I hope the rest of the group steps up, and good luck with the project.|Hang in there, it'll be done before you know it.|You're clearly the reliable one, and that counts for something.
+@sc_essay_due neg school
+U I have an essay due tomorrow and I've written zero words.|My {subj} paper is due in the morning and I just started.|Essay due at midnight, and I'm staring at a blank page.|I procrastinated on my paper and now it's due tomorrow.
+V subj=English,history,philosophy,sociology,psychology
+A A blank page the night before is a very familiar feeling for a lot of students.|Deadline pressure can actually get the words moving.|The night-before essay is practically a tradition.|Staring at an empty document is the hardest part.
+Q How long does it need to be?|What's the word count?
+> About two thousand words.|Five pages.
+= That's doable in one focused evening if you outline first.|Break it into sections and it'll feel a lot smaller. Do you have a topic yet?
+> Only a thousand words, thankfully.|Just three pages.
+= That's very manageable, you can knock that out tonight.|Short and sweet, you've got this.
+Q Do you know what you're going to write about?|Do you have a topic yet?
+> Yeah, I just need to start.|I know my argument, I just haven't written it.
+= Then start with the middle, intros are easier to write last.|Knowing your argument is half the battle.
+> No idea at all.|Not really, the prompt is confusing.
+= Pick the angle you have the most to say about, even if it's not the fanciest one.|Try rewriting the prompt as a question in your own words, it often clicks from there.
+X Good luck, one paragraph at a time!|You can do this, just get that first sentence down.|Go get it done, and treat yourself when it's submitted.
+@sc_accepted pos school
+U I just got accepted to {school}!|My acceptance letter came today!|I got into my first choice school!|Guess who just got a college acceptance email.
+V school=my dream college,the state university,a nursing program,an art school,the engineering program
+A That's incredible news, congratulations!|All those applications paid off.|Getting that yes must have felt amazing.|What a moment, your hard work really showed.|Huge news, you should be proud.
+Q How did you find out?|Where were you when you found out?
+> I checked my email in class.|I was at work when the email came.
+= Trying to stay calm in public after news like that is tough.|Ha, that must have been hard to keep quiet about.
+> My mom opened the letter with me.|I found out at home with my family.
+= Getting to share that moment with family is really special.|That sounds like a moment everyone will remember.
+Q Are you going to accept?|Is it the one you're going with?
+> Definitely, it's my top choice.|Yes, I already said yes.
+= That's the best outcome, congrats on making it official.|Love that you knew right away. What are you most excited about there?
+> I'm still waiting on a couple of other schools.|Not sure yet, I want to compare offers.
+= Smart to see all your options first.|Having choices is a great problem to have.
+X Congratulations again, that's a big step!|So happy for you, enjoy the moment!|What a great start to the next chapter.
+@sc_good_grade pos school
+U I got an A on my {subj} paper!|My professor gave my essay the highest grade in the class.|Just got my paper back and it's an A!|Worked so hard on that {subj} paper and it paid off.
+V subj=history,biology,English,economics,chemistry,philosophy
+A An A on a paper you worked hard on is the best feeling.|Look at you, all that effort really showed.|That grade is well earned.|Nice, papers are hard to ace.|Getting it back with a good mark is so satisfying.
+Q What was the paper about?|What topic did you write on?
+> A historical event I really care about.|Something I picked myself.
+= Writing about something you care about always shows.|Choosing your own topic makes it so much easier to write well.
+> It was a lab report, honestly.|Kind of a boring assigned topic.
+= Acing it anyway is even more impressive.|Making a dry topic work takes real skill.
+Q Did your professor leave any comments?|What did the feedback say?
+> Just that it was really well argued.|They said my writing has improved a lot.
+= That's the kind of note you want to keep.|Improvement is great to hear, it means the practice is working.
+> Barely anything, just the grade.|Only a couple of check marks.
+= The grade speaks for itself.|Sometimes no notes means nothing needed fixing.
+X Congrats, enjoy that win!|Nice work, you earned it.|Keep it up, that's a great result.
+@sc_fav_teacher pos school
+U My favorite teacher is retiring this year.|I ran into my old {subj} teacher at the store today.|I found an old note from my favorite {subj} teacher today.|I still think about my favorite teacher from middle school.
+V subj=English,math,science,art,music,history
+A A good teacher really sticks with you for years.|Some teachers shape us more than they ever know.|It's lovely that you still think of them.|Teachers like that are the ones people remember.
+Q What made them such a good teacher?|What was special about them?
+> They made a hard subject actually fun.|Their class was the one I looked forward to.
+= That's a rare gift, making people enjoy something hard.|That says so much about them. Do you remember a favorite lesson?
+> They believed in me when I didn't.|They pushed me to try harder.
+= That kind of encouragement can change a lot.|Having someone see potential in you is huge.
+Q Did you ever tell them how much they meant to you?|Have they heard how much they helped you?
+> Yeah, I told them once.|I wrote them a note.
+= They probably treasure that.|Notes like that mean the world to teachers.
+> Not really, I should.|No, never did.
+= It's never too late, a short message would probably make their year.|A quick note would be a lovely thing to send.
+X What a nice memory to hold on to.|Teachers like that make a real difference.|It sounds like they left a great mark on you.
+@sc_presentation neg school
+U I have to give a presentation in class {when}.|My class presentation is {when} and I'm so nervous.|I have to present my project in front of the whole class.|Presentation day {when}, and I hate public speaking.
+V when=tomorrow,on Monday,this afternoon,on Friday
+A Presenting in front of a class is nerve-racking for almost everyone.|A little stage fright is really normal.|Classmates are usually a pretty forgiving audience.|Getting up in front of people takes guts.|Presentations feel huge beforehand and small afterward.
+Q How long does it have to be?|Is it a long presentation?
+> Just five minutes.|Only a few minutes.
+= Five minutes goes by faster than you'd think.|Short is good, practice it a couple of times and you'll be set.
+> Fifteen minutes, which feels like forever.|A full twenty minutes.
+= That's a chunk of time, but slides can carry you through it.|Break it into small sections and it'll feel shorter. Have you practiced it out loud yet?
+Q Are you presenting alone or with a group?|Is it a solo presentation?
+> All by myself.|Just me.
+= Then you get to do it your way.|Solo means no one can mess up your part.
+> With a group.|Me and two classmates.
+= At least you can share the spotlight.|Having teammates up there can take some pressure off.
+X Good luck, you'll do better than you think!|Deep breath, and you've got this.|Go get it, and be proud once it's done.
+@sc_night_classes pos school
+U I'm going back to school at night while working full time.|I signed up for night classes, at forty-two.|I'm starting evening courses at the community college.|After years out of school, I enrolled in night classes.
+A Going back to school as an adult takes real courage.|Balancing work and classes is impressive.|It's never too late to learn something new.|Night classes are a great way to keep growing.|Good for you for making time for this.
+Q What are you studying?|What classes are you taking?
+> Accounting.|Business classes.
+= That's a practical choice that opens a lot of doors.|Great field, useful in almost any job.
+> Something just for me, like writing.|Photography, just for fun.
+= Learning something purely for joy is wonderful.|That sounds like a great creative outlet. What got you interested?
+Q How are you feeling about juggling it all?|How do you feel about balancing work and school?
+> A little nervous about the workload.|Kind of worried I'll be too tired.
+= Taking it one class at a time can make it very doable.|The first few weeks are the hardest, then it settles into a routine.
+> Excited, honestly.|I'm ready for it.
+= That energy will carry you a long way.|Love that attitude.
+X Good luck with the classes, that's a great step!|Enjoy learning, I think you'll do great.|Wishing you a great first term.
+@sc_ptconf neu school
+U I have a parent-teacher conference for my {kid} {when}.|Parent-teacher conferences are {when} and I don't know what to expect.|My {kid}'s teacher wants to meet with me {when}.
+V kid=son,daughter,oldest,youngest;when=tomorrow,on Thursday,this week,next week
+A Conferences are a nice chance to see how things are going.|Meeting the teacher can tell you a lot.|It's good to have that direct line with the teacher.|Those meetings can feel a little like being back in school yourself.
+Q How has your {kid} been doing in class?|How's school going for your {kid}?
+> Really well, actually.|Pretty great so far.
+= That's wonderful to hear.|Then it'll probably be a happy meeting. Is there a subject they love?
+> They've been struggling with reading.|Math has been rough this year.
+= The teacher will probably have some good ideas to help.|A lot of kids hit a bump there, and it usually improves with a little extra practice.
+Q Is there anything you want to ask the teacher?|Do you have questions for the teacher?
+> How they get along with other kids.|Mostly about friendships.
+= That's a great thing to ask, teachers see a lot of that.|Social stuff matters so much at that age.
+> Just how I can help at home.|What we can work on together.
+= That's a really helpful question to bring.|Teachers love it when parents ask that.
+X I hope the conference goes smoothly.|Sounds like your {kid} is in good hands.|Good luck, it's great that you're so involved.
+@sc_abroad pos school
+U I'm studying abroad next year!|I got picked for the study abroad program in {place}.|I'll be spending next semester in {place} for school.|My study abroad application was accepted.
+V place=Spain,Italy,Japan,Australia,Ireland,South Korea,France
+A Studying abroad is such an adventure.|What an amazing opportunity.|A semester overseas will be unforgettable.|That's huge news, congratulations.|Living somewhere new for school is such a great experience.
+Q Do you speak the language there?|How's your language prep going?
+> A little, I'm practicing every day.|I know the basics.
+= Daily practice will pay off fast once you're there.|The basics are a great start, immersion will do the rest.
+> Not at all yet.|Nope, that's the scary part.
+= You'll pick up more than you expect just from everyday life.|A language app and a few phrases will get you started. Are you taking a class before you go?
+Q What are you most excited about?|What are you looking forward to most?
+> Traveling on weekends.|Exploring nearby cities.
+= Weekend trips are one of the best perks of studying abroad.|Being able to hop around like that is a dream.
+> The food, honestly.|Trying all the local food.
+= Honestly, that's a great reason.|Eating your way through a semester sounds perfect.
+X Congrats, it's going to be an amazing experience!|Have an incredible time abroad.|Enjoy every bit of it, that's a big adventure.
+@sc_dorm pos school
+U I'm moving into my dorm {when}.|Dorm move-in day is {when}!|I move into my college dorm {when} and I'm so excited.|Heading off to live in the dorms {when}.
+V when=tomorrow,this weekend,next week,on Saturday
+A Dorm life is a whole new chapter.|Move-in day is such a big moment.|A dorm room can start feeling like home surprisingly fast.|First days on campus are exciting.
+Q Have you met your roommate yet?|Do you know your roommate?
+> Yeah, they seem really nice.|We've texted a bit, seems cool.
+= That's a great start.|Sounds promising, a good roommate makes a huge difference.
+> Not yet, I'm a little nervous.|No, no idea who they are.
+= Most roommate pairings work out better than people fear.|It'll be fun to meet them. Are you bringing anything to make the room feel cozy?
+Q Are you bringing a lot of stuff?|How's packing for the dorm going?
+> Way too much.|My car is packed to the roof.
+= Ha, dorm rooms have a way of shrinking once the boxes arrive.|You'll figure out what you actually need after a week.
+> Just the basics.|Only a couple of bags.
+= Packing light is smart for a dorm.|Easy move, less to carry up the stairs.
+X Have a great move-in, and enjoy the first week!|Welcome to dorm life!|Good luck settling in, it's going to be fun.
+@sc_coding_course pos school
+U I started an online coding course and I'm hooked.|I'm taking a programming class for the first time.|Just wrote my first working program in class.|I'm learning to code in a night course and it's harder than I thought.
+A Learning to code is such a useful skill.|Seeing your own code actually run is a great feeling.|Programming takes patience, but it clicks with practice.|Picking up coding is a great challenge.
+Q What language are you learning?|What are they teaching you first?
+> Python.|Something beginner-friendly.
+= That's a great first language.|Starting simple is the right move.
+> Web stuff, like building pages.|Mostly how to make websites.
+= Being able to see your work in a browser is so rewarding.|Web projects are a fun way to learn. Have you built anything yet?
+Q What do you want to build with it?|Do you have a project in mind?
+> A little game.|Maybe an app for my hobby.
+= That's a great motivator to keep learning.|Personal projects teach you the most.
+> No idea yet.|Not sure, I just like it.
+= That's fine, ideas come as you learn.|Enjoying the process is a great place to start.
+X Keep at it, you're off to a great start!|Have fun coding!|Good luck, it gets more fun as you go.

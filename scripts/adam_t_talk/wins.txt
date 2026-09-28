@@ -1,0 +1,199 @@
+@wi_faucet_fixed pos wins
+U I fixed the leaky faucet myself!|Watched a video and fixed our dripping faucet all on my own.|No plumber needed, I fixed the kitchen faucet.|That dripping bathroom faucet is finally fixed, and I did it myself.
+A Fixing it yourself is so satisfying.|No more drip-drip-drip at night, that's a real win.|Saving a plumber visit feels great.|Handy skills like that come in useful forever.
+Q Was it hard to figure out?|How tricky was it?
+> Easier than I expected.|Just a worn-out washer.
+= The small fixes are often the easiest once you open them up.|A tiny part causing all that dripping, classic.
+> It took me three tries.|I flooded the counter once.
+= Three tries and it's fixed, that's what counts.|A little water on the counter is part of learning.
+Q What are you going to fix next?|Feeling ready for another repair?
+> Maybe the squeaky door.|The wobbly cabinet handle.
+= Look at you, building a whole repair list.|That one should be a quick win after the faucet.
+> Nothing, I'm retiring on a high note.|I'm done for now.
+= Fair, go out on top.|Enjoy the quiet sink for a while.
+X Nice work, enjoy that drip-free sink!|Well done, you just saved yourself some money.|Great job, you earned a little bragging.
+@wi_parallel_park pos wins
+U I parallel parked on the first try today!|Nailed a tight parallel park downtown.|For once I parallel parked perfectly in one go.|Squeezed into a tiny spot on the street on my first attempt.
+A One smooth try is the dream every time.|That's a small victory that feels huge.|Parallel parking under pressure is a real skill.|Nothing like sliding into a tight spot perfectly.
+Q Was anyone watching?|Did anybody see it?
+> Yes, a whole line of people at a cafe.|Some guy waiting to cross the street.
+= A proud public moment, then.|An audience makes it even better.
+> Nobody, which is a shame.|No witnesses, of course.
+= It still counts, even if nobody clapped.|The best ones always happen when nobody is around.
+Q Is parallel parking usually hard for you?|Do you normally struggle with it?
+> Always, I avoid it.|Yes, it's my nemesis.
+= Then this win is extra sweet.|Maybe this is the turning point.
+> Not usually, but that spot was tight.|I'm okay at it, but that was tricky.
+= Tight spots are the real test, well done.|That makes it even more impressive.
+X Enjoy that parking high for the rest of the day!|Smooth driving, that's a great little win.|Here's to many more perfect parking jobs.
+@wi_inbox_zero pos wins
+U I got my inbox to zero!|Inbox zero for the first time in months.|I finally cleared out all my emails.|Spent the morning answering emails and now my inbox is empty.
+A Inbox zero is such a satisfying feeling.|A clean inbox feels like a clean desk.|Clearing out all those emails takes real focus.|That's a weight off your shoulders.
+Q How many emails were in there?|How bad was it before?
+> Hundreds.|Like four hundred.
+= That's a big pile to get through.|No wonder it feels so good now.
+> Only about fifty.|Not too many, but they were bugging me.
+= Fifty nagging emails is still a lot of mental clutter.|The nagging ones are the worst to have hanging around.
+Q Think you can keep it that way?|Will it stay empty?
+> I'm going to try.|I'll try checking it daily.
+= A little every day keeps it manageable.|Good plan, small batches help a lot.
+> Probably not.|Ha, it'll be full again by Friday.
+= Enjoy the moment while it lasts.|At least now you know you can do it.
+X Enjoy that empty inbox while it lasts!|Nice work, that's a real weight lifted.|Great job, enjoy the calm.
+@wi_saved_money pos wins
+U I finally saved enough for a {thing}.|After months of saving, I can buy a {thing}.|I hit my savings goal for a {thing}!|I put money aside every month and now I have enough for a {thing}.
+V thing=new laptop,new bike,good camera,new couch,new mattress
+A Saving up for something takes real patience.|Hitting a savings goal is so rewarding.|All those months of discipline paid off.|A {thing} you saved up for will feel extra good.
+Q How long did it take?|How long were you saving?
+> About six months.|Most of the year.
+= That's a lot of consistency, well done.|Sticking with it that long takes real dedication.
+> Just a couple of months.|A few months.
+= That's quicker than a lot of people manage.|Faster than you expected, I bet.
+Q Are you buying it right away?|When are you going to get it?
+> This weekend!|Right away.
+= Enjoy it, you earned every bit of it.|No more waiting, that's the best part.
+> I'm going to wait for a sale.|Maybe in a few weeks.
+= Smart, a sale would make it even better.|Patience again, you're clearly good at this.
+X Enjoy your {thing}, you earned it!|Congrats on hitting the goal.|Well done, and enjoy the treat.
+@wi_clean_apartment pos wins
+U I cleaned the whole apartment today.|My place is spotless for the first time in weeks.|Deep cleaned every room today.|Spent the whole day cleaning and my apartment looks amazing.
+A A spotless apartment is such a good feeling.|Deep cleaning every room is a real accomplishment.|Walking into a clean home is the best.|That's a lot of work, and it sounds worth it.
+Q What was the worst part?|Which room was the hardest?
+> The kitchen.|Scrubbing the oven.
+= The kitchen always takes the longest.|Ovens are the worst, well done getting through it.
+> The bathroom.|The shower, by far.
+= The bathroom is the toughest job.|Shower scrubbing is a real workout.
+Q Are you going to relax now?|What's the reward?
+> Takeout and a movie.|Sitting on the couch all night.
+= That's a well-earned reward.|Perfect, and you get to enjoy it in a clean space.
+> A nap.|A long nap.
+= A nap in a tidy room sounds perfect.|You earned that nap, sleep well.
+> Sleeping in clean sheets.|Fresh sheets and an early night.
+= Clean sheets after a cleaning day are the best.|Fresh sheets in a clean room is the ultimate reward.
+X Enjoy your sparkling home!|Nice work, kick your feet up and enjoy it.|Well done, relax and soak in the tidiness.
+@wi_early_riser pos wins
+U I woke up early every day this week.|I've been getting up at six all week.|For once I didn't hit snooze all week.|I've kept my early morning routine for a whole week.
+A A whole week of early mornings is impressive.|Skipping the snooze button takes real willpower.|Early mornings can make the whole day feel longer.|Sticking to a new routine for a week is a great start.
+Q What do you do with the extra time?|How are you using the mornings?
+> I go for a walk.|A quick workout.
+= Moving first thing is such a good way to start the day.|That's a great use of the time.
+> Coffee and quiet time.|Reading with my coffee.
+= Quiet mornings are a real treat.|Coffee and a book before the world wakes up sounds lovely.
+Q How do you feel?|Are you feeling the difference?
+> More energized.|So much better.
+= That's a great sign it's working.|Sounds like the early alarm is paying off.
+> A little tired, honestly.|Sleepy by the afternoon.
+= An earlier bedtime might help it stick.|Give it a bit longer, your body will adjust.
+X Keep those early mornings going!|Nice work, enjoy the quiet hours.|Here's to another week of early starts.
+@wi_stranger_compliment pos wins
+U A stranger complimented my outfit today.|Someone in line at the store said they loved my jacket.|A random person told me I have a great laugh.|I got a really nice compliment from a stranger today.
+A A compliment from a stranger can make the whole day.|Those small moments stick with you.|It's so nice when someone goes out of their way to be kind.|That's a lovely little boost.
+Q How did you react?|What did you say?
+> I just said thanks and smiled.|I said thank you.
+= A smile and a thank you is the perfect response.|Simple and gracious, that's all it needs.
+> I got all flustered.|I laughed awkwardly.
+= Ha, that's the most common reaction.|Flustered is sweet, it means it meant something.
+Q Does that happen to you often?|Do you get compliments like that a lot?
+> Not really.|Almost never.
+= Then this one is worth savoring.|All the more reason to remember it.
+> Sometimes.|Once in a while.
+= Sounds like you've got good energy.|Those days are the best.
+X Enjoy that good feeling today!|Sounds like a great day, hold onto that one.|Maybe pass the kindness along to someone else.
+@wi_found_money pos wins
+U I found twenty bucks in an old jacket.|Found a twenty in my winter coat pocket!|I just found cash in a jacket I haven't worn in a year.|Pulled out an old jacket and there was money in the pocket.
+A Finding money in an old jacket is a small joy.|That's like a gift from your past self.|Surprise money is the best kind of money.|What a nice little surprise.
+Q What are you going to spend it on?|Any plans for it?
+> Coffee and a treat.|Lunch, probably.
+= A little treat is the right move.|A free lunch courtesy of past you, perfect.
+> Saving it.|Putting it in savings.
+= Responsible, your future self will thank you.|Sensible, even found money adds up.
+Q Do you check your pockets often?|Does that happen a lot?
+> Never, apparently.|Clearly not.
+= Ha, maybe check the rest of the closet.|Might be worth a look through the other coats.
+> Sometimes, but this was a surprise.|First time it happened.
+= Good timing for a little surprise.|A first find, then, and hopefully not the last.
+X Enjoy the surprise cash!|Here's to more lucky pockets.|Treat yourself with it, you found it fair and square.
+@wi_finished_book pos wins
+U I finally finished a book I've been reading for months.|Just finished a really long novel.|I read the last page of a book I started in the spring.|I got through a whole book for the first time in ages.
+A Finishing a long book is so satisfying.|That last page feeling is the best.|Sticking with a book for months takes patience.|Closing a book you've carried around that long is a great feeling.
+Q Did you like it?|How was it?
+> Loved it.|It was great.
+= A great book is worth every month it takes. What was your favorite part?|That's the best ending to a long read.
+> It was okay.|Meh, a bit slow.
+= At least you saw it through.|Some books are slow burns, and you still finished.
+Q What are you reading next?|Got another book lined up?
+> Something shorter.|A light mystery.
+= Smart, a quick read after a long one.|Mysteries are a great palate cleanser.
+> No idea yet.|I need suggestions.
+= Take a little break and see what calls to you.|Maybe try something in a totally different genre.
+X Happy reading, and enjoy the next one!|Congrats on reaching the last page.|Here's to your next good book.
+@wi_furniture_assembled pos wins
+U I built a whole dresser from a flat-pack kit without any leftover screws.|Assembled a bookshelf and had zero spare parts at the end.|I put together new furniture and it actually came out right.|Built my new desk by myself and nothing is wobbly.
+A No leftover screws is the flat-pack dream.|Following those instructions all the way through is a real accomplishment.|Furniture that doesn't wobble is a proud result.|Building it yourself makes it feel more like yours.
+Q How long did it take?|Was it a long build?
+> Three hours.|Most of the afternoon.
+= Worth it for something you'll use every day.|An afternoon well spent, then.
+> Under an hour.|Surprisingly quick.
+= Under an hour is seriously impressive.|You might be a natural at this.
+Q Did anyone help?|Did you do it alone?
+> All by myself.|Solo.
+= Doing it solo makes it even more impressive.|Solo builds are the ultimate test of patience.
+> My partner helped.|A friend helped hold pieces.
+= A second pair of hands makes it so much easier.|Teamwork on flat-pack is a real relationship test, and you passed.
+X Enjoy the new furniture!|Nice work, and may it never wobble.|Great job, you earned the right to brag.
+@wi_budget pos wins
+U I stuck to my budget all month.|For the first time, I didn't overspend this month.|I tracked every dollar this month and stayed under budget.|I made it through the month without going over my budget.
+A Sticking to a budget for a whole month is a real accomplishment.|Staying under budget feels so good.|Tracking every dollar takes discipline.|That's a great habit to build.
+Q What helped the most?|Any tricks that worked?
+> Cooking at home more.|Less takeout.
+= Cooking at home saves so much.|Cutting takeout makes a surprisingly big difference.
+> Using an app to track it.|Writing everything down.
+= Seeing it all in one place makes a difference.|Writing it down keeps you honest, great strategy.
+Q What are you going to do with the extra money?|Is anything left over?
+> Putting it in savings.|Saving it.
+= Great move, that'll add up fast.|Future you will be very happy.
+> Treating myself a little.|A small treat.
+= A small reward helps keep the habit going.|You earned a little something.
+X Keep it up, here's to another month!|Nice work, that's a habit worth keeping.|Great job, your wallet thanks you.
+@wi_plant_alive pos wins
+U I've kept a houseplant alive for a whole year.|My plant has survived a full year with me and it's even growing new leaves.|For the first time ever, I've kept a plant alive for a whole year.|My little plant made it a whole year.
+A Keeping a plant alive for a year is a real milestone.|New growth is such a good sign.|That's a big deal for anyone who's lost plants before.|A thriving plant makes a room feel alive.
+Q What kind of plant is it?|What plant is it?
+> A pothos.|A snake plant.
+= Great choice, they're forgiving and pretty.|That's a solid pick for building confidence.
+> A little fern.|A fiddle leaf fig.
+= Ferns can be tricky, well done.|Those are notoriously picky, that's impressive.
+Q What's your secret?|How did you keep it alive?
+> I finally stopped overwatering.|Less water.
+= That's the secret for so many plants.|Overwatering gets so many plants, good lesson learned.
+> I just put it in a sunny spot.|Good light.
+= Light makes all the difference.|Finding the right window is half the battle.
+X Enjoy your plant, and here's to year two!|Keep it thriving.|Nice work, you're officially a plant parent.
+@wi_refund pos wins
+U I finally got a refund after an hour on the phone.|After a long call with customer service, they refunded me.|I spent all afternoon on hold, but I got my money back.|Got my refund after going back and forth with support for ages.
+A Getting your money back after all that is a real win.|All that time on hold deserves a reward.|Your persistence really paid off.|Customer service calls can be exhausting, so well done.
+Q What was it for?|What was the refund for?
+> A broken order.|Something that never arrived.
+= That's so frustrating, glad it's sorted.|You shouldn't pay for something you never got.
+> A double charge.|They charged me twice.
+= Double charges are the worst.|Good thing you noticed it.
+Q Was the person helpful?|How was the agent?
+> Really nice, actually.|Super helpful in the end.
+= A good agent makes all the difference.|Good, at least the end of the call was pleasant.
+> Not at all.|I had to ask for a manager.
+= Sometimes asking for a manager is the only way.|Glad you stuck with it anyway.
+X Enjoy getting your money back!|Nice work sticking with it.|Well done, that took patience.
+@wi_garage_organized pos wins
+U I finally organized the garage.|Spent the weekend cleaning out the garage.|The garage is organized for the first time in years.|The garage is so tidy now that I can actually park in it.
+A An organized garage is a huge weekend project.|Getting the garage back is a big deal.|Years of clutter gone is a great feeling.|That's the kind of project that feels amazing once it's done.
+Q What did you find in there?|Find anything surprising?
+> Old toys from when I was a kid.|Stuff I forgot I owned.
+= Those forgotten finds are the fun part.|Digging up old treasures makes the work go faster.
+> Mostly junk.|Tons of junk.
+= Getting rid of junk feels great.|Freeing up all that space is the best part.
+Q Did you get rid of a lot?|How much did you toss?
+> A whole truckload.|Tons.
+= That's a big clear-out.|Hauling that much away must feel great.
+> Not much, mostly rearranged.|I kept most of it.
+= Organized still counts as a big win.|A good system makes a huge difference.
+X Enjoy the clean garage!|Nice work, that's a big one off the list.|Great job, enjoy all that space.

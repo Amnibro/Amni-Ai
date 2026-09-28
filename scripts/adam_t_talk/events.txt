@@ -1,0 +1,345 @@
+@ev_wedding_guest pos events
+U My {rel} is getting married on {day}.|I've got my {rel}'s wedding coming up {when}.|Wedding season is here, my {rel} ties the knot {when}.|I just sent my RSVP for my {rel}'s wedding.|Big family wedding {when}, my {rel} is finally getting hitched.
+V rel=cousin,college roommate,best friend,sister,brother,coworker,childhood friend;when=next weekend,in two weeks,this Saturday,at the end of the month
+A Your {rel} is getting married, that's lovely news.|A wedding on the calendar is always a good thing.|Your {rel}'s big day, how exciting!|Weddings are the best excuse to dress up and dance.|Nothing brings people together quite like a wedding.|Congrats to your {rel}, that's a happy milestone.
+Q Are you in the wedding party or just going as a guest?|Do you have a role in the ceremony, or are you just there to celebrate?
+> Just a guest this time.|Only a guest, thankfully.|Just a guest, so no pressure.
+= Honestly, that's the sweet spot, all the fun and none of the stress.|The best seat in the house, if you ask me. Is the venue somewhere nice?|Perfect, you can just eat cake and enjoy yourself.
+> I'm actually one of the bridesmaids.|I'm a groomsman, so I have a few duties.|I'm in the wedding party this time.
+= Wow, that's an honor, they clearly trust you a lot.|That's a big deal! Have you had to help plan anything?|They picked you for a reason, and you'll do great.
+Q Do you have your outfit figured out yet?|Have you sorted out what you're wearing?
+> Not yet, I keep putting it off.|No, and I'm running out of time.
+= There's still time, and shopping for it can be half the fun.|You've got this, a classic look never goes wrong. What's the dress code?
+> Yep, I found something last week.|Yes, I'm wearing something I already own.
+= Nice, one less thing to worry about.|Smart move, now you can just focus on having fun.
+Q Where's the wedding being held?|Is the venue somewhere fun?
+> It's at a vineyard out in the country.|At a barn venue a couple hours away.|On a beach, if the weather cooperates.
+= That sounds gorgeous, the photos are going to be amazing.|What a setting! Are you staying overnight?|That's a beautiful spot for it, I hope the weather plays nice.
+X Have the best time, and save some energy for the dance floor!|Enjoy every minute, and congrats again to your {rel}!|Have fun, and I hope the cake lives up to the occasion.
+@ev_wedding_toast neg events
+U I have to give a toast at my {rel}'s wedding and I'm freaking out.|I'm the best man and I still haven't written my speech.|I'm maid of honor and the speech is due {when}.|Public speaking scares me and now I have a wedding toast to give.
+V rel=brother,sister,best friend,cousin;when=on Saturday,next weekend,in three days
+A Being asked to give the toast is a real honor, even if it's scary.|A wedding crowd is the friendliest audience you'll ever get.|Toasts are nerve-racking, but they don't need to be long to be great.|Speech nerves are so normal, especially for someone you care about.|Ha, the toast is the part everyone secretly dreads.
+Q Have you written anything yet?|How far along is the speech?
+> Not a single word.|I have a blank page and a lot of panic.
+= Start with one short story about the two of them, and build from there.|Try jotting down three memories that make you smile, one of them will be your opening.
+> I have a rough draft.|It's mostly done, I just hate it.
+= That's the hard part done, now just trim it and read it out loud a few times.|Everyone hates their own draft, read it to a friend and see how it lands.
+Q How long does it need to be?|Did they give you a time limit?
+> Just a couple of minutes.|They said keep it short.
+= Short is perfect, two minutes of heart beats ten minutes of jokes.|Great, a short toast is easier to write and easier to remember.
+X You'll do great, just speak from the heart and raise that glass.|Good luck with the toast, they're lucky to have you up there.|Breathe, smile, and enjoy it, you've got this.
+@ev_trip_upcoming pos events
+U I'm flying to {place} next week!|We finally booked our trip to {place}.|Leaving for {place} in {days} days and I can't focus on anything else.|Just got my tickets to {place} for a long weekend.|Vacation starts Friday, we're heading to {place}.
+V place=Portugal,Japan,the Grand Canyon,Chicago,New Orleans,Iceland,Mexico City,Scotland,a little beach town,the mountains;days=three,four,five,six
+A {place}, what a great pick!|A trip to {place} sounds amazing.|A real getaway is always worth it.|No wonder you're excited, that's a lot to look forward to.|Vacation mode is officially loading.|{place} should be a fantastic change of scenery.
+Q Have you been there before, or is it your first time?|Is this your first trip to {place}?
+> First time!|Never been, so I'm really excited.|It's my first time going.
+= That's the best kind of trip, everything will feel new.|First visits are always memorable. What are you most looking forward to?|Go in with a loose plan and leave room for surprises.
+> I've been once before and loved it.|Second time, I couldn't stay away.
+= Going back to a place you love is its own kind of great.|That says a lot about the place. Anything you missed last time that you want to see now?
+Q What's the first thing you want to do when you get there?|Got anything planned yet?
+> Honestly, just eat everything.|Mostly the food, if I'm honest.
+= A food-first trip is a trip done right.|Great priorities, local food tells you so much about a place. Any dishes on your list?
+> Lots of walking and sightseeing.|We want to hike and see the views.
+= Bring comfy shoes, your feet will thank you.|That sounds like a perfect way to take it all in.
+> Nothing at all, we're winging it.|No plans, just relaxing.
+= A trip with no agenda can be the most restful kind.|I like it, sometimes the best moments are the unplanned ones.
+Q Are you all packed?|How's the packing going?
+> Not even close.|I haven't started packing at all.
+= Classic, the night before is when the magic happens.|Ha, there's still time, just start a list so nothing gets left behind.
+> Yep, my bag has been ready for days.|All packed already, I'm that excited.
+= That's some serious excitement right there.|Prepared and eager, I respect it.
+X Have an amazing trip, and soak up every bit of it!|Safe travels, and I hope {place} is everything you're hoping for.|Enjoy it, and come back with good stories!
+@ev_trip_back pos events
+U Just got back from a week in {place}.|We got home from our trip to {place} last night.|Back from vacation and already missing {place}.|I spent the long weekend in {place} and it was amazing.
+V place=Portugal,Japan,the Grand Canyon,Chicago,New Orleans,Iceland,Mexico City,Scotland,a little beach town,the mountains
+A Welcome back, {place} sounds like it was a treat!|The post-vacation blues are real, but so are the memories.|A trip like that stays with you for a while.|{place}, how lucky!|Sounds like the trip was exactly what you needed.
+Q What was the highlight?|What was your favorite part?
+> The food, hands down.|Honestly, every single meal.
+= Food memories are the best souvenirs. What was the best thing you ate?|Then it was a trip well spent.
+> The views were unreal.|We took a boat tour that was incredible.
+= Those are the moments that stick with you.|That sounds unforgettable. Did you get any good photos?
+Q Would you go back?|Are you already planning a return trip?
+> In a heartbeat.|Absolutely, maybe next year.
+= That's the sign of a great trip.|Then start saving up, it sounds worth it.
+> Probably not, once was enough.|Maybe, but I want to see somewhere new next.
+= Fair, there's a whole world to see.|That makes sense, new places have their own pull.
+X Welcome home, and enjoy the leftover vacation glow!|Glad you had such a great time!|Sounds like a trip to remember.
+@ev_move_packing neg events
+U Moving day is {when} and my living room is a sea of boxes.|I've been packing for three days and I'm not even halfway done.|I'm moving {when} and I have way too much stuff.|Packing up my whole apartment is taking forever.
+V when=on Saturday,next week,tomorrow,in two days
+A The box stage is the hardest part, but you're getting there.|Packing always takes twice as long as you expect.|Moving has a way of showing you just how much stuff you own.|That's a lot of boxes, you're making progress though.|Ugh, packing fatigue is real.
+Q Are you hiring movers or doing it yourself?|Do you have help for the big day?
+> Doing it ourselves with some friends.|Just me and a rented truck.
+= Pizza and friends is the classic moving combo.|That's a workout, remember to lift with your legs.
+> We hired movers this time.|Movers, I'm done carrying couches.
+= Worth every penny, your back will thank you.|Smart, that saves so much stress.
+Q Are you getting rid of anything?|Is this a good chance to declutter?
+> Yeah, I've donated a ton already.|I filled three bags for the thrift store.
+= That's a great feeling, less to carry and less to unpack.|Nice, your new place will feel so much lighter.
+> Not really, I keep everything.|I should, but I'm too sentimental.
+= Totally fair, some things are worth moving.|Maybe just one box of maybes, and decide later.
+X Hang in there, the unpacking is the fun part.|Good luck with the move, you're almost there.|You've got this, one box at a time.
+@ev_move_newplace pos events
+U We just signed the lease on a new apartment.|I finally closed on my first house!|We got the keys to our new place today.|I'm moving into my own place for the first time.|The new apartment is finally ours.
+A A new place is such a fresh start.|Keys in hand, that's a great feeling.|Congrats on the new place, that's a big step!|Your own place, that's huge!|New home energy, I love it.
+Q What are you most excited about with the new place?|What's your favorite thing about it?
+> More space, finally.|It has a real kitchen.|It's so much closer to work.
+= That makes such a difference day to day.|Great reason! Are you planning to decorate right away or take your time?|That alone can change your whole routine for the better.
+> It just felt right when we walked in.|The neighborhood is really nice.
+= That gut feeling is usually a good sign.|A good neighborhood counts for a lot. Have you found a favorite spot nearby yet?
+Q Are you going to have a housewarming?|Planning to throw a housewarming party?
+> Once we unpack, definitely.|Yeah, a small one.
+= A housewarming is the perfect first memory in a new place.|Small ones are the best, good friends and snacks.
+> Probably not, I just want to settle in.|Nah, I need a quiet month first.
+= Makes sense, settling in first is its own kind of treat.|Fair, there's no rush to fill the place up.
+X Congrats again, I hope it feels like home in no time.|Enjoy the new place!|Happy nesting, it sounds lovely.
+@ev_newjob_start pos events
+U I start my new job on {day}.|Tomorrow's my first day at the new job.|I just signed the offer letter for a new job.|I accepted a new role as {role}!|I finally landed a new job after months of searching.
+V day=Monday,Tuesday,the first of the month,next week;role=an analyst,a team lead,a designer,a nurse,an engineer,a teacher,a project manager
+A Congratulations, landing a new job takes real effort.|A new job is such an exciting chapter.|All that searching paid off, that's fantastic.|New job jitters and excitement all at once, I bet.|Huge news, congrats!|Starting fresh somewhere new is a big deal.
+Q How are you feeling about starting?|Are you more excited or nervous?
+> Mostly excited, a little nervous.|Excited, but my stomach is in knots.
+= A little nerves just means you care about doing well.|That's totally normal for a first week. What part are you most looking forward to?
+> Excited! I'm ready for a change.|Honestly, just really excited.
+= That energy will carry you through the first few weeks.|Love that, go in with that same energy.
+Q What made you decide to switch?|Why the change?
+> My old job was burning me out.|The old place was exhausting.
+= Then this move sounds overdue, I hope the new place is kinder to you.|Good for you for making a change.
+> I wanted to grow.|I was ready for something new.
+= Growth is a great reason to move on.|Sometimes you just know it's time. What are you hoping to learn there?
+> The commute was awful.|It's way closer to home.
+= Getting hours of your week back is a real win.|A short commute is such an underrated perk.
+X Good luck on day one, you're going to do great!|Congrats again, I hope the new team is wonderful.|Wishing you a smooth first week!
+@ev_exam_tomorrow neg events
+U I have a huge {subj} exam {when}.|My {subj} final is {when} and I'm nowhere near ready.|I've been studying for my {subj} test all day.|Big {subj} test {when}, and I'm trying not to panic.
+V when=tomorrow,on Monday,this Friday,in two days;subj=chemistry,history,calculus,biology,statistics,economics,Spanish,physics
+A {subj} exams are no joke, you're clearly putting in the work.|That's a lot on your plate right now.|One topic at a time, you can get through this.|Studying all day takes real grit.|Big exams are stressful, but they don't last forever.
+Q Which part are you most worried about?|What's giving you the most trouble?
+> The formulas, there are so many.|All the definitions.|Memorizing everything.
+= Try writing them out from memory a few times, it sticks better than rereading.|Flashcards and a short break every hour can really help. Have you tried quizzing yourself?
+> Honestly, all of it.|I don't even know where to start.
+= Start with the topic that's worth the most points, and go from there.|Make a quick list of topics and knock out the easiest one first, momentum helps.
+Q Are you remembering to take breaks?|Have you been taking any breaks?
+> Not really.|Barely, I've been glued to my notes.
+= A short walk and a snack might help more than another hour of rereading.|Your brain works better with a little rest, so step away for ten minutes.
+> Yeah, I'm pacing myself.|Yep, I take one every hour.
+= Good, pacing yourself is the smart way to do it.|Nice, that'll help everything stick.
+X Good luck, you're more prepared than you think.|Get some sleep tonight, and go get that grade!|Rooting for you, you've got this.
+@ev_exam_done pos events
+U I just finished my last exam of the semester!|Finals are over and I'm free!|Done with exams, I could sleep for a week.|I just walked out of my {subj} final.
+V subj=chemistry,history,calculus,biology,statistics,economics
+A Freedom at last, congrats on making it through!|The last exam is the best feeling.|You made it, time to rest that brain.|Finals are over, now that's worth celebrating.|No more studying for a while, enjoy it.
+Q How do you think it went?|Do you feel good about it?
+> Pretty well, I think.|Better than I expected.
+= That's a great feeling after all that work.|Love it when the studying pays off.
+> Not sure, it was really hard.|No idea, honestly.
+= Either way, it's done, and you gave it your best.|Waiting is the worst part, but you can let it go for now.
+Q How are you celebrating?|Got any plans now that you're done?
+> Sleeping for twelve hours.|Just napping and snacks.
+= Honestly, that's the perfect reward.|A well-earned nap, enjoy it.
+> Going out with friends tonight.|We're getting pizza.
+= Have fun, you've earned a night off.|Post-exam pizza is a tradition for a reason.
+X Enjoy the break, you earned it!|Congrats on finishing, rest up!|Have a great break!
+@ev_graduation_own pos events
+U I graduate {when}!|I just walked across the stage and got my diploma!|I officially finished my degree.|Graduation is {when} and I can't believe it's here.
+V when=this weekend,on Friday,next week,in May
+A Congratulations, that's a huge milestone!|All that hard work, and here you are.|What a proud moment!|You made it to the finish line!|Graduation day is such a big deal.
+Q Are you doing anything to celebrate?|Any plans for a celebration?
+> We're having a small party.|Dinner with family.
+= That sounds like a lovely way to mark it.|Perfect, good food and good people. What's on the menu?
+> Nothing big, just relaxing.|Mostly sleeping, honestly.
+= After all that work, rest is a well-earned reward.|Honestly, that sounds perfect.
+Q What's next after graduation?|Any idea what comes next?
+> I have a job lined up.|I start work next month.
+= That's fantastic, what a way to start the next chapter.|Wow, you're not wasting any time!
+> I'm taking a little time off first.|No idea yet, honestly.
+= A break is a great idea before the next big thing.|That's okay, plenty of people figure it out as they go. What are you curious about?
+X Congratulations again, enjoy every bit of it!|What an achievement, have a great celebration!|So happy for you, enjoy the big day!
+@ev_graduation_other pos events
+U My {rel} graduates from {school} {when}.|We're going to my {rel}'s graduation {when}.|My {rel} just finished {school}!|So proud, my {rel} is graduating from {school}.
+V rel=little brother,daughter,son,niece,nephew,best friend,younger sister;school=high school,college,nursing school,grad school,kindergarten;when=this weekend,on Friday,next week,in May
+A Your {rel} graduating, that's so exciting!|What a proud moment for your family.|Congrats to your {rel}!|Finishing {school} is a big deal.|Sounds like there's a lot to celebrate.
+Q Are you doing anything special for them?|Any plans to celebrate?
+> We're throwing a party.|Taking them out to dinner.
+= They'll love that, what a nice way to mark it.|That's a great way to celebrate. Do you know where you're going?
+> Just a card and a hug.|Nothing big, they want it low-key.
+= Sometimes the simple things mean the most.|Respecting their wishes is a gift in itself.
+Q What's next for your {rel}?|Do they know what they'll do next?
+> They already have plans.|They're heading off to the next step.
+= That's great, what an exciting time for them.|Good for them, sounds like they've got it figured out.
+> Not yet, they're figuring it out.|No idea, and that's fine.
+= Plenty of time for that, it's okay to take a breather.|That's totally normal, the next thing will come.
+X Congrats to your {rel}, enjoy the celebration!|Sounds like a proud day, have a great time!|Congratulations to the whole family!
+@ev_birthday_own pos events
+U Birthday today, woohoo!|Today's my birthday and I'm feeling good.|My birthday is {when} and I'm turning {age}.|I turn {age} {when}.
+V when=tomorrow,on Friday,this weekend,next week;age=30,40,25,50,21,35,60
+A Happy birthday, I hope it's a great one!|Birthdays are the best excuse to treat yourself.|Another trip around the sun, that's worth celebrating.|A birthday on the way, how fun!|Here's to you and the year ahead!
+Q How are you celebrating?|Any big plans for the day?
+> Dinner at my favorite restaurant.|Going out to eat with friends.
+= That sounds perfect, what's your go-to order there?|Good friends and good food, you can't beat that.
+> Cake and a quiet night in.|Just relaxing at home.
+= A quiet night with cake is underrated.|Sometimes the best birthday is a cozy one.
+> Nothing, I'm working.|I have to work, unfortunately.
+= Bummer, I hope you at least get cake afterward.|Hopefully someone brings treats to work.
+Q Do you like making a big deal of birthdays?|Are you a big birthday person?
+> I love it, I celebrate all week.|Yes, I go all out.
+= A birthday week is the way to go.|Love that, you should celebrate yourself.
+> Not really, I keep it low-key.|No, I'd rather keep it quiet.
+= Low-key birthdays can be the nicest ones.|That's fair, a calm day can be a treat too.
+X Have a wonderful birthday!|Enjoy your day, you deserve it!|Happy birthday, and enjoy the cake!
+@ev_birthday_party pos events
+U I'm planning a surprise party for my {rel}.|I'm throwing my {rel} a birthday party {when}.|My {rel}'s birthday party is {when} and I'm hosting.|I'm organizing a surprise party and trying not to give it away.
+V rel=mom,dad,best friend,partner,sister,husband,wife,roommate;when=on Saturday,next weekend,tonight,on Friday
+A A surprise party, how sweet of you.|Your {rel} is lucky to have you planning this.|Party planning can be so much fun.|Keeping a secret like that is harder than it sounds.|That's such a thoughtful thing to do.
+Q How many people are coming?|Is it a big party?
+> About twenty people.|Pretty big, the whole family.
+= That's a proper party, you'll need lots of snacks.|A full house, sounds lively.
+> Just a few close friends.|Small, maybe six people.
+= Small and cozy, that's the best kind.|Perfect size for good conversation.
+Q Do you think they suspect anything?|Is the surprise still safe?
+> Nope, no idea at all.|I think we're in the clear.
+= Nice, keep it that way until the big moment.|Perfect, you're pulling it off.
+> I think they might be onto us.|Someone almost spilled it yesterday.
+= Ha, even a half surprise is still a great night.|Close call! Keep them busy with a decoy plan.
+X Hope the party is a blast!|Good luck keeping the secret, it'll be great!|Have fun, your {rel} is going to love it.
+@ev_baby_expecting pos events
+U My {rel} just told me they're expecting a baby!|I'm going to be an aunt for the first time!|My {rel} and their partner are having a baby.|I'm going to be an uncle this summer!
+V rel=sister,brother,cousin,best friend
+A That's wonderful news, congratulations!|A new baby in the family, how exciting!|Such happy news to hear.|Life is about to get a lot sweeter for your family.|You're going to be a great part of that little one's life.
+Q How are you feeling about it?|Are you excited?
+> Over the moon!|So excited I can't stand it.
+= That's such a great feeling.|I love that! Have you started thinking about what kind of aunt or uncle you'll be?
+> Excited, but it still feels unreal.|It hasn't sunk in yet.
+= It probably will once you meet the little one.|That's normal, big news takes a while to settle.
+Q Do you know if it's a boy or a girl?|Have they found out the baby's gender?
+> A girl!|It's a boy.
+= How exciting, have they picked a name yet?|That's great, you can start spoiling him already.
+> They're keeping it a surprise.|Not yet.
+= A surprise is fun, the reveal will be worth the wait.|The guessing is half the fun.
+X Congratulations again, that's the best news!|So happy for your family!|What a lucky little one, congrats!
+@ev_interview_before neg events
+U I have a job interview {when}.|Got a second-round interview {when}.|My interview is {when} and I'm so nervous.|I've got a panel interview {when}, which sounds scary.
+V when=tomorrow,on Thursday,this afternoon,next week,in an hour
+A An interview means they're already interested in you.|Getting to the interview stage is a win on its own.|Interviews are nerve-racking, but you've got this.|A little nervous energy can actually help you focus.|Big day coming up, you're going to do well.
+Q How are you preparing?|Have you been getting ready for it?
+> I've been practicing answers out loud.|Reading everything about the company.
+= Practicing out loud is one of the best things you can do.|That will show, they love candidates who've done their homework.
+> Not much yet, honestly.|Barely, I keep putting it off.
+= A few quick practice answers tonight could really help your confidence. Do you know what they might ask?|Even twenty minutes of prep would help a lot.
+Q What kind of role is it?|What's the job?
+> It's a marketing role.|A job at a clinic.|Something in finance.
+= That's a great field to be in. What drew you to it?|Nice, that sounds like a solid fit for you.|Sounds like a good opportunity.
+X Good luck, you're going to do great!|Fingers crossed for you!|Go get it, I'm rooting for you.
+@ev_interview_after neu events
+U I just finished a job interview and I can't tell how it went.|The interview's over, now I just have to wait.|I had my interview this morning and I keep replaying it.|Interview done, and I think it went okay?
+A The waiting part is the worst.|Getting through it is the hard part, and you did.|Replaying every answer is so normal after an interview.|Sounds like you held your own.|Done is a good feeling, even with the suspense.
+Q Did you get along with the interviewer?|How did the conversation feel?
+> Yeah, they were really friendly.|It felt pretty relaxed.
+= That's a really good sign.|A relaxed interview usually means good chemistry.
+> It felt a bit stiff.|Hard to read them.
+= Some interviewers are just like that, it doesn't mean it went badly.|That's common, a poker face isn't a bad sign.
+Q When will you hear back?|Did they say when they'd decide?
+> By the end of the week.|In a few days.
+= Not too long, try to keep busy until then.|That's pretty quick, at least.
+> They didn't say.|No idea, sadly.
+= Then it's a good time to send a quick thank-you note.|The uncertainty is rough, but it's out of your hands now.
+X Fingers crossed for good news soon!|I hope you hear back with an offer!|You did your part, now let the waiting do its thing.
+@ev_concert_upcoming pos events
+U I'm seeing {band} live {when}!|Got tickets to see {band} {when}.|My friends surprised me with tickets to see {band}.|We're driving three hours to see {band} {when}.
+V band=my favorite band,a jazz trio,a country singer I love,an old rock band,a pop star,a local band;when=tonight,on Saturday,next month,this weekend
+A A live show is such a good time!|Concert night, that's exciting.|Nothing beats hearing music live.|That's a great night to look forward to.|Seeing {band} live sounds like a blast.
+Q Have you seen them live before?|Is this your first time seeing them?
+> First time!|Never, so this is a big one.
+= The first time is always special, enjoy it.|You're in for a treat.
+> I've seen them twice already.|This will be my fourth time.
+= Must be a great live act if you keep going back!|That's real fandom right there.
+Q Which song are you hoping they play?|Is there a song you're really hoping to hear?
+> Their older stuff, hopefully.|Anything from their first album.
+= Fingers crossed they dig into the classics.|The early songs always hit different live.
+> Their newest single.|The one that's everywhere right now.
+= That one will probably be a highlight of the night.|The whole crowd will be singing that one.
+X Have an awesome time at the show!|Enjoy it, and sing along loud!|Have fun, and I hope the setlist is perfect.
+@ev_reunion neu events
+U My high school reunion is {when}.|My ten-year reunion is coming up and I'm on the fence about going.|Our class reunion is {when} and everyone's asking if I'm going.
+V when=next month,this Saturday,in a few weeks,in the fall
+A Reunions can be surprisingly fun.|Mixed feelings about reunions are pretty common.|It's wild how fast those years go.|Seeing old classmates can be a trip.
+Q Are you excited or nervous?|Are you looking forward to it?
+> A little of both.|Kind of both, honestly.
+= That makes sense, it's a lot of history in one room.|Totally fair, it's a strange mix of feelings.
+> Mostly excited.|Yeah, it should be fun.
+= Nice, it's fun to see how everyone has changed.|Good, go in ready to have a laugh.
+Q Who are you most hoping to see?|Is there anyone you really want to catch up with?
+> My old best friend.|Just a few people from my old group.
+= That's a reunion worth going for. When did you last talk?|That's really nice, a small crew is often the best part.
+> Honestly, nobody in particular.|I'm mostly curious.
+= Curiosity is a perfectly good reason to go.|Fair enough, you might be surprised who you click with now.
+X Hope you have a great time catching up!|Enjoy the reunion!|Have fun, and enjoy the trip down memory lane.
+@ev_friends_visit pos events
+U My old college friends are all visiting this weekend.|I'm meeting up with friends I haven't seen in years.|My best friend is flying in to visit!|A bunch of old roommates are coming to stay with me.
+A Old friends are the best kind of company.|A visit like that is always worth looking forward to.|That's going to be a fun few days.|Catching up in person beats texting any day.
+Q What are you going to do while they're here?|Any plans for the visit?
+> Show them around town.|Take them to my favorite spots.
+= Fun, getting to play tour guide is great. Where are you taking them first?|They'll love seeing your world.
+> Mostly just hang out and talk.|Stay up late catching up.
+= Honestly, that's the best part.|Nothing beats a long catch-up over snacks.
+Q How long has it been since you saw them?|When did you last see each other?
+> A few years.|Way too long.
+= Then there's a lot to catch up on.|Good friends pick right back up where they left off.
+> Just last year.|Not that long, actually.
+= Nice, you all make time for each other.|That's great, sounds like a close group.
+X Have a great time with your friends!|Enjoy the visit!|Sounds like a fun weekend, enjoy it.
+@ev_holiday_host neu events
+U We're hosting the holidays at our place this year.|I'm hosting my first big holiday dinner.|The whole family is coming to our house for Thanksgiving.|I volunteered to host the holiday meal this year.
+A Hosting is a big job, but it can be really fun.|A first holiday dinner is exciting!|That's a big gathering to plan for.|Brave move, hosting the whole family.|Your place is about to get very lively.
+Q What are you cooking?|What's on the menu?
+> Turkey and way too many sides.|The classics, turkey and all.
+= Too many sides is the right amount.|You can't go wrong with the classics. Are you doing any desserts?
+> I'm doing a ham this year.|Something different, a big lasagna.
+= A ham is a classic choice.|Love a twist on tradition, that'll be a hit.
+Q How many people are you expecting?|Is it a big group?
+> About fifteen.|Pretty big, like twenty.
+= That's a full house, you'll need a good plan.|That's a crowd, don't be shy about asking people to bring a dish.
+> Just six of us.|Small, maybe eight.
+= Six is a nice size, cozy but lively.|A smaller group makes it easier to actually enjoy it.
+X Hope it's a warm and happy holiday!|Good luck with the cooking, it'll be great!|Have a lovely holiday!
+@ev_holiday_travel neu events
+U I just booked flights home for the holidays.|We're driving to my parents' place for the holidays.|Heading home for the holidays next week.|I'm going home for the first time in two years.
+A Going home for the holidays is always special.|A holiday trip home sounds lovely.|Two years is a long time, that'll be a sweet reunion.|The holidays are a good time to be with family.
+Q Who are you most looking forward to seeing?|Is there anyone you can't wait to see?
+> My grandma.|My little nephew.
+= That's so sweet, I bet they can't wait to see you too.|They'll probably have grown so much.
+> Everyone, honestly.|My whole family.
+= That's the best feeling.|Sounds like a warm homecoming.
+Q Is there a food you're looking forward to?|Any holiday dish you're dreaming about?
+> My mom's stuffing.|My dad's pie.
+= Nothing beats home cooking.|There's always one dish that makes it feel like the holidays.
+X Safe travels, and enjoy your time with family!|Have a wonderful holiday at home!|Enjoy the trip home!
+@ev_driving_test pos events
+U I passed the road test and got my license!|I finally got my driver's license today.|Passed my road test on the first try!
+A That's great, freedom on four wheels!|Congrats, that's a big milestone.|First try, well done!|The open road is officially yours.
+Q How did the test go?|Was the test hard?
+> Nailed the parallel parking!|Parking was easy for once.
+= Parallel parking is the hardest part, well done.|That's the part everyone worries about, nice work.
+> I was so nervous, but I passed.|My hands were shaking the whole time.
+= Nerves and all, you did it, that's what counts.|Shaky hands and still passed, that's impressive.
+Q Where's the first place you're going to drive?|Got a first road trip in mind?
+> Just to get coffee, honestly.|To pick up my friends.
+= A solo coffee run is the perfect first drive.|That's a great first trip, the chauffeur life begins.
+X Drive safe, and enjoy the new freedom!|Congrats again!|Have fun out there, and buckle up.
+@ev_first_car pos events
+U I just bought my first car!|I finally have my own car.|Picked up my new car today!|After months of saving, I bought a car.
+V car=hatchback,pickup truck,little sedan,used SUV
+A Your first car, that's a big moment!|All that saving paid off, congrats!|A car of your own is such a freedom boost.|New wheels, how exciting!
+Q What kind of car is it?|What did you end up getting?
+> A used little hatchback.|A small sedan.
+= Perfect first car, easy to park and cheap to run.|Great choice, practical and reliable.
+> An old pickup truck.|A used SUV.
+= Pickups are so handy. What are you going to haul first?|Lots of room for road trips and groceries.
+Q Have you named it yet?|Does it have a name?
+> Not yet, any ideas?|No, I'm still thinking.
+= A name will come to you after the first road trip.|Give it a week, the right name always shows up.
+> Yes, it's called Blue.|I named it Biscuit.
+= That's a great name.|Ha, I love that.
+X Enjoy the new car, and drive safe!|Congrats, have fun with it!|Here's to lots of good road trips.

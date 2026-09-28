@@ -1,0 +1,343 @@
+@wo_raise pos work
+U I got a raise today!|My boss just approved a raise for me.|Finally got the raise I asked for.|They gave me a {pct} percent raise at my review.
+V pct=five,eight,ten,twelve
+A A raise is a great way to feel appreciated.|Asking for it and getting it takes guts, well done.|Your hard work is clearly being noticed.|Nice, more money for the same great work.|Congrats, that's a real win.
+Q Did you have to ask for it, or did it just happen?|Was it a surprise?
+> I asked for it and prepared a whole case.|I had to push for it.
+= Making your case and winning it is a skill worth being proud of.|Good for you for speaking up, that's not easy.
+> Totally out of the blue.|Complete surprise.
+= The best kind of surprise, they must really value you.|Unexpected good news hits different.
+Q Any plans for the extra money?|Are you going to treat yourself?
+> Saving most of it.|Putting it toward savings.
+= Smart move, future you will be grateful.|That's a solid plan.
+> A nice dinner out, at least.|Maybe a small splurge.
+= You've earned a little celebration.|A treat is well deserved. What are you eyeing?
+X Congrats again on the raise!|Enjoy it, you've earned every bit.|Here's to more wins at work.
+@wo_presentation_done pos work
+U I nailed my big presentation today.|My presentation went so much better than I expected.|Just finished presenting to the whole department and it went great.|Gave my big pitch today and the room loved it.
+A Nailing a big presentation is such a rush.|All that prep clearly paid off.|That relief after a presentation goes well is the best.|Sounds like you owned the room.|Well done, presenting to a big group is no small thing.
+Q Were you nervous beforehand?|How were your nerves going in?
+> Super nervous.|I barely slept the night before.
+= And you still crushed it, that's impressive.|Nerves and all, you pulled it off.
+> Not really, I felt ready.|Pretty calm, actually.
+= That preparation clearly showed.|Calm and prepared is a great combo.
+Q What kind of feedback did you get?|Did anyone say anything afterward?
+> My manager said it was the best one this quarter.|People came up to congratulate me.
+= That's fantastic feedback.|That must have felt amazing.
+> A few good questions, mostly.|People asked lots of questions.
+= Good questions mean people were really listening.|Questions are a great sign of interest.
+> Nothing much, but it felt good.|Not much, but I felt good about it.
+= Sometimes your own gut is the best feedback.|Feeling good about it counts for a lot.
+X Congrats on the presentation, well done!|Enjoy the win, you earned it.|Great work, celebrate a little tonight.
+@wo_presentation_tomorrow neg work
+U I have a big presentation tomorrow and I'm nervous.|Presenting to the leadership team tomorrow, wish me luck.|I have to give a talk to the whole company in the morning.|Big client presentation tomorrow and my stomach is in knots.
+A A big presentation the next day would make anyone a little nervous.|Being asked to present means people trust your work.|Butterflies before a presentation are totally normal.|You've clearly prepared for this, and it'll show.|Tomorrow is your moment.
+Q Have you practiced it out loud?|Have you done a run-through yet?
+> A few times.|Yes, twice tonight.
+= Great, practice really smooths things out.|Saying it out loud is the best prep there is.
+> Not yet.|No, I've only read my notes.
+= One run-through out loud tonight could really boost your confidence.|Try it once in front of a mirror, it helps a lot.
+Q What part worries you most?|Is there a part you're dreading?
+> The questions at the end.|Q and A scares me.
+= It's okay to say you'll follow up if you don't know an answer.|Most questions are friendlier than they seem.
+> Just starting.|The first minute.
+= Memorize your first two sentences and the rest will flow.|Once you get going, the nerves usually fade.
+X Good luck tomorrow, you've got this!|Get some rest tonight, you'll do great.|Rooting for you tomorrow.
+@wo_meetings neg work
+U I had back-to-back meetings all day and got nothing done.|Six meetings today and not one of them needed to happen.|My calendar is just meetings from nine to five.|Another day of wall-to-wall meetings.
+A A day of back-to-back meetings is exhausting.|Meetings that could have been emails are the worst.|No time to actually work is so frustrating.|That's a lot of talking and not much doing.|A calendar packed with meetings drains you.
+Q Did any of them actually help?|Were any of them useful?
+> One, maybe.|Only the first one.
+= At least one of them earned its spot.|Sounds like the rest could have been a quick message.
+> Not a single one.|Nope, total waste.
+= That's rough, maybe you can block off focus time tomorrow.|Could you decline a few next time?
+Q Do you have time to catch up on your actual work?|Are you going to stay late to catch up?
+> I'll have to stay late.|Probably working tonight.
+= Try not to push it too late.|Take a short break first, you've earned it.
+> No, it can wait until tomorrow.|Nope, done for today.
+= Good call, the work will still be there tomorrow.|Smart, protect your evening.
+X Hope tomorrow has a lighter calendar.|Rest up, and here's to fewer meetings.|Hang in there, the meeting storm will pass.
+@wo_coworker_leaving neg work
+U My favorite coworker is leaving the company.|The person I sit next to just put in their notice.|My work best friend is moving to another job.|My favorite coworker's last day is Friday.
+A Losing a work friend is a real bummer.|Work won't feel the same without them around.|That's a big change for your day-to-day.|It's hard when your favorite person at work moves on.|Sad for you, even if it's good news for them.
+Q Are they going somewhere exciting?|Do you know where they're headed?
+> A bigger company.|A great new job.
+= Good for them, even if it stings for you.|That's a nice step up for them.
+> They're moving across the country.|They're going back to school.
+= That's a big change, but a brave one.|Sounds like a whole new chapter for them.
+Q Will you keep in touch?|Do you think you'll stay friends?
+> Definitely.|We already made plans to get lunch.
+= Good work friendships can last a long time.|Great, a friendship like that is worth holding onto.
+> I hope so.|Probably, but it won't be the same.
+= A quick message now and then goes a long way.|It might change, but the friendship doesn't have to end.
+X Hope the farewell is a good one.|Sounds like a great friendship worth keeping.|Wishing them luck, and you a good new desk neighbor.
+@wo_wfh pos work
+U I'm working from home all week.|No commute this week, I'm working remotely.|I get to work from my couch every day this week.|Working from home all week and I love it.
+A A week of working from home sounds great.|No commute is such a time saver.|Working in comfy clothes is a real perk.|That's a nice change of pace from the office.|Skipping the commute all week is a real treat.
+Q Do you have a good setup at home?|Is your home office comfortable?
+> A proper desk and a big monitor.|Yes, I set it up last year.
+= A real desk setup makes all the difference.|Nice, a good setup keeps you productive.
+> Just my laptop on the kitchen table.|The couch, honestly.
+= A makeshift office has its charms.|Maybe a pillow for your back would help.
+Q Do you get more done at home?|Are you more productive at home?
+> Way more.|Definitely, fewer interruptions.
+= Quiet time really helps you get into a groove.|No interruptions is a game changer.
+> Less, honestly.|Not really, too many distractions.
+= Home has a lot of distractions.|A short walk between tasks can help focus.
+> The fridge distracts me.|I snack all day.
+= Ha, the fridge is the ultimate distraction.|The kitchen is a dangerous coworker.
+X Enjoy the week at home!|Have a cozy work week.|Enjoy the extra time you get back.
+@wo_long_week pos work
+U This week finally ended and I'm exhausted.|Longest week ever at work, it's finally Friday.|Survived the week, barely.|I've been working nonstop all week and it's finally over.
+A Making it to the end of a long week is its own victory.|You made it, time to rest.|That end-of-week relief is the best feeling.|What a week, you deserve some downtime.|The weekend is finally within reach.
+Q Any plans for the weekend?|What are you doing to unwind?
+> Sleeping in.|Sleeping as late as I want.
+= Sleeping in after a week like that sounds perfect.|You've earned a long lie-in.
+> Doing absolutely nothing.|Nothing at all.
+= Doing nothing is the best reward after a week like this.|A totally empty weekend sounds perfect.
+> Seeing friends tonight.|Going out for dinner.
+= Fun, you've earned a night out.|Enjoy it, a good night out fixes a lot.
+Q What made the week so rough?|Why was it so long?
+> A big deadline.|Too much work, not enough time.
+= Deadline pressure drains everything, no wonder you're wiped.|That's a heavy load for one week.
+> Just a lot of little things.|Nothing specific, just tiring.
+= Those little things add up fast.|Sometimes everything just piles on at once.
+X Enjoy your weekend, you earned it!|Rest up and recharge.|Here's to a relaxing weekend.
+@wo_boss_praise pos work
+U My boss praised my work in front of the whole team.|My manager told me I'm doing a great job.|Got a shout-out from my boss today.|My supervisor sent me a nice note about my project.
+A Getting recognized at work feels so good.|A shout-out like that makes all the effort worth it.|It's great when your work gets noticed.|Your boss clearly values what you do.|That's a lovely thing to hear.
+Q What was it for?|Which work did they mention?
+> A big project I finished.|A report I wrote.
+= That's a well-earned compliment.|Sounds like it was a great piece of work.
+> Helping a new coworker.|Staying late to fix something.
+= That kind of effort often goes unnoticed, so it's nice they saw it.|Good on you for stepping up.
+Q Does your boss usually give feedback like that?|Is that common where you work?
+> Not really, so it meant a lot.|Rarely.
+= Then it's extra special that they said something.|That makes the praise mean even more.
+> Yes, they're great that way.|They're pretty good about it.
+= A boss who notices good work is a gem.|Sounds like a good place to work.
+X Congrats on the recognition!|Enjoy the good feeling, you earned it.|Keep up the great work.
+@wo_project_launch pos work
+U Our project finally launched today!|We shipped the thing I've been working on for months.|The new feature I built went live this morning.|After a year of work, our product is finally out.
+A Launch day is such a great feeling.|Months of work paying off, that's huge.|Seeing your work go live is so satisfying.|Congrats to you and your team.|What a milestone.
+Q How's it going so far?|Any early reactions?
+> People love it.|The feedback is great.
+= That must feel amazing after all those months.|Happy users are the best reward for all that work.
+> A few bugs, but mostly okay.|Some hiccups.
+= Every launch has hiccups, you'll smooth them out.|Totally normal on day one.
+Q Is your team celebrating?|Any launch party?
+> We're going out tonight.|Cake at the office.
+= Well deserved, have fun.|Any celebration after a launch is well earned.
+> No, everyone's exhausted.|Not yet, maybe next week.
+= Rest first, celebrate later.|A celebration will feel even better once you've rested.
+X Congrats on the launch!|Enjoy the moment, you earned it.|Here's to a smooth rollout.
+@wo_job_hunt neg work
+U I've been job hunting for months and it's exhausting.|Sent out another ten applications today and heard nothing.|Job searching is wearing me down.|Another rejection email this morning.
+A Job hunting is draining, especially when it drags on.|All that effort with no reply is frustrating.|A long search can really test your patience.|Rejections sting, even when you know they're part of the process.|That's a lot of work with little feedback.
+Q What kind of job are you looking for?|What field are you searching in?
+> Something in marketing.|Marketing roles.
+= Marketing roles pop up a lot, so keep that pipeline going.|Marketing is a big field, there's room for you.
+> Office jobs, mostly.|Admin work.
+= Office jobs are everywhere, it's often about finding the right fit.|Those roles come up a lot, keep going.
+> Anything remote.|Remote work only.
+= Remote jobs are competitive, but they're definitely out there.|Remote roles take patience, but they're worth it.
+> Anything that pays the bills.|Honestly, anything.
+= That's fair, a steady paycheck matters most right now.|Keeping options open can speed things up.
+Q Have you gotten any interviews?|Any bites so far?
+> A couple.|One interview last week.
+= That's real progress, even if it feels slow.|An interview means your application is getting noticed.
+> Not yet.|None so far.
+= Maybe a friend could look over your resume.|Keep going, it only takes one yes.
+X Hang in there, the right one is out there.|Good luck with the search.|Keep going, you'll land something good.
+@wo_monday neg work
+U Ugh, Monday morning again.|Mondays are the worst.|It's Monday and I already want the weekend back.|Back to work after a great weekend, Monday is rough.
+A Monday mornings hit hard.|The weekend always goes too fast.|Getting back into the work groove takes a minute.|That Monday feeling is so real.|Extra coffee might be required today.
+Q Did you have a good weekend at least?|How was your weekend?
+> Yes, it was great.|Really relaxing.
+= A good weekend makes Monday a bit easier.|Nice, now hold on to that relaxed energy.
+> Not really, too busy.|Mostly chores.
+= Then Monday feels extra unfair.|Hopefully next weekend is more restful.
+Q Anything good planned this week?|Is there anything to look forward to this week?
+> A lunch with friends.|Friday off.
+= Something to count down to this week.|That's a great reason to push through.
+> Not really.|Just work.
+= Maybe plan a small treat midweek to break it up.|A good dinner out midweek can help.
+X Good luck getting through Monday.|Hang in there, the week will fly by.|Here's to a smoother Tuesday.
+@wo_overtime neg work
+U Working overtime again this week.|I've had to stay late every night.|More overtime, I'm running on fumes.|Staying late at work again tonight.
+A Constant overtime is exhausting.|Running on fumes is no fun at all.|Late nights at work add up fast.|That's a lot of hours on top of a full week.|Those extra hours really wear you down.
+Q Is it at least paid?|Do you get paid for the extra hours?
+> Yes, time and a half.|Yeah, it's paid.
+= That helps, even if you're tired.|At least the next paycheck will look nice.
+> No, I'm salaried.|Nope, not a cent.
+= Unpaid extra hours are rough.|Maybe it's worth talking to your manager about the load.
+Q When does it end?|Is there an end in sight?
+> After this project.|Next week, hopefully.
+= At least there's a finish line to look forward to.|Hang on until then, you're close.
+> No idea.|It keeps going.
+= That's tough, try to protect your sleep.|Maybe block out one evening just for you.
+X Hang in there, rest when you can.|Hope things calm down soon.|Take care of yourself this week.
+@wo_desk_move neu work
+U They moved our desks around at the office.|I got moved to a new desk today.|Our office did a whole seating shuffle this week.|New seating chart at work, so I have a new desk.
+A A new desk can make the whole office feel different.|Seating shuffles always cause a little stir.|New desk, new view, new neighbors.|Office reshuffles take a few days to get used to.|A change of scenery at work can be kind of refreshing.
+Q Do you like your new spot?|How's the new desk?
+> Better than before.|It's right by a window.
+= Sounds like a real upgrade.|Nice, sounds like you came out ahead in the shuffle.
+> Not really, it's noisy.|It's so loud over there.
+= Good headphones might become your best friend.|Noise makes focus tough. Could you ask to swap?
+> It's right next to the kitchen.|I'm by the break room now.
+= Ha, you'll at least know when the snacks arrive.|Prime snack territory, but probably busy.
+Q Who are you sitting near now?|Who are your new neighbors?
+> People from another team.|Mostly folks I don't know.
+= That could be a nice way to meet new people.|New neighbors might turn into good lunch buddies.
+> The same crew as before.|My usual group, luckily.
+= Familiar faces make the change a lot easier.|Nice, the best part of the old spot came with you.
+X Hope the new spot grows on you.|Enjoy the new desk and the new view.|Here's to settling in quickly.
+@wo_new_manager pos work
+U Today was my first day as a manager.|I just moved up to manager.|This is my first week leading my own team.|I'm officially managing people now.
+A Moving up to manager is a big step.|Leading a team is an exciting new challenge.|Congrats on the new title.|Someone clearly believes in your leadership.|Your first days as a manager must be a whirlwind.
+Q How big is your team?|How many people report to you?
+> Just three people.|A small team of four.
+= A small team is a great place to start.|That's a nice size for getting to know everyone well.
+> About ten.|A pretty big group.
+= That's a lot of people to get to know at once.|A big team, so one-on-one chats will go a long way.
+Q How are you feeling about it?|Are you nervous?
+> Mostly excited.|Really excited.
+= That energy will rub off on your team.|Love that, go in with that same attitude.
+> A bit overwhelmed.|Scared I'll mess up.
+= That's normal at first, nobody expects you to be perfect on day one.|Every good manager started out unsure, and asking questions helps a lot.
+X Congrats on the new role!|You'll do great leading your team.|Good luck, and enjoy the new challenge.
+@wo_team_lunch pos work
+U We had a team lunch today and it was so fun.|My whole team went out to lunch together today.|Our boss took the team out for lunch.|Team lunch on the company card today.
+A Team lunches are such a nice break from the desk.|A free lunch with your team is hard to beat.|Getting out of the office together always lifts the mood.|Sounds like a great way for the team to bond.|A lunch out with coworkers can make the whole week better.
+Q Where did you go?|Where'd you all eat?
+> A taco place down the street.|A little taco spot.
+= Tacos are perfect for a big group.|Can't go wrong with tacos.
+> A pizza spot nearby.|Pizza.
+= Pizza with coworkers is a classic for a reason.|Pizza is the ultimate team food.
+> A fancy new restaurant.|A nice sit-down place.
+= Ooh, a real treat of a lunch.|Sounds like a proper outing.
+Q Do you do team lunches often?|Is that a regular thing?
+> Once a month.|Every other Friday.
+= That's a great tradition to have.|Nice, something to look forward to regularly.
+> Almost never.|First one in a year.
+= Then it's extra special.|Hopefully it turns into a habit.
+X Sounds like a fun day at work.|Glad you got a good break with your team.|Nice to have a team you enjoy.
+@wo_laptop_died neg work
+U My laptop died right in the middle of a meeting.|My computer crashed during a video call.|My laptop shut off in the middle of my presentation today.|My laptop froze in the middle of a call with my boss.
+A Tech dying at the worst possible moment is so frustrating.|Nothing like a crash in the middle of a meeting.|That's the classic worst-timing tech fail.|Computers have a real talent for bad timing.|The mid-meeting freeze is everyone's nightmare.
+Q Did you lose any work?|Did anything get lost?
+> Yes, a whole document.|Some notes I hadn't saved.
+= That's painful, I hope you can recover some of it.|Losing unsaved work is the worst.
+> Luckily no.|Nope, everything was saved.
+= Phew, that's lucky.|Good thing you saved, that's a relief.
+Q How did everyone react?|Did people notice?
+> Everyone laughed it off.|They were really understanding.
+= Glad people were cool about it.|Everyone's had a tech meltdown at some point.
+> Awkward silence.|It was a little embarrassing.
+= It happens to everybody, nobody will remember it tomorrow.|Honestly, most people just felt bad for you.
+X Hope your laptop behaves tomorrow.|Here's to better tech days ahead.|May your next meeting be crash free.
+@wo_new_coworker pos work
+U We have a new coworker and they're great.|The new person on my team is really nice.|Our new hire is awesome.|I really like the new person who joined our team.
+A A great new coworker can change the whole vibe.|It's always nice when a new hire fits right in.|Good people make work so much better.|Sounds like your team got a solid addition.|A friendly new face at work is a nice surprise.
+Q What do you like about them?|What makes them great?
+> They're really funny.|They crack everyone up.
+= A good sense of humor makes long days easier.|A funny coworker is a gift.
+> Super friendly.|So kind to everyone.
+= Friendly people make work so much nicer.|Kindness goes a long way on a team.
+> They're really smart.|Great at their job already.
+= Nice, a strong teammate makes everyone's job easier.|Sharp and new, sounds like a good hire.
+Q Have you gotten to know them yet?|Have you had a chance to chat much?
+> We had lunch together.|We grabbed lunch yesterday.
+= Lunch is a great start.|Sounds like a new work friend in the making.
+> A little.|Just a bit.
+= That's a start.|Sounds like it's heading in a good direction.
+> Not yet.|Only in meetings.
+= Maybe invite them for coffee sometime.|Give it time, it sounds like you'll get along.
+X Sounds like a great new coworker.|Enjoy having them on the team.|Nice to have good people around.
+@wo_week_off pos work
+U My week off just got approved!|My vacation request got approved, finally!|I get a whole week off coming up.|The boss signed off on my time off.
+A A week off is something to celebrate.|Approved time off is the best news.|Now you've got something big to look forward to.|You definitely deserve the break.|Some real rest is finally on the calendar.
+Q What are you going to do with it?|Any plans for the week?
+> A trip somewhere.|Visiting family.
+= Sounds lovely, travel is a great way to reset.|That sounds like a nice way to spend it.
+> Nothing at all.|Staying home and resting.
+= A staycation can be perfect.|Pure rest sounds amazing.
+Q When does it start?|How long until your break?
+> Next month.|A few weeks away.
+= Plenty of time to plan something fun.|Something to count down to.
+> Next week.|Starting Monday.
+= So close, the countdown is on.|Almost there, just a few more days.
+X Enjoy the time off!|Have a great break.|Rest up and have fun.
+@wo_coffee_broken neg work
+U The coffee machine at work broke.|No coffee at the office today, the machine is broken.|Our office coffee maker died this morning.|The break room coffee machine is out of order again.
+A A broken coffee machine at work is a rough start.|No office coffee is a hard way to begin the day.|The whole office must be moving in slow motion.|Losing the coffee machine is a morale hit.|That's a sad morning at the office.
+Q Did you find another option?|Where are you getting coffee now?
+> A cafe down the street.|I went out for some.
+= A little walk to a cafe isn't so bad.|Nice save, the cafe run might even be a nice break.
+> None, I'm surviving without.|Nowhere.
+= Brave, surviving a workday on no coffee.|Tea might help in a pinch.
+Q Is it getting fixed?|When will it be fixed?
+> Tomorrow, hopefully.|Someone's coming to fix it.
+= Hang in there until then, relief is coming.|Good, at least there's an end in sight.
+> No idea.|Nobody knows.
+= Maybe bring a thermos from home tomorrow.|That's rough, hope it's back soon.
+X Hope the coffee flows again soon.|Hang in there until the fix.|Good luck surviving the day.
+@wo_report_done pos work
+U I finally finished the huge report I've been working on.|The report I've been dreading is done!|After weeks of work, my report is submitted.|Just sent off the biggest report of my career.
+A Finishing a huge report is such a relief.|That's a real weight off your shoulders.|Hitting send on a big report feels great.|All those weeks of work, finally done.|Crossing that finish line must feel amazing.
+Q How long did it take?|How long were you working on it?
+> About three weeks.|A whole month.
+= That's a long haul, well done.|That's a lot of work to finally wrap up.
+> Just a few days, but it was intense.|A frantic week.
+= Short and intense, that sounds exhausting.|Quite a sprint, glad it's behind you.
+Q Are you taking a break now?|What's next for you?
+> A quiet afternoon.|Going home early.
+= Well deserved, enjoy it.|A slow afternoon sounds perfect after that.
+> Another project already.|Back to the pile.
+= Take a breath before diving in.|Rest a bit first if you can.
+X Congrats on finishing!|Enjoy the relief.|Well done, celebrate a little.
+@wo_underappreciated neg work
+U I feel kind of underappreciated at work lately.|Nobody noticed the extra work I did this month.|I work so hard and nobody seems to notice.|Lately it feels like my effort at work goes unseen.
+A Feeling like your effort goes unnoticed is frustrating.|It's hard to stay motivated when nobody notices.|Putting in extra and hearing nothing back is a tough feeling.|You deserve credit for the work you do.|That kind of silence at work can really wear on you.
+Q Have you talked to your boss about it?|Does your manager know how you feel?
+> Not yet.|No, I don't know how to bring it up.
+= Maybe keep a list of your wins and bring it up at your next check-in.|A short, friendly conversation could help more than you'd think.
+> I tried.|Yes, but nothing changed.
+= That's frustrating, maybe try again with specific examples.|It might help to ask what they'd like to see from you.
+Q Is there anyone at work who does notice?|Do you have support from your coworkers?
+> A few coworkers.|My team does.
+= That counts for something.|Good teammates make a big difference.
+> Not really.|Nobody.
+= Then keep your own record of your wins, they're real.|Your work still matters, even when nobody says it.
+X Hang in there, your work counts.|I hope they start noticing soon.|You're doing good work, keep at it.
+@wo_credit_stolen neg work
+U My boss took credit for my idea in the meeting.|A coworker presented my work as theirs today.|Someone else got the credit for my project.|I watched my idea get pitched by someone else.
+A Having your idea taken is really frustrating.|That's a maddening thing to sit through.|Watching someone else get credit for your work stings.|No wonder you're annoyed, that's not fair.|That's a tough spot to be in.
+Q Did you say anything?|Did you speak up about it?
+> No, I froze.|I didn't want to make it awkward.
+= That's understandable, it's hard to react in the moment.|You can still follow up later, a quick email with your notes can set the record straight.
+> Yes, I mentioned it was my idea.|I spoke up afterward.
+= Good for you, that takes guts.|Nice, it's better to say something than let it slide.
+Q Has this happened before?|Is this a pattern?
+> A few times.|It keeps happening.
+= Then it might be worth documenting your ideas in writing.|Sharing ideas in writing first could help protect them.
+> First time.|No, this is new.
+= Hopefully it was a one-off.|Maybe it'll be a lesson for them too.
+X Hang in there, your ideas are valuable.|I hope the credit finds its way back to you.|Keep sharing your ideas, just keep a paper trail.
+@wo_side_project pos work
+U My side project is finally taking off.|The little business I run on the side just got its first big order!|My side hustle made more money than my paycheck this month.|People are actually buying the thing I make on weekends.
+A A side project taking off is so exciting.|That's a huge milestone for something you built yourself.|All those weekends are paying off.|Momentum like that is so fun to see.|Building something on the side takes real dedication.
+Q What is it?|What kind of project is it?
+> Handmade candles.|Soap and candles I make.
+= People love handmade things, that's lovely.|Handmade candles make great gifts.
+> Custom art prints.|My own illustrations.
+= Very cool, art prints make great gifts.|Selling your own art is such a thrill.
+> A small app.|An online shop.
+= Nice, there's a lot of room to grow with that.|An online shop can scale nicely.
+Q Would you ever go full time?|Could it become your main job?
+> Maybe someday.|I'm thinking about it.
+= Worth dreaming about, just take it step by step.|Growing it gradually is a smart way to see if it could work.
+> No, I like it as a side thing.|Nah, it's just for fun.
+= Keeping it fun is important.|Sounds like a great balance.
+X Congrats on the success!|Keep it going, it sounds great.|Here's to your side project growing even more.

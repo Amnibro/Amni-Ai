@@ -1,0 +1,411 @@
+@fe_tired_workday neg feelings
+U I'm so tired today.|ugh, so tired|I'm running on empty today.|Honestly I can barely keep my eyes open this afternoon.|Today I'm just wiped out.
+A Some days just drain every last drop of energy.|Running on fumes is no fun, especially in the middle of the day.|Sounds like your battery is flashing red.|Rough, those heavy-eyed afternoons drag on forever.|Being that worn out makes everything feel twice as long.
+Q Did you get much sleep last night?|How did you sleep last night?
+> Barely, maybe five hours.|Not much, I was up late.
+= That would do it, short nights catch up with you fast. Any chance of an early night tonight?|Late nights have a way of sending the bill the next afternoon.
+> I slept fine, I'm just drained.|Plenty, which is the weird part.
+= Sometimes tired is more about the week than the night before.|That kind of tired usually means you've been carrying a lot lately. Has it been a busy stretch?
+Q Can you rest a bit later?|Any chance you can take it easy tonight?
+> Yeah, I'm doing nothing tonight.|Couch and pajamas the minute I get home.
+= Good plan, a slow evening can work wonders.|Pajamas and a quiet night sound exactly right.
+> Not really, I have plans.|Nope, busy evening ahead.
+= Ugh, then maybe sneak in a short break before it starts.|Hopefully it's the fun kind of busy at least.
+X Hang in there, bedtime is coming.|I hope you get a proper rest soon.|Take it slow, and get some good sleep tonight.
+@fe_tired_parent neg feelings
+U The baby was up four times last night and I'm a zombie.|My toddler woke up at 5 again and I'm exhausted.|Night feeds are wearing me down.|Our little one won't sleep through the night and neither do I.
+A Broken sleep with a little one is its own special kind of tired.|Early wake-ups from a toddler are no joke.|Getting up that many times would flatten anyone.|That stage is exhausting, even when you love them to bits.
+Q Do you get to trade off nights with anyone?|Is anyone able to take a shift?
+> Yeah, my partner helps some nights.|We take turns, mostly.
+= Taking turns makes a huge difference over the long run.|Good, tag-teaming is the only way to survive this stage.
+> Not really, it's mostly me.|No, I'm on my own with it.
+= That's a lot for one person, so grab a nap whenever the baby does if you can.|Doing it solo is tough, even a short rest in the afternoon can help.
+Q How old is your little one?|How old are they now?
+> Just a few months.|Almost two.
+= Oh, such a sweet and sleepless age, it does get easier.|Right in the thick of it, they grow out of this phase eventually.
+X Hang in there, better nights are coming.|Sending you some sleepy solidarity, and I hope tonight is kinder.|You're doing great, even if it doesn't feel like it right now.
+@fe_nervous_firstday neg feelings
+U I'm nervous about my first day at the new gym class tomorrow.|I signed up for a group fitness class and now I'm nervous to go.|Tomorrow is my first class at the climbing gym and I'm kind of scared.|Trying a new class tomorrow and my stomach is already in knots.
+A Trying something new in front of strangers always feels bigger than it is.|First-class nerves are so common, and nobody is watching as closely as you think.|Signing up was the hardest part, and you already did that.|A little nervous is normal when you're stepping into something new.
+Q What part worries you most?|What's making you nervous about it?
+> Looking like I don't know what I'm doing.|Being the only beginner.
+= Instructors love beginners, and there's almost always another newbie in the room.|Everyone in there had a first day too, most of them remember it.
+> Just not knowing anyone.|Walking in alone.
+= Getting there a few minutes early to say hi to the instructor can help a lot.|After one or two classes the faces start feeling familiar.
+Q Are you excited at all, or mostly nervous?|Is some of it excitement too?
+> Some excitement, yeah.|A little of both.
+= That mix usually means it's something worth doing.|Nerves and excitement feel almost the same in your body anyway.
+> Mostly just nervous.|Honestly, mostly dread.
+= That's fair, it often flips to fun after the first ten minutes.|Once you're there it'll probably feel much easier than the waiting.
+X You've got this, go show up and have fun.|Good luck tomorrow, I think you'll enjoy it.|Enjoy the class, the second one is always easier.
+@fe_nervous_doctor neg feelings
+U I have a routine checkup tomorrow and I'm weirdly anxious about it.|Doctor's appointment in the morning, just a regular physical, and I'm nervous.|It's only my yearly checkup but I've been dreading it all week.|I get so anxious before normal doctor visits, and I have one tomorrow.
+A Plenty of people get jumpy before even the most routine appointment.|A checkup can feel bigger in your head than it is in the room.|Dreading the doctor is really common, even when nothing is wrong.|Waiting is usually the worst part of a routine visit.
+Q Is there something specific on your mind, or is it just the whole thing?|Is it anything in particular, or just doctor's offices in general?
+> Just doctor's offices in general.|Mostly the waiting room vibe.
+= That's very relatable, bringing a podcast or a book can help pass the time.|Totally fair, some headphones and a good playlist can make the wait easier.
+> I hate getting my blood drawn.|The needles, honestly.
+= Lots of people feel that way, and it's fine to tell the nurse so they can talk you through it.|Looking away and focusing on something else really does help. Do you usually get lightheaded?
+Q Do you have something nice planned for after?|Any treat lined up for when it's over?
+> Maybe a coffee on the way home.|I'll grab breakfast after.
+= Good idea, having a little reward waiting helps a lot.|Perfect, something to look forward to right after.
+> Not really.|Nope, just back to work.
+= Maybe add one, even a favorite snack can make it feel better.|Then I vote you pick up something tasty on the way back.
+X I hope it goes smoothly and quickly.|Good luck tomorrow, it'll be over before you know it.|You'll be fine, and then it's done for another year.
+@fe_excited_general pos feelings
+U I'm in such a good mood today!|I woke up feeling amazing for no reason.|Everything just feels good today.|Honestly, I'm weirdly happy today and I don't know why.
+A A good mood with no reason needed is the best kind.|Love that, those days are worth soaking up.|Waking up feeling great is such a gift.|That kind of day deserves to be enjoyed to the fullest.
+Q Did anything fun happen?|Any idea what set it off?
+> Nope, just woke up happy.|Nothing, it's just a good day.
+= Then just ride the wave, no explanation needed.|Honestly, those are the best ones.
+> I slept really well for once.|The sun was out when I woke up.
+= Good sleep can really change everything.|A sunny morning does wonders for the mood.
+Q Got anything fun planned today?|What are you going to do with all that good energy?
+> Maybe go for a long walk.|I'm going to get outside for a bit.
+= A long walk on a good day sounds perfect.|Great way to use that energy, enjoy the fresh air.
+> Just going to relax.|Nothing much, just enjoying it.
+= Sometimes enjoying the feeling is the whole plan.|A relaxed happy day sounds lovely.
+X Enjoy the good mood, you deserve it.|I hope the rest of the day stays this good.|Keep that energy going.
+@fe_bored_afternoon neu feelings
+U I'm so bored right now.|Bored out of my mind this afternoon.|I have nothing to do and it's driving me nuts.|ugh, bored|Nothing to do today and I'm going a little stir-crazy.
+A A slow afternoon can feel endless.|Boredom has a way of stretching every minute.|Sounds like you need something to shake up the day.|An empty afternoon is either a curse or an opportunity.
+Q Are you stuck at home or out somewhere?|Where are you right now?
+> At home, on the couch.|Just sitting at home.
+= Maybe a short walk or a new recipe could break it up. What do you usually enjoy doing?|A couch day can turn fun with the right movie or snack.
+> Stuck at work with nothing to do.|At work, but it's dead today.
+= Slow workdays are the worst, maybe tackle that one task you've been avoiding.|Could be a good time to tidy your desk or plan something fun for later.
+Q What do you usually do for fun?|Is there a hobby you've been meaning to pick back up?
+> I used to draw a lot.|I like reading, but I've fallen off.
+= Maybe today's the day to pick that back up, even for twenty minutes.|Starting small with it could be a nice way to fill the afternoon.
+> Honestly, I don't really have hobbies.|Not really, that's part of the problem.
+= Then maybe try something tiny and new, like a puzzle or a new playlist.|That's okay, a boring day is a decent time to try something random.
+X I hope the afternoon picks up.|Good luck beating the boredom.|Hope you find something fun to do.
+@fe_sad_mild neg feelings
+U I'm just feeling kind of down today.|Feeling a bit blue for no real reason.|I've been in a meh mood all day.|Today's one of those low days.
+A Some days just have a heavy feel to them.|Low days sneak up on everyone now and then.|That meh feeling can hang around like a gray cloud.|Sorry the day is feeling a bit flat.
+Q Did something happen, or is it just one of those days?|Anything in particular, or just a gray mood?
+> Nothing happened, just one of those days.|No reason, just meh.
+= Those days happen, and they usually pass on their own.|Sometimes a small comfort, like a warm drink or a favorite show, helps take the edge off.
+> I got some disappointing news.|A plan I was excited about fell through.
+= I'm sorry, that kind of letdown can color the whole day. Do you want to talk about it?|That's a real bummer, it makes sense you'd feel low.
+Q Is there anything that usually cheers you up?|What usually helps on days like this?
+> A walk usually helps.|Getting outside.
+= A walk sounds like a good idea, even a short one.|Fresh air has a way of shifting things a little.
+> Music and a snack.|A good movie.
+= Then treat yourself to that tonight.|That sounds like the right medicine for a gray day.
+X I hope tomorrow feels lighter.|Take it easy on yourself today.|I hope the gray lifts soon.
+@fe_lonely_evening neg feelings
+U My roommate is away and the apartment feels really quiet tonight.|Kind of a lonely evening at home.|Everyone's busy tonight and I'm just sitting here alone.|It's a quiet night and I'm feeling a little lonely.
+A Quiet evenings can feel extra long when you're in the mood for company.|A too-quiet house has a way of making you notice it.|Nights like that can feel a bit empty.|Sometimes the silence is louder than you want it to be.
+Q Is there anyone you could call or text?|Any friend you could check in with tonight?
+> Maybe my sister.|I could text an old friend.
+= That sounds like a nice idea, even a short chat can change the evening.|A surprise text often makes both people's night.
+> Everyone's busy.|Not really tonight.
+= Then I'm happy to keep you company for a bit. What did you get up to today?|Fair enough, maybe tonight is for a comfort movie and a good snack.
+Q What are you up to tonight?|How are you spending the evening?
+> Just scrolling on my phone.|Nothing really, just sitting around.
+= Scrolling can make it feel lonelier sometimes, maybe swap it for a show or some music.|Maybe put on something cozy, like a favorite show or a podcast.
+> Watching a movie.|Trying to read a book.
+= That's a good way to spend a quiet night. What's it about?|A good story is great company on a quiet night.
+X I hope the evening gets cozier.|I'm glad you came to chat.|Enjoy the quiet as much as you can tonight.
+@fe_stressed_chores neg feelings
+U My apartment is a mess and I'm too stressed to deal with it.|The laundry and dishes are piling up and I'm overwhelmed.|I have a million chores and zero energy.|My place looks like a tornado hit it.
+A A messy space can make everything feel more stressful.|Chores piling up is a special kind of weight.|When everything needs doing, it's hard to know where to start.|A cluttered home can drain your energy fast.
+Q What's bugging you the most?|Which chore feels the worst?
+> The dishes.|The sink full of dishes.
+= Just doing the dishes can make the whole place feel better.|A clean sink is a quick win, maybe start there with some music on.
+> Laundry, it's everywhere.|The mountain of laundry.
+= Maybe just one load tonight, one load is a win.|Start one load now, and the rest can wait until tomorrow.
+Q Could you do a quick fifteen-minute tidy?|Would a short timer help you get started?
+> Yeah, that might work.|I could try that.
+= Fifteen minutes with a playlist can get a surprising amount done.|Setting a timer makes it feel so much more doable.
+> Probably not tonight.|I just don't have it in me.
+= That's fair, tomorrow morning might feel easier.|Then rest tonight, the mess will still be there tomorrow.
+X Good luck with the chores, one step at a time.|I hope your place feels calmer soon.|You've got this, even a little progress counts.
+@fe_stressed_bills neg feelings
+U Bills all came due this week and I'm stressed.|Money's tight this month and it's stressing me out.|Just paid rent and my bank account is crying.|Car repair plus rent in the same week, ugh.
+A Money stress has a way of following you around all day.|Tight months are rough, and it's normal to feel on edge.|Everything hitting at once is so frustrating.|Big bills in the same week always sting.
+Q Is it a one-time thing, or has it been tight for a while?|Is this a rough patch or more of an ongoing thing?
+> Just this month, it'll ease up.|It's a one-time crunch.
+= Good, getting past this month is the hard part.|That makes it easier, the end is in sight.
+> It's been tight for a while.|Kind of ongoing, honestly.
+= That's tiring, a simple budget check might help you see where things stand. Do you have one?|Sorry, that sounds exhausting.
+Q Do you have any fun but free plans coming up?|Anything cheap and fun on the horizon?
+> A picnic with friends.|Game night at a friend's place.
+= That sounds perfect, fun doesn't have to cost much.|Great idea, good company is free.
+> Not really.|Nope, just work.
+= Maybe plan a free walk or a movie night at home to break up the week.|A library book or a long walk can be a good cheap reset.
+X I hope things loosen up soon.|Hang in there, tight months do pass.|Good luck getting through the crunch.
+@fe_homesick neg feelings
+U I've been feeling really homesick lately.|I miss home so much right now.|Moving away was exciting but now I'm homesick.|Being so far from my family is getting to me.
+A Missing home can hit harder than you expect.|Being far from family is tough, even when you chose it.|Homesickness sneaks up on you, especially after the new wears off.|That longing for home is such a real feeling.
+Q What do you miss most?|What's the thing you miss the most?
+> My mom's cooking.|The food back home.
+= Maybe try making one of those dishes yourself, it can bring a little home to you.|Food memories are powerful. Is there a recipe you could ask for?
+> My friends.|Just being with my family.
+= That makes sense, maybe schedule a video call this week.|Regular calls can make the distance feel a bit smaller.
+Q When's the next time you can visit?|Do you have a trip home planned?
+> In a few months.|Over the holidays.
+= Something to look forward to, then.|That's good, having a date on the calendar helps.
+> Not anytime soon.|I don't know yet.
+= That's hard, maybe plan a small comfort thing each week until then.|Maybe look at a date, even a tentative one can help.
+X I hope you feel a bit closer to home soon.|Sending a little comfort your way.|I hope your new place starts to feel like home too.
+@fe_proud_self pos feelings
+U I'm actually really proud of myself today.|I did something hard today and I feel great.|I finally faced something I'd been avoiding for months.|Proud of myself for sticking with it this week.
+A You should be, that's a great feeling to earn.|Doing the hard thing is so satisfying.|Facing something you've been avoiding takes real guts.|Love hearing that, give yourself some credit.
+Q What did you do?|What was the thing?
+> I finally made that phone call.|I dealt with a tough conversation.
+= Those can be so hard to start, well done.|Getting through that is a real win.
+> I finished a project I kept putting off.|I cleaned out my whole garage.
+= That's a big weight off your shoulders.|That's a huge job, you should feel good about that.
+Q Are you going to celebrate a little?|How are you rewarding yourself?
+> Maybe with a nice dinner.|I'm getting takeout tonight.
+= Good plan, you earned it.|A well-deserved treat.
+> Just relaxing tonight.|I'm going to do nothing.
+= Doing nothing after doing something hard is the perfect reward.|Sounds like the right way to end the day.
+X Well done, enjoy that feeling.|Proud of you, go enjoy the evening.|Keep that momentum going.
+@fe_grumpy_morning neg feelings
+U I woke up grumpy and I don't know why.|Not a morning person today at all.|Everything is annoying me this morning.|ugh, cranky morning
+A Some mornings just start on the wrong foot.|Grumpy mornings are part of being human.|Waking up cranky can make everything feel annoying.|That kind of morning needs a gentle start.
+Q Have you had coffee yet?|Have you eaten breakfast yet?
+> Not yet.|No, I'm running late.
+= That might help a lot, grab something warm and tasty.|A quick bite and a warm drink might soften the mood.
+> Yeah, it didn't help.|Yep, didn't help at all.
+= Then maybe a few minutes of quiet before the day ramps up.|Fair, some mornings just need time.
+Q Is it a busy day ahead?|What does the rest of your day look like?
+> Packed, unfortunately.|Meetings all day.
+= Then maybe pace yourself and take small breaks.|Hopefully the day improves as it goes.
+> Pretty chill, actually.|Not much going on.
+= Good, maybe the grumpy will fade on its own.|A chill day is a good cure for a cranky morning.
+X I hope the day turns around.|Here's to a better afternoon.|Hang in there, the mood usually lifts by lunch.
+@fe_restless neu feelings
+U I feel so restless today.|I can't sit still today.|I've got all this restless energy and nowhere to put it.|I'm antsy and I don't know why.
+A Restless energy can be hard to settle.|Some days your body just wants to move.|Being antsy without a reason can be so frustrating.|That itchy, restless feeling is real.
+Q Could you get out for a walk or a quick workout?|Any way to burn some of that energy off?
+> Yeah, maybe a run.|I could go for a bike ride.
+= Perfect, that sounds like just the thing.|Great idea, moving usually helps a lot.
+> Not really, stuck at my desk.|I'm stuck inside today.
+= Maybe a few stretches or a walk around the building on your break.|Even a short dance break in the kitchen could help.
+Q Is something on your mind?|Anything you're waiting on?
+> I'm waiting to hear back about something.|Waiting on news.
+= That would do it, waiting makes it hard to sit still.|The waiting game is tough, keeping busy can help.
+> No, just restless.|Nope, just antsy.
+= Then maybe it's a sign to try something new today.|Fair enough, sometimes it's just the weather or the week.
+X I hope you find a way to shake it off.|Good luck burning off that energy.|I hope the day settles down for you.
+@fe_nostalgic pos feelings
+U I found some old photos and I'm feeling so nostalgic.|Going through my childhood room at my parents' place, lots of memories.|Watched an old home video today and got all sentimental.
+A Old keepsakes have a way of taking you right back.|Nostalgia is such a bittersweet feeling.|Stumbling onto old memories can really stir things up.|Little pieces of the past can hit you out of nowhere.
+Q What memory stood out most?|Did anything in particular take you back?
+> Summer trips with my family.|Pictures from summer camp.
+= That sounds like such a sweet memory.|Those summers stick with you for life.
+> My old friends from school.|Me and my best friend as kids.
+= Are you still in touch with them?|That's such a sweet reminder of how long you've known each other.
+Q Did you tell anyone about it?|Have you shared any of it with family?
+> Yeah, I sent some pictures to my sister.|I posted a few in the family chat.
+= Fun, I bet that got some good reactions.|The family chat probably loved that.
+> Not yet, maybe later.|No, I kept them to myself.
+= They might enjoy seeing them too.|Sometimes it's nice to just enjoy them on your own.
+X Enjoy the walk down memory lane.|Those are great memories to keep.|Hold on to those good memories.
+@fe_unmotivated neg feelings
+U I have zero motivation today.|I can't make myself do anything today.|I have a to-do list and I just don't care.|No motivation whatsoever, ugh.
+A Some days motivation just doesn't show up.|Low-motivation days happen to everyone.|That stuck feeling is so frustrating.|Staring at a to-do list with no energy is rough.
+Q Is there one small thing you could knock out?|Could you pick the easiest item and just start there?
+> Maybe answering some emails.|I could do the dishes.
+= Perfect, small wins can build a little momentum.|Start there, and see if the next thing feels easier.
+> Nothing feels small right now.|Honestly, nothing.
+= Then maybe give yourself permission to rest and start fresh tomorrow.|That's okay, some days are for resting.
+Q Has it been a long week?|Have you been busy lately?
+> Yes, it's been nonstop.|Super busy.
+= That explains it, your brain might just need a break.|After a week like that, a slow day makes sense.
+> Not really, which is the weird part.|No, just a normal week.
+= Sometimes motivation just dips, it'll come back.|That's normal, not every day has to be productive.
+X I hope your energy comes back soon.|Go easy today, tomorrow's a fresh start.|Good luck, even one small thing counts.
+@fe_overthinking_text neg feelings
+U I sent a text two hours ago and they haven't answered, and I'm overthinking it.|I sent a long message and now I'm worried it was weird.|Waiting on a text reply and my brain is spiraling.
+A Overthinking a text is so relatable.|Waiting for a reply can make your brain run in circles.|Most people are just busy, not upset.|Rereading your own message a dozen times is such a common habit.
+Q Who did you text?|Was it someone you know well?
+> An old friend.|My best friend.
+= Old friends usually give a lot of grace.|Close friends usually know exactly what you meant.
+> Someone I just started dating.|A new friend.
+= New connections make every message feel high-stakes.|That makes it extra nerve-racking, but give it some time.
+Q Is there something you could do to distract yourself?|Could you put the phone down for a while?
+> I could go for a walk.|Maybe watch a show.
+= Good idea, the reply will probably show up when you're not looking.|A distraction always makes the wait go faster.
+> I keep checking anyway.|It's hard to stop looking.
+= Maybe flip it face down and set a timer for an hour.|That's so normal, try leaving it in another room for a bit.
+X I bet they'll reply soon.|Hang in there, it's probably nothing.|Go easy on yourself, most messages land better than we think.
+@fe_missing_friend neg feelings
+U My best friend moved across the country and I really miss her.|My closest friend just moved away and it feels weird.|I miss hanging out with my buddy since he moved.|It's been a month since my friend moved and I still miss our weekly dinners.
+A Missing a close friend leaves a real gap in your week.|Long distance friendships take adjusting to.|That empty spot where your routine used to be is tough.|It makes sense to miss someone who was such a big part of your week.
+Q Do you get to talk much?|Have you been keeping in touch?
+> We text every day.|Yeah, we call a lot.
+= That's great, staying in touch really helps.|Sounds like your friendship is going to survive the distance just fine.
+> Not as much as I'd like.|Not really, we're both busy.
+= Maybe set up a regular call, like a standing weekly catch-up.|A standing call time can help keep it going.
+Q Are you planning to visit?|Any plans to see each other soon?
+> Yeah, in a couple months.|I'm visiting in the spring.
+= Something to look forward to, then.|That's great, counting down might help.
+> Not yet.|We haven't planned anything.
+= Maybe pick a date together, it helps to have something on the calendar.|Maybe suggest a weekend and see what works.
+X Good friends last across any distance.|I hope you see each other soon.|That friendship sounds worth the effort.
+@fe_sunday_scaries neg feelings
+U Sunday night and I'm already dreading Monday.|The Sunday scaries are hitting hard tonight.|Weekend's almost over and I've got that Monday dread.|Every Sunday evening I get this knot in my stomach about the week.
+A Sunday night dread is so common.|The weekend ending always feels a bit sad.|That end-of-weekend feeling can be rough.|The last few hours of a weekend always seem to fly.
+Q Is there something big happening this week?|Anything specific you're dreading?
+> A big deadline on Wednesday.|A presentation Monday morning.
+= That would explain it, maybe do a quick plan tonight and then switch off.|Preparing a little tonight might help you sleep better.
+> No, just Mondays in general.|Nothing specific.
+= Then maybe plan something small and fun for Monday evening.|Fair, Mondays have that effect on everyone.
+Q How are you spending the rest of the night?|Doing anything relaxing tonight?
+> A bath and a book.|Watching a movie.
+= Sounds like a great way to wrap up the weekend.|That's the perfect Sunday wind-down.
+> Probably just scrolling.|Scrolling on my phone.
+= Maybe swap some scrolling for something cozier.|A cozy show might beat the scroll tonight.
+> Doing laundry.|Chores, sadly.
+= At least Monday you'll be ready.|Getting chores done tonight will make the week start smoother.
+X I hope Monday is kinder than you expect.|Enjoy the rest of your Sunday.|Here's to a smooth week ahead.
+@fe_cant_sleep neg feelings
+U I can't fall asleep tonight.|It's 2am and I'm wide awake.|My brain won't shut off and I can't sleep.|ugh, can't sleep again
+A Lying awake at night is the worst.|Late-night brains love to keep spinning.|That wide-awake-at-2am feeling is so frustrating.|Sleepless nights make everything feel longer.
+Q Is something on your mind?|Anything keeping you up?
+> Just thinking about tomorrow.|Worrying about work.
+= Try jotting down what's on your mind, it can help your brain let go.|Writing down tomorrow's to-do list sometimes quiets things down.
+> No, I'm just not tired.|Nothing, I just can't sleep.
+= Maybe get up for a few minutes and read something boring.|A dim light and a dull book can work surprisingly well.
+Q Have you been on your phone a lot?|Is your phone keeping you up?
+> Yeah, I've been scrolling.|Guilty, yes.
+= Putting it down for a bit might help your brain wind down.|Try setting it across the room for a bit.
+> No, I put it away.|Not really.
+= Good, that's a smart move. Maybe some calm breathing will help.|Then maybe some quiet music could help.
+X I hope you drift off soon.|Rest well when sleep finally comes.|Good luck, I hope you get some rest.
+@fe_coffee_jitters neu feelings
+U I had way too much coffee and now I'm jittery.|Three espressos was a mistake, I'm buzzing.|I'm so over-caffeinated right now.|Too much coffee, I'm basically vibrating.
+A Too much coffee can definitely make you feel wired.|That caffeine buzz can be a bit much.|Ha, three espressos will do that.|Over-caffeinated days feel so jittery.
+Q Did you eat anything with it?|Have you had some water?
+> Not yet.|No, just coffee.
+= Some water and a snack might help take the edge off.|A glass of water and some food should calm the buzz a bit.
+> Yeah, a sandwich.|Yes, just now.
+= Good, that should help soon.|Then the buzz should fade before long.
+Q Are you getting a lot done at least?|Is the extra energy useful at all?
+> Yeah, super productive.|I cleaned my whole kitchen.
+= Ha, might as well use it.|Nice, at least the buzz paid off.
+> No, I just feel scattered.|Can't focus at all.
+= Maybe take a short walk to burn it off.|A walk might help you settle down.
+X Hope the buzz settles soon.|Maybe go easy on the coffee tomorrow.|Enjoy the energy while it lasts.
+@fe_relieved pos feelings
+U I'm so relieved, the thing I was worried about turned out fine.|Phew, that was a big weight off my shoulders.|Finally got good news after a week of worrying.|Everything worked out and I can finally breathe easy.
+A That kind of relief is such a great feeling.|A weight lifting off your shoulders feels amazing.|After a week of worry, good news hits different.|So glad things worked out.
+Q What was it?|What had you worried?
+> Some test results came back normal.|My car repair was cheaper than I thought.
+= That's great news, what a relief.|Love when things turn out better than expected.
+> A work thing that went well.|The deadline got pushed back.
+= That's such a nice break.|Perfect, that's a nice weight off.
+Q Are you celebrating a little?|Treating yourself tonight?
+> Yes, a nice dinner.|Takeout and a movie.
+= Perfect, you earned it.|Sounds like the right way to celebrate.
+> Just relaxing.|Early night.
+= Rest is a great way to celebrate too.|An early night sounds well deserved.
+X Enjoy the relief, you earned it.|So glad it worked out.|Here's to a calmer week.
+@fe_pet_grief neg feelings
+U My dog passed away last month and I still miss him every day.|It's been a few weeks since we lost our cat and the house feels empty.|I keep expecting to hear my dog's tags jingling, but he's gone.|Our old cat died last month and I'm still sad about it.
+A Losing a pet leaves such a big hole.|Pets are family, so of course you still miss them.|The little everyday reminders are often the hardest part.|That quiet house must feel so different now.
+Q How long did you have them?|How many years were you together?
+> Almost fifteen years.|Since I was a kid.
+= Fifteen years is a lifetime of memories together.|That's such a long friendship, no wonder you miss them.
+> Only a few years.|About five years.
+= Even a few years is plenty of time to love someone deeply.|Five years of love is still a big part of your life.
+Q What was their name?|What did you call them?
+> Max.|We called her Pepper.
+= That's a great name, it sounds like they were special.|What a sweet name, what was their funniest habit?
+> Biscuit.|Luna.
+= I love that, it sounds like they brought a lot of joy.|Such a lovely name, I bet they had a big personality.
+X I'm sorry for your loss, they sound like they were really loved.|Hold on to those good memories.|Sending you some comfort today.
+@fe_rainy_blues neg feelings
+U The rain is making me feel so gloomy.|It's been raining for days and I'm in a funk.|Gray skies all week and my mood matches.|This dreary weather is getting to me.
+A Days of gray can really weigh on your mood.|Rainy stretches have a way of dragging everything down.|That gloomy weather mood is so real.|Sunless days can make everything feel slower.
+Q Are you stuck inside all day?|Are you getting out at all?
+> Yeah, stuck inside.|Mostly indoors.
+= Maybe make it cozy with some tea and a good movie.|A warm drink and a blanket can make it a bit better.
+> I have to go out in it.|Yes, I have errands.
+= Good boots and a big umbrella can help a little.|At least you'll come back to a cozy house.
+Q Do you have something cozy to do?|Any rainy-day plans?
+> A book and tea.|Curling up with a book.
+= That sounds like the perfect rainy-day plan.|Rain on the window and a good book, lovely.
+> Baking something.|Making cookies.
+= Baking on a rainy day is so comforting.|The house will smell amazing.
+> Not really.|Nothing yet.
+= Maybe a movie marathon, it's the perfect weather for it.|Maybe a puzzle or a nap could help.
+X I hope the sun comes back soon.|Stay cozy, it'll clear up.|Hang in there, sunnier days are coming.
+@fe_birthday_old neu feelings
+U I'm turning {age} next week and feeling kind of old.|Another birthday coming up and I don't feel ready for {age}.|I just realized I'm going to be {age} and it's weird.|Hitting {age} soon, where did the time go?
+V age=30,40,50,35,45
+A Birthdays like that have a way of making you think.|{age} is a big number, but it's also just a new start.|Time moves fast, doesn't it.|Plenty of people feel a bit odd at a milestone birthday.
+Q Are you doing anything for it?|Any plans to celebrate?
+> A dinner with friends.|A small party.
+= That sounds like a lovely way to mark it.|Good friends make any age feel better.
+> Nothing big.|Just a quiet day.
+= A quiet day can be really nice too.|Sometimes low-key is perfect.
+Q How are you feeling about it overall?|Mostly okay with it, or kind of dreading it?
+> Mostly okay, just a bit weird.|Fine, it's just a number.
+= Exactly, it's just a number.|That's a healthy way to see it.
+> Kind of dreading it.|Not thrilled about it.
+= Totally fair, it might feel better once it's here.|Maybe treat yourself to something fun that day.
+X Happy early birthday!|Here's to a great year ahead.|Enjoy the big day, whatever you do.
+@fe_excited_plans pos feelings
+U I'm so excited for this weekend.|I've been looking forward to Saturday all week.|Counting down the hours until the weekend.|This weekend is going to be so fun.
+A A weekend worth looking forward to is the best.|That countdown feeling makes the week go faster.|Love when the weekend has something good planned.|Sounds like a weekend to remember.
+Q What's the plan?|What are you up to?
+> A trip with friends.|A road trip.
+= That sounds so fun, where are you headed?|Road trips are the best, have a great time.
+> A big dinner with family.|My cousin's birthday party.
+= That sounds lovely.|Sounds like a great time.
+Q What part are you most excited about?|What's the best part?
+> Just getting away.|A change of scenery.
+= Sometimes a break is exactly what you need.|A little escape can reset the whole week.
+> Seeing everyone.|Being with my people.
+= That's the best part of any plan.|Good company makes everything better.
+> The food, honestly.|All the snacks.
+= Great priorities.|Food makes any weekend better.
+X Have a great weekend!|Enjoy every minute.|Hope it's everything you're hoping for.
+@fe_overwhelmed_week neg feelings
+U This week has been way too much.|I'm so overwhelmed with everything this week.|Too many things going on at once.|I feel like I'm juggling a hundred things.
+A Weeks like that can feel like a lot all at once.|Juggling everything at once is exhausting.|That's a lot to have on your plate.|Busy weeks can feel never-ending.
+Q What's taking up most of your time?|What's the biggest thing on your plate?
+> Work, mostly.|A big project at work.
+= That can eat up everything, hopefully it wraps up soon.|Big projects are tough, try breaking it into small pieces.
+> Family stuff.|Helping my parents out.
+= That's a lot, but it's kind of you to help.|Family stuff can be draining, even when it matters.
+Q Do you get a break soon?|Is there an end in sight?
+> Yeah, this weekend.|Friday can't come fast enough.
+= Good, hang on until then.|The weekend will feel so good.
+> Not really.|Not for a while.
+= Then try to squeeze in small breaks where you can.|Even a short walk can help.
+X Hang in there, it will ease up.|I hope the week gets lighter.|You're doing more than enough, take a breather when you can.
+@fe_content_evening neu feelings
+U Just a really nice quiet evening at home.|Sitting on the porch with a cup of tea and feeling content.|Everything feels calm and good tonight.|Cozy night in and I'm so content.
+A A calm evening like that is such a gift.|Quiet contentment is underrated.|That sounds like the perfect kind of night.|Cozy nights in are the best.
+Q Anything making it extra nice?|What's making tonight so good?
+> Reading a good book.|Listening to music.
+= That sounds perfect.|What a lovely way to spend an evening.
+> Just watching the sunset.|Enjoying the quiet.
+= That's so peaceful.|Sometimes quiet is all you need.
+Q Was it a busy day?|How was your day?
+> Busy, so this feels earned.|Long day, but good.
+= Then you deserve every minute of this.|A good end to a busy day.
+> Pretty relaxed.|Easygoing.
+= A relaxed day and a calm night, lovely.|Sounds like a great day all around.
+X Enjoy the peaceful evening.|Soak it up, you deserve it.|Have a lovely night.
+@fe_nervous_date neu feelings
+U I have a first date tonight and I'm nervous.|Going on a first date tomorrow, kind of nervous.|First date in years coming up and I'm a bit anxious.|I have a date tonight and my stomach is in knots.
+A First date nerves are totally normal.|A little flutter before a date means you care.|A date night is exciting.|Nerves before a date are part of the fun.
+Q Where are you going?|What's the plan for the date?
+> Just coffee.|A coffee shop.
+= Coffee is a great low-pressure first date.|Perfect, easy to relax and just talk.
+> Dinner at a nice place.|A nice restaurant.
+= Sounds fancy, enjoy it.|That sounds lovely.
+Q How did you meet?|Did you meet online or somewhere else?
+> Online.|On a dating app.
+= Lots of people meet that way now, good luck.|Nice, hope you hit it off in person.
+> Through friends.|A friend introduced us.
+= That's a great way to meet someone.|Good friends make good matchmakers.
+X Have fun, and just be yourself.|Good luck, I hope it goes great.|Enjoy it, I'm sure you'll have a nice time.

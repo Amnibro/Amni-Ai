@@ -1,0 +1,285 @@
+@id_dying_to_see pos idioms nohold
+U I'm dying to see that new {thing} everyone keeps talking about.|I am dying to see that {thing} this weekend.|Honestly I'm dying to go see that new {thing}.|Everyone's raving about that {thing} and I'm dying to see it.
+V thing=space movie,animated movie,mystery movie,musical,comedy special,horror movie
+A Sounds like that {thing} has the hype train fully rolling.|Nothing like a {thing} everyone's buzzing about to build the anticipation.|That kind of excitement makes the wait feel extra long.|When everyone raves about something, it's hard not to get curious.
+Q Are you planning to see it soon?|When are you going?
+> Hopefully this weekend.|Saturday, if I can get tickets.
+= Nice, grab good seats and a big snack.|Perfect timing, fingers crossed the tickets work out.
+> Not sure yet, I have to find someone to go with.|No plans yet.
+= Going solo is honestly underrated. Have you ever tried it?|Maybe pitch it to a friend who's into that kind of thing.
+Q Have you been avoiding spoilers?|Have you managed to dodge spoilers so far?
+> Barely, people keep talking about it.|Trying my best.
+= Mute a few words and keep scrolling fast, you can make it.|The struggle is real, see it before someone ruins it.
+> Yep, I've been careful.|Totally spoiler-free so far.
+= Impressive discipline, you'll get the full experience.|Nice, going in fresh is the best way.
+X Enjoy the {thing} when you finally see it!|I hope it lives up to the hype.|Have fun, and enjoy every minute of it.
+@id_dying_to_try pos idioms nohold
+U I'm dying to try that new {food} place downtown.|There's a new {food} spot and I'm dying to try it.|I've been dying to try the {food} at that place my coworker keeps talking about.
+V food=ramen,taco,pizza,dumpling,barbecue,sushi,burger
+A A new {food} spot is always worth checking out.|That craving sounds serious, and a new place is the perfect excuse.|When someone keeps talking up a {food} place, you have to go see for yourself.|A place people won't stop talking about is worth a visit.
+Q Are you going to try it soon?|Any plans to go this week?
+> This weekend, hopefully.|Maybe Friday night.
+= Nice, go hungry and order a little of everything.|That sounds like a great way to kick off the weekend.
+> Whenever I can get a table.|It's always packed.
+= A packed place is usually a good sign. Maybe try an off-peak time?|Going right when they open can help beat the line.
+Q What are you going to order first?|Do you know what you'll get?
+> Whatever they're famous for.|Their most popular dish.
+= Smart, the house favorite is usually the move.|Can't go wrong starting with the classic.
+> Something spicy.|The biggest thing on the menu.
+= Bold choice, I like it.|Ha, go big or go home.
+X Enjoy the meal, I hope it's as good as they say!|Have a great meal!|I hope it lives up to all the talk.
+@id_traffic_killing neg idioms nohold
+U This traffic is killing me.|My commute is killing me today.|Stuck in traffic again and it's killing me.|This rush hour is killing me slowly.|ugh, traffic is killing me
+A Crawling through traffic is such a special kind of frustrating.|Sitting in gridlock can drain the life out of an afternoon.|A slow commute makes the day feel twice as long.|Bumper to bumper again, that's rough.
+Q Is it always this bad?|Is today worse than usual?
+> It's bad every single day.|It's always like this.
+= That's exhausting, a good podcast or audiobook might at least make it less painful.|Daily gridlock is brutal, is there any other route you could try?
+> Way worse than usual today.|Must be an accident or something up ahead.
+= Hopefully it clears up soon.|That's annoying, hopefully it starts moving shortly.
+Q Do you have something good to listen to?|Got any music or a podcast on?
+> Just the radio.|Some random playlist.
+= Maybe queue up something you really like, it helps a lot.|A great playlist can make even traffic a little better.
+> A podcast, but it's getting boring.|A podcast I'm losing interest in.
+= Time for a new episode, maybe something funny.|Maybe switch to something lighter for the rest of the drive.
+> Nothing right now.|Just silence.
+= Maybe put on a favorite album and sing along.|A good playlist could make the crawl a lot less painful.
+X I hope the road clears up soon.|Hang in there, you'll be home before you know it.|Drive safe and good luck getting through it.
+@id_feet_killing neg idioms nohold
+U My feet are killing me after standing all day.|These new shoes are killing my feet.|I walked all over the city and my feet are killing me.|After a double shift my feet are absolutely killing me.
+A Sore feet after a long day on them is the worst.|New shoes can be so brutal until they break in.|Tired feet make everything feel harder.|Long hours on your feet really add up.
+Q Can you put your feet up tonight?|Any chance to rest them soon?
+> Yes, I'm home now.|Yeah, couch time.
+= Put them up and relax, you earned it.|A warm foot soak might feel amazing tonight.
+> Not yet, still out.|I have a few more hours.
+= Ugh, hang in there, the couch is waiting for you.|Hopefully you can sneak in a sit-down break.
+Q Are your shoes comfy at least?|Were you wearing comfortable shoes?
+> Not really.|They look good, but no.
+= Style over comfort can be painful, maybe bring a backup pair next time.|Might be time for some comfy insoles.
+> Yeah, it's just a lot of walking.|They're my best sneakers.
+= Then it's just a lot of steps, well done.|Wow, even good sneakers have their limits.
+X I hope your feet feel better soon.|Rest up and put those feet up.|Take it easy tonight.
+@id_murder_burger pos idioms nohold
+U I could murder {food} right now.|I'd kill for {food} right about now.|Honestly I could murder {food}.|I would do anything for {food} right now.
+V food=a burger,a pizza,a big plate of fries,a taco,a bowl of noodles,a slice of cake
+A Sounds like a serious craving.|That kind of craving is hard to ignore.|Some cravings just won't take no for an answer.|Mmm, {food} does sound pretty great right now.
+Q Are you going to get one?|Any chance you'll get one soon?
+> Yes, ordering now.|I'm heading out to get one.
+= Perfect, enjoy every bite.|Great call, sometimes you just have to listen to the craving.
+> I shouldn't, I'm saving money.|No, I'm trying to eat healthier.
+= Maybe make your own version at home.|That's fair, maybe treat yourself this weekend instead.
+Q Do you have a favorite spot for it?|Is there a place you always go?
+> There's a little place near my house.|A spot by work.
+= Those neighborhood places are the best.|Convenient and delicious, perfect.
+> Anywhere, I'm not picky right now.|Honestly, anywhere.
+= Ha, when the craving hits, anything will do.|Fair, hunger isn't picky.
+X Enjoy it when you get it!|I hope that craving gets satisfied soon.|Treat yourself, you deserve it.
+@id_died_laughing pos idioms nohold
+U I nearly died laughing at my friend's story today.|I almost died laughing at something my brother said.|My coworker told a joke and I literally cried laughing.
+A A laugh that hard is the best kind of workout.|Nothing beats a laugh that leaves you breathless and teary.|Sounds like you needed that laugh.|Crying-laughing is such a great feeling.
+Q What was so funny?|What was it about?
+> A ridiculous story about their neighbor's goat.|A silly mix-up at the grocery store.
+= Ha, that sounds hilarious.|Those are the best stories to hear.
+> Honestly, you had to be there.|I can't even explain it.
+= The best jokes never survive being retold.|Those inside jokes are the best kind.
+Q Are they always the funny one?|Are they always that funny?
+> Yes, every single time.|Always, they're hilarious.
+= Every group needs someone like that.|What a great person to have around.
+> Not usually, which made it funnier.|Rarely, but when they do, it's gold.
+= The surprise ones always hit hardest.|Ha, a rare gem then.
+X Keep those laughs coming.|I love a good laugh like that.|Sounds like a great day.
+@id_drowning_homework neg idioms nohold
+U I'm drowning in homework this week.|Totally drowning in assignments right now.|My teachers are drowning us in essays.|I'm swamped with homework and projects.
+A That's a lot of work piling up at once.|Heavy homework weeks are exhausting.|Sounds like your teachers all coordinated to make this week busy.|That sounds like a very full week.
+Q What's the biggest assignment?|What's taking the most time?
+> An essay for English.|A long research paper.
+= Essays are big, maybe start with a quick outline.|Research papers take time, try knocking out one section today.
+> Math problem sets.|A science lab report.
+= That sounds tedious, but you can take it one piece at a time.|Those take patience, but you've got this.
+Q When's it all due?|What's the deadline?
+> End of the week.|Friday.
+= That's tight but doable, focus on one thing at a time.|Plan a little each day and you'll get there.
+> Tomorrow.|In two days.
+= Ouch, get the most important thing done first.|Tight timeline, take short breaks to keep your head clear.
+X Good luck, you'll get through it.|Hang in there, the weekend is coming.|You've got this, one assignment at a time.
+@id_drowning_email neg idioms nohold
+U I'm drowning in emails today.|My inbox is out of control, I'm drowning.|Came back from vacation and I'm drowning in messages.|So many emails, I can't keep up.
+A An inbox that full can feel impossible to tame.|Coming back to a mountain of messages is the worst part of any break.|That kind of inbox makes it hard to focus on anything else.|Email avalanche days are rough.
+Q How many are we talking?|How bad is it?
+> Over three hundred.|Hundreds.
+= Oof, maybe sort by sender and tackle the important ones first.|That's a lot, skim for the urgent ones first.
+> Maybe fifty, but they're all long.|Not that many, just complicated ones.
+= Long emails are exhausting, maybe answer the quick ones first.|Tackle the easy wins first and build momentum.
+Q Do you have time blocked to deal with them?|Can you set aside some time for it?
+> Yes, this afternoon.|I blocked an hour.
+= Good plan, put on some music and power through.|That's smart, a focused hour can do a lot.
+> Not really.|Too many meetings.
+= Maybe squeeze in fifteen minutes between meetings.|Try answering a few between other tasks.
+X Good luck clearing that inbox.|Hang in there, you'll get through it.|I hope the emails slow down soon.
+@id_dead_tired neg idioms nohold
+U I'm dead tired after this week.|Dead on my feet after work today.|I'm so dead tired I could sleep standing up.|After that shift I'm dead tired.
+A Sounds like a week that took everything out of you.|That bone-deep tired is the worst.|A shift like that would wipe anyone out.|Being that worn out makes bed sound amazing.
+Q Can you get some rest tonight?|Early bedtime tonight?
+> Definitely, I'm going to bed early.|Yes, lights out by nine.
+= Perfect, get all the sleep you can.|Sounds like the right call.
+> Not really, I have stuff to do.|No, still have chores.
+= Maybe just do the must-dos and save the rest for tomorrow.|Try to cut the list short tonight.
+Q Is the weekend coming soon?|Any time off coming up?
+> Yes, two days off.|The weekend, finally.
+= Enjoy it and sleep in as much as you can.|Great, you really need it.
+> Not until next week.|No days off soon.
+= Ugh, try to grab small breaks where you can.|Hang in there, it's coming.
+X Rest up, you've earned it.|I hope you get some good sleep.|Take it easy tonight.
+@id_phone_died neg idioms nohold
+U My phone died in the middle of the day and I felt so lost.|My phone battery died right when I needed directions.|Ugh, my phone died on the way to meet a friend.|My phone died at the worst possible time.
+A A dead phone at the wrong moment is so frustrating.|Losing your phone right when you need it is the worst timing.|It's funny how lost we feel without it.|That's a classic bad-luck moment.
+Q Did you manage to find your way?|Did it all work out?
+> Yeah, I asked a stranger.|Eventually, I found a charger.
+= Old-school navigation, nice job.|A charger rescue, that's a relief.
+> Barely, I was late.|Not really, I missed my friend.
+= Oof, hopefully they understood.|Ugh, that's annoying, at least now you have a story.
+Q Do you usually carry a charger?|Do you keep a portable battery with you?
+> No, but I should.|Never, lesson learned.
+= A small battery pack might be worth it.|Maybe keep one in your bag from now on.
+> Yes, but I forgot it today.|I usually do.
+= Classic, the one day you forget it.|Murphy's law in action.
+X I hope your phone stays charged next time.|Glad you made it through.|Maybe a charger in every bag from now on.
+@id_starving neu idioms nohold
+U I'm absolutely starving.|I skipped lunch and now I'm starving.|Starving, and dinner is still an hour away.|I'm so hungry I could eat a horse.
+A That kind of hunger makes it hard to think about anything else.|Skipping lunch always catches up with you.|An hour feels like forever when you're that hungry.|Sounds like it's time for a snack.
+Q Do you have a snack nearby?|Anything you can eat to hold you over?
+> I have some crackers.|Maybe an apple.
+= Perfect, that'll help hold you over.|Good, a quick snack will make a big difference.
+> Nothing at all.|My fridge is empty.
+= Ouch, maybe it's a takeout kind of night.|Time for a grocery run or a quick order.
+Q What's for dinner?|What are you planning to eat?
+> Pasta.|Tacos.
+= Sounds delicious and filling.|That sounds like a great choice.
+> No idea yet.|Haven't decided.
+= Something quick and easy might be best tonight.|Maybe something warm and filling.
+X Enjoy your meal when it comes.|Hope you eat well tonight.|Grab something good, you deserve it.
+@id_freezing neg idioms nohold
+U I'm freezing to death at this bus stop.|It's so cold out here waiting for the train.|My hands are frozen, the bus is late.|Waiting outside in this cold is brutal.
+A Waiting in the cold makes every minute drag.|Cold hands and a late bus is a rough combo.|That kind of cold goes right through you.|Standing still in the cold is the worst part.
+Q Did you bring gloves?|Are you bundled up at least?
+> No, I forgot them.|Not really.
+= Ouch, try tucking your hands in your pockets or armpits.|Next time grab a hat and gloves, but for now maybe keep moving a bit.
+> Yes, but it's still cold.|I have a coat, it's not enough.
+= The wind cuts through everything, hang in there.|Some days even a good coat isn't enough.
+Q Is your ride coming soon?|How long do you have to wait?
+> A few minutes.|Almost here.
+= Good, you'll be somewhere warm soon.|Hang in there, not much longer.
+> It's late.|No idea.
+= Ugh, maybe step into a nearby shop if you can.|Late rides in the cold are the worst.
+X Stay warm and hang in there.|I hope your ride shows up soon.|Get a hot drink when you can.
+@id_heat_killing neg idioms nohold
+U This heat is killing me.|It's so hot I'm melting.|The heat today is brutal.|I'm melting in this weather.
+A Hot days like that can wear you right out.|Melting weather is no fun.|That kind of heat makes everything slower.|A day like that calls for shade and cold drinks.
+Q Do you have air conditioning?|Can you stay somewhere cool?
+> Yes, finally home in the AC.|Yeah, my office is cool.
+= Enjoy the cool air.|Stay put in the AC as long as you can.
+> No, just a fan.|No AC.
+= Maybe a cool shower or a wet towel could help.|Try closing the blinds during the day to keep it cooler.
+Q Are you drinking lots of water?|Staying hydrated?
+> Yes, lots.|Trying to.
+= Good, keep it up.|Keep that water bottle close.
+> Not really.|I forgot.
+= Grab a big glass now, it'll help.|Time for some cold water.
+X Stay cool out there.|Hope it cools off soon.|Enjoy some cold drinks and shade.
+@id_boss_kill neg idioms nohold
+U My boss is going to kill me if I'm late again.|I overslept and my manager is going to kill me.|I'm so late, my supervisor is going to lose it.
+A Running late with a strict boss is so stressful.|That rushed, oh-no feeling is the worst.|Racing the clock in the morning is the worst feeling.
+Q How late are you?|Are you going to make it in time?
+> Maybe ten minutes.|Just a few minutes.
+= That's not too bad, send a quick heads-up message.|A short note to let them know usually helps.
+> Pretty late.|Like half an hour.
+= Better to let them know now than surprise them.|Take a breath and send a quick update.
+Q Is your boss usually strict?|Does this happen a lot?
+> Yes, super strict.|Very, they hate lateness.
+= Then maybe set a second alarm going forward.|Good time to try a new routine.
+> Not really, just a bad day.|Nope, first time in months.
+= Then it'll probably be fine.|One late day in months, they'll understand.
+X Good luck, I hope it goes fine.|Hang in there, it'll be okay.|Hope the rest of your day is smoother.
+@id_lose_mind_printer neg idioms nohold
+U If the printer jams one more time I'm going to lose my mind.|This printer is driving me insane.|I'm about to lose it, the printer jammed again.|The office printer is the bane of my existence.
+A Printers seem to know exactly when you're in a hurry.|A jammed printer is a special kind of frustration.|That machine has a talent for ruining days.|Printer trouble is a universal office struggle.
+Q What are you trying to print?|Is it something urgent?
+> A report for a meeting.|Something for my boss.
+= Ugh, of course it jams on the important stuff.|Timing is always the worst.
+> Just some forms.|Nothing important.
+= At least it's not urgent, maybe step away for a minute.|Maybe try again after a quick break.
+Q Have you tried turning it off and on?|Did a restart help?
+> Yes, three times.|Many times.
+= Ugh, maybe it's time to call IT.|Printers are a mystery, maybe try another one.
+> Not yet.|No.
+= Worth a shot, it works surprisingly often.|Give it a try, printers love a reset.
+X Good luck with that printer.|Hope it cooperates soon.|May the paper jams be few.
+@id_workout_destroyed neu idioms nohold
+U That workout absolutely destroyed me.|Leg day wrecked me, I can barely walk up the stairs.|My new trainer destroyed me today.|That spin class killed me.
+A Sounds like you worked hard.|That kind of tired means you pushed yourself.|A tough workout makes you feel it the next day.|Sore muscles are proof you showed up.
+Q Was it a new workout?|Is this a new routine?
+> Yes, first time trying it.|New class.
+= The first time is always the hardest, it gets easier.|New moves find new muscles.
+> Same one, just harder today.|No, I just pushed harder.
+= Nice, pushing harder shows progress.|Good, sounds like you're getting stronger.
+Q Are you going to stretch?|Any plans to recover?
+> A hot bath tonight.|Lots of stretching.
+= Perfect way to recover.|Stretching will help a lot.
+> Probably just the couch.|Nah, just rest.
+= Rest is recovery too.|Sounds good, you earned it.
+X Great job, rest up.|Enjoy the recovery.|Nice work, you'll feel strong soon.
+@id_heart_skipped pos idioms nohold
+U My heart skipped a beat when I saw the acceptance email.|I opened the letter and my heart skipped a beat, I got in!|My heart skipped a beat when I read that I was accepted.|I got in, and my heart honestly skipped a beat.
+A That sounds like a very happy surprise.|What a great moment of good news.|That excited jolt is such a good feeling.|A moment like that is worth remembering.
+Q What did you get into?|What was the acceptance for?
+> A program I really wanted.|A graduate program.
+= That's amazing, congratulations.|Wow, what great news. When does it start?
+> A summer internship.|A training course I applied to.
+= That's a great opportunity.|Nice, that's going to look great on your resume. Are you excited?
+Q Did you tell anyone yet?|Have you shared the news?
+> Yes, my family.|My best friend.
+= They must be so happy for you.|I bet they're thrilled.
+> Not yet.|No, I'm still processing it.
+= Enjoy it for a moment before sharing.|Take a minute to enjoy it first.
+X Congrats, enjoy the good news.|What a great moment.|So happy for you.
+@id_bombed_presentation neg idioms nohold
+U I totally bombed my presentation today.|My presentation was a disaster.|I froze during my presentation and completely bombed it.|That presentation went so badly.
+A That sinking feeling after a rough presentation is awful.|Everyone has a presentation that doesn't go the way they hoped.|Freezing in front of people is a common nightmare.|Sounds like a rough moment.
+Q What happened?|What went wrong?
+> I forgot what I was going to say.|I lost my place.
+= That happens to so many people, it doesn't mean you're bad at it.|That's so common, a few notes on cards can help next time.
+> The slides didn't work.|Technical problems.
+= Tech trouble is out of your control.|That's not your fault at all.
+Q Did anyone say anything after?|How did people react?
+> They said it was fine.|My manager said it was okay.
+= Sometimes it feels much worse from the inside.|That's a good sign it wasn't as bad as you think.
+> Nobody said anything.|Awkward silence.
+= Silence doesn't always mean it was bad.|People often forget faster than we do.
+X Next one will go better.|Go easy on yourself tonight.|One rough presentation doesn't define you.
+@id_plants_dying neu idioms nohold
+U My plants are dying because I keep forgetting to water them.|I'm a plant killer, all my houseplants are wilting.|I can't keep a single plant alive.
+A Houseplants can be surprisingly needy.|Forgetting to water happens to so many people.|Some plants are more forgiving than others.|Keeping plants alive is a skill that takes practice.
+Q What kind of plants are they?|Which plants are struggling?
+> A few herbs.|Basil and mint.
+= Herbs are thirsty, they like water every day or two.|Try putting them where you'll see them every morning.
+> Some ferns.|A peace lily.
+= Those like steady moisture, a reminder on your phone could help.|They're dramatic, but they bounce back fast with water.
+Q Do you have a watering routine?|Have you tried a schedule?
+> Not really.|No schedule.
+= A phone reminder could make a big difference.|Maybe water on the same day every week.
+> I try, but I forget.|I keep missing days.
+= Maybe keep a watering can right next to them.|A sticky note on the fridge might help.
+X Good luck with the plants.|I hope your green friends perk up.|Here's to happier plants.
+@id_movie_killed_me pos idioms nohold
+U That comedy killed me, I laughed so hard.|The movie last night had me dying, it was so funny.|That show killed me, I couldn't stop laughing.|Seriously, that stand-up special killed me.
+A Nothing beats a comedy that really lands.|Laughing that hard is the best.|A good comedy can make the whole week better.|Sounds like it was exactly what you needed.
+Q What was the funniest part?|Which bit got you?
+> A scene with a runaway shopping cart.|A joke about airports.
+= Ha, that sounds hilarious.|Those everyday jokes always hit.
+> The whole thing.|Everything, really.
+= The best kind of comedy.|Sounds like a winner.
+Q Would you watch it again?|Are you going to rewatch it?
+> Definitely.|Yes, with friends.
+= Watching it with friends will be even better.|Great idea, laughter is contagious.
+> Maybe later.|Once is enough for now.
+= Fair, the jokes will be fresh again later.|Makes sense, save it for a rainy day.
+X Enjoy the laughs.|Glad you had a good laugh.|Laughter is the best medicine.
