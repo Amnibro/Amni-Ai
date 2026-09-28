@@ -1,6 +1,6 @@
 # ADAM-T-MEMSCALE: growing the PTEX memory on the 30M checkpoint, pre-registered comparison
 
-Status: built and CPU-tested on 2026-09-28. **Neither GPU continuation has run.** Both wait for the CTO to schedule GPU time (section 6).
+Status: built and CPU-tested on 2026-09-28. **Neither GPU continuation has run.** Both wait for the CTO to schedule GPU time (section 6). Sections 10 and 11 add a pre-registered 6.5M from-scratch A/B (`mem_ab.sh`) and the 30M v2 base launcher (`t30m_v2.sh`, LPE + lazy 2^18). Neither has run.
 
 - **Code:** `crates/adam-t/src/lib.rs` (`Mem::grow`, `mrow`, `mleaf`, `Lazy`, the `INIT` and `MEM_OPT` flags in `Cfg`, the init path in `train`), `crates/adam-t/src/lut.rs` (`save`, `wr`, `check`, `grow`, streamed `finish`), `crates/adam-gf17/src/lib.rs` (`Writer::put_at`, `Store::page_words`), `crates/adam-t/src/main.rs` (`adam-t grow`, `adam-t lutbench`, `LUT_MB`).
 - **Launcher:** `crates/adam-t/t30m_mem.sh` (`CONTROL=1` for the control arm).
@@ -214,3 +214,100 @@ The same commands resume a paused run. `touch <run>/STOP` pauses at a checkpoint
 - `adam-gf17` `paged_put_matches_write`: page-streamed writes in any page order give the same file as the one-shot writer, and `page_words` decodes each page exactly.
 - **Full scale** (section 5): `adam-t grow` of the real 35k model to 2^18 and 2^20 gives identical logit bits through 960 prefill tokens and 512 KV decode steps.
 - **All suites pass:** 17 lib tests (13 earlier, 4 new) with the LPE bench still ignored, the 3 main-binary tests, and 6 `adam-gf17` tests (5 earlier, 1 new).
+
+## 10. 6.5M from-scratch A/B: MEM_LOG2 15 against 18 with LPE (pre-registered, not yet run)
+
+Section 6 grows a finished 30M checkpoint. This A/B asks the from-scratch question at the phase-1 size, with two seeds, before the 30M v2 base (section 11) commits a day and a half of GPU time to 2^18.
+
+**Question.** Trained from scratch with LPE, does a 2^18-row PTEX memory beat 2^15 at 6.5M, without making LUT decode too slow?
+
+**Arms.** Identical except for `MEM_LOG2`:
+
+| | `mem15` (control) | `mem18` (treatment) |
+|---|---|---|
+| PTEX memory | 6 × 2^15 rows × 256 (192 MiB) | 6 × 2^18 rows × 256 (1.5 GiB) |
+| run dirs | `exports/adam_t/mem_ab/mem15_s{0,1}` | `exports/adam_t/mem_ab/mem18_s{0,1}` |
+
+**Shared config** (fixed now): the `lpe` arm of the Lorentz A/B (`lorentz_prereg.md` section 5), plus the lazy memory optimiser.
+- **Shape:** d 256, L 8, H 4, ctx 256, FF 1024, bytes (v 256), TERN 1, MEM 1, NGRAMS 2,3,4,5,6,8.
+- **Position:** `LPE=1`, φmax 4, S 64. The Lorentz A/B adopted it (`exports/adam_t/lorentz_ab/ab_result.json`: −0.028 bpb on clean2, seed spread 0.008, LUT speed ×1.003).
+- **Optimiser:** `MEM_OPT=lazy` in **both** arms, as in section 6, so the optimiser is not a difference. The Lorentz arms used dense AdamW, so their numbers are a reference only, not a third arm.
+- **Schedule:** BS 64, MICRO 1, 3,000 steps, LR = LR_MEM = 2e-3, 200 warm-up steps, WD 0.05 on the core.
+- **Data and seeds:** `CORPUS=clean2`. SEED 0 and 1 per arm; SEED sets the init and the sampler, so both arms see the same bytes at the same seed. Run order: mem15 s0, mem18 s0, mem15 s1, mem18 s1.
+- **Checkpoints and eval:** a checkpoint every 250 steps, trainer val every 500 (20 × 128 windows), SEG 20 min, PARITY_WINDOWS 8. The harness does not run between segments (`EVAL=0`).
+
+**Metrics**, all on the step-3,000 checkpoint:
+- **Primary:** harness `bpb_clean2` (`scripts/adam_t_eval.py run --suites bpb` through `adam-t serve <run dir>`, 8,192 seeded 256-byte windows). Reports go to `data/adam_t/eval/report_mem-ab-m<15|18>-s<seed>_3000_dry.json`.
+- **Secondary:** harness `bpb_stream`, same protocol on `adam_t/stream/hold.bin`.
+- **Speed:** `adam-t lutbench <model.gf17> 128 128` on CPU (3 threads, GF(17) LPE path, default `LUT_MB=1024`): KV decode ms/token p50. Five interleaved repetitions over the 4 models; the median per model.
+- **Recorded, not used in the decision:** the trainer's val bpb, `gpu_ms_per_step` (the lazy step's cost at 2^15 against 2^18), peak total-card VRAM (sampled every 5 s from `mem_info_vram_used` into `<run>/vram.log`), and the export parity.
+
+**Decision rule** (fixed now). mem18 is adopted only if **all** of these hold:
+1. **Clean2 win:** mean_mem15 − mean_mem18 on `bpb_clean2` exceeds the seed spread, max(|mem15_s0 − mem15_s1|, |mem18_s0 − mem18_s1|).
+2. **Stream guard:** mem18 does not lose on `bpb_stream` by more than that metric's own seed spread.
+3. **Serve guard:** (mem18_s0 + mem18_s1)/(mem15_s0 + mem15_s1) of median decode p50 is at most **1.2**.
+
+A tie within the spread is a loss for mem18. **Consequence for section 11:** if `adopt_mem18` is false, the 30M v2 base launches with `MEM_LOG2=15`. No rerun with other sizes, LRs or cache budgets without a new pre-registration.
+
+**What the script does** (`crates/adam-t/mem_ab.sh`, same pattern as `lorentz_ab.sh`):
+- **Refuses to start** without `THROTTLE_FILE`, while any `adam-t-*` user unit other than its own is active, or while any `adam-t` process runs. The self-exception lets it run as unit `adam-t-memab`.
+- **Freezes the binary:** copies it with `campaign.sh`, `smoke.sh` and `mem_ab.sh` into `exports/adam_t/mem_ab/bin` and records the sha256 and the git commit.
+- **Runs, scores and times** the four runs, then writes `exports/adam_t/mem_ab/ab_result.json` with every number above and `adopt_mem18`.
+- **Can be rerun.** Finished runs and reports are skipped; `touch <run>/STOP` pauses it. `DRY=1` prints the resolved config and exits without touching anything.
+
+**GPU cost** (governor at 40%). The Lorentz arms took 57, 61, 55 and 60 min each (390 GPU-ms/step at ~40% card busy), including the export.
+- **Lazy optimiser:** 0–15% per step, and it scales with lookups (6 × 16,384 per step), not with the table.
+- **mem18 extras:** 4.6 GB checkpoints (table + 2 moments) about 15 times per run, and a 1.4 GB export: about 2–5 min per run.
+- **Estimate:** 57–70 min per mem15 arm and 60–75 min per mem18 arm, so **4.0–4.8 h** of training. Add 4 harness bpb evals (≈ 2.5–4 min each) and the CPU speed check (a few minutes, no GPU): **≈ 4.2–5.1 h wall** in total.
+- **VRAM, mem18:** 3–4 copies of 1.5 GiB (4.5–6 GiB) plus the small phase-1 core and desktop, so about 7–9 GB of 16.
+- **Disk:** about 6 GB per mem18 run (4.6 GB checkpoint + 1.4 GB `model.gf17`) and 0.8 GB per mem15 run, about 14 GB in total.
+- **Host RAM:** trainer `MEM_MAX` 12G; harness scope 8G for mem18, 6G for mem15; `lutbench` scope 4G.
+
+**Command** (repo root, after `cd crates && cargo build --release -p adam-t`):
+
+```
+THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt bash crates/adam-t/mem_ab.sh
+```
+
+**CPU smoke (2026-09-28).** The resolved config (from `DRY=1`) ran on a tiny shape (d 32, L 2, ctx 64, 30 steps) on the NdArray backend, with both arms and both seeds, lazy at the real 2^15 and 2^18. All four exports were roundtrip-exact, and `lutbench` ran on each. The result block, run on those logs, speed records and fabricated harness reports, gave the expected verdicts. At this tiny shape the 2^18 decode was ×1.25 slower (0.22 → 0.28 ms/token). A 2-layer d 32 core leaves the memory lookup as most of the cost, so this does not predict the 6.5M ratio. It does show that the serve guard can bind.
+
+## 11. 30M v2 base from scratch (`crates/adam-t/t30m_v2.sh`, not yet run)
+
+**Recipe:** the 30M v1 recipe (`t30m.sh`, design section 7c), with three changes: `LPE=1` (φmax 4, S 64), `MEM_LOG2` from the environment (default 18, allowed 15–18), and `MEM_OPT=lazy`.
+- **Unchanged:** d 512, L 10, H 8, FF 2048, ctx 1024, BPE-4096, TERN 1, NGRAMS 2,3,4,6, BS 16 × 1024 (MICRO 2), 35,000 steps (573M tokens), LR = LR_MEM = 2e-3, 1,000 warm-up steps, cosine, WD 0.05, SEED 0, `CORPUS=adam_t/stream`.
+- **Eval and checkpoints:** val every 1,000 steps (10 batches), a checkpoint every 250, SEG 30, `EVAL_SEGS=16`, PARITY_WINDOWS 2. `EVAL_MEM` is 8G at 2^18, because `serve` loads the 2 GiB table through the host, and 4G below that.
+- **Run dir:** `exports/adam_t/t30m_v2`.
+- **Guards:** the same as `mem_ab.sh`. It also refuses to resume a run dir whose `log.jsonl` was started with another `MEM_LOG2`, or without LPE or lazy. It freezes the binary and scripts into `<run>/bin`, with the sha256 and the commit. `DRY=1` prints the resolved config.
+
+**VRAM estimate (lazy 2^18, LPE, d 512, ctx 1024, BS 16 / MICRO 2).**
+- **Non-memory:** about 4.8 GB (section 4, from the measured 7.5 GB v1 peak).
+- **Memory:** the table plus 2 moments, 3 × 2 GiB, plus 1 copy if a scatter copies: 6.4–8.6 GB.
+- **LPE:** removes the position add and multiplies one fixed factor into the fused `qkv` output. The factor table is 1024 × 512 f32 (2 MB). At most one more saved `qkv`-sized activation per layer: 8 × 1024 × 1536 × 4 B = 50 MB × 10 layers = **≤ 0.5 GB**.
+- **Desktop:** 1.2 GB.
+- **Total ≈ 12.4–15.1 GB, most likely ≈ 13–14 GB, of the 16 GB card (15.9 GiB).**
+- **Abort rule** (as in section 6): peak VRAM above 15 GB after the first segment, or `gpu_ms_per_step` above 1.5 × 1,261 ms → `touch <run>/STOP`. The fallback is `MICRO=4`, which is exact gradient accumulation with the same batch and halves the activations, at about 5–10% speed. It is not tuning, so it needs no new pre-registration.
+- `MEM_LOG2=15` would need about 7.5 GB, as v1 did.
+
+**Wall-time estimate (governor at 40%).**
+- **Training:** v1 took about 27 h for 35,000 steps (1,261 GPU-ms/step, 2.98 s/step wall). Lazy costs 0–15% and LPE nothing measurable, so **27–31 h**.
+- **Checkpoints at 2^18:** 6.8 GB each, about 140 scheduled plus about 60 at segment ends. At 3–6 s each, 10–20 min. A segment restart also reloads the 6.8 GB checkpoint, which adds another 5–10 min.
+- **Harness evals:** about 4 (every 16 segments, plus the final one) at 21–46 min each: **1.4–3 h**.
+- **Total ≈ 29–35 h wall (1.2–1.5 days)**, of which about 12–14 GPU-busy hours.
+- **Disk:** 6.8 GB checkpoint + 1.9 GB `model.gf17`. The checkpoints write about 1.4 TB to the SSD over the run (v1: about 0.25 TB).
+
+**SFT from a v2 base.** `adam-t sft` takes the shape from `BASE`:
+- **Inherited:** d, L, H, ctx, FF, V, BPE, n-gram orders and the LPE flags. `MEM_LOG2` too: it is the base's, whatever the environment says.
+- **MEM_OPT was not inherited before this change.** SFT fell back to dense AdamW, which at 2^18 needs about 6 table copies, ≈ 18 GB in total, and spills into GTT (section 4).
+- **Now:** `train` takes `MEM_OPT` from the base when `MEM_OPT` is unset. An explicit `MEM_OPT` still wins. `sft_mode_end_to_end_cpu` checks this: a lazy LPE 2^8 base, tuned with a config that says dense / no LPE / 2^6, gives a lazy LPE 2^8 SFT run with `lm.bin`/`lv.bin` moments, and at LR 0 it keeps the base weights. Without the fix the test fails.
+- **`sft.sh`:** sets `EVAL_MEM` to 8G when the base's `mem_log2` is 18 or more. It had been 4G, which is too small to serve a 2 GiB table. It also gained `DRY=1`, which prints the inherited shape and the resolved config.
+
+**Commands** (repo root, after the build; `MEM_LOG2=15` if section 10 rejects 2^18):
+
+```
+THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt bash crates/adam-t/t30m_v2.sh
+THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt BASE_RUN=/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_v2 RUN_DIR=/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_v2_sft BASE_UNIT=adam-t-30m-v2 bash crates/adam-t/sft.sh
+```
+
+**CPU smoke (2026-09-28).** The launcher's resolved config (from `DRY=1`) ran on a tiny shape (d 32, L 2, ctx 128, 40 steps) on the NdArray backend, keeping `MEM_LOG2=18`, lazy, LPE, BPE-4096 and `adam_t/stream`.
+- **Base:** paused by `MAX_MIN` at step 21 and resumed to 40, with the lazy moments restored from `lm.bin`/`lv.bin`. The export was roundtrip-exact, and LUT and trainer agreed (max |Δlogit| 2.4e-7, argmax 100%).
+- **SFT:** from that base, run with the config `sft.sh` resolves, on `adam_t/sft`. It logged `mem_log2` 18, `lpe` true and `mem_opt` lazy, and exported exactly.

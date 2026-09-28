@@ -150,7 +150,7 @@ pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> 
     (c.base.is_empty() || c.init.is_empty()).then_some(()).ok_or_else(|| io::Error::other("BASE (sft) and INIT (continued pretraining) are exclusive"))?;
     let bc = [&c.base, &c.init].into_iter().find(|s| !s.is_empty()).map(|d| Cfg::from_dir(d)).transpose()?;
     bc.as_ref().is_none_or(|b| c.sft() || c.rb >= b.rb).then_some(()).ok_or_else(|| io::Error::other(format!("MEM_LOG2 {} is below the INIT checkpoint's {}: only growing is exact", c.rb, bc.as_ref().map_or(0, |b| b.rb))))?;
-    let c = &bc.as_ref().map_or_else(|| c.clone(), |b| Cfg { d: b.d, l: b.l, h: b.h, t: b.t, ff: b.ff, ns: b.ns.clone(), rb: if c.sft() { b.rb } else { c.rb }, tern: b.tern, mem: b.mem, v: b.v, bpe: b.bpe.clone(), lpe: b.lpe, lphi: b.lphi, lsq: b.lsq, ..c.clone() });
+    let c = &bc.as_ref().map_or_else(|| c.clone(), |b| Cfg { d: b.d, l: b.l, h: b.h, t: b.t, ff: b.ff, ns: b.ns.clone(), rb: if c.sft() { b.rb } else { c.rb }, tern: b.tern, mem: b.mem, v: b.v, bpe: b.bpe.clone(), lpe: b.lpe, lphi: b.lphi, lsq: b.lsq, lazy: if c.sft() && var("MEM_OPT").is_err() { b.lazy } else { c.lazy }, ..c.clone() });
     let sj = c.sft().then(|| sft::Job::new(c)).transpose()?;
     let c = &sj.as_ref().map_or_else(|| c.clone(), |j| Cfg { steps: j.steps, ..c.clone() });
     let (tr, ho, lens) = (c.data("train")?, c.data("hold")?, c.bpe()?.map(|b| b.lens()).unwrap_or_else(|| vec![1; 256]));

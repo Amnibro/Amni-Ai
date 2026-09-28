@@ -405,6 +405,11 @@ The CPU tests pass, and the LUT-path overhead is about 0.06%. The design, the te
 - **Continued pretraining.** `INIT=<run>` continues a checkpoint with grown tables. `MEM_OPT=lazy` is a row-lazy Adam: table plus 2 moments, no dense gradient. It fits 2^18 rows per order at d 512 in the 16 GB card, where dense AdamW would not.
 - **Export and serve.** The export streams page by page, and `adam-t grow` grows `.gf17` files.
 - **The run.** `crates/adam-t/t30m_mem.sh` continues the 30M at 2^18, with a 2^15 control (`CONTROL=1`).
+- **Next runs (built, not run).**
+  - `crates/adam-t/mem_ab.sh` is a pre-registered 6.5M from-scratch A/B: 2^15 against 2^18, LPE and lazy in both arms, 2 seeds each, about 4.2–5.1 h at the 40% cap.
+  - `crates/adam-t/t30m_v2.sh` is the 30M v2 base: the v1 recipe plus `LPE=1`, `MEM_OPT=lazy` and `MEM_LOG2` (default 18). It needs about 13–14 GB of VRAM and about 29–35 h wall.
+  - SFT now inherits `MEM_OPT` from its base.
+  - Details are in `memscale_prereg.md` sections 10 and 11.
 - **Details** are in `docs/adam_t/memscale_prereg.md`: the proof, the estimate that picks 2^18 over 2^20, CPU serve RSS and latency at 2^15/2^18/2^20, the decision rules and the GPU cost.
 
 ## 8. Scaling plan, data plan and compute budget

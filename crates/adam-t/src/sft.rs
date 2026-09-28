@@ -240,6 +240,13 @@ mod tests {
         assert!(v[v.len() - 1] < 0.5 * v[0], "masked hold loss must fall: {v:?}");
         assert!(PathBuf::from(format!("{s}/sft1/model.gf17")).exists());
         assert!(load::<NdArray>(&Cfg::from_dir(&format!("{s}/sft1")).unwrap(), &DEV).is_ok());
+        let lb = Cfg { out: format!("{s}/base_lz"), lpe: true, lazy: true, rb: 8, ..base.clone() };
+        train::<Ad>(&lb, DEV, 0).unwrap();
+        train::<Ad>(&Cfg { base: lb.out.clone(), lpe: false, lazy: false, rb: 6, ..sc("sftl", 0.0, "") }, DEV, 0).unwrap();
+        let (lc, ld, lz) = (Cfg::from_dir(&lb.out).unwrap(), Cfg::from_dir(&format!("{s}/sftl")).unwrap(), std::env::var("MEM_OPT").map_or(true, |v| v == "lazy"));
+        assert!(ld.sft() && ld.lpe && ld.rb == 8 && ld.lazy == lz && PathBuf::from(format!("{s}/sftl/ckpt/lm.bin")).exists() == lz && PathBuf::from(format!("{s}/sftl/model.gf17")).exists(), "sft must inherit LPE, MEM_LOG2 and MEM_OPT from its base unless MEM_OPT is set");
+        let ((b0, bm), (o0, om)) = (load::<NdArray>(&lc, &DEV).unwrap(), load::<NdArray>(&ld, &DEV).unwrap());
+        assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && f1(bm.unwrap().tab.val()) == f1(om.unwrap().tab.val()), "lazy sft at lr 0 keeps the base weights");
         let _ = fs::remove_dir_all(&r);
     }
 }
