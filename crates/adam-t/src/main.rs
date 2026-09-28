@@ -123,6 +123,7 @@ impl Srv<'_> {
         })
     }
 }
+fn lut_mb() -> usize { var("LUT_MB").ok().and_then(|v| v.parse::<usize>().ok()).unwrap_or(1024) << 20 }
 fn run(c: &Cfg, bench: usize) -> io::Result<String> {
     match var("BACKEND").unwrap_or_else(|_| "wgpu".into()).as_str() {
         "ndarray" => train::<Autodiff<NdArray>>(c, NdArrayDevice::Cpu, bench),
@@ -161,7 +162,7 @@ fn main() -> io::Result<()> {
         "serve" => {
             let pth = a.get(2).ok_or_else(|| io::Error::other("adam-t serve <model.gf17 | run dir>"))?.clone();
             let gf = pth.ends_with(".gf17");
-            let lm = gf.then(|| lut::Lm::open(&pth, 1 << 30)).transpose()?;
+            let lm = gf.then(|| lut::Lm::open(&pth, lut_mb())).transpose()?;
             let dir = if gf { std::path::Path::new(&pth).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default() } else { pth.clone() };
             let cc = (!gf).then(|| Cfg::from_dir(&dir)).transpose()?;
             let meta: Value = fs::read_to_string(format!("{dir}/meta.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(json!({}));
@@ -174,6 +175,26 @@ fn main() -> io::Result<()> {
             let sv = Srv { t: lm.as_ref().map(|l| l.t).or(cc.as_ref().map(|c| c.t)).unwrap_or(256), v: lm.as_ref().map(|l| l.v).or(cc.as_ref().map(|c| c.v)).unwrap_or(256), bp, fw, lm: lm.as_ref(), name: meta["name"].as_str().map(String::from).unwrap_or_else(|| std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()), step, fmt, stop, dec };
             let mut so = io::stdout().lock();
             for l in io::stdin().lock().lines() { let l = l?; if l.trim().is_empty() { continue; } let (r, bye) = sv.req(&l).unwrap_or_else(|e| (json!({"error": e.to_string()}), false)); writeln!(so, "{r}")?; so.flush()?; if bye { break; } }
+        }
+        "grow" => { let (s, rb, o) = (a.get(2), a.get(3).and_then(|v| v.parse::<u32>().ok()), a.get(4)); println!("{}", lut::grow(s.ok_or_else(|| io::Error::other("adam-t grow <model.gf17> <MEM_LOG2> <out.gf17>"))?, rb.ok_or_else(|| io::Error::other("bad MEM_LOG2"))?, o.ok_or_else(|| io::Error::other("adam-t grow <model.gf17> <MEM_LOG2> <out.gf17>"))?)?); }
+        "lutbench" => {
+            let (p, np, ns) = (a.get(2).ok_or_else(|| io::Error::other("adam-t lutbench <model.gf17> [prompt tokens] [decode steps]"))?, a.get(3).and_then(|s| s.parse().ok()).unwrap_or(256usize), a.get(4).and_then(|s| s.parse().ok()).unwrap_or(256usize));
+            let (r0, t0) = (adam_gf17::rss(), Instant::now());
+            let lm = lut::Lm::open(p, lut_mb())?;
+            let (to, r1) = (t0.elapsed().as_secs_f64(), adam_gf17::rss());
+            let hold = if lm.v == 256 { Dat::B(mmap(&format!("{}/data/{}/hold.bin", c.home, c.corpus))?) } else { Dat::W(mmap(&format!("{}/data/{}/hold.bpe{}.u16", c.home, c.corpus, lm.v))?) };
+            let x = hold.get(hold.len() / 3, (np + ns).min(lm.t));
+            let t1 = Instant::now();
+            let (lg, mut kv) = lm.fwd_kv(&x[..np])?;
+            let pf = t1.elapsed().as_secs_f64() * 1e3;
+            let (mut h, mut ms) = (lg.iter().fold(0u64, |h, v| (h ^ v.to_bits() as u64).wrapping_mul(0x100_0000_01B3)), Vec::new());
+            for &tk in &x[np..] { let t = Instant::now(); let l = lm.step(&mut kv, tk)?; ms.push(t.elapsed().as_secs_f64() * 1e3); h = l.iter().fold(h, |h, v| (h ^ v.to_bits() as u64).wrapping_mul(0x100_0000_01B3)); }
+            let (st, r2) = (lm.st.lock().map_err(|_| io::Error::other("store lock"))?, adam_gf17::rss());
+            let mut srt = ms.clone();
+            srt.sort_by(|a, b| a.total_cmp(b));
+            let q = |f: f64| srt.get(((srt.len() as f64 - 1.0) * f).round() as usize).copied().unwrap_or(0.0);
+            let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len().max(1) as f64;
+            println!("{}", json!({"model": p, "rb": lm.rb, "k": lm.k, "d": lm.d, "file_bytes": fs::metadata(p)?.len(), "budget_mb": lut_mb() >> 20, "threads": rayon::current_num_threads(), "open_s": to, "prompt_tokens": np, "prefill_ms": pf, "decode_steps": ms.len(), "step_ms_first16": mean(&ms[..ms.len().min(16)]), "step_ms_mean": mean(&ms), "step_ms_p50": q(0.5), "step_ms_p90": q(0.9), "step_ms_last_half": mean(&ms[ms.len() / 2..]), "rss_start_mb": r0.0 >> 20, "rss_open_mb": r1.0 >> 20, "rss_end_mb": r2.0 >> 20, "hwm_mb": r2.1 >> 20, "rss_file_mb": r2.2 >> 20, "store_used_mb": st.used >> 20, "tile_hits": st.hits, "tile_miss": st.miss, "tile_evict": st.ev, "logit_hash": format!("{h:016x}")}));
         }
         "export" => {
             let dir = a.get(2).ok_or_else(|| io::Error::other("adam-t export <run dir>"))?.clone();
@@ -262,8 +283,7 @@ mod tests {
         let c = Cfg { d: 64, l: 1, h: 1, t: 64, ff: 128, ns: vec![2, 3], rb: 6, tern: true, mem: false, v: 256, bpe: String::new(), base: String::new(), out: s.clone(), thf: format!("{s}/none"), ..Cfg::env() };
         let core = { let _g = SEED.lock().unwrap(); <NdArray as Backend>::seed(&NdArrayDevice::Cpu, 7); Core::<NdArray>::new(&c, &NdArrayDevice::Cpu) };
         core.clone().save_file(format!("{s}/ckpt/core"), &BinFileRecorder::<FullPrecisionSettings>::new()).unwrap();
-        let (it, _) = lut::tabs(&c, &core, None::<&Mem<NdArray>>);
-        adam_gf17::write(&format!("{s}/m.gf17"), &it.iter().map(|(t, b)| (t.clone(), b.as_slice())).collect::<Vec<_>>(), 128).unwrap();
+        lut::save(&format!("{s}/m.gf17"), &c, &core, None::<&Mem<NdArray>>, 128).unwrap();
         let lm = lut::Lm::open(&format!("{s}/m.gf17"), 64 << 20).unwrap();
         (c, lm)
     }
