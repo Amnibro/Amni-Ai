@@ -31,7 +31,7 @@ EM="My mom and my dad are laying on the floor and do not answer me. I'm scared."
 def fake(tmp_path,monkeypatch):
     s=tmp_path/"fake_serve.py";s.write_text(STUB);b=tmp_path/"adamt-fake";b.write_text(f"#!/bin/sh\nshift\nexec {sys.executable} {s} \"$@\"\n");b.chmod(0o755)
     [monkeypatch.delenv(k,raising=False) for k in ("AMNI_ADAM_T_BACKEND","AMNI_ADAM_T_CTX","AMNI_ADAM_T_MAX_BYTES","AMNI_ADAM_T_CONTEXT","AMNI_USER_MEMORY","AMNI_MATH")+tuple(f"AMNI_ADAM_T_{k}_BYTES" for k in ("MEM","MATH","KNOW","PASSAGE"))]
-    monkeypatch.setenv("AMNI_UMEM_DIR",str(tmp_path/"umem"));monkeypatch.setenv("AMNI_ADAM_T_WARM","0");monkeypatch.setattr(C,"_know",lambda m,n,cap:[]);[monkeypatch.setenv(f"AMNI_UMEM_{k}","1") for k in ("LT","GN","G2")];U._EID.clear()
+    monkeypatch.setenv("AMNI_UMEM_DIR",str(tmp_path/"umem"));monkeypatch.setenv("AMNI_ADAM_T_WARM","0");monkeypatch.setattr(C,"_know",lambda m,n,cap,h=None:([],m));[monkeypatch.setenv(f"AMNI_UMEM_{k}","1") for k in ("LT","GN","G2")];U._EID.clear()
     monkeypatch.setenv("FAKE_DIR",str(tmp_path));monkeypatch.setenv("AMNI_ADAM_T_BIN",str(b));monkeypatch.setenv("AMNI_ADAM_T_TIMEOUT","2");monkeypatch.setenv("AMNI_ADAM_T_LOAD_TIMEOUT","3");monkeypatch.setenv("AMNI_ADAM_T",str(tmp_path/"run"))
     yield tmp_path
     [c.close() for c in C._C.values()];C._C.clear()
@@ -113,7 +113,7 @@ def test_math_offered_as_context_not_rule(fake,rules):
     G.chat("I just got a kitten!");assert last(fake)=="User: I just got a kitten!\nAdam:"
 def test_knowledge_rc_form_and_budget(fake,rules,monkeypatch):
     seen=[];P=["Moby-Dick: Moby-Dick is an 1851 novel by Herman Melville.","Herman Melville: "+"Melville was an American novelist. "*30]
-    monkeypatch.setattr(C,"_know",lambda m,n,cap:(seen.append((n,cap)),[clip for clip in (C.clip(x,cap) for x in P)])[1])
+    monkeypatch.setattr(C,"_know",lambda m,n,cap,h=None:(seen.append((n,cap)),([C.clip(x,cap) for x in P],m))[1])
     G.chat("who wrote moby dick?");p=last(fake);assert p.startswith("User: Moby-Dick: Moby-Dick is an 1851 novel by Herman Melville. Herman Melville: Melville") and p.endswith(" who wrote moby dick?\nAdam:") and seen[-1]==(2,550)
     monkeypatch.setenv("FAKE_CTX","900");C.client().close();H=[(f"old question {i} "+"x"*40,"ok "*10) for i in range(12)]
     G.chat("who wrote moby dick?",history=H);p=last(fake);b=900-400;n,cap=seen[-1]
@@ -131,20 +131,44 @@ def test_context_source_failure_is_contained(fake,rules,monkeypatch,caplog):
 def test_emergency_first_no_context(fake,rules,monkeypatch):
     monkeypatch.setattr(C,"context",lambda *a,**k:(_ for _ in ()).throw(AssertionError("context ran")))
     r=G.chat(EM,user="ann");assert r["tier"]=="tier_emergency" and "911" in "".join(G.chat_stream("my baby is choking",user="ann")) and prompts(fake)==[] and starts(fake)==[] and umem(fake)==[] and rules==[]
+def _fakes(monkeypatch,H=None):
+    D={1:("Moby-Dick","Moby-Dick is an 1851 novel. It was written by Herman Melville. "+"Filler text goes here. "*40,7),2:("Moby-Dick","Moby Dick again, same article.",7),3:("Pequod","A whaling ship.",8),4:("Herman Melville","Herman Melville wrote Moby Dick.",9),5:("List of whaling novels","Moby Dick by Herman Melville wrote.",10)}
+    st={"the","a","is","by","an","it","was","of","in","and"};wi={"legs":2.0,"crab":6.0}
+    I=types.SimpleNamespace(widf=lambda w:wi.get(w,1.0),text=lambda p,c=None:D[p],first={},lk=[])
+    R=types.SimpleNamespace(QSTOP={"who","what","how","many","which"},STOP=st,toks=lambda t:[w for w in re.findall(r"[a-z0-9]+",t.lower()) if w not in st],factq=lambda q,w=False:q.endswith("?"),ix=lambda:I,RL=types.SimpleNamespace(qtype=lambda q:"person" if q.lower().startswith("who") else "other"),candidates=lambda q:("person",[{"v":"Herman Melville","s":0.6}],[(9.0-i,i,None,None) for i in (1,2,3,4,5)]),ents=lambda y:[(m.group(0),m.start(),m.end()) for m in re.finditer(r"[A-Z][\w-]*(?: (?:[A-Z][\w-]*|\d{4}))*",y)],P1=re.compile(r"(?i)\b(?:i|me|my|i'm)\b"),PW=re.compile(r"(?i)\b(?:we|our|us)\b"))
+    S=types.SimpleNamespace(name=lambda e:"Moby-Dick",names=lambda e:["moby dick"])
+    W=types.SimpleNamespace(THR=0.5,TEMPORAL=False,STOPR={"the","a","an","of"},nrm=lambda s:" ".join(re.findall(r"[a-z0-9]+",(s or "").lower().replace("-"," "))),ask=lambda q:{"answer":"Herman Melville","conf":0.9,"e":5,"p":50,"lf":1.0},store=lambda:S)
+    monkeypatch.setattr(amni.compute,"rknow",R,raising=False);monkeypatch.setitem(sys.modules,"amni.compute.rknow",R);monkeypatch.setitem(sys.modules,"amni.compute.wikifact",W);monkeypatch.delenv("AMNI_RKNOW_WF",raising=False);monkeypatch.delenv("AMNI_ADAM_T_KW",raising=False)
+    monkeypatch.setattr(C,"_keys",lambda *a,**k:([],set()));monkeypatch.setattr(C,"_human",lambda z:(H or {}).get(z));return R
 def test_know_passages_trimmed_and_filtered(monkeypatch):
-    D={1:("Moby-Dick","Moby-Dick is an 1851 novel. It was written by Herman Melville. "+"Filler text goes here. "*40,7),2:("Moby-Dick","Moby Dick again, same article.",7),3:("Pequod","A whaling ship.",8),4:("Herman Melville","Herman Melville wrote Moby Dick.",9)}
-    I=types.SimpleNamespace(widf=lambda w:1.0,search=lambda q,k:[(9.0-i,i) for i in (1,2,3,4)],text=lambda p:D[p])
-    R=types.SimpleNamespace(QSTOP={"who"},toks=lambda t:[w for w in re.findall(r"[a-z0-9]+",t.lower()) if w not in {"the","a","is","by","an","it","was"}],factq=lambda q,w=False:q.endswith("?"),ix=lambda:I)
-    W=types.SimpleNamespace(THR=0.5,TEMPORAL=False,ask=lambda q:{"answer":"Herman Melville","conf":0.9,"e":5},store=lambda:types.SimpleNamespace(label=lambda e:"Moby-Dick"))
-    monkeypatch.setattr(amni.compute,"rknow",R,raising=False);monkeypatch.setitem(sys.modules,"amni.compute.rknow",R);monkeypatch.setitem(sys.modules,"amni.compute.wikifact",W);monkeypatch.delenv("AMNI_RKNOW_WF",raising=False)
-    K=C._know("who wrote moby dick?",2,120);assert K[0]=="Moby-Dick: Herman Melville." and K[1].startswith("Moby-Dick: Moby-Dick is an 1851 novel. It was written by Herman Melville.") and len(K[1])<=120 and K[2]=="Herman Melville: Herman Melville wrote Moby Dick." and len(K)==3
-    assert C._know("I just got a kitten!",2,120)==[] and C._trim(["A b.","Cc dd.","Ee ff gg."],[0,5,0],14)=="A b. Cc dd." and C._trim(["x"*50],[1],20)=="x"*20
-    monkeypatch.setenv("AMNI_RKNOW_WF","0");assert C._know("who wrote moby dick?",1,120)[0].startswith("Moby-Dick: Moby-Dick is")
+    _fakes(monkeypatch);K,rq=C._know("who wrote moby dick?",2,120)
+    assert rq=="who wrote moby dick?" and K==["Moby-Dick, author: Herman Melville.","Herman Melville: Herman Melville wrote Moby Dick."]
+    assert C._know("I just got a kitten!",2,120)==([],"I just got a kitten!") and C._trim(["A b.","Cc dd.","Ee ff gg."],[0,5,0],14)=="A b. Cc dd." and C._trim(["x"*50],[1],20)=="x"*20
+    monkeypatch.setenv("AMNI_RKNOW_WF","0");K,_=C._know("who wrote moby dick?",2,120);assert K[0]=="Herman Melville: Herman Melville wrote Moby Dick." and K[1].startswith("Moby-Dick: Moby-Dick is an 1851 novel. It was written by Herman Melville.") and len(K[1])<=120 and len(K)==2
+def test_wikidata_line_needs_subject_in_question(monkeypatch):
+    R=_fakes(monkeypatch);W=sys.modules["amni.compute.wikifact"]
+    assert C._wd(R,"which country is it in?") is None
+    W.ask=lambda q:{"answer":"Moby-Dick","conf":0.9,"e":5,"p":50,"lf":1.0};assert C._wd(R,"who wrote moby dick?") is None
+    W.ask=lambda q:{"answer":"Herman Melville","conf":0.9,"e":5,"p":50,"lf":0.5};assert C._wd(R,"who wrote moby dick?") is None
+def test_follow_ups_resolve_or_skip(monkeypatch):
+    R=_fakes(monkeypatch,{"Jane Austen":True,"Pride and Prejudice":False,"Mary Shelley":True,"Bill Gates":True,"Microsoft":False,"Paul Allen":True});rs=lambda q,u,a="ok.":C._resolve(R,q,[(u,a)])
+    assert rs("When was she born?","Who wrote Pride and Prejudice?","Jane Austen wrote it.")=="When was Jane Austen born?"
+    assert rs("Who was her husband?","Who wrote Frankenstein?","Mary Shelley.")=="Who was Mary Shelley's husband?"
+    assert rs("What year did they found it?","Who co-founded Microsoft with Paul Allen?","Bill Gates.")=="What year did Bill Gates found Microsoft?"
+    assert rs("And Sweden?","What is the capital of Norway?","Oslo.")=="What is the capital of Sweden?"
+    assert rs("And the 2010 one?","Which country won the first FIFA World Cup?","Uruguay.")=="Which country won the 2010 FIFA World Cup?"
+    assert rs("What about a lobster?","How many legs does a crab have?","Ten.")=="How many legs does a lobster have?"
+    assert rs("What color is it?","My car is an old green Toyota pickup.")=="" and rs("What is the book about?","I'm reading a book about the Roman Empire.")=="" and rs("And yours?","I love my dog.")==""
+    assert C._resolve(R,"Who wrote Emma?",None)=="Who wrote Emma?" and rs("Who wrote Emma?","hi","hello!")=="Who wrote Emma?"
+def test_fix_numbers_at_read_time():
+    x=C._fix("Sir Arthur Clarke (16 December 191719 March 2008) was a writer (19171985). It lies approximately  north of Kent. It had ( ) no.")
+    assert "16 December 1917 - 19 March 2008" in x and "(1917-1985)" in x and "approximately  \x01north" in x and "( )" not in x
 def test_ascii_fold_and_clip():
     assert C.asc("17 × 23 − “q”\n— café [1] 5°") == '17 x 23 - "q" - cafe 5 degrees' and C.clip("aa bb cc",5)=="aa" and C.clip("abcdef",3)=="abc" and C.clip("ok",9)=="ok"
 @pytest.mark.skipif(not os.path.isdir(os.path.join(os.path.dirname(C.__file__),"..","..","data","ks","index_rknow","wiki_v2")),reason="R-KNOW index not present")
 def test_know_real_index():
-    K=C._know("who wrote the novel moby dick?",2,550);assert K and any("Melville" in k for k in K) and all(len(k.encode())<=550 and k.isascii() for k in K) and C._know("I just got a kitten!",2,550)==[]
+    K,_=C._know("who wrote the novel moby dick?",2,550);assert K and any("Melville" in k for k in K) and all(len(k.encode())<=550 and k.isascii() for k in K) and C._know("I just got a kitten!",2,550)[0]==[]
+    K,rq=C._know("When was she born?",2,550,[("Who wrote Pride and Prejudice?","Jane Austen wrote it.")]);assert rq=="When was Jane Austen born?" and any("1775" in k for k in K) and C._know("What color is it?",2,550,[("My car is an old green Toyota pickup.","A classic workhorse.")])==([],"")
 def test_child_survives_spawning_thread_exit(fake):
     c=C.AdamT();th=threading.Thread(target=lambda:c.gen("hi",64));th.start();th.join();time.sleep(0.5)
     assert c.p.alive() and c.gen("again",64)=="ADAM-T heard: again" and len(starts(fake))==1
