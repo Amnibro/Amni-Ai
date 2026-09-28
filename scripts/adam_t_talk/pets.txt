@@ -1,0 +1,335 @@
+@pe_new_puppy pos pets
+U We just brought home a new puppy!|I got a {breed} puppy yesterday.|There's a tiny {breed} puppy asleep on my feet right now, we just adopted him.|Our family finally got a puppy this weekend.|Meet the newest member of the house, a {breed} puppy.
+V breed=golden retriever,beagle,lab,corgi,husky,border collie,dachshund,mutt
+A A new puppy is pure joy in a tiny, chaotic package.|Puppy days are the best, even with the chewing.|Welcome home to the little one, your house just got a lot more fun.|There's nothing quite like a sleepy puppy.|Congrats on the new family member!
+Q What did you name the puppy?|Have you picked a name yet?
+> We named him Biscuit.|His name is Moose.|We went with Pepper.
+= Great name, it sounds like it already fits.|Ha, I love that, it's got personality. Does the name suit him so far?|That's adorable, a name you'll be calling across the park for years.
+> Still deciding.|Not yet, we can't agree.
+= Give it a few days, their personality usually picks the name for you.|Watch how the puppy acts for a week and the right name will jump out.
+Q How's the first night going?|Has the puppy settled in okay?
+> Lots of crying at night.|He whined until two in the morning.
+= The first few nights are rough, a ticking clock or a warm blanket in the crate can help.|That's so normal, it usually gets better within a week or so.
+> Surprisingly well, he's sleeping a lot.|He's already making himself at home.
+= Lucky you, a sleepy puppy is a gift.|That's a great start, sounds like he feels safe already.
+Q Have you started any training yet?|Are you working on potty training?
+> We're trying, lots of accidents.|Kind of, it's slow going.
+= Totally normal at this age, patience and lots of treats go a long way.|Keep at it, puppies catch on faster than you'd think.
+> He already knows sit!|Yes, and he's a quick learner.
+= Look at that, a little genius in the making.|That's impressive for such a young pup. What are you teaching next?
+X Enjoy all the puppy snuggles!|Have fun with the new pup, and good luck with the chewing phase.|Congrats again, that puppy is lucky to have you.
+@pe_shelter_cat pos pets
+U I adopted a cat from the shelter today.|We just brought home a shelter cat.|I finally adopted a cat, she's {age} years old.|Went to the shelter just to look and came home with a cat.|I rescued an older cat from the shelter this weekend.
+V age=two,three,five,seven,nine
+A Giving a shelter cat a home is such a kind thing to do.|Your new cat hit the jackpot.|Adopting from a shelter is the best way to find a friend.|What a lucky cat, and a lucky you.
+Q How's she settling in?|Is she getting used to the new place?
+> She's hiding under the bed.|Mostly hiding so far.
+= That's really common, give her a quiet spot and she'll come out when she's ready.|Totally normal, most cats need a few days to feel safe.
+> She's already exploring everything.|She acts like she's always lived here.
+= That's a confident cat, what a great sign.|Love that, sounds like she knew she was home.
+Q What's her name?|Did she come with a name?
+> The shelter called her Luna.|She's named Ginger.
+= That's a sweet name, are you keeping it?|That suits a cat perfectly.
+> We're renaming her.|Not yet, still thinking.
+= A fresh name for a fresh start sounds nice.|Take your time, you'll figure out who she is first.
+X Enjoy getting to know your new cat!|Congrats on the adoption, she's in good hands.|Here's to many cozy evenings with your new friend.
+@pe_cat_couch neg pets
+U My cat keeps scratching the couch.|The cat has shredded one whole side of my sofa.|I can't stop my cat from clawing the furniture.|My new couch is already covered in claw marks from the cat.
+A Couch scratching is one of the most frustrating cat habits.|Cats and furniture have a long and messy history.|Scratching is natural for cats, but your sofa didn't sign up for it.
+Q Does your cat have a scratching post?|Have you tried giving the cat something else to scratch?
+> Yes, but she ignores it.|We have one, she prefers the couch.
+= Try putting the post right next to the couch and rubbing a little catnip on it.|Some cats like horizontal scratchers better, it might be worth trying a flat one.
+> No, not yet.|We don't have one.
+= A tall, sturdy post near the couch can work wonders. Have you tried covering the arm with a blanket in the meantime?|That's the first thing I'd try, cats need a legal spot to scratch.
+Q When does the scratching usually happen?|Is there a certain time she goes for the couch?
+> Right after she wakes up.|Mostly in the morning.
+= That makes sense, cats love a good stretch and scratch after a nap.|Having a scratcher near her sleeping spot might catch that urge.
+> At night when we're asleep.|Mostly at night.
+= Sneaky, a scratcher by the couch could be her new nighttime target.|Classic night owl behavior, a little play before bed can burn off that energy.
+X Good luck saving the couch!|Hope the scratching post wins her over.|Fingers crossed your sofa gets some peace soon.
+@pe_cat_5am neg pets
+U My cat wakes me up at 5am every single day.|The cat starts yelling for breakfast before the sun is up.|I haven't slept past five in weeks thanks to my cat.|Every morning at dawn my cat meows right next to my ear.
+A Ah, the feline alarm clock, no snooze button included.|Cats are very committed to their breakfast schedule.|Five in the morning is rough, even for a cute alarm.
+Q Is it for food, do you think?|Does the cat want breakfast, or just attention?
+> Definitely food.|Pretty sure it's breakfast.
+= An automatic feeder set for early morning can take you out of the equation.|Feeding a bigger meal right before bed might help her sleep in.
+> I think she just wants attention.|She just wants me awake.
+= A good play session in the evening can tire her out for the night.|Sounds like she misses you, try some extra play before bedtime.
+Q Have you tried ignoring it?|Have you tried just staying in bed?
+> Yes, she just gets louder.|I tried and she knocked on the door for an hour.
+= Persistent little creature, isn't she.|Ha, cats rarely give up easily, consistency is the key.
+> No, I always give in.|I cave every time.
+= Totally understandable, but she's learned that it works.|Ha, she has trained you well.
+X Hope you get some sleep soon!|Good luck, may you see seven in the morning again someday.|Here's to a cat who learns to sleep in.
+@pe_cat_laptop neu pets
+U My cat keeps sitting on my laptop while I work.|Every time I open my laptop the cat lies down on the keyboard.|My cat has claimed my laptop as her favorite nap spot.|I can't work from home, my cat thinks my laptop is her bed.
+A Cats always know exactly where you're focusing.|Ha, your cat wants to be part of the team.|The warm laptop is basically a cat magnet.|Your cat clearly thinks she's more important than your emails.
+Q Does she have a spot of her own near your desk?|Have you tried giving her a bed next to you?
+> No, she just sits on the desk.|Not really.
+= A small bed or box right next to the laptop might be enough for her.|Try a warm blanket on the desk, she might take the hint.
+> Yes, and she ignores it.|She has one, she likes my keyboard better.
+= Of course she does, the laptop is where you are.|Ha, classic cat priorities.
+Q Has she caused any funny mistakes?|Has she ever typed anything funny?
+> She joined a video call once.|She walked across the screen during a meeting.
+= Honestly, that probably made everyone's day.|A cat cameo is the best part of any meeting.
+> She typed a whole line of the letter j.|She sent a random message once.
+= Ha, she's just trying to help.|A cat email is a rite of passage.
+> Not yet, thankfully.|No, I'm always quick to catch her.
+= Good reflexes, you'll need them.|Lucky, it's only a matter of time.
+X Good luck getting some work done!|Hope your cat lets you finish your emails.|Enjoy your very furry coworker.
+@pe_dog_mailman neg pets
+U My dog barks like crazy every time the mail comes.|The mail carrier is my dog's sworn enemy.|My dog goes nuts at the door every afternoon when the mail arrives.|I can't get my dog to stop barking at the delivery truck.
+A The daily mail showdown is a classic dog tradition.|In your dog's mind, he chases the mail carrier off every single day.|That daily barking can wear you out fast.|Dogs take their guard duty very seriously.
+Q Does the barking go on for long?|Is it just a few barks or a full show?
+> Only until the truck leaves.|Just a minute or two.
+= That's a pretty normal amount of guard duty.|At least it's short, your dog is just reporting for duty.
+> It goes on forever.|He keeps going long after they're gone.
+= That's a lot, a treat and a calm spot away from the window might help.|Blocking his view of the front window can take the edge off.
+Q Have you tried any training for it?|Have you worked on it with him?
+> We're working on a quiet command.|A little bit, with treats.
+= Keep it up, consistency really pays off with barking.|Treats and patience go a long way. Is it helping at all?
+> Not yet.|No, I've just been living with it.
+= Rewarding him when he stays calm at the door could be a good start.|It might be worth a try, even a few minutes a day helps.
+X Good luck with the daily mail battle!|Hope your mail carrier gets a warmer welcome soon.|Here's to quieter afternoons.
+@pe_dog_trick pos pets
+U My dog finally learned to {trick}!|After weeks of practice my dog can {trick}.|Guess who taught his dog to {trick}.|My pup can finally {trick} on command.
+V trick=roll over,shake hands,play dead,spin in a circle,high five,bow
+A Weeks of practice paid off, that's awesome.|Look at that, a trick-performing superstar.|Nothing beats the moment a trick finally clicks.|Your dog must be very proud of himself.|A dog that can {trick} is a party favorite.
+Q How long did it take to teach?|Was it hard to teach?
+> About a month.|A few weeks of daily practice.
+= That's real dedication from both of you.|That's a great pace, consistency really works.
+> Just a couple of days.|Not long at all, he's smart.
+= Wow, you've got a quick learner there.|Sounds like a very clever pup.
+Q What trick are you going to teach next?|Is there another trick on the list?
+> Maybe fetch my slippers.|Bringing me my slippers.
+= That would be adorable and useful.|A dog butler, love it.
+> I want to teach him to wave.|Waving hello.
+= Great choice, it'll be a hit with visitors.|That's going to be so cute.
+> We're taking a break for now.|Nothing for now.
+= Fair enough, he's earned a rest.|Good call, let him enjoy the new skill.
+X Give your pup a treat from me!|Well done to you both!|Enjoy showing off your talented dog.
+@pe_dog_park pos pets
+U Took my dog to the dog park and she had the best time.|We spent the whole morning at the dog park.|My dog made a new best friend at the park today.|First trip to the dog park with my pup, it went great.
+A A happy dog after the park is the best thing.|Dog park days are the best kind of days.|Sounds like your pup had a blast.|Making new friends is a big deal for a dog.
+Q Is she tired out now?|How's she doing after all that running?
+> Totally passed out on the couch.|She's snoring right now.
+= The sweet sleep of a well-exercised dog.|That's the sign of a great day.
+> Nope, still full of energy.|She wants to go back already.
+= Wow, that's a lot of energy.|Ha, sounds like you'll be making that trip often.
+Q Did she get along with the other dogs?|How was she with the other dogs?
+> She loved everyone.|She played with everybody.
+= That's wonderful, a social butterfly.|Love that, such a friendly pup.
+> She mostly stuck by me.|She was a little shy.
+= That's okay, some dogs need time to warm up.|She'll get more comfortable with more visits.
+X Sounds like a perfect day for your pup!|Enjoy the snuggles with your tired dog.|Here's to many more park days.
+@pe_vet_checkup neu pets
+U Took my puppy to the vet for her first checkup today.|Just got back from my cat's yearly vet visit.|We had a routine vet appointment this morning and everything looked good.
+A A good checkup is always a relief.|Routine vet visits are no fun for pets, but they're so worth it.|Glad everything looked good.|Nice work keeping up with the vet visits.
+Q How did your pet handle the visit?|Was the trip to the vet stressful?
+> Shaking the whole time.|Not great, lots of crying.
+= Poor thing, the vet is scary for a lot of pets.|That's so common, a treat afterward helps them forget.
+> Calm as anything.|Surprisingly well.
+= Wow, what a brave little patient.|That's a great sign for future visits.
+Q Did the vet have any advice?|Anything you need to change?
+> A little less food.|More walks, apparently.
+= That's easy to work on, a few less treats will do it.|Extra walks are good for both of you.
+> Nope, all good.|Nothing, just keep doing what we're doing.
+= That's the best kind of vet report.|Great, sounds like you're doing everything right.
+X Glad your pet is healthy!|Give your pet a treat for being brave.|Here's to a happy, healthy pet.
+@pe_pet_birthday pos pets
+U It's my dog's {age} birthday today!|My cat turns {n} tomorrow.|We're throwing a little birthday party for our dog.|Today is my dog's gotcha day.
+V age=first,second,fifth,tenth,twelfth;n=one,two,five,ten,twelve
+A Happy birthday to your furry friend!|A pet birthday is always worth a celebration.|That's such a sweet thing to celebrate.|Here's to your pet and many more years together.
+Q Are you doing anything special?|Any birthday treats planned?
+> A dog-friendly cake.|We baked a special treat.
+= That sounds adorable, I hope it gets gobbled up.|Love that, a birthday treat is a must.
+> A new toy and a long walk.|Extra cuddles and a new toy.
+= Perfect, that's a dream day for a pet.|Simple and sweet, sounds just right.
+Q How long have you had them?|When did they join your family?
+> Since they were a baby.|Since day one.
+= That's a beautiful bond to have.|Wow, you've grown up together in a way.
+> We adopted them a few years ago.|A couple of years now.
+= And they've had a great home ever since.|Sounds like the best decision you made.
+X Enjoy the celebration, birthday pets deserve extra treats.|Have a lovely little party!|Give them a birthday scratch from me.
+@pe_senior_dog neg pets
+U My dog is getting old and slowing down a lot.|My old dog can't really do stairs anymore.|My dog is {age} now and sleeps most of the day.|It's hard watching my dog get older.
+V age=twelve,thirteen,fourteen,fifteen
+A Watching a dog get older is bittersweet.|Senior dogs have such a gentle, special kind of love.|That's tough, they grow old too fast.|Old dogs still have so much love to give.
+Q How long have you had your dog?|Have you been together a long time?
+> Since he was a puppy.|His whole life.
+= That's a lifetime of memories together.|That's such a special bond.
+> We adopted him a few years ago.|Only a few years.
+= And he's been lucky to spend his golden years with you.|Those years still count for a lot.
+Q Is he still enjoying things?|What does he still love to do?
+> He still loves short walks.|Mostly napping in the sun.
+= A slow walk and a sunny nap sounds like a pretty great day.|Simple joys are the best kind.
+> Food, always food.|Treats, mostly.
+= Some things never change.|Ha, the appetite is the last thing to go.
+X Give your old buddy a gentle scratch from me.|Enjoy every quiet moment with him.|Sounds like he's got a lot of love around him.
+@pe_fish_tank pos pets
+U I just set up my first fish tank.|We got a new aquarium for the living room.|I bought a little aquarium for my desk.|Started a little freshwater tank this weekend.
+A A fish tank is such a calming thing to have at home.|Setting up a tank is a fun project.|A new aquarium, that's a great addition to a room.|Fish are a lovely, peaceful kind of pet.
+Q What kind of fish did you get?|What's living in the tank?
+> Just a betta for now.|One betta fish.
+= Bettas are so colorful and full of personality.|Great choice, they're beautiful fish.
+> A few small tropical fish.|Some tiny tetras.
+= That sounds like a lively little tank.|Little schools of fish are so fun to watch.
+> A snail and a couple of shrimp.|Some snails and shrimp.
+= A snail is a great little cleaner to have.|A tiny cleanup crew, love it.
+Q Did you add any plants or decorations?|How did you decorate the tank?
+> Some live plants.|A few real plants.
+= Live plants look great and help the water too.|That's a nice touch.
+> A little castle.|A tiny sunken ship.
+= Classic, the fish will love exploring it.|Ha, every good tank needs one.
+X Enjoy your new underwater world!|Have fun with the fish!|Sounds like a very relaxing new hobby.
+@pe_parakeet pos pets
+U My parakeet just said her first word!|My budgie started talking this week.|I've been teaching my parakeet to talk and she finally said hello.|My budgie finally said a real word today.
+A That's so exciting, a talking bird!|All that patience paid off.|Birds are so clever, that's amazing.|What a fun moment to catch.
+Q What did she say?|What was the first word?
+> Hello!|She said hello.
+= A classic first word, and so polite.|Hello is the perfect first word.
+> She said pretty bird.|Pretty bird!
+= Ha, she clearly knows she's pretty.|She's got good self-esteem.
+> Her own name.|She said her name.
+= That's adorable, she knows who she is.|A bird who knows her name is very clever.
+> She said my name.|My name!
+= Aw, that's the sweetest thing.|She clearly knows who her favorite person is.
+Q What are you teaching her next?|Any new words on the list?
+> Maybe good morning.|Good morning, hopefully.
+= That would make every morning better.|A bird greeting you every day, how fun.
+> Probably a whistle.|A little whistle tune.
+= She'll have a whole song soon.|Whistling birds are so charming.
+> I'll let her pick her own.|Whatever she picks up.
+= Ha, that could get interesting.|A bird with her own vocabulary, love it.
+X Enjoy your chatty little bird!|Have fun with the lessons!|Sounds like you have a little star.
+@pe_hamster_escape neu pets
+U My hamster escaped last night, but we found him this morning.|The hamster got out of his cage, it took forever to find him.|Spent two hours looking for my escaped hamster before I finally found him.|My kid's hamster pulled off a great escape but he's back now.
+A Hamsters are tiny escape artists.|That's a relief, those little guys can hide anywhere.|What an adventure for such a small creature.|Glad the great escape had a happy ending.
+Q How did he get out?|Do you know how he escaped?
+> The cage door wasn't latched.|Somebody left it open.
+= Easy mistake, a small clip on the door can help.|That happens, he probably couldn't believe his luck.
+> No idea, it's a mystery.|Still not sure.
+= Sounds like you have a little Houdini.|Might be worth checking for gaps in the cage bars.
+Q Where did you finally find him?|Where was he hiding?
+> Under the couch.|Behind the bookshelf.
+= Classic hiding spot.|Clever little guy.
+> In a pile of laundry.|Inside a laundry basket.
+= Ha, cozy choice.|Warm and soft, he knew what he was doing.
+> In the kitchen.|Near the pantry.
+= He was probably looking for snacks.|Ha, following his stomach.
+X Glad he's safe and sound!|Here's to a secure cage from now on.|Hope your hamster sticks to his wheel for a while.
+@pe_dog_counter neu pets
+U My dog stole a whole sandwich off the counter.|I turned around for two seconds and my dog ate my toast.|My dog grabbed a hot dog bun off the table and ran.|Caught my dog with his paws on the counter and a muffin in his mouth.
+A Ha, dogs are experts at the two-second opportunity.|Counter surfing is a true dog talent.|Your dog clearly has good taste.|Two seconds is all a dog needs.
+Q Did he look guilty at all?|Was he sorry about it?
+> Not even a little.|Nope, totally proud of himself.
+= Ha, no regrets whatsoever.|He's living his best life.
+> He gave me the guilty eyes.|He hid under the table after.
+= The guilty eyes get us every time.|Ha, he knew what he did.
+Q Does he do this often?|Is this a regular thing?
+> All the time.|Pretty often, sadly.
+= Keeping the counters clear is the only foolproof fix.|Might be time to work on a strong leave it command.
+> First time.|Never before.
+= Then he's just getting started, keep an eye out.|Ha, now he knows it works.
+X Good luck protecting your snacks!|Keep an eye on that sneaky pup.|Here's to lunches that stay on the plate.
+@pe_petsit pos pets
+U I'm dog sitting for my {rel} this week.|I'm watching my {rel}'s dog while they're on vacation.|My {rel} left me in charge of their dog for the weekend.|I'm pet sitting a friend's dog for a few days.
+V rel=neighbor,best friend,sister,brother,coworker,cousin
+A Dog sitting is a fun way to get a pet fix.|Sounds like a busy but cute week.|A temporary dog is such a treat.|That's very kind of you to help out.
+Q How's the dog behaving?|Is the dog easy to take care of?
+> An angel so far.|Really easy, very calm.
+= Lucky you, that makes it so much fun.|That's the dream kind of dog sitting.
+> Total chaos.|He's got so much energy.
+= Ha, lots of walks might help.|Energetic dogs keep you on your toes.
+Q Are you thinking about getting a dog yourself now?|Is this making you want your own dog?
+> Honestly, yes.|Kind of, yeah.
+= This is how it starts.|A trial run is a great way to find out.
+> No, this is enough for me.|Nope, I like giving them back.
+= Ha, the best of both worlds.|Totally fair, borrowed dogs are great.
+X Have fun with your furry houseguest!|Enjoy the dog cuddles!|Good luck, and enjoy the extra walks.
+@pe_grooming pos pets
+U My dog just got groomed and looks like a completely different dog.|Took the cat to the groomer and she came back so fluffy.|Grooming day, my pup got a fresh haircut.|My dog came back from the groomer with a little bow.
+A A fresh groom makes every pet look like royalty.|Nothing beats that post-grooming fluff.|Your pet is looking sharp.
+Q How did they handle the grooming?|Did they like it?
+> Loved it.|No fuss at all.
+= That's great, some pets really enjoy a spa day.|Lucky you, a calm groomer visit is a real win.
+> Hated every minute.|Not a fan.
+= Poor baby, at least it's over.|The results are worth it, though.
+Q Does your pet get groomed often?|How often do you take them?
+> Every couple of months.|Every six weeks or so.
+= That keeps them looking great.|That's a nice routine.
+> Only when they get really shaggy.|Once or twice a year.
+= Hey, whatever works for you both.|Makes sense, a big makeover each time.
+X Enjoy your freshly groomed pet!|Looking good, both of you.|Enjoy the fluff while it lasts.
+@pe_dog_bath neg pets
+U My dog hates baths so much.|Bath time with my dog is a total wrestling match.|I just gave my dog a bath and now I'm the one who's soaked.|Trying to wash my dog is impossible.
+A Dog baths often end up as full-body workouts.|Bath time battles are so common.|Some dogs treat the tub like their worst enemy.
+Q Have you tried treats during bath time?|Do you use any tricks to make it easier?
+> Treats don't work.|He won't take them in the tub.
+= Maybe a lick mat on the wall could keep him busy.|Some dogs do better in shallow water with a warm shower.
+> No, I just wrestle him.|No tricks, just brute force.
+= Ha, a few treats might turn the tide.|Maybe try a little peanut butter distraction.
+Q Where do you give him the bath?|Do you wash him in the tub or outside?
+> In the bathtub.|In the shower.
+= A non-slip mat might make him feel safer.|That's the usual battleground.
+> Outside with the hose.|In the backyard.
+= That's a smart way to avoid a flooded bathroom.|Less mess inside, at least.
+X Good luck with the next bath!|May your next bath be drier.|Hope bath time gets easier soon.
+@pe_cat_gift neu pets
+U My cat brought me her toy mouse and dropped it at my feet.|The cat keeps leaving her toys in my shoes.|My cat carried a toy all the way to my bed this morning.|Woke up to my cat meowing with a toy in her mouth.
+A That's a cat gift, she's sharing her prize with you.|Your cat is showing some serious love.|Cats bring gifts to the people they trust.|Ha, a very proud little hunter.
+Q Did you make a big deal about it?|How did you react?
+> I praised her a lot.|I gave her some pets.
+= She'll be delighted, you're a great audience.|Perfect, that'll make her day.
+> I just laughed.|I didn't really know what to do.
+= Ha, that's all she needs.|A little praise goes a long way with cats.
+Q Does she do this a lot?|Is it a regular thing?
+> Almost every day.|All the time.
+= Sounds like you have a very generous cat.|Ha, she clearly adores you.
+> Just started recently.|This was the first time.
+= A new tradition in the making.|Sounds like she's decided you're family.
+X Enjoy your little gifts!|Give that proud hunter some love.|Sounds like a very sweet cat.
+@pe_bunny pos pets
+U We just got a pet bunny.|I adopted a rabbit this week.|My kids talked me into getting a bunny.|There's a little rabbit hopping around my living room now.
+A Bunnies are so sweet and curious.|A bunny is such a fun and quiet pet.|Welcome to the world of binkies and nose wiggles.|Your house just got a lot cuter.
+Q What's the bunny's name?|Have you named the bunny yet?
+> We named him Clover.|Her name is Pancake.
+= That's adorable, it suits a bunny perfectly.|Great name, I love it.
+> Not yet.|Still arguing about it.
+= Give it a few days, the right name will come.|Ha, family name debates are a rite of passage.
+Q Is the bunny getting comfortable?|How's the bunny settling in?
+> Hopping around everywhere.|Very curious.
+= That's a great sign.|A curious bunny is a happy bunny.
+> Still pretty shy.|Hiding a lot.
+= That's normal, bunnies need time to trust.|Give it some time, the bunny will warm up.
+X Enjoy the new bunny!|Have fun with your little hopper.|Congrats on the newest family member.
+@pe_second_pet neu pets
+U We're thinking about getting a second dog.|I want to get another cat so mine has a buddy.|Adding a second pet to the family, wish me luck.|My dog seems lonely so I'm considering another one.
+A A second pet can be a lot of fun.|Double the fur, double the love.|That's a big decision, but it can be great.|A buddy for your pet sounds sweet.
+Q Do you think your current pet will get along?|How do you think your pet will react?
+> I think she'd love a friend.|Probably pretty well.
+= That's a great sign.|Sounds like it could be a match.
+> Not sure, he can be territorial.|He might be jealous.
+= Slow introductions can really help.|Maybe a meet and greet first would be a good idea.
+Q Are you leaning toward a young one or an adult?|Puppy or kitten, or an older pet?
+> A young one.|Probably a baby.
+= Young ones bring a lot of energy.|That'll be fun, and exhausting.
+> An adult.|An older rescue.
+= Adults often slide right into the household.|That's a kind choice.
+X Good luck with the decision!|Hope your pets become best friends.|Sounds like a lucky future pet.
+@pe_pet_loss neg pets
+U My old cat passed away last week.|We had to say goodbye to our dog yesterday.|I lost my {pet} a few days ago and the house feels so empty.|Our family dog died this weekend.
+V pet=dog,cat,bunny,old dog
+A I'm so sorry, losing a pet is losing a family member.|That's heartbreaking, I'm really sorry.|The quiet after a pet is gone is so hard.|I'm so sorry for your loss.
+Q How long did you have them?|Were you together a long time?
+> Fifteen years.|Since I was a kid.
+= That's a lifetime of love.|What a long, special friendship.
+> Only a few years.|Not long enough.
+= Every year with a pet counts for so much.|It's never long enough.
+Q What was your favorite thing about them?|What do you miss most?
+> The way they greeted me at the door.|Their little habits.
+= Those little moments are what make a pet special.|That's such a sweet memory to hold onto.
+> Just having them around.|Their company.
+= That quiet company is the hardest to lose.|They were clearly very loved.
+X I'm really sorry, they were lucky to have you.|Take care of yourself, and hold on to the good memories.|Sending you warmth.
+C Thanks.|Thank you.|Yeah, thanks.|I appreciate it.

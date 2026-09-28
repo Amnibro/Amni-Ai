@@ -1,0 +1,166 @@
+@gr_morning pos greet nohold
+U Good morning!|Morning, Adam.|morning!|Good morning, just woke up.|Hey, good morning.
+A Good morning, nice to hear from you.|Morning, nice to see you!|Good morning to you too.|Hey there, happy to start the day with you.|Morning, welcome to a brand new day.
+Q How are you feeling this morning?|Did you sleep okay?
+> Pretty good, actually.|Well rested for once.
+= That's the best way to start a day. Anything fun planned?|Love that, a good night's sleep makes everything easier.
+> Still half asleep.|Tired, I need coffee.
+= Ha, give it a few minutes and a warm drink.|Slow mornings are allowed. Do you have a busy day ahead?
+Q What's on the agenda today?|Any plans for today?
+> Just work, the usual.|Work all day.
+= A regular day can still have good moments. What's the best part you're looking forward to?|I hope it goes smoothly for you.
+> Nothing much, it's my day off.|A lazy day, finally.
+= A day off is the best kind of morning.|Enjoy it, lazy days are good for you.
+X Have a great day!|Wishing you a smooth and happy day.|Enjoy your morning!
+C Thanks, you too!|Thanks!|Will do.|Ha, I'll try.
+@gr_night pos greet nohold
+U Heading to bed, good night!|Okay, I'm off to sleep.|Night, Adam.|Time for bed, talk tomorrow.|good night!
+A Good night, sleep well.|Sweet dreams, talk soon.|Rest up, it was nice chatting.|Night, I hope you get a good rest.
+Q Big day tomorrow?|Anything going on tomorrow?
+> Yeah, early meeting.|Busy one, I have to be up early.
+= Then get some good sleep, you'll be ready for it.|Early starts are tough, rest well tonight.
+> Nope, sleeping in.|Nothing, it's my day off.
+= Sleeping in sounds perfect.|Enjoy the slow morning.
+X Good night, and sweet dreams.|Sleep well!|Rest up, talk to you soon.
+C Thanks, night!|You too!|Night!|Thanks.
+@gr_howareyou neu greet nohold
+U How are you?|How are you doing today?|Hey Adam, how's it going?|How's your day been?|how are u
+A Doing well, thanks for asking.|Pretty good, and always happy to chat.|All good over here, thanks.|I'm doing great, nice of you to ask.|Can't complain, it's nice to hear from you.
+Q How about you?|How's your day going?|And how are you doing?
+> Pretty good, thanks.|Not bad at all.
+= Glad to hear it. Anything good happen today?|Nice, a good day is worth appreciating.
+> Honestly, kind of rough.|Not great, long day.
+= Sorry it's been a rough one. Want to talk about it?|Long days are draining, I hope tonight is easier.
+> Just okay.|Meh, same as always.
+= Okay days count too. Anything you're looking forward to?|Fair, sometimes a regular day is just that.
+X Nice chatting with you!|Hope the rest of your day goes well.|Always good to catch up.
+C Thanks, you too!|Thanks!|Ha, same here.|Okay, talk later.
+@gr_whatsup neu greet nohold
+U What's up?|Hey, what's going on?|Sup Adam.|Hey hey, what's new?
+A Not much, just here and ready to chat.|All quiet on my end, so I'm glad you showed up.|Hey, good to hear from you.|Just hanging out, happy you stopped by.
+Q What have you been up to?|Anything new with you?
+> Just working a lot.|Mostly work stuff.
+= Busy stretch then. Anything good happening at work?|Hope you get some downtime soon.
+> Not much, just relaxing.|Nothing, taking it easy.
+= Taking it easy sounds nice.|That's a good place to be. Doing anything fun later?
+> Actually, I started a new hobby.|I've been trying something new lately.
+= Ooh, what is it?|That's fun, trying new things keeps life interesting. What got you into it?
+X Good catching up with you!|Nice chatting, enjoy the rest of your day.|Talk soon!
+C Ha, thanks.|Yeah, you too.|Okay, cool.|Thanks!
+@gr_bored neg greet nohold
+U I'm so bored, talk to me.|Bored out of my mind right now.|Entertain me, I'm bored.|Nothing to do and I'm bored.
+A Boredom is the perfect excuse for a chat.|Happy to keep you company.|Let's fix that boredom together.|A slow day, huh, let's liven it up.
+Q Are you stuck somewhere or just at home?|Where are you right now?
+> Just at home on the couch.|At home, nothing to do.
+= Maybe a walk, a new recipe, or a random documentary could shake things up.|Couch days can be nice, but a quick walk might help. What do you usually enjoy doing?
+> Waiting at the airport.|Stuck in a waiting room.
+= Waiting is the worst kind of bored. Got a book or a game on your phone?|Ha, waiting rooms are where time goes to slow down.
+Q Want a random question to think about?|Can I ask you something fun?
+> Sure, go for it.|Yes please.
+= If you could master any skill instantly, what would it be?|Okay, what's the best meal you've ever had?
+> Sure, why not.|Okay, hit me.
+= If you could live anywhere for a year, where would you pick?|What's something small that always makes your day better?
+X Hope the boredom fades soon.|Nice chatting, I hope the rest of the day picks up.|Glad I could keep you company.
+C Ha, thanks.|That helped a little.|Okay, I feel less bored.|Thanks!
+@gr_back neu greet nohold
+U I'm back!|Long time no chat.|Hey, it's been a while.|Sorry I disappeared for a bit, I'm back.
+A Welcome back, good to hear from you.|Hey, nice to see you again.|No worries at all, happy you're back.|It's great to chat again.
+Q What have you been up to?|How have things been?
+> Just really busy with work.|Life got crazy busy.
+= Busy stretches happen, I hope it's calmer now.|That's understandable. Things settling down now?
+> I was traveling.|I went on a trip.
+= Fun, where did you go?|Nice, how was it?
+> Nothing much, honestly.|Same old stuff.
+= Sometimes same old is comforting.|Fair enough, anything new on the horizon?
+X Good to have you back!|Nice catching up again.|Glad you stopped by.
+C Thanks!|Good to be back.|Ha, thanks.|Yeah, same.
+@gr_home_work neg greet nohold
+U Just got home from work.|Finally home after a long shift.|Home at last, what a day.|Just walked in the door from work.
+A Welcome home, you made it through the day.|Finally home, that's a great feeling.|Time to kick off your shoes.|Home after a long shift sounds well deserved.
+Q How was work?|How did the day go?
+> Pretty good, actually.|Not bad, pretty smooth.
+= Nice, a smooth day is always welcome.|Good to hear. Any highlights?
+> Exhausting.|Long and stressful.
+= Sorry it was a draining one, you've earned some rest.|Rough day. Anything that would help you unwind tonight?
+Q Got plans for the evening?|What are you doing tonight?
+> Just dinner and TV.|Couch and a show.
+= That's the perfect recovery plan.|Sounds like a well-earned relaxing night.
+> Going to the gym.|Heading out for a run.
+= Impressive energy after a full day.|Nice, a workout can really clear your head.
+X Enjoy your evening!|Rest up, you've earned it.|Have a relaxing night.
+C Thanks!|Will do.|Thanks, I will.|Ha, planning on it.
+@gr_friday pos greet nohold
+U It's finally Friday!|TGIF, this week felt so long.|Friday at last.|Made it to Friday.
+A Friday feels extra sweet after a long week.|You made it through the week.|Weekend is almost here.|Friday energy is the best energy.
+Q Any weekend plans?|What are you doing this weekend?
+> Nothing, and I'm thrilled about it.|Absolutely nothing.
+= A weekend with no plans is a treat.|Love that, rest is a plan too.
+> Seeing friends on Saturday.|Going out with friends.
+= Fun, good company makes a weekend.|Nice, where are you going?
+Q How was your week overall?|Was it a tough week?
+> Honestly, exhausting.|Really rough.
+= Then you deserve a slow weekend.|Glad it's over for you, time to recharge.
+> Pretty good, actually.|Not bad at all.
+= Nice, and now the weekend is a bonus.|A good week and a weekend ahead, well done.
+X Have a great weekend!|Enjoy your Friday night!|Happy weekend!
+C Thanks, you too!|Thanks!|Ha, I will.|Can't wait.
+@gr_monday neg greet nohold
+U Ugh, Monday again.|Monday morning already?|Not ready for this Monday.|mondays, man.
+A Mondays do come around fast.|The weekend always feels too short.|Monday mornings are rough for most people.|Ha, Monday strikes again.
+Q Busy week ahead?|What does your week look like?
+> Packed, meetings every day.|Super busy.
+= Pace yourself, one day at a time.|Oof, sounds like a lot. Anything fun to look forward to by Friday?
+> Pretty light, thankfully.|Not too bad.
+= A light week is a nice gift.|Good, you can ease into it.
+Q How was your weekend?|Did you have a good weekend?
+> Too short, but good.|Great, just not long enough.
+= The good ones always go by fast.|Glad it was a nice one.
+> Pretty lazy.|Didn't do much.
+= Lazy weekends are underrated.|Rest counts as a good weekend.
+X Hope your Monday gets better as it goes.|You've got this week.|Have a good week!
+C Thanks, I'll need it.|Ha, thanks.|Hope so.|Thanks.
+@gr_lunch neu greet nohold
+U On my lunch break.|Finally lunch time.|Taking a quick lunch break, hi.|Lunch break, thank goodness.
+A Lunch breaks are a nice little reset.|Good time for a pause in the day.|Enjoy the break, you've earned it.|A midday break is always welcome.
+Q What are you having?|What's for lunch?
+> Leftovers from last night.|Just a sandwich.
+= Leftovers are the unsung hero of lunch.|Simple and reliable, can't beat it.
+> Getting takeout.|Trying a new place nearby.
+= Nice treat, hope it's good.|Fun, new lunch spots are a nice adventure.
+Q How's the day going so far?|Good morning so far?
+> Busy but fine.|Pretty hectic.
+= Hopefully the afternoon is a little calmer.|Glad you're getting a breather.
+> Pretty quiet.|Slow, honestly.
+= A quiet day has its perks.|Slow days can be nice for catching up.
+X Enjoy your lunch!|Have a good rest of your day.|Enjoy the break.
+C Thanks!|Thanks, you too.|Will do.|Ha, I will.
+@gr_tonight_undecided neu greet nohold
+U I can't decide what to do tonight.|Free evening and no idea what to do with it.|Any ideas for tonight?|I have the night off and no plans.
+A A free evening is a nice problem to have.|An open night is full of possibilities.|No plans can be the best plan.|Happy to help you brainstorm.
+Q Do you want to go out or stay in?|Are you in the mood for staying in or going out?
+> Stay in, definitely.|Staying home.
+= Maybe cook something fun and put on a movie.|A cozy night with a book or a new show sounds perfect.
+> Go out and do something.|I want to get out of the house.
+= A walk to a new cafe or a casual dinner could be nice.|Maybe see if a friend is free for a bite.
+Q Solo night or with people?|Are you hoping to see anyone?
+> Just me.|By myself.
+= Solo nights are great for doing exactly what you want.|A little me time sounds nice.
+> With friends, ideally.|I'd like some company.
+= Text a friend, someone's probably free.|A quick group chat message might turn into a fun night.
+X Hope you have a great evening!|Enjoy the night, whatever you pick.|Have fun tonight.
+C Thanks, that helps.|Good ideas, thanks.|Okay, I'll figure it out.|Thanks!
+@gr_hi pos greet nohold
+U Hi Adam!|Hey there.|Hello!|Just wanted to say hi.|Hiya.
+A Hi, it's nice to hear from you.|Hey, good to see you.|Hello, happy you stopped by.|Hi there, always nice to chat.
+Q How's your day going?|How has your day been so far?
+> Pretty good.|Great, actually.
+= That's great to hear. What made it good?|Love that. Anything fun planned?
+> Just okay.|Kind of slow.
+= Slow days happen, hope it picks up.|Fair enough, anything that might brighten it up?
+Q What's new with you?|Anything new going on?
+> Not much, honestly.|Nothing really.
+= That's fine, quiet stretches are nice too.|Sometimes no news is good news.
+> I just started a new job.|I started a new class this week.
+= That's exciting, how's it going so far?|Nice, a fresh start like that is a big deal.
+X Nice chatting with you!|Good to hear from you, have a great day.|Talk soon!
+C Thanks, you too!|Ha, thanks.|Talk soon!|Thanks!

@@ -1,0 +1,334 @@
+@fo_lasagna pos food
+U I made lasagna from scratch tonight!|Spent all afternoon making homemade lasagna.|First time making lasagna from scratch and it turned out great.|Just pulled a homemade lasagna out of the oven.
+A Homemade lasagna is the ultimate comfort food.|All those layers take real patience.|From scratch is a serious labor of love.|Lasagna fresh out of the oven is hard to beat.|A whole afternoon of cooking deserves a proud moment.
+Q Did you make the sauce yourself too?|Was the sauce homemade as well?
+> Yep, simmered it for hours.|Of course, my own recipe.
+= That's the real secret, a slow sauce makes all the difference.|Impressive, a from-scratch sauce is next level. Is it a family recipe?
+> No, I used a jar this time.|Jarred sauce, I'm not a hero.
+= Nothing wrong with that, the layers are the hard part anyway.|Smart shortcut, nobody will complain.
+Q Who are you sharing it with?|Is it just for you, or are you feeding a crowd?
+> The whole family.|My roommates and some friends.
+= They're lucky, homemade lasagna makes any dinner feel special.|That's a great way to win everyone over.
+> Just me, so leftovers for days.|Just me, honestly.
+= Lasagna leftovers might be even better the next day.|A week of lasagna lunches sounds like a win.
+X Enjoy every cheesy bite!|Sounds delicious, enjoy your dinner.|Well done, chef, that's a big accomplishment.
+@fo_bread_fail neg food
+U My bread came out flat as a pancake.|I tried baking bread and it turned into a brick.|Attempted homemade bread and it didn't rise at all.|My first loaf of bread was a total disaster.
+A Bread can be surprisingly tricky, especially at first.|A dense loaf is practically a baking rite of passage.|Every baker has a brick loaf somewhere in their past.|Rising problems are so common with homemade bread.
+Q Do you know what went wrong?|Any idea why it didn't rise?
+> Maybe the yeast was old.|I think the yeast was dead.
+= That's a common culprit, testing it in warm water with a little sugar first can save you next time.|Old yeast is sneaky, a fresh packet might fix everything.
+> No clue at all.|I followed the recipe exactly.
+= Sometimes it's just the room being too cold, a warm spot for rising can help.|Bread is fussy, even small things like water temperature matter.
+Q Are you going to try again?|Will you give it another shot?
+> Definitely, I'm stubborn.|Yes, this weekend.
+= That's the spirit, the second loaf is usually much better.|Great attitude, bread rewards persistence.
+> Maybe, I need a break first.|Not anytime soon.
+= Fair, the bakery will be happy to see you in the meantime.|Totally fair, take a breather.
+X Good luck with the next loaf!|Next time it'll rise, I'm sure of it.|Hang in there, bakers are made one flat loaf at a time.
+@fo_sourdough pos food
+U My first sourdough loaf actually turned out!|I finally baked a decent sourdough.|After weeks of feeding my starter, I made my first sourdough bread.|Just cut into my first homemade sourdough and it has real holes in it.
+A Sourdough takes so much patience, that's a real achievement.|A successful first sourdough is a big deal.|Weeks of starter care paid off.|Nothing smells better than fresh sourdough.
+Q Does your starter have a name?|Did you name your starter?
+> Yes, it's called Doughy.|I named it Bubbles.
+= Ha, that's perfect.|Love that, a starter deserves a name.
+> No, should I?|Not yet.
+= Absolutely, you'll be feeding it for years.|It's tradition, you'll think of the right one.
+Q What are you going to eat it with?|How are you going to eat it?
+> Just butter.|Butter and a little salt.
+= Simple is best with good bread.|That's the perfect first taste.
+> Making sandwiches.|A big sandwich for lunch.
+= That's going to be one great sandwich.|Good bread makes the best sandwiches.
+> Toast with jam tomorrow.|Toasted, for breakfast.
+= Sourdough toast is a real treat.|That's a great breakfast to look forward to.
+X Enjoy that loaf, you earned it!|Congrats on the sourdough, happy baking.|Here's to many more loaves.
+@fo_new_restaurant pos food
+U Tried a new restaurant downtown tonight and it was amazing.|We found a great little {kind} place near my apartment.|Just had dinner at a new {kind} spot and I'm still thinking about it.|The new {kind} restaurant around the corner is so good.
+V kind=Thai,Italian,Korean,Mexican,Ethiopian,Vietnamese,Greek,ramen
+A A new favorite spot is such a good find.|There's nothing like a meal you keep thinking about afterward.|Discovering a great place close to home is the best.|Sounds like a delicious night.
+Q What did you order?|What was the best thing you had?
+> A noodle dish that was incredible.|Some kind of curry, so good.
+= That sounds delicious, noodles and curry are hard to beat.|Now I'm curious, was it spicy?
+> I tried a bit of everything.|We shared a bunch of plates.
+= Sharing plates is the best way to try a new spot.|Smart, now you know what to order next time.
+Q Would you go back?|Are you already planning a return visit?
+> Absolutely, maybe this weekend.|Already planning it.
+= That's the sign of a great restaurant.|Sounds like it's your new regular.
+> Maybe, it was a bit pricey.|Once in a while, it's expensive.
+= A special occasion place, that's still a great find.|Fair, save it for a treat night.
+X Enjoy your new favorite spot!|Sounds like a great find, enjoy the next visit.|Happy eating!
+@fo_new_cuisine pos food
+U I tried {cuisine} food for the first time today.|First time eating {cuisine} food tonight.|My friend took me out for {cuisine} food, which I'd never had before.|Finally tried {cuisine} food after years of meaning to.
+V cuisine=Ethiopian,Korean,Peruvian,Indian,Lebanese,Filipino,Vietnamese,Turkish
+A Trying a new cuisine is such a fun adventure.|{cuisine} food has so many great flavors.|First tastes of a new cuisine are always memorable.|Good on you for trying something new.
+Q What did you think?|Did you like it?
+> Loved it, so much flavor.|It was amazing.
+= That's great, a whole new world of food to explore.|Now you'll want to try everything on the menu.
+> Some of it was too spicy for me.|It was okay, a little different.
+= That's fair, it's a new palate to get used to.|Next time maybe ask for a milder version.
+Q What did you have?|Do you remember what you ordered?
+> Some kind of stew.|A thick, spicy stew.
+= That sounds so comforting.|Stews are a great way to taste a new cuisine.
+> A rice dish with lots of spices.|A big plate of spiced rice.
+= Rice dishes are a great way to start.|That sounds full of flavor.
+> No idea, my friend ordered.|I just pointed at the menu.
+= Ha, sometimes that's the best way.|Trusting the menu worked out.
+X Enjoy exploring the new cuisine!|Here's to more food adventures.|Sounds delicious, happy eating.
+@fo_takeout_again neu food
+U Ordering takeout again tonight, I have zero energy to cook.|Third night of takeout this week, oops.|I was going to cook but I gave up and opened a delivery app.|Can't be bothered to cook, so it's takeout again.
+A Some nights takeout is the only reasonable choice.|No shame in a takeout night, everyone needs a break.|Cooking can wait when you're running on empty.|Takeout exists for exactly these nights.
+Q What are you getting?|What did you order?
+> Pizza, obviously.|Just a big pizza.
+= Pizza is the classic tired-night dinner.|Can't argue with pizza.
+> Chinese food.|Some noodles and dumplings.
+= Great choice, noodles fix everything.|That's a comfort food night for sure.
+Q Do you usually cook?|Is cooking normally your thing?
+> Usually, just not this week.|Most nights, yeah.
+= Then you've earned a few nights off.|A busy week happens, you'll get back to it.
+> Not really, I'm not much of a cook.|Honestly, rarely.
+= Hey, that's fine, takeout keeps restaurants in business.|Maybe a few easy recipes could help sometime.
+X Enjoy your dinner and your night off!|Enjoy the food and relax.|Rest up, the kitchen will still be there tomorrow.
+@fo_meal_prep pos food
+U Spent my Sunday meal prepping for the whole week.|I just prepped five days of lunches.|Meal prep is done and my fridge looks so organized.|Finally got into meal prepping on Sundays.
+A Future you is going to be so grateful.|A fridge full of ready lunches is such a great feeling.|Meal prep is a real time saver.|That's a great way to set up the week.
+Q What did you make?|What's on the menu this week?
+> Chicken and rice bowls.|Chicken, rice, and veggies.
+= A classic for a reason, simple and filling.|That's a solid, healthy lineup.
+> A big pot of chili.|Chili, lots of it.
+= Chili gets better as the week goes on.|That's hearty and easy to reheat.
+> Some soup and salads.|Soup and a few salads.
+= That sounds light and easy.|A nice balance for the week.
+Q How long did it take?|Was it a lot of work?
+> About two hours.|Most of the afternoon.
+= That's a great trade for a whole week of meals.|Worth it for a stress-free week.
+> Not long at all.|Just an hour.
+= Nice, very efficient.|That's impressive.
+X Enjoy your easy week!|Nice work, enjoy those lunches.|Here's to a well-fed week.
+@fo_coffee neg food
+U I'm on my fourth cup of coffee and it's not even noon.|I think I have a coffee problem.|I can't function without at least three coffees.|My coffee habit is getting out of hand.
+A Coffee has a way of becoming a daily ritual.|Plenty of people feel that coffee pull every morning.|Ha, sounds like coffee is running the show today.
+Q How do you take it?|What's your usual coffee order?
+> Black, as strong as possible.|Just plain black coffee.
+= A true coffee purist.|Strong and simple, respect.
+> Lots of milk and sugar.|With oat milk and a little sweetener.
+= More like a treat than a fuel, and that's fine.|That sounds cozy.
+Q Are you thinking about cutting back?|Do you want to drink less of it?
+> Maybe, I'm getting jittery.|Yeah, I should.
+= Swapping one cup for decaf or tea could be an easy start.|Cutting back slowly usually works better than quitting cold.
+> Nope, never.|Not a chance.
+= Ha, fair enough, you know your limits.|Coffee lovers are loyal.
+X Enjoy your coffee, in moderation.|Here's to good coffee and steady hands.|Hope the caffeine carries you through the day.
+@fo_bakery pos food
+U I found the best bakery in my neighborhood.|There's a new bakery near work and I'm in trouble.|Just discovered a tiny bakery that makes amazing croissants.|I keep going back to this little bakery down the street.
+A A great local bakery is a dangerous thing to find.|Fresh pastries nearby is a dream.|A good bakery can make any morning better.|Sounds like your new favorite spot.
+Q What's your favorite thing there?|What do you usually get?
+> The croissants.|Their butter croissants.
+= A good croissant is pure magic.|Flaky and buttery, you can't beat that.
+> Anything with chocolate.|The chocolate muffins.
+= Chocolate pastries are hard to resist.|A chocolate treat is always a good call.
+> Their bread.|A fresh loaf every weekend.
+= Fresh bread is a simple luxury.|That's a great weekly ritual.
+Q How often do you go?|Are you a regular already?
+> Way too often.|Almost every day.
+= Ha, they must know your name by now.|Sounds like you're their favorite customer.
+> Just on weekends.|Once a week as a treat.
+= A weekly treat is the perfect balance.|That's a nice little tradition.
+X Enjoy your bakery finds!|Save me a croissant, at least in spirit.|Happy pastry hunting.
+@fo_grilling pos food
+U We're grilling this weekend.|Firing up the grill for the first time this year.|I'm hosting a barbecue on {day}.|Got a new grill and I'm ready to use it.
+A Grilling season is the best season.|Nothing beats the smell of a grill going.|A barbecue is the perfect weekend plan.|Sounds like a delicious weekend ahead.
+Q What are you going to grill?|What's on the menu?
+> Burgers and hot dogs.|The classics, burgers mostly.
+= You can't go wrong with the classics.|Burgers on the grill are hard to beat.
+> Steak and some veggies.|Chicken and corn on the cob.
+= That sounds amazing, a little char makes everything better.|A great mix, very summery.
+Q Are you having people over?|Is it a big get-together?
+> Yeah, a bunch of friends.|The whole family is coming.
+= A grill and a crowd, that's a great time.|Sounds like a lively backyard.
+> Just us.|Nope, a quiet one.
+= A quiet grill night is lovely too.|Sometimes that's the best kind.
+X Enjoy the barbecue!|Have fun at the grill!|Hope the weather cooperates, enjoy the food.
+@fo_spicy neu food
+U I tried the spiciest wings at the restaurant and I regret everything.|Ate a super hot pepper on a dare.|My friend made me try the hottest sauce they had.|I did a spicy noodle challenge and my mouth is still on fire.
+A Ha, spicy challenges always seem like a good idea at first.|Your mouth is probably still recovering.|That's brave, or maybe a little reckless.|Hot sauce dares are a special kind of fun.
+Q Did you finish it?|Did you make it through?
+> Barely.|Just barely.
+= That still counts as a win.|Barely is still finished, well done.
+> Yes, but I was crying.|I finished it in tears.
+= Tears and all, you did it.|Ha, that's commitment.
+> No, I gave up.|Not even close.
+= Fair, there's no shame in tapping out.|That stuff is serious.
+Q What helped cool it down?|How did you handle the heat?
+> Milk, lots of milk.|A glass of cold milk.
+= Milk really is the best fix.|Smart move, dairy saves the day.
+> Water, which didn't help.|I just drank water.
+= Water tends to spread the heat, milk works better.|Ha, water isn't much help against spice.
+X Hope your taste buds recover soon!|Well played, brave eater.|Maybe stick to mild for a while.
+@fo_grandma_recipe pos food
+U I made my grandma's {dish} recipe for the first time.|Finally tried making my grandmother's famous {dish}.|I cooked my grandma's {dish} and it tasted just like hers.|Found my grandma's handwritten recipe for {dish} and made it tonight.
+V dish=apple pie,meatballs,chicken soup,pierogi,cornbread,tamales,dumplings,pound cake
+A Cooking a family recipe is such a special thing.|Grandma recipes carry so many memories.|There's nothing quite like the taste of home.|That's a lovely way to keep a tradition alive.
+Q How close did it come to hers?|Did it taste like you remembered?
+> Almost exactly the same.|Pretty close!
+= That's wonderful, she'd be proud.|That's a great feeling, a taste of home.
+> Not quite, something was missing.|Close, but hers was better.
+= Grandmas always seem to have a secret touch.|It'll get closer every time you make it.
+Q Did you share it with anyone?|Who got to try it?
+> My whole family.|My parents came over for it.
+= That sounds like a heartwarming dinner.|I bet it brought back memories for everyone.
+> Just me, so far.|I ate it all myself.
+= A little taste of home just for you, that's nice too.|Ha, no regrets there.
+X Enjoy that taste of home!|What a lovely tradition to keep going.|Sounds delicious, and full of memories.
+@fo_farmers_market pos food
+U Went to the farmers market this morning and bought way too much.|Came home from the farmers market with bags of fresh veggies.|The farmers market had the best peaches today.|My farmers market haul is ridiculous this week.
+A The farmers market is so hard to resist.|Fresh produce is one of the best parts of the season.|A good market haul is a great way to start the weekend.|Sounds like you'll be eating well this week.
+Q What did you get?|What was the best thing you found?
+> Tomatoes and corn.|Lots of fresh vegetables.
+= That's the perfect summer combo.|Sounds like some great salads ahead.
+> Berries and peaches.|Fresh fruit, mostly.
+= Ripe fruit from the market is so much better.|Fresh fruit is the best snack.
+Q What are you going to make?|Any plans for all that food?
+> A big salad.|Something simple, like a salad.
+= Fresh ingredients don't need much fuss.|That's a great way to taste everything.
+> No idea yet.|I'll figure it out.
+= Half the fun is deciding what to cook.|Sounds like a week of kitchen experiments.
+X Enjoy all the fresh goodies!|Happy cooking with your haul.|Sounds like a delicious week ahead.
+@fo_craving_pizza neu food
+U I'm craving pizza so badly right now.|All I can think about is pizza.|I would do anything for a slice of pizza right now.|Pizza craving is hitting hard tonight.
+A A pizza craving is hard to ignore.|Pizza is a very reasonable thing to crave.|Some cravings just have to be answered.|Sounds like it's a pizza kind of night.
+Q What's your go-to topping?|What do you like on your pizza?
+> Pepperoni, always.|Just pepperoni.
+= A true classic.|You can't beat pepperoni.
+> Mushrooms and onions.|Lots of veggies.
+= That's a great combo.|Veggie pizza is underrated.
+Q Are you going to order one?|Are you giving in to the craving?
+> Probably, yeah.|Already ordered.
+= Good call, cravings like that deserve respect.|Nice, relief is on the way.
+> No, I'm trying to resist.|I shouldn't.
+= Stay strong, or not, pizza will understand.|Maybe a small slice tomorrow as a reward.
+X Enjoy your pizza if it happens!|Hope that craving gets satisfied.|Here's to pizza nights.
+@fo_date_cooking neu food
+U I'm cooking dinner for a date tonight and I'm nervous.|I invited my date over and promised a homemade meal.|Trying to impress someone with my cooking this weekend.|First time cooking for someone I'm dating.
+A Cooking for someone is such a thoughtful gesture.|A homemade meal makes a great date.|A little nervous is normal, but it'll be sweet.|That's a romantic plan.
+Q What are you making?|What's on the menu?
+> Pasta, something I know well.|A simple pasta dish.
+= Great choice, stick with what you're good at.|Pasta is perfect for a date night.
+> Something new I've never made.|A fancy recipe I found online.
+= Brave, maybe do a quick test run first.|Ambitious, just give yourself extra time.
+Q Are you making dessert too?|Is there a dessert?
+> Yes, something chocolate.|A chocolate mousse.
+= Chocolate is always a winner.|Perfect, chocolate is a date night classic.
+> I bought a cake.|Store-bought cake, no shame.
+= Smart move, a bought dessert saves stress.|Good call, that's one less thing to worry about.
+> No, I forgot about dessert.|Not planned.
+= Some fruit or ice cream would be an easy add.|No worries, the meal is the main event.
+X Good luck, it's going to be lovely!|Have a great date night!|Enjoy the evening, you've got this.
+@fo_burnt_dinner neg food
+U I burnt dinner and now the whole kitchen smells terrible.|Totally burnt the chicken tonight.|Dinner is ruined, I forgot it was in the oven.|I scorched the rice, and it was the only thing I was making.
+A Ugh, burnt dinner is so frustrating.|That happens to every home cook at some point.|The smell of burnt food lingers way too long.|Sounds like a rough night in the kitchen.
+Q What happened?|How did it burn?
+> I got distracted.|I was on my phone.
+= Easy to do, a timer can be a lifesaver.|Distractions get the best of us.
+> The heat was too high.|I had the oven too hot.
+= That's a common mistake, lower and slower helps.|Good to know for next time.
+Q What are you eating instead?|Did you salvage anything?
+> Cereal, sadly.|A bowl of cereal.
+= Cereal for dinner is a time-honored backup.|Cereal never lets you down.
+> Just a sandwich.|A quick sandwich.
+= A sandwich will do the job.|Simple and reliable, good call.
+> Ordered takeout.|Pizza delivery.
+= Solid backup plan.|The classic rescue.
+X Better luck next time in the kitchen!|Hope the next meal goes smoother.|Air out the kitchen and enjoy your backup dinner.
+@fo_eat_healthier neu food
+U I'm trying to eat healthier this month.|Started cutting back on junk food this week.|I've been eating more vegetables lately.|Trying to cook more and eat out less.
+A That's a great goal to set.|Small changes can add up fast.|Eating better can make you feel great.|Sounds like a nice fresh start.
+Q How's it going so far?|Is it working out?
+> Pretty well, actually.|Better than expected.
+= That's great, keep that momentum.|Nice, those early wins matter.
+> It's hard, I miss snacks.|Tough, I keep craving sweets.
+= Totally normal, maybe keep a healthier treat around.|Cravings fade with time, you've got this.
+Q What's your favorite healthy meal so far?|Any new dishes you like?
+> A good stir fry.|Roasted veggies with chicken.
+= That's a great go-to.|Simple and delicious.
+> Smoothies for breakfast.|A fruit smoothie every morning.
+= A smoothie is a great way to start the day.|Easy and tasty, nice.
+> Big salads.|Salads with lots of toppings.
+= Salads can be surprisingly filling.|A good salad with toppings is a real meal.
+X Good luck with your goal!|Keep it up, you're doing great.|Here's to feeling good.
+@fo_leftovers neg food
+U I made way too much chili and now I'm eating it every day.|Day four of leftover pasta.|I cooked for ten people and only four showed up, so leftovers forever.|My fridge is full of leftovers and I'm sick of them.
+A Leftover fatigue is real.|Too much food is a good problem, but still a problem.|After a few days, even the best dish gets old.|Sounds like a lot of the same meal.
+Q Can you freeze some of it?|Have you thought about freezing it?
+> Good idea, I didn't think of that.|Maybe I should.
+= Frozen portions make great lazy dinners later.|Future you will thank you.
+> My freezer's already full.|No room.
+= Ha, then it might be time to share with a neighbor.|Sounds like a sharing situation.
+Q Any way to switch it up?|Have you tried turning it into something new?
+> I put it on rice.|I tried it over rice.
+= Nice, a little change goes a long way.|Rice makes it feel like a new meal.
+> I added cheese.|Lots of melted cheese.
+= Cheese fixes a lot.|Ha, melted cheese is always the answer.
+> Not really.|No, I'm just eating it plain.
+= Maybe try it in a wrap or on a baked potato.|A new topping could make it feel fresh.
+X Good luck finishing it off!|Hang in there, the end is near.|Here's to something new for dinner soon.
+@fo_soup_day pos food
+U It's freezing outside so I made a big pot of soup.|Homemade soup on a cold day is the best.|I spent the afternoon making soup while it rained.|Made chicken noodle soup from scratch today.
+A Soup on a chilly day is pure comfort.|There's nothing cozier than a pot of soup simmering.|Homemade soup is a great way to spend a cold day.|That sounds like the perfect afternoon.
+Q What kind did you make?|What soup was it?
+> Chicken noodle.|Classic chicken soup.
+= The ultimate comfort soup.|Can't beat a classic.
+> Tomato soup with grilled cheese.|Tomato, with a grilled cheese on the side.
+= Tomato soup and grilled cheese is a perfect pair.|That's the coziest combo there is.
+> Vegetable soup.|A big veggie soup.
+= A hearty veggie soup sounds great.|Lots of veggies in one pot, very nice.
+Q Did you make enough for leftovers?|Is there extra for later?
+> Tons.|Enough for the whole week.
+= Soup always tastes better the next day.|That's a smart way to stay warm all week.
+> Barely, we ate most of it.|Not much left.
+= That means it was good.|Sounds like a hit.
+X Stay warm and enjoy the soup!|Enjoy your cozy day.|Sounds delicious, stay cozy.
+@fo_picky_kid neg food
+U My kid refuses to eat anything but pasta.|My son won't touch vegetables.|My daughter is the pickiest eater ever.|Dinner is a battle every night with my picky kid.
+A Picky eating is such a common phase.|Dinner battles are exhausting.|Lots of kids go through a picky stage.|Feeding a picky eater takes serious patience.
+Q How old are they?|What age is your kid?
+> Four.|Just turned three.
+= That's prime picky age, it usually gets better.|Very normal for that age.
+> Eight.|Almost ten.
+= Tastes still change a lot at that age.|They might be more willing to try things soon.
+Q Have you found anything they like?|What does your kid actually eat?
+> Only plain noodles.|Chicken nuggets and fries.
+= At least it's something reliable.|Classic kid favorites.
+> Fruit, weirdly.|They love berries.
+= Fruit is a great win.|That's something good to build on.
+X Hang in there, it gets better.|Good luck at dinner!|Here's to one day of veggies.
+@fo_birthday_cake pos food
+U I'm baking a birthday cake for my {rel}.|Made a birthday cake from scratch for the first time.|Trying to bake a fancy layer cake for a birthday.|I'm decorating a birthday cake right now and it's harder than it looks.
+V rel=mom,best friend,son,daughter,partner,sister
+A Baking a birthday cake is such a sweet gesture.|Homemade cake makes a birthday feel extra special.|That's a lovely thing to do.
+Q What kind of cake is it?|What flavor did you go with?
+> Chocolate.|Double chocolate.
+= Chocolate is always a crowd pleaser.|You can't go wrong there.
+> Vanilla with strawberries.|Lemon cake.
+= That sounds fresh and delicious.|Lovely choice.
+Q How's the decorating going?|Is the frosting cooperating?
+> Messy, but it'll do.|Not great, it's lopsided.
+= Homemade cakes look better with a little character.|Nobody minds a lopsided cake, it's the love that counts.
+> Pretty good, actually.|Better than I thought.
+= Nice, you're a natural.|That's great to hear.
+X Hope the birthday is wonderful!|Enjoy the cake and the celebration.|That cake is going to be a hit.
+@fo_tacos pos food
+U Taco night at my place tonight!|We're making tacos for dinner.|Tuesday means tacos in this house.|I just set up a whole taco bar for dinner.
+A Taco night is always a good idea.|A taco bar makes dinner so much fun.|You can't go wrong with tacos.|Sounds like a fun dinner.
+Q What's your favorite filling?|What are you putting in them?
+> Seasoned beef.|Ground beef, classic.
+= A classic for a reason.|That's the go-to.
+> Chicken with lime.|Lime chicken.
+= Lime chicken sounds perfect.|Bright and zesty, great choice.
+> Fish tacos.|Grilled fish.
+= Fish tacos are so good.|A little slaw on top and you're set.
+Q Hard shells or soft?|Crunchy shells or soft tortillas?
+> Hard shells.|Crunchy all the way.
+= The crunch is half the fun.|A crunchy classic.
+> Soft tortillas.|Soft ones, warmed up.
+= Warm tortillas are the best.|Soft tacos are so satisfying.
+X Enjoy taco night!|Have a delicious dinner!|Here's to taco night.

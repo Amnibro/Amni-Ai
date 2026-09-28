@@ -1,0 +1,247 @@
+@me_binge_season pos media
+U I just binge-watched an entire season in one weekend.|Watched all {n} episodes of a {genre} show in two days, no regrets.|I finished a whole season last night and now I don't know what to do with myself.|Stayed up way too late finishing a {genre} series.|I burned through a full season of a {genre} show this weekend.
+V n=eight,ten,twelve,six;genre=sci-fi,comedy,fantasy,drama,mystery
+A A whole season in one go means it really hooked you.|Binge weekends are one of life's small pleasures.|Sounds like the show did its job a little too well.|Now comes the empty feeling of a finished season.|Nothing like a story you just can't stop watching.
+Q What was it about the show that kept you going?|What hooked you so hard?
+> The cliffhangers, every single episode.|Every episode ended on a cliffhanger.
+= Those endings are designed to make you click next, and they clearly worked.|Ha, cliffhangers are basically a trap. Did the finale pay it off?
+> I just loved the characters.|The cast is so good.
+= Great characters make it feel like hanging out with friends.|A good cast can carry anything. Who was your favorite?
+Q Is there another season coming?|Do you know if there's more coming?
+> Yes, but not until next year.|Supposedly, but no date yet.
+= The wait is the hardest part, but it gives you time for a rewatch.|At least you know more is on the way.
+> No, it was the last one.|It got canceled, sadly.
+= That's bittersweet, but at least the story got told.|Ugh, a canceled show always stings a little.
+X Enjoy the afterglow, and good luck picking the next one.|Sounds like a great weekend of watching.|Rest those eyes, and happy watching next time.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_finale_bad neg media
+U The finale of my favorite show was so disappointing.|Just watched the series finale and I'm honestly annoyed.|Years of watching and that's how they ended it?|The last episode of the show completely fell flat for me.
+A Nothing stings like a finale that doesn't land.|After years of watching, you deserved a better send-off.|A weak ending can color how you feel about the whole show.|Endings are so hard to get right, and it sounds like this one missed.|Ugh, that's a letdown after all that investment.
+Q What bugged you most about it?|What didn't work for you?
+> It felt totally rushed.|They crammed everything into one episode.
+= Rushed endings are the worst, it's like they ran out of time.|Too much story, not enough runtime. Did any part of it work for you?
+> The main character's ending made no sense.|They ruined a character I loved.
+= When a favorite character gets a bad ending, it really hurts.|That's frustrating, you want them to go out right.
+Q Would you still recommend the show?|Is it still worth watching overall?
+> Yeah, the earlier seasons are great.|The first few seasons, absolutely.
+= Good, a bad ending doesn't erase the good years.|Fair, some shows peak early and that's okay.
+> Honestly, not anymore.|Not really, the ending ruined it.
+= That's a shame, but totally understandable.|Fair enough, endings matter a lot.
+X Here's hoping the next show you pick sticks the landing.|Sorry it let you down, at least the ride was fun.|Time to find a new favorite, I guess.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@me_crime_new pos media
+U I just started a new crime show and I'm hooked.|Started a {kind} crime series last night.|I'm two episodes into a crime drama and I already have theories.|My new obsession is this gritty detective show.
+V kind=true crime,murder mystery,detective,small-town
+A Two episodes in and already theorizing, that's a good sign.|A good crime show is so hard to stop watching.|Detective stories are perfect for playing along at home.|Sounds like you found a new favorite.|Crime dramas are great for guessing the twist.
+Q Do you have a suspect yet?|Any theories so far?
+> I think it's the quiet neighbor.|My money is on the brother.
+= Classic, it's always the one who seems harmless.|Bold guess, I love it. What made you suspicious?
+> No clue yet, it's so twisty.|I've changed my mind three times.
+= That's the sign of a well-written mystery.|Ha, a show that keeps you guessing is doing it right.
+Q Are you watching it alone or with someone?|Is anyone watching it with you?
+> With my partner.|My roommate and I watch it together.
+= Watching together makes the theorizing even more fun.|Perfect, now you can argue about suspects.
+> Just me.|By myself, late at night.
+= Solo crime shows at night hit different.|Nice, no one to spoil your theories.
+X Enjoy the mystery, and good luck solving it first!|Happy sleuthing!|Have fun with the rest of the season.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_movie_night_home pos media
+U We're having a movie night at home tonight.|Movie night with the family tonight, popcorn is ready.|Planning a cozy movie night in with my friends.|Tonight is blankets, snacks, and a movie on the couch.
+A A movie night in is one of the coziest plans there is.|Blankets and snacks sound like the perfect setup.|Nothing beats a night on the couch with a good film.|Sounds like the perfect low-key evening.
+Q What are you watching?|Have you picked the movie yet?
+> An old comedy we all love.|Something funny and light.
+= A comedy is always a safe bet for a group.|Great choice, laughing together is the best. Is it a rewatch?
+> A scary movie.|Some horror movie my friend picked.
+= Bold, hope nobody has to sleep with the lights on.|Horror is so much more fun with company.
+> We still can't decide.|Still arguing about it.
+= Ha, picking the movie is half the evening. Maybe let the youngest person choose?|Try narrowing it to three and voting.
+Q What snacks are you having?|What's on the snack table?
+> Popcorn with way too much butter.|Just a huge bowl of popcorn.
+= That's the classic for a reason.|Too much butter is the correct amount.
+> Pizza and candy.|Chips and chocolate.
+= A proper feast, love it.|That's a serious movie night spread.
+X Enjoy the movie night!|Have fun, and save me a virtual handful of popcorn.|Sounds cozy, have a great night.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_theater_movie pos media
+U I saw the best movie in theaters last night.|Just got out of a movie and I'm still thinking about it.|Went to the cinema for the first time in ages and loved it.|We caught a late showing of a new {genre} movie and it was amazing.
+V genre=action,animated,sci-fi,drama,comedy
+A A movie that sticks with you after is the best kind.|The big screen really does make a difference.|Sounds like it was worth the ticket.|Going back to the theater after a long time is such a treat.
+Q What did you like most about it?|What made it so good?
+> The visuals were stunning.|It looked incredible on the big screen.
+= Some movies are just made for a huge screen.|That's the kind of thing you can't get at home. Would you see it again?
+> The story really surprised me.|The ending blew me away.
+= A great twist makes the whole movie.|Nothing better than walking out surprised. Did you see it coming at all?
+Q Would you recommend it?|Should I tell people to go see it?
+> Definitely, go see it in theaters.|Absolutely, it's worth it.
+= That's a strong endorsement.|Big screen or bust, got it.
+> Only if you like the genre.|It's not for everyone.
+= Fair, a movie can be great without being for everyone.|Good to know, some films find their own crowd.
+X Glad you had such a good night at the movies.|Sounds like a great outing.|Enjoy the afterglow of a good film.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_song_stuck neg media
+U I've had the same song stuck in my head for two days.|There's a jingle on a loop in my brain and it won't stop.|Ugh, a song from an ad is stuck in my head.|I woke up humming this song and I can't shake it.
+A Earworms are the most stubborn little things.|Two days is a long run for a song in your head.|There's nothing quite as persistent as a catchy tune.|Ha, your brain has picked its playlist for you.
+Q Do you even like the song?|Is it at least a good song?
+> No, I can't stand it.|Not at all, that's the worst part.
+= That's the cruel part, it's always the annoying ones.|Ha, that feels unfair. Have you tried listening to it all the way through?
+> Honestly, yeah, it's catchy.|It's fine, just too much of it.
+= At least your brain has taste.|Maybe put on a different favorite to swap it out.
+Q Have you tried anything to get rid of it?|Anything working to shake it?
+> Chewing gum, supposedly that helps.|I tried humming something else.
+= Worth a shot, anything to break the loop.|Swapping it for another song can work, as long as that one doesn't stick too.
+> Nothing works.|No luck so far.
+= It'll fade eventually, usually when you're busy with something else.|Give it a day, it usually loses steam.
+X Good luck evicting that song.|Hope it fades soon.|May your brain find a better soundtrack.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@me_album_new pos media
+U My favorite artist just dropped a new album!|The new album from my favorite singer is finally out.|I've been waiting months for this album and it's here.|Been listening to a brand-new album on repeat all day.
+A New music from a favorite artist is the best kind of news.|All that waiting finally paid off.|Listening on repeat means it's a keeper.|A new album day is basically a holiday.
+Q What do you think of it so far?|Is it as good as you hoped?
+> It's even better than I hoped.|It's amazing, no skips.
+= No skips is the highest praise.|Love when it lives up to the hype. Do you have a favorite track yet?
+> It's different, still growing on me.|Not sure yet, it's a new sound.
+= Some albums take a few listens to click.|A new direction can be a grower. What's different about it?
+Q Is there a song you keep replaying?|Do you have a favorite track already?
+> The slow one near the end.|Track three, easily.
+= The deep cuts are often the best ones.|Sounds like track three is getting a lot of plays.
+> Too early to pick.|I love them all.
+= Fair, give it a week.|That's a sign of a great album.
+X Enjoy the new album!|Happy listening!|Sounds like a great soundtrack for the week.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_podcast pos media
+U I just discovered a great new podcast.|Found a podcast about {topic} and I've been hooked all week.|I've been listening to a podcast on my commute and I love it.|My new favorite thing is this podcast about {topic}.
+V topic=history,cooking,space,old mysteries,language,science,sports,weird facts
+A A good podcast makes every commute better.|Finding a new show to follow is so satisfying.|That sounds like a fun one to get hooked on.|There's nothing like having a new favorite in your ears.
+Q What do you like about it?|What makes it so good?
+> The hosts are hilarious.|The hosts have great chemistry.
+= Good hosts make any topic fun.|That chemistry is everything in a podcast.
+> I learn something every episode.|It's really informative.
+= Learning while you drive or walk is such a nice bonus.|Love that. What's the most interesting thing you've learned?
+Q How many episodes are there?|Is there a big back catalog?
+> Hundreds, I'm set for months.|Like two hundred episodes.
+= Perfect, that's months of listening lined up.|What a treasure trove.
+> Just a handful so far.|Only about ten.
+= Then you can catch up and wait for new ones with everyone else.|Small but fresh, nice.
+X Enjoy the listening!|Happy listening on the commute.|Sounds like a great find.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_rewatch neu media
+U I'm rewatching my favorite old sitcom for the fifth time.|Started rewatching a show I loved in high school.|Went back to an old comfort show tonight.|Rewatching an old favorite because I need something familiar.
+A Comfort shows are comfort shows for a reason.|Rewatching something you love is like visiting an old friend.|There's something relaxing about knowing exactly what happens next.|Old favorites really do hit the spot sometimes.
+Q Does it hold up?|Is it as good as you remember?
+> Yeah, still hilarious.|Better than I remembered.
+= The good ones never really age.|Love that, you probably catch jokes you missed before.
+> Some parts aged weirdly.|It's a bit cringe in places.
+= Ha, that happens, but the charm is usually still there.|Fair, nostalgia covers a lot of rough edges.
+Q Do you have a favorite episode?|Is there an episode you always look forward to?
+> The holiday episode.|The one with the road trip.
+= Those episodes are always classics.|Nothing beats a good road trip episode.
+> Too many to pick.|They're all good.
+= Spoken like a true fan.|That's a sign of a great show.
+X Enjoy the rewatch.|Have a cozy time with your old favorite.|Sounds like a nice way to unwind.
+C Thanks!|Ha, fair.|Yeah, true.|Will do.|Thanks, good point.
+@me_mystery_book pos media
+U I'm reading a mystery novel and I can't put it down.|Stayed up until 2am reading a whodunit.|I'm halfway through a thriller and I need to know how it ends.|Started a mystery book on the train and missed my stop.
+A A book you can't put down is the best problem to have.|Late-night reading is worth the tired morning when the book is that good.|Mysteries have a way of stealing your sleep.|Ha, missing your stop means the book is doing its job.
+Q Do you have a guess who did it?|Any theories yet?
+> I think it's the housekeeper.|I suspect the best friend.
+= Ooh, a bold pick, I hope you're right.|Always watch the best friend.
+> No clue, it's so twisty.|Every chapter changes my mind.
+= That's a great mystery then.|The best ones keep you guessing to the last page.
+Q Do you read a lot of mysteries?|Is this your usual genre?
+> Yes, they're my favorite.|All the time.
+= Then you'll be hard to fool, that's fun.|A true mystery fan.
+> Not really, this is new for me.|First one in years.
+= Sounds like it might become a habit.|What a great one to start with.
+X Enjoy the rest of the book!|Happy reading, and no peeking at the last page.|Hope the ending is worth it.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_bookclub neu media
+U My book club picked a {kind} for this month.|I have to finish our book club book by {day}.|Book club meets tomorrow and I'm only halfway through the book.|I have a stack of pages left before book club on {day}.
+V kind=long historical novel,memoir,fantasy novel,classic,short thriller
+A Book clubs are a nice excuse to read something new.|Nothing like a deadline to get the pages turning.|It's fun having people to talk about a book with.|Ha, the book club crunch is real.
+Q How are you liking the book?|What do you think of it so far?
+> I'm really into it.|It's great so far.
+= Nice, that makes the discussion so much more fun.|Love that. What's your favorite part so far?
+> It's kind of slow.|Honestly, it's a struggle.
+= Some books take a while to get going.|Well, a book you don't love can make for a lively discussion.
+Q What's your book club like?|Is it a big group?
+> Just a few friends, mostly wine and snacks.|Pretty casual, a handful of people.
+= That sounds like the best kind of book club.|Casual is perfect, less pressure and more fun.
+> About ten people, pretty serious.|A big group that really digs in.
+= A serious group must make for great conversations.|Sounds like you get some deep discussions.
+X Enjoy book club!|Happy reading, and have fun at the meeting.|Good luck with the book.
+C Thanks!|Ha, fair.|Yeah, true.|Will do.|Thanks, good point.
+@me_play pos media
+U We went to see a play downtown last night.|Saw a local theater production and it was so good.|I finally went to see a live play and loved it.|My friend was in a community play and it was fantastic.
+A Live theater has such a special energy.|There's nothing like seeing a story happen right in front of you.|Sounds like a great night out.|Local theater can be so impressive.
+Q What was the play about?|What kind of show was it?
+> A comedy about a family reunion.|A funny one, lots of laughs.
+= A comedy live is so much fun, the laughter is contagious.|Sounds like a great time. Who stole the show?
+> A dramatic one, pretty intense.|A serious drama.
+= A good drama live can really stay with you.|That kind of show leaves you thinking for days.
+Q Would you go again?|Are you going to see more shows?
+> Definitely, I'm hooked.|For sure, I want to go more often.
+= That's a great new habit to pick up.|Love that, there's always something on.
+> Maybe, tickets are pricey.|Once in a while.
+= Fair, local theaters often have cheaper nights though.|That makes it feel more special anyway.
+X Glad you had such a good night at the theater.|Sounds like a lovely evening.|Enjoy the rest of your week.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_cried_movie neu media
+U I cried so hard at a movie last night.|A movie made me sob and I wasn't ready for it.|Watched a sad film and now I'm a mess.|I didn't expect to cry at an animated movie, but here we are.
+A A movie that makes you cry really got to you.|Sometimes a good cry at a movie is exactly what you need.|Ha, the sneaky sad ones get everyone.|That's the power of a good story.
+Q What part got you?|Which scene did it?
+> The ending, totally.|The very last scene.
+= Endings like that know exactly what they're doing.|Nothing hits like a last scene.
+> When the dog showed up.|Anything with an animal.
+= Animal scenes get everyone, no shame there.|Ha, they know that's the weak spot.
+Q Would you watch it again?|Is it worth a rewatch?
+> Yes, but with tissues.|Maybe, now that I'm prepared.
+= A box of tissues and you're set.|Knowing what's coming might make it even more moving.
+> No way, once was enough.|Never again, too sad.
+= Fair, some movies are a one-time experience.|Ha, totally understandable.
+X Sounds like a good movie, even if it wrecked you a little.|Grab a snack and something funny next.|Hope the next one is lighter.
+C Thanks!|Ha, fair.|Yeah, true.|Will do.|Thanks, good point.
+@me_kid_cartoon neg media
+U My kid has watched the same cartoon about fifty times.|My toddler wants the same show on repeat all day.|I can recite every line of my kid's favorite cartoon now.|If I hear that cartoon theme song one more time.
+A Ha, kids really do love a rerun.|Knowing every line is a parenting badge of honor.|That theme song is probably living in your head rent-free.|Repeat viewing is apparently a toddler specialty.
+Q Is the show at least tolerable?|Do you mind the show itself?
+> It's actually kind of cute.|It's not bad, honestly.
+= That helps a lot, some of them are surprisingly sweet.|Lucky you, some shows are way worse.
+> It drives me up the wall.|The songs are the worst.
+= Ha, that's the classic parent experience.|Maybe try slipping in a new show and hope it catches on.
+Q Have you tried introducing a new show?|Any luck getting them to watch something else?
+> Tried, they refused.|Nope, meltdown every time.
+= Ha, kids have strong opinions.|That's tough, maybe try a similar show with the same vibe.
+> Sometimes it works.|A little, on good days.
+= That's progress.|Every bit of variety counts.
+X Hang in there, this phase will pass.|Good luck, and may the next favorite be catchier.|Hope you get to pick the show someday soon.
+C Thanks.|Ha, thanks.|Hope so.|Yeah, fingers crossed.|Thanks, I'll try.
+@me_playlist pos media
+U I made the perfect playlist for our road trip.|Spent an hour making a driving playlist for this weekend.|Just finished a road trip playlist with like two hundred songs.|Our road trip playlist is officially ready.
+A A good playlist makes the drive half the fun.|Two hundred songs should cover a lot of miles.|Playlist building is an art.|Sounds like the car is going to be a concert.
+Q What kind of music is on it?|What's the vibe of the playlist?
+> Lots of old sing-alongs.|Classic songs everyone knows.
+= Sing-alongs are the best for long drives.|Perfect, nothing beats everyone singing together.
+> A mix of everything.|A little bit of every genre.
+= A mix keeps everyone happy.|Something for everyone, smart. Who gets control of the aux?
+Q Where are you driving?|How long is the drive?
+> To the coast, about five hours.|Five hours to the beach.
+= That's a solid playlist length for it.|Beach bound with good music, love it.
+> Just a couple hours to my parents' place.|Only two hours.
+= Short and sweet, you'll get the best songs in.|Easy drive, great soundtrack.
+X Enjoy the drive and the music!|Have a great road trip!|Safe travels, and sing loud.
+C Thanks!|Ha, thanks.|Will do.|Yeah, for sure.|Thanks, I will.
+@me_cant_pick neu media
+U I've been scrolling for thirty minutes and can't pick anything to watch.|Too many streaming options and nothing to watch.|I can't decide what to watch tonight.|Spent more time choosing a show than watching one.
+A The endless scroll is a real evening thief.|Too many choices can be worse than too few.|Ha, choosing is its own little show.|That scroll-and-sigh routine is so familiar.
+Q What kind of mood are you in?|Are you in the mood for something light or serious?
+> Something light and funny.|Something easy.
+= Go for a comedy you've seen before, zero risk.|A light sitcom is perfect for that.
+> Something gripping.|I want something I can get into.
+= A mystery or thriller could do the trick.|Maybe start a limited series, it has an ending built in.
+Q Do you want a movie or a show?|Movie or series tonight?
+> A movie, I want it done tonight.|Just a movie.
+= Good call, a movie means no cliffhanger keeping you up.|Nice, one and done.
+> A show I can keep watching.|A series.
+= Then pick something with short episodes to test it out.|A series is great if you want a new habit.
+X Hope you find something good!|Happy watching, whatever you land on.|Enjoy the night in.
+C Thanks!|Ha, fair.|Yeah, true.|Will do.|Thanks, good point.

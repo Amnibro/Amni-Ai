@@ -1,0 +1,324 @@
+@ho_garden_start pos hobbies
+U I started a vegetable garden this spring.|I finally built a couple of raised beds in the backyard and planted veggies.|Just planted my first vegetable garden!|I spent the whole weekend putting in a little veggie patch.|Decided to grow my own vegetables this year.
+A A vegetable garden is such a rewarding project.|Fresh soil and new seedlings, that's a great way to spend a weekend.|Growing your own food feels a little bit like magic.|Nothing tastes quite like something you grew yourself.|Getting your hands in the dirt is a lovely way to unwind.
+Q What did you plant?|What are you growing?
+> Tomatoes, peppers, and some herbs.|Mostly tomatoes and basil.
+= That's the classic summer lineup, and they go perfectly together.|Great picks, fresh basil alone makes it worth it. Did you start from seeds or little plants?
+> Lettuce, carrots, and a few beans.|Salad stuff, mostly.
+= Those are forgiving crops, a smart way to start.|Homegrown salad is a real treat. Does that spot get a lot of sun?
+Q Have you gardened before?|Is this your first garden?
+> First time ever.|Total beginner here.
+= Everyone starts somewhere, and gardens are patient teachers.|You'll learn so much this first season. Is anyone giving you tips?
+> I used to help my grandma with hers.|I grew a few things as a kid.
+= That's a sweet connection to carry into your own garden.|Some of it probably comes right back once you start digging.
+X Happy gardening, I hope everything sprouts nicely!|Enjoy watching it grow, that's the best part.|Here's to a big harvest this summer.
+@ho_first_tomatoes pos hobbies
+U My first tomatoes are finally ripe!|I picked the first tomato from my garden today.|After weeks of waiting, my tomato plants actually gave me tomatoes.|Look at me, harvesting my own tomatoes.
+A The first ripe tomato is such a proud moment.|All that watering finally paid off.|A homegrown tomato beats anything from the store.|Harvest day is the best day in a garden.
+Q What are you going to make with them?|Any plans for the first batch?
+> Just eating them with salt.|Slicing them up and eating them plain.
+= Honestly, that's the best way to taste a fresh tomato.|Simple and perfect, you can really taste the summer in them.
+> A big pasta sauce.|Maybe a caprese salad.
+= That sounds delicious, homegrown makes it extra special.|Great idea, fresh tomatoes shine in that. Do you have basil growing too?
+Q How many plants do you have?|Is it a big crop?
+> Just two plants.|Only a few so far.
+= Two plants can still give you a surprising amount.|A few is perfect, you get to savor each one.
+> Way too many, I'm buried in tomatoes.|I planted eight, which was a mistake.
+= Ha, that's a good problem to have. Are the neighbors getting some?|Time to learn a few sauce recipes, then.
+X Enjoy those tomatoes, you earned them!|Happy harvesting!|Here's to many more ripe ones this summer.
+@ho_guitar_learning neu hobbies
+U I've been teaching myself guitar.|I bought a used guitar and I'm trying to learn.|Three weeks into learning guitar and my fingertips hurt.|I finally started learning guitar after years of saying I would.|I'm learning guitar from online videos.
+A Guitar is such a satisfying instrument to learn.|Sore fingertips are basically a guitar rite of passage.|Every beginner guitarist goes through that awkward early stage.|Learning an instrument as an adult takes real patience.|Picking up the guitar is a fun way to spend your evenings.
+Q What are you working on right now?|What are you practicing these days?
+> Just basic chords.|Switching between chords without pausing.
+= Chord changes are the hardest part at first, and then it clicks.|Good foundation, everything else builds on that. Which chord is giving you trouble?
+> Trying to learn one song all the way through.|A simple song I love.
+= Learning a song you love keeps you motivated.|That's the best kind of goal. What song is it?
+Q How often do you practice?|Are you playing every day?
+> A little every day.|About fifteen minutes a day.
+= Short daily practice is exactly how it sticks.|That's the way to do it, consistency beats long sessions.
+> Only on weekends.|Whenever I remember.
+= Even a few minutes on weekdays could speed things up a lot.|Try leaving it out of the case so it's easy to grab.
+X Keep strumming, it gets easier fast.|Enjoy the learning, your fingers will toughen up.|Have fun with it, one chord at a time.
+@ho_watercolor pos hobbies
+U I've been painting with watercolors lately.|Picked up a cheap watercolor set and I'm hooked.|I spent the afternoon painting in watercolor.|Watercolor painting has become my new favorite thing.
+A Watercolor is such a relaxing medium.|Getting hooked on a new hobby is a great feeling.|Painting is a lovely way to spend an afternoon.|Watercolors have such a soft, dreamy look.
+Q What do you like to paint?|What have you been painting?
+> Mostly landscapes.|Skies and trees, mostly.
+= Watercolor is perfect for skies, the colors blend so nicely.|Landscapes are a great place to practice. Do you paint from photos or outside?
+> Flowers and plants.|Little botanical sketches.
+= Flowers are such a nice subject for watercolor.|Botanical painting sounds lovely and calming.
+Q Is it harder than you expected?|How's it going so far?
+> Way harder, the water does whatever it wants.|It's tricky, everything bleeds together.
+= That's the famous watercolor challenge, it takes a while to tame.|Letting it bleed a little is part of the charm.
+> Easier than I thought, actually.|It's going really well.
+= Sounds like you've got a knack for it.|Love that, keep riding that momentum.
+X Keep painting, I bet the next one will be even better.|Enjoy the creative time!|Have fun with the brushes.
+@ho_knitting pos hobbies
+U I'm knitting my first scarf.|I learned to knit and I'm halfway through a scarf.|Knitting a scarf has become my new evening thing.|I'm working on a scarf, my very first knitting project.
+A Knitting is such a cozy hobby.|A handmade scarf is a lovely thing to make.|Knitting in the evening sounds so relaxing.|Learning to knit takes a lot of patience.
+Q What color yarn are you using?|What does the scarf look like?
+> A deep green.|Dark blue, pretty simple.
+= That's a great scarf color, it goes with everything.|Classic and cozy, that'll get a lot of use.
+> Bright stripes, very loud.|Rainbow yarn.
+= Bold and fun, I love it.|A cheerful scarf for gray days, perfect.
+Q Who's going to wear it?|Is it for you or a gift?
+> Me, obviously.|I'm keeping it.
+= You deserve a cozy scarf you made yourself.|Good call, you'll think of this winter every time you wear it.
+> It's a gift for my mom.|I'm giving it to a friend.
+= A handmade gift like that means so much.|They're going to love it, especially knowing you made it.
+X Happy knitting, I hope it turns out cozy!|Enjoy the clicking needles.|Have fun with it, it's going to be great.
+@ho_photo_walk pos hobbies
+U I went on a long photography walk today.|Spent the morning taking pictures around the neighborhood.|I've been getting into photography and went out shooting today.|Went for a walk just to take pictures today.
+A A photo walk is a great way to notice things you usually miss.|Wandering around looking for shots sounds like a lovely way to spend the day.|Photography makes even a familiar walk feel new.|Getting into photography changes how you see everything around you.
+Q What did you end up photographing?|What caught your eye?
+> Old buildings and doorways.|Mostly street scenes.
+= Doorways and old buildings have so much character.|Street scenes tell such good stories. Do you shoot in color or black and white?
+> Birds and flowers.|Mostly nature stuff.
+= Nature is a great subject, there's always something new.|Birds are tricky to catch, nice work if you got some.
+Q Are you using a real camera or your phone?|What are you shooting with?
+> Just my phone.|My phone camera.
+= Phones take great photos these days, it's more about the eye.|The best camera is the one you have on you.
+> An old film camera.|A secondhand camera I found.
+= That's so cool, you'll learn a lot from it.|A secondhand camera with some history, love that.
+X Keep shooting, you've got a good eye for it.|Enjoy the photo walks!|Happy shooting, I hope you find lots of good light.
+@ho_reading_challenge neu hobbies
+U I set a goal to read fifty books this year.|I'm doing a reading challenge this year.|I'm trying to read a book a week this year.|I joined a yearly reading challenge.
+A A reading goal is a great way to make time for books.|That's an ambitious and fun target.|Reading challenges are a nice push to read more.|A year full of books sounds like a good year.
+Q How's it going so far?|Are you on track?
+> Ahead of schedule!|Pretty good, I'm right on pace.
+= Sounds like you're really enjoying it.|Great, keep that rhythm going.
+> Behind, but catching up.|Not great, I've slowed down.
+= Short books count too, that's a nice way to catch up.|No pressure, the point is enjoying the reading. What are you reading now?
+Q What kind of books are you reading?|What have you been reading?
+> Lots of mysteries.|Mostly thrillers.
+= Mysteries are great for keeping the pages turning.|Thrillers are perfect for a challenge, they fly by.
+> Some classics I never got around to.|A mix of history and memoirs.
+= That's a nice way to fill some gaps.|A good mix, real stories can be the most gripping.
+X Happy reading, I hope you hit your goal!|Enjoy the books!|Here's to lots of good reads this year.
+@ho_jigsaw pos hobbies
+U I just finished a thousand-piece puzzle.|Finally put the last piece in my jigsaw puzzle!|We finished the jigsaw puzzle that's been on the dining table all week.|Done with the hardest jigsaw puzzle I've ever tried.
+A A thousand pieces takes real patience.|The last piece is such a satisfying moment.|Clearing the table after a finished puzzle is a great feeling.|Finishing a tough one like that is a real accomplishment.
+Q What's the picture?|What does the puzzle show?
+> A big mountain landscape.|A lake with lots of sky.
+= All that plain sky must have been tough.|Landscapes look so good once they're finished.
+> A bunch of cats in a bookstore.|A busy street market.
+= Ha, that sounds fun and a little chaotic.|Lots of little details to find, what a good pick.
+Q Do you do puzzles a lot?|Is this a regular thing for you?
+> All the time, it's how I wind down.|Yes, one after another.
+= Sounds like the perfect way to unplug.|You must be pretty fast by now.
+> First one in years.|Not usually.
+= Sounds like you might be getting hooked again.|Good way to rediscover it.
+X Enjoy the finished picture!|Happy puzzling!|Nice work, and good luck with the next one.
+@ho_game_marathon pos hobbies
+U I spent all Saturday playing a new video game.|I've been playing this new game nonstop.|I stayed up way too late gaming last night.|Lost a whole afternoon to a video game today.
+A A good game can eat a whole day before you notice.|Getting totally absorbed in a game is half the fun.|A late-night gaming session is a classic.|Sounds like you found a game worth clearing your schedule for.
+Q What kind of game is it?|What are you playing?
+> A big open world adventure.|A huge fantasy game.
+= Those are easy to get lost in, in the best way.|So much to explore. Are you doing all the side quests?
+> A little puzzle game.|A cozy farming game.
+= Those are so relaxing and sneakily addictive.|Cozy games are the best way to unwind.
+Q Are you playing solo or with friends?|Do you play it with anyone?
+> Just solo.|By myself.
+= Solo gaming is its own kind of peaceful.|You get to go at your own pace.
+> With a few friends online.|With my roommate.
+= Playing with friends makes it even better.|Fun, that's great for some friendly rivalry.
+X Have fun with the game!|Enjoy it, and maybe get a little sleep too.|Happy gaming!
+@ho_game_beat pos hobbies
+U I finally beat the game I've been playing for months!|Just finished the final boss after so many tries.|I beat the whole game last night.|After forty hours, I finally finished that game.
+A Beating a long game is so satisfying.|All that persistence finally paid off.|The final boss moment is the best feeling.|That's a real victory, all those hours paid off.
+Q How many tries did the last part take?|Was the ending tough?
+> Way too many.|Dozens of tries.
+= The harder it is, the sweeter the win.|That makes finally getting it even better.
+> First try, somehow.|Surprisingly easy.
+= Sounds like all that practice paid off.|Ha, a smooth ending after all that.
+Q What are you going to play next?|Got another game lined up?
+> No idea, I feel a little lost.|Nothing yet.
+= That post-game emptiness is real, give it a few days.|A little break before the next one could be nice.
+> Already started a new one.|Yes, I have a list.
+= No rest for a gamer.|Nice, the next adventure awaits.
+X Congrats on beating it!|Enjoy the victory!|Well played, enjoy the next one.
+@ho_board_game_night pos hobbies
+U We had a board game night last night.|Played board games with friends until midnight.|Game night at my place was so much fun.|Had friends over for board games yesterday.
+A Board game night is such a good way to hang out.|Nothing like a table full of friends and snacks.|Game nights always seem to run later than planned.|Board games bring out everyone's competitive side.
+Q What did you play?|Which games did you play?
+> A strategy game that took hours.|Some long strategy game.
+= Those long ones are so satisfying when they come together.|Hours well spent. Who won?
+> Card games and some party games.|Mostly silly party games.
+= Party games are the best for laughs.|Silly ones are great, everyone can join in.
+Q Are you pretty competitive?|Do you play to win?
+> Very, I'm terrible at losing.|Absolutely.
+= Ha, every game night needs someone like that.|Fair, it's more fun when it matters.
+> Not really, I just like the company.|Nope, I'm there for the snacks.
+= That's the best attitude for game night.|Snacks are a crucial part of it.
+X Sounds like a great night!|Here's to the next game night.|Fun, may the dice be kind next time.
+@ho_woodworking neu hobbies
+U I just finished my first woodworking project.|I made a little side table out of scrap wood.|Finally finished building a bookshelf from scratch.|I built a small bench in my garage this weekend.
+A Building something with your own hands is so satisfying.|Woodworking is such a great skill to learn.|Turning raw wood into furniture is really cool.|A finished project you built yourself is a proud thing.
+Q How did it turn out?|Are you happy with it?
+> Pretty good, a little wobbly.|It's slightly crooked, but I like it.
+= A little wobble gives it character.|You made it, that's what makes it special.
+> Better than I expected!|Really solid, actually.
+= Love that, you should be proud of it.|Sounds like you've got a knack for it.
+Q What's your next project?|Planning to build anything else?
+> Maybe a coffee table.|A few shelves for the kitchen.
+= That's a great next step.|Practical and fun, good choice.
+> No idea yet.|I need a break first.
+= Fair, the next idea will show up.|Rest those arms, you earned it.
+X Enjoy your new piece of furniture!|Keep building, it sounds great.|Nice work, and keep all ten fingers safe.
+@ho_new_trail pos hobbies
+U I hiked a new trail this morning.|We found a great new hiking trail over the weekend.|I tried a trail I'd never done before yesterday.|Just got back from hiking a new trail with an amazing view at the top.
+A A new trail is always a little adventure.|Trying a new route keeps hiking exciting.|Getting out on a trail is such a good reset.|Sounds like a great way to spend some time outside.
+Q How long was the hike?|Was it a long one?
+> About five miles.|A few hours round trip.
+= Five miles or a few hours is a solid hike.|A good chunk of time outdoors, that's great.
+> Pretty short, but steep.|Only an hour, but mostly uphill.
+= Short and steep can be tougher than long and flat.|Uphill all the way is a real workout.
+Q Did you see anything cool?|Any wildlife?
+> A couple of deer.|We saw a hawk.
+= That's such a nice surprise on a trail.|So cool, they're amazing to watch.
+> Just a lot of trees.|Nothing much.
+= Trees and fresh air are plenty.|Sometimes a quiet trail is the best kind.
+X Happy trails, and rest those legs!|Enjoy the rest of your day!|Sounds like a great hike.
+@ho_fishing pos hobbies
+U I went fishing with my {rel} this weekend.|Spent the morning fishing at the lake with my {rel}.|My {rel} and I took the boat out fishing yesterday.|Went fishing with my {rel} at dawn.
+V rel=dad,uncle,grandpa,brother,cousin
+A A morning on the water with your {rel} sounds so peaceful.|Fishing trips are such a nice way to slow down.|Early mornings on the water are hard to beat.|Fishing with family is a great tradition.
+Q Did you catch anything?|How was the fishing?
+> Yeah, a couple of good ones.|A few nice fish.
+= Sounds like a good day on the water.|Great haul! Did you keep them or let them go?
+> Nothing at all.|Zero bites.
+= That's fishing, sometimes the quiet is the point.|Ha, still a morning well spent.
+Q Do you two go often?|Is it a regular thing?
+> Every chance we get.|Most weekends.
+= Sounds like you've found your happy place.|That's a great routine to share.
+> Not really, maybe once a year.|Hardly ever.
+= Then it's a special treat when you do.|Maybe this will get you out more.
+X Tight lines next time!|Sounds like a lovely morning.|Enjoy the next day on the water.
+@ho_language_streak pos hobbies
+U I'm learning {lang} on an app every day.|My {lang} practice streak just hit two months.|I've been practicing {lang} every morning.|I haven't missed a day of {lang} practice in weeks.
+V lang=Spanish,French,Italian,Japanese,German,Korean,Portuguese
+A Daily practice is the real secret to learning a language.|Keeping a streak going takes real discipline.|Learning {lang} is such a great goal.|Every morning adds up faster than you'd think.
+Q Why are you learning {lang}?|What got you started?
+> For a trip next year.|I want to travel somewhere they speak it.
+= Great motivation, it'll make the trip so much richer.|That's a fun goal to work toward.
+> My partner's family speaks it.|To talk with my grandparents.
+= That's a really meaningful reason.|They're probably thrilled you're learning.
+Q Can you hold a conversation yet?|How much can you say so far?
+> Just the basics.|I can order food.
+= The basics are the hardest part to get going.|Ordering food is a very important skill.
+> Simple chats, slowly.|A little, if people speak slowly.
+= Chatting at all is real progress.|Slow and steady works, keep at it.
+X Keep that streak alive!|Good luck with the practice!|Enjoy the learning, you're doing great.
+@ho_chess neu hobbies
+U I've been playing a lot of chess online.|I got really into chess lately.|I've been playing chess every night.|Chess has taken over my free time.
+A Chess is such a deep game to get into.|Chess every night sounds like a great brain workout.|Online chess can get pretty addictive.|There's always something new to learn in chess.
+Q Are you studying openings or just playing?|Do you study or just play games?
+> Just playing a lot.|Mostly quick games.
+= Playing lots of games is a great teacher too.|Quick games are fun and teach you to trust your instincts.
+> Studying some openings.|Doing puzzles every day.
+= That's a smart way to improve.|Puzzles really sharpen your eye for tactics.
+Q Do you play with anyone in person?|Any friends to play with?
+> My dad, sometimes.|A friend from work.
+= Over-the-board games have a totally different feel.|A friendly rival helps you improve.
+> Nope, just online.|Not yet.
+= A local club could be fun someday, they're often welcoming.|Online is a great place to start.
+X Good luck with your next games!|Enjoy the chess!|Have fun, and may your next game be a good one.
+@ho_pottery pos hobbies
+U I made my first bowl on the pottery wheel!|I took a beginner pottery class this week.|Pottery class was so much fun tonight.|I've been going to a pottery class and just made my first piece.
+A Pottery sounds like such a fun hands-on class.|Working with clay is so satisfying.|A pottery class is a great way to try something new.|Making something on the wheel is harder than it looks.
+Q How did your first piece turn out?|What did you make?
+> Lopsided, but I love it.|A bit wonky.
+= Lopsided pieces have the most personality.|The wonky ones are always the favorites.
+> A small bowl that came out nice.|Actually pretty decent!
+= That's impressive for a beginner.|A bowl you made yourself, that's great.
+Q Is the wheel tricky?|Is it harder than it looks?
+> So much harder.|The clay kept collapsing.
+= Centering the clay takes everyone a while.|It does, but it clicks with practice.
+> Easier than I thought.|Not too bad.
+= Sounds like you're a natural.|Lucky you, it's tricky for most people.
+X Enjoy your pottery class!|Have fun getting messy with the clay.|Keep making things, I bet they get better every week.
+@ho_baking_bread pos hobbies
+U I've gotten really into baking bread lately.|Baking bread has become my weekend hobby.|I've been baking a new loaf every weekend.|My new hobby is homemade bread.
+A Fresh bread is such a rewarding thing to make.|Baking every weekend sounds so cozy.|Your kitchen must smell amazing.|Bread is a craft you can keep getting better at forever.
+Q What kind of bread do you make?|What have you been baking?
+> Sourdough, mostly.|I have a starter going.
+= Sourdough is a real labor of love.|Taking care of a starter is like having a little pet. Does it have a name?
+> Simple sandwich loaves.|Basic white bread.
+= Simple bread is the best kind to master.|Homemade sandwich bread is a real upgrade.
+Q Who gets to eat it all?|Are you sharing the bread with anyone?
+> My family.|My roommates.
+= They're lucky to have a baker around.|That's a great perk for them.
+> Mostly me.|I eat all of it.
+= That's a fine reward for your work.|Honestly, you earned every slice.
+X Happy baking!|Enjoy your next loaf!|Keep it up, it sounds delicious.
+@ho_birdwatching neu hobbies
+U I've started birdwatching.|I got a pair of binoculars and now I watch birds every morning.|I'm getting really into birdwatching.|I put up a bird feeder and I'm obsessed with watching it.
+A Birdwatching is such a calming hobby.|Once you start noticing birds, you see them everywhere.|Morning birdwatching sounds so peaceful.|Watching birds is a lovely way to slow down.
+Q What's the coolest bird you've seen?|Seen anything exciting yet?
+> A woodpecker.|A bright red cardinal.
+= What a great sighting to start with.|Such a striking bird to spot.
+> Mostly sparrows so far.|Just the usual birds.
+= Sparrows are sweet, and the rare ones will come.|The regulars have their own personalities too.
+Q Are you keeping a list?|Do you log what you see?
+> Yes, in a little notebook.|I keep a list on my phone.
+= A bird list is a fun way to track it.|That'll be fun to look back on.
+> Not yet.|No, I just watch.
+= Just watching is plenty.|Simply enjoying them is the best part anyway.
+X Happy birdwatching!|Enjoy the morning visitors.|Hope you spot something rare soon.
+@ho_journaling neu hobbies
+U I've started journaling every night.|I've been keeping a journal for a month now.|Journaling before bed has become my thing.|I bought a nice notebook and started writing in it daily.
+A Journaling is a lovely habit to build.|Writing before bed is a nice way to wind down.|A daily journal is a gift to your future self.|Keeping it up every day takes real commitment.
+Q What do you write about?|What goes in it?
+> Just what happened that day.|Daily stuff.
+= A record of ordinary days becomes precious later.|Your future self will enjoy reading it.
+> Ideas and plans.|Goals, mostly.
+= It's a great way to keep your ideas in one place.|Writing goals down makes them feel real.
+Q Is it getting easier to keep up?|Has it stuck so far?
+> Yeah, it's a habit now.|It feels automatic now.
+= That's the hardest part done.|Good, habits are the whole trick.
+> Some nights I skip.|Not always.
+= Skipping a night is totally fine.|Just pick it back up the next night.
+X Enjoy the journaling!|Keep filling those pages.|Happy writing, and enjoy the wind-down.
+@ho_model_kit pos hobbies
+U I'm building a model ship kit.|I've been working on a tiny model airplane kit for weeks.|Building a model kit at my desk every evening.|I'm in the middle of putting together a model car kit.
+A Model kits take so much patience.|Tiny parts and glue, that takes real focus.|Evenings with a model kit sound so absorbing.|Watching it come together piece by piece must be satisfying.
+Q How long has it taken so far?|How long have you been working on it?
+> A few weeks.|About a month.
+= That's real dedication to tiny parts.|Slow and careful is the way to do it.
+> Just a few days.|Only since the weekend.
+= Sounds like you've been hooked.|Quick progress, you must be focused.
+Q Are you going to paint it?|Will you paint it when it's done?
+> Yes, that's the fun part.|Definitely.
+= That's where it really comes alive.|The painting is the best part.
+> No, it's pre-colored.|No paint needed.
+= That saves a lot of time and mess.|Less mess, then, and more building.
+X Enjoy the build!|Have fun with all those tiny pieces.|Sounds like a great project to finish.
+@ho_choir pos hobbies
+U I joined a community choir.|Choir rehearsal was so fun tonight.|I started singing in a local choir.|I've been singing in a choir for a few weeks now.
+A Singing in a choir sounds so uplifting.|Joining a choir is a great way to meet people.|There's something special about voices blending together.|Choir sounds like a fun way to spend an evening.
+Q What part do you sing?|Which section are you in?
+> Alto.|Soprano.
+= The altos hold so much of the harmony together.|The sopranos get the soaring lines.
+> Bass.|Tenor.
+= The bass section is the foundation of the sound.|Tenors are always in demand.
+Q Have you sung before?|Is singing new for you?
+> I sang in school.|A little, years ago.
+= It's great to come back to it.|Sounds like it came back quickly.
+> Totally new.|First time.
+= Jumping in brand new is brave and exciting.|You'll learn fast surrounded by other singers.
+X Enjoy singing with the group!|Have fun at the next rehearsal.|Hope the next rehearsal is just as fun.
+@ho_thrifting pos hobbies
+U I've been thrifting a lot lately.|Went thrifting this weekend and found great stuff.|I spent the afternoon digging through thrift stores.|Thrifting has turned into my favorite weekend activity.
+A Thrifting is like a treasure hunt.|There's always something surprising at a thrift store.|A good thrift find is such a rush.|Digging through racks can be weirdly relaxing.
+Q What's your best find so far?|Found anything great?
+> A leather jacket.|A wool coat.
+= A good coat like that is a fantastic find.|That's a great score for a thrift store.
+> Some old records.|A stack of books.
+= Those are so fun to dig through.|Love that, old books have such character.
+Q How often do you go?|Do you thrift often?
+> Every weekend.|Pretty much every week.
+= Sounds like a fun routine.|You must know the good racks by now.
+> Only once in a while.|Rarely.
+= That makes each find more special.|Then this was a good day for it.
+X Happy thrifting!|Enjoy showing off your finds.|Hope you find more treasures.

@@ -1,0 +1,224 @@
+@pl_weekend_empty neu plans
+U I have absolutely nothing planned this weekend.|My weekend is completely open for once.|No plans this weekend and I'm not sure what to do with myself.|For the first time in months, my weekend calendar is empty.
+A An empty weekend is a rare little gift.|Nothing on the calendar can be the best kind of weekend.|A wide open weekend has so much potential.|Sometimes no plans is the plan.
+Q Are you leaning toward relaxing or doing something fun?|Do you want to rest or get out of the house?
+> Mostly rest.|Just relaxing, I think.
+= Good call, a lazy weekend recharges you like nothing else.|Sounds perfect. Any show or book you've been saving for a moment like this?
+> I want to get out and do something.|I'd like to try something new.
+= A day trip or a new cafe could be a fun way to fill it.|Maybe a trail or a museum you haven't visited yet. What sounds good to you?
+Q Is the weather supposed to be nice?|What's the forecast looking like?
+> Sunny and warm.|Supposed to be beautiful.
+= Then some time outside would be hard to beat.|That's perfect weather for a long walk.
+> Rain all weekend.|Gray and rainy.
+= Rainy weekends are made for blankets and movies.|Perfect excuse to stay cozy indoors.
+X Enjoy the free weekend, however you spend it!|Have a great weekend.|Hope it's exactly the weekend you need.
+@pl_vacation_choose neu plans
+U I'm trying to plan a vacation but I can't pick where to go.|We have a week off and can't decide on a destination.|I've been going back and forth on vacation spots for days.|Can't decide between the beach and the mountains for our trip.
+A Having too many options is a nice problem, even if it's frustrating.|Picking a destination is half the fun and half the stress.|That back-and-forth is so real.|Choosing where to go can take longer than the trip itself.
+Q What kind of trip are you in the mood for?|Do you want relaxing or adventurous?
+> Something relaxing.|I just want to do nothing somewhere nice.
+= Then a beach or a lake town sounds right.|A quiet spot with a good view might be exactly it. Do you want somewhere warm?
+> Something with lots to do.|Adventure, definitely.
+= A city or a national park would keep you busy.|Hiking and exploring sounds like your kind of trip.
+Q Is budget a big factor?|Are you trying to keep it cheap?
+> Yeah, I'm on a budget.|Pretty tight budget this time.
+= A road trip somewhere close can stretch a budget a long way.|Off-season spots are great for saving money.
+> Not really, I've been saving.|I can splurge a bit.
+= Then you can pick purely on what sounds fun.|Nice, that opens up a lot of options.
+X I hope the perfect spot jumps out at you soon.|Good luck deciding, any of them sounds great.|Enjoy the planning, and the trip even more.
+@pl_date_night pos plans
+U We have a date night tonight.|Finally going on a proper date night with my partner.|Date night tonight, first one in weeks.|My partner and I booked a table for date night.
+A Date night is always a good idea.|Making time for just the two of you is so nice.|A night out together sounds lovely.|Dressing up and heading out together is always fun.
+Q Where are you going?|What's the plan for tonight?
+> A new restaurant downtown.|That little place we've been wanting to try.
+= Trying somewhere new together is fun.|Nice, a new spot keeps it exciting.
+> Just dinner and a movie.|A classic, dinner and a movie.
+= You can't beat a classic.|Simple and perfect, you really can't go wrong.
+Q Is it a kid-free night?|Is the evening all yours?
+> Yes, grandma's watching the kids.|We got a sitter.
+= Then enjoy every kid-free minute.|Perfect, a real night off.
+> No kids, so it's easy.|We don't have kids yet.
+= Then the whole evening is yours.|Nice and relaxed, then.
+X Have a wonderful date night!|Enjoy the evening together.|Hope it's a great night out.
+@pl_road_trip pos plans
+U We're taking a road trip next month.|Planning a road trip along the coast.|My friends and I are driving across a few states this summer.|Road trip in two weeks, just me and the open road.
+A A road trip is such a fun way to travel.|The open road has a great feel to it.|Road trips make the best stories.|That sounds like an adventure.
+Q Do you have a route planned?|How are you mapping it out?
+> Yeah, stops every few hours.|We have a rough route.
+= A loose plan with room to wander is ideal.|Good planning, stops keep everyone sane.
+> No, we're winging it.|Just picking a direction and going.
+= That's the spirit of a real road trip.|Spontaneous stops are the best part.
+Q What's the playlist situation?|Do you have music planned?
+> I made a huge playlist.|Hours of songs ready to go.
+= A good playlist is essential.|That's half the fun right there.
+> Podcasts, mostly.|Audiobooks for the long stretches.
+= Great for long drives.|That makes the miles go by fast.
+X Have a great trip, and enjoy the drive!|Safe travels on the road!|Enjoy the adventure.
+@pl_camping_first neu plans
+U I'm going camping for the first time.|First camping trip ever is this weekend.|My friends talked me into my first camping trip.|We bought a tent and we're camping next week.
+A A first camping trip is a real adventure.|Sleeping under the stars is something everyone should try once.|Camping can be so much fun with the right group.|Brand new tent, brand new adventure.
+Q Are you excited or nervous?|How are you feeling about it?
+> Excited, but worried about bugs.|Nervous about sleeping outside.
+= Bug spray and a good sleeping pad make a big difference.|The first night is the weirdest, then it gets cozy.
+> Really excited.|Can't wait.
+= That's the right attitude.|You'll have a great time.
+Q Where are you going?|Where's the campsite?
+> A state park by a lake.|A campground in the woods.
+= A lake makes it extra nice.|Nice, woods and campfire, the full experience.
+> Just a campground an hour away.|Somewhere pretty close to home.
+= Close is smart for a first trip.|Good idea, easy to head home if it rains.
+X Have a great time, and enjoy the campfire!|Enjoy the fresh air.|Hope you love it out there.
+@pl_garden_party pos plans
+U I'm planning a garden party for next weekend.|We're having people over for a backyard party.|I'm hosting a little outdoor get-together.|Throwing a garden party for my birthday.
+A A garden party sounds lovely.|Backyard gatherings are the best in nice weather.|That sounds like a fun afternoon.|Hosting outside is such a nice idea.
+Q What are you serving?|What's on the menu?
+> Just snacks and drinks.|Finger foods, nothing fancy.
+= Easy and perfect for a party.|Snacks keep everyone happy.
+> I'm grilling.|A big barbecue.
+= Barbecue at a garden party is a great call.|Nothing beats something off the grill.
+Q What if it rains?|Do you have a backup plan for rain?
+> We rented a tent.|We can move inside.
+= Smart, then you're covered either way.|Good to have a plan B.
+> Not really, fingers crossed.|I'm just hoping for the best.
+= Fingers crossed for sunshine.|Hopefully the weather plays along.
+X Have a great party!|Hope the weather is perfect.|Enjoy the garden party.
+@pl_lazy_day pos plans
+U Today is officially a couch day.|I'm spending the whole day in my pajamas.|Lazy day today, not leaving the house.|I have zero plans except the couch.
+A A proper couch day is sometimes exactly what you need.|Pajamas all day sounds like a great plan.|Some days are just made for doing nothing.|A slow day at home can be so restful.
+Q What are you watching?|Got a show lined up?
+> An old comedy I've seen a hundred times.|Rewatching a favorite series.
+= Comfort rewatches are perfect for a lazy day.|Familiar shows are the best for relaxing.
+> A new documentary.|Something new I just found.
+= Nice, a new find is fun.|I hope it's a good one.
+Q Are you ordering food?|Any snacks planned?
+> Definitely takeout.|Pizza delivery for sure.
+= Takeout completes the lazy day.|Perfect, nobody should cook on a couch day.
+> Just snacks from the cupboard.|Whatever's in the fridge.
+= The fridge buffet, a classic.|Easy and nice, no effort required.
+X Enjoy the lazy day!|Rest up, you deserve it.|Enjoy the couch time.
+@pl_spring_cleaning neu plans
+U I'm doing a big spring cleaning this weekend.|This weekend is for deep cleaning the house.|I finally decided to clear out my closet.|The garage is a disaster, so I'm cleaning it on Saturday.
+A A big clean-out feels so good when it's done.|Tackling it all at once is brave.|Clearing out clutter can make a place feel brand new.|That's a productive weekend plan.
+Q Where are you starting?|Which part are you tackling first?
+> The closet.|My bedroom.
+= Closets are satisfying, you see results fast.|Starting with the bedroom is great, you'll sleep better.
+> The kitchen.|The garage.
+= The kitchen always has more hiding in it than you'd think.|The garage is a big job, but so rewarding.
+Q Are you getting rid of a lot?|Donating anything?
+> Yeah, a bunch of old clothes.|Lots of donations.
+= Donating feels good, and it clears space.|Someone else will love those clothes.
+> Not much, I keep everything.|Hardly anything.
+= Just organizing counts too.|Tidying up is a win even without tossing much.
+X Good luck with the cleaning!|Enjoy the fresh, tidy space afterward.|You'll feel great when it's done.
+@pl_redecorate pos plans
+U I'm redecorating my living room.|I want to give my living room a makeover.|I just bought paint to redo the living room.|Finally redecorating the living room after five years.
+A A room makeover is such a fun project.|New paint can change the whole feel of a room.|Five years is plenty, time for a refresh.|Redecorating sounds exciting.
+Q What color are you going with?|What's the look you're going for?
+> A calm green.|Soft blue.
+= That sounds really peaceful.|A cool color can make a room feel bigger.
+> Warm and cozy, lots of wood.|Earthy tones.
+= Cozy is always a good choice for a living room.|Earthy colors feel so relaxing.
+Q Are you doing it yourself?|Is it a DIY project?
+> Yes, all by myself.|Me and a friend.
+= DIY makes it even more rewarding.|Nice, a friend makes painting go faster.
+> Hiring someone for the painting.|Getting help from a pro.
+= Smart, then you get to focus on the fun decorating part.|That saves a lot of hassle.
+X Have fun with the makeover!|Hope the new look is perfect.|Enjoy your refreshed living room.
+@pl_cooking_class pos plans
+U I just signed up for a cooking class.|I'm taking a pasta-making class next week.|Booked a cooking class for me and my friend.|I enrolled in a beginner cooking course.
+A A cooking class is such a fun way to learn.|Learning from a pro can change how you cook.|That sounds like a delicious plan.|What a great thing to try.
+Q What will you be cooking?|What's the class about?
+> Fresh pasta.|Italian food.
+= Homemade pasta is so satisfying.|Italian food is a great place to start.
+> Basic knife skills.|Beginner basics.
+= Good knife skills make everything easier.|Basics are the most useful to learn.
+Q Do you cook much already?|Are you a good cook?
+> Not at all.|I can barely boil water.
+= Then this is perfect timing.|Everyone starts somewhere, and classes make it fun.
+> Yeah, I cook a lot.|I'm decent.
+= Then you'll pick up great new tricks.|Nice, you'll probably breeze through it.
+X Have fun in class!|Enjoy the class, and the eating afterward.|Hope you learn some great recipes.
+@pl_new_hobby neu plans
+U I'm thinking of starting a new hobby next month.|I want to pick up a hobby but can't decide which.|Next month I'm finally trying something new for fun.|I need a hobby that doesn't involve screens.
+A A new hobby can be really refreshing.|Trying something new is always a good idea.|Screen-free hobbies are great for winding down.|That's a nice goal.
+Q Any ideas so far?|What are you considering?
+> Maybe painting.|Something artsy.
+= Painting is so relaxing.|Art is a great way to unwind.
+> Something active, like climbing.|Maybe a sport.
+= Active hobbies are great for your mood.|A sport gets you out and meeting people.
+Q Do you want to do it alone or with others?|Solo hobby or something social?
+> Alone, I like quiet.|Solo.
+= Quiet hobbies can be really calming.|Solo time is nice.
+> With other people.|Something social.
+= A club or class would be a great fit.|Hobbies with people can lead to new friends.
+X Good luck finding the right one!|Have fun exploring.|I hope you find something you love.
+@pl_beach_day pos plans
+U Beach day tomorrow!|We're heading to the beach tomorrow.|Tomorrow is going to be all sun and sand.|Taking the kids to the beach tomorrow.
+A A beach day sounds perfect.|Sun and sand is a great way to spend a day.|That sounds so relaxing.|Beach days make the best memories.
+Q Is the weather looking good?|What's the forecast?
+> Sunny and hot.|Clear skies.
+= That's perfect beach weather.|Great, just bring lots of sunscreen.
+> Might be cloudy.|A little windy maybe.
+= A few clouds can actually make it nicer.|Still fun, just bring a jacket.
+Q Are you swimming or just relaxing?|What's the plan once you're there?
+> Swimming, definitely.|Jumping in the waves.
+= The waves are the best part.|Sounds like a fun day in the water.
+> Reading under an umbrella.|Just lounging.
+= A book and a beach umbrella, perfect.|Lounging by the water is ideal.
+X Have a great beach day!|Enjoy the sun.|Hope it's a perfect day by the water.
+@pl_staycation neu plans
+U I'm taking a staycation this week.|Not traveling, just staying home on my week off.|I have a week off and I'm staying in town.|Doing a staycation instead of a trip this year.
+A A staycation can be really restful.|Staying home means no packing and no airports.|Exploring your own town can be surprisingly fun.|Time off is time off, wherever you spend it.
+Q Any plans for the week?|What are you going to do?
+> Try some local restaurants.|Visit places I never go to.
+= Being a tourist in your own town is fun.|Great way to see your city fresh.
+> Mostly sleep in.|Nothing, just rest.
+= Sleeping in all week sounds lovely.|Pure rest is a great use of time off.
+Q Is it hard not to check work email?|Are you staying off work stuff?
+> I turned notifications off.|Yes, totally unplugged.
+= Good for you, that makes a real difference.|Smart, that's a true break.
+> I keep peeking.|It's hard not to.
+= Try hiding the app for the week.|Maybe put the phone in a drawer for a few hours.
+X Enjoy your staycation!|Have a restful week.|Hope you come back recharged.
+@pl_picnic pos plans
+U We're having a picnic in the park this afternoon.|Picnic in the park with friends today.|I packed a picnic basket for lunch in the park.|Going for a picnic by the pond.
+A A picnic sounds lovely.|What a nice way to spend the afternoon.|Picnics make any meal feel special.|Sounds like a perfect day for it.
+Q What did you pack?|What's in the basket?
+> Sandwiches and fruit.|Simple stuff, sandwiches mostly.
+= Classic picnic food, you can't beat it.|Simple is best for a picnic.
+> Cheese, bread, and snacks.|A little spread of snacks.
+= That sounds delicious.|A snack spread is ideal.
+Q Is the weather cooperating?|How's the weather?
+> Perfect, sunny and mild.|Beautiful out.
+= That's great picnic weather.|You couldn't ask for better.
+> A little windy.|Kind of cloudy.
+= Just hold onto the napkins.|It's still nice to be outside.
+X Enjoy your picnic!|Have a lovely afternoon.|Hope it's a sunny, relaxing time.
+@pl_museum pos plans
+U I'm visiting the art museum this weekend.|Heading to the history museum tomorrow.|We're going to the science museum on Saturday.|Taking a day to wander around a museum.
+A Museums are such a great way to spend a day.|That sounds like a relaxing, interesting outing.|A museum day is always a good idea.|There's always something new to see.
+Q Is there a special exhibit?|Anything in particular you want to see?
+> Yeah, a new exhibit just opened.|There's a special exhibit on right now.
+= Perfect timing then.|Special exhibits are always worth it.
+> No, just wandering.|Nothing in particular.
+= Wandering is the best way to find surprises.|Sometimes the best stuff is unplanned.
+Q Are you going alone or with someone?|Who are you going with?
+> Alone.|Just me.
+= Solo museum trips are lovely, you can go at your own pace.|Nice, no rushing through anything.
+> With friends.|With my family.
+= Fun, you can compare favorite pieces.|Great, museums are fun to share.
+X Enjoy the museum!|Have a great time exploring.|Hope you find something that surprises you.
+@pl_day_off pos plans
+U I took a day off work just because.|I'm taking tomorrow off for no reason at all.|Called in a personal day to just recharge.|Took a random Friday off and it feels amazing.
+A A day off just because is the best kind.|Taking a break without a reason is healthy.|That sounds so nice.|A random day off can feel like a mini vacation.
+Q What are you doing with it?|Any plans for the day?
+> Absolutely nothing.|Just resting.
+= Honestly, that sounds perfect.|Rest is a great way to spend it.
+> Running errands I never have time for.|Catching up on chores.
+= A calm errand day can be weirdly satisfying.|Getting stuff done without rushing is nice.
+Q Do you do that often?|Is this a new habit?
+> First time ever.|Never done it before.
+= Then enjoy the novelty.|Hopefully it won't be the last.
+> A few times a year.|Every now and then.
+= That's a smart habit.|Sounds like a good balance.
+X Enjoy your day off!|Have a relaxing day.|Hope it's exactly what you needed.

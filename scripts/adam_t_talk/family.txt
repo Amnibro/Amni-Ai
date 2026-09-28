@@ -1,0 +1,300 @@
+@fa_parents_visit pos family
+U My parents are coming to visit next week and I'm so excited.|Mom and Dad fly in on {day} to stay with us!|My folks are visiting next week, I can't wait.|I haven't seen my parents in months and they're finally coming to stay.
+A A visit from your parents is something to look forward to.|Time with your folks is always a treat.|Your place is about to get a lot cozier.|Nice, a week with your folks sounds lovely.|Getting to host your parents is such a sweet thing.
+Q Do you have anything planned while they're here?|What are you going to do with them?
+> I want to show them around my neighborhood.|Take them to my favorite restaurants.
+= They'll love seeing the life you've built. Where are you taking them first?|Playing tour guide for your parents is so fun.
+> Honestly, just hang out and cook together.|Mostly relaxing at home.
+= Some of the best visits are the slow ones at home.|Low-key time together is often what parents love most. Is there a family recipe you like to make together?
+Q How long are they staying?|Is it a long visit?
+> A whole week.|About ten days.
+= That's a nice long stretch, plenty of time to settle in together.|Good, there's no rush to cram everything in.
+> Just a long weekend.|Only three days, sadly.
+= Short but sweet, make the most of it.|A few days still goes a long way.
+Q Are you getting the house ready?|Have you started prepping for them?
+> I've been cleaning all week.|The guest room is finally set up.
+= Look at you, the perfect host.|They're going to feel right at home.
+> Not yet, I'll do it the night before.|Nope, I'm a last-minute cleaner.
+= Ha, a classic last-minute tidy never fails.|Parents rarely notice the dust anyway, they're just happy to see you.
+X Have a wonderful time with your parents!|Enjoy the visit, those weeks go by fast.|Sounds like a lovely week ahead, enjoy it.
+@fa_inlaws_stay neg family
+U My in-laws are staying with us for two weeks.|The in-laws arrive tomorrow for a long stay and the house is chaos.|We have my partner's parents in the guest room for the next two weeks.|My in-laws just moved into our guest room for half a month.
+A Two weeks of houseguests is a lot, even with people you like.|Hosting family always takes more energy than you expect.|A full house can get a little intense.|That's a long stretch of sharing your space.|Houseguests plus everyday life is a real juggling act.
+Q Do you get along with them?|How do you usually get along?
+> Pretty well, it's just a lot.|They're nice, I just miss my quiet.
+= That makes sense, even good company can wear you out.|Carving out a little alone time each day can really help.
+> We clash sometimes.|It can get tense.
+= Try to plan a few outings so everyone gets some breathing room.|A little patience and a few breaks will get you through. What usually sets things off?
+Q Do you have anything planned to keep everyone busy?|Any outings planned while they're there?
+> A couple of day trips.|We're taking them to a museum.
+= Outings are great for keeping everyone happy.|Nice, a change of scenery helps everybody.
+> Not really, just hanging around.|No, they mostly want to stay in.
+= Maybe sneak out for a solo coffee run now and then.|Then a good movie night or two might save the day.
+X Hang in there, it'll be over before you know it.|Good luck with the full house, you've got this.|Wishing you a calm and pleasant visit.
+@fa_first_steps pos family
+U My baby took her first steps today!|Our son just walked across the living room by himself.|The baby finally took a few steps on her own!|We caught our little one's first steps on video.
+A First steps, what a milestone!|That's such a magical moment to see.|Those wobbly first steps are unforgettable.|Your little one is officially on the move.|What a proud day for your family.
+Q How many steps did they take?|How far did they make it?
+> Three wobbly steps before sitting down.|Just a couple, then a big plop.
+= A few wobbly steps is how every great walker starts.|The plop is part of the process, they'll be running soon.
+> All the way to the couch!|Across the whole room.
+= Wow, that's a real journey for tiny legs.|Look out, you'll be chasing them around in no time.
+Q Is the house baby-proofed yet?|Have you baby-proofed the house?
+> Not at all.|No, I need to start now.
+= A few outlet covers and cabinet locks go a long way.|Start at their eye level and you'll catch most of it.
+> Yes, we did it months ago.|Mostly, just a few cabinets left.
+= Nicely done, you're way ahead of the game.|You're in good shape, then.
+X Congratulations, enjoy this stage, it goes fast!|What a sweet milestone, congrats to your little walker!|So exciting, enjoy all the wobbly adventures ahead.
+@fa_tooth pos family
+U My daughter lost her first tooth today!|Our son's first tooth finally fell out.|My kid's wiggly tooth came out at dinner.|The first baby tooth is out and she's so proud.
+A A first lost tooth is a big deal for a kid.|Losing that first tooth feels like such a grown-up moment for them.|Kids get so proud of that gap in their smile.|A wiggly tooth finally giving up is a big event.|What a fun little milestone.
+Q Is the tooth fairy coming tonight?|Are you doing the tooth fairy?
+> Yes, and I need to find some cash.|Of course, the tooth is already under the pillow.
+= The tooth fairy visit is the best part for a kid.|Better raid the change jar before bedtime.
+> We don't really do that.|Not in our house.
+= That's fine, a little celebration of the moment is fun either way.|Fair enough, the gap-toothed photos are the real prize.
+Q How did it come out?|Did it come out on its own?
+> Bit into an apple and there it went.|It just fell out while eating.
+= The classic apple method, it works every time.|The best way, no drama at all.
+> They pulled it themselves.|My kid yanked it out.
+= Brave kid!|That takes some serious courage for a little one.
+X Congrats to your kiddo on the big milestone!|Enjoy that gap-toothed grin while it lasts.|Sounds like a very exciting day at your house.
+@fa_kindergarten neu family
+U My son started kindergarten today.|First day of kindergarten, and I cried more than she did.|My little girl just started school this week.|Dropped my kid off for his first day of kindergarten.
+A The first day of school is a big day for parents too.|Watching them walk into that classroom is such a bittersweet moment.|Kindergarten already, time really flies.|A brand new chapter for your little one.|Big day for both of you.
+Q How did the drop-off go?|Did they get upset when you left?
+> Waved and ran straight inside.|No tears at all, just excited.
+= That's a sign they're ready, even if it stings a bit for you.|Great, sounds like a confident little kid.
+> There were some tears.|A few tears, from both of us.
+= That's very normal, most kids settle in within a few days.|The first week is the hardest, it gets easier fast.
+Q What did they say about it afterward?|How was their day?
+> They loved it and made a friend.|They made a new friend already.
+= A new friend on day one is a great start.|That's the best news a parent can hear after day one.
+> They said the teacher is nice.|They really like their teacher.
+= A kind teacher makes all the difference.|That's a great sign for the year ahead.
+> They said it was boring.|Just shrugged and said it was fine.
+= Ha, that's a classic kid review.|Kids rarely share much right away, the stories will trickle out.
+X Here's to a great first year for your little one!|Sounds like a big day, I hope the rest of the week goes smoothly.|Congrats to your new kindergartner!
+@fa_teen_driving neg family
+U My teenager is learning to drive and I'm a nervous wreck.|I've been teaching my son to drive and my foot keeps slamming an imaginary brake.|Driving practice with my daughter is aging me fast.|My kid just got a learner's permit, help.
+A Teaching a teenager to drive is a whole new level of nerves.|The imaginary passenger brake is a rite of passage for parents.|Sitting in the passenger seat takes real trust.|That's a big step for your kid, and for your nerves.|Ha, every parent goes through this one.
+Q How are they doing so far?|Are they getting the hang of it?
+> Pretty good, actually.|Better than I expected.
+= That's great, calm practice really pays off.|Then maybe your nerves can take a small break.
+> Rough, we stalled a lot.|The turns are scary.
+= Practice in an empty parking lot can help a lot.|Everyone starts shaky, it gets smoother with every drive.
+Q Where do you usually practice?|Where are you letting them drive?
+> Empty parking lots.|Quiet back roads.
+= That's the perfect place to start.|Smart, low traffic is the way to build confidence.
+> Around the neighborhood.|On regular streets now.
+= Good progress, that's a real step up.|Sounds like they're moving along nicely.
+X Deep breaths, you're both doing great.|Good luck with the lessons, they'll be driving you around soon.|Hang in there, it gets easier every week.
+@fa_sibling_engaged pos family
+U My sister just got engaged!|My brother proposed to his girlfriend last night.|My little sister called to say she's engaged!|Big news in the family, my brother is engaged.
+A An engagement in the family, how exciting!|What happy news to wake up to.|Your family is about to have a wedding to plan.|A proposal is always a fun story.|Such good news for your sibling.
+Q Do you like their partner?|How do you feel about who they're marrying?
+> Love them, they're perfect together.|They're great, we all adore them.
+= That makes the news even better.|It's the best when the whole family is on board.
+> I don't know them that well yet.|We've only met a few times.
+= Now you'll have plenty of chances to get to know them.|Engagement parties are a great way to break the ice.
+Q How did the proposal happen?|Did you hear the proposal story?
+> It was on a hike at sunset.|At the beach where they first met.
+= That's so romantic.|What a perfect spot for it.
+> Pretty simple, just at home.|At dinner, nothing fancy.
+= Simple can be the sweetest.|Sometimes cozy beats grand.
+X Congrats to the happy couple!|So exciting, enjoy all the wedding planning ahead!|What wonderful family news, congrats.
+@fa_grandma_90 pos family
+U My grandma turns 90 this weekend.|We're throwing a big party for my grandmother's 90th birthday.|Grandma is about to hit 90 and she's still sharp as ever.|My grandma's 90th birthday party is on {day}.
+A Ninety years, what a milestone!|Reaching 90 is wonderful.|A 90th birthday deserves a real celebration.|Your family is lucky to have that many years together.|That's a lot of life and stories to celebrate.
+Q How are you celebrating?|What's the plan for the big day?
+> A family party with everyone.|All the cousins are coming.
+= A house full of family is the perfect gift.|That sounds like a joyful reunion.
+> A quiet lunch together.|Just a small dinner.
+= Simple and meaningful, that sounds lovely.|A cozy gathering can be just right.
+Q Does your grandma have any good stories?|Does she tell stories about the old days?
+> All the time, she's hilarious.|Tons, and they get wilder every year.
+= Those stories are treasures, maybe record a few.|Ha, the best storytellers always improve with age.
+> Not really, she's pretty private.|Sometimes, if you ask.
+= Maybe the party is a good time to ask about one.|A birthday is a great excuse to ask for a favorite memory.
+X Happy 90th to your grandma, enjoy the celebration!|What a special day, have a lovely time together.|Here's to many more birthdays.
+@fa_game_night pos family
+U We had family game night and it got really competitive.|Family game night got loud tonight.|My kids beat me at board games again.|We played cards with the whole family last night and it was hilarious.
+A Family game night is the best kind of chaos.|Friendly competition makes it so much fun.|Getting beaten by your kids is a proud kind of losing.|Nothing like a loud game night to bring everyone together.|That sounds like a great evening.
+Q What did you play?|Which game was it?
+> A classic board game.|An old board game we all know.
+= The classics never get old.|Old favorites always bring out the competitive side.
+> Cards.|A card game.
+= Card games always get people fired up.|A deck of cards can cause a surprising amount of drama.
+> A new party game we just bought.|Some word game.
+= New games are fun, there's always a learning curve.|Word games get surprisingly heated.
+Q Who won?|Who ended up the champion?
+> My youngest, somehow.|My kid, again.
+= The youngest winning is the best plot twist.|Sounds like you have a rising champion.
+> Me, finally!|I won for once.
+= Victory is sweet, enjoy the bragging rights.|Well deserved, savor it.
+X Sounds like a fun night, enjoy the rematch!|Here's to many more game nights.|Great family fun, keep it going.
+@fa_big_dinner neu family
+U I'm cooking a big dinner for the whole family on Sunday.|We have twelve people coming over for dinner tonight.|It's my turn to host family dinner this weekend.|The whole family is coming over for a big meal.
+A Feeding the whole family is a big job.|A full table is quite the dinner party.|Family dinners are great for catching up.|Hosting a big meal takes real planning.|Sounds like a lively table.
+Q What are you making?|What's on the menu?
+> A huge pot of pasta.|Lasagna and salad.
+= Pasta is perfect for a crowd.|Noodles and sauce are always a crowd pleaser.
+> A roast with veggies.|Grilled chicken and sides.
+= That feels so cozy for a family dinner.|Simple and reliable, great choice.
+Q Is anyone bringing dishes?|Are you doing it all yourself?
+> Everyone's bringing something.|My siblings are bringing dessert.
+= Potluck style takes a lot of pressure off.|Dessert covered, that's a win.
+> Nope, all me.|I'm cooking everything.
+= That's impressive, make sure someone helps with the dishes afterward.|Bold move, I hope they appreciate it.
+X Enjoy the family dinner!|Hope everything turns out delicious.|Have a lovely meal together.
+@fa_dad_retired pos family
+U My dad retired today after 35 years of work.|My father finally retired last week.|Dad's last day at work was Friday, he's officially retired.|My mom retired and she's thrilled.
+A Decades of work, that's a lot to celebrate.|Retirement is a huge milestone.|Your parent has earned every bit of this rest.|A new chapter full of free time, how exciting.|That's a big life change for your family.
+Q What are they planning to do with their free time?|Do they have plans for retirement?
+> Travel, finally.|They want to see the national parks.
+= That's a wonderful way to start retirement.|They'll have so many adventures to share.
+> Gardening and fishing, mostly.|Just relaxing at home.
+= Sounds peaceful and well-earned.|Taking it easy is a great plan too.
+Q How are they feeling about it?|Are they excited or a little lost?
+> Thrilled.|Over the moon.
+= That's the best way to go into it.|Love that for them.
+> A little unsure what to do with themselves.|Kind of restless already.
+= That's common, it can take a while to find a new rhythm.|A new hobby or class might help them settle in.
+X Congrats to your parent on a well-earned retirement!|Here's to a happy retirement.|Sounds like a great new chapter for them.
+@fa_mom_texting neu family
+U My mom just learned how to use emojis and now she sends them nonstop.|I'm teaching my mom to text and it's a slow process.|My mom sends texts in all caps and I can't tell if she's mad.|My mom finally figured out the family group chat.
+A Parents discovering texting is always an adventure.|Moms and phones make for some great stories.|Learning new tech takes patience on both sides.|Ha, that sounds like a lot of new messages coming your way.|It's sweet that they want to keep in touch that way.
+Q What's the funniest message they've sent?|Any memorable texts so far?
+> A thumbs up to a sad message.|A random string of emojis.
+= Ha, a mismatched emoji is the classic parent move.|That's like decoding a secret language.
+> They signed a text with their full name.|They sign every text like a letter.
+= That's so wholesome, like writing a letter.|Ha, that's adorable.
+Q Are they getting the hang of it?|Is it getting any easier?
+> Slowly but surely.|Yes, they're improving.
+= Great, you're a patient teacher.|Progress is progress.
+> Not really.|It's still a struggle.
+= Give it time, they'll get there.|A little cheat sheet on the fridge might help.
+X Enjoy the new stream of texts!|Keep up the patient teaching, it's sweet.|Sounds like a fun family moment.
+@fa_niece_born pos family
+U My niece was born this morning!|My sister had her baby last night, a little girl.|I became an aunt today!|I'm officially an uncle, my brother's baby just arrived.
+A Welcome to the world, little one!|A new baby in the family is such happy news.|Becoming an aunt or uncle is so special.|What a joyful day for your family.|Such wonderful news.
+Q Have you met the baby yet?|Did you get to see the little one?
+> Not yet, going tomorrow.|I'm visiting this weekend.
+= You're going to melt the second you hold that baby.|That's going to be such a sweet moment.
+> Yes, I held the baby already.|Just saw them this afternoon.
+= That first hold is unforgettable.|How special, I bet you're smitten.
+Q How are the parents doing?|Is everyone doing well?
+> Tired but happy.|Happy and healthy.
+= That's the best news.|Wonderful, that's exactly what you want to hear.
+> Exhausted, but over the moon.|Barely awake, but thrilled.
+= The newborn phase is a lot, they'll appreciate any help.|Sounds like they could use a dinner delivery.
+X Congratulations to the whole family!|Welcome to the family, little one.|Enjoy those newborn snuggles.
+@fa_kids_bickering neg family
+U My kids have been bickering nonstop all day.|The kids keep fighting over the same toy.|My two boys argue about everything lately.|Sibling rivalry is in full swing at my house.
+A Nonstop bickering can wear anyone out.|Sibling squabbles can get so loud.|Ha, siblings always find something to fight over.|Kids can be experts at finding things to argue about.|That's a long day of refereeing.
+Q How old are they?|What ages are they?
+> Six and eight.|Five and seven.
+= Such a classic age for sibling fights.|That's prime bickering territory.
+> Teenagers, both of them.|Twelve and fourteen.
+= Teen arguments have a whole different flavor.|Ah, the age where everything is unfair.
+Q Have you found anything that helps?|What usually calms them down?
+> Separate rooms for a while.|Giving them some space.
+= Some space works wonders.|A little time apart can reset everyone.
+> Sending them outside.|Outdoor play.
+= Fresh air can reset everyone.|Running around outside burns off a lot of that energy.
+> Nothing works.|Honestly, nothing.
+= Maybe a timer for taking turns could help.|Sometimes a snack break is all it takes.
+X Hang in there, peaceful days will come.|Good luck, and I hope tomorrow is quieter.|You're doing great with a tough crowd.
+@fa_road_trip pos family
+U We're taking the kids on a family road trip next week.|Family road trip to the coast starts {day}!|We're driving eight hours with three kids this weekend.|Packing the car for a big family road trip.
+A A family road trip is a real adventure.|Long drives with kids take some planning.|Getting out of town together sounds great.|Road trips make the best family memories.|That's going to be a fun ride.
+Q How are you keeping the kids entertained?|Do you have car games ready?
+> Lots of snacks and games.|Snacks, mostly.
+= Snacks are the secret weapon.|Good snacks can buy a lot of peace.
+> Movies on a tablet.|Shows on the tablet.
+= A tablet can save your sanity.|Screen time on a long drive is fair game.
+> Winging it, honestly.|No plan yet.
+= Car bingo or the license plate game can buy you a few hours.|A good audiobook works wonders.
+Q Any stops planned along the way?|Are you stopping anywhere fun?
+> A roadside diner we love.|A favorite restaurant on the way.
+= Great, a fun stop breaks up the drive.|A favorite stop makes the drive part of the fun.
+> A big park halfway.|A playground on the way.
+= Perfect, the kids can run around.|Letting them burn energy halfway is smart.
+> Just gas stations.|Only quick stops.
+= Straight through, that's efficient.|The faster you get there, the more beach time.
+X Safe travels and have a great trip!|Enjoy the road trip, and good luck with the snacks.|Have fun out there, make some memories.
+@fa_school_play pos family
+U My daughter has her school play tonight.|My son is in the school play tonight and he's thrilled.|Our kid's class play is this evening.|My kid has a speaking part in the class play tonight.
+A School plays are the sweetest thing.|A night at the school play is always a treat.|A speaking part is a big deal for a little one.|Nothing is cuter than a kids' stage show.|That sounds like a proud parent moment.
+Q Were they nervous?|How are they feeling about it?
+> Not at all, they love the stage.|Super excited.
+= Sounds like a natural performer.|That confidence is amazing.
+> A bit nervous.|Butterflies all day.
+= Butterflies are normal, they'll shine.|A little nerves just means they care.
+Q Did you bring a camera?|Are you going to record it?
+> Of course, filming the whole thing.|Yes, all of it.
+= You'll love watching that for years.|Those videos become treasures.
+> Just a few photos.|Nope, just watching.
+= Sometimes it's nicer to just enjoy it live.|Being present is great too.
+X Break a leg to your little star!|Enjoy the show, it's going to be adorable.|Sounds like a great family night.
+@fa_grandparent_call pos family
+U We did a video call with my kids' grandparents tonight.|The grandparents called and the kids showed them every toy they own.|Weekly video chat with my parents and the grandkids.|The kids chatted with their grandma on video for an hour.
+A Video calls with grandparents are so sweet.|Grandparents light up on those calls.|Staying in touch like that is lovely.|Grandparents love those calls.|It's great the kids get to see them regularly.
+Q How often do you call?|Do you call often?
+> Every Sunday.|Once a week.
+= A weekly call is a great tradition.|That regular rhythm must mean a lot to them.
+> Whenever we can.|Not as often as we'd like.
+= Every call counts.|Even short calls make a difference.
+Q Do the grandparents live far away?|How far away are they?
+> Across the country.|In another state.
+= Video calls really bridge that distance.|That makes the calls extra special.
+> Just a few hours away.|About an hour.
+= Close enough for weekend visits.|Nice, they can pop by now and then.
+X Sounds like a sweet family moment.|Keep those calls going, they matter.|What a lovely tradition.
+@fa_cousin_nearby pos family
+U My cousin just moved into my neighborhood!|My favorite cousin moved to my town.|My cousin lives five minutes away now.|A cousin of mine just moved in down the street.
+A Having family close by is the best.|Living so close makes visits easy.|What a fun surprise to have family nearby.|Now you have an easy dinner buddy.|That's great news.
+Q Are you close with your cousin?|Were you two close growing up?
+> Yes, we grew up together.|Super close.
+= That makes it even better.|Now you can pick up right where you left off.
+> Not really, but I want to be.|We drifted apart.
+= This is a perfect chance to reconnect.|Being neighbors makes it easy to catch up.
+Q Have you shown them around yet?|Have you helped them settle in?
+> Yes, took them to my favorite spots.|I gave them a little tour.
+= What a great welcome.|A good local tour makes a new town feel like home.
+> Not yet, but I'm planning to this weekend.|I'm going to show them around soon.
+= They'll appreciate it.|That'll help them settle in quickly.
+X Enjoy having family next door!|Sounds like a fun new chapter.|Have fun with your cousin nearby.
+@fa_kid_breakfast pos family
+U My kid made me breakfast this morning.|My son surprised me with breakfast in bed.|My daughter made pancakes for me all by herself.|Woke up to my kids making me toast and juice.
+A Breakfast made by your kid is the best kind.|What a sweet surprise to wake up to.|A breakfast from a little chef, how adorable.|That's such a thoughtful gesture.|Kids surprising you like that is heartwarming.
+Q How did it turn out?|Was it tasty?
+> Surprisingly good.|Delicious, actually.
+= A future chef in the making.|Impressive, you might have a new breakfast cook.
+> Burnt, but I ate it all.|A little crunchy.
+= Honestly, that's the most loving meal there is.|The effort is what makes it taste good.
+Q What was the occasion?|Was it a special day?
+> Just because.|No reason at all.
+= The best kind of surprise.|That's even sweeter.
+> It's my birthday.|Mother's Day.
+= What a lovely way to start your day.|That's a perfect celebration.
+X What a sweet morning!|Sounds like you raised a kind kid.|Enjoy the love and the kitchen cleanup.
+@fa_anniversary pos family
+U My spouse and I celebrate {years} years together this weekend.|It's our wedding anniversary today!|Our {years}th anniversary is next week.|My partner and I just hit {years} years.
+V years=5,10,15,20,25,30
+A Happy anniversary to you both!|That many years together is a wonderful milestone.|Every year together is something to celebrate.|Here's to you two and all the years ahead.|Anniversaries are such a nice time to look back.
+Q How are you celebrating?|Any plans for the day?
+> Dinner at our favorite restaurant.|A fancy dinner out.
+= That sounds perfect for the occasion.|A special dinner is such a nice way to mark it.
+> A weekend getaway.|A little trip, just us.
+= A little getaway is such a nice way to celebrate.|Time away together sounds perfect.
+> Just a quiet night in.|Takeout and a movie.
+= Cozy nights are underrated.|Sometimes the simplest plans feel the most special.
+Q What's your secret to lasting that long?|Any secret to a long relationship?
+> Lots of laughing.|Never losing our sense of humor.
+= Laughing together is a great foundation.|Humor gets couples through a lot.
+> Being best friends.|We're best friends first.
+= Friendship really is the key.|That's a beautiful foundation.
+> Patience.|Good communication.
+= Solid advice, it sounds like it's worked well for you.|That really is the heart of it.
+X Happy anniversary again!|Wishing you many more years together.|Enjoy celebrating each other.
