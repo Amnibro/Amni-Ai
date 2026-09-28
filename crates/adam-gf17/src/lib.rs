@@ -168,11 +168,12 @@ impl Writer {
         Ok(Writer { f, loc: locs(&tabs, &ents), tabs, ents, drop, tile, sp, so: 0 })
     }
     fn out(&self, f: &File, b: &[u8], o: u64) -> io::Result<()> { f.write_all_at(b, o)?; if self.drop { f.sync_data()?; unsafe { libc::posix_fadvise(f.as_raw_fd(), o as i64, b.len() as i64, libc::POSIX_FADV_DONTNEED) }; } Ok(()) }
-    pub fn put(&mut self, t: usize, l: usize, w: &[u16]) -> io::Result<()> {
+    pub fn put(&mut self, t: usize, l: usize, w: &[u16]) -> io::Result<()> { (w.len() == self.tabs[t].words()).then_some(()).ok_or_else(|| bad(format!("{} level {l}: {} words, want {}", self.tabs[t].name, w.len(), self.tabs[t].words())))?; self.put_at(t, l, 0, w) }
+    pub fn put_at(&mut self, t: usize, l: usize, p0: usize, w: &[u16]) -> io::Result<()> {
         let tb = self.tabs[t].clone();
-        (w.len() == tb.words()).then_some(()).ok_or_else(|| bad(format!("{} level {l}: {} words, want {}", tb.name, w.len(), tb.words())))?;
-        (0..tb.np()).try_for_each(|p| {
-            let s = &w[p * PX..(p * PX + PX).min(w.len())];
+        (p0 * PX + w.len() <= tb.words() && (w.len().is_multiple_of(PX) || p0 * PX + w.len() == tb.words())).then_some(()).ok_or_else(|| bad(format!("{} level {l}: {} words at page {p0} are not whole pages of {} words", tb.name, w.len(), tb.words())))?;
+        (p0..p0 + w.len().div_ceil(PX)).try_for_each(|p| {
+            let s = &w[(p - p0) * PX..((p - p0) * PX + PX).min(w.len())];
             let d: Vec<Vec<u8>> = (0..4).map(|k| { let mut pl = vec![0u8; tb.rows(p) * PW]; pl.par_iter_mut().with_min_len(1 << 16).zip(s.par_iter()).for_each(|(o, &x)| *o = dig(key(x, tb.ord), k)); pl }).collect();
             (0..4).rev().try_for_each(|k| {
                 let e = self.loc[t][(l * tb.np() + p) * 4 + k];
@@ -248,7 +249,7 @@ impl Store {
     pub fn is_empty(&self) -> bool { self.map.is_empty() }
     pub fn ent(&self, t: usize, l: usize, p: usize, k: usize) -> usize { self.loc[t][(l * self.tabs[t].np() + p) * 4 + k] }
     pub fn plane(&self, e: usize) -> &[u8] { let e = &self.ents[e]; &self.map[e.off as usize..(e.off + e.len) as usize] }
-    fn adv(&self, o: usize, n: usize, a: i32) { let b = o / 4096 * 4096; unsafe { libc::madvise(self.map.as_ptr().add(b) as *mut _, (n + o - b).min(self.map.len() - b), a) }; }
+    fn adv(&self, o: usize, n: usize, a: i32) { let g = if a == libc::MADV_DONTNEED { 1 << 16 } else { 4096 }; let b = o / g * g; unsafe { libc::madvise(self.map.as_ptr().add(b) as *mut _, (n + o - b).next_multiple_of(g).min(self.map.len() - b), a) }; }
     fn unlink(&mut self, e: usize) { let (a, b) = (self.pv[e] as usize, self.nx[e] as usize); self.nx[a] = b as u32; self.pv[b] = a as u32; }
     fn lru(&mut self, e: usize, sz: usize) {
         let s = self.seen.len();
@@ -354,6 +355,7 @@ impl Store {
         self.planes(t, l, n, libc::MADV_DONTNEED);
         Ok(z)
     }
+    pub fn page_words(&self, t: usize, l: usize, p: usize) -> io::Result<Vec<u16>> { let (tb, d) = (&self.tabs[t], self.pdig(t, l, p, 4)?); Ok((0..(tb.words() - p * PX).min(PX)).map(|i| dec(val([d[0][i], d[1][i], d[2][i], d[3][i]], 4), 4, tb.ord)).collect()) }
     pub fn unpack(&self, t: usize, tiers: usize) -> io::Result<(Vec<u8>, usize)> {
         let tb = &self.tabs[t];
         let mut out = vec![0u8; tb.n() * tb.dt];

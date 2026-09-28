@@ -1,4 +1,4 @@
-use adam_gf17::{dec, dig, key, unkey, val, write, Store, Table, K4, MID, PW, PX};
+use adam_gf17::{dec, dig, key, unkey, val, write, Store, Table, Writer, K4, MID, PW, PX};
 use half::f16;
 fn sm(x: u64) -> u64 { let mut z = x.wrapping_add(0x9E3779B97F4A7C15); z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9); z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB); z ^ (z >> 31) }
 fn tmp(n: &str) -> String { format!("{}/adam_gf17_{}_{n}.gf17", std::env::var("TMPDIR").unwrap_or_else(|_| std::env::temp_dir().display().to_string()), std::process::id()) }
@@ -46,6 +46,25 @@ fn store_roundtrip_multi_page() {
         std::fs::remove_file(&p).unwrap();
     }
     std::fs::remove_file(&r).unwrap();
+}
+#[test]
+fn paged_put_matches_write() {
+    let (tabs, data) = (tabs(), data(&tabs()));
+    for tile in [0, 64] {
+        let (a, b) = (tmp(&format!("pw{tile}")), tmp(&format!("pp{tile}")));
+        wr(&a, &tabs, &data, tile);
+        let mut w = Writer::create(&b, tabs.clone(), false, tile).unwrap();
+        let wd: Vec<u16> = data[2].chunks(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+        assert!(w.put_at(2, 0, 0, &wd[..PX - 1]).is_err() && w.put_at(2, 0, 1, &wd).is_err());
+        (0..tabs.len()).filter(|&t| t != 2).for_each(|t| { let pb = tabs[t].per() * tabs[t].dt; (0..tabs[t].lv()).for_each(|l| w.put(t, l, &data[t][l * pb..(l + 1) * pb].chunks(2).map(|c| u16::from_le_bytes([c[0], *c.get(1).unwrap_or(&0)])).collect::<Vec<u16>>()).unwrap()); });
+        w.put_at(2, 0, 1, &wd[PX..]).unwrap();
+        w.put_at(2, 0, 0, &wd[..PX]).unwrap();
+        w.finish().unwrap();
+        assert!(std::fs::read(&a).unwrap() == std::fs::read(&b).unwrap(), "page-streamed file must equal the one-shot file (tile {tile})");
+        let s = Store::open(&b, 1 << 20).unwrap();
+        assert!((0..2).all(|p| s.page_words(2, 0, p).unwrap() == wd[p * PX..(p * PX + PX).min(wd.len())]) && s.page_words(5, 1, 0).unwrap().len() == 300_000);
+        [a, b].iter().for_each(|f| std::fs::remove_file(f).unwrap());
+    }
 }
 #[test]
 fn coded_tile_random_access() {

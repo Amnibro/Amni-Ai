@@ -100,6 +100,7 @@ THROTTLE_FILE=... RUN_DIR=exports/adam_t/<TAG> TAG=<TAG> TERN=1 MEM=1 STEPS=3000
 | Limits | `MAX_MIN`: wall-clock limit per process; the run checkpoints, pauses, and resumes when rerun |
 | Throttle | `THROTTLE_FILE`, `THROTTLE_UNIT_MS` |
 | Vocabulary | `BPE` (path to `bpe<V>.json`; empty means bytes) |
+| Memory scale-up | `INIT=<run dir>`: continued pretraining from that run's checkpoint (shape from its `log.jsonl`, fresh optimisers, step 0); its PTEX tables are grown exactly to `MEM_LOG2`, which must not be smaller. `MEM_OPT` (`dense` default, or `lazy`: row-lazy Adam that updates and stores moments only for the table, touched rows only) |
 | Position | `LPE` (0 or 1; 1 replaces learned positions with Lorentz boosts), `LPE_PHI` (max rapidity across the window, default 4), `LPE_S` (quanta per position for the fastest pair, default 64); `LPE_LUT=ref` makes the LUT path use the direct exponent table instead of GF(17) discrete logs |
 
 The throttle file is read every step. The run sleeps `throttle × max(1, gpu_ms/THROTTLE_UNIT_MS)` per step.
@@ -128,6 +129,8 @@ THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt bash crates/adam-t/sft.sh
 - `adam-t bench`: training-step throughput.
 - `adam-t mm`: GEMM microbenchmark comparing WGSL and burn.
 - `adam-t lut <model.gf17> [windows]`: CPU LUT bits per byte on hold windows.
+- `adam-t grow <model.gf17> <MEM_LOG2> <out.gf17>`: grows an exported model's PTEX tables exactly. Row `k·2^b + j` copies old row `k·2^a + (j >> (b − a))`, because `hrow` keeps the top bits of the hash. The output's logits are bit-identical to the input's.
+- `adam-t lutbench <model.gf17> [prompt tokens] [decode steps]`: CPU LUT serve cost, meaning open time, prefill, per-token KV decode ms (p50, p90, first 16), RSS and page-cache counters, and a hash of every logit bit. `LUT_MB` (default 1024) sets the page-cache budget here and in `serve`.
 - `adam-t fa`: checks and benchmarks the custom GPU ops. `FA_MODE=check` compares flash attention's output and gradients with burn's attention; `FA_MODE=flash|ref` times attention forward+backward (`FA_B`, `FA_T`, `FA_H`, `FA_IT`); `FA_MODE=lin` checks the fused ternary linear against the autodiff STE reference; `FA_MODE=xmm` times the exact bf16 cooperative-matrix GEMMs.
 
 ### Custom GPU ops (`src/fa.rs`)
@@ -137,3 +140,5 @@ THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt bash crates/adam-t/sft.sh
 - **Exact cooperative-matrix GEMMs:** the ternary forward `xi · t` has integer operands (|xi| <= 128, t in {-1,0,1}), so it runs in bf16 on the matrix cores with f32 accumulation and stays bit-exact. Backward operands that are real floats are split by one kernel into three bf16 terms whose sum is the f32 value, so the products are exact too. `XMM=0` falls back to f32 GEMMs.
 - **Lorentz A/B:** `crates/adam-t/lorentz_ab.sh` runs the pre-registered position-encoding A/B (`docs/adam_t/lorentz_prereg.md`). It needs `THROTTLE_FILE`. `cargo test --release -p adam-t --lib lpe_lut_bench -- --ignored --nocapture` times the LUT path with and without LPE.
 - **Pausing a run:** `touch $RUN_DIR/STOP` makes the trainer checkpoint and exit, and `campaign.sh` stops without an eval. `crates/adam-t/t30m.sh` is the 30M launcher.
+- **Memory scale-up:** `crates/adam-t/t30m_mem.sh` continues the 35k 30M checkpoint with the PTEX memory grown to 2^18 rows per order (`MEM_OPT=lazy`), or keeps 2^15 with `CONTROL=1`. It snapshots the base into `<run>/init` and never writes to the base. The design, the VRAM/RAM/disk estimate, the CPU serve cost and the pre-registered comparison are in `docs/adam_t/memscale_prereg.md`.
+- **Large tables:** the export streams the memory table page by page (`lut::save`), and its roundtrip check decodes page by page (`Store::page_words`), so export RAM does not grow with `MEM_LOG2`.

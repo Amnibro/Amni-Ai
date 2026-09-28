@@ -108,7 +108,7 @@ We ran the A/B at matched GPU time. Both arms used the same 6.5M-class core (d=2
 - **Injection:** `x_0 = emb[x_p] + pos[p] + Σ_k mem[row_k(p)]`, before block 0. Memory therefore acts like a learned, content-addressed extension of the byte embedding. It costs no FLOPs: K gathers and K−1 adds of d values per byte.
 - **Training:** the table is a separate module with its own AdamW, no weight decay and `LR_MEM`. Only the rows that were touched get gradient.
   - The phase 1 optimiser still keeps dense moments.
-  - A sparse (row-lazy) optimiser is needed above 2^18 rows per order.
+  - A sparse (row-lazy) optimiser is needed from 2^18 rows per order up. It is built as `MEM_OPT=lazy` (section 7f).
 - **Inference:**
   - Rows are read with `Store::get` from the GF(17) file by coordinate (table, row·2d + j), and never loaded as a tensor.
   - The store streams pages from SSD and keeps a byte budget (`Store::open(p, budget)`).
@@ -398,6 +398,14 @@ Three custom ops now sit under the trainer (`crates/adam-t/src/fa.rs`). Each is 
 - On the LUT path the exponent is carried as a GF(17) discrete-log digit plus an octave, and a chain of boosts is one exponent sum plus one texel lookup. This path is bit-exact to the direct table.
 
 The CPU tests pass, and the LUT-path overhead is about 0.06%. The design, the tests, the pre-registered 6.5M A/B (`crates/adam-t/lorentz_ab.sh`), the HMEM note and the PTEX dual-addressing measurement are in `docs/adam_t/lorentz_prereg.md`.
+
+## 7f. PTEX memory scale-up (ADAM-T-MEMSCALE, 2026-09-28, built, GPU runs not yet run)
+
+- **Exact growth.** `hrow` keeps the top R bits of a hash that does not depend on R. Growing from 2^a to 2^b rows therefore copies old row `k·2^a + (j >> (b−a))` into new row `k·2^b + j`, and the grown model's logits are bit-identical (not `j & (2^a−1)`, which picks unrelated rows).
+- **Continued pretraining.** `INIT=<run>` continues a checkpoint with grown tables. `MEM_OPT=lazy` is a row-lazy Adam: table plus 2 moments, no dense gradient. It fits 2^18 rows per order at d 512 in the 16 GB card, where dense AdamW would not.
+- **Export and serve.** The export streams page by page, and `adam-t grow` grows `.gf17` files.
+- **The run.** `crates/adam-t/t30m_mem.sh` continues the 30M at 2^18, with a 2^15 control (`CONTROL=1`).
+- **Details** are in `docs/adam_t/memscale_prereg.md`: the proof, the estimate that picks 2^18 over 2^20, CPU serve RSS and latency at 2^15/2^18/2^20, the decision rules and the GPU cost.
 
 ## 8. Scaling plan, data plan and compute budget
 
