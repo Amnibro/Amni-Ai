@@ -80,22 +80,95 @@ def _mem(message:str,history,user,session)->dict:
     m=turn(message,history,user,session);return {'reply':m['reply'],'hist':m['hist'],'route':bool(m['route']),'pre':[t.replace('\nAdam: Got it.\n\n',f'\nAdam: {ACK}\n\n') for t in re.findall(r'User: [^\n]*\nAdam: [^\n]*\n\n',m['pre'] or '')]}
 def _math(message:str)->str:
     r=__import__('amni.math.answer',fromlist=['answer']).answer(message) if os.environ.get('AMNI_MATH','1')=='1' else None;r=asc(r[0]) if r and r[1]>=_f('AMNI_MATH_MIN_CONF',0.6) else '';return r+('' if not r or r[-1] in '.!?' else '.')
+_MO='January|February|March|April|May|June|July|August|September|October|November|December'
+_PRON=re.compile(r"(?i)\b(?:he|him|his|she|her|hers|it|its|they|them|their|there|that(?=\s*(?:in|on|at|from|of|by|for|located|\?|$)))\b")
+_ELL=re.compile(r"(?i)^\W*(?:(?:and|but|so|ok|okay)[\s,]+)?(?:what|how)\s+about\s+(.+?)[\s?.!]*$|^\W*and\s+(?!(?:what|who|whom|when|where|which|why|how|is|are|was|were|do|does|did|can|could|would|will|should|you|i|we)\b)(.+?)[\s?.!]*$")
+_QW=set('who whom whose what when where which why how name is are was were do does did in on at the a an and of'.split())
+_TYPEW=set('year years country countries city cities capital color colour colors name number type kind people person place language animal element planet state continent ocean river mountain company part word called used main first largest biggest smallest most famous world many much long old one ones thing things day days home'.split())
+_NOTSUP=set('forest interest contest harvest honest modest request protest suggest invest arrest guest chest crest nest pest rest test west'.split())
+_BADT=re.compile(r"(?i)^(?:lists? of|index of|outline of|timeline of|glossary of|bibliography of|history of the name)\b|\(disambiguation\)|\b(?:by (?:country|year|city|state|region)|videography|discography|filmography|bibliography|in popular culture|awards and nominations)\b")
+_NAV=re.compile(r"(?i)\bmay (?:also )?refer to\b|\bis a list of\b")
+_HOLE=re.compile(r"(?i)\b(?:approximately|about|around|roughly|nearly|almost|over|some|measures|measuring|elevation|height|area|length|population|covers|covering|of|is|was|at|to|from|had)\s{2,}(?=[a-z(,.;])|\b(?:the|at|in|of)\s+,|\s{2,}(?=(?:long|high|tall|wide|deep|away|above|below|across|in (?:length|diameter|area|size))\b)")
+_NUMW=re.compile(r"(?i)\b(?:\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million|billion|dozen)\b")
+_PL={36:'capital',50:'author',86:'composer',57:'director',170:'creator',61:'discoverer or inventor',112:'founder',175:'performer',569:'born',570:'died',19:'place of birth',20:'place of death',17:'country',30:'continent',131:'located in',276:'location',159:'headquarters',38:'currency',37:'official language',1082:'population',571:'founded',577:'published',580:'start',582:'end',585:'date',6:'head of government',35:'head of state',26:'spouse',22:'father',25:'mother',40:'child',2048:'height',2043:'length',1086:'atomic number',246:'symbol',138:'named after',84:'architect',176:'manufacturer',178:'developer',162:'producer',676:'lyricist',58:'screenwriter',127:'owner',123:'publisher',885:'source',403:'mouth',610:'highest point',27:'citizenship',69:'educated at',102:'party',140:'religion',840:'setting',915:'filming location',509:'cause of death',1449:'nickname',1477:'birth name'}
+def _fix(x:str)->str:
+    x=re.sub(r"\b(\d{1,2} (?:%s) \d{3,4})(?=\d{1,2} (?:%s) \d{3,4})"%(_MO,_MO),r"\1 - ",x);x=re.sub(r"\b((?:%s) \d{1,2}, \d{3,4})(?=(?:%s) \d{1,2}, \d{3,4})"%(_MO,_MO),r"\1 - ",x);x=re.sub(r"\((1\d{3}|20\d\d)(1\d{3}|20\d\d)\)",lambda m:f"({m[1]}-{m[2]})" if m[2]>=m[1] else m[0],x)
+    return re.sub(r"\(\s*[,;]?\s*\)","",_HOLE.sub(lambda m:m[0]+'\x01',x))
 def _trim(S:list,sc:list,cap:int)->str:
     i=max(range(len(S)),key=lambda j:(sc[j],-j));k=set();n=-1
     for j in sorted(range(len(S)),key=lambda j:(abs(j-i),j<i)):n+len(S[j])+1<=cap and (k.add(j),n:=n+len(S[j])+1)
     return ' '.join(S[j] for j in sorted(k)) or clip(S[i],cap)
-def _know(message:str,n:int,cap:int)->list:
+def _ents(R,q:str)->list:
+    return [v for v in (' '.join(w for w in re.split(r'\s+',v) if w.lower() not in _QW or v.split()[-1]!=w) for v,_,_ in R.ents(q)) if v and not set(v.lower().split())<=_QW]
+def _human(name:str)->Optional[bool]:
+    WF=__import__('amni.compute.wikifact',fromlist=['store']);S=WF.store();E=sorted({e for e,_ in S.ents(WF.nrm(name))},key=lambda e:-int(S.e_sl[e]))[:1] if S is not None else []
+    return (S.ix(5) in S.inst(E[0])) if E else None
+def _aent(a:str)->list:
+    a=re.split(r'(?<=[a-z0-9)])[.!?;]\s|,\s',re.sub(r"(?i)\s+(?:wrote|painted|composed|directed|invented|discovered|founded|created|built|made|did|is|was)\s+(?:it|them|this|that)\b.*$",'',str(a or '').strip()))[0].strip(' .!?"')
+    a=re.sub(r"(?i)^(?:it(?:'s| is| was)|that(?:'s| is| was)|in|the)\s+",'',a);return [a] if a and len(a.split())<=6 and not re.fullmatch(r'[\d\s.,-]+',a) and a.lower() not in _QW else []
+def _resolve(R,message:str,history)->str:
+    h=[tuple(x)[:2] for x in (history or []) if x and len(x)>=2]
+    if not h:return message
+    u,a=(str(z or '') for z in h[-1]);pers=bool(R.P1.search(u) or R.PW.search(u));e=_ELL.match(message);x=e and (e[1] or e[2]).strip()
+    if x and len(x.split())<=6:
+        if pers:return ''
+        x=re.sub(r"(?i)^(?:of|for|in|with|on|at)\s+",'',x);yr=re.search(r"\b(?:1\d{3}|20\d\d)\b",x);sp=next((w for w in re.findall(r"[a-z]+",x.lower()) if len(w)>5 and w.endswith('est') and w not in _NOTSUP),None) if not _ents(R,x) else None;m=(yr or sp) and re.search(r"(?i)\b(?:first|last|latest|second|third|1\d{3}|20\d\d|\w{3,}est)\b",u)
+        if m:return u[:m.start()]+(yr[0] if yr else sp)+u[m.end():]
+        E0=_ents(R,u);I=R.ix();c=[w for w in re.findall(r"[\w'-]+",u) if w.lower() not in _QW|R.STOP|R.QSTOP|_TYPEW and len(w)>2]
+        return re.sub(r"(?i)(?:\bthe\s+)?"+re.escape(E0[-1]),x,u,1) if E0 else re.sub(r"(?i)\b"+re.escape(max(c,key=lambda w:I.widf(R.toks(w)[0]) if R.toks(w) else 0))+r"\b",re.sub(r"(?i)^(?:a|an|the)\s+",'',x),u,1) if c else ''
+    if not _PRON.search(message):return '' if pers and (set(R.toks(message))-R.QSTOP-_TYPEW)&set(R.toks(u)) else message
+    if pers:return ''
+    C=list(dict.fromkeys(_aent(a)+_ents(R,u)));hu={z:_human(z) for z in C};wh=bool(re.match(r"(?i)\W*who\b",u))
+    rep={'p':next((z for z in C if hu[z]),(_aent(a) or [None])[0] if wh else None),'n':next((z for z in C if hu[z] is False or (hu[z] is None and not (wh and z in _aent(a)))),None),'t':(C or [None])[0]}
+    k=lambda p:'p' if p in ('he','him','his','she','her','hers') else 't' if p in ('they','them','their') else 'n'
+    if any(rep[k(m[0].lower())] is None for m in _PRON.finditer(message)):return ''
+    ps=lambda m:m[0].lower() in ('his','its','their','hers') or (m[0].lower()=='her' and bool(re.match(r"\s+(?!(?:in|on|at|to|for|from|with|and|or|about|as|by|up|out|back|is|was|a|an|the)\b)[a-z]",message[m.end():],re.I)))
+    return _PRON.sub(lambda m:(f"{rep[k(m[0].lower())]}'s" if ps(m) else f"in {rep['n']}" if m[0].lower()=='there' else rep[k(m[0].lower())]),message)
+def _tfit(R,qt:str,y:str,qa:set)->bool:
+    return bool(re.search(r"\b(?:1\d{3}|20\d\d)\b",y)) if qt=='date' else any(m[0].lower() not in qa for m in _NUMW.finditer(y)) if qt=='num' else any(not set(R.toks(v))<=qa for v,_,_ in R.ents(y)) if qt in ('person','place') else True
+def _pages(I,R,ph:str)->list:
+    import numpy as np;from amni.compute import ks_retrieve as KR
+    al=getattr(I,'al',None);h=np.uint64(R.fnv(R.akey(ph).encode()));a,b=(int(np.searchsorted(al[0],h,z)) for z in ('left','right')) if al is not None else (0,0);th=np.uint64(KR.th64(ph));tz=I.tz;j=int(np.searchsorted(tz['h'],th))
+    return list(dict.fromkeys([int(al[1][x]) for x in sorted((x for x in range(a,b) if int(al[2][x])>>4==0),key=lambda x:-int(al[4][x]))]+[int(I.db[int(tz['seg'][x])])+int(tz['doc'][x]) for x in range(j,int(np.searchsorted(tz['h'],th,'right')))]))
+def _keys(I,R,q:str,qa:set,cache:dict,k:int=2)->Tuple[list,set]:
+    E=_ents(R,q);w=[z for z in re.findall(r"[\w'-]+",q)];runs=[];r=[];tt=lambda g:I.text(int(I.first[g]),cache)[0];kt=set(R.toks(E[0])) if E else set()
+    P=[g for g in dict.fromkeys(getattr(I,'lk',None) or []) if not _BADT.search(tt(g)) and set(R.toks(re.sub(r"\s*\([^()]*\)$","",tt(g))))<=qa][:k]
+    for z in w+['.']:r=r+[z] if z.lower() not in _QW|R.STOP|R.QSTOP and z!='.' else (runs.append(r),[])[1]
+    N=[' '.join(r[i:i+n]) for n in (3,2) for r in runs for i in range(len(r)-n+1)]+sorted({z for r in runs for z in r if z.lower() not in _TYPEW and R.toks(z) and I.widf(R.toks(z)[0])>=5},key=lambda z:-I.widf(R.toks(z)[0]))
+    for ph in (list(dict.fromkeys(sorted(E,key=lambda v:-len(v))+N))[:12] if len(P)<k else []):
+        g=next((g for v in dict.fromkeys([ph,' '.join(R.toks(ph))]) for g in _pages(I,R,v)[:2] if not _BADT.search(tt(g))),None)
+        g is not None and g not in P and P.append(g)
+        if len(P)>=k:break
+    return P,kt
+def _wd(R,q:str):
+    if os.environ.get('AMNI_RKNOW_WF','1')!='1':return None
+    WF=__import__('amni.compute.wikifact',fromlist=['ask']);S=WF.store();qn=set(WF.nrm(q).split())
+    for x in dict.fromkeys([q,re.sub(r"(?i)^\W*(?:please\s+)?(?:name|tell me|give me|do you know|can you tell me)\s+(?:the\s+)?","what is the ",q)]):
+        w=WF.ask(x);ok=bool(S is not None and w and w.get('answer') and float(w.get('conf') or 0)>=WF.THR and (WF.TEMPORAL or not w.get('temporal')) and float(w.get('lf') or 0)>=_f('AMNI_ADAM_T_WD_LF',0.85))
+        lb=S.name(w['e']) if ok else '';an=set(WF.nrm(w['answer']).split()) if ok else set()
+        if ok and WF.nrm(lb)!=WF.nrm(w['answer']) and not an<=qn and any(set(WF.nrm(z).split())-WF.STOPR<=qn and set(WF.nrm(z).split())-WF.STOPR for z in [lb]+S.names(w['e'])):return {**w,'label':lb}
+    return None
+_DEF=re.compile(r"(?i)\bstands? for\b|\bshort for\b|\babbreviat|\bacronym\b|^\W*what\s+(?:is|are)\s+(?:a|an)\s+[\w-]+\W*$|\bwhat (?:kind|type|sort) of\b")
+_KW=dict(defn=1.0,key=0.3,key2=0.15,lead=0.2,tf=0.25,ntf=0.35,rr=0.3,cs=2.0,wa=0.8,hole=0.3,nc=5,cmin=0.05,scs=1.0,stf=0.5,swa=2.0)
+def _know(message:str,n:int,cap:int,history=None)->Tuple[list,str]:
     from amni.compute import rknow as R
-    if not R.factq(message,True):return []
-    I=R.ix();W={w:I.widf(w) for w in dict.fromkeys(R.toks(message)) if w not in R.QSTOP};tot=sum(W.values()) or 1.0;out=[];seen=set();cov=_f('AMNI_ADAM_T_KNOW_COV',0.5)
-    wf=__import__('amni.compute.wikifact',fromlist=['ask']) if os.environ.get('AMNI_RKNOW_WF','1')=='1' else None;w=wf and wf.ask(message);w=w if w and w.get('answer') and float(w.get('conf') or 0)>=wf.THR and (wf.TEMPORAL or not w.get('temporal')) else None
-    w and out.append(clip(f"{asc(wf.store().label(w['e'])) or 'Wikidata'}: {asc(w['answer'])}.",cap))
-    for _,pid in I.search(message,max(8,3*n)):
-        t,x,g=I.text(pid);t,x=asc(t),asc(x);sw=set(R.toks(t+' '+x));S=[z for z in re.split(r'(?<=[.!?])\s+',x) if z]
-        if g in seen or not S or sum(v for q,v in W.items() if q in sw)/tot<cov:continue
-        seen.add(g);out.append(f'{t}: '+_trim(S,[sum(v for q,v in W.items() if q in set(R.toks(z))) for z in S],cap-len(t)-2))
-        if len(out)>=n+bool(w):break
-    return out
+    rq=_resolve(R,message,history)
+    if not rq or not (R.factq(rq,True) or re.match(r"(?i)\W*what\s+does\s+(?:the\s+)?[A-Z][A-Z0-9.&-]+\s+stand\s+for\W*$",rq)):return [],rq
+    I=R.ix();K={**_KW,**json.loads(os.environ.get("AMNI_ADAM_T_KW") or "{}")};qt=R.RL.qtype(rq);qa=set(R.toks(rq));W={w:I.widf(w) for w in dict.fromkeys(R.toks(rq)) if w not in R.QSTOP};tot=sum(W.values()) or 1.0;cov=_f('AMNI_ADAM_T_KNOW_COV',0.5);w=_wd(R,rq);out=[];seen=set()
+    w and out.append(clip(f"{asc(w['label'])}{', '+_PL[w['p']] if w['p'] in _PL else ''}: {asc(w['answer'])}.",cap));wa=set(R.toks(w['answer'])) if w else set()
+    _,Rc,P=R.candidates(rq);cache=getattr(I,'rc',None) or {};T=[(a,z['s']) for z in Rc[:int(K['nc'])] if z['s']>=K['cmin'] for a in [set(R.toks(z['v']))-qa] if a];cs=lambda sw:max([s for a,s in T if a<=sw] or [0.0])
+    KP,kt=_keys(I,R,rq,qa,cache);C={p:r for r,(_,p,_,_) in enumerate(P)};[C.setdefault(p,None) for g in KP for p in range(int(I.first[g]),min(int(I.first[g+1]),int(I.first[g])+int(_f('AMNI_ADAM_T_KEY_PASS',30))))];X=[]
+    for p,r in C.items():
+        t,x,g=I.text(p,cache)
+        if _BADT.search(t) or _NAV.search(x[:300]):continue
+        t,x=asc(t),asc(_fix(x));sw=set(R.toks(t+' '+x));c=sum(v for q,v in W.items() if q in sw)/tot;kd=KP.index(g) if g in KP else -1;tf=_tfit(R,qt,x,qa)
+        if c<(cov*0.6 if kd>=0 else cov) or (kt and kd<0 and not kt<=sw):continue
+        X.append((c+(K['key'] if kd==0 else K['key2'] if kd>0 else 0)+((K['lead']+(K['defn'] if kd==0 and _DEF.search(rq) else 0)) if kd>=0 and p==int(I.first[g]) else 0)+(K['tf'] if tf else -K['ntf'] if qt in ('date','num','person','place') else 0)+(K['rr']/(1+r)**0.5 if r is not None else 0)+K['cs']*cs(sw)+(K['wa'] if wa and wa<=sw else 0)-(K['hole'] if qt=='num' and '\x01' in x else 0),p,t,x,g))
+    for s,p,t,x,g in sorted(X,key=lambda z:-z[0]):
+        if g in seen:continue
+        S=[z for z in re.split(r'(?<=[.!?])\s+',x) if z];seen.add(g);out.append(re.sub(r'\s*\x01\s*',' ',f'{t}: '+_trim(S,[sum(v for q,v in W.items() if q in set(R.toks(z)))/tot+K['scs']*cs(set(R.toks(z)))+(K['stf'] if _tfit(R,qt,z,qa) else 0)+(K['swa'] if wa and wa<=set(R.toks(z)) else 0)-('\x01' in z) for z in S],cap-len(t)-2)).strip())
+        if len(out)>=(1 if w else n)+bool(w):break
+    return out,rq
 def context(message:str,history=None,user=None,session=None,budget:int=0)->dict:
     t0=time.perf_counter();c={'reply':None,'hist':list(history or []),'pre':[],'rc':[],'n':{}}
     if os.environ.get('AMNI_ADAM_T_CONTEXT','1')!='1':return {**c,'ms':0.0}
@@ -106,7 +179,7 @@ def context(message:str,history=None,user=None,session=None,budget:int=0)->dict:
     try:ma=(lambda r,n:clip('Calculator: '+r,n) if r and n>=32 else '')(_math(message),min(ab,B()-1)) if ab>0 and not c['reply'] else '';c['rc']=[ma] if ma else []
     except Exception as e:c['n']['math_err']=type(e).__name__
     kq=min(kb,B()-np_)
-    try:K=_fit(_know(message,np_,min(pb,kq//max(1,np_)))[::-1],0,kq)[0][::-1] if kq>=64 and np_>0 and not (c['reply'] or m['route'] or c['rc']) else []
+    try:K,c['rq']=_know(message,np_,min(pb,kq//max(1,np_)),history) if kq>=64 and np_>0 and not (c['reply'] or c['rc']) else ([],'');K=_fit(K[::-1],0,kq)[0][::-1] if not m['route'] or c['rq'] not in ('',message) else []
     except Exception as e:c['n']['know_err']=type(e).__name__
     c['rc']+=K;q=min(mb,B());c['pre']=_fit(m['pre'],0,q)[0] if m['route'] and q>0 else []
     c['n'].update(mem=len(c['pre']),know=len(K),math=int(len(c['rc'])>len(K)));c['ms']=(time.perf_counter()-t0)*1000;return c
