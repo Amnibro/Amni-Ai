@@ -1,0 +1,288 @@
+{
+ "dev": "data/adam_t/retrieve/dev.jsonl",
+ "cmd": "scripts/adam_t_retrieve_dev.py run",
+ "budget": 2928,
+ "tuned_on": "tune split only; hold split untouched until the final run",
+ "before": {
+  "commit": "341f049",
+  "summary": {
+   "all": {
+    "n": 356,
+    "know": {
+     "n": 244,
+     "attached": 0.9918,
+     "gold_in_ctx": 0.8115,
+     "gold_if_attached": 0.8182,
+     "wd_emitted": 0.1516,
+     "wd_precision": 0.9189,
+     "psg_hit": 0.7869,
+     "common": {
+      "n": 40,
+      "attached": 0.975,
+      "gold_in_ctx": 0.6
+     }
+    },
+    "multi": {
+     "n": 62,
+     "attached": 0.9032,
+     "gold_in_ctx": 0.1935,
+     "junk": 0.7097
+    },
+    "personal": {
+     "n": 20,
+     "junk": 0.2
+    },
+    "multi_junk_all": 0.5854,
+    "gate_false_fire": 0.0,
+    "gold_if_attached_all": 0.7047,
+    "latency": {
+     "all": {
+      "median_ms": 103.9,
+      "p90_ms": 272.4
+     },
+     "fired": {
+      "median_ms": 120.5,
+      "p90_ms": 280.4
+     }
+    }
+   },
+   "tune": {
+    "n": 250,
+    "know": {
+     "n": 169,
+     "attached": 0.9882,
+     "gold_in_ctx": 0.8107,
+     "gold_if_attached": 0.8204,
+     "wd_emitted": 0.142,
+     "wd_precision": 0.9167,
+     "psg_hit": 0.7929,
+     "common": {
+      "n": 27,
+      "attached": 0.963,
+      "gold_in_ctx": 0.5556
+     }
+    },
+    "multi": {
+     "n": 44,
+     "attached": 0.8864,
+     "gold_in_ctx": 0.2045,
+     "junk": 0.6818
+    },
+    "personal": {
+     "n": 16,
+     "junk": 0.125
+    },
+    "multi_junk_all": 0.5333,
+    "gate_false_fire": 0.0,
+    "gold_if_attached_all": 0.7087,
+    "latency": {
+     "all": {
+      "median_ms": 102.2,
+      "p90_ms": 275.5
+     },
+     "fired": {
+      "median_ms": 122.1,
+      "p90_ms": 293.7
+     }
+    }
+   },
+   "hold": {
+    "n": 106,
+    "know": {
+     "n": 75,
+     "attached": 1.0,
+     "gold_in_ctx": 0.8133,
+     "gold_if_attached": 0.8133,
+     "wd_emitted": 0.1733,
+     "wd_precision": 0.9231,
+     "psg_hit": 0.7733,
+     "common": {
+      "n": 13,
+      "attached": 1.0,
+      "gold_in_ctx": 0.6923
+     }
+    },
+    "multi": {
+     "n": 18,
+     "attached": 0.9444,
+     "gold_in_ctx": 0.1667,
+     "junk": 0.7778
+    },
+    "personal": {
+     "n": 4,
+     "junk": 0.5
+    },
+    "multi_junk_all": 0.7273,
+    "gate_false_fire": 0.0,
+    "gold_if_attached_all": 0.6957,
+    "latency": {
+     "all": {
+      "median_ms": 108.7,
+      "p90_ms": 261.0
+     },
+     "fired": {
+      "median_ms": 118.4,
+      "p90_ms": 267.4
+     }
+    }
+   }
+  }
+ },
+ "after": {
+  "commit": "628fc27",
+  "summary": {
+   "all": {
+    "n": 356,
+    "know": {
+     "n": 244,
+     "attached": 0.9959,
+     "gold_in_ctx": 0.8648,
+     "gold_if_attached": 0.8683,
+     "wd_emitted": 0.1475,
+     "wd_precision": 0.9216,
+     "psg_hit": 0.8648,
+     "common": {
+      "n": 40,
+      "attached": 0.975,
+      "gold_in_ctx": 0.65
+     }
+    },
+    "multi": {
+     "n": 62,
+     "attached": 0.9677,
+     "gold_in_ctx": 0.871,
+     "junk": 0.0968
+    },
+    "personal": {
+     "n": 20,
+     "junk": 0.0
+    },
+    "multi_junk_all": 0.0732,
+    "gate_false_fire": 0.0,
+    "gold_if_attached_all": 0.8746,
+    "latency": {
+     "all": {
+      "median_ms": 114.5,
+      "p90_ms": 170.7
+     },
+     "fired": {
+      "median_ms": 124.7,
+      "p90_ms": 176.1
+     }
+    }
+   },
+   "tune": {
+    "n": 250,
+    "know": {
+     "n": 169,
+     "attached": 0.9941,
+     "gold_in_ctx": 0.8639,
+     "gold_if_attached": 0.869,
+     "wd_emitted": 0.1361,
+     "wd_precision": 0.9143,
+     "psg_hit": 0.8639,
+     "common": {
+      "n": 27,
+      "attached": 0.963,
+      "gold_in_ctx": 0.6296
+     }
+    },
+    "multi": {
+     "n": 44,
+     "attached": 1.0,
+     "gold_in_ctx": 0.8864,
+     "junk": 0.1136
+    },
+    "personal": {
+     "n": 16,
+     "junk": 0.0
+    },
+    "multi_junk_all": 0.0833,
+    "gate_false_fire": 0.0,
+    "gold_if_attached_all": 0.8726,
+    "latency": {
+     "all": {
+      "median_ms": 106.0,
+      "p90_ms": 163.9
+     },
+     "fired": {
+      "median_ms": 112.8,
+      "p90_ms": 169.0
+     }
+    }
+   },
+   "hold": {
+    "n": 106,
+    "know": {
+     "n": 75,
+     "attached": 1.0,
+     "gold_in_ctx": 0.8667,
+     "gold_if_attached": 0.8667,
+     "wd_emitted": 0.1733,
+     "wd_precision": 0.9375,
+     "psg_hit": 0.8667,
+     "common": {
+      "n": 13,
+      "attached": 1.0,
+      "gold_in_ctx": 0.6923
+     }
+    },
+    "multi": {
+     "n": 18,
+     "attached": 0.8889,
+     "gold_in_ctx": 0.8333,
+     "junk": 0.0556
+    },
+    "personal": {
+     "n": 4,
+     "junk": 0.0
+    },
+    "multi_junk_all": 0.0455,
+    "gate_false_fire": 0.0,
+    "gold_if_attached_all": 0.8791,
+    "latency": {
+     "all": {
+      "median_ms": 139.6,
+      "p90_ms": 185.9
+     },
+     "fired": {
+      "median_ms": 147.4,
+      "p90_ms": 189.1
+     }
+    }
+   }
+  }
+ },
+ "e2e_secondary": {
+  "label": "dry/tune (chat dev, live route, step 4638, same binary and model sha as the prod E2E report)",
+  "report": "data/adam_t/eval/report_adam-t-t30m-sft_4638_e2e_tune_dry.json",
+  "before": {
+   "ret_hit": 0.4698,
+   "know_fired": 0.7114,
+   "ret_hit_fired": 0.6604,
+   "know_hit": 0.6863,
+   "multi_fired": 0.234,
+   "multi_hit": 0.0,
+   "chat_ans": 0.4732,
+   "chat_good": 0.3146,
+   "chat_fact": 0.2685,
+   "chat_ctx": 0.2113,
+   "multi_ctx_when_fired": "0/18",
+   "retrieval_failures": 36
+  },
+  "after": {
+   "ret_hit": 0.5973,
+   "know_fired": 0.7181,
+   "ret_hit_fired": 0.8318,
+   "know_hit": 0.8333,
+   "multi_fired": 0.1915,
+   "multi_hit": 0.0851,
+   "chat_ans": 0.4976,
+   "chat_good": 0.3317,
+   "chat_fact": 0.3087,
+   "chat_ctx": 0.2394,
+   "multi_ctx_when_fired": "2/12",
+   "retrieval_failures": 18
+  }
+ }
+}
