@@ -35,9 +35,9 @@ The protocol is JSON lines on stdin and stdout, one reply per request, and all t
 
 | request | reply |
 |---|---|
-| `{"op":"hello"}` | `{"model":"adam-t-<TAG>","step":N,"fmt":"plain","ctx":<window bytes, approx>,"ctx_symbols":T,"vocab":V,"proto":1}` |
+| `{"op":"hello"}` | `{"model":"adam-t-<TAG>","step":N,"fmt":"plain","ctx":<window bytes, approx>,"ctx_symbols":T,"vocab":V,"proto":1,"gen":{decoding defaults}}` |
 | `{"op":"lp","items":[[ctx_b64,cont_b64],...]}` | `{"lp":[ln p(cont\|ctx),...]}` |
-| `{"op":"gen","prompt":b64,"max":N,"stop":[b64,...]}` | `{"text":b64}` |
+| `{"op":"gen","prompt":b64,"max":N,"stop":[b64,...]}`, plus the optional decoding fields below | `{"text":b64}` |
 | `{"op":"bye"}` | `{"bye":true}`, then the server exits |
 | anything that fails | `{"error":"..."}` |
 
@@ -48,7 +48,19 @@ The protocol is JSON lines on stdin and stdout, one reply per request, and all t
 - `LP_BATCH` (default 16) sets how many windows go into one forward.
 
 `gen` details:
-- Decoding is greedy.
+- Decoding is greedy unless `temperature` is set. The optional request fields below override the server defaults:
+
+| field | effect | `plain` default | `chat` default |
+|---|---|---|---|
+| `no_repeat_ngram` | bans any token that would complete an n-gram already in the reply (0 = off) | 0 | 3 |
+| `rep_penalty` | divides the positive logits (and multiplies the negative ones) of every token already in the reply, once per distinct token (1 = off) | 1.0 | 1.15 |
+| `temperature`, `top_k` | above 0, samples from the `top_k` best logits (0 = all) at that temperature | 0, 0 | 0, 0 |
+| `seed` | seeds the sampler so that a request is reproducible; unseeded sampling uses seed 0 | 0 | 0 |
+| `stop_repeat` | ends the reply when a clause of 3+ words (split at `. ! ? ; , :` and newlines) repeats an earlier one, and cuts before the repeat | false | true |
+
+- The controls act on the logits, on both the `.gf17` LUT path and the burn path. On the LUT path they add no float matmul.
+- If every token is banned, the step falls back to the raw argmax.
+- Setting `GEN_DEFAULTS='{"no_repeat_ngram":0,...}'` in the server's environment overrides the defaults for every request. `hello` reports the defaults in effect, so harness reports record them.
 - `max` is counted in bytes.
 - The text is cut at the first stop sequence, and the stop itself is not returned.
 

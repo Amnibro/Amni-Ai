@@ -3,6 +3,7 @@ use adam_gf17::{Store, Table};
 use adam_ray::rng::Pcg64;
 use burn::tensor::backend::Backend;
 use rayon::prelude::*;
+use serde_json::{json, Value};
 use std::{fs, io::{self, Write}, sync::Mutex, time::Instant};
 pub fn pack(t: &[f32], din: usize, dout: usize) -> Vec<u16> { let nw = din.div_ceil(10); (0..dout).flat_map(|o| (0..nw).map(move |w| (0..10).rev().fold(0u32, |a, j| a * 3 + if 10 * w + j < din { (t[(10 * w + j) * dout + o] as i32 + 1) as u32 } else { 1 }) as u16)).collect() }
 pub fn trits(c: &[u16], din: usize, dout: usize) -> Vec<f32> { let (nw, mut t) = (din.div_ceil(10), vec![0f32; din * dout]); (0..dout).for_each(|o| (0..nw).for_each(|w| { (0..10).fold(c[o * nw + w] as u32, |v, j| { if 10 * w + j < din { t[(10 * w + j) * dout + o] = (v % 3) as f32 - 1.0; } v / 3 }); })); t }
@@ -86,6 +87,39 @@ impl Lm {
 pub struct Kv { pub x: Vec<u32>, pub k: Vec<Vec<f32>>, pub v: Vec<Vec<f32>> }
 pub fn nll(lg: &[f32], y: &[u32]) -> Vec<f64> { lg.chunks_exact(lg.len() / y.len().max(1)).zip(y).map(|(r, &t)| { let mx = r.iter().fold(f32::MIN, |a, &v| a.max(v)) as f64; mx + r.iter().map(|&v| (v as f64 - mx).exp()).sum::<f64>().ln() - r[t as usize] as f64 }).collect() }
 pub fn am(r: &[f32]) -> usize { r.iter().enumerate().fold(0, |b, (i, &v)| if v > r[b] { i } else { b }) }
+#[derive(Clone, Debug, PartialEq)]
+pub struct Dec { pub nr: usize, pub rp: f32, pub k: usize, pub tp: f32, pub seed: u64, pub rs: bool }
+impl Dec {
+    pub fn new(chat: bool) -> Dec { Dec { nr: if chat { 3 } else { 0 }, rp: if chat { 1.15 } else { 1.0 }, k: 0, tp: 0.0, seed: 0, rs: chat } }
+    pub fn with(&self, q: &Value) -> io::Result<Dec> {
+        let (bad, g) = (|k: &str| io::Error::other(format!("bad gen field {k}")), |k: &str| q.get(k).filter(|v| !v.is_null()));
+        let u = |k: &str, d: u64| g(k).map_or(Ok(d), |v| v.as_u64().ok_or_else(|| bad(k)));
+        let f = |k: &str, d: f32| g(k).map_or(Ok(d), |v| v.as_f64().filter(|x| x.is_finite() && *x >= 0.0).map(|x| x as f32).ok_or_else(|| bad(k)));
+        let r = Dec { nr: u("no_repeat_ngram", self.nr as u64)? as usize, rp: f("rep_penalty", self.rp)?, k: u("top_k", self.k as u64)? as usize, tp: f("temperature", self.tp)?, seed: u("seed", self.seed)?, rs: g("stop_repeat").map_or(Ok(self.rs), |v| v.as_bool().ok_or_else(|| bad("stop_repeat")))? };
+        (r.rp > 0.0).then_some(r).ok_or_else(|| bad("rep_penalty"))
+    }
+    pub fn json(&self) -> Value {
+        let r = |x: f32| x.to_string().parse::<f64>().unwrap_or(x as f64);
+        json!({"no_repeat_ngram": self.nr, "rep_penalty": r(self.rp), "top_k": self.k, "temperature": r(self.tp), "seed": self.seed, "stop_repeat": self.rs})
+    }
+    pub fn pick(&self, lg: &[f32], o: &[u32], g: &mut Pcg64) -> usize {
+        let (n, mut l, mut u) = (self.nr, lg.to_vec(), o.to_vec());
+        u.sort_unstable();
+        u.dedup();
+        (self.rp != 1.0).then(|| u.iter().for_each(|&t| { let x = &mut l[t as usize]; *x = if *x > 0.0 { *x / self.rp } else { *x * self.rp }; }));
+        (n > 0 && o.len() + 1 >= n).then(|| { let p = &o[o.len() + 1 - n..]; o.windows(n).filter(|w| w[..n - 1] == *p).for_each(|w| l[w[n - 1] as usize] = f32::NEG_INFINITY); });
+        let l = if l.iter().all(|v| *v == f32::NEG_INFINITY) { lg.to_vec() } else { l };
+        let mut ix: Vec<usize> = if self.tp > 0.0 { (0..l.len()).filter(|&i| l[i].is_finite()).collect() } else { Vec::new() };
+        ix.sort_by(|&a, &b| l[b].total_cmp(&l[a]).then(a.cmp(&b)));
+        ix.truncate(if self.k > 0 { self.k } else { ix.len() });
+        if ix.is_empty() { am(&l) } else { ix[g.choice(&ix.iter().map(|&i| (((l[i] - l[ix[0]]) / self.tp) as f64).exp()).collect::<Vec<f64>>())] }
+    }
+}
+pub fn rstop(g: &[u8]) -> Option<usize> {
+    let sep = |c: &u8| b".!?;,:\n".contains(c);
+    let cl: Vec<(usize, Vec<Vec<u8>>)> = g.split_inclusive(sep).scan(0usize, |s, c| { *s += c.len(); Some((*s - c.len(), c)) }).filter(|(_, c)| c.last().is_some_and(sep)).map(|(a, c)| (a, c.split(|x| !x.is_ascii_alphanumeric() && *x != b'\'').filter(|w| !w.is_empty()).map(|w| w.to_ascii_lowercase()).collect())).collect();
+    (1..cl.len()).find(|&j| cl[j].1.len() >= 3 && cl[..j].iter().any(|c| c.1 == cl[j].1)).map(|j| g[..cl[j].0].iter().rposition(|c| !b" \t\r\n,;:".contains(c)).map_or(0, |i| i + 1))
+}
 pub fn hold_windows(hold: &Dat, n: usize, t: usize) -> (Vec<u32>, Vec<u32>) { let mut g = Pcg64::new(Some(1234)); let (x, y) = hold.hold(&mut g, 128, t); (x[..n * t].to_vec(), y[..n * t].to_vec()) }
 pub fn bpb(v: &[f64], y: &[u32], lens: &[u32]) -> f64 { v.iter().sum::<f64>() / y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / std::f64::consts::LN_2 }
 pub fn cpu_eval(lm: &Lm, x: &[u32], y: &[u32], lens: &[u32]) -> io::Result<(Vec<f32>, f64, f64)> { let t0 = Instant::now(); let lg = x.chunks(lm.t).map(|w| lm.fwd(w)).collect::<io::Result<Vec<_>>>()?.concat(); let s = t0.elapsed().as_secs_f64(); Ok((lg.clone(), bpb(&nll(&lg, y), y, lens), y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / s)) }
@@ -107,4 +141,58 @@ pub fn finish<B: crate::fa::Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, h
     let r = format!("{{\"export\": \"{p}\", \"tables\": {}, \"roundtrip_bytes_exact\": {}, \"roundtrip_trits_exact\": {tt}, \"trits\": {nt}, \"zero_frac\": {:.4}, \"payload_bytes\": {raw}, \"trit_code_bytes\": {tb_}, \"bits_per_trit_stored\": {:.4}, \"gf17_file_bytes\": {sz}, \"parity_windows\": {}, \"parity_positions\": {}, \"max_abs_dlogit\": {mx:.3e}, \"mean_abs_dlogit\": {:.3e}, \"argmax_agree\": {:.5}, \"gpu_bpb\": {gb:.5}, \"cpu_lut_bpb\": {cb:.5}, \"cpu_lut_bytes_per_s\": {bps:.1}}}", it.len(), rt.iter().all(|&b| b), nz as f64 / nt as f64, tb_ as f64 * 8.0 / nt as f64, c.par, gl.len() / c.v, sm / gl.len() as f64, agree as f64 / (gl.len() / c.v) as f64);
     println!("{r}");
     writeln!(log, "{r}")
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn no_repeat_ngram_bans_completions() {
+        let (d, mut g) = (Dec { nr: 3, rp: 1.0, ..Dec::new(false) }, Pcg64::new(Some(0)));
+        let mut lg = vec![0f32; 8];
+        (lg[5], lg[6]) = (3.0, 2.0);
+        assert_eq!(d.pick(&lg, &[1, 2, 5, 1, 2], &mut g), 6);
+        assert_eq!(d.pick(&lg, &[1, 2, 5, 1, 3], &mut g), 5);
+        assert_eq!(Dec { nr: 1, ..d.clone() }.pick(&lg, &[5, 6], &mut g), 0);
+        assert_eq!(Dec { nr: 2, ..d.clone() }.pick(&[1.0, 0.0], &[0, 0], &mut g), 1);
+        assert_eq!(Dec { nr: 1, ..d.clone() }.pick(&[1.0, 0.0], &[0, 1], &mut g), 0, "all banned falls back to the raw argmax");
+        assert_eq!(Dec::new(false).pick(&lg, &[1, 2, 5, 1, 2], &mut g), 5);
+    }
+    #[test]
+    fn rep_penalty_scales_seen_logits() {
+        let (d, mut g) = (Dec { rp: 1.15, ..Dec::new(false) }, Pcg64::new(Some(0)));
+        let lg = [2.0f32, 1.9, -1.0, -1.1, -5.0];
+        assert_eq!(d.pick(&lg, &[], &mut g), 0);
+        assert_eq!(d.pick(&lg, &[0, 0, 0], &mut g), 1);
+        assert_eq!(d.pick(&[-1.0, -1.1, -9.0], &[0], &mut g), 1);
+        assert_eq!(Dec { rp: 1.0, ..d.clone() }.pick(&lg, &[0], &mut g), 0);
+        assert_eq!(Dec { rp: 1.04, ..d.clone() }.pick(&lg, &[0, 0, 0, 0, 0], &mut g), 0, "the penalty applies once per distinct token, not per occurrence");
+    }
+    #[test]
+    fn sampling_is_seeded_and_topk_bounded() {
+        let lg: Vec<f32> = (0..50).map(|i| (i % 7) as f32 * 0.3).collect();
+        let run = |d: &Dec| { let mut g = Pcg64::new(Some(d.seed)); (0..200).map(|_| d.pick(&lg, &[], &mut g)).collect::<Vec<usize>>() };
+        let d = Dec { tp: 1.0, k: 3, seed: 4, ..Dec::new(false) };
+        let a = run(&d);
+        assert!(a == run(&d) && a != run(&Dec { seed: 5, ..d.clone() }) && a.iter().all(|i| [6, 13, 20].contains(i)) && [6, 13, 20].iter().all(|i| a.contains(i)), "{a:?}");
+        assert!(run(&Dec { seed: 9, ..Dec::new(false) }).iter().all(|&i| i == 6 && am(&lg) == 6));
+        assert!(run(&Dec { tp: 1.0, seed: 4, ..Dec::new(false) }).iter().collect::<std::collections::HashSet<_>>().len() > 3);
+    }
+    #[test]
+    fn clause_repeat_stop() {
+        assert_eq!(rstop(b" You should cook for dinner tonight. If you have a tonight, you should choose a dinner tonight. If you have a to"), None);
+        let t = b" You should cook for dinner tonight. If you have a tonight, you should choose a dinner tonight. If you have a tonight,";
+        assert_eq!(&t[..rstop(t).unwrap()], b" You should cook for dinner tonight. If you have a tonight, you should choose a dinner tonight.");
+        let u = b" It is used as a liquid, it is used for cooling.\nIt is used as a LIQUID!";
+        assert_eq!(&u[..rstop(u).unwrap()], b" It is used as a liquid, it is used for cooling.");
+        assert_eq!(rstop(b" Oh no, oh no, that is bad. Yes, yes, yes."), None);
+        assert_eq!(rstop(b""), None);
+    }
+    #[test]
+    fn dec_fields_parse() {
+        let c = Dec::new(true);
+        assert!(c.nr == 3 && (c.rp - 1.15).abs() < 1e-6 && c.rs && c.tp == 0.0 && Dec::new(false) == Dec { nr: 0, rp: 1.0, k: 0, tp: 0.0, seed: 0, rs: false });
+        assert_eq!(c.with(&json!({"no_repeat_ngram": 4, "rep_penalty": 1.3, "top_k": 7, "temperature": 0.7, "seed": 11, "stop_repeat": false, "other": 1})).unwrap(), Dec { nr: 4, rp: 1.3, k: 7, tp: 0.7, seed: 11, rs: false });
+        assert!(c.with(&json!({"rep_penalty": null})).unwrap() == c && c.with(&c.json()).unwrap() == c && c.with(&Value::Null).unwrap() == c);
+        ["{\"rep_penalty\": 0}", "{\"top_k\": -1}", "{\"temperature\": \"hot\"}", "{\"stop_repeat\": 1}", "{\"no_repeat_ngram\": 1.5}"].iter().for_each(|q| assert!(c.with(&serde_json::from_str(q).unwrap()).is_err(), "{q}"));
+    }
 }
