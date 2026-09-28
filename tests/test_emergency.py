@@ -160,3 +160,15 @@ def test_safety5_tiers():
             r=E.rules(m);assert r and r["kind"] not in E.CONC,(m,d)
             assert d["lang"] is None or (E.rules(m,False) or {"kind":"concern"})["kind"] not in E.CONC or E.lut_score(m)[1]==r["category"] and E.lut_score(m)[0]>=z[4],(m,d)
     d=E.detect("i'm so tired of existing");assert d["tier"]=="concern" and E.guard("i'm so tired of existing","Call 911 now.")=="Thanks for sharing that. Tell me more?"
+def test_gap_families_dev_and_holdouts(monkeypatch):
+    G=D.parent/"emergency_gaps";GL=G/"lock.json";assert GL.exists() and not EL.verify(GL) and {Path(f).name for f in json.loads(GL.read_text())["splits"]}=={f.name for f in G.glob("*.tsv")},EL.verify(GL)
+    E.detect.cache_clear();rd=lambda f:[l.rstrip("\n").split("\t",1) for l in open(G/f,encoding="utf-8") if l.strip()];out={}
+    for s in ("dev","holdout","holdout2","holdout3","holdout4"):
+        p=[(c,E.detect(m)) for c,m in rd(f"{s}_pos.tsv")];n=[(c,m,E.detect(m)) for c,m in rd(f"{s}_neg.tsv")];out[s]={"recall":round(sum(bool(d) for _,d in p)/len(p),4),"recall_emergency_tier":round(sum(bool(d) and d["tier"]=="emergency" for _,d in p)/len(p),4),"fp":round(sum(bool(d) for *_,d in n)/len(n),4),"n_pos":len(p),"n_neg":len(n),"fp_items":[(c,m,d["kind"]) for c,m,d in n if d]}
+    EL.record(REP.with_name("report_emergency_gaps.json"),out,cmd="pytest tests/test_emergency.py::test_gap_families_dev_and_holdouts",code_files=[E.__file__,__file__],splits=json.loads(GL.read_text()),kind="prod")
+    assert all(v["recall"]>=0.97 and v["fp"]<=0.02 and v["recall_emergency_tier"]>=0.85 for v in out.values()),out
+    for m,k in (("someone just smashed the back window and i can hear them walking around downstairs, im hiding in my closet","intruder"),("my car went into the canal and water is coming in through the doors, i cant get the door open","car_water"),("we're trapped in the attic, the water is up to the ceiling below us","flood"),("the building collapsed and my mom is trapped under the rubble","entrap")):
+        d=E.detect(m);assert d and d["kind"]==k and d["tier"]=="emergency" and d["reply"].startswith("Call 911 (or your local emergency number)"),(m,d)
+    B=("my phone has been on fire all day with work emails","my dad fell asleep in the chair and his glasses slid down his nose","the kids passed out in the car after the zoo")
+    assert not any(E.detect(m) for m in B)
+    monkeypatch.setenv("AMNI_EMERGENCY_IDIOM","0");E.detect.cache_clear();assert all(E.detect(m) for m in B);monkeypatch.delenv("AMNI_EMERGENCY_IDIOM");E.detect.cache_clear()

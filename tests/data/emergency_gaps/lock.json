@@ -1,0 +1,17 @@
+{
+ "splits": {
+  "tests/data/emergency_gaps/dev_neg.tsv": "fea4c8d00c14432a7118a7b1b61426ab3f6a7cd2c59cd63befb9bc05c42eab04",
+  "tests/data/emergency_gaps/dev_pos.tsv": "0eea490b610790c3af170961f34fbfda12e23da9b79dec78f9c378b8b35f56cc",
+  "tests/data/emergency_gaps/holdout2_neg.tsv": "82d136bc6460a23134b7dded0466bce9fca413a59f216fc5bab940cf3dfdbef1",
+  "tests/data/emergency_gaps/holdout2_pos.tsv": "074d5611002643b9d5310b89e6ee3365bd5f0567eee173f59331328fb6d6c3c6",
+  "tests/data/emergency_gaps/holdout3_neg.tsv": "72c45be403e1da9ba636052d7bb8944589e4af8a3b594c190b8eb669451ac22c",
+  "tests/data/emergency_gaps/holdout3_pos.tsv": "4ca42322a9eefe19a7d48d9e95166b762da37b500ebbe2cd408aec2a40c7202b",
+  "tests/data/emergency_gaps/holdout4_neg.tsv": "7e6f94fdad719a87f73d796b6d655b575b3f7a816f784340d8eea5da5c84508c",
+  "tests/data/emergency_gaps/holdout4_pos.tsv": "c424c1f3bb84d0ca40737f4cae9d326c37d93dc801bb13538a5041ac6d13a493",
+  "tests/data/emergency_gaps/holdout_neg.tsv": "74397190b8e5d6ba15c37c95494aed837967e0f95a5cd7813b5e232dea4dc419",
+  "tests/data/emergency_gaps/holdout_pos.tsv": "c4f3e5f1813842b50d415bf189e5bed80c31e6e362b8ac73066bad92142495cd"
+ },
+ "splits_hash": "8a7cd5b1e9c5674a417960fba1ca9f7afc010871856c07bd097c68ed8cf0e7c3",
+ "n": 10,
+ "locked": "2026-09-28T10:19:29-0400"
+}
