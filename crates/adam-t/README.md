@@ -100,6 +100,7 @@ THROTTLE_FILE=... RUN_DIR=exports/adam_t/<TAG> TAG=<TAG> TERN=1 MEM=1 STEPS=3000
 | Limits | `MAX_MIN`: wall-clock limit per process; the run checkpoints, pauses, and resumes when rerun |
 | Throttle | `THROTTLE_FILE`, `THROTTLE_UNIT_MS` |
 | Vocabulary | `BPE` (path to `bpe<V>.json`; empty means bytes) |
+| Position | `LPE` (0 or 1; 1 replaces learned positions with Lorentz boosts), `LPE_PHI` (max rapidity across the window, default 4), `LPE_S` (quanta per position for the fastest pair, default 64); `LPE_LUT=ref` makes the LUT path use the direct exponent table instead of GF(17) discrete logs |
 
 The throttle file is read every step. The run sleeps `throttle × max(1, gpu_ms/THROTTLE_UNIT_MS)` per step.
 
@@ -134,4 +135,5 @@ THROTTLE_FILE=~/.local/share/amni-ascend/throttle.txt bash crates/adam-t/sft.sh
 - **Flash attention:** CubeCL kernels (tiled online-softmax forward that stores only the log-sum-exp, and a recompute backward split into a dQ kernel and a dK/dV kernel). They read the fused `qkv` matmul output directly and write `o` in `[B*T, D]` layout, so no head transposes. Registered as a custom op for `CubeBackend`, `Fusion` and `Autodiff`; other backends use the reference formula. Needs head dim 64 and `T % 64 == 0`, otherwise it falls back. `ATTN=ref` restores burn's attention.
 - **Fused ternary linear:** one autodiff op per linear map that saves only `x` and `W` and recomputes RMSNorm, the activation grid and the trits in backward, with the same STE gradients. `LIN=ref` restores the op-by-op autodiff path.
 - **Exact cooperative-matrix GEMMs:** the ternary forward `xi · t` has integer operands (|xi| <= 128, t in {-1,0,1}), so it runs in bf16 on the matrix cores with f32 accumulation and stays bit-exact. Backward operands that are real floats are split by one kernel into three bf16 terms whose sum is the f32 value, so the products are exact too. `XMM=0` falls back to f32 GEMMs.
+- **Lorentz A/B:** `crates/adam-t/lorentz_ab.sh` runs the pre-registered position-encoding A/B (`docs/adam_t/lorentz_prereg.md`). It needs `THROTTLE_FILE`. `cargo test --release -p adam-t --lib lpe_lut_bench -- --ignored --nocapture` times the LUT path with and without LPE.
 - **Pausing a run:** `touch $RUN_DIR/STOP` makes the trainer checkpoint and exit, and `campaign.sh` stops without an eval. `crates/adam-t/t30m.sh` is the 30M launcher.

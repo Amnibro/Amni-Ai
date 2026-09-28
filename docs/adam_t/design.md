@@ -390,6 +390,15 @@ Three custom ops now sit under the trainer (`crates/adam-t/src/fa.rs`). Each is 
   - masked CE against a CPU reference and burn's CE, with zero gradients outside the mask;
   - an end-to-end CPU run: tiny base → SFT with LR 0 keeps the base weights bit-exactly → SFT halves the masked hold loss → `model.gf17` export → reload.
 
+## 7e. Lorentz position encoding (ADAM-T-LORENTZ, 2026-09-28, built, A/B not yet run)
+
+`LPE=1` replaces the learned absolute position table with boosts in light-cone coordinates:
+- Each head-dim pair (u, v) is scaled by e^{±φ}, with bounded, centred, integer-quantised rapidities (`LPE_PHI` 4, `LPE_S` 64). q·k becomes the Minkowski form, which depends only on rapidity differences.
+- In the trainer it is one elementwise factor on the fused `qkv` output, so every custom kernel is unchanged.
+- On the LUT path the exponent is carried as a GF(17) discrete-log digit plus an octave, and a chain of boosts is one exponent sum plus one texel lookup. This path is bit-exact to the direct table.
+
+The CPU tests pass, and the LUT-path overhead is about 0.06%. The design, the tests, the pre-registered 6.5M A/B (`crates/adam-t/lorentz_ab.sh`), the HMEM note and the PTEX dual-addressing measurement are in `docs/adam_t/lorentz_prereg.md`.
+
 ## 8. Scaling plan, data plan and compute budget
 
 **Byte-level configurations**, where the core is 12·L·d² plus embeddings:

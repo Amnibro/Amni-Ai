@@ -1,4 +1,4 @@
-use crate::{bpe::{Bpe, PAT}, f1, hrow, logits, tq, Cfg, Core, Dat, Mem};
+use crate::{bpe::{Bpe, PAT}, f1, hrow, logits, tq, Cfg, Core, Dat, Lz, Mem};
 use adam_gf17::{Store, Table};
 use adam_ray::rng::Pcg64;
 use burn::tensor::backend::Backend;
@@ -16,10 +16,11 @@ pub fn tabs<B: Backend>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>) -> (Vec<(
     let mut it = vec![tb("cfg", 4, true, by(&cf, |v: u32| v.to_le_bytes().to_vec())), tb("g", 4, true, by(&tg.iter().map(|x| x.1).collect::<Vec<f32>>(), |v: f32| v.to_le_bytes().to_vec()))];
     it.extend(tg.iter().enumerate().map(|(i, (t, _, a, b))| tb(&format!("w{i}"), 2, true, by(&pack(t, *a, *b), |v: u16| v.to_le_bytes().to_vec()))));
     it.extend(c.bpe().ok().flatten().map(|b| tb("bpe", 4, true, by(&[b.v() as u32].into_iter().chain(b.merges.iter().flatten().copied()).collect::<Vec<u32>>(), |v: u32| v.to_le_bytes().to_vec()))));
-    it.extend([("emb", f1(core.emb.val())), ("pos", f1(core.pos.val()))].into_iter().chain(mem.map(|m| ("mem", f1(m.tab.val())))).map(|(n, v)| tb(n, 4, false, by(&v, |x: f32| x.to_le_bytes().to_vec()))));
+    it.extend(c.lpe.then(|| tb("lpe", 4, true, by(&[c.lphi.to_bits() as u32, (c.lphi.to_bits() >> 32) as u32, c.lsq], |v: u32| v.to_le_bytes().to_vec()))));
+    it.extend([("emb", f1(core.emb.val())), ("pos", if c.lpe { vec![0f32; c.t * c.d] } else { f1(core.pos.val()) })].into_iter().chain(mem.map(|m| ("mem", f1(m.tab.val())))).map(|(n, v)| tb(n, 4, false, by(&v, |x: f32| x.to_le_bytes().to_vec()))));
     (it, tg.into_iter().map(|(t, _, a, b)| (t, a, b)).collect())
 }
-pub struct Lm { pub v: usize, pub bpe: Option<Bpe>, pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub rb: u32, pub k: usize, pub ns: Vec<usize>, pub w: Vec<(Vec<u16>, usize, usize)>, pub g: Vec<f32>, pub emb: Vec<f32>, pub pos: Vec<f32>, pub st: Mutex<Store>, pub mt: Option<usize> }
+pub struct Lm { pub v: usize, pub bpe: Option<Bpe>, pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub rb: u32, pub k: usize, pub ns: Vec<usize>, pub w: Vec<(Vec<u16>, usize, usize)>, pub g: Vec<f32>, pub emb: Vec<f32>, pub pos: Vec<f32>, pub st: Mutex<Store>, pub mt: Option<usize>, pub lz: Option<Lz>, pub gf: bool }
 impl Lm {
     pub fn open(p: &str, budget: usize) -> io::Result<Lm> {
         let st = Store::open(p, budget)?;
@@ -31,7 +32,8 @@ impl Lm {
         let dims: Vec<(usize, usize)> = (0..l).flat_map(|_| [(d, 3 * d), (d, d), (d, ff), (ff, d)]).chain([(d, v)]).collect();
         let w = dims.iter().enumerate().map(|(i, &(a, b))| get(&format!("w{i}")).map(|v| (v.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect(), a, b))).collect::<io::Result<Vec<_>>>()?;
         let (g, emb, pos, mt) = (f32s(&get("g")?), f32s(&get("emb")?), f32s(&get("pos")?), st.table("mem"));
-        Ok(Lm { v, bpe, d, l, h: cf[2], t: cf[3], ff, rb: cf[5] as u32, k: cf[6], ns: cf[7..].to_vec(), w, g, emb, pos, st: Mutex::new(st), mt })
+        let lz = st.table("lpe").map(|_| get("lpe").map(|b| { let u: Vec<u32> = b.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect(); Lz::new(d / cf[2], cf[3], f64::from_bits(u[0] as u64 | (u[1] as u64) << 32), u[2]) })).transpose()?;
+        Ok(Lm { v, bpe, d, l, h: cf[2], t: cf[3], ff, rb: cf[5] as u32, k: cf[6], ns: cf[7..].to_vec(), w, g, emb, pos, st: Mutex::new(st), mt, lz, gf: std::env::var("LPE_LUT").map(|v| v != "ref").unwrap_or(true) })
     }
     pub fn lin(&self, i: usize, x: &[f32]) -> Vec<f32> {
         let ((cw, din, dout), g) = (&self.w[i], self.g[i]);
@@ -46,6 +48,7 @@ impl Lm {
         let sc = m * (g * (1.0 / 127.0));
         (0..*dout).map(|o| cw[o * nw..(o + 1) * nw].iter().enumerate().fold(0i32, |a, (w, &c)| a + lt[2 * w * 243 + (c % 243) as usize] + lt[(2 * w + 1) * 243 + (c / 243) as usize]) as f32 * sc).collect()
     }
+    pub fn qkv(&self, b: usize, x: &[f32], p: usize) -> Vec<f32> { let (mut r, d) = (self.lin(4 * b, x), self.d); if let Some(z) = &self.lz { let (q, k) = r.split_at_mut(d); z.app(q, &mut k[..d], p, self.gf); } r }
     pub fn rows(&self, x: &[u32], p0: usize) -> io::Result<Vec<f32>> {
         let (n, d2) = (x.len(), 2 * self.d);
         let Some(mt) = self.mt else { return Ok(vec![0f32; (n - p0) * self.d]) };
@@ -69,7 +72,7 @@ impl Lm {
         s.x = x.to_vec();
         let mut xs = self.emb_at(x, 0)?;
         for b in 0..self.l {
-            let qkv: Vec<Vec<f32>> = xs.par_iter().map(|v| self.lin(4 * b, v)).collect();
+            let qkv: Vec<Vec<f32>> = xs.par_iter().enumerate().map(|(p, v)| self.qkv(b, v, p)).collect();
             (s.k[b], s.v[b]) = (qkv.iter().flat_map(|q| q[d..2 * d].to_vec()).collect(), qkv.iter().flat_map(|q| q[2 * d..].to_vec()).collect());
             xs = (0..x.len()).into_par_iter().map(|p| self.blk(b, &xs[p], &qkv[p][..d], &s.k[b], &s.v[b], p)).collect();
         }
@@ -80,7 +83,7 @@ impl Lm {
         s.x.push(tok);
         let (d, p) = (self.d, s.x.len() - 1);
         let mut v = self.emb_at(&s.x, p)?.remove(0);
-        for b in 0..self.l { let q = self.lin(4 * b, &v); s.k[b].extend_from_slice(&q[d..2 * d]); s.v[b].extend_from_slice(&q[2 * d..]); v = self.blk(b, &v, &q[..d], &s.k[b], &s.v[b], p); }
+        for b in 0..self.l { let q = self.qkv(b, &v, p); s.k[b].extend_from_slice(&q[d..2 * d]); s.v[b].extend_from_slice(&q[2 * d..]); v = self.blk(b, &v, &q[..d], &s.k[b], &s.v[b], p); }
         Ok(self.lin(self.l * 4, &v))
     }
 }
