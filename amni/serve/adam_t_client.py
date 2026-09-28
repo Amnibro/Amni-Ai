@@ -88,7 +88,7 @@ _TYPEW=set('year years country countries city cities capital color colour colors
 _NOTSUP=set('forest interest contest harvest honest modest request protest suggest invest arrest guest chest crest nest pest rest test west'.split())
 _BADT=re.compile(r"(?i)^(?:lists? of|index of|outline of|timeline of|glossary of|bibliography of|history of the name)\b|\(disambiguation\)|\b(?:by (?:country|year|city|state|region)|videography|discography|filmography|bibliography|in popular culture|awards and nominations)\b")
 _NAV=re.compile(r"(?i)\bmay (?:also )?refer to\b|\bis a list of\b")
-_HOLE=re.compile(r"(?i)\b(?:approximately|about|around|roughly|nearly|almost|over|some|measures|measuring|elevation|height|area|length|population|covers|covering|of|is|was|at|to|from|had)\s{2,}(?=[a-z(,.;])|\b(?:the|at|in|of)\s+,|\s{2,}(?=(?:long|high|tall|wide|deep|away|above|below|across|in (?:length|diameter|area|size))\b)")
+_HOLE=re.compile(r"(?i)\b(?:approximately|about|around|roughly|nearly|almost|over|some|measures|measuring|elevation|height|area|length|population|covers|covering|of|is|was|at|to|from|had)\s{2,}(?=[a-z(,.;])|\b(?:the|at|in|of)\s+,|(?<!\s)\s{2,}(?=(?:long|high|tall|wide|deep|away|above|below|across|in (?:length|diameter|area|size))\b)")
 _NUMW=re.compile(r"(?i)\b(?:\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million|billion|dozen)\b")
 _PL={36:'capital',50:'author',86:'composer',57:'director',170:'creator',61:'discoverer or inventor',112:'founder',175:'performer',569:'born',570:'died',19:'place of birth',20:'place of death',17:'country',30:'continent',131:'located in',276:'location',159:'headquarters',38:'currency',37:'official language',1082:'population',571:'founded',577:'published',580:'start',582:'end',585:'date',6:'head of government',35:'head of state',26:'spouse',22:'father',25:'mother',40:'child',2048:'height',2043:'length',1086:'atomic number',246:'symbol',138:'named after',84:'architect',176:'manufacturer',178:'developer',162:'producer',676:'lyricist',58:'screenwriter',127:'owner',123:'publisher',885:'source',403:'mouth',610:'highest point',27:'citizenship',69:'educated at',102:'party',140:'religion',840:'setting',915:'filming location',509:'cause of death',1449:'nickname',1477:'birth name'}
 def _fix(x:str)->str:
@@ -148,6 +148,7 @@ def _wd(R,q:str):
         lb=S.name(w['e']) if ok else '';an=set(WF.nrm(w['answer']).split()) if ok else set()
         if ok and WF.nrm(lb)!=WF.nrm(w['answer']) and not an<=qn and any(set(WF.nrm(z).split())-WF.STOPR<=qn and set(WF.nrm(z).split())-WF.STOPR for z in [lb]+S.names(w['e'])):return {**w,'label':lb}
     return None
+_wl=lambda w,cap:clip(f"{asc(w['label'])}{', '+_PL[w['p']] if w['p'] in _PL else ''}: {asc(w['answer'])}.",cap)
 _DEF=re.compile(r"(?i)\bstands? for\b|\bshort for\b|\babbreviat|\bacronym\b|^\W*what\s+(?:is|are)\s+(?:a|an)\s+[\w-]+\W*$|\bwhat (?:kind|type|sort) of\b")
 _KW=dict(defn=1.0,key=0.3,key2=0.15,lead=0.2,tf=0.25,ntf=0.35,rr=0.3,cs=2.0,wa=0.8,hole=0.3,nc=5,cmin=0.05,scs=1.0,stf=0.5,swa=2.0)
 def _know(message:str,n:int,cap:int,history=None)->Tuple[list,str]:
@@ -155,7 +156,7 @@ def _know(message:str,n:int,cap:int,history=None)->Tuple[list,str]:
     rq=_resolve(R,message,history)
     if not rq or not (R.factq(rq,True) or re.match(r"(?i)\W*what\s+does\s+(?:the\s+)?[A-Z][A-Z0-9.&-]+\s+stand\s+for\W*$",rq)):return [],rq
     I=R.ix();K={**_KW,**json.loads(os.environ.get("AMNI_ADAM_T_KW") or "{}")};qt=R.RL.qtype(rq);qa=set(R.toks(rq));W={w:I.widf(w) for w in dict.fromkeys(R.toks(rq)) if w not in R.QSTOP};tot=sum(W.values()) or 1.0;cov=_f('AMNI_ADAM_T_KNOW_COV',0.5);w=_wd(R,rq);out=[];seen=set()
-    w and out.append(clip(f"{asc(w['label'])}{', '+_PL[w['p']] if w['p'] in _PL else ''}: {asc(w['answer'])}.",cap));wa=set(R.toks(w['answer'])) if w else set()
+    w and out.append(_wl(w,cap));wa=set(R.toks(w['answer'])) if w else set()
     _,Rc,P=R.candidates(rq);cache=getattr(I,'rc',None) or {};T=[(a,z['s']) for z in Rc[:int(K['nc'])] if z['s']>=K['cmin'] for a in [set(R.toks(z['v']))-qa] if a];cs=lambda sw:max([s for a,s in T if a<=sw] or [0.0])
     KP,kt=_keys(I,R,rq,qa,cache);C={p:r for r,(_,p,_,_) in enumerate(P)};[C.setdefault(p,None) for g in KP for p in range(int(I.first[g]),min(int(I.first[g+1]),int(I.first[g])+int(_f('AMNI_ADAM_T_KEY_PASS',30))))];X=[]
     for p,r in C.items():
