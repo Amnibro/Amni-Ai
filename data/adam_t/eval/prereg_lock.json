@@ -13,11 +13,11 @@
   "data/clean2/hold.bin": "c10ae502dafca8f6f8eb16ae6600d9eb20878263163604a2d97fa58ee477428c",
   "data/concepts/eval/rknow/nq_dev_hold.json": "3656e7e93dc20f6abcf7d62ba2935dae61a22cc4480de34bba266403b735674a",
   "data/concepts/eval/rknow/nq_dev_tune.json": "fea321e3e51b3ae54b41f494fed1b66d98c24d9ffb6e9811c468ccf1e340cbc9",
-  "docs/adam_t/eval_prereg.md": "30306230673d582e187d10eb211b9ccf8aa4fddeadf2d7e9f0e24e8377e7fc90"
+  "docs/adam_t/eval_prereg.md": "f184b8d39598139f143c9688a2b0f4071c3e8b5385f46c99c068974c3d8c95f0"
  },
- "splits_hash": "aa9a57f678f93d4db3f766b35b1cd2b8b3e32902a302f94f89432707824b7a78",
+ "splits_hash": "46351b1343e6724e8108e78bef965b0ea4e595fa88ce83eb15f631d9d0da1064",
  "n": 14,
- "locked": "2026-09-25T22:46:25-0400",
+ "locked": "2026-09-28T08:50:54-0400",
  "amendments": [
   {
    "prev_splits_hash": "0941e2ff689f737602acd43a8f4cf9304be3c1fb1f28afe017046fb72d75c99c",
@@ -33,6 +33,16 @@
    ],
    "reason": "ADAM-T-CHATEVAL: add the chat / answer-rate suite (data/adam_t/eval/chat) and its pre-registration section; no locked split changed, no ADAM-T model scored before this amendment",
    "at": "2026-09-25T22:46:25-0400"
+  },
+  {
+   "prev_splits_hash": "aa9a57f678f93d4db3f766b35b1cd2b8b3e32902a302f94f89432707824b7a78",
+   "prev_locked": "2026-09-25T22:46:25-0400",
+   "changed": [
+    "docs/adam_t/eval_prereg.md"
+   ],
+   "added": [],
+   "reason": "ADAM-T-E2E: add the live-route E2E suite (chat dev through gguf_runtime.chat with AMNI_ADAM_T: emergency first, memory/calculator/Wikidata/passage context, fallbacks, output guard) and its pre-registration section; no locked split changed, no E2E reply generated or read before this amendment",
+   "at": "2026-09-28T08:50:54-0400"
   }
  ]
 }

@@ -165,6 +165,43 @@ The "beats baseline" rule is the same as above, applied to `chat.answered` and `
 - The v19 decode stops at the end of the first sentence (`stop_sentence`), so its replies are short by construction.
 - Before the lock, the scorer was checked on hash-field base and v19 replies to every ninth source prompt (69 items). That check added the parroting rule, the 25-token window, the loop rule and the interjection stopwords. No ADAM-T output was seen before the lock.
 
+## Live-route E2E (suite `chat --e2e`, amendment 2, 2026-09-28)
+
+The chat suite above calls `adam-t serve` directly: no memory, no calculator, no retrieval, stop at `\n`. That is not what a user gets. The live route (`AMNI_ADAM_T`, still **off**) runs `amni.serve.gguf_runtime.chat()`: the emergency handler first, then `adam_t_client.answer()`, which builds context (user-memory facts as earlier turns, a calculator line, a Wikidata fact line plus up to 2 R-KNOW passages), renders the SFT chat template, and falls back to the older routes when ADAM-T errors, times out or is empty; the output guard runs last. The decision to switch the live route on (C2) rests on this E2E measure. This amendment was written, and `prereg_lock.json` amended (`python scripts/adam_t_eval.py amend`, only this file changed), before any E2E reply was generated or read.
+
+### Material and pipeline
+
+- Items: `chat_dev.jsonl` only (410). `--e2e` refuses `--chat-split test`; a test-split E2E needs its own amendment.
+- Each item calls `gguf_runtime.chat(q, history=turns, max_new_tokens=120, do_sample=False, user=U, session=U)`, the `Svc` defaults, so the ADAM-T reply budget is `min(AMNI_ADAM_T_MAX_BYTES=400, 4*120)` = 400 bytes, the same cap as the chat suite.
+- Environment: `AMNI_ADAM_T=<model.gf17>`, `AMNI_ADAM_T_BIN=<renamed copy of adam-t>`, `AMNI_GEN_BACKEND=ray` (the homegrown route, so fallbacks go where they would in the homegrown serve), `AMNI_RAY_ARCH=cpu`, `AMNI_UMEM_DIR=<fresh empty directory per run>`. Every other `AMNI_ADAM_T_*`, `AMNI_RKNOW_*`, `AMNI_MATH*` and `AMNI_UMEM_*` variable is unset, so the production defaults apply (context on, memory 640 B, calculator 240 B, knowledge 1100 B, 2 passages of at most 560 B, request timeout 30 s, 2 threads, `BACKEND=ndarray`). No `GEN_DEFAULTS`: decoding is the server's chat default, which `hello` reports into the report (no-repeat 3-gram, repetition penalty 1.15, clause-repeat stop, greedy).
+- Users: every item gets a fresh id `U = e2e-<run stamp>-<item id>`. For multi items, each prior user turn is first passed through `user_memory.turn(u, earlier turns, U, U)` in order, which is what the serve does with a user message (facts are persisted under `U`), and then `chat()` gets the prior exchanges as `history`.
+- Order is file order, one item at a time, one ADAM-T server for the whole run (the production client, with its restart backoff). The knowledge index warm-up finishes before the first item.
+- Instrumentation only observes: the harness reads the `amni.serve.adam_t` route log, the dict returned by `adam_t_client.context()`, and the prompt and raw text passed through `Proto.text()`. It changes no argument or return value.
+
+### Routes (recorded per item)
+
+- `emergency`: the emergency handler answered (`chat()` tier is neither `tier_adam_t` nor a fallback tier).
+- `memory_action`: `user_memory` answered with its own action reply (for example a forget confirmation).
+- `adam_t`: ADAM-T generated the reply. `guard_edit` marks replies the output guard changed.
+- `fallback:<why>`: ADAM-T raised, timed out or returned nothing (`why` is the client's reason, e.g. `empty`, `ProtoError`), and the `ray` route answered.
+
+### Scoring and report
+
+- Replies are scored exactly as returned by `chat()` (stripped) with the locked `chat_score` and `chat_sum`, cap 400. Nothing in the scorer changes. Live stops are `\n\n`, `\nUser:`, `\nAdam:`, so a reply can hold a single newline; the locked coherence rule (printable ASCII) counts such a reply as not coherent. The share of multi-line replies is reported next to it.
+- Two headline blocks: **pipeline** = `chat_sum` over all 410 replies (what users get), and **adam_t_only** = `chat_sum` over the items routed `adam_t` (its n is reported). `chat_sum` is also given per route. The milestone table (`CHMS`) is evaluated on both blocks as `e2e_milestones_met`; the C2 go/no-go for the live route reads the **pipeline** block.
+- Route mix: counts and shares of each route, overall and per category, plus `guard_edit`.
+- Retrieval: over items with gold aliases (know, and multi with gold), `know_fired` is the share whose context carried Wikidata or passage lines. `ret_hit` is the share where those lines (the calculator line excluded) contain a gold alias by `score_qa` containment, reported over all gold items and over fired items, and split into `wd_hit` (Wikidata line) and `psg_hit` (passages). For multi gold items, `mem_hit` is the share whose memory lines contain a gold alias. Every fired gold item whose lines hold no alias is listed as a retrieval failure (question, gold, Wikidata line, passage titles).
+- Latency: wall-clock of each `chat()` call, median and p90 per route and overall, plus the median context-assembly time.
+- Examples: 15 replies, fixed now: the first 2 ids of each category in `chat_human40.json` (14) plus the third `know` id.
+- Report file: `report_<model>_<step>_e2e.json` (kind `prod` when the lock is clean and there is no `--limit`; `--limit` and `--tune` runs are `dry`), with the human-40 read written as `chat/human40_<model>_<step>_e2e.md`.
+- Comparison rows, reference only: the direct-serve chat numbers of the same checkpoint family (SFT step 2144: answer 15.9%, coherent 43%; the decode-fixed snapshot: answer 34%, coherent 79%).
+
+### Known limits
+
+- Retrieval, Wikidata and user memory are live code, so an E2E number is tied to the code hashes in the report, not only to the model.
+- Fallbacks through `ray` are sampled (`temp 0.35, topk 12` with `do_sample=False`), so fallback replies are not bit-reproducible; ADAM-T replies are.
+- Latency depends on machine load; it is reported, never thresholded.
+
 ## Published zero-shot references (not run here)
 
 | model | ARC (Easy+Challenge mean) | PIQA | HellaSwag | source |
@@ -187,4 +224,6 @@ python scripts/adam_t_eval.py chat-prereg                    # one-shot: validat
 python scripts/adam_t_eval.py run --model v19 --suites chat  # chat dev (prod); writes chat/human40_<model>_<step>.md
 python scripts/adam_t_eval.py run --model proto --proto-cmd "<cmd>" --suites chat --chat-split test --milestone C2   # once per milestone
 python scripts/adam_t_eval.py human --report data/adam_t/eval/report_<model>_<step>_chat.json   # print the human-40 read
+python scripts/adam_t_eval.py amend --reason "<why>"                   # re-lock after a pre-registration amendment (only this file may differ)
+python scripts/adam_t_eval.py run --model proto --suites chat --e2e --proto-cmd "<adam-t copy> serve <model.gf17>" --step N   # live-route E2E on chat dev
 ```
