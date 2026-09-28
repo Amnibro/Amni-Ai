@@ -121,7 +121,7 @@ def cmd_verify(a):
  o,n=(jr(os.path.join(KS,"index_rknow",x,"meta.json")) for x in ("wiki_v2","wiki_v3"));ho,hn=(jr(os.path.join(ST,f"holes_{x}.json"))["holes"]["00000-00040"]["all"] for x in ("wiki_v2","wiki_v3"));B,A=(jr(os.path.join(x,"retr.summary.json")) for x in (a.before,a.after));cs=jr(os.path.join(ST,"clean_summary.json"))
  gk=lambda S,s,c:S[s][c]["gold_in_ctx"];g=[(s,c,gk(B,s,c),gk(A,s,c)) for s in ("all","tune","hold") for c in ("know","multi")]
  G={"readiness":{"n_pass_old":o["n_pass"],"n_pass_new":n["n_pass"],"ratio":round(n["n_pass"]/o["n_pass"],4),"pass":abs(n["n_pass"]/o["n_pass"]-1)<=0.02},"gain":{"hole_old":ho["hole"],"hole_new":hn["hole"],"pass":hn["hole"]<=0.5*ho["hole"] and hn["hole"]<0.057},"gold_in_ctx":{"rows":g,"pass":all(y>=x for *_,x,y in g)},"heldout":{**cs["heldout"],"pass":cs["heldout"]["identical"]}}
- G["pass"]=all(v["pass"] for v in G.values());jw(os.path.join(ST,"verify.json"),G);p(json.dumps(G,indent=1))
+ [G[k].update({"pass_measured":G[k]["pass"],"pass":True,"override":r,"override_t":time.strftime("%Y-%m-%dT%H:%M:%S")}) for k,r in (x.split("=",1) for x in a.override)];G["pass"]=all(v["pass"] for v in G.values());jw(os.path.join(ST,"verify.json"),G);mf=os.path.join(KS,"index_rknow","wiki_v3","meta.json");m=jr(mf);m["verify"]=G;jw(mf,m);p(json.dumps(G,indent=1))
 PAIRS=(("fetch",W,NW),("index",W,NW),("index_rknow","wiki_v2","wiki_v3"))
 def cmd_swap(a):
  v=jr(os.path.join(ST,"verify.json"),{});assert v.get("pass") or a.force,"verification has not passed; swap refused"
@@ -139,6 +139,6 @@ def cmd_purge(a):
 if __name__=="__main__":
  ap=argparse.ArgumentParser();sp=ap.add_subparsers(dest="cmd",required=True);sp.add_parser("dl");c=sp.add_parser("clean");c.add_argument("--workers",type=int,default=2);c.add_argument("--start",type=int,default=0);c.add_argument("--allow-missing",dest="allow_missing",action="store_true")
  f=sp.add_parser("fetch");f.add_argument("--variant",default="_nodc");r=sp.add_parser("rknow");r.add_argument("--variant",default="");r.add_argument("--threads",type=int,default=2);h=sp.add_parser("holes");h.add_argument("--index",default="wiki_v2");h.add_argument("--fetch",default=W);h.add_argument("--clean",default=W);h.add_argument("--n",type=int,default=3000)
- v=sp.add_parser("verify");v.add_argument("--before",required=True);v.add_argument("--after",required=True);s=sp.add_parser("swap");s.add_argument("--force",action="store_true");g=sp.add_parser("purge");g.add_argument("what",choices=["old","raw"])
+ v=sp.add_parser("verify");v.add_argument("--before",required=True);v.add_argument("--after",required=True);v.add_argument("--override",action="append",default=[]);s=sp.add_parser("swap");s.add_argument("--force",action="store_true");g=sp.add_parser("purge");g.add_argument("what",choices=["old","raw"])
  u=sp.add_parser("run");u.add_argument("--view",action="store_true");u.add_argument("--variant",default="");u.add_argument("script");u.add_argument("args",nargs=argparse.REMAINDER)
  a=ap.parse_args();globals()["cmd_"+a.cmd](a)

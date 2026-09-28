@@ -1,6 +1,6 @@
 # Proposal: restore numbers in the wiki_v2 knowledge index
 
-Status: approved by the CTO on 2026-09-28 and executed as WIKI-NUMBERS (see "Execution" at the end). `wiki_v3` is built next to `wiki_v2` but **not swapped in**: the readiness gate failed (+6.0% passages), and R-KNOW tune/hold dropped because of decontam. Needs a CTO decision.
+Status: approved by the CTO on 2026-09-28, executed as WIKI-NUMBERS and **live**. The rebuilt index was swapped in at 14:33 and the old copies were purged at 14:35. See "Execution" and "CTO decisions" at the end.
 
 ## What is wrong
 
@@ -120,3 +120,13 @@ The +6.0% is genuine content (rendered templates, units, dates; +5% words on the
 3. Whether to accept the 1.25-2.75 point extraction loss, or refit `rknow_rank.json` / `rknow_prr.json` on v3 before swapping.
 4. Swap: `ks_wiki_numbers.py swap` exchanges `fetch/wikipedia`, `index/wikipedia` and `index_rknow/wiki_v2` with the new dirs (renameat2 RENAME_EXCHANGE), then `purge old` deletes and logs the old copies (~20.7 GB). `clean/wikipedia` stays, because `store_clean` and the ADAM-T stream builder's held flags are aligned to it. The new text is in `clean/wikipedia_fw`.
 5. Shards 00041-00055 still contain markdown tables (unchanged). Decide whether to strip them there too.
+
+### CTO decisions (2026-09-28) and final state
+
+1. **The +6.0% passage count is accepted.** The ±2% readiness gate was a proxy, and the growth is real rendered content. `verify --override readiness=...` records this with the measured result (`pass_measured: false`) in `data/ks/state_fw/verify.json` and in the live index `meta.json` under `verify`. `swap` then ran without `--force`.
+2. **Decontam is kept as built.** The index feeds SFT data building (kctx / wikidata), so eval passages must stay out of it. The R-KNOW tune/hold R@30 drop is a measurement artifact: those dev sets' gold passages (`rc_dev.json`) were copied from wiki_v2 and are now scrubbed on purpose. hold2, hold3 and locked NQ, which don't depend on them, are flat.
+3. **The 1.25-2.75 point R-KNOW answer loss is accepted.** R-KNOW is now the legacy fallback, and ADAM-T reads passages directly. No refit.
+4. **Swapped and purged.** `fetch/wikipedia`, `index/wikipedia` and `index_rknow/wiki_v2` now hold the FineWiki build (n_doc 5,898,154, n_pass 41,627,831, FineWiki @8bd13e72). The old copies were deleted and logged: fetch 8.6 GiB, KS index 2.7 GiB, R-KNOW index 9.1 GiB. `clean/wikipedia` is kept, because `store_clean` and the ADAM-T stream held flags are aligned to it. The new text is in `clean/wikipedia_fw`.
+5. **Shards 00041-00055 are left as they are.**
+
+Post-swap checks on the live layout (no view): `tests/test_adam_t_route.py` 33 passed (real-index test included). Retrieval dev gold-in-context is know 84.8 / 84.6 / 85.3 (all/tune/hold) and multi 88.7, identical to the pre-swap measurement.
