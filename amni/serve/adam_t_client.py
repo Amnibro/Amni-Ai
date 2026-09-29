@@ -145,22 +145,23 @@ def _keys(I,R,q:str,qa:set,cache:dict,k:int=2)->Tuple[list,set]:
         g is not None and g not in P and P.append(g)
         if len(P)>=k:break
     return P,kt
-def _wd(R,q:str):
+def _wd(R,q:str,weak:bool=False,forms:Sequence[str]=()):
     if os.environ.get('AMNI_RKNOW_WF','1')!='1':return None
-    WF=__import__('amni.compute.wikifact',fromlist=['ask']);S=WF.store();qn=set(WF.nrm(q).split())
-    for x in dict.fromkeys([q,re.sub(r"(?i)^\W*(?:please\s+)?(?:name|tell me|give me|do you know|can you tell me)\s+(?:the\s+)?","what is the ",q)]):
-        w=WF.ask(x);ok=bool(S is not None and w and w.get('answer') and float(w.get('conf') or 0)>=WF.THR and (WF.TEMPORAL or not w.get('temporal')) and float(w.get('lf') or 0)>=_f('AMNI_ADAM_T_WD_LF',0.85))
+    WF=__import__('amni.compute.wikifact',fromlist=['ask']);S=WF.store();qn=set(WF.nrm(' '.join([q,*forms])).split());W=[]
+    for x in dict.fromkeys([q,re.sub(r"(?i)^\W*(?:please\s+)?(?:name|tell me|give me|do you know|can you tell me)\s+(?:the\s+)?","what is the ",q),*forms]):
+        w=WF.ask(x);g=bool(S is not None and w and w.get('answer') and (WF.TEMPORAL or not w.get('temporal')));st=g and float(w.get('conf') or 0)>=WF.THR and float(w.get('lf') or 0)>=_f('AMNI_ADAM_T_WD_LF',0.85);ok=st or weak and g
         lb=S.name(w['e']) if ok else '';an=set(WF.nrm(w['answer']).split()) if ok else set()
-        if ok and WF.nrm(lb)!=WF.nrm(w['answer']) and not an<=qn and any(set(WF.nrm(z).split())-WF.STOPR<=qn and set(WF.nrm(z).split())-WF.STOPR for z in [lb]+S.names(w['e'])):return {**w,'label':lb}
-    return None
+        if ok and WF.nrm(lb)!=WF.nrm(w['answer']) and not an<=qn and any(set(WF.nrm(z).split())-WF.STOPR<=qn and set(WF.nrm(z).split())-WF.STOPR for z in [lb]+S.names(w['e'])):W.append({**w,'label':lb,'strong':st})
+        if W and W[-1]['strong']:break
+    return next((w for w in W if w['strong']),W[0] if W else None)
 _wl=lambda w,cap:clip(f"{asc(w['label'])}{', '+_PL[w['p']] if w['p'] in _PL else ''}: {asc(w['answer'])}.",cap)
 _DEF=re.compile(r"(?i)\bstands? for\b|\bshort for\b|\babbreviat|\bacronym\b|^\W*what\s+(?:is|are)\s+(?:a|an)\s+[\w-]+\W*$|\bwhat (?:kind|type|sort) of\b")
 _KW=dict(defn=1.0,key=0.3,key2=0.15,lead=0.2,tf=0.25,ntf=0.35,rr=0.3,cs=2.0,wa=0.8,hole=0.3,nc=5,cmin=0.05,scs=1.0,stf=0.5,swa=2.0)
-def _know(message:str,n:int,cap:int,history=None)->Tuple[list,str]:
+def _know(message:str,n:int,cap:int,history=None,w=None)->Tuple[list,str]:
     from amni.compute import rknow as R
     rq=_resolve(R,message,history)
     if not rq or not (R.factq(rq,True) or re.match(r"(?i)\W*what\s+does\s+(?:the\s+)?[A-Z][A-Z0-9.&-]+\s+stand\s+for\W*$",rq)):return [],rq
-    I=R.ix();K={**_KW,**json.loads(os.environ.get("AMNI_ADAM_T_KW") or "{}")};qt=R.RL.qtype(rq);qa=set(R.toks(rq));W={w:I.widf(w) for w in dict.fromkeys(R.toks(rq)) if w not in R.QSTOP};tot=sum(W.values()) or 1.0;cov=_f('AMNI_ADAM_T_KNOW_COV',0.5);w=_wd(R,rq);out=[];seen=set()
+    I=R.ix();K={**_KW,**json.loads(os.environ.get("AMNI_ADAM_T_KW") or "{}")};qt=R.RL.qtype(rq);qa=set(R.toks(rq));W={w:I.widf(w) for w in dict.fromkeys(R.toks(rq)) if w not in R.QSTOP};tot=sum(W.values()) or 1.0;cov=_f('AMNI_ADAM_T_KNOW_COV',0.5);w=_wd(R,rq) if w is None else w or None;out=[];seen=set()
     w and out.append(_wl(w,cap));wa=set(R.toks(w['answer'])) if w else set()
     _,Rc,P=R.candidates(rq);cache=getattr(I,'rc',None) or {};T=[(a,z['s']) for z in Rc[:int(K['nc'])] if z['s']>=K['cmin'] for a in [set(R.toks(z['v']))-qa] if a];cs=lambda sw:max([s for a,s in T if a<=sw] or [0.0])
     KP,kt=_keys(I,R,rq,qa,cache);C={p:r for r,(_,p,_,_) in enumerate(P)};[C.setdefault(p,None) for g in KP for p in range(int(I.first[g]),min(int(I.first[g+1]),int(I.first[g])+int(_f('AMNI_ADAM_T_KEY_PASS',30))))];X=[]
@@ -228,12 +229,17 @@ def client()->AdamT:
         c=_C.get(r)
         if c is None:[x.close() for x in _C.values()];_C.clear();c=_C[r]=AdamT(r);os.environ.get('AMNI_ADAM_T_CONTEXT','1')=='1' and os.environ.get('AMNI_ADAM_T_WARM','1')=='1' and threading.Thread(target=warm,daemon=True,name='adam-t-warm').start()
         return c
+def _har(message:str,history,user,session,cl,mx:int,c:dict)->Optional[dict]:
+    if os.environ.get('AMNI_ADAM_T_HARNESS','0')!='1':return None
+    try:return __import__('amni.serve.adam_t_harness',fromlist=['run']).run(message,history,user,session,cl,mx)
+    except ProtoError:raise
+    except Exception as e:c['n']['har_err']=type(e).__name__;return None
 def answer(message:str,history=None,max_new_tokens:int=512,user=None,session=None)->Optional[str]:
     if not on():return None
     t0=time.monotonic();c={'ms':0.0,'n':{}}
     try:
         cl=client()
         if not (cl.p and cl.p.alive()) and time.monotonic()<cl.until:raise ProtoError('restart backoff')
-        mx=min(int(_f('AMNI_ADAM_T_MAX_BYTES',400)),max(64,4*int(max_new_tokens or 0)));c=context(message,history,user,session,cl.budget(mx));t=c['reply'] or cl.gen(message,mx,STOPS,c['hist'],c['pre'],c['rc']);why='' if t else 'empty'
-    except Exception as e:t,why='',type(e).__name__
-    LOG.debug('route=%s ms=%d ctx_ms=%.1f ctx=%s',why and f'fallback:{why}' or ('memory_action' if c.get('reply') else 'adam_t'),int((time.monotonic()-t0)*1000),c.get('ms',0.0),','.join(f'{k}:{v}' for k,v in sorted(c.get('n',{}).items())));return t or None
+        mx=min(int(_f('AMNI_ADAM_T_MAX_BYTES',400)),max(64,4*int(max_new_tokens or 0)));h=_har(message,history,user,session,cl,mx,c);c=c if h else (lambda x:(x['n'].update(c['n']),x)[1])(context(message,history,user,session,cl.budget(mx)));t=h['text'] if h else c['reply'] or cl.gen(message,mx,STOPS,c['hist'],c['pre'],c['rc']);why='' if t else 'empty';h and c['n'].update(h['n'])
+    except Exception as e:t,why,h='',type(e).__name__,None
+    LOG.debug('route=%s ms=%d ctx_ms=%.1f ctx=%s',why and f'fallback:{why}' or ('harness' if h else 'memory_action' if c.get('reply') else 'adam_t'),int((time.monotonic()-t0)*1000),c.get('ms',0.0),','.join(f'{k}:{v}' for k,v in sorted(c.get('n',{}).items())));return t or None

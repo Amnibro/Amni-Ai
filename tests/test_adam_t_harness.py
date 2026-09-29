@@ -1,0 +1,61 @@
+import os,re,sys,types
+sys.path[:0]=[os.path.dirname(os.path.dirname(os.path.abspath(__file__))),os.path.dirname(os.path.abspath(__file__))]
+import pytest
+import amni.compute
+from amni.serve import adam_t_client as C,adam_t_harness as H,gguf_runtime as G,user_memory as U
+from test_adam_t_route import fake,rules,prompts,starts,EM,_fakes
+class FC:
+    def __init__(s,t=''):s.t,s.P=t,[]
+    def gen(s,q,mx,st=(),h=None,pre=(),rc=()):s.P.append((q,list(rc)));return s.t
+    def budget(s,mx):return 2000
+@pytest.fixture
+def on(tmp_path,monkeypatch):
+    monkeypatch.setenv('AMNI_UMEM_DIR',str(tmp_path/'umem'));monkeypatch.setenv('AMNI_ADAM_T_HARNESS','1');monkeypatch.delenv('AMNI_UMEM_TOROID',raising=False);[monkeypatch.setenv(f'AMNI_UMEM_{k}','1') for k in ('LT','GN','G2')];U._EID.clear();return tmp_path
+FR=types.SimpleNamespace(istitle=lambda x:x.lower() in ('pride and prejudice','romeo and juliet'))
+HIST=[("My sister Priya lives in Denver.","Nice!"),("My brother Tomas lives in Tucson.","Got it."),("My dog is called Biscuit.","Cute."),("I'm allergic to penicillin.","Noted.")]
+def test_flag_default_off(monkeypatch):
+    monkeypatch.delenv('AMNI_ADAM_T_HARNESS',raising=False);assert not H.on() and H.run("What's my sister's name?",HIST,'u','u',FC(),160) is None
+    c={'n':{}};assert C._har("What's my sister's name?",HIST,'u','u',FC(),160,c) is None and c=={'n':{}}
+@pytest.mark.parametrize('q,want',[("What's my sister's name and where does she live?",["What's my sister's name","where does she live"]),("whats my dog called, and an octopus has how many hearts",["what's my dog called","an octopus has how many hearts"]),("when was he born, and where?",["when was he born","where was he born"]),("Quick, what's the smallest country, and what's the largest?",["what's the smallest country","what's the largest"]),("I love pizza. It is great.",[])])
+def test_split(q,want):assert [p.rstrip('?') for p in H.split(q)]==want
+@pytest.mark.parametrize('p,want',[("What are the capitals of Norway, Sweden and Denmark?",["What is the capital of Norway","What is the capital of Sweden","What is the capital of Denmark"]),("Who wrote Pride and Prejudice?",["Who wrote Pride and Prejudice?"]),("Where does my sister live and work?",["Where does my sister live","Where does my sister work"]),("What is my sister's name and age?",["What is my sister's name","What is my sister's age"]),("Iron's chemical symbol, and its atomic number?",["Iron's chemical symbol","what is its atomic number"]),("A spider has how many legs, and an insect?",["A spider has how many legs","an insect has how many legs"])])
+def test_coord(on,p,want):assert H.coord(p,H.store([],'c'),FR)==want
+@pytest.mark.parametrize('q,want',[("Where does my brother live",'where your brother lives'),("When did I move",'when you moved'),("How many legs does a spider have",'how many legs a spider has'),("which unit am i in",'which unit you are in'),("when was Mary Shelley born",'when Mary Shelley was born'),("Remind me of my street address",'about your street address'),("What did my grandma do",'what your grandma did')])
+def test_indirect_question(q,want):assert H.ind(q)==want
+@pytest.mark.parametrize('e,v,ok',[('time','next Tuesday at 3 pm',1),('time','Denver',0),('num','94',1),('num','Priya',0),('name','Priya',1),('name','Mr',0),('place','because the rent was cheaper',0),('place','Denver',1),('color','dark green',1),('job','Lisbon',0),('job','nurse',1)])
+def test_type_fit(e,v,ok):assert H.fits(e,v)==bool(ok)
+def test_multi_slot_memory_with_pronoun_and_binding(on):
+    cl=FC('model text');r=H.run("What's my sister's name and where does she live?",HIST,'u1','u1',cl,160)
+    assert r['text']=="Your sister's name is Priya. Your sister lives in Denver." and [s['src'] for s in r['slots']]==['mem','mem'] and all(s['ok'] for s in r['slots']) and cl.P==[]
+    r=H.run("Where does my brother live?",HIST,'u1','u1',cl,160);assert 'Tucson' in r['text'] and 'Denver' not in r['text']
+def test_missing_memory_is_hedged_not_invented(on):
+    r=H.run("What's my cat's name and how old is my sister?",HIST,'u2','u2',FC('Your cat is Biscuit.'),160)
+    assert r['text']=="You haven't told me what your cat's name is yet. You haven't told me how old your sister is yet." and 'Biscuit' not in r['text'] and 'Priya' not in r['text'] and r['n']['hh']==2 and r['n']['hv']==0
+def test_possessor_binding_rejects_other_entity(on):
+    r=H.run("When does my flight land?",[("My brother's flight lands at 4:30.","Okay.")],'u3','u3',FC(),160);assert '4:30' not in r['text'] and "haven't told me" in r['text']
+def test_non_factoid_and_chat_defer(on):
+    [H.run(q,[],'u4','u4',FC(),160) is None or pytest.fail(q) for q in ("Guess what, I adopted a puppy!","How do I bake bread?","Can you help me write an email?","What do you think about cats?","I'm feeling sad today.")]
+def test_forget_and_statements_defer(on):assert H.run("Forget where my sister lives",HIST,'u5','u5',FC(),160) is None and H.run("My cat is called Olive.",HIST,'u5','u5',FC(),160) is None
+def test_calculator_and_memory_mix(on):
+    r=H.run("What is 23 times 4 and what's my dog's name?",HIST,'u6','u6',FC(),160);assert r['text']=="23 x 4 = 92. Your dog's name is Biscuit." and [s['kind'] for s in r['slots']]==['calc','mem']
+def test_memory_value_feeds_knowledge_pronoun(on,monkeypatch):
+    seen=[];monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:(seen.append(rq),{**s,'rq':rq,'src':'wd','ok':True,'span':'Alexander Fleming','text':'Penicillin was discovered by Alexander Fleming.'})[1])
+    r=H.run("What am I allergic to, and who discovered it?",HIST,'u7','u7',FC(),160);assert seen==['who discovered penicillin?'] and r['text']=="You're allergic to penicillin. Penicillin was discovered by Alexander Fleming."
+def test_knowledge_verify_complete_and_hedge(on,monkeypatch):
+    R=_fakes(monkeypatch);R.istitle=lambda x:False;W=sys.modules['amni.compute.wikifact'];W.NOUN={'author':[50],'capital':[36]};cl=FC('It was Captain Ahab.')
+    monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:(["Herman Melville: Herman Melville wrote Moby Dick in 1851."],m));monkeypatch.setattr(C,'_math',lambda m:'')
+    r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0];assert s['src']=='wd' and s['ok'] and r['text']=="Moby-Dick was written by Herman Melville." and cl.P==[]
+    W.ask=lambda q:{"answer":"Herman Melville","conf":0.2,"e":5,"p":50,"lf":1.0};r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['src']=='wd+psg' and r['slots'][0]['ok']
+    W.ask=lambda q:{"answer":"Nathaniel Hawthorne","conf":0.2,"e":5,"p":50,"lf":1.0};r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0]
+    assert s['src']=='psg' and not s['ok'] and s['hedge'] and 'Hawthorne' not in r['text'] and 'Ahab' not in r['text'] and r['text'].startswith("I'm not sure who wrote moby dick") and len(cl.P)==1 and cl.P[0][1][0].startswith('Herman Melville:')
+    cl.t='Herman Melville wrote it.';r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['ok'] and r['text']=="Herman Melville wrote it."
+def test_route_debug_log_has_no_user_text(fake,rules,on,monkeypatch,caplog):
+    caplog.set_level('DEBUG',logger='amni.serve.adam_t');r=G.chat("What's my secret dog's name?",history=[("My secret dog is called Zorro.","Cute.")],user='ann',session='s')
+    recs=[x for x in caplog.records if x.name=='amni.serve.adam_t'];assert r['tier']=='tier_adam_t' and 'Zorro' in r['answer'] and prompts(fake)==[] and rules==[]
+    assert len(recs)==1 and recs[0].levelname=='DEBUG' and 'route=harness' in recs[0].getMessage() and 'hs:1' in recs[0].getMessage() and not any(w in x.getMessage() for x in caplog.records for w in ('secret','Zorro','dog'))
+def test_emergency_first_unchanged(fake,rules,on,monkeypatch):
+    monkeypatch.setattr(H,'run',lambda *a,**k:(_ for _ in ()).throw(AssertionError('harness ran')))
+    r=G.chat(EM,user='ann');assert r['tier']=='tier_emergency' and '911' in r['answer'] and '911' in ''.join(G.chat_stream('my baby is choking',user='ann')) and prompts(fake)==[] and starts(fake)==[] and rules==[]
+def test_harness_error_falls_back_to_old_path(fake,rules,on,monkeypatch,caplog):
+    caplog.set_level('DEBUG',logger='amni.serve.adam_t');monkeypatch.setattr(H,'run',lambda *a,**k:1/0);monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:([],m))
+    r=G.chat("tell me about rivers?");assert r['tier']=='tier_adam_t' and r['answer'].startswith('ADAM-T heard:') and any('har_err:ZeroDivisionError' in x.getMessage() and 'route=adam_t' in x.getMessage() for x in caplog.records)
