@@ -1,4 +1,4 @@
-use crate::{bpe::{Bpe, PAT}, f1, hrow, logits, tq, Cfg, Core, Dat, Lz, Mem};
+use crate::{bpe::{Bpe, PAT}, f1, hrow, logits, tq, Cfg, Core, Cp, Dat, Lz, Mem};
 use adam_gf17::{Store, Table, Writer, PX};
 use adam_ray::rng::Pcg64;
 use burn::tensor::{backend::Backend, Tensor};
@@ -11,13 +11,14 @@ fn tb(n: &str, dt: usize, exact: bool, b: Vec<u8>) -> (Table, Vec<u8>) { (Table 
 fn by<T: Copy>(v: &[T], f: impl Fn(T) -> Vec<u8>) -> Vec<u8> { v.iter().flat_map(|&x| f(x)).collect() }
 fn f32s(b: &[u8]) -> Vec<f32> { b.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect() }
 pub type Src<'a> = (usize, &'a dyn Fn(usize, usize) -> Vec<f32>);
-pub fn tabs<B: Backend>(c: &Cfg, core: &Core<B>) -> (Vec<(Table, Vec<u8>)>, Vec<(Vec<f32>, usize, usize)>) {
-    let tg: Vec<(Vec<f32>, f32, usize, usize)> = core.lins().iter().map(|l| { let w = l.w.val(); let [i, o] = w.dims(); let (t, g) = tq(w); (f1(t), f1(g)[0], i, o) }).collect();
+pub fn tabs<B: Backend>(c: &Cfg, core: &Core<B>, cp: Option<&Cp<B>>) -> (Vec<(Table, Vec<u8>)>, Vec<(Vec<f32>, usize, usize)>) {
+    let tg: Vec<(Vec<f32>, f32, usize, usize)> = core.lins().into_iter().chain(cp.map(|p| &p.w)).map(|l| { let w = l.w.val(); let [i, o] = w.dims(); let (t, g) = tq(w); (f1(t), f1(g)[0], i, o) }).collect();
     let cf: Vec<u32> = [c.d, c.l, c.h, c.t, c.ff, c.rb as usize, c.k()].iter().chain(c.ns.iter()).map(|&v| v as u32).collect();
     let mut it = vec![tb("cfg", 4, true, by(&cf, |v: u32| v.to_le_bytes().to_vec())), tb("g", 4, true, by(&tg.iter().map(|x| x.1).collect::<Vec<f32>>(), |v: f32| v.to_le_bytes().to_vec()))];
     it.extend(tg.iter().enumerate().map(|(i, (t, _, a, b))| tb(&format!("w{i}"), 2, true, by(&pack(t, *a, *b), |v: u16| v.to_le_bytes().to_vec()))));
     it.extend(c.bpe().ok().flatten().map(|b| tb("bpe", 4, true, by(&[b.v() as u32].into_iter().chain(b.merges.iter().flatten().copied()).collect::<Vec<u32>>(), |v: u32| v.to_le_bytes().to_vec()))));
     it.extend(c.lpe.then(|| tb("lpe", 4, true, by(&[c.lphi.to_bits() as u32, (c.lphi.to_bits() >> 32) as u32, c.lsq], |v: u32| v.to_le_bytes().to_vec()))));
+    it.extend(cp.map(|p| tb("cpy", 4, true, by(&[c.dc() as u32, f1(p.gb.val())[0].to_bits()], |v: u32| v.to_le_bytes().to_vec()))));
     it.extend([("emb", f1(core.emb.val())), ("pos", if c.lpe { vec![0f32; c.t * c.d] } else { f1(core.pos.val()) })].into_iter().map(|(n, v)| tb(n, 4, false, by(&v, |x: f32| x.to_le_bytes().to_vec()))));
     (it, tg.into_iter().map(|(t, _, a, b)| (t, a, b)).collect())
 }
@@ -36,8 +37,8 @@ pub fn check(p: &str, it: &[(Table, Vec<u8>)], mem: Option<Src>) -> io::Result<b
     Ok(a.iter().all(|&x| x) && m)
 }
 pub fn msrc<B: Backend>(m: &Mem<B>) -> (usize, Tensor<B, 1>) { let [r, d] = m.tab.dims(); (r * d, m.tab.val().reshape([r * d])) }
-pub fn save<B: Backend>(p: &str, c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, tile: usize) -> io::Result<(Vec<(Table, Vec<u8>)>, Vec<(Vec<f32>, usize, usize)>)> {
-    let ((it, tr), ms) = (tabs(c, core), mem.map(msrc));
+pub fn save<B: Backend>(p: &str, c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, tile: usize) -> io::Result<(Vec<(Table, Vec<u8>)>, Vec<(Vec<f32>, usize, usize)>)> {
+    let ((it, tr), ms) = (tabs(c, core, cp), mem.map(msrc));
     let f = |a: usize, b: usize| ms.as_ref().map_or_else(Vec::new, |m| f1(m.1.clone().slice([a..b])));
     wr(p, &it, ms.as_ref().map(|m| (m.0, &f as &dyn Fn(usize, usize) -> Vec<f32>)), tile)?;
     Ok((it, tr))
@@ -55,7 +56,7 @@ pub fn grow(src: &str, rb: u32, out: &str) -> io::Result<String> {
     wr(out, &it, Some(((k << rb) * d, &f)), st.tile)?;
     Ok(json!({"grown": out, "from": src, "mem_log2": [a, rb], "rows_per_order": 1usize << rb, "k": k, "d": d, "mem_f32": (k << rb) * d, "bytes": fs::metadata(out)?.len(), "src_bytes": fs::metadata(src)?.len(), "seconds": t0.elapsed().as_secs_f64()}).to_string())
 }
-pub struct Lm { pub v: usize, pub bpe: Option<Bpe>, pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub rb: u32, pub k: usize, pub ns: Vec<usize>, pub w: Vec<(Vec<u16>, usize, usize)>, pub g: Vec<f32>, pub emb: Vec<f32>, pub pos: Vec<f32>, pub st: Mutex<Store>, pub mt: Option<usize>, pub lz: Option<Lz>, pub gf: bool }
+pub struct Lm { pub v: usize, pub bpe: Option<Bpe>, pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub rb: u32, pub k: usize, pub ns: Vec<usize>, pub w: Vec<(Vec<u16>, usize, usize)>, pub g: Vec<f32>, pub emb: Vec<f32>, pub pos: Vec<f32>, pub st: Mutex<Store>, pub mt: Option<usize>, pub lz: Option<Lz>, pub gf: bool, pub cp: Option<(usize, f32)> }
 impl Lm {
     pub fn open(p: &str, budget: usize) -> io::Result<Lm> {
         let st = Store::open(p, budget)?;
@@ -63,12 +64,12 @@ impl Lm {
         let cf: Vec<usize> = get("cfg")?.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]) as usize).collect();
         let (d, l, ff) = (cf[0], cf[1], cf[4]);
         let bpe = st.table("bpe").map(|_| get("bpe").and_then(|b| { let u: Vec<u32> = b.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect(); Bpe::new(PAT, u[1..].chunks_exact(2).map(|m| [m[0], m[1]]).collect()) })).transpose()?;
-        let v = bpe.as_ref().map(|b| b.v()).unwrap_or(256);
-        let dims: Vec<(usize, usize)> = (0..l).flat_map(|_| [(d, 3 * d), (d, d), (d, ff), (ff, d)]).chain([(d, v)]).collect();
+        let (v, cp) = (bpe.as_ref().map(|b| b.v()).unwrap_or(256), st.table("cpy").map(|_| get("cpy").map(|b| (u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize, f32::from_le_bytes([b[4], b[5], b[6], b[7]])))).transpose()?);
+        let dims: Vec<(usize, usize)> = (0..l).flat_map(|_| [(d, 3 * d), (d, d), (d, ff), (ff, d)]).chain([(d, v)]).chain(cp.map(|(dc, _)| (d, 2 * dc + 1))).collect();
         let w = dims.iter().enumerate().map(|(i, &(a, b))| get(&format!("w{i}")).map(|v| (v.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect(), a, b))).collect::<io::Result<Vec<_>>>()?;
         let (g, emb, pos, mt) = (f32s(&get("g")?), f32s(&get("emb")?), f32s(&get("pos")?), st.table("mem"));
         let lz = st.table("lpe").map(|_| get("lpe").map(|b| { let u: Vec<u32> = b.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect(); Lz::new(d / cf[2], cf[3], f64::from_bits(u[0] as u64 | (u[1] as u64) << 32), u[2]) })).transpose()?;
-        Ok(Lm { v, bpe, d, l, h: cf[2], t: cf[3], ff, rb: cf[5] as u32, k: cf[6], ns: cf[7..].to_vec(), w, g, emb, pos, st: Mutex::new(st), mt, lz, gf: std::env::var("LPE_LUT").map(|v| v != "ref").unwrap_or(true) })
+        Ok(Lm { v, bpe, d, l, h: cf[2], t: cf[3], ff, rb: cf[5] as u32, k: cf[6], ns: cf[7..].to_vec(), w, g, emb, pos, st: Mutex::new(st), mt, lz, gf: std::env::var("LPE_LUT").map(|v| v != "ref").unwrap_or(true), cp })
     }
     pub fn lin(&self, i: usize, x: &[f32]) -> Vec<f32> {
         let ((cw, din, dout), g) = (&self.w[i], self.g[i]);
@@ -102,7 +103,7 @@ impl Lm {
         let f: Vec<f32> = self.lin(4 * b + 2, &v).iter().map(|z| z.max(0.0) * z.max(0.0)).collect();
         v.iter().zip(self.lin(4 * b + 3, &f)).map(|(x, y)| x + y).collect()
     }
-    pub fn kv(&self) -> Kv { Kv { x: Vec::new(), k: vec![Vec::new(); self.l], v: vec![Vec::new(); self.l] } }
+    pub fn kv(&self) -> Kv { Kv { x: Vec::new(), k: vec![Vec::new(); self.l], v: vec![Vec::new(); self.l], kc: Vec::new() } }
     pub fn fwd_kv(&self, x: &[u32]) -> io::Result<(Vec<f32>, Kv)> {
         let (d, mut s) = (self.d, self.kv());
         s.x = x.to_vec();
@@ -112,7 +113,8 @@ impl Lm {
             (s.k[b], s.v[b]) = (qkv.iter().flat_map(|q| q[d..2 * d].to_vec()).collect(), qkv.iter().flat_map(|q| q[2 * d..].to_vec()).collect());
             xs = (0..x.len()).into_par_iter().map(|p| self.blk(b, &xs[p], &qkv[p][..d], &s.k[b], &s.v[b], p)).collect();
         }
-        Ok((xs.par_iter().flat_map(|v| self.lin(self.l * 4, v)).collect(), s))
+        let lg: Vec<Vec<f32>> = xs.par_iter().map(|v| self.lin(self.l * 4, v)).collect();
+        Ok((match self.cp { Some((dc, gb)) => { let cs: Vec<Vec<f32>> = xs.par_iter().map(|v| self.lin(self.l * 4 + 1, v)).collect(); s.kc = cs.iter().flat_map(|c| c[dc..2 * dc].to_vec()).collect(); (0..x.len()).into_par_iter().flat_map(|p| cmix(dc, gb, &lg[p], &cs[p], &s.kc, x, p)).collect() } None => lg.concat() }, s))
     }
     pub fn fwd(&self, x: &[u32]) -> io::Result<Vec<f32>> { self.fwd_kv(x).map(|r| r.0) }
     pub fn step(&self, s: &mut Kv, tok: u32) -> io::Result<Vec<f32>> {
@@ -120,11 +122,23 @@ impl Lm {
         let (d, p) = (self.d, s.x.len() - 1);
         let mut v = self.emb_at(&s.x, p)?.remove(0);
         for b in 0..self.l { let q = self.qkv(b, &v, p); s.k[b].extend_from_slice(&q[d..2 * d]); s.v[b].extend_from_slice(&q[2 * d..]); v = self.blk(b, &v, &q[..d], &s.k[b], &s.v[b], p); }
-        Ok(self.lin(self.l * 4, &v))
+        let lg = self.lin(self.l * 4, &v);
+        Ok(match self.cp { Some((dc, gb)) => { let c = self.lin(self.l * 4 + 1, &v); s.kc.extend_from_slice(&c[dc..2 * dc]); cmix(dc, gb, &lg, &c, &s.kc, &s.x, p) } None => lg })
     }
 }
+pub fn cmix(dc: usize, gb: f32, lg: &[f32], c: &[f32], kc: &[f32], x: &[u32], p: usize) -> Vec<f32> {
+    let sc: Vec<f32> = (0..p).map(|j| c[..dc].iter().zip(&kc[j * dc..(j + 1) * dc]).map(|(a, b)| a * b).sum::<f32>() * (1.0 / (dc as f32).sqrt())).collect();
+    let mx = sc.iter().fold(f32::MIN, |a, &v| a.max(v));
+    let e: Vec<f32> = sc.iter().map(|v| (v - mx).exp()).collect();
+    let (zs, mut pc) = (e.iter().sum::<f32>(), vec![0f32; lg.len()]);
+    e.iter().enumerate().for_each(|(j, &w)| pc[x[j + 1] as usize] += w / zs);
+    let lm = lg.iter().fold(f32::MIN, |a, &v| a.max(v));
+    let (ls, z, lsg) = (lm + lg.iter().map(|v| (v - lm).exp()).sum::<f32>().ln(), c[2 * dc] + gb + if p == 0 { 1.0e4 } else { 0.0 }, |z: f32| z.min(0.0) - (-z.abs()).exp().ln_1p());
+    let (la, lb, l30) = (lsg(z), lsg(-z), 1e-30f32.ln());
+    lg.iter().zip(&pc).map(|(&l, &q)| { let (a, b) = (la + (l - ls), lb + if q > 0.0 { q.max(1e-30).ln() } else { l30 }); let m = a.max(b); if (a - b).abs() > 17.0 { m } else { m + ((a - m).exp() + (b - m).exp()).ln() } }).collect()
+}
 #[derive(Clone)]
-pub struct Kv { pub x: Vec<u32>, pub k: Vec<Vec<f32>>, pub v: Vec<Vec<f32>> }
+pub struct Kv { pub x: Vec<u32>, pub k: Vec<Vec<f32>>, pub v: Vec<Vec<f32>>, pub kc: Vec<f32> }
 pub fn nll(lg: &[f32], y: &[u32]) -> Vec<f64> { lg.chunks_exact(lg.len() / y.len().max(1)).zip(y).map(|(r, &t)| { let mx = r.iter().fold(f32::MIN, |a, &v| a.max(v)) as f64; mx + r.iter().map(|&v| (v as f64 - mx).exp()).sum::<f64>().ln() - r[t as usize] as f64 }).collect() }
 pub fn am(r: &[f32]) -> usize { r.iter().enumerate().fold(0, |b, (i, &v)| if v > r[b] { i } else { b }) }
 #[derive(Clone, Debug, PartialEq)]
@@ -163,8 +177,8 @@ pub fn rstop(g: &[u8]) -> Option<usize> {
 pub fn hold_windows(hold: &Dat, n: usize, t: usize) -> (Vec<u32>, Vec<u32>) { let mut g = Pcg64::new(Some(1234)); let (x, y) = hold.hold(&mut g, 128, t); (x[..n * t].to_vec(), y[..n * t].to_vec()) }
 pub fn bpb(v: &[f64], y: &[u32], lens: &[u32]) -> f64 { v.iter().sum::<f64>() / y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / std::f64::consts::LN_2 }
 pub fn cpu_eval(lm: &Lm, x: &[u32], y: &[u32], lens: &[u32]) -> io::Result<(Vec<f32>, f64, f64)> { let t0 = Instant::now(); let lg = x.chunks(lm.t).map(|w| lm.fwd(w)).collect::<io::Result<Vec<_>>>()?.concat(); let s = t0.elapsed().as_secs_f64(); Ok((lg.clone(), bpb(&nll(&lg, y), y, lens), y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / s)) }
-pub fn finish<B: crate::fa::Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, hold: &Dat, lens: &[u32], dev: &B::Device, log: &mut fs::File, p: &str) -> io::Result<()> {
-    let (it, tr) = save(p, c, core, mem, 128)?;
+pub fn finish<B: crate::fa::Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, hold: &Dat, lens: &[u32], dev: &B::Device, log: &mut fs::File, p: &str) -> io::Result<()> {
+    let (it, tr) = save(p, c, core, mem, cp, 128)?;
     let ms = mem.map(msrc);
     let f = |a: usize, b: usize| ms.as_ref().map_or_else(Vec::new, |m| f1(m.1.clone().slice([a..b])));
     let rt = check(p, &it, ms.as_ref().map(|m| (m.0, &f as &dyn Fn(usize, usize) -> Vec<f32>)))?;
@@ -175,7 +189,7 @@ pub fn finish<B: crate::fa::Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, h
     drop(st);
     let lm = Lm::open(p, 256 << 20)?;
     let (x, y) = hold_windows(hold, c.par.max(1), c.t);
-    let gl = f1(logits(c, core, mem, &x, c.par.max(1), dev));
+    let gl = f1(logits(c, core, mem, cp, &x, c.par.max(1), dev));
     let (cl, cb, bps) = cpu_eval(&lm, &x, &y, lens)?;
     let (mx, sm, agree) = gl.chunks_exact(c.v).zip(cl.chunks_exact(c.v)).fold((0f32, 0f64, 0usize), |(m, s, a), (g, q)| (g.iter().zip(q).fold(m, |m, (u, v)| m.max((u - v).abs())), s + g.iter().zip(q).map(|(u, v)| (u - v).abs() as f64).sum::<f64>(), a + (am(g) == am(q)) as usize));
     let gb = bpb(&nll(&gl, &y), &y, lens);

@@ -412,6 +412,20 @@ The CPU tests pass, and the LUT-path overhead is about 0.06%. The design, the te
   - Details are in `memscale_prereg.md` sections 10 and 11.
 - **Details** are in `docs/adam_t/memscale_prereg.md`: the proof, the estimate that picks 2^18 over 2^20, CPU serve RSS and latency at 2^15/2^18/2^20, the decision rules and the GPU cost.
 
+## 7g. Key-to-value binding (ADAM-T-BIND, 2026-09-28, built, A/B not yet run)
+
+`rca_grounding.md` found that binding is at chance with 1-4 same-type distractors and that induction is missing. Two env flags address it. With both unset, the exported model is byte-identical to before.
+
+- **`COPY=1`: a gated pointer/copy head.**
+  - A ternary `d -> 2·d/H + 1` map on the final residual gives a content-only copy query and key, plus a gate.
+  - Strict causal copy attention scatters each key's weight onto the token that followed it: induction by construction.
+  - The output is `log(g·softmax(logits) + (1−g)·p_copy)`.
+  - On the LUT path it is lookup-only: one more trit table, a scatter over context token ids, and cached copy keys. It costs +1-2% decode at 6.5M BPE.
+  - A 1-layer toy model learns a key-value lookup with it (98% against 7%).
+- **`RECALL_MIX=r`: synthetic recall and induction windows.** A fraction r of pretraining windows is replaced, on the fly and deterministically, by windows from `recall.rs`: binding facts with 1-6 distractors and balanced answer positions, key:value lists, Wikidata-style lines, and repeated random spans, all with multi-token keys and values. The rest of the batch is unchanged, and the generator is decontamination-clean.
+- **The A/B.** `crates/adam-t/bind_ab.sh` is a pre-registered 6.5M BPE A/B: base, recall, copy and both, 2 seeds, LPE and lazy memory in every arm. It is scored on RCA-probe binding MC and induction, guarded by clean2/stream bpb and LUT speed, and takes about 9 h of shared GPU.
+- **Details:** `docs/adam_t/bind_prereg.md`.
+
 ## 8. Scaling plan, data plan and compute budget
 
 **Byte-level configurations**, where the core is 12·L·d² plus embeddings:

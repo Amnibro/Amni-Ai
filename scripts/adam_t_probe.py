@@ -90,8 +90,8 @@ def run(a):
     with open(of,'a') as fo:
         for n,it in enumerate(x for x in P if x['id'] not in done):
             pr=it['plain'] if plain else it['prompt'];fr=' '+it['frame'];A,F=enc(p,[' '+it['ans'],fr])
-            o=p.rpc(op='probe',prompt=B64(pr.encode()),pre=F,cands=[A]+enc(p,[' '+c for c in it['alts']]),ids=[A[0],F[0]]+ci,k=8,gen=True,max=100 if plain else 160,stop=[B64(s.encode()) for s in (['\n'] if plain else STOPS)]);c=o['c'];g=U64(o['text']).decode('utf-8','replace')
-            fo.write(json.dumps({'id':it['id'],'model':name,'plain':plain,'reply':g.strip(),'top0':o['top0'],'lp_a0':o['lp0'][0],'lp_f0':o['lp0'][1],'lp_can':o['lp0'][2:],'same_af':A[0]==F[0],'tf_rank':[r for _,r in c[0]],'tf_lp':[l for l,_ in c[0]],'mc':[sum(l for l,_ in x) for x in c],'ntok':len(A)})+'\n');fo.flush()
+            o=p.rpc(op='probe',prompt=B64(pr.encode()),pre=F,cands=[A]+enc(p,[' '+c for c in it['alts']]),ids=[A[0],F[0]]+ci,k=8,gen=not a.no_gen,max=100 if plain else 160,stop=[B64(s.encode()) for s in (['\n'] if plain else STOPS)],**({'room':a.room} if a.room else {}));c=o['c'];g=U64(o['text']).decode('utf-8','replace') if o.get('text') else ''
+            fo.write(json.dumps({'id':it['id'],'model':name,'plain':plain,'reply':g.strip(),'top0':o['top0'],'lp_a0':o['lp0'][0],'lp_f0':o['lp0'][1],'lp_can':o['lp0'][2:],'same_af':A[0]==F[0],'tf_rank':[r for _,r in c[0]],'tf_lp':[l for l,_ in c[0]],'mc':[sum(l for l,_ in x) for x in c],'ntok':len(A),'n':o['n']})+'\n');fo.flush()
             n%25==0 and print(name,n,f'{time.time()-t0:.0f}s',flush=True)
     p.close()
 lse=lambda v:max(v)+math.log(sum(math.exp(x-max(v)) for x in v)) if v else -1e9
@@ -146,16 +146,24 @@ def fid(a):
     L,Bn=out['lut'],out['burn'];t1=[l[0][0]==b[0][0] for l,b in zip(L['top'],Bn['top'])];dl=[max(abs(dict(map(tuple,l)).get(t,-99)-v) for t,v in b[:5]) for l,b in zip(L['top'],Bn['top'])]
     r={'n':len(P),'first_token_top1_agree':float(np.mean(t1)),'top5_max_abs_dlogp_mean':float(np.mean(dl)),'top5_max_abs_dlogp_max':float(np.max(dl)),'gen_n':a.ngen,'gen_exact_agree':float(np.mean([x==y for x,y in zip(L['gen'],Bn['gen'])])),'gen_first_word_agree':float(np.mean([(x.split() or [''])[0]==(y.split() or [''])[0] for x,y in zip(L['gen'],Bn['gen'])])),'disagree':[{'id':P[i]['id'],'lut':L['gen'][i],'burn':Bn['gen'][i]} for i in range(a.ngen) if L['gen'][i]!=Bn['gen'][i]],'top1_disagree':[{'id':P[i]['id'],'lut':L['top'][i][:3],'burn':Bn['top'][i][:3]} for i in range(len(P)) if not t1[i]],'gf17':a.gf17,'run':a.run}
     Path(a.out or PD/'fidelity.json').write_text(json.dumps(r,indent=1));print(json.dumps({k:v for k,v in r.items() if k not in ('disagree','top1_disagree')}))
+def binding(a):
+    name,path=a.model.split('=',1);a.plain,a.only,a.limit,a.no_gen,a.out=True,r'\.distr\.',0,True,a.res or str(PD/'results'/f'bind_{name}.jsonl');run(a);B=bpe()
+    P={json.loads(l)['id']:json.loads(l) for l in open(PD/'probes.jsonl')};R=[(P[j['id']],j) for j in map(json.loads,open(a.out)) if j['id'] in P and P[j['id']]['factor']=='distr']
+    def cut(it,r):ids=B.enc(it['plain'].encode());t=B.dec(ids[-r['n']:]).decode('utf-8','replace');return (len(ids)>r['n'],not all(x in t for x in [it['ans']]+it['dis']))
+    S=[(it,r,int(np.argmax(r['mc']))==0,1/min(int(it['level'])+1,4),all(x==0 for x in r['tf_rank']),math.exp(r['tf_lp'][0]),*cut(it,r)) for it,r in R]
+    g=lambda z:{'n':len(z),'mc':float(np.mean([x[2] for x in z])),'chance':float(np.mean([x[3] for x in z])),'lift':float(np.mean([x[2]-x[3] for x in z])),'tf_top1':float(np.mean([x[4] for x in z])),'p1_frame':float(np.mean([x[5] for x in z]))} if z else {}
+    o={'model':name,'path':path,'room':a.room,**g(S),'truncated':sum(x[6] for x in S),'facts_cut':sum(x[7] for x in S),'by_type':{ty:g([x for x in S if x[0]['type']==ty]) for ty in ('umem','passage','wikidata')},'by_k':{k:g([x for x in S if x[0]['level']==k]) for k in ('1','2','4')}}
+    Path(a.summary).parent.mkdir(parents=True,exist_ok=True) if a.summary else None;a.summary and Path(a.summary).write_text(json.dumps(o,indent=1));print(json.dumps(o))
 def induct(a):
     B=bpe();W=sorted(v.decode() for v in B.voc if re.fullmatch(rb' [a-z]{3,}',v));out={}
     for name,path in (x.split('=',1) for x in a.models.split(',')):
         p=srv(path,a.threads);out[name]={}
-        for L in (10,50,200):
+        for L in map(int,a.lens.split(',')):
             A=[]
             for i in range(a.n):
                 s=random.Random(f'{SEED}.ind.{L}.{i}').sample(W,L);ids=[B.voc.index(w.encode()) for w in s];c=p.rpc(op='probe',prompt=B64((''.join(s)+' .'+s[0]).encode()),pre=[],cands=[ids[1:]],ids=[],k=1)['c'][0];A.append([r==0 for _,r in c])
             out[name][str(L)]={'top1':float(np.mean([np.mean(x) for x in A])),'top1_first5':float(np.mean([np.mean(x[:5]) for x in A])),'top1_last_half':float(np.mean([np.mean(x[len(x)//2:]) for x in A])),'n':a.n}
-        p.close();print(name,out[name],flush=True)
+        out[name]['mean_top1']=float(np.mean([out[name][str(L)]['top1'] for L in map(int,a.lens.split(','))]));p.close();print(name,out[name],flush=True)
     Path(a.out or PD/'induction.json').write_text(json.dumps(out,indent=1))
 def tok(a):
     B=bpe();P=[json.loads(l) for l in open(PD/'probes.jsonl')];p=srv(a.gf17,'2');r=collections.Counter();bad=[]
@@ -192,10 +200,11 @@ def audit(a):
 if __name__=='__main__':
     ap=argparse.ArgumentParser();sp=ap.add_subparsers(dest='cmd',required=True)
     b=sp.add_parser('build');b.add_argument('--n',type=int,default=N)
-    r=sp.add_parser('run');r.add_argument('--model',required=True);r.add_argument('--plain',action='store_true');r.add_argument('--limit',type=int,default=0);r.add_argument('--only',default='');r.add_argument('--out',default='');r.add_argument('--threads',default='3')
+    r=sp.add_parser('run');r.add_argument('--model',required=True);r.add_argument('--plain',action='store_true');r.add_argument('--limit',type=int,default=0);r.add_argument('--only',default='');r.add_argument('--out',default='');r.add_argument('--threads',default='3');r.add_argument('--no-gen',action='store_true');r.add_argument('--room',type=int,default=0)
+    bd=sp.add_parser('binding');bd.add_argument('--model',required=True);bd.add_argument('--room',type=int,default=16);bd.add_argument('--res',default='');bd.add_argument('--summary',default='');bd.add_argument('--threads',default='3')
     e=sp.add_parser('report');e.add_argument('--models',required=True);e.add_argument('--out',default='')
     f=sp.add_parser('fid');f.add_argument('--gf17',required=True);f.add_argument('--run',required=True);f.add_argument('--n',type=int,default=50);f.add_argument('--ngen',type=int,default=50);f.add_argument('--max',type=int,default=40);f.add_argument('--out',default='');f.add_argument('--threads',default='3')
     t=sp.add_parser('tok');t.add_argument('--gf17',required=True);t.add_argument('--k',type=int,default=200);t.add_argument('--out',default='')
     u=sp.add_parser('audit');u.add_argument('--sets',default='sft,sft_v5');u.add_argument('--k',type=int,default=3000);u.add_argument('--out',default='')
-    i=sp.add_parser('induct');i.add_argument('--models',required=True);i.add_argument('--n',type=int,default=30);i.add_argument('--out',default='');i.add_argument('--threads',default='3')
-    x=ap.parse_args();{'build':build,'run':run,'report':report,'fid':fid,'tok':tok,'audit':audit,'induct':induct}[x.cmd](x)
+    i=sp.add_parser('induct');i.add_argument('--models',required=True);i.add_argument('--n',type=int,default=30);i.add_argument('--out',default='');i.add_argument('--threads',default='3');i.add_argument('--lens',default='10,50,200')
+    x=ap.parse_args();{'build':build,'run':run,'report':report,'fid':fid,'tok':tok,'audit':audit,'induct':induct,'binding':binding}[x.cmd](x)

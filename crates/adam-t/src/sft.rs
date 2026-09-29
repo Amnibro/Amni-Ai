@@ -1,4 +1,4 @@
-use crate::{f1, fa::Fa, it2, logits, nap, sm, thr, Cfg, Core, Mem};
+use crate::{f1, fa::Fa, it2, logits, nap, sm, thr, Cfg, Core, Cp, Mem};
 use burn::tensor::{activation::log_softmax, backend::Backend, Tensor, TensorData};
 use serde_json::Value;
 use std::{fs, io, time::Instant};
@@ -106,12 +106,12 @@ impl Job {
         let ((et, el), (ht, hl)) = (tk(&self.tr, &self.plan[..self.epw]), tk(&self.ho, &self.hw));
         format!("{{\"sft\": {{\"train_examples\": {}, \"hold_examples\": {}, \"skipped_too_long\": {}, \"windows_per_epoch\": {}, \"epoch0_tokens\": {et}, \"epoch0_loss_tokens\": {el}, \"steps\": {}, \"epochs\": {:.3}, \"hold_windows\": {}, \"hold_tokens\": {ht}, \"hold_loss_tokens\": {hl}, \"src_w\": {{{}}}}}}}", self.tr.ex.len(), self.ho.ex.len(), self.skip, self.epw, self.steps, self.plan.len() as f64 / self.epw as f64, self.hw.len(), self.names.iter().zip(&self.w).map(|(n, w)| format!("\"{n}\": {w}")).collect::<Vec<_>>().join(", "))
     }
-    pub fn eval<B: Fa>(&self, c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, lens: &[u32], dev: &B::Device) -> (f64, String) {
+    pub fn eval<B: Fa>(&self, c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, lens: &[u32], dev: &B::Device) -> (f64, String) {
         let (e, th) = (1usize << (c.bs / c.micro.max(1)).clamp(1, 32).ilog2(), thr(&c.thf));
         let mut a = vec![(0f64, 0f64, 0f64); self.names.len().max(1)];
         for ws in self.hw.chunks(e) {
             let (t0, (x, y, m, s)) = (Instant::now(), self.ho.fill(ws, c.t));
-            let nl = f1(tnll(logits(c, core, mem, &x, ws.len(), dev), &y, dev));
+            let nl = f1(tnll(logits(c, core, mem, cp, &x, ws.len(), dev), &y, dev));
             nap(th, t0.elapsed().as_secs_f64() * 1e3, c.unit);
             nl.iter().zip(&y).zip(m.iter().zip(&s)).filter(|(_, (m, _))| **m > 0.0).for_each(|((l, &yt), (_, &sr))| { let r = &mut a[sr as usize]; *r = (r.0 + *l as f64, r.1 + 1.0, r.2 + lens[yt as usize] as f64); });
         }
@@ -127,7 +127,7 @@ mod tests {
     use std::path::PathBuf;
     type Ad = Autodiff<NdArray>;
     const DEV: NdArrayDevice = NdArrayDevice::Cpu;
-    fn tiny(t: usize) -> Cfg { Cfg { d: 64, l: 1, h: 1, t, ff: 128, ns: vec![2, 3], rb: 6, tern: true, mem: true, v: 256, bpe: String::new(), bs: 4, micro: 2, base: String::new(), sw: String::new(), ep: 0.0, seed: 3, par: 1, wall: 0.0, unit: 50.0, ..Cfg::env() } }
+    fn tiny(t: usize) -> Cfg { Cfg { d: 64, l: 1, h: 1, t, ff: 128, ns: vec![2, 3], rb: 6, tern: true, mem: true, v: 256, bpe: String::new(), bs: 4, micro: 2, base: String::new(), sw: String::new(), ep: 0.0, seed: 3, par: 1, wall: 0.0, unit: 50.0, copy: false, rmix: 0.0, ..Cfg::env() } }
     fn syn(ns: &[usize]) -> Set {
         let (mut tok, mut mask, mut ex) = (Vec::new(), Vec::new(), Vec::new());
         ns.iter().enumerate().for_each(|(i, &n)| { let off = tok.len(); (0..n).for_each(|j| { tok.push((off + j) as u16); mask.push((j > 0 && sm((off + j) as u64) & 3 != 0) as u8); }); ex.push(Ex { off, n, src: (i % 4) as u8, loss: mask[off..].iter().map(|&m| m as usize).sum() }); });
@@ -193,7 +193,7 @@ mod tests {
         let (core, mem) = (Core::<NdArray>::new(&c, &DEV), Mem::<NdArray>::new(&c, &DEV));
         let (x, y): (Vec<u32>, Vec<u32>) = (0..n).map(|i| ((sm(i as u64) % 256) as u32, (sm(i as u64 + 9999) % 256) as u32)).unzip();
         let m: Vec<f32> = (0..n).map(|i| (sm(i as u64 ^ 77) % 3 == 0) as u8 as f32).collect();
-        let lg = logits(&c, &core, Some(&mem), &x, 4, &DEV);
+        let lg = logits(&c, &core, Some(&mem), None, &x, 4, &DEV);
         let (lv, den) = (f1(lg.clone()), m.iter().sum::<f32>() as f64);
         let want = lut::nll(&lv, &y).iter().zip(&m).map(|(l, &w)| l * w as f64).sum::<f64>() / den;
         let got = f1(mce(lg.clone(), &y, &m, den, &DEV))[0] as f64;
@@ -203,7 +203,7 @@ mod tests {
         let y2: Vec<u32> = y.iter().zip(&m).map(|(&v, &w)| if w > 0.0 { v } else { (v + 1) % 256 }).collect();
         assert!((f1(mce(lg.clone(), &y2, &m, den, &DEV))[0] as f64 - got).abs() < 1e-6, "targets outside the mask must not change the loss");
         let ca = Core::<Ad>::new(&c, &DEV);
-        let g = |yy: &[u32], mm: &[f32]| { let gr = mce(logits(&c, &ca, None, &x, 4, &DEV), yy, mm, den, &DEV).backward(); (f1(ca.head.w.val().grad(&gr).unwrap()), f1(ca.emb.val().grad(&gr).unwrap())) };
+        let g = |yy: &[u32], mm: &[f32]| { let gr = mce(logits(&c, &ca, None, None, &x, 4, &DEV), yy, mm, den, &DEV).backward(); (f1(ca.head.w.val().grad(&gr).unwrap()), f1(ca.emb.val().grad(&gr).unwrap())) };
         let ((h1, e1), (h2, e2), (h0, e0)) = (g(&y, &m), g(&y2, &m), g(&y, &vec![0.0; n]));
         assert!(h1 == h2 && e1 == e2 && h0.iter().chain(&e0).all(|&v| v == 0.0) && h1.iter().any(|&v| v != 0.0));
     }
@@ -229,7 +229,7 @@ mod tests {
         assert!(j.plan.concat().iter().all(|&i| j.tr.ex[i].src == 0) && j.epw == 16 && j.steps == 12, "{}", j.info());
         train::<Ad>(&c0, DEV, 0).unwrap();
         let (bc, oc) = (Cfg::from_dir(&format!("{s}/base_run")).unwrap(), Cfg::from_dir(&format!("{s}/sft0")).unwrap());
-        let ((b0, bm), (o0, om)) = (load::<NdArray>(&bc, &DEV).unwrap(), load::<NdArray>(&oc, &DEV).unwrap());
+        let ((b0, bm, _), (o0, om, _)) = (load::<NdArray>(&bc, &DEV).unwrap(), load::<NdArray>(&oc, &DEV).unwrap());
         assert!(oc.sft() && oc.d == 64 && oc.t == 128 && oc.corpus == "sft");
         assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && f1(b0.head.w.val()) == f1(o0.head.w.val()) && f1(bm.unwrap().tab.val()) == f1(om.unwrap().tab.val()), "sft must start from the base weights (lr 0 keeps them)");
         train::<Ad>(&sc("sft1", 2e-2, ""), DEV, 0).unwrap();
@@ -245,7 +245,7 @@ mod tests {
         train::<Ad>(&Cfg { base: lb.out.clone(), lpe: false, lazy: false, rb: 6, ..sc("sftl", 0.0, "") }, DEV, 0).unwrap();
         let (lc, ld, lz) = (Cfg::from_dir(&lb.out).unwrap(), Cfg::from_dir(&format!("{s}/sftl")).unwrap(), std::env::var("MEM_OPT").map_or(true, |v| v == "lazy"));
         assert!(ld.sft() && ld.lpe && ld.rb == 8 && ld.lazy == lz && PathBuf::from(format!("{s}/sftl/ckpt/lm.bin")).exists() == lz && PathBuf::from(format!("{s}/sftl/model.gf17")).exists(), "sft must inherit LPE, MEM_LOG2 and MEM_OPT from its base unless MEM_OPT is set");
-        let ((b0, bm), (o0, om)) = (load::<NdArray>(&lc, &DEV).unwrap(), load::<NdArray>(&ld, &DEV).unwrap());
+        let ((b0, bm, _), (o0, om, _)) = (load::<NdArray>(&lc, &DEV).unwrap(), load::<NdArray>(&ld, &DEV).unwrap());
         assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && f1(bm.unwrap().tab.val()) == f1(om.unwrap().tab.val()), "lazy sft at lr 0 keeps the base weights");
         let _ = fs::remove_dir_all(&r);
     }
