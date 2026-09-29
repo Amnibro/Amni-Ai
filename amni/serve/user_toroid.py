@@ -97,6 +97,7 @@ def tspan(T,i,n):
     k=last+1
     if k<n and T[k][0].lower()=='old':return None
     while k<n and T[k][0].lower() in ('ago','later'):k+=1
+    k=k+2 if k+1<n and T[k][0].lower() in ('after','before') and T[k+1][0].lower() in ('that','then','this','next') else k
     return (i,k)
 FAV={'favourite':'favorite','fave':'favorite','go-to':'favorite','fav':'favorite'}
 NPSTOP=S_("and or but because so who which that where when why how what if as than then too again named called due not")
@@ -254,7 +255,7 @@ REPV=S_("say show confirm mean read list");COOKV=S_("cook make bake brew fry gri
 PURP=S_("health safety sake job work fun business school money love exercise research career studies family kids savings retirement budget relaxation comfort convenience privacy emergencies emergency reasons reason wedding birthday anniversary graduation funeral reunion conference interview meeting vacation holiday trip environment")
 _FILL=re.compile(r"(?i)\b(?:after all|these days|nowadays|lately|right now|at the moment|for now|for sure|lol|lmao|haha+|tbh|ngl|imo|af|fr|i guess|i think|i reckon|honestly|literally|basically|tho|rn|lowkey|highkey)\b")
 _REP=re.compile(r"(?i)^(?:(?:it\s+)?turns out|apparently|(?:the\s+)?[a-z]+(?:\s+[a-z]+)?\s+(?:says|said|confirmed|told me|thinks)|i (?:just )?(?:found out|heard|learned|realized|noticed|checked))(?:\s+that)?[\s,]+(?=(?:my|the|our|his|her|it|it's|he|she|they|i|we)\b)")
-_SPL=re.compile(r"(?<=[.!?;])\s+|,\s+(?=[A-Z][a-z]+(?:'s|\s+(?:is|was|has|had|does|did|lives|works|moved|went))\b)|,?\s+(?:and|but|while|whereas|whilst)\s+(?=[A-Z][a-z]+\s+(?!and\b|or\b)[a-z]+)|\s*;\s*|\s+(?:saying|to say|says|said|told me|reckons|thinks)\s+(?:that\s+)?(?=(?:it|it's|he|she|they|the|my|our|his|her|their|we)\b)|,\s+so\s+(?=(?:the|my|our|his|her|their|it|that|this)\b)|,?\s+(?:and|but|while|whereas|plus)\s+(?=(?:my|i|i'm|he|she|they|it|it's|we|our|his|her|their|the)\b)|,\s+(?=(?:[Mm]y|I|I'm|[Hh]e|[Ss]he|[Tt]hey|[Ww]e|[Ii]t|[Ii]t's|[Hh]is|[Hh]er|[Tt]heir|[Oo]ur)\b)|,\s+(?=(?:and\s+)?(?:[Tt]he\s+|[Mm]y\s+|[Oo]ur\s+)?[A-Za-z]+(?:\s+[a-z]+)?\s+(?:is|are|was|were)\b)")
+_SPL=re.compile(r"(?<=[.!?;])\s+|\s*:\s+(?=[a-z])|,?\s+(?:while|whereas|whilst)\s+(?=(?:little|big|old|young|baby)\s+[A-Z])|,\s+(?=[A-Z][a-z]+(?:'s|\s+(?:is|was|has|had|does|did|lives|works|moved|went))\b)|,?\s+(?:and|but|while|whereas|whilst)\s+(?=[A-Z][a-z]+\s+(?!and\b|or\b)[a-z]+)|\s*;\s*|\s+(?:saying|to say|says|said|told me|reckons|thinks)\s+(?:that\s+)?(?=(?:it|it's|he|she|they|the|my|our|his|her|their|we)\b)|,\s+so\s+(?=(?:the|my|our|his|her|their|it|that|this)\b)|,?\s+(?:and|but|while|whereas|plus)\s+(?=(?:my|i|i'm|he|she|they|it|it's|we|our|his|her|their|the)\b)|,\s+(?=(?:[Mm]y|I|I'm|[Hh]e|[Ss]he|[Tt]hey|[Ww]e|[Ii]t|[Ii]t's|[Hh]is|[Hh]er|[Tt]heir|[Oo]ur)\b)|,\s+(?=(?:and\s+)?(?:[Tt]he\s+|[Mm]y\s+|[Oo]ur\s+)?[A-Za-z]+(?:\s+[a-z]+)?\s+(?:is|are|was|were)\b)")
 _RW=[(re.compile(r"(?i)^(?:you know|remember|did i (?:tell|mention to) you|guess what|fun fact|so basically)\W+(?:how\s+|that\s+|about\s+)?(?=(?:my|our|i|i'm|we|he|she|they|the)\b)"),''),(re.compile(r"(?i)^(?:so\s+|and\s+)?the\s+(?:whole\s+|real\s+|main\s+|only\s+|actual\s+|big\s+)?reason\s+(?:why\s+|that\s+)?(.+?),?\s+(?:is|was|'s)\s+(?:(?:just|simply|basically|honestly|really)\s+)?(?:that\s+|because\s+|bc\s+|cuz\s+|cause\s+)?(.+)$"),r"\1 because \2"),(re.compile(r"(?i)^(.+?),?\s+(?:so|which is why|that's why|that is why|and that's why|hence|and so)\s+((?:i|we|he|she|they|there|it|that|this|nobody|everyone|my\s+[\w'-]+|our\s+[\w'-]+|(?-i:(?!I')[A-Z][\w-]+(?:'s)?))(?:'s)?\s+(?!(?:can|could|will|would|might|may|won't|wouldn't|can't|don't|have to|need to)\b).+)$"),r"\1. \2 because \1"),(re.compile(r"(?i)^the\s+way\s+(.+?)\s+(?:is|was|'s)\s+(?:(?:just|basically|mostly|always|still)\s+)?(?:by\s+)?(.+)$"),r"\1 by \2"),(re.compile(r"(?i)^((?:my|our|his|her|their)\s+[\w-]+)(?:'s)?\s+(?:approach|method|system|trick|technique|routine|strategy|way|solution|go-to)\s+(?:is|was|'s)\s+(?:(?:just|basically|mostly|always|still)\s+)?(.+)$"),r"\1 does it by \2"),(re.compile(r"(?i)^(?:with|now that|ever since|given that|seeing as)\s+(.+?),\s+(.+)$"),r"\1. \2")]
 _EMO=re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]")
 DROPX=S_("love hope need want like thank thanks guess remember forget let please check look see imagine make try get go tell call text send wish mind")
@@ -374,7 +375,7 @@ def analyze(c:str,last:str='',known=(),names=None,lp='',cor=False):
     return dict(T=T,c=c,ent=ent,name=name,pa=pa,verb=verb,pred=pred,cop=cop,k=k,sp=sp,sv=sv,subj=subj,weak=weak)
 def _val(c,T,a,b,w):
     while a<b and (T[a][0].lower() in (DET|ADV|{'as','is','be'}) and w=='what' or w in ('where','when') and T[a][0].lower() in PREPW|{'on','at','in'} and a+1<b):a+=1
-    b=next((q for q in range(a+1,b) if T[q][0]==',' and q+1<b and T[q+1][0].lower() in ('which','who','whom','whose','but','though','although','whereas','while','so')),b) if w in ('why','how','what','where') else b
+    b=next((q for q in range(a+1,b) if T[q][0]==',' and q+1<b and T[q+1][0].lower() in ('which','who','whom','whose','but','though','although','whereas','while','so') or T[q][0] in (':',';') or T[q][0]==',' and q+2<b and T[q+1][0].lower()=='and' and T[q+2][0].lower() in ('then','i','we','he','she','they','my','our','the','his','her','their')),b) if w in ('why','how','what','where') else b
     b=next((q for q in range(a+1,b) if T[q][0].lower() in ('before','until','till','while','whenever','whereas','although','though') or T[q][0].lower() in ('when','because','since') and w!='why'),b) if w in ('how','what','where') else b
     while b>a and T[b-1][0].lower() in ADV|{'too','again','though','lol','anymore','now','as','well','here','there','and','or','but','then','with','of','for','the','a','an',',','instead'}:b-=1
     return re.sub(r"\s+",' ',c[T[a][1]:T[b-1][2]]).strip(" ,.;:!?\"") if b>a else ''
@@ -550,7 +551,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.84,own=0.346,att=1.226,attc=0.714,att_bad=-1.0,pred=-0.134,pmis=-1.308,rec=-0.947,sup=-2.469,slot=0.455,subj=0.852,null=1.009,tau=1.0,ca=0.3,cb=0.8,co=0.125,kb=-0.116,k_lp=0.771,k_ent=0.216,k_att=0.331,k_slot=0.375,k_pri=-1.174,k_cor=0.662,k_mg=0.127,k_nv=0.971,k_wild=0.052,k_sup=-0.44,cu=0.333,pri=1.196,own2=-0.07,csup=-2.106,wild=-0.57,cor=1.01,ci=0.344,vlen=0.029,ment=0.632,nco=-0.203,psyn=0.549,xtyp=-0.36,tonly=-0.839)
+FW=dict(ent=0.806,own=0.335,att=1.224,attc=0.706,att_bad=-1.0,pred=-0.14,pmis=-1.231,rec=-0.943,sup=-2.464,slot=0.482,subj=0.748,null=0.947,tau=1.0,ca=0.3,cb=0.8,co=0.098,kb=0.049,k_lp=0.888,k_ent=0.04,k_att=0.311,k_slot=0.336,k_pri=-1.306,k_cor=0.825,k_mg=0.005,k_nv=1.062,k_wild=-0.074,k_sup=-0.412,cu=0.341,pri=1.153,own2=0.022,csup=-2.086,wild=-0.662,cor=1.024,ci=0.334,vlen=0.102,ment=0.632,nco=-0.257,psyn=0.543,xtyp=-0.27,tonly=-0.837)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
@@ -575,6 +576,12 @@ def _det(T,lw,c):
             e=k
             while e<n and e<k+3 and re.fullmatch(r"[a-z][\w-]*",lw[e]) and lw[e] not in PREPW|AUX|DET|ADV|{'and','or','but','so'}:e+=1
             e>k and any({'comm','pay','veh'}&wcls(lw[q],1) for q in range(k,e)) and R.append(('how','',k,e,0.7))
+        if lemma(t) in ('put','stuff','keep','store','save','stash','tuck','hide','drop','throw','pour','file','shove','cram','pack','load','move') and k+1<n:
+            q=next((x for x in range(k+1,min(n,k+6)) if lw[x] in ('into','in','inside','onto')),None)
+            if q is not None and q+1<n:
+                e=q+1+(lw[q+1] in DET|{'my','our','his','her','their'})
+                while e<n and e<q+6 and re.fullmatch(r"[a-z][\w'-]*",lw[e]) and lw[e] not in PREPW|AUX|DET|{'and','or','but','because','so','which'} and not _istime(T,e):e+=1
+                e>q+1 and R.append(('how','',q,e,0.5))
         if (lemma(t) in ('have','own','adopt','get','buy','keep','bring','pick','choose','order','rescue') and k+1<n and lw[k+1] in ('a','an','this','some') or lemma(t) in ('go','opt','settle','land','decide') and k+2<n and lw[k+1] in ('with','for','on') and lw[k+2] in ('a','an','the','this','some')) and k+1<n:
             k2=k+(lw[k+1] in ('with','for','on'));e=k2+2
             while e<n and e<k+6 and re.fullmatch(r"[a-z][\w'-]*",lw[e]) and lw[e] not in PREPW|AUX|DET|{'and','or','but','because','so','who','which','that','named','called'} and not _istime(T,e):e+=1
@@ -616,7 +623,7 @@ def spans(text:str,known=(),names=None,last=''):
         CL.append((A['c'].lower(),cw,es,ent,A['pred']))
         [out.append(dict(v=_val(A['c'],T,x,y,w),w=w,a='',ent=ent,pred=lemma(vb) if vb else A['pred'],subj=False,cw=cw,ents=es,pri=0.5)) for (w,a,x,y),vb in zip(A['sp'],A['sv'])]
         [out.append(dict(v=_val(A['c'],T,x,y,w),w=w,a=a,ent=ent,pred=A['pred'],subj=False,cw=cw,ents=es,pri=pr)) for w,a,x,y,pr in _det(T,lw,A['c'])]
-        Q[:0]=[(re.sub(r"(?i)^\W*(?:because|cause|'cause|coz|cuz|since|so that|so|in order to|to)\s+",'',_val(A['c'],T,x,y,'why')),CL[-1]) for (w,a,x,y) in A['sp'] if w=='why' and not sub and y-x>3]
+        Q[:0]=[(z,CL[-1]) for (w,a,x,y) in A['sp'] if w=='why' and not sub and y-x>3 for z in clauses(re.sub(r"(?i)^\W*(?:because|cause|'cause|coz|cuz|since|so that|so|in order to|to)\s+",'',A['c'][T[x][1]:T[y-1][2]]))]
         ob=_obj(T,lw,A['k'],A['sp'][0][2] if A['sp'] else len(T),known,'') if A['pred'] not in ('be','') and not re.match(r"(?i)(?:which|who|that|whom)\b",c) else '';lo=ob or lo
         sub or (last:=ent or last);ent not in ('me','') and isper(ent.split()[-1]) and (lp:=ent)
     out=[o for o in out if not (o['w']=='when' and _DUR.fullmatch(o['v'].lower().strip()))];ucw=set().union(*[x[1] for x in CL]) if CL else set()
