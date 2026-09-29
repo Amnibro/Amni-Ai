@@ -23,8 +23,8 @@ def _load_backend():
         def x_shared(priv, pub): return X25519PrivateKey.from_private_bytes(priv).exchange(X25519PublicKey.from_public_bytes(pub))
         def ed_kp():
             k = Ed25519PrivateKey.generate(); return k.private_bytes(raw, prf, ne), k.public_key().public_bytes(raw, pf)
-        def aenc(key, nonce, pt): return ChaCha20Poly1305(key).encrypt(nonce, pt, None)
-        def adec(key, nonce, ct): return ChaCha20Poly1305(key).decrypt(nonce, ct, None)
+        def aenc(key, nonce, pt, aad=None): return ChaCha20Poly1305(key).encrypt(nonce, pt, aad)
+        def adec(key, nonce, ct, aad=None): return ChaCha20Poly1305(key).decrypt(nonce, ct, aad)
         return "cryptography", x_kp, x_shared, ed_kp, aenc, adec
     except Exception:
         from nacl import bindings as b
@@ -34,8 +34,8 @@ def _load_backend():
         def x_shared(priv, pub): return b.crypto_scalarmult(priv, pub)
         def ed_kp():
             sk = SigningKey.generate(); return bytes(sk), bytes(sk.verify_key)
-        def aenc(key, nonce, pt): return b.crypto_aead_chacha20poly1305_ietf_encrypt(pt, b"", nonce, key)
-        def adec(key, nonce, ct): return b.crypto_aead_chacha20poly1305_ietf_decrypt(ct, b"", nonce, key)
+        def aenc(key, nonce, pt, aad=None): return b.crypto_aead_chacha20poly1305_ietf_encrypt(pt, aad or b"", nonce, key)
+        def adec(key, nonce, ct, aad=None): return b.crypto_aead_chacha20poly1305_ietf_decrypt(ct, aad or b"", nonce, key)
         return "pynacl", x_kp, x_shared, ed_kp, aenc, adec
 _BACKEND, _x_kp, _x_shared, _ed_kp, _aenc, _adec = _load_backend()
 def crypto_backend(): return _BACKEND

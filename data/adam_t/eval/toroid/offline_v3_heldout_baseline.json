@@ -1,0 +1,439 @@
+{
+ "n": 150,
+ "ingest_ms_per_turn": 0.324,
+ "extract": {
+  "held": {
+   "toroid": {
+    "precision": 0.194,
+    "recall": 0.269,
+    "tp": 136,
+    "fp": 565,
+    "fn": 370,
+    "by_w": {
+     "what": {
+      "p": 0.165,
+      "r": 0.282,
+      "n_gold": 142
+     },
+     "where": {
+      "p": 0.244,
+      "r": 0.333,
+      "n_gold": 120
+     },
+     "when": {
+      "p": 0.168,
+      "r": 0.252,
+      "n_gold": 119
+     },
+     "why": {
+      "p": 0.19,
+      "r": 0.225,
+      "n_gold": 71
+     },
+     "how": {
+      "p": 0.312,
+      "r": 0.185,
+      "n_gold": 54
+     }
+    }
+   },
+   "user_memory": {
+    "precision": 0.246,
+    "recall": 0.034,
+    "tp": 17,
+    "fp": 52,
+    "fn": 489,
+    "by_w": {
+     "what": {
+      "p": 0.214,
+      "r": 0.085,
+      "n_gold": 142
+     },
+     "where": {
+      "p": 0.4,
+      "r": 0.033,
+      "n_gold": 120
+     },
+     "when": {
+      "p": 0.333,
+      "r": 0.008,
+      "n_gold": 119
+     },
+     "why": {
+      "p": 0.0,
+      "r": 0.0,
+      "n_gold": 71
+     },
+     "how": {
+      "p": 0.0,
+      "r": 0.0,
+      "n_gold": 54
+     }
+    }
+   }
+  }
+ },
+ "held": {
+  "slot": {
+   "hit1": 0.26,
+   "answerable_hit1": 0.125,
+   "abstain_ok": 0.8,
+   "supersession_ok": 0.1429,
+   "by_w": {
+    "what": 0.133,
+    "where": 0.267,
+    "when": 0.4,
+    "why": 0.267,
+    "how": 0.233
+   },
+   "by_kind": {
+    "plain": 0.133,
+    "correction": 0.143,
+    "forget": 0.55,
+    "multi": 0.086,
+    "nofact": 0.933
+   },
+   "by_style": {
+    "casual": 0.1,
+    "typos": 0.2,
+    "rambling": 0.3,
+    "indirect": 0.267,
+    "plain": 0.433
+   },
+   "ms_p50": 0.075,
+   "ms_p95": 0.134
+  },
+  "soft": {
+   "hit1": 0.2467,
+   "answerable_hit1": 0.1167,
+   "abstain_ok": 0.7667,
+   "supersession_ok": 0.1429,
+   "by_w": {
+    "what": 0.133,
+    "where": 0.267,
+    "when": 0.367,
+    "why": 0.233,
+    "how": 0.233
+   },
+   "by_kind": {
+    "plain": 0.133,
+    "correction": 0.143,
+    "forget": 0.5,
+    "multi": 0.086,
+    "nofact": 0.867
+   },
+   "by_style": {
+    "casual": 0.067,
+    "typos": 0.2,
+    "rambling": 0.333,
+    "indirect": 0.267,
+    "plain": 0.367
+   },
+   "ms_p50": 0.266,
+   "ms_p95": 0.802,
+   "calibration": {
+    "ece": 0.5938,
+    "brier": 0.5854,
+    "n": 150,
+    "acc": 0.2467,
+    "mean_p": 0.8164,
+    "bins": [
+     [
+      0.3,
+      5,
+      0.365,
+      0.4
+     ],
+     [
+      0.4,
+      16,
+      0.46,
+      0.562
+     ],
+     [
+      0.5,
+      10,
+      0.544,
+      0.1
+     ],
+     [
+      0.6,
+      11,
+      0.659,
+      0.273
+     ],
+     [
+      0.7,
+      16,
+      0.743,
+      0.125
+     ],
+     [
+      0.8,
+      19,
+      0.863,
+      0.316
+     ],
+     [
+      0.9,
+      73,
+      0.99,
+      0.192
+     ]
+    ]
+   },
+   "calibration_lines": {
+    "ece": 0.4268,
+    "brier": 0.4009,
+    "n": 47,
+    "acc": 0.2979,
+    "mean_p": 0.6821,
+    "bins": [
+     [
+      0.3,
+      2,
+      0.372,
+      0.0
+     ],
+     [
+      0.4,
+      11,
+      0.454,
+      0.545
+     ],
+     [
+      0.5,
+      3,
+      0.517,
+      0.0
+     ],
+     [
+      0.6,
+      7,
+      0.662,
+      0.429
+     ],
+     [
+      0.7,
+      9,
+      0.744,
+      0.0
+     ],
+     [
+      0.8,
+      10,
+      0.874,
+      0.3
+     ],
+     [
+      0.9,
+      5,
+      0.939,
+      0.4
+     ]
+    ]
+   }
+  },
+  "both": {
+   "hit1": 0.2667,
+   "answerable_hit1": 0.1417,
+   "abstain_ok": 0.7667,
+   "supersession_ok": 0.1429,
+   "by_w": {
+    "what": 0.133,
+    "where": 0.3,
+    "when": 0.4,
+    "why": 0.267,
+    "how": 0.233
+   },
+   "by_kind": {
+    "plain": 0.156,
+    "correction": 0.143,
+    "forget": 0.55,
+    "multi": 0.114,
+    "nofact": 0.867
+   },
+   "by_style": {
+    "casual": 0.1,
+    "typos": 0.2,
+    "rambling": 0.333,
+    "indirect": 0.267,
+    "plain": 0.433
+   },
+   "ms_p50": 0.273,
+   "ms_p95": 0.807,
+   "calibration": {
+    "ece": 0.623,
+    "brier": 0.6069,
+    "n": 150,
+    "acc": 0.2667,
+    "mean_p": 0.8565,
+    "bins": [
+     [
+      0.1,
+      1,
+      0.121,
+      0.0
+     ],
+     [
+      0.3,
+      5,
+      0.374,
+      0.6
+     ],
+     [
+      0.4,
+      8,
+      0.456,
+      0.625
+     ],
+     [
+      0.5,
+      9,
+      0.534,
+      0.111
+     ],
+     [
+      0.6,
+      6,
+      0.673,
+      0.0
+     ],
+     [
+      0.7,
+      12,
+      0.751,
+      0.25
+     ],
+     [
+      0.8,
+      19,
+      0.854,
+      0.474
+     ],
+     [
+      0.9,
+      90,
+      0.986,
+      0.211
+     ]
+    ]
+   },
+   "calibration_lines": {
+    "ece": 0.5085,
+    "brier": 0.4789,
+    "n": 54,
+    "acc": 0.3148,
+    "mean_p": 0.7966,
+    "bins": [
+     [
+      0.1,
+      1,
+      0.121,
+      0.0
+     ],
+     [
+      0.3,
+      3,
+      0.391,
+      0.333
+     ],
+     [
+      0.4,
+      3,
+      0.427,
+      0.667
+     ],
+     [
+      0.5,
+      4,
+      0.521,
+      0.0
+     ],
+     [
+      0.6,
+      3,
+      0.678,
+      0.0
+     ],
+     [
+      0.7,
+      6,
+      0.767,
+      0.167
+     ],
+     [
+      0.8,
+      10,
+      0.856,
+      0.6
+     ],
+     [
+      0.9,
+      24,
+      0.965,
+      0.292
+     ]
+    ]
+   }
+  },
+  "policy": {
+   "0.6": {
+    "direct_rate": 0.2867,
+    "direct_precision": 0.3256,
+    "n_direct": 43,
+    "false_recall_direct": 0.2333,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   },
+   "0.7": {
+    "direct_rate": 0.2667,
+    "direct_precision": 0.35,
+    "n_direct": 40,
+    "false_recall_direct": 0.2333,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   },
+   "0.75": {
+    "direct_rate": 0.26,
+    "direct_precision": 0.359,
+    "n_direct": 39,
+    "false_recall_direct": 0.2333,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   },
+   "0.8": {
+    "direct_rate": 0.2267,
+    "direct_precision": 0.3824,
+    "n_direct": 34,
+    "false_recall_direct": 0.2,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   },
+   "0.85": {
+    "direct_rate": 0.2067,
+    "direct_precision": 0.3548,
+    "n_direct": 31,
+    "false_recall_direct": 0.2,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   },
+   "0.9": {
+    "direct_rate": 0.16,
+    "direct_precision": 0.2917,
+    "n_direct": 24,
+    "false_recall_direct": 0.1667,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   },
+   "0.95": {
+    "direct_rate": 0.1067,
+    "direct_precision": 0.3125,
+    "n_direct": 16,
+    "false_recall_direct": 0.0667,
+    "false_claim_any_line": 0.3,
+    "n_nofact": 30
+   }
+  }
+ }
+}
