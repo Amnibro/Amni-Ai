@@ -91,12 +91,12 @@ impl Srv<'_> {
         for ch in w.chunks(nb) { let lg = (self.fw)(&ch.iter().map(|x| x.3[..x.3.len() - 1].to_vec()).collect::<Vec<_>>())?; ch.iter().zip(&lg).for_each(|((i, a, b, s), l)| r[*i] -= lut::nll(&l[a * self.v..b * self.v], &s[a + 1..b + 1]).iter().sum::<f64>()); }
         Ok(r)
     }
-    fn gen(&self, pr: &[u8], mx: usize, stop: &[Vec<u8>], d: &lut::Dec) -> io::Result<Vec<u8>> {
+    fn gen(&self, pr: &[u8], mx: usize, stop: &[Vec<u8>], d: &lut::Dec, st: Option<(lut::Kv, Vec<f32>)>) -> io::Result<Vec<u8>> {
         let (t, v) = (self.t, self.v);
         let x = self.en(if pr.is_empty() { b"\n" } else { pr });
         let mut x = x[x.len().saturating_sub(t - 1)..].to_vec();
         let (mut kv, mut o, mut rg): (Option<lut::Kv>, Vec<u32>, Pcg64) = (None, Vec::new(), Pcg64::new(Some(d.seed)));
-        let mut lg = match self.lm { Some(lm) => { let (l, k) = lm.fwd_kv(&x)?; kv = Some(k); l[l.len() - v..].to_vec() } None => { let l = (self.fw)(&[x.clone()])?.remove(0); l[l.len() - v..].to_vec() } };
+        let mut lg = match (st, self.lm) { (Some((k, l)), Some(_)) => { x = k.x.clone(); kv = Some(k); l } (_, Some(lm)) => { let (l, k) = lm.fwd_kv(&x)?; kv = Some(k); l[l.len() - v..].to_vec() } _ => { let l = (self.fw)(&[x.clone()])?.remove(0); l[l.len() - v..].to_vec() } };
         let g = loop {
             let nt = d.pick(&lg, &o, &mut rg) as u32;
             o.push(nt);
@@ -114,10 +114,14 @@ impl Srv<'_> {
     fn req(&self, l: &str) -> io::Result<(Value, bool)> {
         let q: Value = serde_json::from_str(l).map_err(io::Error::other)?;
         let d = |v: &Value| B64.decode(v.as_str().unwrap_or("")).map_err(io::Error::other);
+        let sp = |q: &Value| -> io::Result<Vec<Vec<u8>>> { Ok([q["stop"].as_array().cloned().unwrap_or_default().iter().map(d).collect::<io::Result<Vec<_>>>()?, self.stop.clone()].concat()) };
         Ok(match q["op"].as_str().unwrap_or("") {
             "hello" => (json!({"model": format!("adam-t-{}", self.name), "step": self.step, "fmt": self.fmt, "ctx": (self.t as f64 * if self.v > 256 { 3.25 } else { 1.0 }) as usize, "ctx_symbols": self.t, "vocab": self.v, "proto": 1, "gen": self.dec.json()}), false),
+            "enc" => (json!({"ids": q["items"].as_array().cloned().unwrap_or_default().iter().map(|p| Ok(self.en(&d(p)?))).collect::<io::Result<Vec<_>>>()?}), false),
+            "nxt" => { let xs = q["items"].as_array().cloned().unwrap_or_default().iter().enumerate().map(|(i, p)| d(p).map(|b| { let x = [self.en(if b.is_empty() { b"\n" } else { &b }), q["tail"].get(i).and_then(|a| a.as_array()).map(|a| a.iter().filter_map(|j| j.as_u64()).map(|j| (j as u32).min(self.v as u32 - 1)).collect()).unwrap_or_default()].concat(); x[x.len().saturating_sub(self.t)..].to_vec() })).collect::<io::Result<Vec<_>>>()?; let (k, v) = (q["k"].as_u64().unwrap_or(10) as usize, self.v); (json!({"out": (self.fw)(&xs)?.iter().enumerate().map(|(i, l)| { let r = &l[l.len() - v..]; let z = { let m = r.iter().fold(f32::MIN, |a, &x| a.max(x)) as f64; m + r.iter().map(|&x| (x as f64 - m).exp()).sum::<f64>().ln() }; let mut ix: Vec<usize> = (0..v).collect(); ix.sort_by(|&a, &b| r[b].total_cmp(&r[a]).then(a.cmp(&b))); json!({"n": xs[i].len(), "top": ix[..k.min(v)].iter().map(|&j| json!([j, r[j] as f64 - z])).collect::<Vec<_>>(), "lp": q["ids"].get(i).and_then(|a| a.as_array()).map(|a| a.iter().map(|j| r.get(j.as_u64().unwrap_or(0) as usize).map_or(f64::NEG_INFINITY, |&x| x as f64 - z)).collect::<Vec<_>>()).unwrap_or_default()}) }).collect::<Vec<_>>()}), false) }
+            "probe" => { let lm = self.lm.ok_or_else(|| io::Error::other("probe needs a .gf17 model"))?; let v = self.v; let iv = |x: &Value| -> Vec<u32> { x.as_array().map(|a| a.iter().filter_map(|j| j.as_u64()).map(|j| (j as u32).min(v as u32 - 1)).collect()).unwrap_or_default() }; let x = self.en(&d(&q["prompt"])?); let x = x[x.len().saturating_sub(self.t.saturating_sub(96))..].to_vec(); let (l, mut kv) = lm.fwd_kv(&x)?; let l0 = l[l.len() - v..].to_vec(); let z = |g: &[f32]| { let m = g.iter().fold(f32::MIN, |a, &x| a.max(x)) as f64; m + g.iter().map(|&x| (x as f64 - m).exp()).sum::<f64>().ln() }; let mut ix: Vec<usize> = (0..v).collect(); ix.sort_by(|&a, &b| l0[b].total_cmp(&l0[a]).then(a.cmp(&b))); let z0 = z(&l0); let gt = if q["gen"].as_bool().unwrap_or(false) { Some(B64.encode(self.gen(b"", q["max"].as_u64().unwrap_or(64) as usize, &sp(&q)?, &self.dec.with(&q)?, Some((kv.clone(), l0.clone())))?)) } else { None }; let mut g = l0.clone(); for t in iv(&q["pre"]) { g = lm.step(&mut kv, t)?; } let cs = q["cands"].as_array().cloned().unwrap_or_default().par_iter().map(|c| { let (mut s, mut h) = (kv.clone(), g.clone()); iv(c).into_iter().map(|t| { let r = json!([h[t as usize] as f64 - z(&h), h.iter().filter(|&&y| y > h[t as usize]).count()]); h = lm.step(&mut s, t)?; Ok(r) }).collect::<io::Result<Vec<_>>>() }).collect::<io::Result<Vec<_>>>()?; (json!({"n": x.len(), "text": gt, "top0": ix[..(q["k"].as_u64().unwrap_or(10) as usize).min(v)].iter().map(|&j| json!([j, l0[j] as f64 - z0])).collect::<Vec<_>>(), "lp0": iv(&q["ids"]).iter().map(|&j| l0[j as usize] as f64 - z0).collect::<Vec<_>>(), "c": cs}), false) }
             "lp" => (json!({"lp": self.lp(&q["items"].as_array().cloned().unwrap_or_default().iter().map(|p| Ok((d(&p[0])?, d(&p[1])?))).collect::<io::Result<Vec<_>>>()?)?}), false),
-            "gen" => (json!({"text": B64.encode(self.gen(&d(&q["prompt"])?, q["max"].as_u64().unwrap_or(64) as usize, &[q["stop"].as_array().cloned().unwrap_or_default().iter().map(d).collect::<io::Result<Vec<_>>>()?, self.stop.clone()].concat(), &self.dec.with(&q)?)?)}), false),
+            "gen" => (json!({"text": B64.encode(self.gen(&d(&q["prompt"])?, q["max"].as_u64().unwrap_or(64) as usize, &sp(&q)?, &self.dec.with(&q)?, None)?)}), false),
             "bye" => (json!({"bye": true}), true),
             o => (json!({"error": format!("bad op {o}")}), false),
         })
@@ -292,10 +296,10 @@ mod tests {
     fn gen_no_repeat_ngram_lut_and_burn() {
         let (c, lm) = tiny("nr");
         [srv(&c, Some(&lm)), srv(&c, None)].iter().for_each(|s| {
-            let (g0, g3) = (s.gen(P, 48, &[], &lut::Dec::new(false)).unwrap(), s.gen(P, 48, &[], &lut::Dec { nr: 3, ..lut::Dec::new(false) }).unwrap());
+            let (g0, g3) = (s.gen(P, 48, &[], &lut::Dec::new(false), None).unwrap(), s.gen(P, 48, &[], &lut::Dec { nr: 3, ..lut::Dec::new(false) }, None).unwrap());
             assert!(g0.len() == 48 && rep3(&g0), "greedy on the tiny model should loop: {g0:?}");
             assert!(g3.len() == 48 && !rep3(&g3) && g3 != g0, "no_repeat_ngram 3 must leave no repeated trigram: {g3:?}");
-            assert_eq!(g3, s.gen(P, 48, &[], &lut::Dec { nr: 3, ..lut::Dec::new(false) }).unwrap());
+            assert_eq!(g3, s.gen(P, 48, &[], &lut::Dec { nr: 3, ..lut::Dec::new(false) }, None).unwrap());
         });
         let _ = fs::remove_dir_all(&c.out);
     }
@@ -303,7 +307,7 @@ mod tests {
     fn gen_rep_penalty_lut_and_burn() {
         let (c, lm) = tiny("rp");
         [srv(&c, Some(&lm)), srv(&c, None)].iter().for_each(|s| {
-            let n = |rp: f32| s.gen(P, 48, &[], &lut::Dec { rp, ..lut::Dec::new(false) }).unwrap().into_iter().collect::<HashSet<u8>>().len();
+            let n = |rp: f32| s.gen(P, 48, &[], &lut::Dec { rp, ..lut::Dec::new(false) }, None).unwrap().into_iter().collect::<HashSet<u8>>().len();
             let (a, b) = (n(1.0), n(3.0));
             assert!(b > a, "rep_penalty 3 should widen the reply vocabulary: {a} vs {b}");
         });
@@ -318,10 +322,10 @@ mod tests {
         let q = |x: Value| { let mut b = json!({"op": "gen", "prompt": B64.encode(P), "max": 40}); x.as_object().unwrap().iter().for_each(|(k, v)| b[k] = v.clone()); b.to_string() };
         let tx = |x: Value| B64.decode(s.req(&q(x)).unwrap().0["text"].as_str().unwrap()).unwrap();
         let sd = |n: u64| json!({"stop": [B64.encode(b"zz")], "no_repeat_ngram": 2, "rep_penalty": 1.3, "top_k": 5, "temperature": 0.8, "seed": n, "stop_repeat": false});
-        let want = s.gen(P, 40, &[b"zz".to_vec()], &lut::Dec { nr: 2, rp: 1.3, k: 5, tp: 0.8, seed: 9, rs: false }).unwrap();
+        let want = s.gen(P, 40, &[b"zz".to_vec()], &lut::Dec { nr: 2, rp: 1.3, k: 5, tp: 0.8, seed: 9, rs: false }, None).unwrap();
         assert!(!want.is_empty() && tx(sd(9)) == want && tx(sd(9)) == want && (10..16).any(|n| tx(sd(n)) != want));
-        assert_eq!(tx(json!({})), s.gen(P, 40, &[], &lut::Dec::new(true)).unwrap());
-        assert!(tx(json!({"seed": 123})) == tx(json!({})) && tx(json!({"no_repeat_ngram": 0, "rep_penalty": 1.0, "stop_repeat": false})) == s.gen(P, 40, &[], &lut::Dec::new(false)).unwrap());
+        assert_eq!(tx(json!({})), s.gen(P, 40, &[], &lut::Dec::new(true), None).unwrap());
+        assert!(tx(json!({"seed": 123})) == tx(json!({})) && tx(json!({"no_repeat_ngram": 0, "rep_penalty": 1.0, "stop_repeat": false})) == s.gen(P, 40, &[], &lut::Dec::new(false), None).unwrap());
         assert!(s.req(r#"{"op":"gen","prompt":"","rep_penalty":"x"}"#).is_err() && s.req(r#"{"op":"gen","prompt":"","top_k":-3}"#).is_err());
         let (b, bye) = s.req(r#"{"op":"bye"}"#).unwrap();
         assert!(bye && b["bye"] == true);

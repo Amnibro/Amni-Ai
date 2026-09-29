@@ -123,6 +123,7 @@ impl Lm {
         Ok(self.lin(self.l * 4, &v))
     }
 }
+#[derive(Clone)]
 pub struct Kv { pub x: Vec<u32>, pub k: Vec<Vec<f32>>, pub v: Vec<Vec<f32>> }
 pub fn nll(lg: &[f32], y: &[u32]) -> Vec<f64> { lg.chunks_exact(lg.len() / y.len().max(1)).zip(y).map(|(r, &t)| { let mx = r.iter().fold(f32::MIN, |a, &v| a.max(v)) as f64; mx + r.iter().map(|&v| (v as f64 - mx).exp()).sum::<f64>().ln() - r[t as usize] as f64 }).collect() }
 pub fn am(r: &[f32]) -> usize { r.iter().enumerate().fold(0, |b, (i, &v)| if v > r[b] { i } else { b }) }
