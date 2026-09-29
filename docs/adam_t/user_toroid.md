@@ -480,7 +480,7 @@ Mission TOROID-HARDEN addressed the two blockers before `AMNI_UMEM_TOROID` can d
 - Protected: `.torus` files read or copied without the key directory (backups or syncs of the data dir that exclude `keys/`, a leaked file, another local account), and offline tampering, truncation or cross-user file swaps (authentication fails and the file is left untouched). Old ciphertexts (backups, snapshots) become unreadable after a forget, as long as the old key file is gone.
 - Not protected: anyone who can read both the data dir and `keys/` as this user; process memory while serving; rollback to an older valid ciphertext of the same user under the same key (no monotonic counter).
 - **Secure deletion is best effort on copy-on-write filesystems and SSDs.** btrfs and snapper snapshots keep old blocks, including old key files, so crypto-shredding only holds if the key directory is outside snapshotted subvolumes.
-- The legacy `user_memory` `.ptex` files beside the store are **not** encrypted by this change.
+- The legacy `user_memory` `.ptex` files beside the store are **not** encrypted by this change (done later, see section 14).
 
 **Tests** (`tests/test_user_toroid.py`): roundtrip with no plaintext on disk and 0600/0700 checks; tamper detection at seven byte offsets (header, key id, salt, nonce, ciphertext, tag), with the file left intact; wrong key, missing key and cross-user swapped files fail; strict permissions; plaintext migration; forget rotates the key so the old ciphertext no longer opens; forget-all works on an undecryptable store; interrupted-rotation recovery; no key bytes outside the key file and no log records.
 
@@ -554,9 +554,71 @@ By W on dev3 after round 2: what 0.60, where 0.57, when 0.53, why 0.33, how 0.40
 3. **Key storage.**
    - Put `AMNI_UMEM_KEY_DIR` on storage excluded from btrfs/snapper snapshots and backups. Otherwise crypto-shredding on forget is defeated by snapshots.
    - Choose between a local key file (implemented), the OS keyring, and Amni-Crypt when it becomes public (`integrity_gate` only has a private hook, so it was not usable).
-4. **Encrypt the legacy `.ptex` user memory as well.** It is the same class of data and is still plaintext.
+4. **Encrypt the legacy `.ptex` user memory as well.** It is the same class of data and is still plaintext. (Done in section 14.)
 5. **Ship `data/concepts`** (or a compact derived WordNet class table) with installs. Without it, accuracy falls back by about 8 points.
 6. **Rollback protection.** If replaying an older valid ciphertext is in scope, a per-user monotonic counter is needed.
+
+## 14. UMEM-ENCRYPT (2026-09-29): legacy memory and agent profile stores at rest
+
+The section 13.1 design now covers the legacy per-user memory and the agent's personal-fact stores. Nothing was redesigned.
+
+### 14.1 One shared helper
+
+`amni/serve/at_rest.py` holds the whole design: file writes with fsync and in-place scrub, shredding, key-file checks, HKDF key derivation, seal/unseal, rotation and its recovery, and plaintext migration. A `Vault(name, magic, plaintext_version)` binds the labels `amni-<name>-v2`, `amni-<name>-user\0<id>`, `amni-<name>-page` and `amni-<name>-kid`.
+
+- **Toroid.** `user_toroid.py` now calls `Vault('toroid', b'AMTO', 1)`. Its on-disk output is byte-identical to the TOROID-HARDEN code. This was checked with seeded randomness for first save, re-save and rotation, and files written by either version open with the other. The test-facing names (`seal`, `unseal`, `_uk`, `_kid`, `_wfile`, `kdir`, `kpath`) are kept as aliases.
+- **Legacy memory.** `user_memory.py` uses `Vault('umem', b'AMUM', 1)`. The envelope is the same 44-byte header with magic `AMUM` and version 2, and the v1 page encoding with its CRCs is the plaintext. The key file is `<key dir>/<salted user key>.ptex.key`, separate from the toroid key `<salted user key>.key`, so a forget in one store never orphans the other. `kdir()` moved to `user_memory` and the toroid uses it.
+- **Agent stores.** These use `at_rest.ATLAS = Vault('atlas', b'AMAT')`, where every file that is not an envelope counts as legacy plaintext:
+  - `PersonalAtlas`: the LUT `.npz` and `.json`, `.meta.json`, `pending_clarifications.jsonl` and `dead_letter.jsonl`;
+  - `LocalProfile`: `user_profile.json`;
+  - `ConversationNotes`: `conversation_notes.json`.
+
+  Each file has its own key, bound to its file name:
+  - by default at `<file dir>/keys/<file name>.key`;
+  - with `AMNI_UMEM_KEY_DIR` set, at `<key dir>/atlas/<sha256(data dir)[:12]>-<file name>.key`, so two installs that share a key dir cannot collide. In this mode, moving a data dir means renaming its key files to match.
+
+  `SemanticPTEXLUT.save`/`load` take an optional `vault=`. Without it they behave as before, which keeps every non-personal LUT (lessons, intent, code index) unchanged.
+
+### 14.2 Behaviour
+
+Only the encryption changed, with these exceptions:
+- **Forget rotation.** A forget that removes something re-encrypts under a new key and shreds the old key and ciphertext. This applies to `user_memory.forget`, `PersonalAtlas.forget` (pattern or all), `LocalProfile.forget` and `ConversationNotes.forget`. A forget that matches nothing rewrites under the same key, as before.
+- **Legacy "forget everything".** It no longer loads the store first, so it shreds the store and its key even when the file is corrupt or the key is wrong. Before, a corrupt file raised.
+- **`PersonalAtlas.forget(forget_all=True)`.**
+  - It now also shreds the LUT files. Before, they were left on disk and the forgotten pairs came back into `lut._raw` on the next start.
+  - It also shreds the dead-letter log, which holds message excerpts.
+- **Load errors.** Tamper, wrong key or loose permissions raise `ValueError` or `PermissionError` and leave the file untouched. `user_memory.load` raises exactly as it did for a corrupt file before. The atlas, profile and notes loaders keep their existing swallow-and-start-empty handling, and a later save under a wrong or missing key raises instead of overwriting the file.
+- **File modes.** Agent store files are now written 0600 (they were 0644).
+
+### 14.3 Not covered
+
+- Conversation transcripts (`experiences/conversations/*.jsonl`) and `ConversationAtlas` (per-session chat pairs; 3,680 sessions and 11,040 files on the dev box) are logs rather than per-user memory. They have several direct readers (`skills.py`, the CLI, retention). They are time-bounded by `retention.py`. They remain plaintext and are the next candidates.
+- `CoachAtlas`, `code_atlas` and `learning_atlas` hold no user facts.
+
+### 14.4 Migration for existing users
+
+- There is no manual step. The first `load` of a v1 `.ptex`, or of a plaintext agent-store file, decodes it, re-saves it sealed under a fresh key and scrubs the old bytes in place.
+- The one-time cost is a few fsyncs per file. On the dev box that is one `.ptex`, `user_profile.json` and `conversation_notes.json`. `personal_atlas/` is empty.
+- Before first start on this version, put `AMNI_UMEM_KEY_DIR` on storage outside btrfs/snapper snapshots and backups (decision 3 in 13.6). Otherwise snapshots keep both the old plaintext blocks and the keys. Existing snapshots taken before migration still hold plaintext and have to be pruned separately.
+- Rollback to older code cannot read the encrypted files: `.ptex` raises "header corrupt", and profile/notes start empty. To roll back, restore a pre-migration backup.
+
+### 14.5 Tests and cost
+
+`tests/test_user_memory_encrypt.py` has 14 tests:
+- roundtrip with no plaintext or key bytes anywhere on disk, and 0600/0700 modes;
+- tamper at eight offsets plus truncation, with the file left intact;
+- wrong key, missing key, cross-user swap and cross-store (toroid/umem) swap;
+- strict permissions;
+- v1 migration, with the old inode scrubbed (checked through a hard link);
+- forget rotates the key and shreds both the old key and the old ciphertext; a no-op forget keeps the key;
+- forget-all on an undecryptable store;
+- interrupted-rotation recovery;
+- toroid and umem share the helper but use separate keys;
+- profile and notes roundtrip, forget and migration, and the namespaced shared key dir;
+- PersonalAtlas roundtrip, pending, dead letter, pattern and full forget, and plaintext migration;
+- the unencrypted LUT path is unchanged.
+
+For a 400-fact (49 KB) `.ptex`, unseal takes 0.04 ms, load 0.3 ms and save 4.3 ms, which is fsync-bound.
 
 ## Reproduce
 
@@ -575,4 +637,5 @@ python scripts/adam_t_toroid_eval.py build --src <devset3 dir> --dev data/adam_t
 python scripts/adam_t_toroid_eval.py offline --dev data/adam_t/eval/toroid/toroid_dev2.jsonl --extra data/adam_t/eval/toroid/toroid_dev.jsonl --splits tune,test,v1 --tune --fit tune,v1 --old --out data/adam_t/eval/toroid/offline_v2.json
 python scripts/adam_t_toroid_eval.py offline --dev data/adam_t/eval/toroid/toroid_dev3.jsonl --extra data/adam_t/eval/toroid/toroid_dev2.jsonl,data/adam_t/eval/toroid/toroid_dev.jsonl --splits held,v1 --tune --fit v1 --old --out data/adam_t/eval/toroid/offline_v3_heldout.json
 .venv/bin/python -m pytest -q tests/test_user_toroid.py
+.venv/bin/python -m pytest -q tests/test_user_memory_encrypt.py
 ```

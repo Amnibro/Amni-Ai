@@ -6,7 +6,7 @@ Tier-1.5 fires only on cells with a stored answer (no soft NN by default to keep
 """
 import numpy as np
 from pathlib import Path
-import json,os
+import io,json,os
 def audit_keep_indices(pairs):
     """Indices of (q,a) lessons that PASS the same audit the federation/ingest paths use (PII / prompt-injection /
     active-markup / dangerous code). Fail-open if code_safety is unavailable. Disable filtering: AMNI_NO_PTEX_FILTER=1."""
@@ -163,19 +163,19 @@ class SemanticPTEXLUT:
         return (hit['a'],best_d,cos_top,cos_2nd) if return_diag else hit['a']
     def stats(self):
         return {'pairs':len(self._raw),'unique_cells':len(self._cells),'collisions':len(self._raw)-len(self._cells),'grid':self.grid,'pca_dim':self.pca_dim}
-    def save(self,path:str):
+    def save(self,path:str,vault=None,rotate:bool=False):
         import json
-        p=Path(path)
+        p=Path(path);b=io.BytesIO() if vault else None
         p.parent.mkdir(parents=True,exist_ok=True)
-        np.savez_compressed(str(p),embs=self._stored_embs,Vt=self._pca_Vt,cmin=self._cmin,cmax=self._cmax,pca_mean=self._pca_mean)
+        np.savez_compressed(b if vault else str(p),embs=self._stored_embs,Vt=self._pca_Vt,cmin=self._cmin,cmax=self._cmax,pca_mean=self._pca_mean)
         meta={'grid':self.grid,'pca_dim':self.pca_dim,'pairs':[(q,a) for q,a in self._raw]}
-        (p.with_suffix('.json')).write_text(json.dumps(meta))
+        _=(vault.put(str(p) if str(p).endswith('.npz') else str(p)+'.npz',b.getvalue(),rotate),vault.put(str(p.with_suffix('.json')),json.dumps(meta).encode(),rotate)) if vault else (p.with_suffix('.json')).write_text(json.dumps(meta))
     @classmethod
-    def load(cls,path:str,encoder=None):
+    def load(cls,path:str,encoder=None,vault=None):
         import json
-        p=Path(path)
-        d=np.load((str(p) if str(p).endswith('.npz') else str(p)+'.npz'),allow_pickle=False)
-        meta=json.loads((p.with_suffix('.json')).read_text())
+        p=Path(path);z=str(p) if str(p).endswith('.npz') else str(p)+'.npz'
+        d=np.load(io.BytesIO(vault.get(z)) if vault else z,allow_pickle=False)
+        meta=json.loads(vault.get(str(p.with_suffix('.json'))) if vault else (p.with_suffix('.json')).read_text())
         lut=cls(grid=meta['grid'],pca_dim=meta['pca_dim'],encoder=encoder)
         _pairs=[(q,a) for q,a in meta['pairs']];_embs=d['embs']
         _keep=audit_keep_indices(_pairs)

@@ -5,10 +5,10 @@ class ConversationNotes:
     def __init__(self,path):
         self.path=Path(path);self.path.parent.mkdir(parents=True,exist_ok=True);self.data=self._load()
     def _load(self):
-        try:return json.loads(self.path.read_text(encoding='utf-8')) if self.path.exists() else {'corrections':[],'notes':[],'behavior_prefs':[]}
+        try:return json.loads(__import__('amni.serve.at_rest',fromlist=['ATLAS']).ATLAS.get(str(self.path))) if self.path.exists() else {'corrections':[],'notes':[],'behavior_prefs':[]}
         except Exception:return {'corrections':[],'notes':[],'behavior_prefs':[]}
-    def save(self):
-        try:self.path.write_text(json.dumps(self.data,indent=2,ensure_ascii=False),encoding='utf-8')
+    def save(self,rotate=False):
+        try:__import__('amni.serve.at_rest',fromlist=['ATLAS']).ATLAS.put(str(self.path),json.dumps(self.data,indent=2,ensure_ascii=False).encode('utf-8'),rotate)
         except Exception as e:print(f'[ConversationNotes] save failed: {e}',flush=True)
     @staticmethod
     def is_correction(text):return bool(_CORRECTION_RE.search(text or ''))
@@ -81,5 +81,5 @@ class ConversationNotes:
             t=(p.get('text') or '').strip()
             if t:out.append(f"user behavior preference: {t[:240]}")
         return out
-    def forget(self):self.data={'corrections':[],'notes':[],'behavior_prefs':[]};self.save()
+    def forget(self):self.data={'corrections':[],'notes':[],'behavior_prefs':[]};self.save(True)
     def stats(self):return {'corrections_n':len(self.data.get('corrections') or []),'notes_n':len(self.data.get('notes') or []),'prefs_n':len(self.data.get('behavior_prefs') or []),'updated_ts':self.data.get('updated_ts')}

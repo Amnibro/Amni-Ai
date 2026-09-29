@@ -12,6 +12,7 @@ import json,time,re,threading,queue,hashlib,uuid
 from pathlib import Path
 from typing import List,Dict,Any,Optional,Tuple,Callable
 from amni.inference.semantic_ptex_lut import SemanticPTEXLUT
+from amni.serve.at_rest import ATLAS
 _LOCAL_KEY='__local_user__'
 _REFIT_EVERY=5
 _QUEUE_MAX=200
@@ -58,14 +59,14 @@ class PersonalAtlas:
     def _load_slot(self)->_Slot:
         sp=self._slot_path();mp=self._meta_path()
         if not mp.exists():return _Slot(SemanticPTEXLUT(grid=self.grid,pca_dim=self.pca_dim,encoder=self.encoder),{})
-        try:lut=SemanticPTEXLUT.load(str(sp),encoder=self.encoder)
+        try:lut=SemanticPTEXLUT.load(str(sp),encoder=self.encoder,vault=ATLAS)
         except Exception:lut=SemanticPTEXLUT(grid=self.grid,pca_dim=self.pca_dim,encoder=self.encoder)
         try:
-            raw=json.loads(mp.read_text(encoding='utf-8'))
+            raw=json.loads(ATLAS.get(str(mp)))
             meta={tuple(k.split('::',1)):v for k,v in raw.items()} if isinstance(raw,dict) else {}
         except Exception:meta={}
         return _Slot(lut,meta)
-    def _save_slot(self):
+    def _save_slot(self,rotate:bool=False):
         with self._slot.lock:
             try:
                 _embs=self._slot.lut._stored_embs
@@ -73,28 +74,26 @@ class PersonalAtlas:
                 if _n_raw>0 and (_embs is None or len(_embs)!=_n_raw):
                     try:self._slot.lut.fit()
                     except Exception as fe:print(f'[PersonalAtlas] pre-save refit failed: {fe}',flush=True)
-                if _n_raw>0 and self._slot.lut._stored_embs is not None:self._slot.lut.save(str(self._slot_path()))
+                _=self._slot.lut.save(str(self._slot_path()),vault=ATLAS,rotate=rotate) if _n_raw>0 and self._slot.lut._stored_embs is not None else rotate and [ATLAS.drop(str(self._slot_path())+x) for x in ('.npz','.json')]
             except Exception as e:print(f'[PersonalAtlas] save lut failed: {e}',flush=True)
-            try:self._meta_path().write_text(json.dumps({'::'.join(k):v for k,v in self._slot.meta.items()},default=str),encoding='utf-8')
+            try:ATLAS.put(str(self._meta_path()),json.dumps({'::'.join(k):v for k,v in self._slot.meta.items()},default=str).encode('utf-8'),rotate)
             except Exception as e:print(f'[PersonalAtlas] save meta failed: {e}',flush=True)
     def _load_pending(self)->List[Dict[str,Any]]:
         if not self._pending_path.exists():return []
         out=[]
         try:
-            for ln in self._pending_path.read_text(encoding='utf-8').strip().splitlines():
+            for ln in ATLAS.get(str(self._pending_path)).decode('utf-8').strip().splitlines():
                 if ln.strip():
                     try:out.append(json.loads(ln))
                     except Exception:continue
         except Exception:pass
         return out
-    def _save_pending(self):
-        try:
-            with self._pending_path.open('w',encoding='utf-8') as f:
-                for p in self._pending:f.write(json.dumps(p,default=str)+'\n')
+    def _save_pending(self,rotate:bool=False):
+        try:ATLAS.put(str(self._pending_path),''.join(json.dumps(p,default=str)+'\n' for p in self._pending).encode('utf-8'),rotate)
         except Exception as e:print(f'[PersonalAtlas] save pending failed: {e}',flush=True)
     def _dead_letter(self,record:Dict[str,Any]):
         try:
-            with self._dead_letter_path.open('a',encoding='utf-8') as f:f.write(json.dumps({'ts':time.time(),**record},default=str)+'\n')
+            ATLAS.add(str(self._dead_letter_path),(json.dumps({'ts':time.time(),**record},default=str)+'\n').encode('utf-8'))
         except Exception:pass
     def enqueue(self,message:str,session_id:Optional[str]=None):
         if not message or not message.strip():return False
@@ -207,8 +206,8 @@ class PersonalAtlas:
         if forget_all:
             with self._slot.lock:
                 self._slot=_Slot(SemanticPTEXLUT(grid=self.grid,pca_dim=self.pca_dim,encoder=self.encoder),{})
-            self._save_slot()
-            self._pending=[];self._save_pending()
+            self._save_slot(True)
+            self._pending=[];self._save_pending(True);ATLAS.drop(str(self._dead_letter_path))
             return {'forgot':'all'}
         if not fact_pattern:return {'forgot':'none','reason':'no_pattern'}
         pat=re.compile(fact_pattern,re.IGNORECASE)
@@ -224,7 +223,7 @@ class PersonalAtlas:
         if keep_raw:
             try:self._slot.lut.fit()
             except Exception:pass
-        self._save_slot()
+        self._save_slot(bool(removed))
         return {'forgot':len(removed),'facts':removed[:10]}
     def stats(self)->Dict[str,Any]:
         n=len(self._slot.lut._raw)
