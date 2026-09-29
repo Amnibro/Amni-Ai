@@ -1,4 +1,4 @@
-import os,re,sys,json,time,glob,argparse,tempfile,itertools
+import os,re,sys,json,time,glob,argparse,tempfile
 import numpy as np
 from scipy.optimize import minimize
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -75,12 +75,6 @@ def ret_ok(v,d):return (bool(v) and any(vmatch(v,a) for a in d['ans']) and not a
 def cal(ps,ys,nb=10):
     ps,ys=np.array(ps,float),np.array(ys,float);b=np.minimum((ps*nb).astype(int),nb-1);rows=[(i/nb,int((b==i).sum()),float(ps[b==i].mean()) if (b==i).any() else None,float(ys[b==i].mean()) if (b==i).any() else None) for i in range(nb)]
     return {'ece':round(float(sum(n*abs(p-y) for _,n,p,y in rows if n)/max(1,len(ps))),4),'brier':round(float(((ps-ys)**2).mean()),4) if len(ps) else None,'n':len(ps),'acc':round(float(ys.mean()),4) if len(ps) else None,'mean_p':round(float(ps.mean()),4) if len(ps) else None,'bins':[(lo,n,round(p,3) if p is not None else None,round(y,3) if y is not None else None) for lo,n,p,y in rows if n]}
-def soft_eval(D,S,fw):
-    R=[]
-    for d,(st,_) in zip(D,S):
-        t0=time.perf_counter();kn=st.ents();qa=T.ask(d['q'],T._last(st),list(kn),st.names,st.lp);L=T.soft(st,qa,list(kn),st.names,'',fw) if qa else [];Sx,top=T._top(L);pn=max([x[0] for x in L if x[1] is None] or [1.0])
-        v=top[1]['v'] if top else '';R.append((top[0] if top else pn,ret_ok(v,d),(time.perf_counter()-t0)*1000))
-    return R
 def _pol(D,S,ix,gate=None):
     R=[(D[i],T.respond(S[i][0],D[i]['q'],gate=gate)) for i in ix];f=lambda v:round(float(np.mean(v)),4) if len(v) else None;dr=[(d,o) for d,o in R if o['kind']=='direct'];un=[(d,o) for d,o in R if not d['ans']]
     return {'direct_rate':f([o['kind']=='direct' for _,o in R]),'direct_precision':f([ret_ok(o.get('v',''),d) for d,o in dr]),'n_direct':len(dr),'false_recall_direct':f([o['kind']=='direct' for _,o in un]),'false_claim_any_line':f([o['kind'] in ('direct','hint','unsure') for _,o in un]),'n_nofact':len(un)}
@@ -88,10 +82,7 @@ def _fitc(X,y,l2=1.0,it=60):
     A=np.array([[x[k] for k in T.CK]+[1.0] for x in X],float);y=np.array(y,float);w=np.zeros(A.shape[1]);w[0]=1.0;w0=w.copy()
     for _ in range(it):q=1/(1+np.exp(-np.clip(A@w,-30,30)));H=A.T@(A*(q*(1-q))[:,None])+l2*np.eye(len(w));w-=np.linalg.solve(H,A.T@(q-y)+l2*(w-w0))
     return {**{'k_'+k:round(float(v),4) for k,v in zip(T.CK,w[:-1])},'kb':round(float(w[-1]),4)}
-def _platt(p,y):
-    x=np.log(np.clip(p,1e-4,1-1e-4)/(1-np.clip(p,1e-4,1-1e-4)));G=[(a,b) for a in np.arange(0.05,2.01,0.05) for b in np.arange(-3,3.01,0.1)];L=[-np.mean(y*np.log(np.clip(q,1e-6,1))+(1-y)*np.log(np.clip(1-q,1e-6,1))) for a,b in G for q in [1/(1+np.exp(-(a*x+b)))]]
-    return tuple(round(float(v),3) for v in G[int(np.argmin(L))])
-PRIOR=dict(pmis=-1.5,ent=2.0,own=1.0,att=1.0,attc=0.5,att_bad=-1.0,pred=1.0,rec=-0.35,sup=-3.0,slot=1.5,subj=0.5,co=0.8,cu=0.3,pri=1.0,own2=0.7,csup=-1.5,wild=-0.8,cor=0.0,ci=0.0,vlen=0.0,ment=0.0,nco=0.0,psyn=0.5,xtyp=-0.5,tonly=-1.0,null=1.5,tau=1.0)
+PRIOR=dict(pmis=-1.5,ent=2.0,own=1.0,att=1.0,attc=0.5,att_bad=-1.0,pred=1.0,rec=-0.35,sup=-3.0,slot=1.5,subj=0.5,co=0.8,cu=0.3,pri=1.0,own2=0.7,csup=-1.5,wild=-0.8,cor=0.0,ci=0.0,vlen=0.0,ment=0.0,nco=0.0,psyn=0.5,xtyp=-0.5,tonly=-1.0,prox=0.5,null=1.5,tau=1.0)
 def _fitw(D,S,ix,fw0,l2=0.01,it=400,lr=0.1):
     fw0={**fw0,**PRIOR}
     X=[];Y=[]

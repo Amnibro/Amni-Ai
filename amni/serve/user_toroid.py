@@ -1,7 +1,7 @@
 import os,re,hmac,stat,time,zlib,struct,secrets,functools
 import numpy as np
 from amni.compute.reffelt4 import encode_fp16_to_rgba4,decode_rgba4_to_fp16
-from amni.serve import user_memory as U
+from amni.serve import user_memory as U,cognition as COG
 from amni.serve.amni_chat_client import _hkdf_sha256,_aenc,_adec
 WS=('what','where','when','why','how');AT=('','name','color','model','job','breed','kind','favorite','age','home','work','location','origin','destination','likes','allergy','birthday');WI={w:i for i,w in enumerate(WS)};AI={a:i for i,a in enumerate(AT)}
 MAGIC=b'AMTO';VER=1;RW=48;UW=32;NK=14;TM=4913;HDR=struct.Struct('<4sHHHIII')
@@ -34,7 +34,7 @@ _CT=re.compile(r"(?i)\b(i|you|he|she|it|we|they|that|there|what|where|who|when|w
 _NT=re.compile(r"(?i)\b(do|does|did|is|was|are|were|ca|wo|could|would|should|have|has|had)n't\b")
 _LEAD=re.compile(r"(?i)^\W*(?:(?:ugh|argh|dang|darn|shoot|welp|oh no|actually|oh|so|well|also|and|but|btw|by the way|fun fact|funny story|update(?: on [^:,]{1,40})?|correction|confession|sorry|wait|oops|ok(?:ay)?|hey|hi|um|uh|yeah|yea|yes|no|nope|right|lol|lmao|haha+|ngl|tbh|omg|yo|nvm|never ?mind|hmm+|ah+|ooh|anyway|honestly|basically|good news|bad news|so anyway|scratch that|i misspoke|i meant|i mean|my (?:bad|mistake)|i got that wrong|i was wrong|just so you know|fyi|heads up|anyway|hmm|ah|guess what|quick update|small correction|change of plans?|not anymore|new info)\b[\s,:;.!-]*)+")
 _CORR=re.compile(r"(?i)\b(?:wait|misread|mixed (?:it|that|them) up|typo|i meant|make that|make it|turns out|actually|correction|sorry|oops|scratch that|misspoke|my (?:bad|mistake)|got that wrong|was wrong|wrong|not anymore|any ?more|no longer|changed|switched|instead|update|rescheduled|postponed|moved|now)\b")
-_COR2=re.compile(r"(?i)^\W*\*|^\W*(?:no|nope|nah|wait|oops|sorry|correction|update|not|nvm)\b|\b(?:correction|scratch that|i meant|make that|make it|turns out|misread|mixed (?:it|that|them) up|typo|misspoke|my (?:bad|mistake)|got (?:that|it) wrong|was wrong|change of plans?|never ?mind|nvm|rescheduled|postponed|pushed back|(?:moved|pushed|bumped|shifted) (?:it|that|them)\b|(?:got|been|was|is|'s)\s+(?:moved|pushed|bumped|shifted|changed|rescheduled|postponed)|swapped|instead|not anymore|no longer|update)\b|\b(?:actually|really)\s*,?\s*(?:it'?s|it was|it is|its|they'?re|he'?s|she'?s|that'?s|we'?re|i'?m|no)\b|\bit'?s\s+actually\b|,\s*not\s+\w+")
+_COR2=re.compile(r"(?i)^\W*\*|^\W*(?:no|nope|nah|wait|oops|sorry|correction|update|not|nvm)\b|\b(?:correction|scratch that|i meant|make that|make it|turns out|misread|mixed (?:it|that|them) up|typo|misspoke|my (?:bad|mistake)|got (?:that|it) wrong|was wrong|change of plans?|never ?mind|nvm|rescheduled|postponed|pushed back|(?:moved|pushed|bumped|shifted) (?:it|that|them)\b|(?:got|been|was|is|'s)\s+(?:moved|pushed|bumped|shifted|changed|rescheduled|postponed)|swapped|instead|not anymore|no longer|update)\b|\b(?:actually|really)\s*,?\s*(?:it'?s|it was|it is|its|they'?re|he'?s|she'?s|that'?s|we'?re|i'?m|no)\b|\bit'?s\s+actually\b|,\s*not\s+(?!mine|yours|his|hers|ours|theirs|me|you|him|her|us|them|really|sure|quite|bad|great|much|that|so|too|a\s+big|at\s+all)\w+")
 _NOT=re.compile(r"(?i)^\s*not\s+[^,]+,\s*|,?\s*\bnot\s+(?:the\s+|a\s+|an\s+|on\s+|in\s+|at\s+)?[\w' -]+?\s*(?=$|[.!?])")
 _QPRE=re.compile(r"(?i)^\W*(?:(?:hey|yo|so|ok(?:ay)?|um|uh|and|also|wait|quick question|quick q|adam|btw|sorry|hmm|oh|quick one|any idea|remind me|real quick)\W+)*(?:(?:can|could|would) you (?:please )?(?:tell me|remind me|say)(?: again)?\W*|(?:do|did) you (?:still )?(?:remember|recall|know)\W*|remind me(?: again)?\W*|tell me(?: again)?\W*|i forgot\W*|i forget\W*)?")
 _QSAY=re.compile(r"(?i)\b(?:did|do|had|have) (?:i|we) (?:say|said|tell you|told you|mention|mentioned|say that|tell you that)(?: that| about| was| is)?\b|\bi (?:told|said to|mentioned to) you\b|\bdid i\b(?= (?:say|tell))|\bagain\b|\bexactly\b|\bthat\b(?=\s*\?)|,?\s*(?:remind me|do you remember|did i mention|lol|again)\s*(?=[?.!]*$)")
@@ -59,7 +59,7 @@ _CZ=[(re.compile(r"(?i)\b(what|where|when|who|how|that|there|she)s\b"),r"\1's"),
 @functools.lru_cache(maxsize=1)
 def _cog():
     try:
-        from amni.serve import cognition as C;return (C,C._g()) if os.environ.get('AMNI_UMEM_TOROID_WN','1')=='1' else None
+        return (COG,COG._g()) if os.environ.get('AMNI_UMEM_TOROID_WN','1')=='1' else None
     except Exception:return None
 LEX=None
 def _lex()->frozenset:
@@ -244,7 +244,7 @@ def save(key:str,st:Store,rotate:bool=False):
         _wfile(p,seal(encode(st),uk),shred=rotate or leg);fresh and _kcommit(kp)
 def wipe(key:str)->bool:
     with U._lock:
-        _cache.pop(key,None);r=_shred(path(key));[_shred(x) for x in (kpath(key),kpath(key)+'.new')];return r
+        _cache.pop(key,None);_spc.cache_clear();r=_shred(path(key));[_shred(x) for x in (kpath(key),kpath(key)+'.new')];return r
 _sg=lambda w:w[:-1] if len(w)>3 and w.endswith('s') and not w.endswith(('ss','us','is')) else w
 def _resolve(lab:str,known)->str:
     if not lab or lab=='me' or lab in known:return lab
@@ -553,7 +553,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.862,own=0.312,att=1.224,attc=0.67,att_bad=-1.0,pred=-0.351,pmis=-1.243,rec=-0.954,sup=-2.825,slot=0.688,subj=0.591,null=1.067,tau=1.0,ca=0.3,cb=0.8,co=0.17,kb=-0.16,k_lp=0.93,k_ent=-0.174,k_att=0.197,k_slot=0.249,k_pri=-0.944,k_cor=0.709,k_mg=0.048,k_nv=1.374,k_wild=-0.134,k_sup=-0.197,cu=0.259,pri=1.138,own2=0.247,csup=-2.069,wild=-0.714,cor=1.091,ci=0.282,vlen=0.11,ment=0.603,nco=-0.079,psyn=0.535,xtyp=-0.488,tonly=-0.644)
+FW=dict(ent=0.913,own=0.385,att=1.194,attc=0.654,att_bad=-1.0,pred=-0.333,pmis=-1.272,rec=-0.963,sup=-2.815,slot=0.673,subj=0.6,null=1.085,tau=1.0,co=0.138,kb=-0.081,k_lp=0.958,k_ent=-0.278,k_att=0.144,k_slot=0.212,k_pri=-0.923,k_cor=0.708,k_mg=-0.001,k_nv=1.466,k_wild=0.06,k_sup=-0.138,cu=0.235,pri=1.145,own2=0.272,csup=-2.023,wild=-0.596,cor=1.195,ci=0.345,vlen=0.086,ment=0.547,nco=-0.095,psyn=0.534,xtyp=-0.48,tonly=-0.637,prox=0.952)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
@@ -620,17 +620,20 @@ def _det(T,lw,c):
             b is not None and R.append((w,a,b,min(e,n),pr))
     return R
 _DUR=re.compile(r"(?:for\s+)?(?:about\s+|around\s+|like\s+|nearly\s+|almost\s+|over\s+)?(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|a few|a couple of|several|\d+|a whole)\s+(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?|nights?|decades?)(?:\s+(?:long|straight|now|or so))?")
-def spans(text:str,known=(),names=None,last=''):
+def spans(text:str,known=(),names=None,last=''):return [dict(o) for o in _spc(text,tuple(known),tuple(sorted((names or {}).items())),last)]
+@functools.lru_cache(maxsize=4096)
+def _spc(text:str,known:tuple,nm:tuple,last:str)->tuple:
+    names=dict(nm);known=list(known)
     F=extract(text,last,known,names)[0];CL=[];out=[];lp='';lo='';Q=list(clauses(text));tcor=bool(_COR2.search(text));t0=last
     while Q:
         c=Q.pop(0);sub=isinstance(c,tuple);c,pc=(c if sub else (c,None));A=analyze(c,(t0 if tcor and t0 not in ("","me") else lo if lo else last) if re.match(r"(?i)(?:it|that|this)\b",c) else last,known,names,lp)
         if not A:continue
         T=A['T'];lw=[t[0].lower() for t in T];ent=A['ent'] if A['ent'] not in ('','?') else (pc[3] if sub else last);cw=cwords(lw)|(pc[1] if sub else set());es={ent}|{_resolve(_np(T,j+1,len(T))[0],known) for j,t in enumerate(lw) if t in ('my','our')}|{names[t] for t in lw if t in names}|(pc[2] if sub else set())
         CL.append((A['c'].lower(),cw,es,ent,A['pred']))
-        [out.append(dict(v=_val(A['c'],T,x,y,w),w=w,a='',ent=ent,pred=lemma(vb) if vb else A['pred'],subj=False,cw=cw,ents=es,pri=0.5)) for (w,a,x,y),vb in zip(A['sp'],A['sv'])]
-        [out.append(dict(v=_val(A['c'],T,x,y,w),w=w,a=a,ent=ent,pred=A['pred'],subj=False,cw=cw,ents=es,pri=pr)) for w,a,x,y,pr in _det(T,lw,A['c'])]
+        LM=[_lm(t) for t in lw];[out.append(dict(v=_val(A['c'],T,x,y,w),w=w,a='',ent=ent,pred=lemma(vb) if vb else A['pred'],subj=False,cw=cw,ents=es,pri=0.5,pos=x,lm=LM)) for (w,a,x,y),vb in zip(A['sp'],A['sv'])]
+        [out.append(dict(v=_val(A['c'],T,x,y,w),w=w,a=a,ent=ent,pred=A['pred'],subj=False,cw=cw,ents=es,pri=pr,pos=x,lm=LM)) for w,a,x,y,pr in _det(T,lw,A['c'])]
         Q[:0]=[(z,CL[-1]) for (w,a,x,y) in A['sp'] if w=='why' and not sub and y-x>3 for z in clauses(re.sub(r"(?i)^\W*(?:because|cause|'cause|coz|cuz|since|so that|so|in order to|to)\s+",'',A['c'][T[x][1]:T[y-1][2]]))]
-        e0=A['sp'][0][2] if A['sp'] else len(T);k2=max([q+1 for q in range(A['k'],e0) if (isv(lw[q]) or wv(lw[q],lw[q-1] if q else '')) and lw[q] not in AUX]+[A['k']]);k2+=sum(1 for _ in __import__('itertools').takewhile(lambda x:x in PART,lw[k2:e0]))
+        e0=A['sp'][0][2] if A['sp'] else len(T);k2=max([q+1 for q in range(A['k'],e0) if (isv(lw[q]) or wv(lw[q],lw[q-1] if q else '')) and lw[q] not in AUX]+[A['k']]);k2=next((q for q in range(k2,e0) if lw[q] not in PART),e0)
         ob=_obj(T,lw,k2,e0,known,'') if A['pred'] not in ('be','') and not re.match(r"(?i)(?:which|who|that|whom)\b",c) else '';lo=ob or lo
         sub or (last:=ent or last);ent not in ('me','') and isper(ent.split()[-1]) and (lp:=ent)
     out=[o for o in out if not (o['w']=='when' and _DUR.fullmatch(o['v'].lower().strip()))];ucw=set().union(*[x[1] for x in CL]) if CL else set()
@@ -642,7 +645,7 @@ def spans(text:str,known=(),names=None,last=''):
     for e,vb,w,a,v,cf,_ in F:
         cl=next((x for x in CL if v.lower() in x[0]),None);out.append(dict(v=v,w=w,a=a,ent=last if e=='?' else e,pred=lemma(vb) if vb else '',subj=cf>=0.75,cw=cl[1] if cl else ucw,ents=(cl[2] if cl else set())|{last if e=='?' else e},pri=1.0))
     AA={(o['v'],o['w']):o['a'] for o in out if o['a'] and o['w'] in ('where','what')};[o.__setitem__('a',AA.get((o['v'],o['w']),'')) for o in out if not o['a']]
-    [o.__setitem__('ucw',ucw) for o in out];return [o for o in out if o['v'] and not (o['w']=='when' and _DUR.fullmatch(o['v'].lower().strip()))]
+    [o.__setitem__('ucw',ucw) for o in out];return tuple(o for o in out if o['v'] and not (o['w']=='when' and _DUR.fullmatch(o['v'].lower().strip())))
 def _hd(x:str)->str:return _sg(x.split()[-1]) if x else ''
 @functools.lru_cache(maxsize=65536)
 def _wsn(w:str)->frozenset:
@@ -658,10 +661,12 @@ def _whn(w:str)->frozenset:
 KINW=S_("mom dad mother father sister brother son daughter wife husband aunt uncle cousin niece nephew grandma grandpa grandmother grandfather parent parents sibling siblings partner boyfriend girlfriend fiance fiancee friend roommate boss coworker colleague neighbor neighbour stepdad stepmom stepson stepdaughter twin kid kids child children baby")
 _kin=lambda t:_sg(t) in KINW or t in KIN or t in KIN.values()
 def _heq(a:str,b:str)->bool:return a==b or KIN.get(a,a)==KIN.get(b,b) or bool(a) and bool(b) and a not in ('me','thing','one') and b not in ('me','thing','one') and (bool(_wsn(a)&_wsn(b)) or not _kin(a) and not _kin(b) and (bool(_wsn(a)&_whn(b)) or bool(_wsn(b)&_whn(a)))) or len(a)>=5 and len(b)>=5 and abs(len(a)-len(b))<=1 and (sum(x!=y for x,y in zip(a,b))<=1 if len(a)==len(b) else any(a[:i]+a[i+1:]==b for i in range(len(a))) or any(b[:i]+b[i+1:]==a for i in range(len(b))))
-FK=('pmis','ent','own','att','attc','att_bad','pred','rec','sup','slot','subj','co','cu','pri','own2','csup','wild','cor','ci','vlen','ment','nco','psyn','xtyp','tonly')
+FK=('pmis','ent','own','att','attc','att_bad','pred','rec','sup','slot','subj','co','cu','pri','own2','csup','wild','cor','ci','vlen','ment','nco','psyn','xtyp','tonly','prox')
 @functools.lru_cache(maxsize=65536)
 def _vsn(v:str)->frozenset:
     return frozenset(i for x in dict.fromkeys([v]+list(_vf(v))) for i in _syn(x,1)) if v and v not in ('be','have','do','get','go','make','take','say') else frozenset()
+def _prox(sp:dict,W:set)->float:
+    P=[k for k,t in enumerate(sp.get('lm',())) if t in W] if 'pos' in sp else [];return 1.0/(1+min(abs(k-sp['pos']) for k in P)) if P else 0.0
 def cands(st:Store,qa:dict,known=(),names=None,slot:str=''):
     if not qa or not qa['ents'] or not len(st.u):return []
     stt,K=st.uidx();qk=np.array([h32(x) for x in qa['ents']]+[h32(x) for x in qa.get('cw',())],np.uint32);m=np.isin(K,qk).any(1)
@@ -683,7 +688,7 @@ def cands(st:Store,qa:dict,known=(),names=None,slot:str=''):
         to=bool(qa_) and qa_ not in ('','kind','likes') and sp['a']==qa_ and (sp['ent'] in ('','?','it','me') or not isper(_hd(sp['ent'])) and not _kin(_hd(sp['ent']))) and sp['w']==qa['w']
         if ek or sp['w']!=qa['w'] or qa_ and sp['a'] and sp['a']!=qa_ and not (qa_ in KA and sp['a'] in KA) and not _acomp(qa_,sp['a']) or not (to or sp.get('ci') or sp['ent']==pe or hm or mt or o2 or nco or EW&set(' '.join(x for x in sp.get('ents',()) if x and x!='me').split())-{'thing','stuff','one'}):continue
         pm=sp['ent']=='me' and pe=='me' and bool(qp) and qp not in ('be','have','do') and bool(sp['pred']) and pcls(sp['pred']) not in (qp,'be','have') and not (qa['pred'] in GEN and qa['w']=='how' and (sp['pred'] in MOTION|MODE))
-        f=dict(pmis=float(pm),ent=float(sp['ent']==pe),own=float(sp['ent'] in qa['ents'] or hm),att=float(bool(qa_) and (sp['a']==qa_ or qa_ in KA and sp['a'] in KA)),attc=float(bool(qa_) and _acomp(qa_,sp['a'])),att_bad=float(bool(qa_) and bool(sp['a']) and sp['a']!=qa_ and not (qa_ in KA and sp['a'] in KA) and not _acomp(qa_,sp['a'])),pred=float(bool(qp) and pcls(sp['pred'])==qp),rec=float(r),sup=float(sup),slot=float(bool(slot) and (sp['v'].lower() in slot.lower() or slot.lower() in sp['v'].lower())),subj=float(sp['subj']),co=float(min(3,len(Q&sp.get('cw',set())))),cu=float(min(3,len(Q&sp.get('ucw',set())))),pri=float(sp.get('pri',0.5)),own2=float(o2),csup=float(r>rc),wild=float(wild),cor=float(bool(sp.get('cor'))),ci=float(bool(sp.get('ci'))),vlen=min(12,len(sp['v'].split()))/6.0,ment=float(mt),nco=float(min(2,len(nco))),tonly=float(to and not (sp['ent']==pe or hm or mt or o2)),xtyp=float(xt),psyn=float(bool(qa['pred']) and bool(sp['pred']) and qa['pred']!=sp['pred'] and bool(_vsn(qa['pred'])&_vsn(sp['pred']))))
+        f=dict(pmis=float(pm),ent=float(sp['ent']==pe),own=float(sp['ent'] in qa['ents'] or hm),att=float(bool(qa_) and (sp['a']==qa_ or qa_ in KA and sp['a'] in KA)),attc=float(bool(qa_) and _acomp(qa_,sp['a'])),att_bad=float(bool(qa_) and bool(sp['a']) and sp['a']!=qa_ and not (qa_ in KA and sp['a'] in KA) and not _acomp(qa_,sp['a'])),pred=float(bool(qp) and pcls(sp['pred'])==qp),rec=float(r),sup=float(sup),slot=float(bool(slot) and (sp['v'].lower() in slot.lower() or slot.lower() in sp['v'].lower())),subj=float(sp['subj']),co=float(min(3,len(Q&sp.get('cw',set())))),cu=float(min(3,len(Q&sp.get('ucw',set())))),pri=float(sp.get('pri',0.5)),own2=float(o2),csup=float(r>rc),wild=float(wild),cor=float(bool(sp.get('cor'))),ci=float(bool(sp.get('ci'))),vlen=min(12,len(sp['v'].split()))/6.0,ment=float(mt),nco=float(min(2,len(nco))),tonly=float(to and not (sp['ent']==pe or hm or mt or o2)),prox=_prox(sp,(qh|EW|{x for x in Q if not isv(x) and not wv(x)})-{'me','thing','stuff','one'}),xtyp=float(xt),psyn=float(bool(qa['pred']) and bool(sp['pred']) and qa['pred']!=sp['pred'] and bool(_vsn(qa['pred'])&_vsn(sp['pred']))))
         sp['f']=f;S.append((f,sp))
     return S
 def soft(st:Store,qa:dict,known=(),names=None,slot:str='',fw=None):
@@ -796,7 +801,7 @@ def _fgx(x:str,m:str=''):
 def forget_st(st:Store,msg:str):
     f=U._fg(str(msg).strip());f=((_fgx(re.sub(r"(?i)^what about\s+",'',f[0]).rstrip('?')) or (f[0],False))[0],False) if f and not f[1] else f or _fg2(str(msg).strip())
     if not f:return None
-    if f[1]:n=len(st.s)+len(st.uidx()[0]);st.s,st.u,st.head,st._x,st.lp,st.lo=Store().s,Store().u,0,None,'','';return ('all',n)
+    if f[1]:_spc.cache_clear();n=len(st.s)+len(st.uidx()[0]);st.s,st.u,st.head,st._x,st.lp,st.lo=Store().s,Store().u,0,None,'','';return ('all',n)
     kn=st.ents();qa=ask(f[0],_last(st),list(kn),st.names,st.lp)
     if not qa or not qa['ents']:return (None,0)
     qa['ents']=[e if e in kn or e=='me' else next((k for k in kn if k!='me' and (set(e.split())-{'thing','stuff'})&set(k.split())),e) for e in qa['ents']]
@@ -808,12 +813,12 @@ def forget_st(st:Store,msg:str):
     stt,K=st.uidx();um=np.flatnonzero((K==e).any(1))
     um=[i for i in um if wa is None or any(sp['w']==wa for sp in spans(st.utext(int(i)),list(kn),st.names))];qc2=set(qa.get('cw',()))-{qa['pred'],'thing','stuff','forget','delete'}
     um=[i for i in um if cwords([t[0].lower() for t in toks(st.utext(int(i)))[1]])&qc2] or um if qa['ents'][0]=='me' and qc2 else um
-    RD=[(int(i),_redact(st,int(i),list(kn),st.names,qa['ents'][0],wa,qa['attr'])) for i in um];n=int(np.sum(dm))+len(um);st.s=st.s[~dm]
+    RD=[(int(i),_redact(st,int(i),list(kn),st.names,qa['ents'][0],wa,qa['attr'],qc2)) for i in um];n=int(np.sum(dm))+len(um);st.s=st.s[~dm]
     for i,r in sorted(RD,reverse=True):
         if r is None:continue
         c0,hk=int(st.u[st.uidx()[0][i],1]),[int(k) for k in st.uidx()[1][i] if k and int(k)!=e];st.udrop([i])
         r and (st.putu(r,hk+keys(r,[],list(kn))),st.u.__setitem__((st.uidx()[0][-1],1),c0))
-    st._x=None;st.lo='' if st.lo==qa['ents'][0] else st.lo;return (qa['ents'][0],n)
+    st._x=None;_spc.cache_clear();st.lo='' if st.lo==qa['ents'][0] else st.lo;return (qa['ents'][0],n)
 def _units(c:str)->list:
     A=analyze(c)
     if not A:return [c]
@@ -823,9 +828,9 @@ def _units(c:str)->list:
     cut=[q for q in range(vi+1,n) if lw[q] in ('because','cuz','bc','since','mostly','partly') and (lw[q] not in ('mostly','partly') or q+1<n and lw[q+1] in ('so','because','since','to')) or lw[q]=='so' and lw[q-1] not in ('mostly','partly') or lw[q]=='and' and q+1<n and (isv(lw[q+1]) or wv(lw[q+1])) and lw[q+1] not in AUX]
     if not cut:return [c]
     B=[0]+cut+[n];return [(sj+' ' if lw[B[k]]=='and' else '')+A['c'][T[B[k]+(lw[B[k]]=='and')][1]:T[B[k+1]-1][2]].strip(' ,') for k in range(len(B)-1) if B[k+1]>B[k]+(lw[B[k]]=='and')]
-def _redact(st:Store,i:int,kn,names,el:str,wa,qat=''):
+def _redact(st:Store,i:int,kn,names,el:str,wa,qat='',qc=frozenset()):
     tx=st.utext(i);C=[u for c in clauses(tx) for u in _units(c)];ew=set(el.split())-{'thing','stuff','one','me'};S=spans(tx,kn,names,el)
-    ok=lambda x:(wa is None or x['w']==wa and (not qat or wa!='where' or not any(y['v']==x['v'] and y['a'] and y['a']!=qat and not _acomp(y['a'],qat) for y in S))) and (x['ent']==el or el in x.get('ents',()) or _heq(_hd(x['ent']),_hd(el)) or bool(ew) and ew<=x.get('cw',set()))
+    ok=lambda x:(wa is None or x['w']==wa and (not qat or wa!='where' or not any(y['v']==x['v'] and y['a'] and y['a']!=qat and not _acomp(y['a'],qat) for y in S))) and (x['ent']==el or el in x.get('ents',()) or _heq(_hd(x['ent']),_hd(el)) or bool(ew) and ew<=x.get('cw',set()) or el=='me' and bool(set(qc)&x.get('cw',set())))
     bv=[x['v'].lower() for x in S if ok(x)];TY=lambda c:(lambda T:wa=='where' and any(isplace(t[0].lower()) or t[0][:1].isupper() and 'loc' in wcls(t[0],1) for t in T[1:]) or wa=='when' and any(_istime(T,q) for q in range(len(T))) or wa not in ('where','when') and any(x['w']==wa for x in spans(c,kn,names,el)))(toks(c)[1])
     bad=[c for c in C if any(v in c.lower() for v in bv) or bool(ew) and ew<=cwords([t[0].lower() for t in toks(c)[1]]) and (wa is None or TY(c))]
     return None if not bv and not bad else '' if len(bad)==len(C) or not bad else '. '.join(c for c in C if c not in bad)+'.'
