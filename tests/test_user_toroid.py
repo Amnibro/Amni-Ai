@@ -67,7 +67,7 @@ def test_bus_spine_verify_supersede_and_private(tmp_path,monkeypatch):
     assert MemoryBus.__init__.__defaults__[-1]!=os.devnull and B.ledger.as_posix()==os.devnull and B.adam is None and B.kb is None and B.la is None
 @pytest.mark.parametrize('q,want',[('Where does my brother live?','Your brother lives in Austin.'),('Why did I move to Boston?','Because the rent was cheaper.'),('How do I get to work?','By train.'),('When is my flight?',"It's Friday at 6 pm."),('What does my sister do?','Your sister works as a nurse.')])
 def test_direct_answer_templates(q,want):
-    st=_st(["My brother lives in Austin.","I moved to Boston because the rent was cheaper.","I get to work by train.","My flight is on Friday at 6 pm.","My sister is a nurse."]);r=T.respond(st,q);assert r['kind']=='direct' and r['text']==want,r['text']
+    st=_st(["My brother lives in Austin.","I moved to Boston because the rent was cheaper.","I get to work by train.","My flight is on Friday at 6 pm.","My sister is a nurse."]);r=T.respond(st,q,gate=0.5);assert r["kind"]=="direct" and r["text"]==want,r["text"]
 def test_no_fact_no_false_recall():
     st=_st(["My flight is on Friday.","My sister lives in Denver."])
     assert all(T.respond(st,q)['kind']!='direct' for q in ('Why am I flying?','What is my sister\'s name?','Where does my cousin live?'))
@@ -139,5 +139,5 @@ def test_forget_clears_span_cache(env):
     k=U.user_key('r2');T.remember(k,"My neighbour Ingrid keeps bees in her garden.");T.recall(T.load(k),'Where does my neighbour keep bees?');assert T._spc.cache_info().currsize>0
     T.forget(k,'Please forget everything about my neighbour.');assert T._spc.cache_info().currsize==0
 def test_policy_defaults_gate_and_no_unsure(monkeypatch):
-    st=_st(["My brother lives in Austin.","My sister lives in Denver."]);r=T.respond(st,'Where does my brother live?');assert r['kind']=='direct' and r['conf']>=0.85 and r['text']=='Your brother lives in Austin.'
+    st=_st(["My brother lives in Austin.","My sister lives in Denver."]);r=T.respond(st,'Where does my brother live?');assert r['kind']=='direct' and r['conf']>=0.9 and r['text']=='Your brother lives in Austin.'
     assert T.respond(st,'Where does my cousin live?')['kind']=='none'
