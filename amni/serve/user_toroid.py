@@ -447,7 +447,7 @@ def extract(msg:str,last:str='',known=(),names=None,ls=('what',''),lp='',lo=''):
         ent!='?' and (last:=ob0 or ent);ent not in ('?','me') and isper(ent.split()[-1]) and (lp:=ent);lo=ob0 or lo
         for e in {f[0] for f in F}:e not in ('me','?') and e not in known and known.append(e)
     return F,last,names,lp,lo
-FRW={**{w:'why' for w in "reason reasons point purpose motive motivation thinking logic rationale excuse cause story".split()},**{w:'how' for w in "way method system approach trick technique routine process setup strategy means commute ride recipe hack".split()},**{w:'when' for w in "time date day night week month year hour deadline".split()},**{w:'where' for w in "place city town country spot address location street neighborhood neighbourhood venue area".split()}}
+FRW={**{w:'why' for w in "reason reasons reasoning point purpose motive motivation thinking logic rationale excuse cause story".split()},**{w:'how' for w in "way method system approach trick technique routine process setup strategy means commute ride recipe hack".split()},**{w:'when' for w in "time date day night week month year hour deadline".split()},**{w:'where' for w in "place city town country spot address location street neighborhood neighbourhood venue area".split()}}
 WHYV=S_("brought bring brings make made makes caused cause led lead prompted prompt pushed push drove drive convinced convince inspired inspire triggered trigger motivated motivate")
 FSK=S_("real actual main whole exact usual big specific go-to deal thing")
 WNA=dict(per='person.n.01',ani='animal.n.01',loc='location.n.01 structure.n.01 room.n.01 facility.n.01 establishment.n.04 geographical_area.n.01 region.n.03',sto='container.n.01 furniture.n.01 storage_space.n.01',veh='conveyance.n.03',tim='time_period.n.01 time_unit.n.01 clock_time.n.01 calendar_day.n.01',col='color.n.01',food='food.n.01 food.n.02',occ='worker.n.01 professional.n.01 skilled_worker.n.01 expert.n.01 employee.n.01 creator.n.02',evt='social_event.n.01 meeting.n.01 gathering.n.01 ceremony.n.01 examination.n.01 appointment.n.01',tool='instrumentality.n.03 implement.n.01 device.n.01',comm='communication.n.02 communication.n.01 telecommunication.n.01',act='activity.n.01',pay='currency.n.01 payment.n.01 medium_of_exchange.n.01',dog='dog.n.01',cat='cat.n.01')
@@ -473,9 +473,11 @@ def wpos(w:str)->frozenset:
 def wv(t:str,prev:str='')->bool:
     P=wpos(t);return isv0(t) or 1 in P and t not in DET|AUX|PREPW|PRONS and (t.endswith(('ing','ed')) or 0 not in P or prev in AUX|PRONS|{'i','we','you','to'})
 _QN=re.compile(r"(?i)\b([a-z]+)'s\b(?=\s+(?:my|the|your|our|his|her|it|this|that|a|an|i|we|due|being|getting|going|coming|scheduled|happening|located|held|parked|kept|stored)\b)")
-_QWHY=re.compile(r"(?i)\b(?:what(?:'s| is| was)? the (?:point|reason|purpose|story)|for what reason|what for|how come|what made (?:me|us|him|her|them))\b")
+_QWHY=re.compile(r"(?i)\b(?:what(?:'s| is| was)? the (?:point|reason|purpose|story|deal)(?! with (?:how|where|when|what))|for what reason|what for|how come|what made (?:me|us|him|her|them)|what(?:'s| is| was) behind)\b")
+_QEMB=re.compile(r"(?i)^\W*(?:what|which)\b.*?\b(?:about|with|on|of|re)\s+(how|why|where|when)\s+(?!long\b|much\b|many\b|old\b)")
+_QTAIL=re.compile(r"(?i),?\s*(?:according to (?:what )?(?:i|you) (?:told you|said|mentioned)|as i (?:said|put) it(?: in the end)?|did (?:that|it) (?:ever )?come up|did i (?:ever )?(?:say|mention)|in the end|again)\s*[?.!]*\s*$")
 def ask(q:str,last:str='',known=(),names=None,lp=''):
-    names=names or {};fp=bool(re.search(r"(?i)\b(?:did|do|had|have) (?:i|we) (?:say|said|tell|told|mention)|\bi (?:said|told|mentioned)\b",q));m=_QSAY.sub(' ',_QPRE.sub('',_QN.sub(lambda x:x[1]+' is',norm(q.strip()))));m=re.sub(r"\s+",' ',m).strip(' ?.!,');m,T=toks(m);lw=[t[0].lower() for t in T];n=len(T);rw=[m[a:b].lower() for _,a,b in T];nm=lambda i:rw[i] if rw[i] in names else rw[i][:-2] if rw[i].endswith("'s") and rw[i][:-2] in names else None
+    q=_QTAIL.sub('?',q.strip()) if len(_QTAIL.sub('',q.strip()))>8 else q;names=names or {};fp=bool(re.search(r"(?i)\b(?:did|do|had|have) (?:i|we) (?:say|said|tell|told|mention)|\bi (?:said|told|mentioned)\b",q));m=_QSAY.sub(' ',_QPRE.sub('',_QN.sub(lambda x:x[1]+' is',norm(q.strip()))));m=re.sub(r"\s+",' ',m).strip(' ?.!,');m,T=toks(m);lw=[t[0].lower() for t in T];n=len(T);rw=[m[a:b].lower() for _,a,b in T];nm=lambda i:rw[i] if rw[i] in names else rw[i][:-2] if rw[i].endswith("'s") and rw[i][:-2] in names else None
     if not n:return None
     wi=next((i for i,t in enumerate(lw) if t in ('what','which','who','whom','whose','where','when','why','how')),None)
     if wi is None and not {'allergic','allergy'}&set(lw):return None
@@ -488,11 +490,15 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
     elif fr and t in ('what','which') and FRW.get(fr,'where')!='what':w=FRW.get(fr,'where')
     elif t in ('what','which') and _sg(nx) in ('time','day','date','year','month','hour','night','week'):w='when'
     elif t=='how' and nx=='long' and 'ago' in lw:w='when'
-    elif t=='what' and 'for' in lw[-1:]:w='why'
-    elif t=='how' and nx=='old':w,a='what','age'
-    elif t=='how' and nx in ('many','much','far','long','often'):w='what'
+    elif t in ('what','which') and nx not in AUX|PRONS|{'am','pm','a.m','p.m'} and (nx in TW or 'tim' in wcls(nx,1)) and nx not in ('season',):w='when'
+    elif t=='how' and nx=='often':w='when'
+    elif (qe:=_QEMB.match(q)):w=qe[1].lower()
     elif t in ('what','which') and nx in ('color','colour'):a='color';cand=lw[wi+3] if nx2=='of' and wi+3<n else ''
     elif t in ('what','which') and nx in ('kind','type','sort','make','model','brand','breed'):a='model' if nx in ('make','model','brand') else 'breed' if nx=='breed' or nx2=='of' and wi+3<n and 'ani' in wcls(lw[wi+3],1) else 'kind';cand=lw[wi+3] if nx2=='of' and wi+3<n else ''
+    elif t=='what' and lw[-1:] and lw[-1] in ('with','using','through','via'):w='how'
+    elif t=='what' and 'for' in lw[-1:]:w='why'
+    elif t=='how' and nx=='old':w,a='what','age'
+    elif t=='how' and nx in ('many','much','far','long'):w='what'
     elif t in ('who','whom'):a='name'
     elif t in ('what','which') and nx in ('job','name','age'):a=nx
     elif t in ('what','which') and nx and nx not in ATTRN and nx not in AUX and nx not in DET:cand=nx
@@ -500,7 +506,10 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
     if w=='what' and not a:a='allergy' if {'allergic','allergy','allergies'}&set(lw) else 'likes' if re.search(r"\b(?:into|goes for|go for|obsessed with|crazy about|fan of|likes?|loves?|enjoys?|a fan of)\b(?: \w+)?(?: \w+)?$",J) or re.search(r"\b(?:into|goes for|go for|obsessed with)\b",J) else 'job' if re.search(r"\bdo(?:es)?\b(?: \w+){0,3} (?:do|doing)(?: for (?:a )?(?:living|work|a job|money))?(?: these days| now| nowadays| all those years)?$|\bfor (?:work|a living)\b|\btrain\w* to (?:become|be)\b",J) else 'name' if re.search(r"\b(?:call|calling|called|name|naming|named)\b",J) else 'favorite' if 'favorite' in lw else a
     a='favorite' if a=='likes' and {'best','most'}&set(lw) else a
     cn=_np(T,wi+1,n,False)[0] if t in ('what','which') else ''
-    if w=='what' and not a and t=='which' and cn and ({'tool','veh'}&wcls(cn.split()[-1]) or cn.split()[-1] in ('model','make','brand')):a,cand='model',cn
+    if w=='what' and not a and t in ('which','what') and cn and not (isv(lw[wi+1]) or wv(lw[wi+1],'it')) and cn==lw[wi+1]+(' '+lw[wi+2] if wi+2<n and cn.count(' ') else '') and ({'tool','veh'}&wcls(cn.split()[-1]) or cn.split()[-1] in ('model','make','brand')):a,cand='model',cn
+    if w=='what' and re.search(r"\bgo-?to\s+for\s+\w+ing\b",J):w,a='how',''
+    if w=='what' and 'birthday' in lw:w,a='when','birthday'
+    if w=='what' and 'favorite' in lw and a in ('','name','likes'):a='favorite'
     if w=='what' and not a and re.search(r"\b(?:use|using|used)\b|\bwork(?:s|ed)? (?:best )?for\b",J):w='how'
     if w=='when' and 'birthday' in lw:a='birthday'
     ents=[];pa=None;pred='';i=0;used=set(fu);sec=[]
@@ -538,7 +547,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
     pc=pcls(pred)
     if w=='what' and not a and re.search(r"\bdo(?: for (?:a )?(?:living|work|a job))?$",' '.join(lw)):a,pred='job','work'
     if w=='what' and pc in ('drive',) and not a:a='model'
-    if w=='where' and not a:a='work' if {'job','work','working','teach','employed','hired','office'}&set(lw) else 'destination' if pred in ('send','ship','deliver','post','mail','move') and 'from' not in lw else 'home' if pc=='live' else 'work' if pc=='work' else 'origin' if 'from' in lw[-1:] or pred in ('','be','come','grow') and 'from' in lw else 'destination' if pc=='go' and pred!='get' or 'to' in lw[-1:] or pred in MOTION and pred not in ('get','take') else 'location'
+    if w=='where' and not a:a='work' if {'job','work','working','teach','employed','hired','office'}&set(lw) else 'destination' if pred in ('send','ship','deliver','post','mail','move') and 'from' not in lw else 'home' if pc=='live' else 'work' if pc=='work' else 'origin' if 'from' in lw[-1:] or pred in ('','be','come','grow') and 'from' in lw or pred in ('grow','raise','bear','born') else 'destination' if pc=='go' and pred!='get' or 'to' in lw[-1:] or pred in MOTION and pred not in ('get','take') else 'location'
     nk=_resolve(cand,known) if cand else ''
     ents=(['me'] if fp and not ents else [])+([nk] if nk in known else [])+ents+sec;ents=list(dict.fromkeys(ents)) or ([last] if last else [])
     cw=[x for x in dict.fromkeys(_sg(lemma(x[:-2] if x.endswith("'s") else x)) for k,x in enumerate(lw) if k not in fu and re.fullmatch(r"[a-z][a-z'-]+",x) and x not in AUX|DET|PREPW|ADV|PRONS|FUN_Q and len(x)>2)]
@@ -566,7 +575,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.84,own=0.452,att=1.026,attc=0.644,att_bad=-1.0,pred=0.057,pmis=-1.238,rec=-1.01,sup=-2.822,slot=0.792,subj=0.616,null=1.181,tau=1.0,co=0.254,kb=-0.054,k_lp=0.956,k_ent=-0.388,k_att=-0.012,k_slot=0.256,k_pri=-0.556,k_cor=0.779,k_mg=-0.013,k_nv=1.222,k_wild=0.076,k_sup=-0.145,cu=0.123,pri=1.272,own2=0.366,csup=-2.034,wild=-0.639,cor=1.178,ci=0.281,vlen=0.306,ment=0.429,nco=-0.113,psyn=0.613,xtyp=-0.465,tonly=-0.662,prox=0.781)
+FW=dict(ent=0.857,own=0.442,att=1.049,attc=0.583,att_bad=-1.0,pred=0.102,pmis=-1.239,rec=-0.971,sup=-2.829,slot=0.839,subj=0.609,null=1.182,tau=1.0,co=0.251,kb=0.121,k_lp=0.874,k_ent=0.203,k_att=0.199,k_slot=0.199,k_pri=-0.533,k_cor=0.597,k_mg=-0.097,k_nv=1.169,k_wild=0.072,k_sup=0.074,cu=0.106,pri=1.254,own2=0.351,csup=-2.045,wild=-0.63,cor=1.199,ci=0.244,vlen=0.298,ment=0.45,nco=-0.115,psyn=0.621,xtyp=-0.453,tonly=-0.67,prox=0.777)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
