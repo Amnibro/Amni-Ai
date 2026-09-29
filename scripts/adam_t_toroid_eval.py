@@ -91,7 +91,7 @@ def _fitc(X,y,l2=1.0,it=60):
 def _platt(p,y):
     x=np.log(np.clip(p,1e-4,1-1e-4)/(1-np.clip(p,1e-4,1-1e-4)));G=[(a,b) for a in np.arange(0.05,2.01,0.05) for b in np.arange(-3,3.01,0.1)];L=[-np.mean(y*np.log(np.clip(q,1e-6,1))+(1-y)*np.log(np.clip(1-q,1e-6,1))) for a,b in G for q in [1/(1+np.exp(-(a*x+b)))]]
     return tuple(round(float(v),3) for v in G[int(np.argmin(L))])
-PRIOR=dict(pmis=-1.5,ent=2.0,own=1.0,att=1.0,attc=0.5,att_bad=-1.0,pred=1.0,rec=-0.35,sup=-3.0,slot=1.5,subj=0.5,co=0.8,cu=0.3,pri=1.0,own2=0.7,csup=-1.5,wild=-0.8,cor=0.0,ci=0.0,vlen=0.0,ment=0.0,nco=0.0,psyn=0.5,xtyp=-0.5,null=1.5,tau=1.0)
+PRIOR=dict(pmis=-1.5,ent=2.0,own=1.0,att=1.0,attc=0.5,att_bad=-1.0,pred=1.0,rec=-0.35,sup=-3.0,slot=1.5,subj=0.5,co=0.8,cu=0.3,pri=1.0,own2=0.7,csup=-1.5,wild=-0.8,cor=0.0,ci=0.0,vlen=0.0,ment=0.0,nco=0.0,psyn=0.5,xtyp=-0.5,tonly=-1.0,null=1.5,tau=1.0)
 def _fitw(D,S,ix,fw0,l2=0.01,it=400,lr=0.1):
     fw0={**fw0,**PRIOR}
     X=[];Y=[]
