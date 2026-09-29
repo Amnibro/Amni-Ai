@@ -1,0 +1,6201 @@
+{
+ "summary": {
+  "relate": {
+   "n": 30,
+   "answered": 100.0,
+   "hit1": 40.0,
+   "hit3": 80.0,
+   "hit_lines": 70.0,
+   "parse": 100.0,
+   "e2e_hit": 70.0,
+   "lat": {
+    "n": 30,
+    "p50": 10.41,
+    "p95": 21.33,
+    "max": 129.76,
+    "mean": 14.93
+   }
+  },
+  "common": {
+   "n": 15,
+   "answered": 100.0,
+   "hit1": 86.7,
+   "hit3": 93.3,
+   "hit_lines": 86.7,
+   "parse": 100.0,
+   "e2e_hit": 86.7,
+   "lat": {
+    "n": 15,
+    "p50": 7.62,
+    "p95": 14.55,
+    "max": 14.55,
+    "mean": 8.19
+   }
+  },
+  "analogy": {
+   "n": 20,
+   "answered": 85.0,
+   "hit1": 75.0,
+   "hit3": 85.0,
+   "hit_lines": 75.0,
+   "parse": 100.0,
+   "e2e_hit": 75.0,
+   "lat": {
+    "n": 20,
+    "p50": 1.65,
+    "p95": 8.74,
+    "max": 8.74,
+    "mean": 1.97
+   }
+  },
+  "abstract": {
+   "n": 20,
+   "answered": 100.0,
+   "hit1": 90.0,
+   "hit3": 95.0,
+   "hit_lines": 90.0,
+   "parse": 100.0,
+   "e2e_hit": 95.0,
+   "lat": {
+    "n": 20,
+    "p50": 0.62,
+    "p95": 1.32,
+    "max": 1.32,
+    "mean": 0.64
+   }
+  },
+  "mode": {
+   "n": 60,
+   "acc": 98.3,
+   "factual": 100.0,
+   "analytical": 95.0,
+   "creative": 100.0,
+   "confusion": {
+    "factual->factual": 20,
+    "factual->analytical": 0,
+    "factual->creative": 0,
+    "analytical->factual": 1,
+    "analytical->analytical": 19,
+    "analytical->creative": 0,
+    "creative->factual": 0,
+    "creative->analytical": 0,
+    "creative->creative": 20
+   }
+  },
+  "e2e_lat": {
+   "n": 85,
+   "p50": 0.6,
+   "p95": 1.82,
+   "max": 5.25,
+   "mean": 0.66
+  },
+  "warm_s": 6.41,
+  "rss_mb": 2161,
+  "top_path_sources": {
+   "tx": 7,
+   "gl": 6,
+   "wd": 19,
+   "wn": 28
+  }
+ },
+ "items": [
+  {
+   "id": "cogt-rel-001",
+   "type": "relate",
+   "q": "How are silkworms and mulberry connected?",
+   "gold": [
+    "eat",
+    "feed",
+    "leaves",
+    "diet",
+    "food"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "silkworms",
+    "b": "mulberry"
+   },
+   "parse_ok": true,
+   "ms": 129.76,
+   "ok_any": true,
+   "lines": [
+    "Mangzhong: Silkworms eat mulberry as well.",
+    "silkworms, linked with: tree.",
+    "mulberry, linked with: tree."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.72,
+     "v": 0.72,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Mangzhong"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.4165,
+     "v": 0.49,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (6 passages)",
+      "Wikipedia co-mention (6 passages)"
+     ]
+    },
+    {
+     "kind": "wnlca",
+     "q": 0.3836,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet silkworm.n.01 hypernym^4 organism.n.01",
+      "WordNet mulberry.n.01 hypernym^7 organism.n.01"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Mangzhong: Silkworms eat mulberry as well.",
+    "silkworms, linked with: tree.",
+    "mulberry, linked with: tree."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-002",
+   "type": "relate",
+   "q": "What's the connection between Galileo and telescope?",
+   "gold": [
+    "improv",
+    "built",
+    "observ",
+    "invent",
+    "use"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Galileo",
+    "b": "telescope"
+   },
+   "parse_ok": true,
+   "ms": 14.93,
+   "ok_any": true,
+   "lines": [
+    "Galileo: Italian astronomer and mathematician who was the first to use a telescope to study the stars; demonstrated that different weights descend at the same rate; perfected the refracting telescope that enabled him to make many discoveries (1564-1642).",
+    "Telescope: The word telescope was coined in 1611 by the Greek mathematician Giovanni Demisiani for one of Galileo Galilei's instruments presented at a banquet at the Accademia dei Lincei."
+   ],
+   "top": [
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss galileo.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Telescope"
+     ]
+    },
+    {
+     "kind": "wnlca",
+     "q": 0.2557,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet galileo.n.01 hypernym^7 whole.n.02",
+      "WordNet telescope.n.01 hypernym^7 whole.n.02"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Galileo: Italian astronomer and mathematician who was the first to use a telescope to study the stars; demonstrated that different weights descend at the same rate; perfected the refracting telescope that enabled him to make many discoveries (1564-1642).",
+    "Telescope: The word telescope was coined in 1611 by the Greek mathematician Giovanni Demisiani for one of Galileo Galilei's instruments presented at a banquet at the Accademia dei Lincei."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-003",
+   "type": "relate",
+   "q": "How is Charles Dickens related to Oliver Twist?",
+   "gold": [
+    "author",
+    "wrote",
+    "written"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Charles Dickens",
+    "b": "Oliver Twist"
+   },
+   "parse_ok": true,
+   "ms": 17.94,
+   "ok_any": true,
+   "lines": [
+    "Charles Dickens, notable work: Oliver Twist.",
+    "Oliver Twist, author: Charles Dickens."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5686 P800 Q164974"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q164974 P50 Q5686"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Oliver Twist"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Charles Dickens, notable work: Oliver Twist.",
+    "Oliver Twist, author: Charles Dickens."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-004",
+   "type": "relate",
+   "q": "What links Thomas Edison and light bulb?",
+   "gold": [
+    "invent",
+    "develop",
+    "patent"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Thomas Edison",
+    "b": "light bulb"
+   },
+   "parse_ok": true,
+   "ms": 18.77,
+   "ok_any": true,
+   "lines": [
+    "Thomas Edison, notable work: incandescent light bulb.",
+    "incandescent light bulb, discoverer or inventor: Thomas Edison."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q8743 P800 Q47616"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q47616 P61 Q8743"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Thomas Edison"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Thomas Edison, notable work: incandescent light bulb.",
+    "incandescent light bulb, discoverer or inventor: Thomas Edison."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-005",
+   "type": "relate",
+   "q": "How are Nile and Egypt connected?",
+   "gold": [
+    "country",
+    "flows",
+    "river"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Nile",
+    "b": "Egypt"
+   },
+   "parse_ok": true,
+   "ms": 12.74,
+   "ok_any": true,
+   "lines": [
+    "Egypt, next to body of water: Nile.",
+    "Nile, part of: Egypt."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q79 P206 Q3392"
+     ]
+    },
+    {
+     "kind": "wn1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet nile.n.01 part of egypt.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss nile.n.01"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Egypt, next to body of water: Nile.",
+    "Nile, part of: Egypt."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-006",
+   "type": "relate",
+   "q": "What's the connection between Leonardo da Vinci and The Last Supper?",
+   "gold": [
+    "creator",
+    "paint"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Leonardo da Vinci",
+    "b": "Last Supper"
+   },
+   "parse_ok": true,
+   "ms": 20.35,
+   "ok_any": true,
+   "lines": [
+    "Last Supper: The best known depiction of the Last Supper is Leonardo da Vinci's The Last Supper, which is considered the first work of High Renaissance art, due to its high level of harmony.",
+    "Leonardo da Vinci, notable work: The Last Supper.",
+    "The Last Supper, main subject: Last Supper."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Last Supper"
+     ]
+    },
+    {
+     "kind": "wd2",
+     "q": 0.7249,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q762 P800 Q128910",
+      "Wikidata Q128910 P921 Q51633"
+     ]
+    },
+    {
+     "kind": "wdco",
+     "q": 0.6904,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q128910 P170 Q762",
+      "Wikidata Q128910 P921 Q51633"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Last Supper: The best known depiction of the Last Supper is Leonardo da Vinci's The Last Supper, which is considered the first work of High Renaissance art, due to its high level of harmony.",
+    "Leonardo da Vinci, notable work: The Last Supper.",
+    "The Last Supper, main subject: Last Supper."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-007",
+   "type": "relate",
+   "q": "How is wheat related to flour?",
+   "gold": [
+    "ground",
+    "mill",
+    "made",
+    "produc"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "wheat",
+    "b": "flour"
+   },
+   "parse_ok": true,
+   "ms": 5.09,
+   "ok_any": true,
+   "lines": [
+    "wheat: grains of common wheat; sometimes cooked whole or cracked as cereal; usually ground into flour.",
+    "Flour: Wheat flour is also used to make a roux as a base for thickening gravy and sauces."
+   ],
+   "top": [
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss wheat.n.02"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Flour"
+     ]
+    },
+    {
+     "kind": "wdco",
+     "q": 0.6904,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q381350 P527 Q15645384",
+      "Wikidata Q381350 P279 Q36465"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "wheat: grains of common wheat; sometimes cooked whole or cracked as cereal; usually ground into flour.",
+    "Flour: Wheat flour is also used to make a roux as a base for thickening gravy and sauces."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-008",
+   "type": "relate",
+   "q": "What links olive oil and olives?",
+   "gold": [
+    "press",
+    "made",
+    "extract",
+    "produc"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "olive oil",
+    "b": "olives"
+   },
+   "parse_ok": true,
+   "ms": 2.1,
+   "ok_any": true,
+   "lines": [
+    "olive oil, substance of: olive.",
+    "olive oil: oil from olives."
+   ],
+   "top": [
+    {
+     "kind": "wn1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet olive_oil.n.01 substance of olive.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss olive_oil.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss olive.n.01"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "olive oil, substance of: olive.",
+    "olive oil: oil from olives."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-009",
+   "type": "relate",
+   "q": "How are Beijing and China connected?",
+   "gold": [
+    "capital"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Beijing",
+    "b": "China"
+   },
+   "parse_ok": true,
+   "ms": 17.47,
+   "ok_any": true,
+   "lines": [
+    "Beijing, part of: China.",
+    "Beijing: capital of the People's Republic of China in the Hebei province in northeastern China; 2nd largest Chinese city."
+   ],
+   "top": [
+    {
+     "kind": "wn1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet beijing.n.01 part of china.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss beijing.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Beijing"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Beijing, part of: China.",
+    "Beijing: capital of the People's Republic of China in the Hebei province in northeastern China; 2nd largest Chinese city."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-010",
+   "type": "relate",
+   "q": "What's the connection between Buenos Aires and Argentina?",
+   "gold": [
+    "capital"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Buenos Aires",
+    "b": "Argentina"
+   },
+   "parse_ok": true,
+   "ms": 7.45,
+   "ok_any": true,
+   "lines": [
+    "Buenos Aires, capital of: Argentina.",
+    "Argentina, capital: Buenos Aires."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1486 P1376 Q414"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q414 P36 Q1486"
+     ]
+    },
+    {
+     "kind": "wn1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet buenos_aires.n.01 part of argentina.n.01"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Buenos Aires, capital of: Argentina.",
+    "Argentina, capital: Buenos Aires."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-011",
+   "type": "relate",
+   "q": "How is rupee related to India?",
+   "gold": [
+    "currency"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "rupee",
+    "b": "India"
+   },
+   "parse_ok": true,
+   "ms": 15.97,
+   "ok_any": true,
+   "lines": [
+    "India, currency: Indian rupee.",
+    "Indian rupee: the basic unit of money in India; equal to 100 paise."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q668 P38 Q80524"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss indian_rupee.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Rupee"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "India, currency: Indian rupee.",
+    "Indian rupee: the basic unit of money in India; equal to 100 paise."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-012",
+   "type": "relate",
+   "q": "What links Portuguese and Brazil?",
+   "gold": [
+    "language",
+    "official"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Portuguese",
+    "b": "Brazil"
+   },
+   "parse_ok": true,
+   "ms": 9.29,
+   "ok_any": true,
+   "lines": [
+    "Brazil, official language: Portuguese.",
+    "Portuguese: the Romance language spoken in Portugal and Brazil."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q155 P37 Q5146"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss portuguese.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss brazil.n.01"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Brazil, official language: Portuguese.",
+    "Portuguese: the Romance language spoken in Portugal and Brazil."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-013",
+   "type": "relate",
+   "q": "How are Isaac Newton and calculus connected?",
+   "gold": [
+    "develop",
+    "invent",
+    "discover",
+    "field"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Isaac Newton",
+    "b": "calculus"
+   },
+   "parse_ok": true,
+   "ms": 9.54,
+   "ok_any": true,
+   "lines": [
+    "calculus, discoverer or inventor: Isaac Newton.",
+    "Newton: English mathematician and physicist; remembered for developing the calculus and for his law of gravitation and his three laws of motion (1642-1727)."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q149972 P61 Q935"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss newton.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Calculus"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "calculus, discoverer or inventor: Isaac Newton.",
+    "Newton: English mathematician and physicist; remembered for developing the calculus and for his law of gravitation and his three laws of motion (1642-1727)."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-014",
+   "type": "relate",
+   "q": "What's the connection between Johannes Gutenberg and printing press?",
+   "gold": [
+    "invent",
+    "develop",
+    "movable type"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Johannes Gutenberg",
+    "b": "printing press"
+   },
+   "parse_ok": true,
+   "ms": 10.82,
+   "ok_any": true,
+   "lines": [
+    "printing press, discoverer or inventor: Johannes Gutenberg.",
+    "Printing press: In Germany, around 1440, the goldsmith Johannes Gutenberg invented the movable-type printing press, which started the Printing Revolution."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q144334 P61 Q8958"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Printing press"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.3374,
+     "v": 0.397,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (4 passages)",
+      "Wikipedia co-mention (4 passages)"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "printing press, discoverer or inventor: Johannes Gutenberg.",
+    "Printing press: In Germany, around 1440, the goldsmith Johannes Gutenberg invented the movable-type printing press, which started the Printing Revolution."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-015",
+   "type": "relate",
+   "q": "How is Frida Kahlo related to Mexico?",
+   "gold": [
+    "born",
+    "citizen",
+    "country",
+    "birth"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Frida Kahlo",
+    "b": "Mexico"
+   },
+   "parse_ok": true,
+   "ms": 6.73,
+   "ok_any": true,
+   "lines": [
+    "Frida Kahlo, place of birth: Mexico City.",
+    "Frida Kahlo, place of death: Mexico City."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5588 P19 Q1489"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5588 P20 Q1489"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Frida Kahlo"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Frida Kahlo, place of birth: Mexico City.",
+    "Frida Kahlo, place of death: Mexico City."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-016",
+   "type": "relate",
+   "q": "What links Vincent van Gogh and sunflowers?",
+   "gold": [
+    "paint",
+    "series",
+    "still life"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Vincent van Gogh",
+    "b": "sunflowers"
+   },
+   "parse_ok": true,
+   "ms": 12.59,
+   "ok_any": true,
+   "lines": [
+    "Vincent van Gogh, notable work: Sunflowers.",
+    "Sunflowers, creator: Vincent van Gogh."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5582 P800 Q157541"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q157541 P170 Q5582"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.72,
+     "v": 0.72,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: National Gallery"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Vincent van Gogh, notable work: Sunflowers.",
+    "Sunflowers, creator: Vincent van Gogh."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-017",
+   "type": "relate",
+   "q": "How are rubber and trees connected?",
+   "gold": [
+    "latex",
+    "sap",
+    "tap",
+    "produc"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "rubber",
+    "b": "trees"
+   },
+   "parse_ok": true,
+   "ms": 13.16,
+   "ok_any": true,
+   "lines": [
+    "rubber: an elastic material obtained from the latex sap of trees (especially trees of the genera Hevea and Ficus) that can be vulcanized and finished into a variety of products.",
+    "Caracara\u00ed Ecological Station: The rubber tree Hevea brasiliensis is one of the upper layer trees."
+   ],
+   "top": [
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss rubber.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.72,
+     "v": 0.72,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Caracara\u00ed Ecological Station"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.2666,
+     "v": 0.314,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (3 passages)",
+      "Wikipedia co-mention (3 passages)"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "rubber: an elastic material obtained from the latex sap of trees (especially trees of the genera Hevea and Ficus) that can be vulcanized and finished into a variety of products.",
+    "Caracara\u00ed Ecological Station: The rubber tree Hevea brasiliensis is one of the upper layer trees."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-018",
+   "type": "relate",
+   "q": "What's the connection between cotton and textiles?",
+   "gold": [
+    "fiber",
+    "fibre",
+    "fabric",
+    "spun",
+    "yarn",
+    "made"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "cotton",
+    "b": "textiles"
+   },
+   "parse_ok": true,
+   "ms": 7.14,
+   "ok_any": true,
+   "lines": [
+    "cotton, type of: fabric."
+   ],
+   "top": [
+    {
+     "kind": "wn1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet cotton.n.02 type of fabric.n.01"
+     ]
+    },
+    {
+     "kind": "wnisa",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet cotton.n.02 hypernym^1 fabric.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Cotton"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "cotton, type of: fabric."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-019",
+   "type": "relate",
+   "q": "How is earthquakes related to tectonic plates?",
+   "gold": [
+    "fault",
+    "movement",
+    "caus",
+    "boundar"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "earthquakes",
+    "b": "tectonic plates"
+   },
+   "parse_ok": true,
+   "ms": 9.99,
+   "ok_any": true,
+   "lines": [
+    "1888 R\u00edo de la Plata earthquake: Earthquakes in the easternmost edge of the Pacific tectonic plates can occasionally be felt in the Argentine Atlantic coast, including Buenos Aires and only rarely on the Uruguayan coast.",
+    "intraplate earthquake, subclass of: earthquake.",
+    "intraplate earthquake, location: tectonic plate."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.72,
+     "v": 0.72,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: 1888 R\u00edo de la Plata earthquake"
+     ]
+    },
+    {
+     "kind": "wdco",
+     "q": 0.6904,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q2737176 P279 Q7944",
+      "Wikidata Q2737176 P276 Q215680"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.2666,
+     "v": 0.314,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (3 passages)",
+      "Wikipedia co-mention (3 passages)"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "1888 R\u00edo de la Plata earthquake: Earthquakes in the easternmost edge of the Pacific tectonic plates can occasionally be felt in the Argentine Atlantic coast, including Buenos Aires and only rarely on the Uruguayan coast.",
+    "intraplate earthquake, subclass of: earthquake.",
+    "intraplate earthquake, location: tectonic plate."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-020",
+   "type": "relate",
+   "q": "What links hurricanes and ocean?",
+   "gold": [
+    "warm",
+    "water",
+    "form",
+    "develop",
+    "over"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "hurricanes",
+    "b": "ocean"
+   },
+   "parse_ok": true,
+   "ms": 7.92,
+   "ok_any": true,
+   "lines": [
+    "Catherine McCabe: She and her husband have a home in Ocean City, New Jersey, which was hit by Hurricane Sandy in 2012."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.72,
+     "v": 0.72,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Catherine McCabe"
+     ]
+    },
+    {
+     "kind": "wnlca",
+     "q": 0.1279,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet hurricane.n.01 hypernym^9 physical_entity.n.01",
+      "WordNet ocean.n.01 hypernym^3 physical_entity.n.01"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Catherine McCabe: She and her husband have a home in Ocean City, New Jersey, which was hit by Hurricane Sandy in 2012."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-021",
+   "type": "relate",
+   "q": "How are owls and night connected?",
+   "gold": [
+    "nocturnal",
+    "hunt",
+    "active"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "owls",
+    "b": "night"
+   },
+   "parse_ok": true,
+   "ms": 13.57,
+   "ok_any": true,
+   "lines": [
+    "Night: People who prefer to be active at night are called night owls."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Night"
+     ]
+    },
+    {
+     "kind": "co1",
+     "q": 0.3171,
+     "v": 0.317,
+     "src": [
+      "co"
+     ],
+     "refs": [
+      "corpus co-occurrence (PMI)"
+     ]
+    },
+    {
+     "kind": "wnlca",
+     "q": 0.0639,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet owl.n.01 hypernym^11 entity.n.01",
+      "WordNet night.n.01 hypernym^5 entity.n.01"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Night: People who prefer to be active at night are called night owls."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-022",
+   "type": "relate",
+   "q": "What's the connection between camels and desert?",
+   "gold": [
+    "live",
+    "adapt",
+    "habitat",
+    "found"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "camels",
+    "b": "desert"
+   },
+   "parse_ok": true,
+   "ms": 6.01,
+   "ok_any": true,
+   "lines": [
+    "camel: cud-chewing mammal used as a draft or saddle animal in desert regions.",
+    "Desert: The camel is a superb example of a mammal adapted to desert life."
+   ],
+   "top": [
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss camel.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Desert"
+     ]
+    },
+    {
+     "kind": "co1",
+     "q": 0.4293,
+     "v": 0.429,
+     "src": [
+      "co"
+     ],
+     "refs": [
+      "corpus co-occurrence (PMI)"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "camel: cud-chewing mammal used as a draft or saddle animal in desert regions.",
+    "Desert: The camel is a superb example of a mammal adapted to desert life."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-023",
+   "type": "relate",
+   "q": "How is polar bears related to Arctic?",
+   "gold": [
+    "live",
+    "native",
+    "habitat",
+    "found",
+    "sea ice"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "polar bears",
+    "b": "Arctic"
+   },
+   "parse_ok": true,
+   "ms": 7.34,
+   "ok_any": true,
+   "lines": [
+    "ice bear: white bear of Arctic regions.",
+    "Arctic: The Arctic (/\u02c8\u0251\u02d0r(k)t\u026ak/; from Ancient Greek  \u1f04\u03c1\u03ba\u03c4\u03bf\u03c2 (\u00e1rktos)\u00a0'bear') is the polar region of Earth that surrounds the North Pole, lying within the Arctic Circle."
+   ],
+   "top": [
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss ice_bear.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Arctic"
+     ]
+    },
+    {
+     "kind": "wdco",
+     "q": 0.6904,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q168474 P138 Q33609",
+      "Wikidata Q168474 P138 Q25322"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "ice bear: white bear of Arctic regions.",
+    "Arctic: The Arctic (/\u02c8\u0251\u02d0r(k)t\u026ak/; from Ancient Greek  \u1f04\u03c1\u03ba\u03c4\u03bf\u03c2 (\u00e1rktos)\u00a0'bear') is the polar region of Earth that surrounds the North Pole, lying within the Arctic Circle."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-024",
+   "type": "relate",
+   "q": "What links Mozart and The Magic Flute?",
+   "gold": [
+    "composer",
+    "opera",
+    "wrote",
+    "compos"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Mozart",
+    "b": "Magic Flute"
+   },
+   "parse_ok": true,
+   "ms": 7.53,
+   "ok_any": true,
+   "lines": [
+    "Wolfgang Amadeus Mozart, notable work: The Magic Flute.",
+    "The Magic Flute, composer: Wolfgang Amadeus Mozart."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q254 P800 Q5064"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5064 P86 Q254"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1651543 P86 Q254"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Wolfgang Amadeus Mozart, notable work: The Magic Flute.",
+    "The Magic Flute, composer: Wolfgang Amadeus Mozart."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-025",
+   "type": "relate",
+   "q": "How are Amazon rainforest and Brazil connected?",
+   "gold": [
+    "country",
+    "located",
+    "basin"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Amazon rainforest",
+    "b": "Brazil"
+   },
+   "parse_ok": true,
+   "ms": 4.0,
+   "ok_any": true,
+   "lines": [
+    "Brazil: Brazil's rainforests, and the Amazon, are particularly at risk to climate change.",
+    "Amazon rainforest, country: Brazil."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Brazil"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.76,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q177567 P17 Q155"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.2041,
+     "v": 0.24,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (2 passages)",
+      "Wikipedia co-mention (2 passages)"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Brazil: Brazil's rainforests, and the Amazon, are particularly at risk to climate change.",
+    "Amazon rainforest, country: Brazil."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-026",
+   "type": "relate",
+   "q": "What's the connection between Mount Fuji and Japan?",
+   "gold": [
+    "country",
+    "located",
+    "highest",
+    "mountain"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Mount Fuji",
+    "b": "Japan"
+   },
+   "parse_ok": true,
+   "ms": 21.33,
+   "ok_any": true,
+   "lines": [
+    "Japan, P610: Mount Fuji.",
+    "Honshu, P610: Mount Fuji."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q17 P610 Q39231"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q13989 P610 Q39231"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss fuji.n.02"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Japan, P610: Mount Fuji.",
+    "Honshu, P610: Mount Fuji."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-027",
+   "type": "relate",
+   "q": "How is Big Ben related to London?",
+   "gold": [
+    "located",
+    "location",
+    "tower",
+    "westminster"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Big Ben",
+    "b": "London"
+   },
+   "parse_ok": true,
+   "ms": 15.0,
+   "ok_any": true,
+   "lines": [
+    "Big Ben, part of: London.",
+    "Big Ben: clock in the clock tower of the Houses of Parliament, London."
+   ],
+   "top": [
+    {
+     "kind": "wn1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wn"
+     ],
+     "refs": [
+      "WordNet big_ben.n.01 part of london.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss big_ben.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Big Ben"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Big Ben, part of: London.",
+    "Big Ben: clock in the clock tower of the Houses of Parliament, London."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-028",
+   "type": "relate",
+   "q": "What links Statue of Liberty and France?",
+   "gold": [
+    "gift",
+    "design",
+    "sculpt",
+    "bartholdi"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "Statue of Liberty",
+    "b": "France"
+   },
+   "parse_ok": true,
+   "ms": 14.2,
+   "ok_any": true,
+   "lines": [
+    "Statue of Liberty: This impressed upon the public the war's stated purpose\u2014to secure liberty\u2014and served as a reminder that embattled France had given the United States the statue.",
+    "Statue of Liberty, location: France."
+   ],
+   "top": [
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Statue of Liberty"
+     ]
+    },
+    {
+     "kind": "wd1",
+     "q": 0.8075,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q9202 P276 Q142"
+     ]
+    },
+    {
+     "kind": "wd2",
+     "q": 0.7522,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q9202 P941 Q3114823",
+      "Wikidata Q3114823 P17 Q142"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Statue of Liberty: This impressed upon the public the war's stated purpose\u2014to secure liberty\u2014and served as a reminder that embattled France had given the United States the statue.",
+    "Statue of Liberty, location: France."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-rel-029",
+   "type": "relate",
+   "q": "How are coral and reefs connected?",
+   "gold": [
+    "build",
+    "form",
+    "colon",
+    "made"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "coral",
+    "b": "reefs"
+   },
+   "parse_ok": true,
+   "ms": 5.63,
+   "ok_any": true,
+   "lines": [
+    "reef: a submerged ridge of rock or coral near the surface of the water.",
+    "Coral: Coral reefs in places such as the East African coast are used as a source of building material."
+   ],
+   "top": [
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss reef.n.01"
+     ]
+    },
+    {
+     "kind": "tx",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "tx"
+     ],
+     "refs": [
+      "Wikipedia: Coral"
+     ]
+    },
+    {
+     "kind": "wdco",
+     "q": 0.6904,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q985843 P1535 Q171446",
+      "Wikidata Q985843 P279 Q184358"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "reef: a submerged ridge of rock or coral near the surface of the water.",
+    "Coral: Coral reefs in places such as the East African coast are used as a source of building material."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-rel-030",
+   "type": "relate",
+   "q": "What's the connection between yeast and bread?",
+   "gold": [
+    "ferment",
+    "leaven",
+    "rise",
+    "rising",
+    "dough"
+   ],
+   "parse_op": "relate",
+   "parse_args": {
+    "a": "yeast",
+    "b": "bread"
+   },
+   "parse_ok": true,
+   "ms": 3.53,
+   "ok_any": true,
+   "lines": [
+    "bread, made from: Saccharomyces cerevisiae.",
+    "yeast: a commercial leavening agent containing yeast cells; used to raise the dough in making bread and for fermenting beer or whiskey."
+   ],
+   "top": [
+    {
+     "kind": "wd1",
+     "q": 0.95,
+     "v": 0.95,
+     "src": [
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q7802 P186 Q719725"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss yeast.n.01"
+     ]
+    },
+    {
+     "kind": "gl",
+     "q": 0.85,
+     "v": 0.85,
+     "src": [
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss bread.n.01"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "relate",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "bread, made from: Saccharomyces cerevisiae.",
+    "yeast: a commercial leavening agent containing yeast cells; used to raise the dough in making bread and for fermenting beer or whiskey."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-001",
+   "type": "common",
+   "q": "What do an owl and an eagle have in common?",
+   "gold": [
+    "bird",
+    "prey",
+    "raptor"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "owl",
+    "b": "eagle"
+   },
+   "parse_ok": true,
+   "ms": 5.3,
+   "ok_any": true,
+   "lines": [
+    "owl, type of: bird of prey.",
+    "eagle, type of: bird of prey.",
+    "Strigiformes, subclass of: bird.",
+    "eagle, instance of: bird."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.7032,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet owl.n.01 hypernym^1 bird_of_prey.n.01",
+      "WordNet eagle.n.01 hypernym^1 bird_of_prey.n.01"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.3679,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q25222 P279 Q5113",
+      "Wikidata Q2092297 P31 Q5113"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.2291,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q25222 > Q5113 > Q55983715",
+      "Wikidata Q2092297 P31 Q55983715"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "owl, type of: bird of prey.",
+    "eagle, type of: bird of prey.",
+    "Strigiformes, subclass of: bird.",
+    "eagle, instance of: bird."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-002",
+   "type": "common",
+   "q": "How are a cat and a lion alike?",
+   "gold": [
+    "felid",
+    "feline",
+    "cat",
+    "carnivore"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "cat",
+    "b": "lion"
+   },
+   "parse_ok": true,
+   "ms": 13.41,
+   "ok_any": true,
+   "lines": [
+    "cat, type of: feline.",
+    "lion, type of: feline.",
+    "cat, subclass of: Felidae.",
+    "lion, type of: Felidae."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet cat.n.01 hypernym^1 feline.n.01",
+      "WordNet lion.n.01 hypernym^2 feline.n.01"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.5436,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q146 P279 Q25265",
+      "Wikidata Q140 > Q6667323 > Q25265"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.3061,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q146 P1552 Q120446",
+      "Wikidata Q140 P1552 Q120446"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "cat, type of: feline.",
+    "lion, type of: feline.",
+    "cat, subclass of: Felidae.",
+    "lion, type of: Felidae."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-003",
+   "type": "common",
+   "q": "What are the similarities between a trumpet and a trombone?",
+   "gold": [
+    "brass",
+    "wind",
+    "instrument"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "trumpet",
+    "b": "trombone"
+   },
+   "parse_ok": true,
+   "ms": 4.39,
+   "ok_any": true,
+   "lines": [
+    "cornet, type of: brass.",
+    "trombone, type of: brass."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.6393,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet cornet.n.01 hypernym^1 brass.n.02",
+      "WordNet trombone.n.01 hypernym^1 brass.n.02"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.2713,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q8338 P31 Q110295396",
+      "Wikidata Q8350 P31 Q110295396"
+     ]
+    },
+    {
+     "kind": "co2",
+     "q": 0.2125,
+     "v": 0.25,
+     "src": [
+      "co",
+      "co"
+     ],
+     "refs": [
+      "corpus co-occurrence (PMI)",
+      "corpus co-occurrence (PMI)"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "cornet, type of: brass.",
+    "trombone, type of: brass."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-004",
+   "type": "common",
+   "q": "What do Mercury and Mars have in common?",
+   "gold": [
+    "planet",
+    "terrestrial",
+    "rocky"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "Mercury",
+    "b": "Mars"
+   },
+   "parse_ok": true,
+   "ms": 10.61,
+   "ok_any": true,
+   "lines": [
+    "Mercury, instance of: inner planet of the Solar System.",
+    "Mars, instance of: inner planet of the Solar System.",
+    "Mercury, part of: inner Solar System.",
+    "Mars, part of: inner Solar System."
+   ],
+   "top": [
+    {
+     "kind": "wdcls",
+     "q": 0.7185,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q308 P31 Q3504248",
+      "Wikidata Q111 P31 Q3504248"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.6731,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q308 P361 Q7879772",
+      "Wikidata Q111 P361 Q7879772"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.582,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q308 > Q3504248 > Q30249972",
+      "Wikidata Q111 > Q3504248 > Q30249972"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Mercury, instance of: inner planet of the Solar System.",
+    "Mars, instance of: inner planet of the Solar System.",
+    "Mercury, part of: inner Solar System.",
+    "Mars, part of: inner Solar System."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-005",
+   "type": "common",
+   "q": "How are an iron and a nickel alike?",
+   "gold": [
+    "metal",
+    "element",
+    "magnetic",
+    "transition"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "iron",
+    "b": "nickel"
+   },
+   "parse_ok": true,
+   "ms": 9.14,
+   "ok_any": true,
+   "lines": [
+    "iron, has characteristic: ferromagnetism.",
+    "nickel, has characteristic: ferromagnetism.",
+    "iron, part of: period 4.",
+    "nickel, part of: period 4."
+   ],
+   "top": [
+    {
+     "kind": "wdshare",
+     "q": 0.6488,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q677 P1552 Q184207",
+      "Wikidata Q744 P1552 Q184207"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.6443,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q677 P361 Q239825",
+      "Wikidata Q744 P361 Q239825"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.5458,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q677 P279 Q214503",
+      "Wikidata Q744 P279 Q214503"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": false,
+   "hitl": false,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "iron, has characteristic: ferromagnetism.",
+    "nickel, has characteristic: ferromagnetism.",
+    "iron, part of: period 4.",
+    "nickel, part of: period 4."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-com-006",
+   "type": "common",
+   "q": "What are the similarities between Berlin and Madrid?",
+   "gold": [
+    "capital",
+    "city",
+    "european"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "Berlin",
+    "b": "Madrid"
+   },
+   "parse_ok": true,
+   "ms": 7.62,
+   "ok_any": true,
+   "lines": [
+    "Berlin, type of: national capital.",
+    "Madrid, type of: national capital."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.6393,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet berlin.n.01 hypernym^1 national_capital.n.01",
+      "WordNet madrid.n.01 hypernym^1 national_capital.n.01"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.1381,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q821244 P31 Q1093829",
+      "Wikidata Q1934324 P31 Q1093829"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.1324,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q64 P30 Q46",
+      "Wikidata Q2807 P30 Q46"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Berlin, type of: national capital.",
+    "Madrid, type of: national capital."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-007",
+   "type": "common",
+   "q": "What do Danube and Rhine have in common?",
+   "gold": [
+    "river",
+    "europe"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "Danube",
+    "b": "Rhine"
+   },
+   "parse_ok": true,
+   "ms": 3.91,
+   "ok_any": true,
+   "lines": [
+    "Danube, part of: Germany.",
+    "Rhine, part of: Germany.",
+    "Danube, linked with: canal.",
+    "Rhine, linked with: canal."
+   ],
+   "top": [
+    {
+     "kind": "wnshare",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet danube.n.01 part of germany.n.01",
+      "WordNet rhine.n.02 part of germany.n.01"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.4165,
+     "v": 0.49,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (6 passages)",
+      "Wikipedia co-mention (6 passages)"
+     ]
+    },
+    {
+     "kind": "wnlca",
+     "q": 0.3836,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet danube.n.01 hypernym^1 river.n.01",
+      "WordNet rhine.n.02 hypernym^1 river.n.01"
+     ]
+    }
+   ],
+   "hit1": false,
+   "hit3": true,
+   "hitl": false,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Danube, part of: Germany.",
+    "Rhine, part of: Germany.",
+    "Danube, linked with: canal.",
+    "Rhine, linked with: canal."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-com-008",
+   "type": "common",
+   "q": "How are Tolstoy and Dostoevsky alike?",
+   "gold": [
+    "writer",
+    "novelist",
+    "russian",
+    "author"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "Tolstoy",
+    "b": "Dostoevsky"
+   },
+   "parse_ok": true,
+   "ms": 5.04,
+   "ok_any": true,
+   "lines": [
+    "Tolstoy, type of: writer.",
+    "Dostoyevsky, type of: writer.",
+    "Tolstoy, linked with: fyodor.",
+    "Dostoevsky, linked with: fyodor."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.3836,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet tolstoy.n.01 hypernym^1 writer.n.01",
+      "WordNet dostoyevsky.n.01 hypernym^1 writer.n.01"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.3374,
+     "v": 0.397,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (4 passages)",
+      "Wikipedia co-mention (4 passages)"
+     ]
+    },
+    {
+     "kind": "co2",
+     "q": 0.2069,
+     "v": 0.243,
+     "src": [
+      "co",
+      "co"
+     ],
+     "refs": [
+      "corpus co-occurrence (PMI)",
+      "corpus co-occurrence (PMI)"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Tolstoy, type of: writer.",
+    "Dostoyevsky, type of: writer.",
+    "Tolstoy, linked with: fyodor.",
+    "Dostoevsky, linked with: fyodor."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-009",
+   "type": "common",
+   "q": "What are the similarities between Bach and Handel?",
+   "gold": [
+    "composer",
+    "baroque",
+    "german",
+    "music"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "Bach",
+    "b": "Handel"
+   },
+   "parse_ok": true,
+   "ms": 7.25,
+   "ok_any": true,
+   "lines": [
+    "Bach, type of: composer.",
+    "Handel, type of: composer.",
+    "Johann Sebastian Bach, instrument: harpsichord.",
+    "George Frideric Handel, instrument: harpsichord."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.5114,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet bach.n.01 hypernym^1 composer.n.01",
+      "WordNet handel.n.01 hypernym^1 composer.n.01"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.2958,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1339 P1303 Q81982",
+      "Wikidata Q7302 P1303 Q81982"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.2666,
+     "v": 0.314,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (3 passages)",
+      "Wikipedia co-mention (3 passages)"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Bach, type of: composer.",
+    "Handel, type of: composer.",
+    "Johann Sebastian Bach, instrument: harpsichord.",
+    "George Frideric Handel, instrument: harpsichord."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-010",
+   "type": "common",
+   "q": "What do a soccer and a basketball have in common?",
+   "gold": [
+    "ball",
+    "team sport",
+    "sport"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "soccer",
+    "b": "basketball"
+   },
+   "parse_ok": true,
+   "ms": 9.81,
+   "ok_any": true,
+   "lines": [
+    "soccer, type of: sport.",
+    "basketball, type of: sport.",
+    "association football, instance of: team sport.",
+    "basketball, subclass of: team sport."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.5114,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet soccer.n.01 hypernym^3 sport.n.01",
+      "WordNet basketball.n.01 hypernym^3 sport.n.01"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.4404,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q2736 P31 Q216048",
+      "Wikidata Q5372 P279 Q216048"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.378,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q2736 P279 Q877517",
+      "Wikidata Q5372 P279 Q877517"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "soccer, type of: sport.",
+    "basketball, type of: sport.",
+    "association football, instance of: team sport.",
+    "basketball, subclass of: team sport."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-011",
+   "type": "common",
+   "q": "How are a maple and a birch alike?",
+   "gold": [
+    "tree",
+    "deciduous",
+    "wood"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "maple",
+    "b": "birch"
+   },
+   "parse_ok": true,
+   "ms": 6.7,
+   "ok_any": true,
+   "lines": [
+    "maple, type of: wood.",
+    "birch, type of: wood.",
+    "maple, linked with: beech.",
+    "birch, linked with: beech."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.4475,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet maple.n.01 hypernym^1 wood.n.01",
+      "WordNet birch.n.01 hypernym^1 wood.n.01"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.4165,
+     "v": 0.49,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (9 passages)",
+      "Wikipedia co-mention (9 passages)"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.4165,
+     "v": 0.49,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (10 passages)",
+      "Wikipedia co-mention (10 passages)"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "maple, type of: wood.",
+    "birch, type of: wood.",
+    "maple, linked with: beech.",
+    "birch, linked with: beech."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-012",
+   "type": "common",
+   "q": "What are the similarities between a strawberry and a raspberry?",
+   "gold": [
+    "fruit",
+    "berry",
+    "rosaceae",
+    "plant"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "strawberry",
+    "b": "raspberry"
+   },
+   "parse_ok": true,
+   "ms": 9.12,
+   "ok_any": true,
+   "lines": [
+    "strawberry, type of: fruit.",
+    "raspberry, type of: fruit.",
+    "strawberry, has use: fruit.",
+    "Rubus idaeus, has use: fruit."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.5753,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet strawberry.n.01 hypernym^3 fruit.n.01",
+      "WordNet raspberry.n.02 hypernym^3 fruit.n.01"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.3347,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q13158 P366 Q3314483",
+      "Wikidata Q12252383 P366 Q3314483"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.2646,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q13158 P279 Q11992872",
+      "Wikidata Q12252383 P279 Q11992872"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "strawberry, type of: fruit.",
+    "raspberry, type of: fruit.",
+    "strawberry, has use: fruit.",
+    "Rubus idaeus, has use: fruit."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-013",
+   "type": "common",
+   "q": "What do a mosquito and a fly have in common?",
+   "gold": [
+    "insect",
+    "diptera",
+    "fly"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "mosquito",
+    "b": "fly"
+   },
+   "parse_ok": true,
+   "ms": 10.8,
+   "ok_any": true,
+   "lines": [
+    "mosquito, type of: dipterous insect.",
+    "fly, type of: dipterous insect."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.7032,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet mosquito.n.01 hypernym^1 dipterous_insect.n.01",
+      "WordNet fly.n.01 hypernym^1 dipterous_insect.n.01"
+     ]
+    },
+    {
+     "kind": "br",
+     "q": 0.2666,
+     "v": 0.314,
+     "src": [
+      "br",
+      "br"
+     ],
+     "refs": [
+      "Wikipedia co-mention (3 passages)",
+      "Wikipedia co-mention (3 passages)"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.2291,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q7367 > Q729 > Q55983715",
+      "Wikidata Q859257 P31 Q55983715"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "mosquito, type of: dipterous insect.",
+    "fly, type of: dipterous insect."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-014",
+   "type": "common",
+   "q": "How are a ruby and a sapphire alike?",
+   "gold": [
+    "gem",
+    "corundum",
+    "mineral",
+    "precious",
+    "stone"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "ruby",
+    "b": "sapphire"
+   },
+   "parse_ok": true,
+   "ms": 5.15,
+   "ok_any": true,
+   "lines": [
+    "ruby, subclass of: corundum.",
+    "sapphire, subclass of: corundum.",
+    "ruby, type of: jewel.",
+    "sapphire, type of: jewel."
+   ],
+   "top": [
+    {
+     "kind": "wdcls",
+     "q": 0.7249,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q43088 P279 Q131777",
+      "Wikidata Q127583 P279 Q131777"
+     ]
+    },
+    {
+     "kind": "wnlca",
+     "q": 0.5753,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet ruby.n.01 hypernym^1 jewel.n.01",
+      "WordNet sapphire.n.02 hypernym^1 jewel.n.01"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.4866,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q43088 P279 Q83437",
+      "Wikidata Q127583 P279 Q83437"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "ruby, subclass of: corundum.",
+    "sapphire, subclass of: corundum.",
+    "ruby, type of: jewel.",
+    "sapphire, type of: jewel."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-com-015",
+   "type": "common",
+   "q": "What are the similarities between a bus and a train?",
+   "gold": [
+    "vehicle",
+    "transport",
+    "passenger",
+    "public"
+   ],
+   "parse_op": "common",
+   "parse_args": {
+    "a": "bus",
+    "b": "train"
+   },
+   "parse_ok": true,
+   "ms": 14.55,
+   "ok_any": true,
+   "lines": [
+    "bus, type of: public transport.",
+    "train, type of: public transport.",
+    "bus, has use: passenger transport.",
+    "train, has use: passenger transport."
+   ],
+   "top": [
+    {
+     "kind": "wnlca",
+     "q": 0.5114,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet bus.n.01 hypernym^1 public_transport.n.01",
+      "WordNet train.n.01 hypernym^1 public_transport.n.01"
+     ]
+    },
+    {
+     "kind": "wdshare",
+     "q": 0.438,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5638 P366 Q2072431",
+      "Wikidata Q870 P366 Q2072431"
+     ]
+    },
+    {
+     "kind": "wdcls",
+     "q": 0.4075,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q5638 > Q752870 > Q334166",
+      "Wikidata Q870 > Q4354683 > Q334166"
+     ]
+    }
+   ],
+   "hit1": true,
+   "hit3": true,
+   "hitl": true,
+   "e2e_op": "common",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "bus, type of: public transport.",
+    "train, type of: public transport.",
+    "bus, has use: passenger transport.",
+    "train, has use: passenger transport."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-001",
+   "type": "analogy",
+   "q": "Madrid is to Spain as Lisbon is to what?",
+   "gold": [
+    "portugal"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Madrid",
+    "b": "Spain",
+    "c": "Lisbon"
+   },
+   "parse_ok": true,
+   "ms": 2.73,
+   "ok_any": true,
+   "lines": [
+    "Madrid, capital of: Spain.",
+    "Lisbon, capital of: Portugal."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q2807 P1376 Q29",
+      "Wikidata Q597 P1376 Q45"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q29 P36 Q2807",
+      "Wikidata Q200464 P36 Q597"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q2807 P1376 Q29",
+      "Wikidata Q597 P1376 Q207199"
+     ]
+    }
+   ],
+   "answer": "Portugal",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Madrid, capital of: Spain.",
+    "Lisbon, capital of: Portugal."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-002",
+   "type": "analogy",
+   "q": "Tokyo : Japan :: Seoul : ?",
+   "gold": [
+    "korea"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Tokyo",
+    "b": "Japan",
+    "c": "Seoul"
+   },
+   "parse_ok": true,
+   "ms": 1.91,
+   "ok_any": true,
+   "lines": [
+    "Tokyo, country: Japan.",
+    "Seoul, country: South Korea."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1490 P17 Q17",
+      "Wikidata Q8684 P17 Q884"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1490 P1376 Q17",
+      "Wikidata Q8684 P1376 Q28179"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1490 P17 Q17",
+      "Wikidata Q8684 P17 Q503585"
+     ]
+    }
+   ],
+   "answer": "South Korea",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Tokyo, country: Japan.",
+    "Seoul, country: South Korea."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-003",
+   "type": "analogy",
+   "q": "If Germany is to Berlin, then Egypt is to what?",
+   "gold": [
+    "cairo"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Germany",
+    "b": "Berlin",
+    "c": "Egypt"
+   },
+   "parse_ok": true,
+   "ms": 8.74,
+   "ok_any": true,
+   "lines": [
+    "Germany, capital: Berlin.",
+    "Egypt, capital: Cairo."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q183 P36 Q64",
+      "Wikidata Q79 P36 Q85"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q64 P1376 Q183",
+      "Wikidata Q5715 P1376 Q79"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q183 P36 Q64",
+      "Wikidata Q79 P36 Q1153959"
+     ]
+    }
+   ],
+   "answer": "Cairo",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Germany, capital: Berlin.",
+    "Egypt, capital: Cairo."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-004",
+   "type": "analogy",
+   "q": "cub is to bear as piglet is to what?",
+   "gold": [
+    "pig",
+    "swine",
+    "hog"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "cub",
+    "b": "bear",
+    "c": "piglet"
+   },
+   "parse_ok": true,
+   "ms": 1.47,
+   "ok_any": false,
+   "lines": [],
+   "top": [],
+   "answer": null,
+   "hit1": false,
+   "hit3": false,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-ana-005",
+   "type": "analogy",
+   "q": "up : down :: open : ?",
+   "gold": [
+    "close",
+    "shut"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "up",
+    "b": "down",
+    "c": "open"
+   },
+   "parse_ok": true,
+   "ms": 1.87,
+   "ok_any": true,
+   "lines": [
+    "up, opposite of: down.",
+    "open, opposite of: close."
+   ],
+   "top": [
+    {
+     "kind": "ant",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet antonym up.r.01",
+      "WordNet antonym open.v.01"
+     ]
+    },
+    {
+     "kind": "ant",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet antonym up.r.01",
+      "WordNet antonym open.a.01"
+     ]
+    }
+   ],
+   "answer": "close",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "up, opposite of: down.",
+    "open, opposite of: close."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-006",
+   "type": "analogy",
+   "q": "If light is to dark, then happy is to what?",
+   "gold": [
+    "sad",
+    "unhappy"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "light",
+    "b": "dark",
+    "c": "happy"
+   },
+   "parse_ok": true,
+   "ms": 3.03,
+   "ok_any": true,
+   "lines": [
+    "light, opposite of: darkness.",
+    "happiness, opposite of: sadness."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q9128 P461 Q204170",
+      "Wikidata Q8 P461 Q169251"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q9128 P461 Q204170",
+      "Wikidata Q8 P461 Q105839683"
+     ]
+    }
+   ],
+   "answer": "sadness",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "light, opposite of: darkness.",
+    "happiness, opposite of: sadness."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-007",
+   "type": "analogy",
+   "q": "wrist is to hand as knee is to what?",
+   "gold": [
+    "leg"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "wrist",
+    "b": "hand",
+    "c": "knee"
+   },
+   "parse_ok": true,
+   "ms": 0.88,
+   "ok_any": false,
+   "lines": [],
+   "top": [],
+   "answer": null,
+   "hit1": false,
+   "hit3": false,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-ana-008",
+   "type": "analogy",
+   "q": "cat : mammal :: trout : ?",
+   "gold": [
+    "fish"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "cat",
+    "b": "mammal",
+    "c": "trout"
+   },
+   "parse_ok": true,
+   "ms": 1.81,
+   "ok_any": true,
+   "lines": [
+    "cat, type of: mammal.",
+    "trout, type of: aquatic vertebrate."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet cat.n.01 hypernym^4 mammal.n.01",
+      "WordNet trout.n.02 hypernym^3 aquatic_vertebrate.n.01"
+     ]
+    },
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet cat.n.01 hypernym^4 mammal.n.01",
+      "WordNet trout.n.02 hypernym^2 fish.n.01"
+     ]
+    },
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet cat.n.01 hypernym^4 mammal.n.01",
+      "WordNet trout.n.02 hypernym^1 food_fish.n.01"
+     ]
+    }
+   ],
+   "answer": "aquatic vertebrate",
+   "hit1": false,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "cat, type of: mammal.",
+    "trout, type of: aquatic vertebrate."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-ana-009",
+   "type": "analogy",
+   "q": "If The Hobbit is to Tolkien, then Pride and Prejudice is to what?",
+   "gold": [
+    "austen"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Hobbit",
+    "b": "Tolkien",
+    "c": "Pride and Prejudice"
+   },
+   "parse_ok": true,
+   "ms": 0.97,
+   "ok_any": true,
+   "lines": [
+    "J. R. R. Tolkien, notable work: The Hobbit.",
+    "Jane Austen, notable work: Pride and Prejudice."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q892 P800 Q74287",
+      "Wikidata Q36322 P800 Q170583"
+     ]
+    }
+   ],
+   "answer": "Jane Austen",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "J. R. R. Tolkien, notable work: The Hobbit.",
+    "Jane Austen, notable work: Pride and Prejudice."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-010",
+   "type": "analogy",
+   "q": "Einstein is to Ulm as Beethoven is to what?",
+   "gold": [
+    "bonn"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Einstein",
+    "b": "Ulm",
+    "c": "Beethoven"
+   },
+   "parse_ok": true,
+   "ms": 1.17,
+   "ok_any": true,
+   "lines": [
+    "Albert Einstein, place of birth: Ulm.",
+    "Ludwig van Beethoven, place of birth: Bonn."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q937 P19 Q3012",
+      "Wikidata Q255 P19 Q586"
+     ]
+    }
+   ],
+   "answer": "Bonn",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Albert Einstein, place of birth: Ulm.",
+    "Ludwig van Beethoven, place of birth: Bonn."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-011",
+   "type": "analogy",
+   "q": "Mexico : peso :: Japan : ?",
+   "gold": [
+    "yen"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Mexico",
+    "b": "peso",
+    "c": "Japan"
+   },
+   "parse_ok": true,
+   "ms": 0.59,
+   "ok_any": true,
+   "lines": [
+    "Mexico, currency: peso.",
+    "Japan, currency: yen."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q96 P38 Q4730",
+      "Wikidata Q17 P38 Q8146"
+     ]
+    }
+   ],
+   "answer": "yen",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Mexico, currency: peso.",
+    "Japan, currency: yen."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-012",
+   "type": "analogy",
+   "q": "If France is to French, then Russia is to what?",
+   "gold": [
+    "russian"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "France",
+    "b": "French",
+    "c": "Russia"
+   },
+   "parse_ok": true,
+   "ms": 1.16,
+   "ok_any": true,
+   "lines": [
+    "France, official language: French.",
+    "Russia, official language: Russian."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q142 P37 Q150",
+      "Wikidata Q159 P37 Q7737"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q142 P37 Q150",
+      "Wikidata Q159 P37 Q27567"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q142 P37 Q150",
+      "Wikidata Q159 P37 Q27776"
+     ]
+    }
+   ],
+   "answer": "Russian",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "France, official language: French.",
+    "Russia, official language: Russian."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-013",
+   "type": "analogy",
+   "q": "Seine is to Paris as Thames is to what?",
+   "gold": [
+    "london"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Seine",
+    "b": "Paris",
+    "c": "Thames"
+   },
+   "parse_ok": true,
+   "ms": 2.88,
+   "ok_any": true,
+   "lines": [
+    "Paris, next to body of water: Seine.",
+    "London, next to body of water: River Thames."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q90 P206 Q1471",
+      "Wikidata Q84 P206 Q19686"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q1471 P131 Q90",
+      "Wikidata Q19686 P131 Q21694733"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q90 P206 Q1471",
+      "Wikidata Q34217 P206 Q19686"
+     ]
+    }
+   ],
+   "answer": "London",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Paris, next to body of water: Seine.",
+    "London, next to body of water: River Thames."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-014",
+   "type": "analogy",
+   "q": "Jaws : Steven Spielberg :: The Godfather : ?",
+   "gold": [
+    "coppola"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Jaws",
+    "b": "Steven Spielberg",
+    "c": "Godfather"
+   },
+   "parse_ok": true,
+   "ms": 1.64,
+   "ok_any": true,
+   "lines": [
+    "Jaws, director: Steven Spielberg.",
+    "The Godfather, director: Francis Ford Coppola."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q189505 P57 Q8877",
+      "Wikidata Q47703 P57 Q56094"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q189505 P161 Q8877",
+      "Wikidata Q47703 P161 Q34012"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q189505 P161 Q8877",
+      "Wikidata Q47703 P161 Q41163"
+     ]
+    }
+   ],
+   "answer": "Francis Ford Coppola",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Jaws, director: Steven Spielberg.",
+    "The Godfather, director: Francis Ford Coppola."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-015",
+   "type": "analogy",
+   "q": "If Titan is to Saturn, then Ganymede is to what?",
+   "gold": [
+    "jupiter"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Titan",
+    "b": "Saturn",
+    "c": "Ganymede"
+   },
+   "parse_ok": true,
+   "ms": 1.67,
+   "ok_any": true,
+   "lines": [
+    "Titan, orbits: Saturn.",
+    "Ganymede, orbits: Jupiter."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q2565 P397 Q193",
+      "Wikidata Q3169 P397 Q319"
+     ]
+    }
+   ],
+   "answer": "Jupiter",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Titan, orbits: Saturn.",
+    "Ganymede, orbits: Jupiter."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-016",
+   "type": "analogy",
+   "q": "hammer is to tool as pistol is to what?",
+   "gold": [
+    "weapon",
+    "firearm",
+    "gun"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "hammer",
+    "b": "tool",
+    "c": "pistol"
+   },
+   "parse_ok": true,
+   "ms": 1.71,
+   "ok_any": true,
+   "lines": [
+    "hammer, type of: tool.",
+    "pistol, type of: instrument."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet hammer.n.02 hypernym^2 tool.n.01",
+      "WordNet pistol.n.01 hypernym^4 instrument.n.01"
+     ]
+    },
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet hammer.n.02 hypernym^2 tool.n.01",
+      "WordNet pistol.n.01 hypernym^3 weapon.n.01"
+     ]
+    },
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet hammer.n.02 hypernym^2 tool.n.01",
+      "WordNet pistol.n.01 hypernym^5 device.n.01"
+     ]
+    }
+   ],
+   "answer": "instrument",
+   "hit1": false,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "hammer, type of: tool.",
+    "pistol, type of: instrument."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-ana-017",
+   "type": "analogy",
+   "q": "apple : fruit :: potato : ?",
+   "gold": [
+    "vegetable",
+    "tuber",
+    "root",
+    "solanaceous"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "apple",
+    "b": "fruit",
+    "c": "potato"
+   },
+   "parse_ok": true,
+   "ms": 2.24,
+   "ok_any": true,
+   "lines": [
+    "apple: native Eurasian tree widely cultivated in many varieties for its firm rounded edible fruits.",
+    "potato: annual native to South America having underground stolons bearing edible starchy tubers; widely cultivated as a garden vegetable; vines are poisonous."
+   ],
+   "top": [
+    {
+     "kind": "gloss",
+     "q": 0.6141,
+     "v": 0.722,
+     "src": [
+      "gl",
+      "gl"
+     ],
+     "refs": [
+      "WordNet gloss apple.n.02",
+      "WordNet gloss potato.n.02"
+     ]
+    },
+    {
+     "kind": "up",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet apple.n.01 hypernym^2 fruit.n.01",
+      "WordNet potato.n.01 hypernym^1 solanaceous_vegetable.n.01"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q89 P279 Q3314483",
+      "Wikidata Q10998 P279 Q11992872"
+     ]
+    }
+   ],
+   "answer": "tubers",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "apple: native Eurasian tree widely cultivated in many varieties for its firm rounded edible fruits.",
+    "potato: annual native to South America having underground stolons bearing edible starchy tubers; widely cultivated as a garden vegetable; vines are poisonous."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-018",
+   "type": "analogy",
+   "q": "If Paris is to France, then Canberra is to what?",
+   "gold": [
+    "australia"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Paris",
+    "b": "France",
+    "c": "Canberra"
+   },
+   "parse_ok": true,
+   "ms": 1.06,
+   "ok_any": true,
+   "lines": [
+    "Paris, part of: France.",
+    "Canberra, part of: Australia."
+   ],
+   "top": [
+    {
+     "kind": "wn",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet paris.n.01 part of france.n.01",
+      "WordNet canberra.n.01 part of australia.n.01"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q142 P36 Q90",
+      "Wikidata Q3258 P36 Q3114"
+     ]
+    },
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q90 P1376 Q142",
+      "Wikidata Q3114 P1376 Q15577"
+     ]
+    }
+   ],
+   "answer": "Australia",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Paris, part of: France.",
+    "Canberra, part of: Australia."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-019",
+   "type": "analogy",
+   "q": "Italy is to Europe as Kenya is to what?",
+   "gold": [
+    "africa"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "Italy",
+    "b": "Europe",
+    "c": "Kenya"
+   },
+   "parse_ok": true,
+   "ms": 0.98,
+   "ok_any": true,
+   "lines": [
+    "Italy, continent: Europe.",
+    "Kenya, continent: Africa."
+   ],
+   "top": [
+    {
+     "kind": "wd",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wd",
+      "wd"
+     ],
+     "refs": [
+      "Wikidata Q38 P30 Q46",
+      "Wikidata Q114 P30 Q15"
+     ]
+    },
+    {
+     "kind": "wn",
+     "q": 0.7671,
+     "v": 0.902,
+     "src": [
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet italy.n.01 part of europe.n.01",
+      "WordNet kenya.n.01 part of east_africa.n.01"
+     ]
+    }
+   ],
+   "answer": "Africa",
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Italy, continent: Europe.",
+    "Kenya, continent: Africa."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-ana-020",
+   "type": "analogy",
+   "q": "violin : string :: flute : ?",
+   "gold": [
+    "wind",
+    "woodwind"
+   ],
+   "parse_op": "analogy",
+   "parse_args": {
+    "a": "violin",
+    "b": "string",
+    "c": "flute"
+   },
+   "parse_ok": true,
+   "ms": 0.9,
+   "ok_any": false,
+   "lines": [],
+   "top": [],
+   "answer": null,
+   "hit1": false,
+   "hit3": false,
+   "e2e_op": "analogy",
+   "e2e_mode": "analytical",
+   "e2e_lines": [],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-abs-001",
+   "type": "abstract",
+   "q": "What kind of thing is a penguin?",
+   "gold": [
+    "bird",
+    "seabird"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "penguin"
+   },
+   "parse_ok": true,
+   "ms": 0.82,
+   "ok_any": true,
+   "lines": [
+    "penguin, type of: sphenisciform seabird.",
+    "sphenisciform seabird, type of: seabird.",
+    "seabird, type of: aquatic bird."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet penguin.n.01 hypernym^1 sphenisciform_seabird.n.01",
+      "WordNet sphenisciform_seabird.n.01 hypernym^1 seabird.n.01",
+      "WordNet seabird.n.01 hypernym^1 aquatic_bird.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "sphenisciform seabird",
+    "seabird",
+    "aquatic bird"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "penguin, type of: sphenisciform seabird.",
+    "sphenisciform seabird, type of: seabird.",
+    "seabird, type of: aquatic bird."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-002",
+   "type": "abstract",
+   "q": "What is a cedar an example of?",
+   "gold": [
+    "tree",
+    "conifer"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "cedar"
+   },
+   "parse_ok": true,
+   "ms": 0.63,
+   "ok_any": true,
+   "lines": [
+    "cedar, type of: conifer.",
+    "conifer, type of: gymnospermous tree.",
+    "gymnospermous tree, type of: tree."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet cedar.n.01 hypernym^1 conifer.n.01",
+      "WordNet conifer.n.01 hypernym^1 gymnospermous_tree.n.01",
+      "WordNet gymnospermous_tree.n.01 hypernym^1 tree.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "conifer",
+    "gymnospermous tree",
+    "tree"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "cedar, type of: conifer.",
+    "conifer, type of: gymnospermous tree.",
+    "gymnospermous tree, type of: tree."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-003",
+   "type": "abstract",
+   "q": "What broader category does a lily belong to?",
+   "gold": [
+    "flower",
+    "liliaceous",
+    "bulbous"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "lily"
+   },
+   "parse_ok": true,
+   "ms": 0.81,
+   "ok_any": true,
+   "lines": [
+    "lily, type of: liliaceous plant.",
+    "liliaceous plant, type of: bulbous plant.",
+    "bulbous plant, type of: vascular plant."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet lily.n.01 hypernym^1 liliaceous_plant.n.01",
+      "WordNet liliaceous_plant.n.01 hypernym^1 bulbous_plant.n.01",
+      "WordNet bulbous_plant.n.01 hypernym^1 vascular_plant.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "liliaceous plant",
+    "bulbous plant",
+    "vascular plant"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "lily, type of: liliaceous plant.",
+    "liliaceous plant, type of: bulbous plant.",
+    "bulbous plant, type of: vascular plant."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-004",
+   "type": "abstract",
+   "q": "What type of thing is a saxophone?",
+   "gold": [
+    "woodwind",
+    "wind instrument",
+    "instrument"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "saxophone"
+   },
+   "parse_ok": true,
+   "ms": 0.46,
+   "ok_any": true,
+   "lines": [
+    "sax, type of: single-reed instrument.",
+    "single-reed instrument, type of: beating-reed instrument.",
+    "beating-reed instrument, type of: woodwind."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet sax.n.02 hypernym^1 single-reed_instrument.n.01",
+      "WordNet single-reed_instrument.n.01 hypernym^1 beating-reed_instrument.n.01",
+      "WordNet beating-reed_instrument.n.01 hypernym^1 woodwind.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "single-reed instrument",
+    "beating-reed instrument",
+    "woodwind"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "sax, type of: single-reed instrument.",
+    "single-reed instrument, type of: beating-reed instrument.",
+    "beating-reed instrument, type of: woodwind."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-005",
+   "type": "abstract",
+   "q": "What kind of thing is a chair?",
+   "gold": [
+    "seat",
+    "furniture"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "chair"
+   },
+   "parse_ok": true,
+   "ms": 0.61,
+   "ok_any": true,
+   "lines": [
+    "chair, type of: seat.",
+    "seat, type of: furniture.",
+    "furniture, type of: furnishing."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet chair.n.01 hypernym^1 seat.n.03",
+      "WordNet seat.n.03 hypernym^1 furniture.n.01",
+      "WordNet furniture.n.01 hypernym^1 furnishing.n.02"
+     ]
+    }
+   ],
+   "chain": [
+    "seat",
+    "furniture",
+    "furnishing"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "chair, type of: seat.",
+    "seat, type of: furniture.",
+    "furniture, type of: furnishing."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-006",
+   "type": "abstract",
+   "q": "What is a truck an example of?",
+   "gold": [
+    "motor vehicle",
+    "vehicle"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "truck"
+   },
+   "parse_ok": true,
+   "ms": 0.72,
+   "ok_any": true,
+   "lines": [
+    "truck, type of: motor vehicle.",
+    "motor vehicle, type of: self-propelled vehicle.",
+    "self-propelled vehicle, type of: wheeled vehicle."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet truck.n.01 hypernym^1 motor_vehicle.n.01",
+      "WordNet motor_vehicle.n.01 hypernym^1 self-propelled_vehicle.n.01",
+      "WordNet self-propelled_vehicle.n.01 hypernym^1 wheeled_vehicle.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "motor vehicle",
+    "self-propelled vehicle",
+    "wheeled vehicle"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "truck, type of: motor vehicle.",
+    "motor vehicle, type of: self-propelled vehicle.",
+    "self-propelled vehicle, type of: wheeled vehicle."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-007",
+   "type": "abstract",
+   "q": "What broader category does a sailboat belong to?",
+   "gold": [
+    "boat",
+    "vessel"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "sailboat"
+   },
+   "parse_ok": true,
+   "ms": 0.47,
+   "ok_any": true,
+   "lines": [
+    "sailboat, type of: sailing vessel.",
+    "sailing vessel, type of: vessel.",
+    "vessel, type of: craft."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet sailboat.n.01 hypernym^1 sailing_vessel.n.01",
+      "WordNet sailing_vessel.n.01 hypernym^1 vessel.n.02",
+      "WordNet vessel.n.02 hypernym^1 craft.n.02"
+     ]
+    }
+   ],
+   "chain": [
+    "sailing vessel",
+    "vessel",
+    "craft"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "sailboat, type of: sailing vessel.",
+    "sailing vessel, type of: vessel.",
+    "vessel, type of: craft."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-008",
+   "type": "abstract",
+   "q": "What type of thing is a silver?",
+   "gold": [
+    "noble metal",
+    "metal",
+    "element"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "silver"
+   },
+   "parse_ok": true,
+   "ms": 0.8,
+   "ok_any": true,
+   "lines": [
+    "silver, type of: noble metal.",
+    "noble metal, type of: metallic element.",
+    "metallic element, type of: chemical element."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet silver.n.01 hypernym^1 noble_metal.n.01",
+      "WordNet noble_metal.n.01 hypernym^1 metallic_element.n.01",
+      "WordNet metallic_element.n.01 hypernym^1 chemical_element.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "noble metal",
+    "metallic element",
+    "chemical element"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "silver, type of: noble metal.",
+    "noble metal, type of: metallic element.",
+    "metallic element, type of: chemical element."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-009",
+   "type": "abstract",
+   "q": "What kind of thing is a helium?",
+   "gold": [
+    "noble gas",
+    "inert gas",
+    "gas",
+    "element"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "helium"
+   },
+   "parse_ok": true,
+   "ms": 0.48,
+   "ok_any": true,
+   "lines": [
+    "helium, type of: noble gas.",
+    "noble gas, type of: chemical element.",
+    "chemical element, type of: substance."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet helium.n.01 hypernym^1 noble_gas.n.01",
+      "WordNet noble_gas.n.01 hypernym^1 chemical_element.n.01",
+      "WordNet chemical_element.n.01 hypernym^1 substance.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "noble gas",
+    "chemical element",
+    "substance"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "helium, type of: noble gas.",
+    "noble gas, type of: chemical element.",
+    "chemical element, type of: substance."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-010",
+   "type": "abstract",
+   "q": "What is a marble an example of?",
+   "gold": [
+    "metamorphic rock",
+    "rock"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "marble"
+   },
+   "parse_ok": true,
+   "ms": 0.64,
+   "ok_any": true,
+   "lines": [
+    "marble, type of: rock.",
+    "rock, type of: material.",
+    "material, type of: substance."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet marble.n.01 hypernym^1 rock.n.02",
+      "WordNet rock.n.02 hypernym^1 material.n.01",
+      "WordNet material.n.01 hypernym^1 substance.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "rock",
+    "material",
+    "substance"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "marble, type of: rock.",
+    "rock, type of: material.",
+    "material, type of: substance."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-011",
+   "type": "abstract",
+   "q": "What broader category does a tennis belong to?",
+   "gold": [
+    "court game",
+    "game",
+    "sport"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "tennis"
+   },
+   "parse_ok": true,
+   "ms": 0.58,
+   "ok_any": true,
+   "lines": [
+    "tennis, type of: court game.",
+    "court game, type of: athletic game.",
+    "athletic game, type of: sport."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet tennis.n.01 hypernym^1 court_game.n.01",
+      "WordNet court_game.n.01 hypernym^1 athletic_game.n.01",
+      "WordNet athletic_game.n.01 hypernym^1 sport.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "court game",
+    "athletic game",
+    "sport"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "tennis, type of: court game.",
+    "court game, type of: athletic game.",
+    "athletic game, type of: sport."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-012",
+   "type": "abstract",
+   "q": "What type of thing is a tuberculosis?",
+   "gold": [
+    "infectious disease",
+    "disease",
+    "infection"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "tuberculosis"
+   },
+   "parse_ok": true,
+   "ms": 0.54,
+   "ok_any": true,
+   "lines": [
+    "tuberculosis, type of: infectious disease.",
+    "infectious disease, type of: communicable disease.",
+    "communicable disease, type of: disease."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet tuberculosis.n.01 hypernym^1 infectious_disease.n.01",
+      "WordNet infectious_disease.n.01 hypernym^1 communicable_disease.n.01",
+      "WordNet communicable_disease.n.01 hypernym^1 disease.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "infectious disease",
+    "communicable disease",
+    "disease"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "tuberculosis, type of: infectious disease.",
+    "infectious disease, type of: communicable disease.",
+    "communicable disease, type of: disease."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-013",
+   "type": "abstract",
+   "q": "What kind of thing is a fear?",
+   "gold": [
+    "emotion",
+    "feeling"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "fear"
+   },
+   "parse_ok": true,
+   "ms": 0.96,
+   "ok_any": true,
+   "lines": [
+    "fear, type of: emotion.",
+    "emotion, type of: feeling.",
+    "feeling, type of: state."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet fear.n.01 hypernym^1 emotion.n.01",
+      "WordNet emotion.n.01 hypernym^1 feeling.n.01",
+      "WordNet feeling.n.01 hypernym^1 state.n.02"
+     ]
+    }
+   ],
+   "chain": [
+    "emotion",
+    "feeling",
+    "state"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "fear, type of: emotion.",
+    "emotion, type of: feeling.",
+    "feeling, type of: state."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-014",
+   "type": "abstract",
+   "q": "What is a honesty an example of?",
+   "gold": [
+    "virtue",
+    "righteousness",
+    "quality"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "honesty"
+   },
+   "parse_ok": true,
+   "ms": 0.43,
+   "ok_any": true,
+   "lines": [
+    "honesty, type of: righteousness.",
+    "righteousness, type of: morality.",
+    "morality, type of: quality."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet honesty.n.01 hypernym^1 righteousness.n.01",
+      "WordNet righteousness.n.01 hypernym^1 morality.n.01",
+      "WordNet morality.n.01 hypernym^1 quality.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "righteousness",
+    "morality",
+    "quality"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "honesty, type of: righteousness.",
+    "righteousness, type of: morality.",
+    "morality, type of: quality."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-015",
+   "type": "abstract",
+   "q": "What broader category does Berlin belong to?",
+   "gold": [
+    "national capital",
+    "capital",
+    "city"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "Berlin"
+   },
+   "parse_ok": true,
+   "ms": 0.23,
+   "ok_any": true,
+   "lines": [
+    "Berlin, type of: national capital.",
+    "national capital, type of: capital.",
+    "capital, type of: seat."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet berlin.n.01 hypernym^1 national_capital.n.01",
+      "WordNet national_capital.n.01 hypernym^1 capital.n.03",
+      "WordNet capital.n.03 hypernym^1 seat.n.05"
+     ]
+    }
+   ],
+   "chain": [
+    "national capital",
+    "capital",
+    "seat"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Berlin, type of: national capital.",
+    "national capital, type of: capital.",
+    "capital, type of: seat."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-016",
+   "type": "abstract",
+   "q": "What type of thing is Beethoven?",
+   "gold": [
+    "composer",
+    "musician"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "Beethoven"
+   },
+   "parse_ok": true,
+   "ms": 0.25,
+   "ok_any": true,
+   "lines": [
+    "Beethoven, type of: composer.",
+    "composer, type of: musician.",
+    "musician, type of: artist."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet beethoven.n.01 hypernym^1 composer.n.01",
+      "WordNet composer.n.01 hypernym^1 musician.n.02",
+      "WordNet musician.n.02 hypernym^1 artist.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "composer",
+    "musician",
+    "artist"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Beethoven, type of: composer.",
+    "composer, type of: musician.",
+    "musician, type of: artist."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-017",
+   "type": "abstract",
+   "q": "What kind of thing is Neptune?",
+   "gold": [
+    "gas giant",
+    "planet"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "Neptune"
+   },
+   "parse_ok": true,
+   "ms": 0.82,
+   "ok_any": true,
+   "lines": [
+    "Neptune, type of: Roman deity.",
+    "Roman deity, type of: deity.",
+    "deity, type of: spiritual being."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet neptune.n.01 hypernym^1 roman_deity.n.01",
+      "WordNet roman_deity.n.01 hypernym^1 deity.n.01",
+      "WordNet deity.n.01 hypernym^1 spiritual_being.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "Roman deity",
+    "deity",
+    "spiritual being"
+   ],
+   "hit1": false,
+   "hit3": false,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "Neptune, type of: Roman deity.",
+    "Roman deity, type of: deity.",
+    "deity, type of: spiritual being."
+   ],
+   "e2e_hit": false
+  },
+  {
+   "id": "cogt-abs-018",
+   "type": "abstract",
+   "q": "What is a banana an example of?",
+   "gold": [
+    "edible fruit",
+    "fruit",
+    "herb"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "banana"
+   },
+   "parse_ok": true,
+   "ms": 0.5,
+   "ok_any": true,
+   "lines": [
+    "banana, type of: herb.",
+    "herb, type of: vascular plant.",
+    "vascular plant, type of: plant."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet banana.n.01 hypernym^1 herb.n.01",
+      "WordNet herb.n.01 hypernym^1 vascular_plant.n.01",
+      "WordNet vascular_plant.n.01 hypernym^1 plant.n.02"
+     ]
+    }
+   ],
+   "chain": [
+    "herb",
+    "vascular plant",
+    "plant"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "banana, type of: herb.",
+    "herb, type of: vascular plant.",
+    "vascular plant, type of: plant."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-019",
+   "type": "abstract",
+   "q": "What broader category does a wolf belong to?",
+   "gold": [
+    "canine",
+    "canid",
+    "mammal"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "wolf"
+   },
+   "parse_ok": true,
+   "ms": 1.32,
+   "ok_any": true,
+   "lines": [
+    "wolf, type of: canine.",
+    "canine, type of: carnivore.",
+    "carnivore, type of: placental."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet wolf.n.01 hypernym^1 canine.n.02",
+      "WordNet canine.n.02 hypernym^1 carnivore.n.01",
+      "WordNet carnivore.n.01 hypernym^1 placental.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "canine",
+    "carnivore",
+    "placental"
+   ],
+   "hit1": true,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "wolf, type of: canine.",
+    "canine, type of: carnivore.",
+    "carnivore, type of: placental."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-abs-020",
+   "type": "abstract",
+   "q": "What type of thing is a shark?",
+   "gold": [
+    "fish",
+    "cartilaginous"
+   ],
+   "parse_op": "abstract",
+   "parse_args": {
+    "a": "shark"
+   },
+   "parse_ok": true,
+   "ms": 0.73,
+   "ok_any": true,
+   "lines": [
+    "shark, type of: elasmobranch.",
+    "elasmobranch, type of: cartilaginous fish.",
+    "cartilaginous fish, type of: fish."
+   ],
+   "top": [
+    {
+     "kind": "up",
+     "q": 0.6195,
+     "v": 0.857,
+     "src": [
+      "wn",
+      "wn",
+      "wn"
+     ],
+     "refs": [
+      "WordNet shark.n.01 hypernym^1 elasmobranch.n.01",
+      "WordNet elasmobranch.n.01 hypernym^1 cartilaginous_fish.n.01",
+      "WordNet cartilaginous_fish.n.01 hypernym^1 fish.n.01"
+     ]
+    }
+   ],
+   "chain": [
+    "elasmobranch",
+    "cartilaginous fish",
+    "fish"
+   ],
+   "hit1": false,
+   "hit3": true,
+   "e2e_op": "abstract",
+   "e2e_mode": "analytical",
+   "e2e_lines": [
+    "shark, type of: elasmobranch.",
+    "elasmobranch, type of: cartilaginous fish.",
+    "cartilaginous fish, type of: fish."
+   ],
+   "e2e_hit": true
+  },
+  {
+   "id": "cogt-mode-fac-01",
+   "type": "mode",
+   "q": "Who designed the Guggenheim Museum in Bilbao?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-02",
+   "type": "mode",
+   "q": "What is the tallest mountain in Africa?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-03",
+   "type": "mode",
+   "q": "When was the Magna Carta signed?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-04",
+   "type": "mode",
+   "q": "Which country has the most islands?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-05",
+   "type": "mode",
+   "q": "Which river runs through Budapest?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-06",
+   "type": "mode",
+   "q": "Who composed the Four Seasons?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-07",
+   "type": "mode",
+   "q": "Where is the Taj Mahal?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-08",
+   "type": "mode",
+   "q": "How deep is Lake Baikal?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-09",
+   "type": "mode",
+   "q": "What currency is used in Norway?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-10",
+   "type": "mode",
+   "q": "Who was the first woman to win a Nobel Prize?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-11",
+   "type": "mode",
+   "q": "Which vitamin do citrus fruits supply most?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-12",
+   "type": "mode",
+   "q": "Which ocean is the largest?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-13",
+   "type": "mode",
+   "q": "What year did Apollo 13 launch?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-14",
+   "type": "mode",
+   "q": "Who invented the telephone?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-15",
+   "type": "mode",
+   "q": "What is the capital of Kenya?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-16",
+   "type": "mode",
+   "q": "How many players are on a volleyball team?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-17",
+   "type": "mode",
+   "q": "What does DNA stand for?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-18",
+   "type": "mode",
+   "q": "Who wrote War and Peace?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-19",
+   "type": "mode",
+   "q": "Where did the Olympic Games begin?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-fac-20",
+   "type": "mode",
+   "q": "What is the melting point of iron?",
+   "gold": [
+    "factual"
+   ],
+   "pred": "factual",
+   "ok": true,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-ana-01",
+   "type": "mode",
+   "q": "How are tornadoes and thunderstorms related?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-02",
+   "type": "mode",
+   "q": "Why do cats purr?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-03",
+   "type": "mode",
+   "q": "What's the difference between weather and climate?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-04",
+   "type": "mode",
+   "q": "Compare electric cars with gasoline cars.",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-05",
+   "type": "mode",
+   "q": "What do frogs and toads have in common?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-06",
+   "type": "mode",
+   "q": "Is a spider a kind of insect?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-07",
+   "type": "mode",
+   "q": "Why do icebergs stay afloat in seawater?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-08",
+   "type": "mode",
+   "q": "Explain why the Roman roads mattered for trade.",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-09",
+   "type": "mode",
+   "q": "What links the steam engine to the Industrial Revolution?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-10",
+   "type": "mode",
+   "q": "Oslo is to Norway as Stockholm is to what?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-11",
+   "type": "mode",
+   "q": "What kind of animal is a manatee?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-12",
+   "type": "mode",
+   "q": "How does sleep affect memory?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-13",
+   "type": "mode",
+   "q": "What are the advantages of renewable energy?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.577
+  },
+  {
+   "id": "cogt-mode-ana-14",
+   "type": "mode",
+   "q": "Why did the dinosaurs go extinct?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-15",
+   "type": "mode",
+   "q": "What is the relationship between supply and demand?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.732
+  },
+  {
+   "id": "cogt-mode-ana-16",
+   "type": "mode",
+   "q": "What is a violin an example of?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.732
+  },
+  {
+   "id": "cogt-mode-ana-17",
+   "type": "mode",
+   "q": "How is the moon related to ocean tides?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.909
+  },
+  {
+   "id": "cogt-mode-ana-18",
+   "type": "mode",
+   "q": "What drives the change between summer and winter?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "factual",
+   "ok": false,
+   "conf": 1.0
+  },
+  {
+   "id": "cogt-mode-ana-19",
+   "type": "mode",
+   "q": "Is Cairo in Africa?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-ana-20",
+   "type": "mode",
+   "q": "What makes a diamond so hard?",
+   "gold": [
+    "analytical"
+   ],
+   "pred": "analytical",
+   "ok": true,
+   "conf": 0.833
+  },
+  {
+   "id": "cogt-mode-cre-01",
+   "type": "mode",
+   "q": "Write a sonnet about a lost umbrella.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.93
+  },
+  {
+   "id": "cogt-mode-cre-02",
+   "type": "mode",
+   "q": "Imagine a library that grows new books like fruit.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-03",
+   "type": "mode",
+   "q": "Give me metaphors for courage.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.921
+  },
+  {
+   "id": "cogt-mode-cre-04",
+   "type": "mode",
+   "q": "What if trees could walk?",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-05",
+   "type": "mode",
+   "q": "Tell me a story about a clockmaker who could stop time.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.921
+  },
+  {
+   "id": "cogt-mode-cre-06",
+   "type": "mode",
+   "q": "Brainstorm names for a cafe on Mars.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-07",
+   "type": "mode",
+   "q": "Describe a thunderstorm as if it were an orchestra.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-08",
+   "type": "mode",
+   "q": "Come up with a riddle about shadows.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.948
+  },
+  {
+   "id": "cogt-mode-cre-09",
+   "type": "mode",
+   "q": "Write a limerick about a sleepy dragon.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.93
+  },
+  {
+   "id": "cogt-mode-cre-10",
+   "type": "mode",
+   "q": "Invent a sport that could be played underwater.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-11",
+   "type": "mode",
+   "q": "Make up a legend about how the rainbow got its colors.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-12",
+   "type": "mode",
+   "q": "Pretend you are a cloud and describe your day.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-13",
+   "type": "mode",
+   "q": "Write a poem connecting bees and cities.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.948
+  },
+  {
+   "id": "cogt-mode-cre-14",
+   "type": "mode",
+   "q": "Dream up a machine that turns dreams into music.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-15",
+   "type": "mode",
+   "q": "Give me a catchy slogan for a bicycle shop.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-16",
+   "type": "mode",
+   "q": "Imagine what music would sound like on Jupiter.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-17",
+   "type": "mode",
+   "q": "Write a fable about a patient tortoise and a clever fox.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.93
+  },
+  {
+   "id": "cogt-mode-cre-18",
+   "type": "mode",
+   "q": "Create a whimsical menu for a restaurant run by cats.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.87
+  },
+  {
+   "id": "cogt-mode-cre-19",
+   "type": "mode",
+   "q": "Brainstorm surprising links between cooking and chemistry.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.526
+  },
+  {
+   "id": "cogt-mode-cre-20",
+   "type": "mode",
+   "q": "Tell me a bedtime story about a shy star.",
+   "gold": [
+    "creative"
+   ],
+   "pred": "creative",
+   "ok": true,
+   "conf": 0.921
+  }
+ ]
+}

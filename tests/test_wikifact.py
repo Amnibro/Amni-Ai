@@ -27,7 +27,7 @@ def test_norm_hash_dates():
  assert WF.fdate(T(1952,3,11,11))[:2]==["March 11, 1952","11 March 1952"] and WF.fdate(T(1952,3,11,11),True)==["1952"] and WF.fdate(T(-480,0,0,9))==["480 BC"] and WF.fdate(T(1990,0,0,8))==["1990s"]
  assert WF.fnum(2117522.0)[0]=="2,117,522" and WF.fnum(1.96,"metre")[0]=="1.96 metre" and WF.lem("sang")=="sing" and WF.lem("born")=="bear"
 def test_store_build(wf):
- S=wf.store();assert S is not None and S.man["license"].startswith("CC0") and S.ix(42)>=0 and S.name(S.ix(42))=="Douglas Adams"
+ S=wf.store();assert S is not None and S.man["license"].startswith("CC0") and S.ix(42)>=0 and S.name(S.ix(42))=="Douglas Adams" and S.man["prop_facts"]["P31"]==4 and sum(S.man["prop_facts"].values())==len(S.f_p)
  assert {e for e,_ in S.ents("raj koothrappali")}=={S.ix(102)} and "tbbt" in S.names(S.ix(100)) and {e for e,_ in S.ents("thriller")}=={S.ix(200),S.ix(203)}
 def test_answers(wf):
  a=lambda q:(wf.answer(q) or (None,))[0]

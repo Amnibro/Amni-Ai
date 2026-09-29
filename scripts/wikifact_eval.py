@@ -4,7 +4,7 @@ ROOT=Path(__file__).resolve().parents[1];sys.path[:0]=[str(ROOT),str(ROOT/"scrip
 import adam_nightly as AN
 from amni.compute import eval_lock as EL
 from amni.compute import wikifact as WF
-DEV=ROOT/"data"/"concepts"/"eval"/"rknow";OUT=ROOT/"data"/"wikifact"/"v2"/"eval";CODE=[ROOT/"amni"/"compute"/"wikifact.py",Path(__file__).resolve()]
+DEV=ROOT/"data"/"concepts"/"eval"/"rknow";OUT=WF.DIR.parent/"eval";CODE=[ROOT/"amni"/"compute"/"wikifact.py",Path(__file__).resolve()]
 def score(a:str|None,forms:list,golds:list)->dict:
  gs={g for g in map(AN.NORM,golds) if g};n=AN.NORM(a or "")
  return {"strict":bool(a) and n in gs,"alias":bool(a) and any(AN.NORM(f) in gs for f in [a,*forms] if f),"hit":bool(a) and any(re.search(r"(?<!\S)"+re.escape(g)+r"(?!\S)",n) for g in gs)}

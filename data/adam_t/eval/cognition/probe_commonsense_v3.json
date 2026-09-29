@@ -1,0 +1,818 @@
+{
+ "note": "30 everyday relation pairs written for WIKIDATA-PROPS3 (none in dev/held-out), run once per store with frozen cognition code, judged by hand; reporting only, not used for tuning",
+ "license": "CC0",
+ "items": [
+  {
+   "op": "relate",
+   "a": "rum",
+   "b": "sugarcane",
+   "v2": {
+    "lines": [
+     "Rum: Rum is a liquor made by fermenting and then distilling sugarcane molasses or sugarcane juice."
+    ],
+    "refs": [
+     "Wikipedia: Rum"
+    ],
+    "ms": 128.81,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "Rum: Rum is a liquor made by fermenting and then distilling sugarcane molasses or sugarcane juice.",
+     "Tafia, subclass of: rum."
+    ],
+    "refs": [
+     "Wikipedia: Rum"
+    ],
+    "ms": 86.75,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "butter",
+   "b": "milk",
+   "v2": {
+    "lines": [
+     "butter: an edible emulsion of fat globules made by churning milk or cream; for cooking and table use.",
+     "Butter: Butter made from unpasteurized raw milk is very rare and can be dangerous."
+    ],
+    "refs": [
+     "WordNet gloss butter.n.01"
+    ],
+    "ms": 35.15,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "butter, made from: milk.",
+     "butter: an edible emulsion of fat globules made by churning milk or cream; for cooking and table use."
+    ],
+    "refs": [
+     "Wikidata Q34172 P186 Q8495"
+    ],
+    "ms": 10.17,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "tofu",
+   "b": "soybean",
+   "v2": {
+    "lines": [
+     "bean curd: cheeselike food made of curdled soybean milk.",
+     "Soybean: Tofu, soy milk, and soy sauce are among the top edible commodities made using soybeans."
+    ],
+    "refs": [
+     "WordNet gloss bean_curd.n.01"
+    ],
+    "ms": 5.85,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "tofu, made from: soybean.",
+     "tofu, made from: soy bean."
+    ],
+    "refs": [
+     "Wikidata Q177378 P186 Q11006"
+    ],
+    "ms": 4.41,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "window",
+   "b": "glass",
+   "v2": {
+    "lines": [
+     "window: a framework of wood or metal that contains a glass windowpane and is built into a wall or roof to admit light or air.",
+     "Window: Modern windows are usually filled using glass, although transparent plastic is also used."
+    ],
+    "refs": [
+     "WordNet gloss window.n.01"
+    ],
+    "ms": 43.62,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "window, made from: glass.",
+     "window: a framework of wood or metal that contains a glass windowpane and is built into a wall or roof to admit light or air."
+    ],
+    "refs": [
+     "Wikidata Q35473 P186 Q11469"
+    ],
+    "ms": 15.38,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "denim",
+   "b": "cotton",
+   "v2": {
+    "lines": [
+     "denim: a coarse durable twill-weave cotton fabric.",
+     "Denim: Traditional denim yarn is composed entirely of cotton."
+    ],
+    "refs": [
+     "WordNet gloss denim.n.02"
+    ],
+    "ms": 16.06,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "denim, made from: cotton.",
+     "denim: a coarse durable twill-weave cotton fabric."
+    ],
+    "refs": [
+     "Wikidata Q652698 P186 Q11457"
+    ],
+    "ms": 11.6,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "maggot",
+   "b": "fly",
+   "v2": {
+    "lines": [
+     "Maggot: Live maggots of certain species of flies have been used since antiquity for wound debridement.",
+     "maggot, type of: animal."
+    ],
+    "refs": [
+     "Wikipedia: Maggot"
+    ],
+    "ms": 16.35,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "Maggot: Live maggots of certain species of flies have been used since antiquity for wound debridement.",
+     "maggot, type of: animal."
+    ],
+    "refs": [
+     "Wikipedia: Maggot"
+    ],
+    "ms": 8.98,
+    "judged": "partial"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "grub",
+   "b": "beetle",
+   "v2": {
+    "lines": [
+     "grub: a soft thick wormlike larva of certain beetles and other insects.",
+     "Parisopalpus nigronotatus: Grubs of the species are typically found in rotting wood, and as adults the beetles feed on nectar and pollen, and are attracted to light."
+    ],
+    "refs": [
+     "WordNet gloss grub.n.02"
+    ],
+    "ms": 16.34,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "grub: a soft thick wormlike larva of certain beetles and other insects.",
+     "Parisopalpus nigronotatus: Grubs of the species are typically found in rotting wood, and as adults the beetles feed on nectar and pollen, and are attracted to light."
+    ],
+    "refs": [
+     "WordNet gloss grub.n.02"
+    ],
+    "ms": 6.42,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "smoking",
+   "b": "lung cancer",
+   "v2": {
+    "lines": [
+     "Lung cancer: Most lung cancer cases are caused by tobacco smoking."
+    ],
+    "refs": [
+     "Wikipedia: Lung cancer"
+    ],
+    "ms": 27.63,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "smoking, has effect: lung cancer.",
+     "lung cancer, has cause: smoking."
+    ],
+    "refs": [
+     "Wikidata Q662860 P1542 Q47912"
+    ],
+    "ms": 13.46,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "influenza",
+   "b": "fever",
+   "v2": {
+    "lines": [
+     "Influenza: Influenza-associated encephalopathy can occur directly from central nervous system infection from the presence of the virus in blood and presents as sudden onset of fever with convulsions, followed by rapid progression to coma."
+    ],
+    "refs": [
+     "Wikipedia: Influenza"
+    ],
+    "ms": 11.73,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "influenza, symptoms: fever.",
+     "Influenza: Influenza-associated encephalopathy can occur directly from central nervous system infection from the presence of the virus in blood and presents as sudden onset of fever with convulsions, followed by rapid progression to coma."
+    ],
+    "refs": [
+     "Wikidata Q2840 P780 Q38933"
+    ],
+    "ms": 6.62,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "aspirin",
+   "b": "pain",
+   "v2": {
+    "lines": [
+     "Aspirin: Aspirin is generally ineffective for those pains caused by muscle cramps, bloating, gastric distension, or acute skin irritation."
+    ],
+    "refs": [
+     "Wikipedia: Aspirin"
+    ],
+    "ms": 11.53,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "aspirin, treats: pain.",
+     "pain, treated with: aspirin."
+    ],
+    "refs": [
+     "Wikidata Q18216 P2175 Q81938"
+    ],
+    "ms": 6.19,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "hammer",
+   "b": "nail",
+   "v2": {
+    "lines": [
+     "Functional fixedness: Functional fixedness is this inability to see a hammer's use as anything other than for pounding nails; the person fails to think to use the hammer in a way other than in its conventional function.",
+     "hammer, type of: device."
+    ],
+    "refs": [
+     "Wikipedia: Functional fixedness"
+    ],
+    "ms": 12.29,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "Functional fixedness: Functional fixedness is this inability to see a hammer's use as anything other than for pounding nails; the person fails to think to use the hammer in a way other than in its conventional function.",
+     "hammer, type of: device."
+    ],
+    "refs": [
+     "Wikipedia: Functional fixedness"
+    ],
+    "ms": 4.84,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "earthquake",
+   "b": "tsunami",
+   "v2": {
+    "lines": [
+     "tsunami: a cataclysm resulting from a destructive sea wave caused by an earthquake or volcanic eruption.",
+     "Tsunami: Tsunamis are caused by earthquakes, landslides, volcanic explosions, glacier calvings, and bolides."
+    ],
+    "refs": [
+     "WordNet gloss tsunami.n.01"
+    ],
+    "ms": 9.66,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "earthquake, has effect: tsunami.",
+     "tsunami, has cause: earthquake."
+    ],
+    "refs": [
+     "Wikidata Q7944 P1542 Q8070"
+    ],
+    "ms": 7.58,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "orca",
+   "b": "seal",
+   "v2": {
+    "lines": [
+     "Orca: The sled dogs' barking is speculated to have sounded enough like seal calls to trigger the orca's hunting curiosity."
+    ],
+    "refs": [
+     "Wikipedia: Orca"
+    ],
+    "ms": 43.21,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "Orca: The sled dogs' barking is speculated to have sounded enough like seal calls to trigger the orca's hunting curiosity."
+    ],
+    "refs": [
+     "Wikipedia: Orca"
+    ],
+    "ms": 5.87,
+    "judged": "partial"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "cactus",
+   "b": "desert",
+   "v2": {
+    "lines": [
+     "Cactus: Urban development and highways have destroyed cactus habitats in parts of Mexico, New Mexico and Arizona, including the Sonoran Desert."
+    ],
+    "refs": [
+     "Wikipedia: Cactus"
+    ],
+    "ms": 8.81,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "Cactus: Urban development and highways have destroyed cactus habitats in parts of Mexico, New Mexico and Arizona, including the Sonoran Desert."
+    ],
+    "refs": [
+     "Wikipedia: Cactus"
+    ],
+    "ms": 4.67,
+    "judged": "partial"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "lemur",
+   "b": "Madagascar",
+   "v2": {
+    "lines": [
+     "Lemur: Lemurs have drawn much attention to Madagascar and its endangered species."
+    ],
+    "refs": [
+     "Wikipedia: Lemur"
+    ],
+    "ms": 10.34,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "Lemuriformes, endemic to: Madagascar.",
+     "Lemuroidea, endemic to: Madagascar."
+    ],
+    "refs": [
+     "Wikidata Q37212 P183 Q1019"
+    ],
+    "ms": 6.36,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "common",
+   "a": "leopard",
+   "b": "jaguar",
+   "v2": {
+    "lines": [
+     "leopard, type of: big cat.",
+     "jaguar, type of: big cat."
+    ],
+    "refs": [
+     "WordNet leopard.n.02 hypernym^1 big_cat.n.01",
+     "WordNet jaguar.n.01 hypernym^1 big_cat.n.01"
+    ],
+    "ms": 5.57,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "leopard, type of: big cat.",
+     "jaguar, type of: big cat."
+    ],
+    "refs": [
+     "WordNet leopard.n.02 hypernym^1 big_cat.n.01",
+     "WordNet jaguar.n.01 hypernym^1 big_cat.n.01"
+    ],
+    "ms": 4.64,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "donkey",
+   "b": "horse",
+   "v2": {
+    "lines": [
+     "Donkey: A male donkey (jack) crossed with a female horse produces a mule, while a male horse crossed with a jenny produces a hinny.",
+     "domestic ass, type of: equine."
+    ],
+    "refs": [
+     "Wikipedia: Donkey"
+    ],
+    "ms": 9.68,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "Donkey: A male donkey (jack) crossed with a female horse produces a mule, while a male horse crossed with a jenny produces a hinny.",
+     "domestic ass, type of: equine."
+    ],
+    "refs": [
+     "Wikipedia: Donkey"
+    ],
+    "ms": 6.33,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "astronomy",
+   "b": "stars",
+   "v2": {
+    "lines": [
+     "astronomy, named after: star.",
+     "star: (astronomy) a celestial body of hot gases that radiates energy derived from thermonuclear reactions in the interior."
+    ],
+    "refs": [
+     "Wikidata Q333 P138 Q523"
+    ],
+    "ms": 14.58,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "astronomy, named after: star.",
+     "star, studied by: astronomy."
+    ],
+    "refs": [
+     "Wikidata Q333 P138 Q523"
+    ],
+    "ms": 11.06,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "baker",
+   "b": "bread",
+   "v2": {
+    "lines": [
+     "baker: someone who bakes bread or cake.",
+     "Baker: Both bakers and pastry chefs make desserts and breads."
+    ],
+    "refs": [
+     "WordNet gloss baker.n.02"
+    ],
+    "ms": 11.11,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "baker: someone who bakes bread or cake.",
+     "Baker: Both bakers and pastry chefs make desserts and breads."
+    ],
+    "refs": [
+     "WordNet gloss baker.n.02"
+    ],
+    "ms": 5.2,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "hot",
+   "b": "cold",
+   "v2": {
+    "lines": [
+     "Lumumba (drink): Depending on whether the hot or cold cocoa is used, the result is a Hot Lumumba or a Cold Lumumba.",
+     "hot, linked with: winter."
+    ],
+    "refs": [
+     "Wikipedia: Lumumba (drink)"
+    ],
+    "ms": 23.73,
+    "judged": "wrong"
+   },
+   "v3": {
+    "lines": [
+     "Lumumba (drink): Depending on whether the hot or cold cocoa is used, the result is a Hot Lumumba or a Cold Lumumba.",
+     "hot, linked with: winter."
+    ],
+    "refs": [
+     "Wikipedia: Lumumba (drink)"
+    ],
+    "ms": 9.33,
+    "judged": "wrong"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "gills",
+   "b": "fish",
+   "v2": {
+    "lines": [
+     "fish: any of various mostly cold-blooded aquatic vertebrates usually having scales and breathing through gills.",
+     "Fish: Some fish, like sharks and lampreys, possess multiple gill openings."
+    ],
+    "refs": [
+     "WordNet gloss fish.n.01"
+    ],
+    "ms": 12.1,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "fish: any of various mostly cold-blooded aquatic vertebrates usually having scales and breathing through gills.",
+     "Fish: Some fish, like sharks and lampreys, possess multiple gill openings."
+    ],
+    "refs": [
+     "WordNet gloss fish.n.01"
+    ],
+    "ms": 6.35,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "flashlight",
+   "b": "battery",
+   "v2": {
+    "lines": [
+     "flashlight: a small portable battery-powered electric lamp.",
+     "Flashlight: Flashlight users may prefer a common battery type to simplify replacement."
+    ],
+    "refs": [
+     "WordNet gloss flashlight.n.01"
+    ],
+    "ms": 5.14,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "flashlight: a small portable battery-powered electric lamp.",
+     "Flashlight: Flashlight users may prefer a common battery type to simplify replacement."
+    ],
+    "refs": [
+     "WordNet gloss flashlight.n.01"
+    ],
+    "ms": 5.11,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "violin",
+   "b": "bow",
+   "v2": {
+    "lines": [
+     "violin: bowed stringed instrument that is the highest member of the violin family; this instrument has four strings and a hollow body and an unfretted fingerboard and is played with a bow.",
+     "Violin: The violin produces louder notes with greater bow speed or more weight on the string."
+    ],
+    "refs": [
+     "WordNet gloss violin.n.01"
+    ],
+    "ms": 5.93,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "violin: bowed stringed instrument that is the highest member of the violin family; this instrument has four strings and a hollow body and an unfretted fingerboard and is played with a bow.",
+     "Violin: The violin produces louder notes with greater bow speed or more weight on the string."
+    ],
+    "refs": [
+     "WordNet gloss violin.n.01"
+    ],
+    "ms": 4.99,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "dengue",
+   "b": "mosquito",
+   "v2": {
+    "lines": [
+     "dengue: an infectious disease of the tropics transmitted by mosquitoes and characterized by rash and aching head and joints.",
+     "Mosquito: Common mosquito-borne viral diseases include yellow fever, chikungunya and dengue fever, both transmitted mostly by Aedes aegypti."
+    ],
+    "refs": [
+     "WordNet gloss dengue.n.01"
+    ],
+    "ms": 7.55,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "dengue: an infectious disease of the tropics transmitted by mosquitoes and characterized by rash and aching head and joints.",
+     "Mosquito: Common mosquito-borne viral diseases include yellow fever, chikungunya and dengue fever, both transmitted mostly by Aedes aegypti."
+    ],
+    "refs": [
+     "WordNet gloss dengue.n.01"
+    ],
+    "ms": 3.27,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "coconut oil",
+   "b": "coconut",
+   "v2": {
+    "lines": [
+     "coconut oil: oil from coconuts.",
+     "coconut oil, substance of: coconut."
+    ],
+    "refs": [
+     "WordNet gloss coconut_oil.n.01"
+    ],
+    "ms": 2.15,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "coconut oil, natural product of: Cocos nucifera.",
+     "Cocos nucifera, source of: coconut oil."
+    ],
+    "refs": [
+     "Wikidata Q216235 P1582 Q13187"
+    ],
+    "ms": 1.93,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "tire",
+   "b": "rubber",
+   "v2": {
+    "lines": [
+     "Tire: Many tires used in industrial and commercial applications are non-pneumatic, and are manufactured from solid rubber and plastic compounds via molding operations.",
+     "tire, has part: vulcanized rubber."
+    ],
+    "refs": [
+     "Wikipedia: Tire"
+    ],
+    "ms": 4.71,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "Tire: Many tires used in industrial and commercial applications are non-pneumatic, and are manufactured from solid rubber and plastic compounds via molding operations.",
+     "tire, has part: vulcanized rubber."
+    ],
+    "refs": [
+     "Wikipedia: Tire"
+    ],
+    "ms": 3.77,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "yogurt",
+   "b": "bacteria",
+   "v2": {
+    "lines": [
+     "Yogurt: Many commercial yogurt products are supplemented with extra probiotic bacteria."
+    ],
+    "refs": [
+     "Wikipedia: Yogurt"
+    ],
+    "ms": 8.39,
+    "judged": "partial"
+   },
+   "v3": {
+    "lines": [
+     "Yogurt: Many commercial yogurt products are supplemented with extra probiotic bacteria."
+    ],
+    "refs": [
+     "Wikipedia: Yogurt"
+    ],
+    "ms": 3.06,
+    "judged": "partial"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "anteater",
+   "b": "ants",
+   "v2": {
+    "lines": [
+     "anteater: any of several tropical American mammals of the family Myrmecophagidae which lack teeth and feed on ants and termites.",
+     "Anteater: The name anteater refers to the species' diet, which consists mainly of ants and termites."
+    ],
+    "refs": [
+     "WordNet gloss anteater.n.02"
+    ],
+    "ms": 10.37,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "anteater: any of several tropical American mammals of the family Myrmecophagidae which lack teeth and feed on ants and termites.",
+     "Anteater: The name anteater refers to the species' diet, which consists mainly of ants and termites."
+    ],
+    "refs": [
+     "WordNet gloss anteater.n.02"
+    ],
+    "ms": 4.61,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "common",
+   "a": "wolf",
+   "b": "coyote",
+   "v2": {
+    "lines": [
+     "coyote, type of: wolf."
+    ],
+    "refs": [
+     "WordNet coyote.n.01 hypernym^1 wolf.n.01"
+    ],
+    "ms": 6.69,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "coyote, type of: wolf.",
+     "grey wolf, main food source: Poponejo."
+    ],
+    "refs": [
+     "WordNet coyote.n.01 hypernym^1 wolf.n.01"
+    ],
+    "ms": 6.21,
+    "judged": "plausible"
+   }
+  },
+  {
+   "op": "relate",
+   "a": "cotton",
+   "b": "plant",
+   "v2": {
+    "lines": [
+     "cotton: soft silky fibers from cotton plants in their raw state.",
+     "Cotton: could only imagine that cotton must be produced by plant-borne sheep."
+    ],
+    "refs": [
+     "WordNet gloss cotton.n.01"
+    ],
+    "ms": 7.06,
+    "judged": "plausible"
+   },
+   "v3": {
+    "lines": [
+     "cotton: soft silky fibers from cotton plants in their raw state.",
+     "Cotton: could only imagine that cotton must be produced by plant-borne sheep."
+    ],
+    "refs": [
+     "WordNet gloss cotton.n.01"
+    ],
+    "ms": 6.82,
+    "judged": "plausible"
+   }
+  }
+ ],
+ "summary": {
+  "v2": {
+   "plausible": 22,
+   "partial": 7,
+   "wrong": 1
+  },
+  "v3": {
+   "plausible": 25,
+   "partial": 4,
+   "wrong": 1
+  }
+ }
+}
