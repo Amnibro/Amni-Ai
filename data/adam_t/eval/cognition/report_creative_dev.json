@@ -1,0 +1,933 @@
+[
+ {
+  "seed": "time",
+  "ms": 52.0,
+  "n": 536,
+  "top": [
+   {
+    "target": "token",
+    "via": "instance",
+    "v": 0.6788,
+    "D": 2.44,
+    "cr": 0.6787,
+    "kind": "gloss2"
+   },
+   {
+    "target": "think",
+    "via": "instance",
+    "v": 0.6788,
+    "D": 2.345,
+    "cr": 0.6775,
+    "kind": "gloss2"
+   },
+   {
+    "target": "phase-out",
+    "via": "instance",
+    "v": 0.6788,
+    "D": 2.33,
+    "cr": 0.6772,
+    "kind": "gloss2"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "recrudescence",
+    "via": "period",
+    "v": 0.5081,
+    "D": 0.011,
+    "cr": 0.0062,
+    "kind": "gloss2"
+   },
+   {
+    "target": "bite",
+    "via": "instance",
+    "v": 0.6788,
+    "D": 0.002,
+    "cr": 0.0016,
+    "kind": "gloss2"
+   },
+   {
+    "target": "humiliation",
+    "via": "instance",
+    "v": 0.6788,
+    "D": 0.0,
+    "cr": 0.0001,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "time: an instance or single occasion for some event.",
+   "token: an individual instance of a type of symbol.",
+   "nonce word: a word with a special meaning used for a special occasion."
+  ]
+ },
+ {
+  "seed": "ocean",
+  "ms": 48.76,
+  "n": 530,
+  "top": [
+   {
+    "target": "da Gamma",
+    "via": "ocean",
+    "v": 0.85,
+    "D": 2.507,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "guyot",
+    "via": "ocean",
+    "v": 0.85,
+    "D": 2.343,
+    "cr": 0.8483,
+    "kind": "defby"
+   },
+   {
+    "target": "neritic zone",
+    "via": "ocean",
+    "v": 0.85,
+    "D": 2.341,
+    "cr": 0.8482,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "seven seas",
+    "via": "ocean",
+    "v": 0.85,
+    "D": 0.003,
+    "cr": 0.0027,
+    "kind": "defby"
+   },
+   {
+    "target": "stream",
+    "via": "river",
+    "v": 0.1024,
+    "D": 0.018,
+    "cr": 0.002,
+    "kind": "assoc"
+   },
+   {
+    "target": "lake",
+    "via": "river",
+    "v": 0.1195,
+    "D": 0.01,
+    "cr": 0.0012,
+    "kind": "assoc"
+   }
+  ],
+  "lines": [
+   "da Gamma: Portuguese navigator who led an expedition around the Cape of Good Hope in 1497; he sighted and named Natal on Christmas Day before crossing the Indian Ocean (1469-1524).",
+   "ocean: a large body of water constituting a principal part of the hydrosphere.",
+   "major: a university student who is studying a particular field as the principal subject."
+  ]
+ },
+ {
+  "seed": "loneliness",
+  "ms": 12.7,
+  "n": 117,
+  "top": [
+   {
+    "target": "quarantine",
+    "via": "isolation",
+    "v": 0.7225,
+    "D": 2.52,
+    "cr": 0.7225,
+    "kind": "gloss2"
+   },
+   {
+    "target": "sentimentalism",
+    "via": "sadness",
+    "v": 0.7225,
+    "D": 2.455,
+    "cr": 0.7224,
+    "kind": "gloss2"
+   },
+   {
+    "target": "subspecies",
+    "via": "isolation",
+    "v": 0.7225,
+    "D": 2.018,
+    "cr": 0.7072,
+    "kind": "gloss2"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "anger",
+    "via": "sadness",
+    "v": 0.1115,
+    "D": 0.224,
+    "cr": 0.0248,
+    "kind": "assoc"
+   },
+   {
+    "target": "solace",
+    "via": "despair",
+    "v": 0.0652,
+    "D": 0.305,
+    "cr": 0.0192,
+    "kind": "assoc"
+   },
+   {
+    "target": "anomie",
+    "via": "isolation",
+    "v": 0.7225,
+    "D": 0.003,
+    "cr": 0.0027,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "loneliness: the state of being alone in solitary isolation.",
+   "quarantine: isolation to prevent the spread of infectious disease.",
+   "forlornness: sadness resulting from being forsaken or abandoned.",
+   "sentimentalism: the excessive expression of tender feelings, nostalgia, or sadness in any form."
+  ]
+ },
+ {
+  "seed": "city",
+  "ms": 59.64,
+  "n": 451,
+  "top": [
+   {
+    "target": "blockbuster",
+    "via": "city",
+    "v": 0.85,
+    "D": 2.621,
+    "cr": 0.849,
+    "kind": "defby"
+   },
+   {
+    "target": "city university",
+    "via": "city",
+    "v": 0.85,
+    "D": 2.372,
+    "cr": 0.8488,
+    "kind": "defby"
+   },
+   {
+    "target": "roadhouse",
+    "via": "city",
+    "v": 0.85,
+    "D": 2.658,
+    "cr": 0.8484,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "Jamaica",
+    "via": "independent",
+    "v": 0.4275,
+    "D": 0.064,
+    "cr": 0.0289,
+    "kind": "gloss2"
+   },
+   {
+    "target": "Solomon Islands",
+    "via": "independent",
+    "v": 0.4275,
+    "D": 0.064,
+    "cr": 0.0289,
+    "kind": "gloss2"
+   },
+   {
+    "target": "District of Columbia",
+    "via": "district",
+    "v": 0.4627,
+    "D": 0.051,
+    "cr": 0.0254,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "blockbuster: a large bomb used to demolish extensive areas (as a city block).",
+   "city: an incorporated administrative district established by state charter.",
+   "chartered accountant: a British or Canadian accountant who is a member of a professional body that has a royal charter."
+  ]
+ },
+ {
+  "seed": "fire",
+  "ms": 57.67,
+  "n": 703,
+  "top": [
+   {
+    "target": "cyanide poisoning",
+    "via": "fire",
+    "v": 0.85,
+    "D": 2.482,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "reconnaissance by fire",
+    "via": "fire",
+    "v": 0.85,
+    "D": 2.533,
+    "cr": 0.8499,
+    "kind": "defby"
+   },
+   {
+    "target": "close supporting fire",
+    "via": "fire",
+    "v": 0.85,
+    "D": 2.532,
+    "cr": 0.8499,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "Percheron",
+    "via": "artillery",
+    "v": 0.5057,
+    "D": 10.511,
+    "cr": 0.0863,
+    "kind": "gloss2"
+   },
+   {
+    "target": "attendance",
+    "via": "event",
+    "v": 0.5154,
+    "D": 0.159,
+    "cr": 0.0835,
+    "kind": "gloss2"
+   },
+   {
+    "target": "show",
+    "via": "event",
+    "v": 0.5154,
+    "D": 0.066,
+    "cr": 0.0358,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "cyanide poisoning: poisoning due to ingesting or inhaling cyanide; common in smoke from fires and in industrial chemicals.",
+   "fire: the act of firing weapons or artillery at an enemy.",
+   "star shell: an artillery shell containing an illuminant."
+  ]
+ },
+ {
+  "seed": "music",
+  "ms": 47.32,
+  "n": 513,
+  "top": [
+   {
+    "target": "marching band",
+    "via": "music",
+    "v": 0.85,
+    "D": 2.441,
+    "cr": 0.8498,
+    "kind": "defby"
+   },
+   {
+    "target": "pop group",
+    "via": "music",
+    "v": 0.85,
+    "D": 2.452,
+    "cr": 0.8498,
+    "kind": "defby"
+   },
+   {
+    "target": "chamber orchestra",
+    "via": "music",
+    "v": 0.85,
+    "D": 2.437,
+    "cr": 0.8497,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "eye contact",
+    "via": "communication",
+    "v": 0.595,
+    "D": 0.034,
+    "cr": 0.0215,
+    "kind": "gloss2"
+   },
+   {
+    "target": "speech",
+    "via": "communication",
+    "v": 0.595,
+    "D": 0.028,
+    "cr": 0.0178,
+    "kind": "gloss2"
+   },
+   {
+    "target": "poetry",
+    "via": "communication",
+    "v": 0.595,
+    "D": 0.007,
+    "cr": 0.0046,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "marching band: a band that marches (as in a parade) and plays music at the same time.",
+   "music: an artistic form of auditory communication incorporating instrumental or vocal tones in a structured and continuous manner.",
+   "language: the mental faculty or power of vocal communication."
+  ]
+ },
+ {
+  "seed": "memory",
+  "ms": 18.7,
+  "n": 221,
+  "top": [
+   {
+    "target": "word",
+    "via": "memory",
+    "v": 0.85,
+    "D": 2.474,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "declamation",
+    "via": "memory",
+    "v": 0.85,
+    "D": 2.534,
+    "cr": 0.8499,
+    "kind": "defby"
+   },
+   {
+    "target": "alcoholic dementia",
+    "via": "memory",
+    "v": 0.85,
+    "D": 2.456,
+    "cr": 0.8499,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "life",
+    "via": "experience",
+    "v": 0.5967,
+    "D": 0.029,
+    "cr": 0.0184,
+    "kind": "gloss2"
+   },
+   {
+    "target": "inexperience",
+    "via": "experience",
+    "v": 0.5967,
+    "D": 0.028,
+    "cr": 0.0182,
+    "kind": "gloss2"
+   },
+   {
+    "target": "reliving",
+    "via": "experience",
+    "v": 0.5967,
+    "D": 0.028,
+    "cr": 0.0179,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "word: a word is a string of bits stored in computer memory.",
+   "memory: the cognitive processes whereby past experience is remembered.",
+   "paleoclimatology: the study of the climate of past ages."
+  ]
+ },
+ {
+  "seed": "heart",
+  "ms": 81.74,
+  "n": 919,
+  "top": [
+   {
+    "target": "septal defect",
+    "via": "heart",
+    "v": 0.85,
+    "D": 2.473,
+    "cr": 0.8499,
+    "kind": "defby"
+   },
+   {
+    "target": "coronary insufficiency",
+    "via": "heart",
+    "v": 0.85,
+    "D": 2.549,
+    "cr": 0.8498,
+    "kind": "defby"
+   },
+   {
+    "target": "heart failure",
+    "via": "heart",
+    "v": 0.85,
+    "D": 2.585,
+    "cr": 0.8495,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "Tennessee walker",
+    "via": "move",
+    "v": 0.338,
+    "D": 11.236,
+    "cr": 0.0461,
+    "kind": "gloss2"
+   },
+   {
+    "target": "keep",
+    "via": "mind",
+    "v": 0.0636,
+    "D": 7.018,
+    "cr": 0.0293,
+    "kind": "assoc"
+   },
+   {
+    "target": "pathetic fallacy",
+    "via": "feeling",
+    "v": 0.5047,
+    "D": 0.047,
+    "cr": 0.0253,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "septal defect: a congenital abnormality in the septum between the left and right sides of the heart.",
+   "heart: the hollow muscular organ located behind the sternum and between the lungs; its rhythmic contractions move the blood through the body.",
+   "pit of the stomach: a slight depression in the midline just below the sternum (where a blow can affect the solar plexus)."
+  ]
+ },
+ {
+  "seed": "moon",
+  "ms": 28.07,
+  "n": 351,
+  "top": [
+   {
+    "target": "limb",
+    "via": "moon",
+    "v": 0.85,
+    "D": 2.514,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "variation",
+    "via": "moon",
+    "v": 0.85,
+    "D": 2.645,
+    "cr": 0.8486,
+    "kind": "defby"
+   },
+   {
+    "target": "halo",
+    "via": "moon",
+    "v": 0.85,
+    "D": 2.665,
+    "cr": 0.8482,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "finger",
+    "via": "ring",
+    "v": 0.1102,
+    "D": 2.452,
+    "cr": 0.1102,
+    "kind": "assoc"
+   },
+   {
+    "target": "jump",
+    "via": "ring",
+    "v": 0.1111,
+    "D": 4.209,
+    "cr": 0.0944,
+    "kind": "assoc"
+   },
+   {
+    "target": "inhabitant",
+    "via": "planet",
+    "v": 0.1273,
+    "D": 0.6,
+    "cr": 0.0653,
+    "kind": "assoc"
+   }
+  ],
+  "lines": [
+   "limb: (astronomy) the circumferential edge of the apparent disc of the sun or the moon or a planet.",
+   "moon: any natural satellite of a planet.",
+   "astronomy satellite: a satellite equipped with a telescope to observe infrared radiation."
+  ]
+ },
+ {
+  "seed": "tree",
+  "ms": 98.38,
+  "n": 1051,
+  "top": [
+   {
+    "target": "wood duck",
+    "via": "tree",
+    "v": 0.85,
+    "D": 2.507,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "longleaf pine",
+    "via": "tree",
+    "v": 0.85,
+    "D": 2.5,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "balsam fir",
+    "via": "tree",
+    "v": 0.85,
+    "D": 2.5,
+    "cr": 0.85,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "siskiyou lewisia",
+    "via": "perennial",
+    "v": 0.4685,
+    "D": 0.139,
+    "cr": 0.067,
+    "kind": "gloss2"
+   },
+   {
+    "target": "cryptocoryne",
+    "via": "perennial",
+    "v": 0.4685,
+    "D": 0.076,
+    "cr": 0.0377,
+    "kind": "gloss2"
+   },
+   {
+    "target": "Yggdrasil",
+    "via": "tree",
+    "v": 0.595,
+    "D": 0.0,
+    "cr": 0.0,
+    "kind": "defby"
+   }
+  ],
+  "lines": [
+   "wood duck: showy North American duck that nests in hollow trees.",
+   "tree: a tall perennial woody plant having a main trunk and branches forming a distinct elevated crown; includes both gymnosperms and angiosperms.",
+   "highland: elevated (e.g., mountainous) land."
+  ]
+ },
+ {
+  "seed": "love",
+  "ms": 26.58,
+  "n": 399,
+  "top": [
+   {
+    "target": "pax",
+    "via": "love",
+    "v": 0.85,
+    "D": 2.912,
+    "cr": 0.8396,
+    "kind": "defby"
+   },
+   {
+    "target": "flower people",
+    "via": "love",
+    "v": 0.85,
+    "D": 2.925,
+    "cr": 0.839,
+    "kind": "defby"
+   },
+   {
+    "target": "hyperbaton",
+    "via": "love",
+    "v": 0.85,
+    "D": 3.047,
+    "cr": 0.8324,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "anxiety",
+    "via": "emotion",
+    "v": 0.6007,
+    "D": 0.005,
+    "cr": 0.003,
+    "kind": "gloss2"
+   },
+   {
+    "target": "hate",
+    "via": "emotion",
+    "v": 0.6007,
+    "D": 0.004,
+    "cr": 0.0026,
+    "kind": "gloss2"
+   },
+   {
+    "target": "joy",
+    "via": "emotion",
+    "v": 0.6007,
+    "D": 0.003,
+    "cr": 0.0017,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "pax: (Roman Catholic Church) a greeting signifying Christian love for those assisting at the Eucharist.",
+   "love: any object of warm affection or devotion.",
+   "waste of time: the devotion of time to a useless activity."
+  ]
+ },
+ {
+  "seed": "bridge",
+  "ms": 83.31,
+  "n": 973,
+  "top": [
+   {
+    "target": "conning tower",
+    "via": "bridge",
+    "v": 0.85,
+    "D": 2.507,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "flying bridge",
+    "via": "bridge",
+    "v": 0.85,
+    "D": 2.507,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "contractor",
+    "via": "bridge",
+    "v": 0.85,
+    "D": 2.488,
+    "cr": 0.85,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "boarding",
+    "via": "structure",
+    "v": 0.495,
+    "D": 0.006,
+    "cr": 0.0032,
+    "kind": "gloss2"
+   },
+   {
+    "target": "catchment",
+    "via": "structure",
+    "v": 0.495,
+    "D": 0.006,
+    "cr": 0.003,
+    "kind": "gloss2"
+   },
+   {
+    "target": "building complex",
+    "via": "structure",
+    "v": 0.495,
+    "D": 0.004,
+    "cr": 0.0022,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "conning tower: a raised bridge on a submarine; often used for entering and exiting.",
+   "bridge: a structure that allows people or vehicles to cross an obstacle such as a river or canal or railway etc..",
+   "concertina: coiled barbed wire used as an obstacle."
+  ]
+ },
+ {
+  "seed": "winter",
+  "ms": 38.81,
+  "n": 395,
+  "top": [
+   {
+    "target": "hibernation",
+    "via": "winter",
+    "v": 0.85,
+    "D": 2.381,
+    "cr": 0.849,
+    "kind": "defby"
+   },
+   {
+    "target": "halcyon",
+    "via": "winter",
+    "v": 0.85,
+    "D": 4.248,
+    "cr": 0.7178,
+    "kind": "defby"
+   },
+   {
+    "target": "exhibition game",
+    "via": "season",
+    "v": 0.6708,
+    "D": 2.553,
+    "cr": 0.6706,
+    "kind": "gloss2"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "summer",
+    "via": "equinox",
+    "v": 0.7225,
+    "D": 0.001,
+    "cr": 0.0004,
+    "kind": "gloss2"
+   },
+   {
+    "target": "dry season",
+    "via": "season",
+    "v": 0.6708,
+    "D": 0.001,
+    "cr": 0.0004,
+    "kind": "gloss2"
+   },
+   {
+    "target": "rainy season",
+    "via": "season",
+    "v": 0.6708,
+    "D": 0.0,
+    "cr": 0.0002,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "hibernation: cessation from or slowing of activity during the winter; especially slowing of metabolism in some animals.",
+   "winter: the coldest season of the year; in the northern hemisphere it extends from the winter solstice to the vernal equinox.",
+   "exhibition game: a game whose outcome is not recorded in the season's standing."
+  ]
+ },
+ {
+  "seed": "light",
+  "ms": 85.9,
+  "n": 1052,
+  "top": [
+   {
+    "target": "doze",
+    "via": "light",
+    "v": 0.85,
+    "D": 2.311,
+    "cr": 0.8474,
+    "kind": "defby"
+   },
+   {
+    "target": "mydriasis",
+    "via": "light",
+    "v": 0.85,
+    "D": 2.265,
+    "cr": 0.846,
+    "kind": "defby"
+   },
+   {
+    "target": "light reflex",
+    "via": "light",
+    "v": 0.85,
+    "D": 2.256,
+    "cr": 0.8457,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "investigating",
+    "via": "shed",
+    "v": 0.0607,
+    "D": 6.912,
+    "cr": 0.0287,
+    "kind": "assoc"
+   },
+   {
+    "target": "infrared",
+    "via": "radiation",
+    "v": 0.595,
+    "D": 0.005,
+    "cr": 0.0031,
+    "kind": "gloss2"
+   },
+   {
+    "target": "ultraviolet",
+    "via": "radiation",
+    "v": 0.595,
+    "D": 0.005,
+    "cr": 0.003,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "doze: a light fitful sleep.",
+   "light: (physics) electromagnetic radiation that can produce a visual sensation.",
+   "organ of hearing: the part of the ear that is responsible for sensations of sound."
+  ]
+ },
+ {
+  "seed": "money",
+  "ms": 52.62,
+  "n": 637,
+  "top": [
+   {
+    "target": "tax bill",
+    "via": "money",
+    "v": 0.85,
+    "D": 2.515,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "check",
+    "via": "money",
+    "v": 0.85,
+    "D": 2.499,
+    "cr": 0.85,
+    "kind": "defby"
+   },
+   {
+    "target": "electric bill",
+    "via": "money",
+    "v": 0.85,
+    "D": 2.529,
+    "cr": 0.8499,
+    "kind": "defby"
+   }
+  ],
+  "bottom": [
+   {
+    "target": "Spanish mackerel",
+    "via": "medium",
+    "v": 0.3963,
+    "D": 11.042,
+    "cr": 0.0574,
+    "kind": "gloss2"
+   },
+   {
+    "target": "partner",
+    "via": "earn",
+    "v": 0.0617,
+    "D": 4.355,
+    "cr": 0.0512,
+    "kind": "assoc"
+   },
+   {
+    "target": "currency",
+    "via": "exchange",
+    "v": 0.6162,
+    "D": 0.012,
+    "cr": 0.0079,
+    "kind": "gloss2"
+   }
+  ],
+  "lines": [
+   "tax bill: money owed for taxes.",
+   "money: the most common medium of exchange; functions as legal tender.",
+   "sentiment: tender, romantic, or nostalgic feeling or emotion."
+  ]
+ }
+]
