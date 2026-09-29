@@ -533,7 +533,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
         elif lw[i]=='the' and i+1<n:
             lab,_,p2,j=_np(T,i+1,n);lw=[x[0].lower() for x in T];used|=set(range(i,j));lab=re.sub(r"\s+(?:thing|stuff)$",'',lab)
             lab and lab not in FRW and ents.append(_resolve(lab,known));i=max(j,i+1)
-        elif i!=wi and i>0 and re.fullmatch(r"[^\W\d_][\w-]+(?:'s)?",rw[i]) and (T[i][0][:1].isupper() or rw[i].endswith("'s") or fix(rw[i]) not in _lex() and len(rw[i])>2 and rw[i] not in _lex() and not isknown(rw[i])) and not isknown(rw[i].replace("'s",'')) and rw[i] not in names:ents.append(rw[i].replace("'s",''));used.add(i);i+=1
+        elif i!=wi and i>0 and re.fullmatch(r"[^\W\d_][\w-]+(?:'s)?",rw[i]) and (T[i][0][:1].isupper() or rw[i].endswith("'s") or _cog() is not None and fix(rw[i]) not in _lex() and len(rw[i])>2 and rw[i] not in _lex() and not isknown(rw[i])) and not isknown(rw[i].replace("'s",'')) and rw[i] not in names:ents.append(rw[i].replace("'s",''));used.add(i);i+=1
         elif i!=wi and isper(lw[i]) and lw[i] not in PRONS|AUX and not isv0(lw[i]) and 0 in wpos(lw[i]) and lw[i] not in ('who','i'):ents.append(_resolve(lw[i],known));used.add(i);i+=1
         else:
             for L in (2,1):

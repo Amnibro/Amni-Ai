@@ -123,12 +123,14 @@ def test_crypto_no_plaintext_or_key_in_bus_ledger_or_logs(env,tmp_path,monkeypat
     monkeypatch.chdir(tmp_path);k=U.user_key('c13');_put(k,"My passport is in the top drawer of my desk.");kf=open(T.kpath(k),'rb').read()
     assert not caplog.records and not [f for f in os.listdir(tmp_path) if f not in ('keys',) and not f.endswith(('.torus','.salt'))]
     assert all(kf not in open(os.path.join(dp,f),'rb').read() for dp,_,fs in os.walk(tmp_path) for f in fs if not f.endswith('.key'))
+@pytest.mark.skipif(T._cog() is None,reason='concept data unavailable')
 @pytest.mark.parametrize('raw,want',[("i moved here in febuary bc the rent was cheeper","february because"),("my freind oskar skipped the reunoin","friend reunion"),("whats my sis's bday","what 's sister's birthday"),("the dentist is thurs at 8:40am","thursday 8:40 am")])
 def test_normalisation_repairs_casual_and_typos(raw,want):
     assert all(w in ' '.join(t[0].lower() for t in T.toks(raw)[1]) for w in want.split())
 @pytest.mark.parametrize('msg,q,want',[("quit sugar last spring bc my dentist nagged me","why did i give up sugar",'dentist nagged'),("The reason my uncle sold the boat was that the mooring fees doubled.","Why did my uncle sell the boat?",'mooring fees'),("my knees were killing me, so I stopped running","why did I stop running?",'knees'),("You know how my aunt Greta lives in Tromso now?","where does my aunt live",'Tromso'),("moved all my recipes into a shared notebook last night, happy?","what am i using for my recipes now",'shared notebook')])
 def test_general_phrasings(msg,q,want):
     st=_st([msg]);assert want.lower() in _ans(st,q).lower(),(_ans(st,q),T.ask(q))
+@pytest.mark.skipif(T._cog() is None,reason='concept data unavailable')
 @pytest.mark.parametrize('msg,target',[("can u delete that thing about my gym schedule, dont need it saved","gym schedule"),("actualy dont rember where my cousin works ok","cousin"),("Let's not keep the bit about my landlord on file.","landlord"),("Please wipe the details of my dentist appointment from your memory.","dentist appointment")])
 def test_extended_forget_phrasings(msg,target):
     f=T._fg2(msg) or U._fg(msg);assert f and not f[1] and target.split()[-1] in f[0].lower(),f
