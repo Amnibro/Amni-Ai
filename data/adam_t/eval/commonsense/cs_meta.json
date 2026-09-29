@@ -1,0 +1,31 @@
+{
+ "name": "ADAM-T-COMMONSENSE dev set",
+ "license": "CC0-1.0 (written from scratch for ADAM-T-COMMONSENSE, 2026-09-29; no dataset text)",
+ "n": 318,
+ "by": {
+  "explain_tune": 78,
+  "explain_test": 79,
+  "know_tune": 80,
+  "know_test": 81
+ },
+ "split_seed": 20260929,
+ "split": "per category shuffle, first half tune, second half test",
+ "overlap_check": {
+  "ngram": 6,
+  "tokens": "lowercase [a-z0-9']+",
+  "against": [
+   "chat/chat_src.jsonl",
+   "harness/harness_dev.jsonl",
+   "cognition/dev.jsonl",
+   "cognition/harness_dev.jsonl",
+   "cognition/harness_test.jsonl",
+   "cognition/test.jsonl",
+   "toroid/toroid_dev.jsonl",
+   "toroid/toroid_dev2.jsonl",
+   "toroid/toroid_dev3.jsonl"
+  ],
+  "overlap": 0
+ },
+ "fields": "explain: kw = expected mechanism terms (chat_score kw); know: gold = accepted answers",
+ "note": "test half is held out: scored once before and once after the change"
+}

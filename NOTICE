@@ -68,3 +68,20 @@ For a complete list of runtime dependencies and their licenses, see
     pip show -f <package-name>
 
 after installation for any individual package.
+
+================================================================================
+4. KNOWLEDGE DATA USED AT RUNTIME (built locally, not redistributed in git)
+================================================================================
+
+ConceptNet 5.7 (English commonsense edges, data/concepts/conceptnet)
+  This work includes data from ConceptNet 5, which was compiled by the
+  Commonsense Computing Initiative. ConceptNet 5 is freely available under
+  the Creative Commons Attribution-ShareAlike license (CC BY SA 4.0) from
+  https://conceptnet.io. The included data was created by contributors to
+  Commonsense Computing projects, contributors to Wikimedia projects, Games
+  with a Purpose, Princeton University's WordNet, DBPedia, OpenCyc, and
+  Umbra Research.
+  Source: conceptnet-assertions-5.7.0.csv.gz, filtered to English edges and
+  selected relations by scripts/build_conceptnet.py; licence, attribution,
+  source hash and filter are recorded in data/concepts/conceptnet/manifest.json.
+  Answers that use it carry a "ConceptNet 5.7 ... (CC BY-SA 4.0)" provenance line.
