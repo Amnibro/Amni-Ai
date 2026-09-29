@@ -2,6 +2,7 @@ import contextvars,hashlib,os,re,secrets,struct,threading,time,zlib
 from collections import namedtuple
 import numpy as np
 from amni.compute.reffelt4 import decode_rgba4_to_fp16,pack_rgba4_page
+from amni.serve import at_rest as AR
 WM=(1<<20)-1;SELFK=1;ISINK=3;NR=64;VER=1;PW=PH=64;MAGIC=b'AMUM';HDR=struct.Struct('<4sHHHHIII');REC=struct.Struct('<IBIdH8sBB')
 BJOB,BQLOCK,BSOL,BFRO,BVOP,BART,BNEG,BDO,BWHE,BWHO,BWHEN,BMETI,BSKMU,BSKNO,BACO,BKINL,BHAV,BPRE,BENTK,BCALL,BSTUD,BMOST,BFAV=(1<<21,1<<22,1<<20,1<<19,1<<18,1<<17,1<<16,1<<15,1<<14,1<<13,1<<12,1<<11,1<<10,1<<9,1<<8,1<<7,1<<6,1<<5,1<<4,1<<3,1<<2,1<<1,1)
 BKEEP=BDO|BWHE|BWHO|BWHEN|BMETI|BQLOCK
@@ -897,7 +898,7 @@ _Q=re.compile(r"(?i)^\W*(?:(?:so|and|ok(?:ay)?|hey|um|wait|also)\W+)*(?:who|whom
 _isq=lambda m:m.endswith('?') or bool(_Q.search(m)) and not m.endswith(('.','!'))
 _SELFQ=re.compile(r"(?i)\b(?:do|did|am|was|have|had) i\b(?!')|\bhow old am i\b|\bremind me\b|\bdo you (?:remember|know)\b|\bmy (?:name|job|age|birthday|favou?rite|car|allerg\w*|hobb\w*|home|city|town|school|college|degree|major)\b|\bi(?:'m| am) (?:in|from|based)\b|\bwhere i (?:live|work)\b")
 _TPL={3:("{e} is in {v}.",),4:("I live in {v}.","My {e} lives in {v}."),5:("I work as a {v}.","My {e} works as a {v}.","I'm a {v}.","My {e} is a {v}."),6:("My name is {v}.","My {e}'s name is {v}.","My {e} is called {v}."),7:("I love {v}.","My {e} loves {v}.","I really like {v}.","My {e} really likes {v}."),8:("I'm allergic to {v}.","My {e} is allergic to {v}."),9:("I drive {v}.","My {e} drives {v}.","I drive a {v}.","My {e} drives a {v}."),10:("My favorite color is {v}.","My {e}'s favorite color is {v}.","My {e} is {v}.","When it comes to colors, I love {v} the most.","When it comes to colors, my {e} loves {v} the most."),11:("My favorite food is {v}.","My {e}'s favorite food is {v}.","Out of everything, I love {v} the most.","Out of everything, my {e} loves {v} the most."),12:("I studied {v}.","My {e} studied {v}.","I majored in {v}.","My {e} majored in {v}."),13:("I went to {v}.","My {e} went to {v}.","I graduated from {v}.","My {e} graduated from {v}."),2:("I hate {v}.","My {e} hates {v}.","I dislike {v}.","My {e} dislikes {v}."),14:("I am {v}.","My {e} is {v}.","I'm {v} years old.","My {e} is {v} years old."),15:("My birthday is in {v}.","My {e}'s birthday is in {v}.","I was born in {v}.","My {e} was born in {v}.")}
-_CV=contextvars.ContextVar('amni_user_memory',default=(None,None));_lock=threading.RLock();_cache={};_rcache={}
+_CV=contextvars.ContextVar('amni_user_memory',default=(None,None));_lock=threading.RLock();_cache={};_rcache={};_V=AR.Vault('umem',MAGIC,VER)
 def enabled()->bool:return os.environ.get('AMNI_USER_MEMORY','1')!='0'
 def root()->str:return os.environ.get('AMNI_UMEM_DIR') or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'experiences','user_memory')
 def bind(user=None,session=None):return _CV.set((user,session))
@@ -917,6 +918,8 @@ def user_key(user=None)->str:
     u=user if user is not None else _CV.get()[0];u=u if u is not None else os.environ.get('AMNI_USER_ID','owner')
     return hashlib.sha256(_salt()+b'\0'+_enc(u)).hexdigest()[:32]
 def path(key:str)->str:return os.path.join(root(),re.sub(r'[^0-9a-f]','',key)[:32]+'.ptex')
+def kdir()->str:return os.environ.get('AMNI_UMEM_KEY_DIR') or os.path.join(root(),'keys')
+def kpath(key:str)->str:return os.path.join(kdir(),re.sub(r'[^0-9a-f]','',key)[:32]+'.ptex.key')
 def encode(fs:list)->bytes:
     pay=b''.join(REC.pack(f.ent,f.rel,f.clk,f.ts,min(f.turn,65535),f.sid,len(f.val),len(nb))+f.val+nb for f in fs for nb in [f.name.encode('utf-8')[:255]])
     u=np.frombuffer(pay+b'\0'*(len(pay)&1),'<u2');px,_=pack_rgba4_page(u.view(np.float16),page_w=PW);npg=-(-px.shape[0]//PH) if len(pay) else 0
@@ -943,15 +946,15 @@ def load(key:str)->list:
     with _lock:
         st=os.stat(p).st_mtime_ns if os.path.exists(p) else None;c=_cache.get(key)
         if c and c[0]==st:return list(c[1])
-        fs=_mig(decode(open(p,'rb').read())) if st else [];_cache[key]=(st,fs);return list(fs)
-def save(key:str,fs:list):
-    p=path(key)
+        inner,leg=_V.read(p,kpath(key),key) if st else (b'',False);fs=decode(inner) if st else [];leg and save(key,fs);fs=_mig(fs)
+        leg or _cache.__setitem__(key,(st,fs));return list(fs)
+def save(key:str,fs:list,rotate:bool=False):
     with _lock:
         os.makedirs(root(),mode=0o700,exist_ok=True);_cache.pop(key,None)
-        if not fs:os.path.exists(p) and os.remove(p);return
-        t=p+f'.{os.getpid()}.tmp';fd=os.open(t,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
-        with os.fdopen(fd,'wb') as fh:fh.write(encode(fs));fh.flush();os.fsync(fh.fileno())
-        os.replace(t,p)
+        if not fs:wipe(key);return
+        _V.write(path(key),kpath(key),key,encode(fs),rotate)
+def wipe(key:str)->bool:
+    with _lock:_cache.pop(key,None);return _V.wipe(path(key),kpath(key))
 def latest(fs:list)->list:
     d={}
     for f in fs:d[(f.ent,f.rel)]=f if (f.ent,f.rel) not in d or f.clk>d[(f.ent,f.rel)].clk else d[(f.ent,f.rel)]
@@ -965,7 +968,7 @@ def remember(key:str,facts:list,session=None,turn:int=0)->int:
         n and save(key,fs);return n
 def forget(key:str,ent=None,rel=None)->int:
     with _lock:
-        fs=load(key);keep=[f for f in fs if ent is not None and not (f.ent==ent and (not rel or f.rel==rel))];save(key,keep);return len(fs)-len(keep)
+        fs=load(key);keep=[f for f in fs if ent is not None and not (f.ent==ent and (not rel or f.rel==rel))];save(key,keep,len(keep)<len(fs));return len(fs)-len(keep)
 def render(f)->str:
     k=(f.ent,f.rel,f.val,f.name)
     if k not in _rcache:
@@ -989,7 +992,7 @@ def parse(message:str,history=None):
     p.fg=_fgt(p,message);mf=[] if p.fg else keep(p.turn(_enc(message).strip()),message);return p,mf,hf,hents,drop
 def turn(message:str,history=None,user=None,session=None,dry:bool=False)->dict:
     hist=list(history or []);win=hist[-int(os.environ.get('AMNI_RAY_HIST','24')):];m=str(message).strip();q=_isq(m);p,mf,hf,hents,drop=parse(m if m.endswith('?') or not q else m+'?',win)
-    on=enabled();key=user_key(user) if on else None;fs=load(key) if on else [];sess=session if session is not None else _CV.get()[1]
+    on=enabled();key=user_key(user) if on else None;fs=load(key) if on and not (p.fg=='all' and not dry) else [];sess=session if session is not None else _CV.get()[1]
     hwin=[x for i,x in enumerate(win) if i not in drop];out={'route':False,'pre':'','hist':hwin,'reply':None,'facts':[f[:3] for f in mf],'user_key':key}
     tg=p.fg
     if tg and not dry:

@@ -1,8 +1,7 @@
-import os,re,hmac,stat,time,zlib,struct,secrets,functools
+import os,re,time,zlib,struct,functools
 import numpy as np
 from amni.compute.reffelt4 import encode_fp16_to_rgba4,decode_rgba4_to_fp16
-from amni.serve import user_memory as U,cognition as COG
-from amni.serve.amni_chat_client import _hkdf_sha256,_aenc,_adec
+from amni.serve import user_memory as U,cognition as COG,at_rest as AR
 WS=('what','where','when','why','how');AT=('','name','color','model','job','breed','kind','favorite','age','home','work','location','origin','destination','likes','allergy','birthday');WI={w:i for i,w in enumerate(WS)};AI={a:i for i,a in enumerate(AT)}
 MAGIC=b'AMTO';VER=1;RW=48;UW=32;NK=14;TM=4913;HDR=struct.Struct('<4sHHHIII')
 ZD=b" actually sorry wait now next last every morning evening night week month year monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december because so that to be for with by from the in on at and my is was it's he she they his her their our dog cat car bike house apartment flight appointment meeting birthday name called named lives live moved works work job drives parked keep favorite color blue red green black white sister brother mom dad wife husband son daughter friend best boyfriend girlfriend partner cousin aunt uncle grandma grandpa boss coworker neighbor roommate I'm I've I "
@@ -169,83 +168,27 @@ def decode(raw:bytes)->Store:
     d=np.frombuffer(pay,np.uint8).reshape(-1,4)
     if (d>=17).any():raise ValueError('toroid page corrupt')
     u=decode_rgba4_to_fp16(d).view(np.uint16);return Store(u[:ns*RW].reshape(ns,RW).copy(),u[ns*RW:].reshape(nu,UW).copy(),head)
-_cache={};EHDR=struct.Struct('<4sHH8s16s12s');EVER=2;NF=getattr(os,'O_NOFOLLOW',0)
+_cache={};_V=AR.Vault('toroid',MAGIC,VER);EHDR,EVER,NF=AR.EHDR,AR.EVER,AR.NF;_wfile,_shred,_uk,_kid,seal,unseal,kdir=AR.wfile,AR.shred,_V.uk,_V.kid,_V.seal,_V.unseal,U.kdir
 def enabled()->bool:return os.environ.get('AMNI_UMEM_TOROID','0')=='1' and U.enabled()
 def path(key:str)->str:return os.path.join(U.root(),re.sub(r'[^0-9a-f]','',key)[:32]+'.torus')
-def kdir()->str:return os.environ.get('AMNI_UMEM_KEY_DIR') or os.path.join(U.root(),'keys')
 def kpath(key:str)->str:return os.path.join(kdir(),re.sub(r'[^0-9a-f]','',key)[:32]+'.key')
-def _strict(p:str,d:bool):
-    s=os.lstat(p)
-    if not (stat.S_ISDIR if d else stat.S_ISREG)(s.st_mode) or os.name=='posix' and (stat.S_IMODE(s.st_mode)&0o077 or s.st_uid!=os.getuid()):raise PermissionError('toroid key must be a private file (0600) in a private directory (0700)')
-def _kread(p:str)->bytes:
-    _strict(os.path.dirname(p),True);_strict(p,False);fd=os.open(p,os.O_RDONLY|NF)
-    with os.fdopen(fd,'rb') as f:k=f.read(33)
-    if len(k)!=32:raise ValueError('toroid key invalid')
-    return k
-def _dsync(d:str):
-    try:fd=os.open(d,os.O_RDONLY);os.fsync(fd);os.close(fd)
-    except OSError:pass
-def _scrub(fd:int):
-    n=os.fstat(fd).st_size;os.lseek(fd,0,0);[os.write(fd,secrets.token_bytes(min(65536,n-i))) for i in range(0,n,65536)];os.fsync(fd)
-def _wfile(p:str,b:bytes,shred:bool=False):
-    d=os.path.dirname(p);os.makedirs(d,mode=0o700,exist_ok=True);t=p+f'.{os.getpid()}.tmp';fd=os.open(t,os.O_WRONLY|os.O_CREAT|os.O_TRUNC|NF,0o600)
-    with os.fdopen(fd,'wb') as fh:fh.write(b);fh.flush();os.fsync(fh.fileno())
-    o=os.open(p,os.O_RDWR|NF) if shred and os.name=='posix' and os.path.isfile(p) and not os.path.islink(p) else None
-    try:os.replace(t,p);o is not None and _scrub(o)
-    finally:o is not None and os.close(o)
-    _dsync(d)
-def _shred(p:str)->bool:
-    if not os.path.lexists(p):return False
-    try:
-        fd=os.open(p,os.O_RDWR|NF)
-        try:_scrub(fd)
-        finally:os.close(fd)
-    except OSError:pass
-    os.remove(p);_dsync(os.path.dirname(p));return True
-def _uk(kf:bytes,key:str)->bytes:return _hkdf_sha256(kf,32,b'amni-toroid-v2',b'amni-toroid-user\x00'+key.encode())
-def _kid(uk:bytes)->bytes:return _hkdf_sha256(uk,8,b'\x00'*32,b'amni-toroid-kid')
-def seal(inner:bytes,uk:bytes)->bytes:
-    sa,nc=secrets.token_bytes(16),secrets.token_bytes(12);h=EHDR.pack(MAGIC,EVER,0,_kid(uk),sa,nc);return h+_aenc(_hkdf_sha256(uk,32,sa,b'amni-toroid-page'),nc,inner,h)
-def unseal(raw:bytes,uk:bytes)->bytes:
-    if len(raw)<EHDR.size+16:raise ValueError('toroid store corrupt')
-    mg,ver,_,kd,sa,nc=EHDR.unpack_from(raw);h=raw[:EHDR.size]
-    if mg!=MAGIC or ver!=EVER or not hmac.compare_digest(kd,_kid(uk)):raise ValueError('toroid store key mismatch')
-    try:return _adec(_hkdf_sha256(uk,32,sa,b'amni-toroid-page'),nc,raw[EHDR.size:],h)
-    except Exception:raise ValueError('toroid store authentication failed') from None
-def _kcommit(kp:str):_shred(kp);os.replace(kp+'.new',kp);_dsync(os.path.dirname(kp))
-def _ukey(key:str,kd:bytes)->bytes:
-    kp=kpath(key)
-    for p in (kp,kp+'.new'):
-        uk=_uk(_kread(p),key) if os.path.lexists(p) else None
-        if uk and hmac.compare_digest(_kid(uk),kd):(_kcommit(kp) if p!=kp else _shred(kp+'.new'));return uk
-    raise ValueError('toroid key missing or wrong')
-def _head(p:str):
-    try:
-        with open(p,'rb') as f:b=f.read(EHDR.size)
-    except FileNotFoundError:return None,False
-    return (b[8:16] if len(b)==EHDR.size and b[:4]==MAGIC and struct.unpack_from('<H',b,4)[0]==EVER else None),b[:4]==MAGIC and len(b)>=6 and struct.unpack_from('<H',b,4)[0]==VER
 def load(key:str)->Store:
     p=path(key)
     with U._lock:
         st=os.stat(p).st_mtime_ns if os.path.exists(p) else None;c=_cache.get(key)
         if c and c[0]==st:return decode(c[1])
         if not st:_cache[key]=(None,encode(Store()));return Store()
-        raw=open(p,'rb').read()
-        if raw[:4]==MAGIC and len(raw)>=6 and struct.unpack_from('<H',raw,4)[0]==VER:s=decode(raw);save(key,s);return s
-        if len(raw)<EHDR.size or raw[:4]!=MAGIC:raise ValueError('toroid store corrupt')
-        inner=unseal(raw,_ukey(key,raw[8:16]));_cache[key]=(st,inner);return decode(inner)
+        inner,leg=_V.read(p,kpath(key),key)
+        if leg:s=decode(inner);save(key,s);return s
+        _cache[key]=(st,inner);return decode(inner)
 def save(key:str,st:Store,rotate:bool=False):
-    p=path(key)
     with U._lock:
         os.makedirs(U.root(),mode=0o700,exist_ok=True);_cache.pop(key,None)
         if not len(st.s) and not len(st.u):wipe(key);return
-        kd,leg=_head(p);kp=kpath(key);fresh=rotate or leg or kd is None and not os.path.lexists(kp)
-        if fresh:kf=secrets.token_bytes(32);_wfile(kp+'.new',kf);_strict(kdir(),True);uk=_uk(kf,key)
-        else:uk=_ukey(key,kd) if kd is not None else _uk(_kread(kp),key)
-        _wfile(p,seal(encode(st),uk),shred=rotate or leg);fresh and _kcommit(kp)
+        _V.write(path(key),kpath(key),key,encode(st),rotate)
 def wipe(key:str)->bool:
     with U._lock:
-        _cache.pop(key,None);_spc.cache_clear();r=_shred(path(key));[_shred(x) for x in (kpath(key),kpath(key)+'.new')];return r
+        _cache.pop(key,None);_spc.cache_clear();return _V.wipe(path(key),kpath(key))
 _sg=lambda w:w[:-1] if len(w)>3 and w.endswith('s') and not w.endswith(('ss','us','is')) else w
 def _resolve(lab:str,known)->str:
     if not lab or lab=='me' or lab in known:return lab

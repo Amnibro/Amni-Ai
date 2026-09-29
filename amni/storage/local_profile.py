@@ -4,10 +4,10 @@ class LocalProfile:
     def __init__(self,path,fact_re):
         self.path=Path(path);self.path.parent.mkdir(parents=True,exist_ok=True);self.fact_re=fact_re;self.data=self._load()
     def _load(self):
-        try:return json.loads(self.path.read_text(encoding='utf-8')) if self.path.exists() else {}
+        try:return json.loads(__import__('amni.serve.at_rest',fromlist=['ATLAS']).ATLAS.get(str(self.path))) if self.path.exists() else {}
         except Exception:return {}
-    def save(self):
-        try:self.path.write_text(json.dumps(self.data,indent=2,ensure_ascii=False),encoding='utf-8')
+    def save(self,rotate=False):
+        try:__import__('amni.serve.at_rest',fromlist=['ATLAS']).ATLAS.put(str(self.path),json.dumps(self.data,indent=2,ensure_ascii=False).encode('utf-8'),rotate)
         except Exception as e:print(f'[LocalProfile] save failed: {e}',flush=True)
     def update_from_message(self,text):
         if not text or not self.fact_re:return False
@@ -43,5 +43,5 @@ class LocalProfile:
         for k,v in (self.data.get('favorites') or {}).items():out.append(f"user's favorite {k} is {v}")
         for lk in (self.data.get('likes') or []):out.append(f"user likes/prefers {lk}")
         return out
-    def forget(self):self.data={};self.save()
+    def forget(self):self.data={};self.save(True)
     def stats(self):return {'has_name':bool(self.data.get('name')),'has_location':bool(self.data.get('location')),'has_role':bool(self.data.get('role')),'has_workplace':bool(self.data.get('workplace_or_project')),'favorites_n':len(self.data.get('favorites') or {}),'likes_n':len(self.data.get('likes') or []),'updated_ts':self.data.get('updated_ts')}
