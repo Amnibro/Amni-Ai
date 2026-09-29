@@ -1,0 +1,684 @@
+{
+ "sft": {
+  "sources": {
+   "oasst1": {
+    "train_examples": 7622,
+    "sampled": 3000,
+    "ctx_bytes": 275.3687,
+    "reply_in_prompt": 0.0117,
+    "unk": 0.003,
+    "hedge": 0.015,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "oasst2": {
+    "train_examples": 3641,
+    "sampled": 3000,
+    "ctx_bytes": 340.7657,
+    "reply_in_prompt": 0.015,
+    "unk": 0.0003,
+    "hedge": 0.012,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0007,
+    "wd_plain_line": 0.0007
+   },
+   "dolly": {
+    "train_examples": 9886,
+    "sampled": 3000,
+    "ctx_bytes": 65.6617,
+    "reply_in_prompt": 0.1457,
+    "unk": 0.0,
+    "hedge": 0.0063,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "aya": {
+    "train_examples": 1897,
+    "sampled": 1897,
+    "ctx_bytes": 80.311,
+    "reply_in_prompt": 0.0158,
+    "unk": 0.0005,
+    "hedge": 0.0005,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0053
+   },
+   "mem": {
+    "train_examples": 15265,
+    "sampled": 3000,
+    "ctx_bytes": 493.5753,
+    "reply_in_prompt": 0.1963,
+    "unk": 0.1677,
+    "hedge": 0.125,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "emergency": {
+    "train_examples": 1401,
+    "sampled": 1401,
+    "ctx_bytes": 137.4261,
+    "reply_in_prompt": 0.0007,
+    "unk": 0.0128,
+    "hedge": 0.1121,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "squad": {
+    "train_examples": 18451,
+    "sampled": 3000,
+    "ctx_bytes": 986.69,
+    "reply_in_prompt": 0.9953,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "adversarial_qa": {
+    "train_examples": 2590,
+    "sampled": 2590,
+    "ctx_bytes": 990.7996,
+    "reply_in_prompt": 0.9977,
+    "unk": 0.0,
+    "hedge": 0.0004,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "hotpot_rc": {
+    "train_examples": 29080,
+    "sampled": 3000,
+    "ctx_bytes": 729.091,
+    "reply_in_prompt": 0.9333,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0123
+   },
+   "hotpot_cb": {
+    "train_examples": 19614,
+    "sampled": 3000,
+    "ctx_bytes": 105.6067,
+    "reply_in_prompt": 0.06,
+    "unk": 0.0,
+    "hedge": 0.2817,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "drop": {
+    "train_examples": 8052,
+    "sampled": 3000,
+    "ctx_bytes": 1273.465,
+    "reply_in_prompt": 0.65,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "tydiqa": {
+    "train_examples": 3517,
+    "sampled": 3000,
+    "ctx_bytes": 628.3097,
+    "reply_in_prompt": 0.9857,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0013
+   },
+   "mintaka": {
+    "train_examples": 18988,
+    "sampled": 3000,
+    "ctx_bytes": 55.5787,
+    "reply_in_prompt": 0.0517,
+    "unk": 0.0,
+    "hedge": 0.161,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "csqa": {
+    "train_examples": 9543,
+    "sampled": 3000,
+    "ctx_bytes": 135.1727,
+    "reply_in_prompt": 0.999,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "qasc": {
+    "train_examples": 7973,
+    "sampled": 3000,
+    "ctx_bytes": 155.0803,
+    "reply_in_prompt": 0.8737,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "gsm8k": {
+    "train_examples": 7305,
+    "sampled": 3000,
+    "ctx_bytes": 232.163,
+    "reply_in_prompt": 0.005,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0003,
+    "wd_plain_line": 0.0
+   },
+   "dolly_ctx": {
+    "train_examples": 3533,
+    "sampled": 3000,
+    "ctx_bytes": 812.9567,
+    "reply_in_prompt": 0.6583,
+    "unk": 0.0,
+    "hedge": 0.003,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0003
+   },
+   "calc": {
+    "train_examples": 5819,
+    "sampled": 3000,
+    "ctx_bytes": 167.7763,
+    "reply_in_prompt": 0.6987,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0653
+   },
+   "calc_gsm8k": {
+    "train_examples": 168,
+    "sampled": 168,
+    "ctx_bytes": 266.4821,
+    "reply_in_prompt": 0.375,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 1.0
+   },
+   "wikidata": {
+    "train_examples": 6494,
+    "sampled": 3000,
+    "ctx_bytes": 1365.6473,
+    "reply_in_prompt": 0.7953,
+    "unk": 0.0,
+    "hedge": 0.076,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0003,
+    "wd_plain_line": 0.9777
+   },
+   "kctx": {
+    "train_examples": 4373,
+    "sampled": 3000,
+    "ctx_bytes": 1388.3397,
+    "reply_in_prompt": 0.737,
+    "unk": 0.0,
+    "hedge": 0.1997,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.004
+   },
+   "umem": {
+    "train_examples": 2923,
+    "sampled": 2923,
+    "ctx_bytes": 667.9757,
+    "reply_in_prompt": 0.6439,
+    "unk": 0.2775,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   }
+  },
+  "est_totals": {
+   "n": 188135,
+   "ctx_bytes": 94439797,
+   "reply_in_prompt": 96820,
+   "unk": 3413,
+   "hedge": 12246,
+   "cool": 0,
+   "ack": 0,
+   "wd_prop_line": 7,
+   "wd_plain_line": 7291
+  },
+  "top_final_replies": [
+   [
+    "Yes.",
+    395
+   ],
+   [
+    "No.",
+    369
+   ],
+   [
+    "2.",
+    166
+   ],
+   [
+    "3.",
+    117
+   ],
+   [
+    "1.",
+    112
+   ],
+   [
+    "4.",
+    81
+   ],
+   [
+    "I think so, but I'm not certain.",
+    56
+   ],
+   [
+    "5.",
+    54
+   ],
+   [
+    "American.",
+    50
+   ],
+   [
+    "I believe so, though I'm not completely sure.",
+    45
+   ],
+   [
+    "I don't think so, but I'm not certain.",
+    40
+   ],
+   [
+    "6.",
+    40
+   ]
+  ]
+ },
+ "sft_v5": {
+  "sources": {
+   "oasst1": {
+    "train_examples": 5893,
+    "sampled": 3000,
+    "ctx_bytes": 138.1723,
+    "reply_in_prompt": 0.0113,
+    "unk": 0.0023,
+    "hedge": 0.0107,
+    "cool": 0.0,
+    "ack": 0.0003,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "oasst2": {
+    "train_examples": 2818,
+    "sampled": 2818,
+    "ctx_bytes": 142.0071,
+    "reply_in_prompt": 0.0142,
+    "unk": 0.0007,
+    "hedge": 0.011,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0011,
+    "wd_plain_line": 0.0007
+   },
+   "dolly": {
+    "train_examples": 9323,
+    "sampled": 3000,
+    "ctx_bytes": 65.6573,
+    "reply_in_prompt": 0.153,
+    "unk": 0.0,
+    "hedge": 0.002,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "aya": {
+    "train_examples": 1835,
+    "sampled": 1835,
+    "ctx_bytes": 80.4289,
+    "reply_in_prompt": 0.018,
+    "unk": 0.0,
+    "hedge": 0.0005,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0054
+   },
+   "mem": {
+    "train_examples": 15267,
+    "sampled": 3000,
+    "ctx_bytes": 526.9647,
+    "reply_in_prompt": 0.2183,
+    "unk": 0.1687,
+    "hedge": 0.1273,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "emergency": {
+    "train_examples": 1401,
+    "sampled": 1401,
+    "ctx_bytes": 137.4261,
+    "reply_in_prompt": 0.0007,
+    "unk": 0.0128,
+    "hedge": 0.1121,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "squad": {
+    "train_examples": 18451,
+    "sampled": 3000,
+    "ctx_bytes": 986.1713,
+    "reply_in_prompt": 0.997,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0003
+   },
+   "adversarial_qa": {
+    "train_examples": 2590,
+    "sampled": 2590,
+    "ctx_bytes": 990.7996,
+    "reply_in_prompt": 0.9977,
+    "unk": 0.0,
+    "hedge": 0.0004,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "hotpot_rc": {
+    "train_examples": 29080,
+    "sampled": 3000,
+    "ctx_bytes": 725.5103,
+    "reply_in_prompt": 0.931,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0147
+   },
+   "hotpot_cb": {
+    "train_examples": 19614,
+    "sampled": 3000,
+    "ctx_bytes": 105.4573,
+    "reply_in_prompt": 0.0603,
+    "unk": 0.0,
+    "hedge": 0.2837,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "drop": {
+    "train_examples": 8052,
+    "sampled": 3000,
+    "ctx_bytes": 1280.2747,
+    "reply_in_prompt": 0.644,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "tydiqa": {
+    "train_examples": 3517,
+    "sampled": 3000,
+    "ctx_bytes": 621.4647,
+    "reply_in_prompt": 0.9853,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0003,
+    "wd_plain_line": 0.0013
+   },
+   "mintaka": {
+    "train_examples": 18988,
+    "sampled": 3000,
+    "ctx_bytes": 55.7373,
+    "reply_in_prompt": 0.0473,
+    "unk": 0.0,
+    "hedge": 0.168,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "csqa": {
+    "train_examples": 9543,
+    "sampled": 3000,
+    "ctx_bytes": 136.331,
+    "reply_in_prompt": 0.999,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "qasc": {
+    "train_examples": 7973,
+    "sampled": 3000,
+    "ctx_bytes": 155.652,
+    "reply_in_prompt": 0.8683,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "gsm8k": {
+    "train_examples": 7305,
+    "sampled": 3000,
+    "ctx_bytes": 235.274,
+    "reply_in_prompt": 0.006,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "dolly_ctx": {
+    "train_examples": 3533,
+    "sampled": 3000,
+    "ctx_bytes": 809.0563,
+    "reply_in_prompt": 0.6483,
+    "unk": 0.0,
+    "hedge": 0.003,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0003
+   },
+   "calc": {
+    "train_examples": 5819,
+    "sampled": 3000,
+    "ctx_bytes": 174.1717,
+    "reply_in_prompt": 0.7113,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0633
+   },
+   "calc_gsm8k": {
+    "train_examples": 168,
+    "sampled": 168,
+    "ctx_bytes": 266.4821,
+    "reply_in_prompt": 0.375,
+    "unk": 0.0,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 1.0
+   },
+   "wikidata": {
+    "train_examples": 6494,
+    "sampled": 3000,
+    "ctx_bytes": 1374.0673,
+    "reply_in_prompt": 0.783,
+    "unk": 0.0,
+    "hedge": 0.0773,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.9797
+   },
+   "kctx": {
+    "train_examples": 4373,
+    "sampled": 3000,
+    "ctx_bytes": 1386.4793,
+    "reply_in_prompt": 0.7427,
+    "unk": 0.0,
+    "hedge": 0.2013,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0027
+   },
+   "umem": {
+    "train_examples": 2927,
+    "sampled": 2927,
+    "ctx_bytes": 673.1677,
+    "reply_in_prompt": 0.6543,
+    "unk": 0.2743,
+    "hedge": 0.0,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "emerg4": {
+    "train_examples": 2346,
+    "sampled": 2346,
+    "ctx_bytes": 143.8244,
+    "reply_in_prompt": 0.0,
+    "unk": 0.0,
+    "hedge": 0.0107,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   },
+   "talk": {
+    "train_examples": 7587,
+    "sampled": 3000,
+    "ctx_bytes": 119.875,
+    "reply_in_prompt": 0.0033,
+    "unk": 0.0,
+    "hedge": 0.0053,
+    "cool": 0.0,
+    "ack": 0.0,
+    "wd_prop_line": 0.0,
+    "wd_plain_line": 0.0
+   }
+  },
+  "est_totals": {
+   "n": 194897,
+   "ctx_bytes": 94073841,
+   "reply_in_prompt": 96952,
+   "unk": 3411,
+   "hedge": 12428,
+   "cool": 0,
+   "ack": 1,
+   "wd_prop_line": 4,
+   "wd_plain_line": 7360
+  },
+  "top_final_replies": [
+   [
+    "Yes.",
+    400
+   ],
+   [
+    "No.",
+    336
+   ],
+   [
+    "2.",
+    140
+   ],
+   [
+    "3.",
+    111
+   ],
+   [
+    "1.",
+    89
+   ],
+   [
+    "4.",
+    86
+   ],
+   [
+    "5.",
+    55
+   ],
+   [
+    "I think so, but I'm not certain.",
+    54
+   ],
+   [
+    "I don't think so, but I'm not certain.",
+    45
+   ],
+   [
+    "I believe so, though I'm not completely sure.",
+    45
+   ],
+   [
+    "6.",
+    41
+   ],
+   [
+    "American.",
+    37
+   ]
+  ]
+ }
+}

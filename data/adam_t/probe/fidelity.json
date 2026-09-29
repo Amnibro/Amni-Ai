@@ -1,0 +1,24 @@
+{
+ "n": 50,
+ "first_token_top1_agree": 1.0,
+ "top5_max_abs_dlogp_mean": 0.07146139762910661,
+ "top5_max_abs_dlogp_max": 0.17832694360690482,
+ "gen_n": 50,
+ "gen_exact_agree": 0.96,
+ "gen_first_word_agree": 1.0,
+ "disagree": [
+  {
+   "id": "passage.dist.200.c1.18",
+   "lut": " Halwistead is a rock band that formed i",
+   "burn": " Halwistead was the lead singer of Halew"
+  },
+  {
+   "id": "wikidata.cls.-.c4.17",
+   "lut": " Pedcomere was composed by the Swiss-Ame",
+   "burn": " Pedcomere was composed by the Royal Aca"
+  }
+ ],
+ "top1_disagree": [],
+ "gf17": "scratchpad/rca/sft3/eval/step4638/model.gf17",
+ "run": "scratchpad/rca/sft3"
+}
