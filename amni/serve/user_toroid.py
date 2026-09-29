@@ -101,7 +101,7 @@ def tspan(T,i,n):
     k=k+2 if k+1<n and T[k][0].lower() in ('after','before') and T[k+1][0].lower() in ('that','then','this','next') else k
     return (i,k)
 FAV={'favourite':'favorite','fave':'favorite','go-to':'favorite','fav':'favorite'}
-NPSTOP=S_("and or but because so who which that where when why how what if as than then too again named called due not say says said tell tells told mention mentions mentioned think thinks thought reckon reckons")
+NPSTOP=S_("and or but because so who which that where when why how what if as than then too again named called due not instead anyway though say says said tell tells told mention mentions mentioned think thinks thought reckon reckons")
 def _np(T,i,n,chain=True):
     j=i;lab=[];name=[];attr=None
     while j<n and T[j][0].lower() in ADJ and not (T[j][0].lower() in KMOD and j+1<n and _sg(T[j+1][0].lower()) in KINW):j+=1
@@ -478,7 +478,7 @@ def wv(t:str,prev:str='')->bool:
 _QN=re.compile(r"(?i)\b([a-z]+)'s\b(?=\s+(?:my|the|your|our|his|her|it|this|that|a|an|i|we|due|being|getting|going|coming|scheduled|happening|located|held|parked|kept|stored)\b)")
 _QWHY=re.compile(r"(?i)\b(?:what(?:'s| is| was)? the (?:point|reason|purpose|story|deal)(?! with (?:how|where|when|what))|for what reason|what for|how come|what made (?:me|us|him|her|them)|what(?:'s| is| was) behind)\b")
 _QEMB=re.compile(r"(?i)^\W*(?:what|which)\b.*?\b(?:about|with|on|of|re)\s+(how|why|where|when)\s+(?!long\b|much\b|many\b|old\b)")
-_QTAIL=re.compile(r"(?i),?\s*(?:according to (?:what )?(?:i|you) (?:told you|said|mentioned)|as i (?:said|put) it(?: in the end)?|did (?:that|it) (?:ever )?come up|did i (?:ever )?(?:say|mention)|in the end|again)\s*[?.!]*\s*$")
+_QTAIL=re.compile(r"(?i),?\s*(?:according to (?:what )?(?:i|you) (?:told you|said|mentioned)|as i (?:said|put) it(?: in the end)?|did (?:that|it) (?:ever )?come up|did i (?:ever )?(?:say|mention)|did i get (?:that|it) right|in the end|again)\s*[?.!]*\s*$")
 def ask(q:str,last:str='',known=(),names=None,lp=''):
     q=_QTAIL.sub('?',q.strip()) if len(_QTAIL.sub('',q.strip()))>8 else q;names=names or {};fp=bool(re.search(r"(?i)\b(?:did|do|had|have) (?:i|we) (?:say|said|tell|told|mention)|\bi (?:said|told|mentioned)\b",q));m=_QSAY.sub(' ',_QPRE.sub('',_QN.sub(lambda x:x[1]+' is',norm(q.strip()))));m=re.sub(r"\s+",' ',m).strip(' ?.!,');m,T=toks(m);lw=[t[0].lower() for t in T];n=len(T);rw=[m[a:b].lower() for _,a,b in T];nm=lambda i:rw[i] if rw[i] in names else rw[i][:-2] if rw[i].endswith("'s") and rw[i][:-2] in names else None
     if not n:return None
@@ -533,7 +533,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
         elif lw[i]=='the' and i+1<n:
             lab,_,p2,j=_np(T,i+1,n);lw=[x[0].lower() for x in T];used|=set(range(i,j));lab=re.sub(r"\s+(?:thing|stuff)$",'',lab)
             lab and lab not in FRW and ents.append(_resolve(lab,known));i=max(j,i+1)
-        elif i!=wi and i>0 and re.fullmatch(r"[^\W\d_][\w-]+(?:'s)?",rw[i]) and (T[i][0][:1].isupper() or rw[i].endswith("'s")) and not isknown(rw[i].replace("'s",'')) and rw[i] not in names:ents.append(rw[i].replace("'s",''));used.add(i);i+=1
+        elif i!=wi and i>0 and re.fullmatch(r"[^\W\d_][\w-]+(?:'s)?",rw[i]) and (T[i][0][:1].isupper() or rw[i].endswith("'s") or fix(rw[i]) not in _lex() and len(rw[i])>2 and rw[i] not in _lex() and not isknown(rw[i])) and not isknown(rw[i].replace("'s",'')) and rw[i] not in names:ents.append(rw[i].replace("'s",''));used.add(i);i+=1
         elif i!=wi and isper(lw[i]) and lw[i] not in PRONS|AUX and not isv0(lw[i]) and 0 in wpos(lw[i]) and lw[i] not in ('who','i'):ents.append(_resolve(lw[i],known));used.add(i);i+=1
         else:
             for L in (2,1):
@@ -578,7 +578,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.842,own=0.409,att=1.073,attc=0.584,att_bad=-1.0,pred=0.094,pmis=-1.313,rec=-0.952,sup=-2.835,slot=0.838,subj=0.658,null=1.213,tau=1.0,co=0.276,kb=0.197,k_lp=0.801,k_ent=0.19,k_att=0.407,k_slot=0.174,k_pri=-0.721,k_cor=0.876,k_mg=0.168,k_nv=1.11,k_wild=-0.006,k_sup=0.052,cu=0.132,pri=1.295,own2=0.308,csup=-2.046,wild=-0.602,cor=1.208,ci=0.25,vlen=0.289,ment=0.369,nco=-0.121,psyn=0.624,xtyp=-0.458,tonly=-0.676,prox=0.79)
+FW=dict(ent=1.011,own=0.335,att=1.092,attc=0.587,att_bad=-1.0,pred=0.082,pmis=-1.362,rec=-0.929,sup=-2.834,slot=0.766,subj=0.715,null=1.19,tau=1.0,co=0.276,kb=0.181,k_lp=0.775,k_ent=0.295,k_att=0.385,k_slot=0.172,k_pri=-0.715,k_cor=0.899,k_mg=0.146,k_nv=1.053,k_wild=-0.001,k_sup=0.052,cu=0.112,pri=1.305,own2=0.246,csup=-2.051,wild=-0.607,cor=1.206,ci=0.242,vlen=0.295,ment=0.348,nco=-0.079,psyn=0.634,xtyp=-0.457,tonly=-0.676,prox=0.792)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
