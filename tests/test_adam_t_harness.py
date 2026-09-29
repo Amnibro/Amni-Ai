@@ -6,7 +6,7 @@ from amni.serve import adam_t_client as C,adam_t_harness as H,gguf_runtime as G,
 from test_adam_t_route import fake,rules,prompts,starts,EM,_fakes
 class FC:
     def __init__(s,t=''):s.t,s.P=t,[]
-    def gen(s,q,mx,st=(),h=None,pre=(),rc=()):s.P.append((q,list(rc)));return s.t
+    def gen(s,q,mx,st=(),h=None,pre=(),rc=(),sep=' '):s.P.append((q,list(rc)));return s.t
     def budget(s,mx):return 2000
 @pytest.fixture
 def on(tmp_path,monkeypatch):
@@ -44,11 +44,23 @@ def test_memory_value_feeds_knowledge_pronoun(on,monkeypatch):
 def test_knowledge_verify_complete_and_hedge(on,monkeypatch):
     R=_fakes(monkeypatch);R.istitle=lambda x:False;W=sys.modules['amni.compute.wikifact'];W.NOUN={'author':[50],'capital':[36]};cl=FC('It was Captain Ahab.')
     monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:(["Herman Melville: Herman Melville wrote Moby Dick in 1851."],m));monkeypatch.setattr(C,'_math',lambda m:'')
-    r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0];assert s['src']=='wd' and s['ok'] and r['text']=="Moby-Dick was written by Herman Melville." and cl.P==[]
+    r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0];assert s['src']=='wd' and s['ok'] and not s['conflict'] and r['text']=="Moby-Dick was written by Herman Melville." and len(cl.P)==1
+    monkeypatch.setenv('AMNI_ADAM_T_HARNESS_AGREE','0');cl.P.clear();r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['ok'] and cl.P==[];monkeypatch.delenv('AMNI_ADAM_T_HARNESS_AGREE')
     W.ask=lambda q:{"answer":"Herman Melville","conf":0.2,"e":5,"p":50,"lf":1.0};r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['src']=='wd+psg' and r['slots'][0]['ok']
-    W.ask=lambda q:{"answer":"Nathaniel Hawthorne","conf":0.2,"e":5,"p":50,"lf":1.0};r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0]
-    assert s['src']=='psg' and not s['ok'] and s['hedge'] and 'Hawthorne' not in r['text'] and 'Ahab' not in r['text'] and r['text'].startswith("I'm not sure who wrote moby dick") and len(cl.P)==1 and cl.P[0][1][0].startswith('Herman Melville:')
+    W.ask=lambda q:{"answer":"Nathaniel Hawthorne","conf":0.2,"e":5,"p":50,"lf":1.0};cl.P.clear();r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0]
+    assert s['src']=='psg' and not s['ok'] and s['hedge'] and s['guess']=='Herman Melville' and r['text']=="I think it's Herman Melville, but I couldn't confirm it." and 'Ahab' not in r['text'] and 'moby' not in r['text'].lower() and cl.P[0][1][0].startswith('Herman Melville:')
     cl.t='Herman Melville wrote it.';r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['ok'] and r['text']=="Herman Melville wrote it."
+    W.ask=lambda q:{"answer":"Herman Melville","conf":0.9,"e":5,"p":50,"lf":1.0};monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:(["Moby-Dick: Moby-Dick was written by Nathaniel Hawthorne in 1851."],m));cl.t='Nathaniel Hawthorne wrote it.';R.candidates=lambda q:('person',[{'v':'Nathaniel Hawthorne','s':0.6}],[])
+    r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0];assert s['conflict'] and s['hedge'] and r['text']=="I think Moby-Dick was written by Herman Melville, or maybe Nathaniel Hawthorne."
+@pytest.mark.parametrize('z,e,want',[('1945','time','in the 1940s'),('7 November 1867','time','in the 1860s'),('44 BC','time','in the 1st century BC'),('1215','time','in the 13th century'),('May','time','in May'),('eight','num','fewer than ten'),('37','num','somewhere between ten and a hundred'),('8,849 metres','num','somewhere in the thousands'),('1.4 billion','num','somewhere in the billions'),('71 percent','num','somewhere between 70 and 80 percent'),('Jupiter','time','')])
+def test_coarse_guess(z,e,want):assert H._coarse(z,e)==want
+def test_hedge_wording_short_and_varied():
+    assert H._hedge('Jupiter','ent')=="I think it's Jupiter, but I couldn't confirm it." and H._hedge('in the 1940s','time')=="I think it was in the 1940s, but I couldn't confirm it." and H._hedge('Mars','ent',1)=="Probably Mars, though I couldn't verify that." and H._hedge('Mars','ent',2)=="Maybe Mars, but I'm not certain."
+    assert H._guess("I'm not sure the passage says.",'any')==('','') and H._guess('Paris','name')==('Paris','ent') and H._guess('1969','time')==('in the 1960s','time')
+def test_multi_hedges_vary_and_no_candidate_defers(on,monkeypatch):
+    monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:{**s,'rq':rq,'kind':'know','src':'psg','ok':False,'hedge':True,'span':'X','guess':'Mars' if 'planet' in rq else 'Venus','gk':'ent','text':''});R=_fakes(monkeypatch);R.istitle=lambda x:False;monkeypatch.setattr(C,'_math',lambda m:'')
+    r=H.run("Which planet is red? Which star is brightest?",[],'k2','k2',FC(),160);assert r['text']=="I think it's Mars, but I couldn't confirm it. Probably Venus, though I couldn't verify that."
+    monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:{**s,'rq':rq,'kind':'other'});assert H.run("Which planet is red?",[],'k2','k2',FC(),160) is None
 def test_route_debug_log_has_no_user_text(fake,rules,on,monkeypatch,caplog):
     caplog.set_level('DEBUG',logger='amni.serve.adam_t');r=G.chat("What's my secret dog's name?",history=[("My secret dog is called Zorro.","Cute.")],user='ann',session='s')
     recs=[x for x in caplog.records if x.name=='amni.serve.adam_t'];assert r['tier']=='tier_adam_t' and 'Zorro' in r['answer'] and prompts(fake)==[] and rules==[]
@@ -59,3 +71,29 @@ def test_emergency_first_unchanged(fake,rules,on,monkeypatch):
 def test_harness_error_falls_back_to_old_path(fake,rules,on,monkeypatch,caplog):
     caplog.set_level('DEBUG',logger='amni.serve.adam_t');monkeypatch.setattr(H,'run',lambda *a,**k:1/0);monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:([],m))
     r=G.chat("tell me about rivers?");assert r['tier']=='tier_adam_t' and r['answer'].startswith('ADAM-T heard:') and any('har_err:ZeroDivisionError' in x.getMessage() and 'route=adam_t' in x.getMessage() for x in caplog.records)
+def test_template_newline_sep_keeps_default():
+    assert C.template('q?',None,0,(),['a.','b.'])=="User: a. b. q?\nAdam:" and C.template('q?',None,0,(),['a.','b.'],'\n')=="User: a.\nb.\nq?\nAdam:"
+def test_memory_quotes_statement_when_parser_misses(on):
+    h=[("I play the cello in a community orchestra.","Cool."),("My brother plays the drums.","Loud!")];r=H.run("What instrument do I play?",h,'s1','s1',FC(),160)
+    assert r['text']=="You mentioned you play the cello in a community orchestra." and r['slots'][0]['said'] and r['n']['hsd']==1
+    r=H.run("What's my cat's name?",HIST,'s2','s2',FC(),160);assert r['text']=="You haven't told me that yet." and not r['slots'][0].get('said')
+    r=H.run("Where does my brother work?",HIST,'s3','s3',FC(),160);assert "Tucson" not in r['text'] and "haven't told me" in r['text']
+def test_job_attribute_binds_without_work_verb(on):
+    r=H.run("What does my sister do for a living?",[("My sister is a nurse at the children's hospital.","Nice.")],'s4','s4',FC(),160);assert 'nurse' in r['text'] and r['slots'][0]['ok'] and not r['slots'][0].get('said')
+def test_our_is_not_user_memory(on,monkeypatch):
+    seen=[];monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:(seen.append(rq),{**s,'rq':rq,'src':'wd','ok':True,'span':'Jupiter','text':'Jupiter.'})[1])
+    r=H.run("What is the largest planet in our solar system?",[],'s5','s5',FC(),160);assert r['text']=="Jupiter." and seen and r['slots'][0]['kind']=='know'
+def test_between_is_not_a_list(on):assert H.coord("Which ocean lies between Africa and Australia?",H.store([],'c'),FR)==["Which ocean lies between Africa and Australia?"]
+def test_advice_with_my_goes_to_model(on):
+    cl=FC('Sort by season.');r=H.run("What's a good way to organize my closet?",[],'s6','s6',cl,160);assert r is None
+def test_cognition_route_lines_checks_and_compose(on,monkeypatch):
+    G=types.SimpleNamespace(mode=lambda m:('factual' if 'capital' in m else 'creative' if 'poem' in m else 'analytical',1.0),parse=lambda m:('analogy',{}) if ' is to ' in m else ('relate',{}) if 'connected' in m or 'poem' in m else (None,{}),context=lambda m,h=None,u=None,b=0:{'mode':'analytical','op':'analogy','lines':["Paris, capital of: France.","Tokyo, capital of: Japan."],'answer':'Japan','ms':1.0} if ' is to ' in m else {'mode':'x','op':'relate','lines':["bee, type of: insect.","Pollination: Bees pollinate almond trees."],'ms':1.0})
+    monkeypatch.setitem(sys.modules,'amni.serve.cognition',G);monkeypatch.setenv('AMNI_COGNITION','1');cl=FC("Japan. Tokyo is the capital of Japan.")
+    r=H.run("Paris is to France as Tokyo is to what?",[],'g','g',cl,160);assert r['text']=="Japan. Tokyo is the capital of Japan." and r['n']['hg']==1 and r['n']['hgv']==1 and cl.P[0][1]==["Paris, capital of: France.","Tokyo, capital of: Japan."]
+    cl.t="Korea. Seoul is nice.";r=H.run("Paris is to France as Tokyo is to what?",[],'g','g',cl,160);assert r['text']=="Japan. Paris is the capital of France. Tokyo is the capital of Japan." and r['n']['hgc']==1
+    cl.t="Bees pollinate almond trees, and almond growers rent hives from beekeepers.";r=H.run("How are bees and almonds connected?",[],'g','g',cl,160);assert r['n']['hgc']==1 and r['text'].startswith("Bee is a type of insect.")
+    cl.t="Moonlit bees drift over almond blossoms, humming a silver tune.";r=H.run("Write a poem about bees and almonds.",[],'g','g',cl,160);assert r['text']==cl.t and r['n']['hgk']==1 and r['n']['hgv']==1
+    cl.t="bees bees bees bees bees bees bees bees";r=H.run("Write a poem about bees and almonds.",[],'g','g',cl,160);assert r is None
+    n=len(cl.P);H.run("What is the capital of France?",[],'g','g',cl,160);monkeypatch.setenv('AMNI_COGNITION','0');H.run("How are bees and almonds connected?",[],'g','g',cl,160);assert all('\n' not in ''.join(x[1]) for x in cl.P[n:])
+def test_cognition_template_newlines(monkeypatch):
+    seen=[];monkeypatch.setattr(C,'template',lambda *a,**k:(seen.append(a),'x')[1]);p=types.SimpleNamespace(text=lambda t,m,s:'ok',alive=lambda:True,info={'ctx':1024});cl=C.AdamT('r','b');cl.p=p;cl.gen('How?',64,C.STOPS,[],(),['a.','b.'],'\n');assert seen[0][5]=='\n'

@@ -382,7 +382,7 @@ The dev set `dev.jsonl` has 310 items and the held-out set `test.jsonl` has 145.
 
 ## 9. Next steps (not built)
 
-- **Harness wiring.** Add `cognition.context` next to `_know`, behind `AMNI_COGNITION`. Join lines with newlines. Let the mode choose decoding. Measure answer accuracy with the model as verbaliser, reusing `adam_t_eval.py`.
+- **Harness wiring.** Done in ADAM-T-HARNESS2 (`docs/adam_t/harness.md`, v2): lines are newline-joined, analytical replies are fact-checked or composed from the checked lines, and creative replies are coherence-checked. On this dev set, gold-keyword hit went from 0.096 to 0.840 through the live route. Mode-driven decoding is still open (the protocol has no sampling field).
 - **Wikidata v3 KEEP.** Add P171 parent taxon, P1034 main food source, P186 made from, P366 has use, P2283 uses, P1542 has effect, P828 has cause and P461 opposite of. These fill the commonsense gap without new code: they are just more typed edges.
 - **Word-sense disambiguation for gloss bridges.** Disambiguate gloss words with the same pair-sense chooser, which would remove the homograph bridges in creative mode.
 - **A held-out analogy set per transform type,** to tune the vote weights on something other than dev.

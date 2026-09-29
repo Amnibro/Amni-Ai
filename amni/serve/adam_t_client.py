@@ -67,8 +67,8 @@ def _fit(T:list,n:int,budget:int)->Tuple[list,int]:
     k=len(T)
     while k and budget>0 and n+len(T[k-1].encode('utf-8'))<=budget:n+=len(T[k-1].encode('utf-8'));k-=1
     return (T[k:] if budget>0 else T),n
-def template(message:str,history=None,budget:int=0,pre:Sequence[str]=(),rc:Sequence[str]=())->str:
-    R=[x for x in rc if x];cur=lambda R:f"User: {' '.join(R+[_nl(message)])}\nAdam:"
+def template(message:str,history=None,budget:int=0,pre:Sequence[str]=(),rc:Sequence[str]=(),sep:str=' ')->str:
+    R=[x for x in rc if x];cur=lambda R:f"User: {sep.join(R+[_nl(message)])}\nAdam:"
     while R and budget>0 and len(cur(R).encode('utf-8'))>budget:R.pop()
     T=[f'User: {_nl(u)}\nAdam: {_nl(a)}\n\n' for u,a in [tuple(h)[:2] for h in (history or []) if h and len(h)>=2]];P,n=_fit(list(pre),len(cur(R).encode('utf-8')),budget);H,_=_fit(T,n,budget)
     return ''.join(P)+''.join(H)+cur(R)
@@ -209,9 +209,9 @@ class AdamT:
         with s.lock:
             try:return s._budget(max_tokens)
             except BaseException:s._fail();raise
-    def gen(s,prompt:str,max_tokens:int=400,stops:Iterable[str]=STOPS,history=None,pre:Sequence[str]=(),rc:Sequence[str]=())->str:
+    def gen(s,prompt:str,max_tokens:int=400,stops:Iterable[str]=STOPS,history=None,pre:Sequence[str]=(),rc:Sequence[str]=(),sep:str=' ')->str:
         with s.lock:
-            try:b=s._budget(max_tokens);t=s.p.text(template(prompt,history,b,pre,rc),int(max_tokens),stops).strip();s.fails=0;return t
+            try:b=s._budget(max_tokens);t=s.p.text(template(prompt,history,b,pre,rc,sep),int(max_tokens),stops).strip();s.fails=0;return t
             except BaseException:s._fail();raise
     def status(s)->dict:
         p=s.p;return {'run':s.run,'alive':bool(p and p.alive()),'fails':s.fails,**({k:p.info.get(k) for k in ('model','step','fmt','ctx')} if p else {})}

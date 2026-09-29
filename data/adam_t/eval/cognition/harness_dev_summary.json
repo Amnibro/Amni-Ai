@@ -1,0 +1,1244 @@
+{
+ "off": {
+  "all": {
+   "n": 310,
+   "hit": {
+    "rate": 0.096,
+    "n": 250,
+    "se": 0.0186
+   },
+   "answered": {
+    "rate": 0.1452,
+    "n": 310,
+    "se": 0.02
+   },
+   "coherent": {
+    "rate": 0.7871,
+    "n": 310,
+    "se": 0.0233
+   },
+   "decline": {
+    "rate": 0.0129,
+    "n": 310,
+    "se": 0.0064
+   },
+   "echo": {
+    "rate": 0.2129,
+    "n": 310,
+    "se": 0.0233
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 310,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 2115.8,
+    "p90": 2405.9
+   },
+   "routes": {
+    "adam_t": 310
+   }
+  },
+  "relate": {
+   "n": 100,
+   "hit": {
+    "rate": 0.11,
+    "n": 100,
+    "se": 0.0313
+   },
+   "answered": {
+    "rate": 0.15,
+    "n": 100,
+    "se": 0.0357
+   },
+   "coherent": {
+    "rate": 0.72,
+    "n": 100,
+    "se": 0.0449
+   },
+   "decline": {
+    "rate": 0.02,
+    "n": 100,
+    "se": 0.014
+   },
+   "echo": {
+    "rate": 0.28,
+    "n": 100,
+    "se": 0.0449
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 100,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 2165.5,
+    "p90": 2447.7
+   },
+   "routes": {
+    "adam_t": 100
+   }
+  },
+  "common": {
+   "n": 50,
+   "hit": {
+    "rate": 0.14,
+    "n": 50,
+    "se": 0.0491
+   },
+   "answered": {
+    "rate": 0.2,
+    "n": 50,
+    "se": 0.0566
+   },
+   "coherent": {
+    "rate": 0.84,
+    "n": 50,
+    "se": 0.0518
+   },
+   "decline": {
+    "rate": 0.04,
+    "n": 50,
+    "se": 0.0277
+   },
+   "echo": {
+    "rate": 0.16,
+    "n": 50,
+    "se": 0.0518
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 2129.9,
+    "p90": 2380.1
+   },
+   "routes": {
+    "adam_t": 50
+   }
+  },
+  "analogy": {
+   "n": 50,
+   "hit": {
+    "rate": 0.04,
+    "n": 50,
+    "se": 0.0277
+   },
+   "answered": {
+    "rate": 0.1,
+    "n": 50,
+    "se": 0.0424
+   },
+   "coherent": {
+    "rate": 0.62,
+    "n": 50,
+    "se": 0.0686
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.38,
+    "n": 50,
+    "se": 0.0686
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 2204.8,
+    "p90": 2396.8
+   },
+   "routes": {
+    "adam_t": 50
+   }
+  },
+  "abstract": {
+   "n": 50,
+   "hit": {
+    "rate": 0.08,
+    "n": 50,
+    "se": 0.0384
+   },
+   "answered": {
+    "rate": 0.08,
+    "n": 50,
+    "se": 0.0384
+   },
+   "coherent": {
+    "rate": 0.88,
+    "n": 50,
+    "se": 0.046
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.12,
+    "n": 50,
+    "se": 0.046
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 2053.5,
+    "p90": 2308.2
+   },
+   "routes": {
+    "adam_t": 50
+   }
+  },
+  "mode": {
+   "n": 60,
+   "hit": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "answered": {
+    "rate": 0.1833,
+    "n": 60,
+    "se": 0.05
+   },
+   "coherent": {
+    "rate": 0.9167,
+    "n": 60,
+    "se": 0.0357
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 60,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.0833,
+    "n": 60,
+    "se": 0.0357
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 60,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 1879.9,
+    "p90": 2555.6
+   },
+   "routes": {
+    "adam_t": 60
+   }
+  },
+  "mode_by_gold": {
+   "factual": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.05,
+     "n": 20,
+     "se": 0.0487
+    },
+    "coherent": {
+     "rate": 0.95,
+     "n": 20,
+     "se": 0.0487
+    },
+    "decline": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "echo": {
+     "rate": 0.05,
+     "n": 20,
+     "se": 0.0487
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 1821.4,
+     "p90": 2281.1
+    },
+    "routes": {
+     "adam_t": 20
+    }
+   },
+   "analytical": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.1,
+     "n": 20,
+     "se": 0.0671
+    },
+    "coherent": {
+     "rate": 0.85,
+     "n": 20,
+     "se": 0.0798
+    },
+    "decline": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "echo": {
+     "rate": 0.15,
+     "n": 20,
+     "se": 0.0798
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 2026.3,
+     "p90": 2210.3
+    },
+    "routes": {
+     "adam_t": 20
+    }
+   },
+   "creative": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.4,
+     "n": 20,
+     "se": 0.1095
+    },
+    "coherent": {
+     "rate": 0.95,
+     "n": 20,
+     "se": 0.0487
+    },
+    "decline": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "echo": {
+     "rate": 0.05,
+     "n": 20,
+     "se": 0.0487
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 550.2,
+     "p90": 2851.5
+    },
+    "routes": {
+     "adam_t": 20
+    }
+   }
+  }
+ },
+ "v1": {
+  "all": {
+   "n": 310,
+   "hit": {
+    "rate": 0.088,
+    "n": 250,
+    "se": 0.0179
+   },
+   "answered": {
+    "rate": 0.1194,
+    "n": 310,
+    "se": 0.0184
+   },
+   "coherent": {
+    "rate": 0.529,
+    "n": 310,
+    "se": 0.0284
+   },
+   "decline": {
+    "rate": 0.5581,
+    "n": 310,
+    "se": 0.0282
+   },
+   "echo": {
+    "rate": 0.471,
+    "n": 310,
+    "se": 0.0284
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 310,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 1874.7,
+    "p90": 2646.3
+   },
+   "routes": {
+    "adam_t": 121,
+    "harness": 189
+   }
+  },
+  "relate": {
+   "n": 100,
+   "hit": {
+    "rate": 0.09,
+    "n": 100,
+    "se": 0.0286
+   },
+   "answered": {
+    "rate": 0.1,
+    "n": 100,
+    "se": 0.03
+   },
+   "coherent": {
+    "rate": 0.61,
+    "n": 100,
+    "se": 0.0488
+   },
+   "decline": {
+    "rate": 0.49,
+    "n": 100,
+    "se": 0.05
+   },
+   "echo": {
+    "rate": 0.39,
+    "n": 100,
+    "se": 0.0488
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 100,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 2102.8,
+    "p90": 4569.7
+   },
+   "routes": {
+    "adam_t": 50,
+    "harness": 50
+   }
+  },
+  "common": {
+   "n": 50,
+   "hit": {
+    "rate": 0.12,
+    "n": 50,
+    "se": 0.046
+   },
+   "answered": {
+    "rate": 0.08,
+    "n": 50,
+    "se": 0.0384
+   },
+   "coherent": {
+    "rate": 0.36,
+    "n": 50,
+    "se": 0.0679
+   },
+   "decline": {
+    "rate": 0.72,
+    "n": 50,
+    "se": 0.0635
+   },
+   "echo": {
+    "rate": 0.64,
+    "n": 50,
+    "se": 0.0679
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 1902.0,
+    "p90": 3818.7
+   },
+   "routes": {
+    "harness": 36,
+    "adam_t": 14
+   }
+  },
+  "analogy": {
+   "n": 50,
+   "hit": {
+    "rate": 0.06,
+    "n": 50,
+    "se": 0.0336
+   },
+   "answered": {
+    "rate": 0.02,
+    "n": 50,
+    "se": 0.0198
+   },
+   "coherent": {
+    "rate": 0.34,
+    "n": 50,
+    "se": 0.067
+   },
+   "decline": {
+    "rate": 0.96,
+    "n": 50,
+    "se": 0.0277
+   },
+   "echo": {
+    "rate": 0.66,
+    "n": 50,
+    "se": 0.067
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 1889.5,
+    "p90": 2209.3
+   },
+   "routes": {
+    "harness": 50
+   }
+  },
+  "abstract": {
+   "n": 50,
+   "hit": {
+    "rate": 0.08,
+    "n": 50,
+    "se": 0.0384
+   },
+   "answered": {
+    "rate": 0.08,
+    "n": 50,
+    "se": 0.0384
+   },
+   "coherent": {
+    "rate": 0.46,
+    "n": 50,
+    "se": 0.0705
+   },
+   "decline": {
+    "rate": 0.5,
+    "n": 50,
+    "se": 0.0707
+   },
+   "echo": {
+    "rate": 0.54,
+    "n": 50,
+    "se": 0.0705
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 1771.7,
+    "p90": 2041.4
+   },
+   "routes": {
+    "adam_t": 25,
+    "harness": 25
+   }
+  },
+  "mode": {
+   "n": 60,
+   "hit": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "answered": {
+    "rate": 0.3,
+    "n": 60,
+    "se": 0.0592
+   },
+   "coherent": {
+    "rate": 0.75,
+    "n": 60,
+    "se": 0.0559
+   },
+   "decline": {
+    "rate": 0.25,
+    "n": 60,
+    "se": 0.0559
+   },
+   "echo": {
+    "rate": 0.25,
+    "n": 60,
+    "se": 0.0559
+   },
+   "cog_engaged": {
+    "rate": 0.0,
+    "n": 60,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "latency_ms": {
+    "p50": 1695.0,
+    "p90": 2504.0
+   },
+   "routes": {
+    "harness": 28,
+    "adam_t": 32
+   }
+  },
+  "mode_by_gold": {
+   "factual": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.45,
+     "n": 20,
+     "se": 0.1112
+    },
+    "coherent": {
+     "rate": 0.8,
+     "n": 20,
+     "se": 0.0894
+    },
+    "decline": {
+     "rate": 0.3,
+     "n": 20,
+     "se": 0.1025
+    },
+    "echo": {
+     "rate": 0.2,
+     "n": 20,
+     "se": 0.0894
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 1064.7,
+     "p90": 2093.0
+    },
+    "routes": {
+     "harness": 19,
+     "adam_t": 1
+    }
+   },
+   "analytical": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.1,
+     "n": 20,
+     "se": 0.0671
+    },
+    "coherent": {
+     "rate": 0.6,
+     "n": 20,
+     "se": 0.1095
+    },
+    "decline": {
+     "rate": 0.35,
+     "n": 20,
+     "se": 0.1067
+    },
+    "echo": {
+     "rate": 0.4,
+     "n": 20,
+     "se": 0.1095
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 1726.8,
+     "p90": 2150.7
+    },
+    "routes": {
+     "adam_t": 13,
+     "harness": 7
+    }
+   },
+   "creative": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.35,
+     "n": 20,
+     "se": 0.1067
+    },
+    "coherent": {
+     "rate": 0.85,
+     "n": 20,
+     "se": 0.0798
+    },
+    "decline": {
+     "rate": 0.1,
+     "n": 20,
+     "se": 0.0671
+    },
+    "echo": {
+     "rate": 0.15,
+     "n": 20,
+     "se": 0.0798
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 976.0,
+     "p90": 2721.6
+    },
+    "routes": {
+     "adam_t": 18,
+     "harness": 2
+    }
+   }
+  }
+ },
+ "v2": {
+  "all": {
+   "n": 310,
+   "hit": {
+    "rate": 0.84,
+    "n": 250,
+    "se": 0.0232
+   },
+   "answered": {
+    "rate": 0.8452,
+    "n": 310,
+    "se": 0.0205
+   },
+   "coherent": {
+    "rate": 0.9774,
+    "n": 310,
+    "se": 0.0084
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 310,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.0161,
+    "n": 310,
+    "se": 0.0072
+   },
+   "cog_engaged": {
+    "rate": 0.8387,
+    "n": 310,
+    "se": 0.0209
+   },
+   "cog_model_reply": {
+    "rate": 0.1192,
+    "n": 260,
+    "se": 0.0201
+   },
+   "latency_ms": {
+    "p50": 477.2,
+    "p90": 1409.2
+   },
+   "routes": {
+    "adam_t": 28,
+    "harness": 282
+   }
+  },
+  "relate": {
+   "n": 100,
+   "hit": {
+    "rate": 0.79,
+    "n": 100,
+    "se": 0.0407
+   },
+   "answered": {
+    "rate": 0.96,
+    "n": 100,
+    "se": 0.0196
+   },
+   "coherent": {
+    "rate": 1.0,
+    "n": 100,
+    "se": 0.0
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 100,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.0,
+    "n": 100,
+    "se": 0.0
+   },
+   "cog_engaged": {
+    "rate": 0.99,
+    "n": 100,
+    "se": 0.0099
+   },
+   "cog_model_reply": {
+    "rate": 0.202,
+    "n": 99,
+    "se": 0.0404
+   },
+   "latency_ms": {
+    "p50": 620.8,
+    "p90": 982.4
+   },
+   "routes": {
+    "adam_t": 1,
+    "harness": 99
+   }
+  },
+  "common": {
+   "n": 50,
+   "hit": {
+    "rate": 0.84,
+    "n": 50,
+    "se": 0.0518
+   },
+   "answered": {
+    "rate": 0.96,
+    "n": 50,
+    "se": 0.0277
+   },
+   "coherent": {
+    "rate": 1.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_engaged": {
+    "rate": 1.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": 0.04,
+    "n": 50,
+    "se": 0.0277
+   },
+   "latency_ms": {
+    "p50": 451.6,
+    "p90": 570.6
+   },
+   "routes": {
+    "harness": 50
+   }
+  },
+  "analogy": {
+   "n": 50,
+   "hit": {
+    "rate": 0.86,
+    "n": 50,
+    "se": 0.0491
+   },
+   "answered": {
+    "rate": 0.96,
+    "n": 50,
+    "se": 0.0277
+   },
+   "coherent": {
+    "rate": 0.98,
+    "n": 50,
+    "se": 0.0198
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.02,
+    "n": 50,
+    "se": 0.0198
+   },
+   "cog_engaged": {
+    "rate": 0.96,
+    "n": 50,
+    "se": 0.0277
+   },
+   "cog_model_reply": {
+    "rate": 0.0208,
+    "n": 48,
+    "se": 0.0206
+   },
+   "latency_ms": {
+    "p50": 326.9,
+    "p90": 572.1
+   },
+   "routes": {
+    "harness": 49,
+    "adam_t": 1
+   }
+  },
+  "abstract": {
+   "n": 50,
+   "hit": {
+    "rate": 0.92,
+    "n": 50,
+    "se": 0.0384
+   },
+   "answered": {
+    "rate": 0.92,
+    "n": 50,
+    "se": 0.0384
+   },
+   "coherent": {
+    "rate": 0.96,
+    "n": 50,
+    "se": 0.0277
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_engaged": {
+    "rate": 1.0,
+    "n": 50,
+    "se": 0.0
+   },
+   "cog_model_reply": {
+    "rate": 0.04,
+    "n": 50,
+    "se": 0.0277
+   },
+   "latency_ms": {
+    "p50": 338.6,
+    "p90": 684.2
+   },
+   "routes": {
+    "harness": 50
+   }
+  },
+  "mode": {
+   "n": 60,
+   "hit": {
+    "rate": null,
+    "n": 0,
+    "se": null
+   },
+   "answered": {
+    "rate": 0.4,
+    "n": 60,
+    "se": 0.0632
+   },
+   "coherent": {
+    "rate": 0.9333,
+    "n": 60,
+    "se": 0.0322
+   },
+   "decline": {
+    "rate": 0.0,
+    "n": 60,
+    "se": 0.0
+   },
+   "echo": {
+    "rate": 0.0667,
+    "n": 60,
+    "se": 0.0322
+   },
+   "cog_engaged": {
+    "rate": 0.2167,
+    "n": 60,
+    "se": 0.0532
+   },
+   "cog_model_reply": {
+    "rate": 0.4615,
+    "n": 13,
+    "se": 0.1383
+   },
+   "latency_ms": {
+    "p50": 1214.5,
+    "p90": 2376.7
+   },
+   "routes": {
+    "harness": 34,
+    "adam_t": 26
+   }
+  },
+  "mode_by_gold": {
+   "factual": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.45,
+     "n": 20,
+     "se": 0.1112
+    },
+    "coherent": {
+     "rate": 0.95,
+     "n": 20,
+     "se": 0.0487
+    },
+    "decline": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "echo": {
+     "rate": 0.05,
+     "n": 20,
+     "se": 0.0487
+    },
+    "cog_engaged": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "cog_model_reply": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "latency_ms": {
+     "p50": 1660.0,
+     "p90": 2521.1
+    },
+    "routes": {
+     "harness": 19,
+     "adam_t": 1
+    }
+   },
+   "analytical": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.4,
+     "n": 20,
+     "se": 0.1095
+    },
+    "coherent": {
+     "rate": 0.9,
+     "n": 20,
+     "se": 0.0671
+    },
+    "decline": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "echo": {
+     "rate": 0.1,
+     "n": 20,
+     "se": 0.0671
+    },
+    "cog_engaged": {
+     "rate": 0.4,
+     "n": 20,
+     "se": 0.1095
+    },
+    "cog_model_reply": {
+     "rate": 0.125,
+     "n": 8,
+     "se": 0.1169
+    },
+    "latency_ms": {
+     "p50": 1449.2,
+     "p90": 2134.8
+    },
+    "routes": {
+     "harness": 10,
+     "adam_t": 10
+    }
+   },
+   "creative": {
+    "n": 20,
+    "hit": {
+     "rate": null,
+     "n": 0,
+     "se": null
+    },
+    "answered": {
+     "rate": 0.35,
+     "n": 20,
+     "se": 0.1067
+    },
+    "coherent": {
+     "rate": 0.95,
+     "n": 20,
+     "se": 0.0487
+    },
+    "decline": {
+     "rate": 0.0,
+     "n": 20,
+     "se": 0.0
+    },
+    "echo": {
+     "rate": 0.05,
+     "n": 20,
+     "se": 0.0487
+    },
+    "cog_engaged": {
+     "rate": 0.25,
+     "n": 20,
+     "se": 0.0968
+    },
+    "cog_model_reply": {
+     "rate": 1.0,
+     "n": 5,
+     "se": 0.0
+    },
+    "latency_ms": {
+     "p50": 598.6,
+     "p90": 2726.4
+    },
+    "routes": {
+     "adam_t": 15,
+     "harness": 5
+    }
+   }
+  }
+ }
+}
