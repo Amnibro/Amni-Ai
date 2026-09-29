@@ -1,5 +1,5 @@
 use adam_ray::rng::Pcg64;
-use adam_t::{bpe::Bpe, f1, fa::{self, Fa}, infer, load, lut, mmap, nap, thr, train, Cfg, Dat};
+use adam_t::{bpe::Bpe, f1, fa::{self, Fa}, infer, load, lut, mmap, nap, recall, sm, thr, train, Cfg, Dat};
 use burn::{backend::{ndarray::NdArrayDevice, wgpu::WgpuDevice, Autodiff, NdArray, Wgpu}, tensor::{backend::{AutodiffBackend, Backend}, module::attention, ops::AttentionModuleOptions, Distribution, Tensor}};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rayon::prelude::*;
@@ -62,8 +62,8 @@ fn mm_h32(m: usize, n: usize, k: usize, it: usize, dt: burn::tensor::DType) -> f
 }
 type Fw<'a> = Box<dyn Fn(&[Vec<u32>]) -> io::Result<Vec<Vec<f32>>> + 'a>;
 fn burn_fw<'a, B: Fa>(c: &'a Cfg, dev: B::Device) -> io::Result<Fw<'a>> {
-    let (core, mem) = load::<B>(c, &dev)?;
-    Ok(Box::new(move |xs: &[Vec<u32>]| { let t0 = Instant::now(); let x: Vec<u32> = xs.iter().flat_map(|w| w.iter().copied().chain(std::iter::repeat(32).take(c.t - w.len()))).collect(); let lg = infer(c, &core, mem.as_ref(), &x, xs.len(), &dev); nap(thr(&c.thf), t0.elapsed().as_secs_f64() * 1e3, c.unit); Ok(xs.iter().enumerate().map(|(i, w)| lg[i * c.t * c.v..(i * c.t + w.len()) * c.v].to_vec()).collect()) }))
+    let (core, mem, cp) = load::<B>(c, &dev)?;
+    Ok(Box::new(move |xs: &[Vec<u32>]| { let t0 = Instant::now(); let x: Vec<u32> = xs.iter().flat_map(|w| w.iter().copied().chain(std::iter::repeat(32).take(c.t - w.len()))).collect(); let lg = infer(c, &core, mem.as_ref(), cp.as_ref(), &x, xs.len(), &dev); nap(thr(&c.thf), t0.elapsed().as_secs_f64() * 1e3, c.unit); Ok(xs.iter().enumerate().map(|(i, w)| lg[i * c.t * c.v..(i * c.t + w.len()) * c.v].to_vec()).collect()) }))
 }
 fn fa_go<B: AutodiffBackend + Fa>(x: &Tensor<B::InnerBackend, 2>, r: &Tensor<B::InnerBackend, 2>, s: [usize; 3], fl: bool, rd: bool) -> (Vec<f32>, Vec<f32>) {
     let ([b, t, h], xa) = (s, Tensor::<B, 2>::from_inner(x.clone()).require_grad());
@@ -119,7 +119,7 @@ impl Srv<'_> {
             "hello" => (json!({"model": format!("adam-t-{}", self.name), "step": self.step, "fmt": self.fmt, "ctx": (self.t as f64 * if self.v > 256 { 3.25 } else { 1.0 }) as usize, "ctx_symbols": self.t, "vocab": self.v, "proto": 1, "gen": self.dec.json()}), false),
             "enc" => (json!({"ids": q["items"].as_array().cloned().unwrap_or_default().iter().map(|p| Ok(self.en(&d(p)?))).collect::<io::Result<Vec<_>>>()?}), false),
             "nxt" => { let xs = q["items"].as_array().cloned().unwrap_or_default().iter().enumerate().map(|(i, p)| d(p).map(|b| { let x = [self.en(if b.is_empty() { b"\n" } else { &b }), q["tail"].get(i).and_then(|a| a.as_array()).map(|a| a.iter().filter_map(|j| j.as_u64()).map(|j| (j as u32).min(self.v as u32 - 1)).collect()).unwrap_or_default()].concat(); x[x.len().saturating_sub(self.t)..].to_vec() })).collect::<io::Result<Vec<_>>>()?; let (k, v) = (q["k"].as_u64().unwrap_or(10) as usize, self.v); (json!({"out": (self.fw)(&xs)?.iter().enumerate().map(|(i, l)| { let r = &l[l.len() - v..]; let z = { let m = r.iter().fold(f32::MIN, |a, &x| a.max(x)) as f64; m + r.iter().map(|&x| (x as f64 - m).exp()).sum::<f64>().ln() }; let mut ix: Vec<usize> = (0..v).collect(); ix.sort_by(|&a, &b| r[b].total_cmp(&r[a]).then(a.cmp(&b))); json!({"n": xs[i].len(), "top": ix[..k.min(v)].iter().map(|&j| json!([j, r[j] as f64 - z])).collect::<Vec<_>>(), "lp": q["ids"].get(i).and_then(|a| a.as_array()).map(|a| a.iter().map(|j| r.get(j.as_u64().unwrap_or(0) as usize).map_or(f64::NEG_INFINITY, |&x| x as f64 - z)).collect::<Vec<_>>()).unwrap_or_default()}) }).collect::<Vec<_>>()}), false) }
-            "probe" => { let lm = self.lm.ok_or_else(|| io::Error::other("probe needs a .gf17 model"))?; let v = self.v; let iv = |x: &Value| -> Vec<u32> { x.as_array().map(|a| a.iter().filter_map(|j| j.as_u64()).map(|j| (j as u32).min(v as u32 - 1)).collect()).unwrap_or_default() }; let x = self.en(&d(&q["prompt"])?); let x = x[x.len().saturating_sub(self.t.saturating_sub(96))..].to_vec(); let (l, mut kv) = lm.fwd_kv(&x)?; let l0 = l[l.len() - v..].to_vec(); let z = |g: &[f32]| { let m = g.iter().fold(f32::MIN, |a, &x| a.max(x)) as f64; m + g.iter().map(|&x| (x as f64 - m).exp()).sum::<f64>().ln() }; let mut ix: Vec<usize> = (0..v).collect(); ix.sort_by(|&a, &b| l0[b].total_cmp(&l0[a]).then(a.cmp(&b))); let z0 = z(&l0); let gt = if q["gen"].as_bool().unwrap_or(false) { Some(B64.encode(self.gen(b"", q["max"].as_u64().unwrap_or(64) as usize, &sp(&q)?, &self.dec.with(&q)?, Some((kv.clone(), l0.clone())))?)) } else { None }; let mut g = l0.clone(); for t in iv(&q["pre"]) { g = lm.step(&mut kv, t)?; } let cs = q["cands"].as_array().cloned().unwrap_or_default().par_iter().map(|c| { let (mut s, mut h) = (kv.clone(), g.clone()); iv(c).into_iter().map(|t| { let r = json!([h[t as usize] as f64 - z(&h), h.iter().filter(|&&y| y > h[t as usize]).count()]); h = lm.step(&mut s, t)?; Ok(r) }).collect::<io::Result<Vec<_>>>() }).collect::<io::Result<Vec<_>>>()?; (json!({"n": x.len(), "text": gt, "top0": ix[..(q["k"].as_u64().unwrap_or(10) as usize).min(v)].iter().map(|&j| json!([j, l0[j] as f64 - z0])).collect::<Vec<_>>(), "lp0": iv(&q["ids"]).iter().map(|&j| l0[j as usize] as f64 - z0).collect::<Vec<_>>(), "c": cs}), false) }
+            "probe" => { let lm = self.lm.ok_or_else(|| io::Error::other("probe needs a .gf17 model"))?; let v = self.v; let iv = |x: &Value| -> Vec<u32> { x.as_array().map(|a| a.iter().filter_map(|j| j.as_u64()).map(|j| (j as u32).min(v as u32 - 1)).collect()).unwrap_or_default() }; let x = self.en(&d(&q["prompt"])?); let x = x[x.len().saturating_sub(self.t.saturating_sub(q["room"].as_u64().unwrap_or(96) as usize))..].to_vec(); let (l, mut kv) = lm.fwd_kv(&x)?; let l0 = l[l.len() - v..].to_vec(); let z = |g: &[f32]| { let m = g.iter().fold(f32::MIN, |a, &x| a.max(x)) as f64; m + g.iter().map(|&x| (x as f64 - m).exp()).sum::<f64>().ln() }; let mut ix: Vec<usize> = (0..v).collect(); ix.sort_by(|&a, &b| l0[b].total_cmp(&l0[a]).then(a.cmp(&b))); let z0 = z(&l0); let gt = if q["gen"].as_bool().unwrap_or(false) { Some(B64.encode(self.gen(b"", q["max"].as_u64().unwrap_or(64) as usize, &sp(&q)?, &self.dec.with(&q)?, Some((kv.clone(), l0.clone())))?)) } else { None }; let mut g = l0.clone(); for t in iv(&q["pre"]) { g = lm.step(&mut kv, t)?; } let cs = q["cands"].as_array().cloned().unwrap_or_default().par_iter().map(|c| { let (mut s, mut h) = (kv.clone(), g.clone()); iv(c).into_iter().map(|t| { let r = json!([h[t as usize] as f64 - z(&h), h.iter().filter(|&&y| y > h[t as usize]).count()]); h = lm.step(&mut s, t)?; Ok(r) }).collect::<io::Result<Vec<_>>>() }).collect::<io::Result<Vec<_>>>()?; (json!({"n": x.len(), "text": gt, "top0": ix[..(q["k"].as_u64().unwrap_or(10) as usize).min(v)].iter().map(|&j| json!([j, l0[j] as f64 - z0])).collect::<Vec<_>>(), "lp0": iv(&q["ids"]).iter().map(|&j| l0[j as usize] as f64 - z0).collect::<Vec<_>>(), "c": cs}), false) }
             "lp" => (json!({"lp": self.lp(&q["items"].as_array().cloned().unwrap_or_default().iter().map(|p| Ok((d(&p[0])?, d(&p[1])?))).collect::<io::Result<Vec<_>>>()?)?}), false),
             "gen" => (json!({"text": B64.encode(self.gen(&d(&q["prompt"])?, q["max"].as_u64().unwrap_or(64) as usize, &sp(&q)?, &self.dec.with(&q)?, None)?)}), false),
             "bye" => (json!({"bye": true}), true),
@@ -208,10 +208,10 @@ fn main() -> io::Result<()> {
             let step = fs::read_to_string(format!("{dir}/ckpt/state.txt"))?.trim().parse::<usize>().map_err(io::Error::other)?;
             let od = format!("{dir}/eval/step{step}");
             fs::create_dir_all(&od)?;
-            let (core, mem) = load::<NdArray>(&cc, &NdArrayDevice::Cpu)?;
+            let (core, mem, cp) = load::<NdArray>(&cc, &NdArrayDevice::Cpu)?;
             let (ho, lens) = (cc.data("hold")?, cc.bpe()?.map(|b| b.lens()).unwrap_or_else(|| vec![1; 256]));
             let mut lg = fs::OpenOptions::new().create(true).append(true).open(format!("{od}/export.jsonl"))?;
-            lut::finish(&cc, &core, mem.as_ref(), &ho, &lens, &NdArrayDevice::Cpu, &mut lg, &format!("{od}/model.gf17"))?;
+            lut::finish(&cc, &core, mem.as_ref(), cp.as_ref(), &ho, &lens, &NdArrayDevice::Cpu, &mut lg, &format!("{od}/model.gf17"))?;
             fs::write(format!("{od}/meta.json"), json!({"name": std::path::Path::new(&dir).file_name().map(|s| s.to_string_lossy().to_string()), "step": step, "run": dir, "fmt": if cc.sft() { "chat" } else { "plain" }}).to_string())?;
         }
         "tokenize" => {
@@ -266,6 +266,14 @@ fn main() -> io::Result<()> {
                 println!("{{\"mode\": \"{md}\", \"b\": {b}, \"t\": {t}, \"h\": {h}, \"fwd_bwd_ms\": {:.2}, \"tokens_per_s\": {:.0}, \"vram_delta_gb\": {:.3}, \"slept_ms\": {sl:.0}}}", ms / it as f64, (b * t) as f64 * 1e3 * it as f64 / ms, (v1 - v0) / 1e9);
             }
         }
+        "recall" => {
+            let (o, n, g) = (a.get(2).ok_or_else(|| io::Error::other("adam-t recall <out.txt> [episodes]  (BPE=<bpe4096.json> for token stats)"))?, a.get(3).and_then(|s| s.parse().ok()).unwrap_or(2000usize), recall::Gen::new(&Cfg { rmix: 1.0 - f64::EPSILON, ..c.clone() })?);
+            let es: Vec<(String, Vec<recall::Q>)> = (0..n).map(|i| g.ep(&mut recall::R(sm(0xDEC0 ^ i as u64)))).collect();
+            fs::write(o, es.iter().map(|e| e.0.clone() + "\n\n").collect::<String>())?;
+            let (mut k, mut nf, mut ps, mut mt) = ([0usize; 5], [0usize; 16], [0usize; 8], [0usize; 3]);
+            es.iter().flat_map(|e| e.1.iter()).for_each(|q| { k[q.kind as usize] += 1; (q.kind < 3).then(|| { nf[q.n.min(15)] += 1; ps[q.pos * 8 / q.n.max(1)] += 1; mt[0] += 1; mt[1] += (g.enc(&format!(" {}", q.key)).len() >= 2) as usize; mt[2] += (g.enc(&format!(" {}", q.val)).len() >= 2) as usize; }); });
+            println!("{}", json!({"out": o, "episodes": n, "bytes": fs::metadata(o)?.len(), "tokens": es.iter().map(|e| g.enc(&e.0).len()).sum::<usize>(), "queries_by_kind": {"bind": k[0], "kv": k[1], "wikiline": k[2], "repeat_words": k[3], "repeat_tokens": k[4]}, "facts_per_lookup_query": nf, "answer_position_octile": ps, "lookup_queries": mt[0], "multi_token_keys": mt[1], "multi_token_values": mt[2]}));
+        }
         "bpe-enc" => { let mut b = Vec::new(); io::stdin().read_to_end(&mut b)?; println!("{}", Bpe::open(&a[2])?.enc(&b).iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ")); }
         m => { (c.sft() == (m == "sft")).then_some(()).ok_or_else(|| io::Error::other("adam-t sft needs BASE=<base run dir>, and adam-t train must run without BASE"))?; run(&c, 0)?; }
     }
@@ -287,7 +295,7 @@ mod tests {
         let c = Cfg { d: 64, l: 1, h: 1, t: 64, ff: 128, ns: vec![2, 3], rb: 6, tern: true, mem: false, v: 256, bpe: String::new(), base: String::new(), out: s.clone(), thf: format!("{s}/none"), ..Cfg::env() };
         let core = { let _g = SEED.lock().unwrap(); <NdArray as Backend>::seed(&NdArrayDevice::Cpu, 7); Core::<NdArray>::new(&c, &NdArrayDevice::Cpu) };
         core.clone().save_file(format!("{s}/ckpt/core"), &BinFileRecorder::<FullPrecisionSettings>::new()).unwrap();
-        lut::save(&format!("{s}/m.gf17"), &c, &core, None::<&Mem<NdArray>>, 128).unwrap();
+        lut::save(&format!("{s}/m.gf17"), &c, &core, None::<&Mem<NdArray>>, None, 128).unwrap();
         let lm = lut::Lm::open(&format!("{s}/m.gf17"), 64 << 20).unwrap();
         (c, lm)
     }
