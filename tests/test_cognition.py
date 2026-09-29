@@ -6,6 +6,7 @@ HAVE=(C.CD/'wordnet_graph.npz').exists() and (C.CD/'sphere.npz').exists()
 HAVEWD=HAVE and C.WF.store() is not None
 need=pytest.mark.skipif(not HAVE,reason='concept data missing')
 needwd=pytest.mark.skipif(not HAVEWD,reason='wikidata store missing')
+needv3=pytest.mark.skipif(not HAVEWD or 'P171' not in C.S().man.get('prop_facts',{}),reason='wikidata v3 store missing')
 @pytest.fixture(scope='module')
 def warm():
     C.warm();return True
@@ -59,6 +60,11 @@ def test_analogy(warm,a,b,c,want):
 @needwd
 def test_deduce_chains(warm):
     assert C.deduce('whale','mammal')['holds'] and C.deduce('Paris','Europe','in')['holds']
+@needv3
+def test_v3_commonsense_edges(warm):
+    o=C.relate('thunder','lightning');assert any(r in ' '.join(o['lines']) for r in ('has cause','has effect')) and all(e['ref'].startswith(('Wikidata','WordNet','Wikipedia')) for p in o['paths'] for e in p['e'])
+    o=C.deduce('axolotl','amphibian');assert o['holds'] and 'parent taxon' in ' '.join(o['lines'])
+    assert C.relate('cheese','milk')['ms']<200 and any('made from' in x for x in C.relate('cheese','milk')['lines'])
 @need
 def test_connect_scores_validity_times_band(warm):
     o=C.connect('winter',full=True);A=o['all'];assert o['lines'] and len(A)>10

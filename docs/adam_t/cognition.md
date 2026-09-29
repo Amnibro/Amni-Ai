@@ -45,7 +45,7 @@ A node is a coordinate, not a stored object. Each has a kind digit and an index 
 | kind | index | store (reused, unchanged) | size |
 |---|---|---|---|
 | `n` WordNet synset | row in `data/concepts/wordnet_graph.npz` | CSR over 348k typed edges; 117,659 synsets; lemma index | 3.6 MB |
-| `w` Wikidata item | entity row in `data/wikifact/v2/store` | 11.8M entities, 53.4M facts (GF(17) pages), reverse index `r_v/r_f`, alias hash `a_h` | 4.3 GB, memory-mapped and paged lazily |
+| `w` Wikidata item | entity row in `data/wikifact/v3/store` (v2 until 2026-09-29, §10) | 11.9M entities, 55.1M facts (GF(17) pages), reverse index `r_v/r_f`, alias hash `a_h` | 4.4 GB, memory-mapped and paged lazily |
 | `u` user entity | row in the user's `.torus` (`amni/serve/user_toroid.py`) | 5W slots: entity, attribute, value | per user |
 | `t` text term | term id in the KS passage index `data/ks/index_rknow/wiki_v2` | 41.6M Wikipedia passages, postings, alias table | memory-mapped |
 | (corpus word) | vocabulary id in `data/concepts/cooc_graph.npz` | 120k words, top-24 PMI neighbours | 12 MB |
@@ -60,7 +60,7 @@ A node is a coordinate, not a stored object. Each has a kind digit and an index 
 
 | source | relations used | confidence `c` | allowed in factual mode |
 |---|---|---|---|
-| Wikidata (`wd`) | the entity-valued properties of the v2 KEEP list: capital, author, notable work, instance/subclass of, part of, flows into, … | 0.95 | yes |
+| Wikidata (`wd`) | the entity-valued properties of the KEEP list (v3: 189 properties): capital, author, notable work, instance/subclass of, part of, flows into, parent taxon, made from, has use, has cause/effect, … | 0.95 | yes |
 | WordNet (`wn`) | type of, part of / has part, member of, made of, substance of, similar to, antonym, attribute, entails, causes, related form | 0.95 | yes |
 | WordNet gloss (`gl`) | "X is defined as …, mentioning Y" | 0.85 | yes |
 | user toroid (`us`) | your X, attribute: value; your X, type of: X | 0.90 | yes |
@@ -378,11 +378,104 @@ The dev set `dev.jsonl` has 310 items and the held-out set `test.jsonl` has 145.
    - hammer:tool::pistol gives "instrument";
    - puppy:dog::kitten gives "young mammal", because WordNet files kitten under young mammal and not under cat. It is a known failure and is not in the tests.
 4. **Creative bridges.** These have no word-sense disambiguation (§6).
-5. **Graph coverage.** Commonsense relations are thin in the kept Wikidata properties. `parent taxon`, `uses`, `main food source` and `made from` are not in the v2 KEEP list, so "pandas eat bamboo" comes only from glosses and Wikipedia.
+5. **Graph coverage.** Commonsense relations were thin in the v2 KEEP list (`parent taxon`, `uses`, `main food source`, `made from` were missing). Fixed by the v3 store (§10).
 
 ## 9. Next steps (not built)
 
 - **Harness wiring.** Done in ADAM-T-HARNESS2 (`docs/adam_t/harness.md`, v2): lines are newline-joined, analytical replies are fact-checked or composed from the checked lines, and creative replies are coherence-checked. On this dev set, gold-keyword hit went from 0.096 to 0.840 through the live route. Mode-driven decoding is still open (the protocol has no sampling field).
-- **Wikidata v3 KEEP.** Add P171 parent taxon, P1034 main food source, P186 made from, P366 has use, P2283 uses, P1542 has effect, P828 has cause and P461 opposite of. These fill the commonsense gap without new code: they are just more typed edges.
+- **Wikidata v3 KEEP.** Done in WIKIDATA-PROPS3 (§10).
 - **Word-sense disambiguation for gloss bridges.** Disambiguate gloss words with the same pair-sense chooser, which would remove the homograph bridges in creative mode.
 - **A held-out analogy set per transform type,** to tune the vote weights on something other than dev.
+
+## 10. Wikidata v3: commonsense relations (WIKIDATA-PROPS3, 2026-09-29)
+
+### 10.1 Build
+
+- **Same dump, same builder.** `crates/adam-wikifact` (`wf_extract` → `wf_pack` → `wikifact.py --build`) re-streamed `wikidata-20260921-all.json.gz` over HTTP range reads from dumps.wikimedia.your.org. No raw dump touched the disk. The stream md5 `933a3fdb…` equals the published one. Extraction took 46 min (56 MB/s, 2 workers, `MemoryMax=8G CPUQuota=200% nice 15`), packing 28 s, index build 56 s. At least 145 GB stayed free and at least 39 GB of RAM stayed available, so the memory guard never paused the job.
+- **Only KEEP changed.** It grew from 145 to 189 properties. The subjects are the same 10,347,532 items with an English Wikipedia page, and CAP, qualifiers, GF(17) encoding and the store API are unchanged. The extractor now also writes `prop_counts.json` ([subjects, statements] for every property on those subjects, kept or not). The manifest gains `prop_facts` and `prop_subjects`.
+- **v2 is preserved exactly inside v3.** All 145 v2 properties have identical fact counts. 3,000 random subjects compare fact for fact identical (values, ranks, qualifiers, labels, titles). `gf17_exact` is true, and the wikifact QA dry eval (`nq_dev_tune`/`nq_dev_hold`) gives identical answers and confidences.
+- **Sizes.** v2 had 11,806,439 entities, 53,427,229 facts and 8,429,515 qualifiers in 4.3 GB. v3 has 11,900,718 entities, 55,062,201 facts (+1,634,972) and 8,513,727 qualifiers in 4.4 GB.
+- **Swap.** v3 was built next to v2. Then `mv -T --exchange` made `data/wikifact/v2` a symlink to `v3` in one step, so checkouts that still default to `v2/store` read v3. The code default is now `v3/store`. After verification, the old v2 store and the build intermediates were deleted and logged in `data/ks/logs/deletions.log`. v2's eval records were moved to `v3/eval/v2_store`. The symlink can go once every checkout has this change.
+
+### 10.2 Property choice
+
+Counts are over the 10.3M subjects: facts kept in v3, and in brackets the number of subjects that have the property.
+
+| group | added properties |
+|---|---|
+| taxonomy and biology | P171 parent taxon 534,664 (526k); P9714 taxon range 79,993 (30k); P2975 host 55,433 (13k); P183 endemic to 22,795 (18k); P1034 main food source 2,182 (713); P2974 habitat 1,737 (1.2k); P1582 natural product of taxon 1,060 / P1672 this taxon is source of 3,077; P703 found in taxon 111,871 (19k); P3094 develops from 123 |
+| material, function, parts | P186 made from material 62,696 (36k); P366 has use 61,543 (45k); P2283 uses 22,319 (16k); P1535 used by 9,846; P2670 has parts of the class 17,025; P4330 contains 3,022; P516 powered by 8,937; P2079 fabrication method 6,353; P462 color 130,857 (125k) |
+| cause and effect | P828 has cause 8,971; P1542 has effect 6,518; P1478/P1536 immediate cause 564/381; P1479/P1537 contributing factor 995/597; P5642 risk factor 235 |
+| medicine | P780 symptoms 4,264; P2175 condition treated 6,585; P2176 drug or therapy used for treatment 5,975; P1995 health specialty 8,398; P1060 pathogen transmission 268 |
+| concepts and fields | P461 opposite of 15,434 (15k); P1269 facet of 97,372 (78k); P1552 has characteristic 54,726 (48k); P1557 manifestation of 913; P2578 studies 1,828 / P2579 studied by 8,597; P425 field of this occupation 2,599; P3095 practiced by 5,664; P921 main subject 108,634 (80k); P460 said to be the same as 130,432; P737 influenced by 22,089; P941 inspired by 4,123; P2012 cuisine 3,277 |
+
+Some requested relations were already in v2 and are unchanged: P31 instance of (10.62M facts), P279 subclass of (441k), P361 part of (450k), P527 has part (603k) and P101 field of work (309k).
+
+Some large candidates were left out because they are not "how are X and Y related" links:
+- P1889 different from (519k statements): an anti-relation;
+- P1343 described by source (603k): bibliographic;
+- P1344 participant in (626k): event participation;
+- P2789 connects with (46k): infrastructure.
+
+Diet coverage in Wikidata is thin: `main food source` is on only 713 of these subjects. The biggest commonsense gains come from made from, has use/uses, cause/effect, symptoms/treats, endemic to and parent taxon.
+
+### 10.3 Cognition changes
+
+There is no new operation. The changes are:
+- readable names for the 44 new properties (`PN`);
+- down-weights for broad ones: facet of 0.8, has parts of the class 0.85, said to be the same as 0.8, taxon range 0.7, color 0.75, has characteristic 0.85, main subject 0.85, influenced/inspired by 0.85, found in taxon 0.8;
+- influenced by, inspired by, said to be the same as and taxon range added to `XS`, so they are not offered as "things in common";
+- `parent taxon` added to the class closure used by `common` and `deduce` (`TX`). For example, "axolotl → Ambystoma → … → Caudata → amphibian" now holds without WordNet.
+
+All weights were set on dev only. A tried change that removed the hub penalty for taxonomic second hops made no difference on dev and was reverted.
+
+### 10.4 Results, v2 vs v3 (same code apart from §10.3)
+
+| op | set | v2 hit@1 / hit@3 | v3 hit@1 / hit@3 | v2 latency p50 / p95 / max (ms) | v3 latency p50 / p95 / max (ms) |
+|---|---|---|---|---|---|
+| relate | dev | 73 / 87 | 71 / 89 | 5.4 / 15.0 / 78 | 5.3 / 14.3 / 78 |
+| common | dev | 74 / 90 | 72 / 90 | 3.7 / 8.3 / 16 | 3.5 / 7.7 / 14 |
+| analogy | dev | 86 / 98 | 86 / 98 | 0.9 / 2.4 / 2.7 | 0.9 / 2.3 / 2.5 |
+| abstract | dev | 88 / 92 | 88 / 92 | 0.2 / 0.8 / 1.2 | 0.2 / 0.8 / 1.4 |
+| relate | held-out | 43 / 77 | 40 / 80 | 6.5 / 16.3 / 94 | 10.4 / 21.3 / 130 |
+| common | held-out | 87 / 100 | 87 / 93 | 4.7 / 6.9 / 6.9 | 7.6 / 14.6 / 14.6 |
+| analogy | held-out | 70 / 80 | 75 / 85 | 1.7 / 7.7 / 7.7 | 1.7 / 8.7 / 8.7 |
+| abstract | held-out | 90 / 95 | 90 / 95 | 0.5 / 1.4 / 1.4 | 0.6 / 1.3 / 1.3 |
+
+- Mode accuracy is unchanged: 100 on dev and 98.3 on held-out.
+- Held-out was run once, after the code was frozen.
+- Every operation stays under 200 ms. The worst is 130 ms, a held-out relate.
+- Top-path sources on dev (relate + common) went from Wikidata 79 / WordNet 61 / Wikipedia 29 / gloss 26 to 91 / 57 / 27 / 21.
+
+**The keyword metric moves little, and slightly down on relate hit@1.** Typed Wikidata edges replace glosses and sentences whose wording happened to contain the gold stems. Examples:
+- "sheep, has use: wool" replaced "made from the hair of sheep";
+- "chocolate, natural product of: cacao";
+- "acorn, natural product of: Quercus".
+
+All three are correct links. The top line changed on 15 of the 455 dev + held-out items, and 14 of those are at least as good by hand:
+- "thunder, has cause: lightning";
+- "cheese, made from: milk";
+- "wine, made from: grape";
+- "photosynthesis, uses: sunlight";
+- "Spider, source of: spider silk; spider web, made from: spider silk";
+- "iron / nickel, has characteristic: ferromagnetism" (it was "period 4");
+- light:dark::happy → "sadness" through `opposite of` (it was no answer).
+
+The one arguable loss is beer/wine: "has part / made from: yeast" replaced "type of: alcohol".
+
+### 10.5 Hand-checked plausibility (30 + 30)
+
+- **§8.4 protocol** (dev, `sample` seed 7): v2 was 27 plausible, 3 partial, 0 wrong, and so is v3. The top path changed on 3 of the 30 items, all plausible: ice "made from: water", photosynthesis "uses: sunlight", spiders/webs through spider silk.
+- **30 everyday pairs written for this mission** (none of the pairs is in dev or held-out; run once on each store with the frozen code, not used for tuning):
+  - **v2:** 22 plausible, 7 partial, 1 wrong. A Wikidata edge was the top link on 1 of 30.
+  - **v3:** 25 plausible, 4 partial, 1 wrong. A Wikidata edge was the top link on 11 of 30.
+  - **Fixed:** influenza "symptoms: fever", aspirin "treats: pain", lemur "endemic to: Madagascar".
+  - **Newly typed:**
+    - smoking "has effect: lung cancer";
+    - earthquake "has effect: tsunami";
+    - butter, tofu, window and denim "made from …";
+    - coconut oil "natural product of: Cocos nucifera";
+    - star "studied by: astronomy".
+  - **Still partial or wrong** (text-only in both stores): orca/seal, cactus/desert, maggot/fly and yogurt/bacteria are partial; hot/cold is wrong (a drink sentence). Wikidata's `opposite of` links "heat" and "cold", not the adjectives.
+- **New noise:** a few second lines come from odd Wikidata values, for example "grey wolf, main food source: Poponejo", "clothes iron, uses: coal" and "Tafia, subclass of: rum". They are never the top line in these samples.
+- **Files:** `data/adam_t/eval/cognition/report_dev_v3.json`, `report_test_v3.json` (the v2 runs remain in `report_dev.json`/`report_test.json`) and `probe_commonsense_v3.json` (the 30 pairs, both stores' lines and refs, and the judgments).

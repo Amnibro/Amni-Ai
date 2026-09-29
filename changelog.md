@@ -1,3 +1,14 @@
+## 2026-09-29 WIKIDATA-PROPS3: Wikidata v3 store with commonsense relations
+- `crates/adam-wikifact`: KEEP grows from 145 to 189 properties (+44). Added: P171 parent taxon, P186 made from, P366 has use, P2283 uses, P1535 used by, P1034 main food source, P2974 habitat, P183 endemic to, P9714 taxon range, P2975 host, P1582/P1672 natural product, P703 found in taxon, P3094 develops from, P828/P1542/P1478/P1536/P1479/P1537/P5642 cause and effect, P780 symptoms, P2175/P2176 treats and treated with, P1995, P1060, P461 opposite of, P1269 facet of, P1552 has characteristic, P1557, P2578/P2579 studies and studied by, P425, P3095, P921 main subject, P460, P737, P941, P2012 cuisine, P2670, P4330, P516, P2079 and P462 color. `wf_extract` also writes `prop_counts.json` ([subjects, statements] for every property on the subjects). The `wf_extract`/`wf_pack` sources are now tracked.
+- `data/wikifact/v3/store`: built from the same wikidata-20260921 dump, re-streamed with md5 verified and no raw file on disk. It has 55,062,201 facts (+1,634,972) and 11,900,718 entities in 4.4 GB, and is GF(17)-exact. v2 is preserved exactly: same per-property counts, 3,000 subjects identical, same QA answers. The swap used `mv --exchange`, so `data/wikifact/v2` is now a symlink to `v3`. The old v2 store was then deleted and logged.
+- `amni/compute/wikifact.py`: the default dir is `v3/store`, and the manifest gains `prop_facts`/`prop_subjects`. `scripts/wikifact_eval.py` writes next to the live store. `scripts/build_adam_t_sft.py` records the actual store path.
+- `amni/serve/cognition.py`: names for the new properties, priors for broad ones, and noise properties excluded from "in common". `parent taxon` joins the class closure for `common`/`deduce`.
+- Results, v2 → v3:
+  - dev relate hit@1/hit@3 73/87 → 71/89; held-out 43/77 → 40/80; held-out analogy 70 → 75;
+  - hand-checked 30 everyday pairs: plausible 22 → 25, with a Wikidata edge as the top link 1 → 11;
+  - max latency 130 ms.
+  - Details are in `docs/adam_t/cognition.md` §10.
+
 ## 2026-09-25 R-KNOW4: retrieval fixes (alias title linking, passage reranker, in-article pool), Wikidata low-tier fallback
 - Failure analysis, tune (400), baseline BM25 top-30 (`R@30` 70.5%, 118 misses):
   - answer passage is in a linked or top-30 article but ranked past 30: 37 (9.3%);
