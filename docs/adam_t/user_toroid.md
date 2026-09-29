@@ -1,6 +1,6 @@
 # USER-TOROID: a 5W user-context memory for ADAM-T
 
-Status: design plus CPU prototype for mission USER-TOROID, 2026-09-28. The CEO made two additions during the mission, relayed by the CTO:
+Status: design plus CPU prototype for mission USER-TOROID, 2026-09-28. **Update 2026-09-29 (TOROID-HARDEN, section 13):** pages are now encrypted at rest (ChaCha20-Poly1305, per-user keys, key rotation and shredding on forget); extraction was generalised and re-measured on two fresh CC0 sets; held-out hit@1 is 0.49 (was 0.27), so the flag stays off. The CEO made two additions during the mission, relayed by the CTO:
 
 - **Tier 2**, soft retrieval over raw user utterances (section 6);
 - **"Borrow what worked"**: both tiers run on the `MemoryBus` spine, and confident recalls are answered directly (section 7).
@@ -269,7 +269,7 @@ The toroid is not a parallel memory. **Writes and reads go through `amni.serve.m
   - **Aliases:** value-linked aliases from the same statement go too.
   - **Utterances:** every tier 2 utterance keyed by the entity is removed. For a slot forget, only those containing a span of that W. This deliberately over-deletes utterances that mention two people.
   - "Forget everything" deletes the file.
-- **Stated plainly:** tier 2 keeps raw user sentences. They are deflated and digit-encoded, which is not encryption. That is the same protection as today's `.ptex` user memory, with more text. At-rest encryption (Amni-Crypt) should come before this flag defaults on.
+- **Stated plainly:** tier 2 keeps raw user sentences. Since TOROID-HARDEN they are encrypted at rest with per-user keys (section 13.1); the legacy `.ptex` user memory is still plaintext.
 
 ## 9. Offline evaluation
 
@@ -447,8 +447,116 @@ The tune half follows the same order at higher levels. For example, `direct` sco
 - **Confident errors.** Direct answers make wrong extractions confident. On test they are 65% precise, and they claim a memory on 20% of no-fact items. **Recommendation:** ship `directU` (direct plus "unknown") only after the tuning source lands, and add a user-visible "not right? tell me" path that feeds `supersedes`.
 - **Entity identity is the label.** "my friend" and "my best friend" are different entities, and two unnamed friends collide.
 - **Tier 2 is stateless per utterance.** That is why the combination is slot-first.
-- **Raw text at rest is not encrypted** (section 8).
+- **Raw text at rest:** encrypted since TOROID-HARDEN (section 13.1); `.ptex` is not.
 - **Existing `.ptex` facts are not imported.** A one-shot migration through `user_memory.render()` plus `ingest()` is not built.
+
+## 13. TOROID-HARDEN (2026-09-29): encryption at rest and extraction generalisation
+
+Mission TOROID-HARDEN addressed the two blockers before `AMNI_UMEM_TOROID` can default on. **Blocker 1 (encryption) is done. Blocker 2 (generalisation) is improved but its targets are not met**, so the flag stays off by default.
+
+### 13.1 Encryption at rest
+
+**Algorithm.** Every `.torus` file is one AEAD envelope around the existing digit pages (the v1 encoding with its CRCs becomes the plaintext).
+
+- Cipher: ChaCha20-Poly1305 (IETF, 12-byte nonce, 16-byte tag). It uses the helpers already vendored for Amni-Chat in `amni/serve/amni_chat_client.py`, which prefer `cryptography` and fall back to PyNaCl/libsodium. `.venv-linux` has PyNaCl only, so libsodium does the work. No crypto is hand-rolled; the only change there is an optional AAD argument (default unchanged, so the chat wire format is byte-identical; the file stays CRLF).
+- Header (44 bytes, authenticated as AAD): `AMTO`, version 2, flags, an 8-byte key id, a 16-byte random salt, a 12-byte random nonce.
+- Keys:
+  - key file: 32 random bytes per user at `<AMNI_UMEM_DIR>/keys/<salted user key>.key` (override the directory with `AMNI_UMEM_KEY_DIR`);
+  - user key = HKDF-SHA256(key file, salt `amni-toroid-v2`, info `amni-toroid-user\0<salted user key>`), so a file copied to another user's slot fails to open;
+  - page key = HKDF-SHA256(user key, per-write random salt, `amni-toroid-page`), so every save uses a fresh key and nonce reuse cannot occur;
+  - key id = HKDF(user key, `amni-toroid-kid`)[:8], used only to pick the right key file during rotation recovery.
+- Permissions are enforced, not just set. The key directory must be 0700 and the key file 0600, a regular file owned by the current uid (opened with `O_NOFOLLOW`). Anything looser raises `PermissionError`, and `turn()` reports `err` without touching the file. On Windows the mode check is skipped and profile ACLs apply.
+- Nothing is logged. Error messages carry no key material and no user text.
+
+**Forget and secure deletion.**
+- A forget that removes anything re-encrypts the store under a **new key file** and destroys the old one. The new key is written as `.key.new`, the store is replaced, and the old key file is overwritten with random bytes before the rename. The old ciphertext is overwritten in place through a file descriptor held across `os.replace`. An interrupted rotation recovers on the next load by key id.
+- "Forget everything" shreds the store and both key files without decrypting, so it also works when the store is corrupt or the key is wrong.
+- Utterance forget is now **clause-level redaction**: only the clauses and sub-clauses carrying the forgotten fact are removed and the rest of the sentence is re-stored. When the extractor finds a forgotten value but cannot isolate it, the whole utterance goes (privacy first).
+- In-process caches (decoded pages and the parsed-span cache) are cleared on forget and wipe.
+
+**Migration.** A v1 (plaintext) file is decoded on first load, immediately re-saved encrypted under a fresh key, and the plaintext bytes are overwritten in place.
+
+**Threat model.**
+- Protected: `.torus` files read or copied without the key directory (backups or syncs of the data dir that exclude `keys/`, a leaked file, another local account), and offline tampering, truncation or cross-user file swaps (authentication fails and the file is left untouched). Old ciphertexts (backups, snapshots) become unreadable after a forget, as long as the old key file is gone.
+- Not protected: anyone who can read both the data dir and `keys/` as this user; process memory while serving; rollback to an older valid ciphertext of the same user under the same key (no monotonic counter).
+- **Secure deletion is best effort on copy-on-write filesystems and SSDs.** btrfs and snapper snapshots keep old blocks, including old key files, so crypto-shredding only holds if the key directory is outside snapshotted subvolumes.
+- The legacy `user_memory` `.ptex` files beside the store are **not** encrypted by this change.
+
+**Tests** (`tests/test_user_toroid.py`): roundtrip with no plaintext on disk and 0600/0700 checks; tamper detection at seven byte offsets (header, key id, salt, nonce, ciphertext, tag), with the file left intact; wrong key, missing key and cross-user swapped files fail; strict permissions; plaintext migration; forget rotates the key so the old ciphertext no longer opens; forget-all works on an undecryptable store; interrupted-rotation recovery; no key bytes outside the key file and no log records.
+
+**Cost.** Seal and unseal take 0.5 ms for a 390 KB heavy-user store.
+
+### 13.2 New data
+
+- **`toroid_dev2.jsonl`**: 300 CC0 dialogues, 60 per W. Five registers (casual, typos, rambling, indirect, plain), 60 each; kinds are 90 plain, 70 correction, 35 forget, 70 multi, 35 nofact. It was written by five separate agents who saw only a spec, never the parser or any eval set. It has 0 six-gram overlap with `chat_src`, `toroid_dev` and `harness_dev`. Odd ids are tune, even ids test.
+- **`toroid_dev3.jsonl`**: 150 further CC0 dialogues (30 per W, same mix), all `split=held`, written the same way after the first report. It has 0 six-gram overlap with all four earlier sets.
+- The builder is `adam_t_toroid_eval.py build --dev ... [--force held]`. The validator is `scratchpad/torh/validate_dev.py` (local only).
+
+### 13.3 What changed in extraction and retrieval
+
+This is still lookup and rules, with no learned extractor. WordNet type checks come from `data/concepts` through `cognition._g()`.
+
+- **Normalisation.** Casual forms (bc/cuz, bday, gf, tmrw, w/, n, day and month abbreviations) are expanded. Typos are repaired at edit distance 1 against the closed lexicons plus the WordNet vocabulary, ranked by edit type. Capitalised tokens are never repaired, and there is no repair without concept data. Values are mapped back to the user's surface text.
+- **Lexical classes from WordNet.** Place, storage, vehicle, communication, payment, tool, person, occupation, animal, colour and time classes replace or extend the hand lists. Derivational links, hypernym heads, verb synsets and kin modifiers distinguish older from younger siblings.
+- **Clause structure.**
+  - Reason clefts ("the reason X is Y"), result `so` / "which is why", "the way X is Y", "X's approach is Y" and fronted adverbials are handled.
+  - So are dropped subjects, gapped coordination ("my son by carpool", "the babysitter through Venmo"), appositive names, reported speech that keeps its reporter, tag-question statements, and nested reason sub-clauses.
+- **Question parsing.** Frame nouns (reason, way, trick, date, city and similar), embedded wh-words ("what did I say about how ..."), trailing tags, instrument "what ... with", birthday, favorite and name cues, titles, and lowercase unknown names are handled.
+- **Tier 2 reader.** Typed span detectors add job, breed, age, likes, allergy, model, colour, means-verbs, communication verbs, placement methods, choices, want-to motives and correction wildcards to the extractor's spans. Every candidate carries 25 features: entity, attribute, predicate, content overlap, proximity, recency, supersession, correction, type-only and so on.
+- **Scoring.** The candidate softmax (with its null) is **fit by maximum likelihood** (L-BFGS, L2 towards a hand prior) on the development pool. A small logistic **confidence model** replaces the fixed gate input. The fitted weights live in `FW`.
+- **Combination.** The tier-2 reader decides. Tier-1 slots are only a fallback when no utterance evidence exists; the slot-agreement feature was removed because it hurt on unseen phrasing.
+- **Forget detection.** It is extended with typo repair and forms such as "can you delete that bit about ...", "let's not keep ... on file" and "don't remember ... anymore". The MEM-PARSE vetoes still pass.
+- **Policy defaults (tuned on the pool).** Direct gate `AMNI_UMEM_TOROID_GATE=0.9`, hint line only at `AMNI_UMEM_TOROID_HINT=0.8`, and the "(unsure)" top-2 line off (`AMNI_UMEM_TOROID_UNSURE=1.01`).
+
+### 13.4 Results
+
+Every "untouched" number below was computed **once**. The dev2 test half was reported once after tuning on dev2-tune and v1. It then became tuning data for a second round (the gap it exposed is the main finding), and the fresh dev3 set was reported once at the end.
+
+| | dev2 test, before | dev2 test, after round 1 | dev3 held-out, before | dev3 held-out, after round 2 | target |
+|---|---|---|---|---|---|
+| retrieval hit@1 (both tiers) | 0.267 | 0.453 | 0.267 | **0.487** | ≥ 0.80 |
+| answerable hit@1 | 0.157 | 0.405 | 0.142 | 0.442 | |
+| abstain correct (no-fact and forget) | 0.724 | 0.655 | 0.767 | 0.667 | |
+| direct-answer precision, gate 0.9 | 0.222 (n=27) | 0.519 (n=52) | 0.292 (n=24) | **0.759** (n=29) | ≥ 0.85 |
+| false recall, direct answers on no-fact items | 0.138 | 0.103 | 0.167 | **0.167** | ≤ 0.10 |
+| false recall, any value line on no-fact items | 0.379 | 0.172 | 0.300 | 0.233 | |
+| calibration ECE, all outputs / lines only | 0.58 / n.a. | 0.42 / 0.38 | 0.62 / 0.51 | 0.38 / **0.27** | (0.21 before, on the old set) |
+| extraction recall (P) | 0.29 (0.20) | 0.41 (0.23) | 0.27 (0.19) | 0.34 (0.20) | |
+
+The same code on the data it was tuned on (for scale only):
+- after round 1: dev2-tune 0.827 hit@1, old set 0.86;
+- after round 2 (fit on the whole pool): dev2-tune 0.82, dev2-test 0.667, old set 0.87;
+- direct precision on the pool at gate 0.9 is 0.89 (dev2-test, now in-sample) to 0.98.
+
+By W on dev3 after round 2: what 0.60, where 0.57, when 0.53, why 0.33, how 0.40. By register: typos 0.70, plain 0.57, indirect 0.43, casual 0.40, rambling 0.33.
+
+**Reading.**
+- The rewrite roughly doubles hit@1 and triples direct precision on unseen phrasing.
+- Hand rules still generalise poorly. Tuned items reach 82-87% while unseen items get 45-49%, and a second tuning round that used the first test half moved the fresh set only from 45% to 49%.
+- On unseen data the confidence model is over-confident: the p ≥ 0.9 bin is right 76% of the time. So neither the direct-precision target nor the false-recall target is met on held-out data.
+
+**Without concept data** (`AMNI_UMEM_TOROID_WN=0` or no `data/concepts`), all code paths fall back to the hand lexicons and all 201 tests still pass, with 8 WordNet-only tests skipped. dev2-tune drops from 0.81 to 0.73 hit@1.
+
+### 13.5 Latency and resources
+
+- The first call loads the WordNet graph: about 0.5 s and tens of MB, once per process.
+- Per-dialogue recall is 0.34 ms p50 and 0.56 ms p95.
+- For a heavy user pooled from 905 turns (570 utterances), recall is 6.4 ms p50 and 24 ms p95 with the span cache, and ingest is about 10 ms per turn.
+- Everything was measured on CPU under `systemd-run --scope -p MemoryMax=6G -p CPUQuota=200% nice -n 15`.
+
+### 13.6 Decisions for the CTO
+
+1. **Keep `AMNI_UMEM_TOROID` off by default.** Encryption is ready. Extraction is not.
+   - If it must ship before a better reader exists, set `AMNI_UMEM_TOROID_DIRECT=0` and `AMNI_UMEM_TOROID_UNK=1`: no direct answers, and the "unknown" line guards against confabulation.
+2. **A learned reader.** Reaching 80% on unseen phrasing needs a learned span reader or tagger over the existing candidate features: CPU-sized and trained on templated plus CC0 dialogue data. That breaks the "no ML in extraction" rule, so it is a CEO decision.
+   - The measured ceiling of hand rules here is about 50% held-out.
+   - The candidate generator plus the fitted scorer is the natural place to add it.
+3. **Key storage.**
+   - Put `AMNI_UMEM_KEY_DIR` on storage excluded from btrfs/snapper snapshots and backups. Otherwise crypto-shredding on forget is defeated by snapshots.
+   - Choose between a local key file (implemented), the OS keyring, and Amni-Crypt when it becomes public (`integrity_gate` only has a private hook, so it was not usable).
+4. **Encrypt the legacy `.ptex` user memory as well.** It is the same class of data and is still plaintext.
+5. **Ship `data/concepts`** (or a compact derived WordNet class table) with installs. Without it, accuracy falls back by about 8 points.
+6. **Rollback protection.** If replaying an older valid ciphertext is in scope, a per-user monotonic counter is needed.
 
 ## Reproduce
 
@@ -461,5 +569,10 @@ systemd-run --user --scope -p MemoryMax=6G -p CPUQuota=200% nice -n 15 \
   --fw data/adam_t/eval/toroid/offline.json --out data/adam_t/eval/toroid/model_results.jsonl \
   [--conds cur,slot0,slotF,soft0,both0,bothF,bothU,gold0,goldF,turnB,direct,directA,directU]
 python scripts/adam_t_toroid_eval.py report --out data/adam_t/eval/toroid/model_results.jsonl --summary data/adam_t/eval/toroid/model_summary.json
+# TOROID-HARDEN (section 13)
+python scripts/adam_t_toroid_eval.py build --src <devset dir> --dev data/adam_t/eval/toroid/toroid_dev2.jsonl
+python scripts/adam_t_toroid_eval.py build --src <devset3 dir> --dev data/adam_t/eval/toroid/toroid_dev3.jsonl --force held
+python scripts/adam_t_toroid_eval.py offline --dev data/adam_t/eval/toroid/toroid_dev2.jsonl --extra data/adam_t/eval/toroid/toroid_dev.jsonl --splits tune,test,v1 --tune --fit tune,v1 --old --out data/adam_t/eval/toroid/offline_v2.json
+python scripts/adam_t_toroid_eval.py offline --dev data/adam_t/eval/toroid/toroid_dev3.jsonl --extra data/adam_t/eval/toroid/toroid_dev2.jsonl,data/adam_t/eval/toroid/toroid_dev.jsonl --splits held,v1 --tune --fit v1 --old --out data/adam_t/eval/toroid/offline_v3_heldout.json
 .venv/bin/python -m pytest -q tests/test_user_toroid.py
 ```
