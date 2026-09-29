@@ -83,9 +83,27 @@ def soft_eval(D,S,fw):
 def _pol(D,S,ix,gate=None):
     R=[(D[i],T.respond(S[i][0],D[i]['q'],gate=gate)) for i in ix];f=lambda v:round(float(np.mean(v)),4) if len(v) else None;dr=[(d,o) for d,o in R if o['kind']=='direct'];un=[(d,o) for d,o in R if not d['ans']]
     return {'direct_rate':f([o['kind']=='direct' for _,o in R]),'direct_precision':f([ret_ok(o.get('v',''),d) for d,o in dr]),'n_direct':len(dr),'false_recall_direct':f([o['kind']=='direct' for _,o in un]),'false_claim_any_line':f([o['kind'] in ('direct','hint','unsure') for _,o in un]),'n_nofact':len(un)}
+def _fitc(X,y,l2=1.0,it=60):
+    A=np.array([[x[k] for k in T.CK]+[1.0] for x in X],float);y=np.array(y,float);w=np.zeros(A.shape[1]);w[0]=1.0;w0=w.copy()
+    for _ in range(it):q=1/(1+np.exp(-np.clip(A@w,-30,30)));H=A.T@(A*(q*(1-q))[:,None])+l2*np.eye(len(w));w-=np.linalg.solve(H,A.T@(q-y)+l2*(w-w0))
+    return {**{'k_'+k:round(float(v),4) for k,v in zip(T.CK,w[:-1])},'kb':round(float(w[-1]),4)}
 def _platt(p,y):
     x=np.log(np.clip(p,1e-4,1-1e-4)/(1-np.clip(p,1e-4,1-1e-4)));G=[(a,b) for a in np.arange(0.05,2.01,0.05) for b in np.arange(-3,3.01,0.1)];L=[-np.mean(y*np.log(np.clip(q,1e-6,1))+(1-y)*np.log(np.clip(1-q,1e-6,1))) for a,b in G for q in [1/(1+np.exp(-(a*x+b)))]]
     return tuple(round(float(v),3) for v in G[int(np.argmin(L))])
+def _fitw(D,S,ix,fw0,l2=0.02,it=400,lr=0.1):
+    X=[];Y=[]
+    for i in ix:
+        st,_=S[i];kn=st.ents();qa=T.ask(D[i]['q'],T._last(st),list(kn),st.names,st.lp);L=T.lookup(st,qa) if qa else [];sv=T._row(st,L[0][1])['v'] if L and L[0][0]>=2.0 else ''
+        C=T.cands(st,qa,list(kn),st.names,sv) if qa and qa['ents'] else [];y=np.array([ret_ok(sp['v'],D[i]) for _,sp in C],bool)
+        if D[i]['ans'] and not y.any():continue
+        X.append(np.array([[f[k] for k in T.FK] for f,_ in C],float).reshape(-1,len(T.FK)));Y.append(y)
+    w0=np.array([fw0[k] for k in T.FK],float)/fw0['tau'];b0=fw0['null']/fw0['tau'];w=w0.copy();b=b0
+    for _ in range(it):
+        g=np.zeros_like(w);gb=0.0
+        for F,y in zip(X,Y):
+            z=np.concatenate([F@w,[b]]);p=np.exp(z-z.max());p/=p.sum();t=np.concatenate([y,[not y.any()]]).astype(float);q=p*t;r=q/max(q.sum(),1e-12);d=p-r;g+=F.T@d[:-1];gb+=d[-1]
+        w-=lr*(g/len(X)+l2*(w-w0));b-=lr*(gb/len(X)+l2*(b-b0))
+    return {**{k:round(float(v),4) for k,v in zip(T.FK,w)},'null':round(float(b),4),'tau':1.0}
 def offline(a):
     D=[json.loads(l) for l in open(a.dev,encoding='utf-8')]+[{**json.loads(l),'id':'v1:'+json.loads(l)['id'],'split':'v1'} for x in filter(None,a.extra.split(',')) for l in open(x,encoding='utf-8')];os.environ.update(AMNI_UMEM_LT='1',AMNI_UMEM_GN='1',AMNI_UMEM_G2='1');SP=a.splits.split(',');D=[d for d in D if d['split'] in SP or a.tune and d['split'] in ('tune','v1')]
     t0=time.perf_counter();S=[run_store(d) for d in D];ing=(time.perf_counter()-t0)*1000/max(1,sum(len(d['turns']) for d in D));res={'n':len(D),'ingest_ms_per_turn':round(ing,3)}
@@ -93,27 +111,21 @@ def offline(a):
         ix=[i for i,d in enumerate(D) if sp=='all' or d['split']==sp];G=[[f for f in t.get('facts',[])] for i in ix for t in D[i]['turns']];res.setdefault('extract',{})[sp]={'toroid':pr([p for i in ix for p in S[i][1]],G),'user_memory':pr([p for i in ix for p in old_facts(D[i])],G) if a.old else None}
     fw=dict(T.FW);tune=[i for i,d in enumerate(D) if d['split'] in ('tune','v1')]
     if a.tune:
-        best=None
-        for nl,sp,rc in itertools.product((3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0),(1.0,2.0,3.0),(0.2,0.35,0.6)):
-            f={**fw,'null':nl,'sup':sp,'rec':rc,'ca':1.0,'cb':0.0};R=soft_eval([D[i] for i in tune],[S[i] for i in tune],f);acc=np.mean([r[1] for r in R]);best=max(best or (acc,f),(acc,f),key=lambda z:(round(z[0],6),z[1]['null'],z[1]['sup']))
-        fw=best[1];bt=None
-        for tau in (0.5,0.75,1.0,1.25,1.5,2.0,2.5,3.0):
-            f={**fw,'tau':tau};R=soft_eval([D[i] for i in tune],[S[i] for i in tune],f);nll=-np.mean([np.log(max(1e-6,p if y else 1-p)) for p,y,_ in R]);bt=min(bt or (nll,f),(nll,f),key=lambda z:z[0])
-        fw=bt[1];T.FW.update(fw);ps=[];ys=[]
-        for i in tune:o=T.recall(S[i][0],D[i]['q'],'both',False,a.theta,fw);v=re.sub(r"^Memory: [^:]*: ",'',o['line']).rstrip('.').split(' or ')[0] if o['line'] else '';ps.append(o['p'] if o['line'] else o.get('pnull',1.0));ys.append(ret_ok(v,D[i]))
-        fw['ca'],fw['cb']=_platt(np.array(ps,float),np.array(ys,float));T.FW.update(fw);res['fw_tuned_on_tune']={k:fw[k] for k in ('null','sup','rec','tau','ca','cb')}
+        fw={**fw,'kb':0.0,**{'k_'+c:float(c=='lp') for c in T.CK},**_fitw(D,S,tune,fw)};T.FW.update(fw);ps=[];ys=[]
+        for i in tune:o=T.recall(S[i][0],D[i]['q'],'both',False,a.theta,fw);v=re.sub(r"^Memory: [^:]*: ",'',o['line']).rstrip('.').split(' or ')[0] if o['line'] else '';o['line'] and o.get('cx') and (ps.append(o['cx']),ys.append(ret_ok(v,D[i])))
+        fw.update(_fitc(ps,ys));T.FW.update(fw);res['fw_tuned_on_tune']={k:fw[k] for k in T.FK+('null','tau','kb')+tuple('k_'+c for c in T.CK)}
     T.FW.update(fw)
     for sp in SP:
         ix=[i for i,d in enumerate(D) if sp=='all' or d['split']==sp];r={}
         for tier in ('slot','soft','both'):
-            ok=[];lat=[];ps=[];ys=[];sup=[];byw={w:[] for w in T.WS};byk={};bys={}
+            ok=[];lat=[];ps=[];ys=[];sup=[];byw={w:[] for w in T.WS};byk={};bys={};lp_=[];ly_=[]
             for i in ix:
                 d,(st,_)=D[i],S[i];t1=time.perf_counter();o=T.recall(st,d['q'],tier,False,a.theta,fw);lat.append((time.perf_counter()-t1)*1000)
                 v=(o['slot']['v'] if o['slot'] else '') if tier=='slot' else (o['soft'][0][1]['v'] if o['soft'] and o['line'] and tier=='soft' else '') if tier=='soft' else (re.sub(r"^Memory: [^:]*: ",'',o['line']).rstrip('.').split(' or ')[0] if o['line'] else '')
                 y=ret_ok(v,d);ok.append(y);byw[d['w']].append(y);byk.setdefault(d['kind'],[]).append(y);bys.setdefault(d.get('style','v1'),[]).append(y);d['kind']=='correction' and sup.append(y)
-                tier!='slot' and (ps.append(o['p'] if o['line'] else o.get('pnull',1.0)),ys.append(y))
-            r[tier]={'hit1':round(float(np.mean(ok)),4),'answerable_hit1':round(float(np.mean([y for i2,y in zip(ix,ok) if D[i2]['ans']])),4),'abstain_ok':round(float(np.mean([y for i2,y in zip(ix,ok) if not D[i2]['ans']])),4),'supersession_ok':round(float(np.mean(sup)),4) if sup else None,'by_w':{w:round(float(np.mean(v)),3) for w,v in byw.items() if v},'by_kind':{k:round(float(np.mean(v)),3) for k,v in byk.items()},'by_style':{k:round(float(np.mean(v)),3) for k,v in bys.items()},'ms_p50':round(float(np.median(lat)),3),'ms_p95':round(float(np.percentile(lat,95)),3),**({'calibration':cal(ps,ys)} if ps else {})}
-        r['policy']={str(g):_pol(D,S,ix,g) for g in (0.8,0.9,0.95)};res[sp]=r
+                tier!='slot' and (ps.append(o['p'] if o['line'] else o.get('pnull',1.0)),ys.append(y),lp_.append(o['p']) if o['line'] else None,ly_.append(y) if o['line'] else None)
+            r[tier]={'hit1':round(float(np.mean(ok)),4),'answerable_hit1':round(float(np.mean([y for i2,y in zip(ix,ok) if D[i2]['ans']])),4),'abstain_ok':round(float(np.mean([y for i2,y in zip(ix,ok) if not D[i2]['ans']])),4),'supersession_ok':round(float(np.mean(sup)),4) if sup else None,'by_w':{w:round(float(np.mean(v)),3) for w,v in byw.items() if v},'by_kind':{k:round(float(np.mean(v)),3) for k,v in byk.items()},'by_style':{k:round(float(np.mean(v)),3) for k,v in bys.items()},'ms_p50':round(float(np.median(lat)),3),'ms_p95':round(float(np.percentile(lat,95)),3),**({'calibration':cal(ps,ys)} if ps else {}),**({'calibration_lines':cal(lp_,ly_)} if lp_ else {})}
+        r['policy']={str(g):_pol(D,S,ix,g) for g in (0.6,0.7,0.75,0.8,0.85,0.9,0.95)};res[sp]=r
     json.dump(res,open(a.out,'w'),indent=1);print(json.dumps({k:(v if k not in SP else {t:({x:y for x,y in v[t].items() if x not in ('calibration','by_kind')} if t!='policy' else v[t]['0.9']) for t in v}) for k,v in res.items() if k!='extract'},indent=1));print(json.dumps({sp:{k:{x:y for x,y in v.items() if x!='by_w'} if v else v for k,v in e.items()} for sp,e in res['extract'].items()}))
 def model(a):
     D=[json.loads(l) for l in open(a.dev,encoding='utf-8')];D=[d for d in D if a.split in ('all',d['split'])][:a.limit or None]
