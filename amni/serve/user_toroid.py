@@ -551,7 +551,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.806,own=0.335,att=1.224,attc=0.706,att_bad=-1.0,pred=-0.14,pmis=-1.231,rec=-0.943,sup=-2.464,slot=0.482,subj=0.748,null=0.947,tau=1.0,ca=0.3,cb=0.8,co=0.098,kb=0.049,k_lp=0.888,k_ent=0.04,k_att=0.311,k_slot=0.336,k_pri=-1.306,k_cor=0.825,k_mg=0.005,k_nv=1.062,k_wild=-0.074,k_sup=-0.412,cu=0.341,pri=1.153,own2=0.022,csup=-2.086,wild=-0.662,cor=1.024,ci=0.334,vlen=0.102,ment=0.632,nco=-0.257,psyn=0.543,xtyp=-0.27,tonly=-0.837)
+FW=dict(ent=0.86,own=0.37,att=1.188,attc=0.691,att_bad=-1.0,pred=-0.21,pmis=-1.282,rec=-0.965,sup=-2.462,slot=0.478,subj=0.701,null=0.924,tau=1.0,ca=0.3,cb=0.8,co=0.094,kb=-0.193,k_lp=0.853,k_ent=0.064,k_att=0.161,k_slot=0.381,k_pri=-0.962,k_cor=0.739,k_mg=-0.04,k_nv=1.149,k_wild=-0.099,k_sup=-0.608,cu=0.368,pri=1.224,own2=0.07,csup=-2.08,wild=-0.641,cor=0.976,ci=0.343,vlen=0.077,ment=0.566,nco=-0.161,psyn=0.54,xtyp=-0.271,tonly=-0.714)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
@@ -634,6 +634,7 @@ def spans(text:str,known=(),names=None,last=''):
         lc=re.sub(r"\s+",' ',CL[-1][0]).strip(' ,.');lc and len(lc)<=72 and len(lc.split())>=3 and out.append(dict(v=re.sub(r"(?i)^(?:i|we|he|she|they)\s+(?:told me|said|say|says|found out|heard)(?:\s+\w+)?\s*,?\s*",'',next((x for x in clauses(text) if x.lower()==CL[-1][0]),CL[-1][0])),w='*',a='',ent=CL[-1][3],pred=CL[-1][4],subj=False,cw=CL[-1][1],ents=CL[-1][2],pri=0.3))
     for e,vb,w,a,v,cf,_ in F:
         cl=next((x for x in CL if v.lower() in x[0]),None);out.append(dict(v=v,w=w,a=a,ent=last if e=='?' else e,pred=lemma(vb) if vb else '',subj=cf>=0.75,cw=cl[1] if cl else ucw,ents=(cl[2] if cl else set())|{last if e=='?' else e},pri=1.0))
+    AA={(o['v'],o['w']):o['a'] for o in out if o['a'] and o['w'] in ('where','what')};[o.__setitem__('a',AA.get((o['v'],o['w']),'')) for o in out if not o['a']]
     [o.__setitem__('ucw',ucw) for o in out];return [o for o in out if o['v'] and not (o['w']=='when' and _DUR.fullmatch(o['v'].lower().strip()))]
 def _hd(x:str)->str:return _sg(x.split()[-1]) if x else ''
 @functools.lru_cache(maxsize=65536)
@@ -787,7 +788,7 @@ def forget_st(st:Store,msg:str):
     kn=st.ents();qa=ask(f[0],_last(st),list(kn),st.names,st.lp)
     if not qa or not qa['ents']:return (None,0)
     qa['ents']=[e if e in kn or e=='me' else next((k for k in kn if k!='me' and (set(e.split())-{'thing','stuff'})&set(k.split())),e) for e in qa['ents']]
-    wa=None if re.match(r"(?i)\s*what about\b",f[0]) and qa['w']=='what' and not qa['attr'] else qa['w'];e=h32(qa['ents'][0]);es=_ea(st);wm=(st.s[:,3]//17==WI[wa]) if wa else np.ones(len(st.s),bool)
+    wa=None if re.match(r"(?i)\s*what about\b",f[0]) and qa['w']=='what' and not qa['attr'] else qa['w'];e=h32(qa['ents'][0]);es=_ea(st);wm=((st.s[:,3]//17==WI[wa])&(((st.s[:,3]%17==AI.get(qa['attr'],0))|(st.s[:,3]%17==0)|(st.s[:,3]%17==AI['location'])) if qa['attr'] and wa=='where' else True)) if wa else np.ones(len(st.s),bool)
     qp=h32(qa['pred'])&0xFFFF if qa['pred'] and qa['pred'] not in ('be','have','do') else None;qc=h32(pcls(qa['pred']))&0xFFFF if qp is not None else None
     pm=((st.s[:,7]==qp) if (st.s[:,7]==qp).any() else (st.s[:,2]==qc)) if qp is not None and qa['ents'][0]=='me' else None
     dm=(es==e)&wm&(pm if pm is not None else True)|(wm&pm if pm is not None else False)
@@ -795,7 +796,27 @@ def forget_st(st:Store,msg:str):
     stt,K=st.uidx();um=np.flatnonzero((K==e).any(1))
     um=[i for i in um if wa is None or any(sp['w']==wa for sp in spans(st.utext(int(i)),list(kn),st.names))];qc2=set(qa.get('cw',()))-{qa['pred'],'thing','stuff','forget','delete'}
     um=[i for i in um if cwords([t[0].lower() for t in toks(st.utext(int(i)))[1]])&qc2] or um if qa['ents'][0]=='me' and qc2 else um
-    n=int(np.sum(dm))+len(um);st.s=st.s[~dm];st.udrop(um);st.lo='' if st.lo==qa['ents'][0] else st.lo;return (qa['ents'][0],n)
+    RD=[(int(i),_redact(st,int(i),list(kn),st.names,qa['ents'][0],wa,qa['attr'])) for i in um];n=int(np.sum(dm))+len(um);st.s=st.s[~dm]
+    for i,r in sorted(RD,reverse=True):
+        if r is None:continue
+        c0,hk=int(st.u[st.uidx()[0][i],1]),[int(k) for k in st.uidx()[1][i] if k and int(k)!=e];st.udrop([i])
+        r and (st.putu(r,hk+keys(r,[],list(kn))),st.u.__setitem__((st.uidx()[0][-1],1),c0))
+    st._x=None;st.lo='' if st.lo==qa['ents'][0] else st.lo;return (qa['ents'][0],n)
+def _units(c:str)->list:
+    A=analyze(c)
+    if not A:return [c]
+    T=A['T'];lw=[t[0].lower() for t in T];n=len(T);vi=next((q for q in range(n) if A['verb'] and T[q][0]==A['verb'] or not A['verb'] and lw[q] in AUX),None)
+    if vi is None:return [c]
+    sj=A['c'][:T[vi][1]].strip()
+    cut=[q for q in range(vi+1,n) if lw[q] in ('because','cuz','bc','since','mostly','partly') and (lw[q] not in ('mostly','partly') or q+1<n and lw[q+1] in ('so','because','since','to')) or lw[q]=='so' and lw[q-1] not in ('mostly','partly') or lw[q]=='and' and q+1<n and (isv(lw[q+1]) or wv(lw[q+1])) and lw[q+1] not in AUX]
+    if not cut:return [c]
+    B=[0]+cut+[n];return [(sj+' ' if lw[B[k]]=='and' else '')+A['c'][T[B[k]+(lw[B[k]]=='and')][1]:T[B[k+1]-1][2]].strip(' ,') for k in range(len(B)-1) if B[k+1]>B[k]+(lw[B[k]]=='and')]
+def _redact(st:Store,i:int,kn,names,el:str,wa,qat=''):
+    tx=st.utext(i);C=[u for c in clauses(tx) for u in _units(c)];ew=set(el.split())-{'thing','stuff','one','me'};S=spans(tx,kn,names,el)
+    ok=lambda x:(wa is None or x['w']==wa and (not qat or wa!='where' or not any(y['v']==x['v'] and y['a'] and y['a']!=qat and not _acomp(y['a'],qat) for y in S))) and (x['ent']==el or el in x.get('ents',()) or _heq(_hd(x['ent']),_hd(el)) or bool(ew) and ew<=x.get('cw',set()))
+    bv=[x['v'].lower() for x in S if ok(x)];TY=lambda c:(lambda T:wa=='where' and any(isplace(t[0].lower()) or t[0][:1].isupper() and 'loc' in wcls(t[0],1) for t in T[1:]) or wa=='when' and any(_istime(T,q) for q in range(len(T))) or wa not in ('where','when') and any(x['w']==wa for x in spans(c,kn,names,el)))(toks(c)[1])
+    bad=[c for c in C if any(v in c.lower() for v in bv) or bool(ew) and ew<=cwords([t[0].lower() for t in toks(c)[1]]) and (wa is None or TY(c))]
+    return None if not bv and not bad else '' if len(bad)==len(C) or not bad else '. '.join(c for c in C if c not in bad)+'.'
 def forget(key:str,msg:str):
     with U._lock:
         f=U._fg(str(msg).strip())
