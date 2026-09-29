@@ -52,7 +52,7 @@ class MemoryBus:
             self._ledger_pairs=self._ledger_pairs[-80:]
     def record_learning(self,key,value,kind='fact',provenance='',exactness='semantic',supersedes=None)->Dict[str,Any]:
         if not key or not value:return {'stored':False,'homes':[],'recall_ok':False,'reason':'empty'}
-        homes=[];conf=1.0 if str(provenance).startswith('user:') else 0.7;ts=time.time()
+        homes=[];conf=1.0 if str(provenance).startswith('user:') else 0.7;ts=time.time();self._antipattern.discard(_sig(value))
         meta={'kind':kind,'wrong':supersedes,'confidence':conf,'priority':100 if exactness=='exact' else 50,'ts':ts,'provenance':provenance,'federable':bool(kind in('fact','skill_lesson') and conf>=0.7 and 'personal' not in kind)}
         if exactness=='exact' and self.answer_lut is not None:
             try:self.answer_lut.store(key,value,source=provenance or 'memory_bus',meta=dict(meta),track_recent=True);homes.append('atex')

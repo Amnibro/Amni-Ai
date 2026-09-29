@@ -78,6 +78,11 @@ def _f(k:str,d:float)->float:
 def _mem(message:str,history,user,session)->dict:
     from amni.serve.user_memory import turn
     m=turn(message,history,user,session);return {'reply':m['reply'],'hist':m['hist'],'route':bool(m['route']),'pre':[t.replace('\nAdam: Got it.\n\n',f'\nAdam: {ACK}\n\n') for t in re.findall(r'User: [^\n]*\nAdam: [^\n]*\n\n',m['pre'] or '')]}
+def _tor(message:str,history,user,session,c:dict)->dict:
+    try:
+        T=__import__('amni.serve.user_toroid',fromlist=['turn']);t=T.turn(message,history,user,session) if T.enabled() else {'lines':[],'forgot':None}
+        t['forgot'] and t['forgot'][1] and 'forgotten' not in (c['reply'] or '') and c.update(reply="Okay, I've forgotten that.");t.get('direct') and not c['reply'] and c.update(reply=t['direct']);return t
+    except Exception as e:c['n']['tor_err']=type(e).__name__;return {'lines':[],'forgot':None}
 def _math(message:str)->str:
     r=__import__('amni.math.answer',fromlist=['answer']).answer(message) if os.environ.get('AMNI_MATH','1')=='1' else None;r=asc(r[0]) if r and r[1]>=_f('AMNI_MATH_MIN_CONF',0.6) else '';return r+('' if not r or r[-1] in '.!?' else '.')
 _MO='January|February|March|April|May|June|July|August|September|October|November|December'
@@ -177,13 +182,14 @@ def context(message:str,history=None,user=None,session=None,budget:int=0)->dict:
     B=lambda:budget-len(template(message,None,0,(),c['rc']).encode('utf-8')) if budget>0 else 1<<30
     try:m=_mem(message,history,user,session);c.update(reply=m['reply'],hist=m['hist'])
     except Exception as e:c['n']['mem_err']=type(e).__name__
-    try:ma=(lambda r,n:clip('Calculator: '+r,n) if r and n>=32 else '')(_math(message),min(ab,B()-1)) if ab>0 and not c['reply'] else '';c['rc']=[ma] if ma else []
+    tr=_tor(message,history,user,session,c);tl=tr['lines']
+    try:ma=(lambda r,n:clip('Calculator: '+r,n) if r and n>=32 else '')(_math(message),min(ab,B()-1)) if ab>0 and not c['reply'] and not tl else '';c['rc']=[ma] if ma else []
     except Exception as e:c['n']['math_err']=type(e).__name__
     kq=min(kb,B()-np_)
-    try:K,c['rq']=_know(message,np_,min(pb,kq//max(1,np_)),history) if kq>=64 and np_>0 and not (c['reply'] or c['rc']) else ([],'');K=_fit(K[::-1],0,kq)[0][::-1] if not m['route'] or c['rq'] not in ('',message) else []
+    try:K,c['rq']=_know(message,np_,min(pb,kq//max(1,np_)),history) if kq>=64 and np_>0 and not (c['reply'] or c['rc'] or tl) else ([],'');K=_fit(K[::-1],0,kq)[0][::-1] if not m['route'] or c['rq'] not in ('',message) else []
     except Exception as e:c['n']['know_err']=type(e).__name__
-    c['rc']+=K;q=min(mb,B());c['pre']=_fit(m['pre'],0,q)[0] if m['route'] and q>0 else []
-    c['n'].update(mem=len(c['pre']),know=len(K),math=int(len(c['rc'])>len(K)));c['ms']=(time.perf_counter()-t0)*1000;return c
+    c['rc']+=K+tl;q=min(mb,B());c['pre']=_fit(m['pre'],0,q)[0] if m['route'] and q>0 and not (tl and os.environ.get('AMNI_UMEM_TOROID_PRE','0')!='1') else []
+    c['n'].update(mem=len(c['pre']),know=len(K),math=int(len(c['rc'])>len(K)+len(tl)),tor=len(tl));c['ms']=(time.perf_counter()-t0)*1000;return c
 class AdamT:
     def __init__(s,run:str='',bin:str='',timeout:float=0,load_timeout:float=0):
         s.run=run or os.environ.get('AMNI_ADAM_T','').strip();s.bin=bin or os.environ.get('AMNI_ADAM_T_BIN','').strip() or str(ROOT/'crates'/'target'/'release'/'adam-t')

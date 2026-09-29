@@ -1,0 +1,26 @@
+{
+ "n": 200,
+ "by_w": {
+  "what": 40,
+  "where": 40,
+  "when": 40,
+  "why": 40,
+  "how": 40
+ },
+ "by_kind": {
+  "correction": 45,
+  "forget": 25,
+  "multi": 45,
+  "nofact": 20,
+  "plain": 65
+ },
+ "split": {
+  "tune": 100,
+  "test": 100
+ },
+ "sixgram_overlap_chat_src": 0,
+ "overlap_items": [],
+ "validation": [],
+ "license": "CC0-1.0 (written from scratch for ADAM-T USER-TOROID, 2026-09-28; no dataset text)",
+ "src_ngrams": 2202
+}

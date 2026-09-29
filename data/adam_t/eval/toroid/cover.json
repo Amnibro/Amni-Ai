@@ -1,0 +1,34 @@
+{
+ "cross/test": {
+  "answer_in_context": 0.1375,
+  "bad_values_in_context_mean": 0.06,
+  "pre_nonempty": 0.29,
+  "pre_bytes_mean": 26.7,
+  "toroid_line_has_answer": 0.6,
+  "toroid_line_bad_values_mean": 0.21
+ },
+ "cross/tune": {
+  "answer_in_context": 0.1467,
+  "bad_values_in_context_mean": 0.08,
+  "pre_nonempty": 0.27,
+  "pre_bytes_mean": 24.1,
+  "toroid_line_has_answer": 0.8667,
+  "toroid_line_bad_values_mean": 0.05
+ },
+ "same/test": {
+  "answer_in_context": 0.95,
+  "bad_values_in_context_mean": 0.59,
+  "pre_nonempty": 0.0,
+  "pre_bytes_mean": 0.0,
+  "toroid_line_has_answer": 0.6,
+  "toroid_line_bad_values_mean": 0.21
+ },
+ "same/tune": {
+  "answer_in_context": 0.9733,
+  "bad_values_in_context_mean": 0.67,
+  "pre_nonempty": 0.01,
+  "pre_bytes_mean": 0.8,
+  "toroid_line_has_answer": 0.8667,
+  "toroid_line_bad_values_mean": 0.05
+ }
+}
