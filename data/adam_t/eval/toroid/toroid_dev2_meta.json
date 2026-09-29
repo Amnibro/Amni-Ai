@@ -1,0 +1,33 @@
+{
+ "n": 300,
+ "by_w": {
+  "what": 60,
+  "where": 60,
+  "when": 60,
+  "why": 60,
+  "how": 60
+ },
+ "by_kind": {
+  "correction": 70,
+  "forget": 35,
+  "multi": 70,
+  "nofact": 35,
+  "plain": 90
+ },
+ "by_style": {
+  "casual": 60,
+  "indirect": 60,
+  "plain": 60,
+  "rambling": 60,
+  "typos": 60
+ },
+ "split": {
+  "tune": 150,
+  "test": 150
+ },
+ "sixgram_overlap_chat_src_toroid_dev_harness_dev": 0,
+ "overlap_items": [],
+ "validation": [],
+ "license": "CC0-1.0 (written from scratch for ADAM-T TOROID-HARDEN, 2026-09-29; no dataset text)",
+ "src_ngrams": 7026
+}

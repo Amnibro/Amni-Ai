@@ -72,3 +72,54 @@ def test_no_fact_no_false_recall():
     st=_st(["My flight is on Friday.","My sister lives in Denver."])
     assert all(T.respond(st,q)['kind']!='direct' for q in ('Why am I flying?','What is my sister\'s name?','Where does my cousin live?'))
     assert T.respond(st,'Why am I flying?',abstain=True)['text'] in ("You haven't told me that yet.",'')
+def _put(k,*ms):[T.remember(k,m) for m in ms];return open(T.path(k),'rb').read()
+def test_crypto_roundtrip_ciphertext_and_key_file(env):
+    k=U.user_key('c1');raw=_put(k,"My dog is called Biscuit.","I moved to Boston because the rent was cheaper.");kp=T.kpath(k)
+    assert raw[:4]==T.MAGIC and int.from_bytes(raw[4:6],'little')==T.EVER and not any(x in raw for x in (b'Biscuit',b'Boston',b'rent'))
+    assert stat.S_IMODE(os.stat(kp).st_mode)==0o600 and stat.S_IMODE(os.stat(T.kdir()).st_mode)==0o700 and len(open(kp,'rb').read())==32 and not os.path.exists(kp+'.new')
+    T._cache.clear();st=T.load(k);assert 'Biscuit' in _ans(st,'What is my dog called?') and 'rent' in _ans(st,'Why did I move to Boston?')
+    k2=U.user_key('c2');_put(k2,"My cat is called Mochi.");assert open(T.kpath(k2),'rb').read()!=open(kp,'rb').read() and T._kid(T._uk(open(kp,'rb').read(),k))!=T._kid(T._uk(open(kp,'rb').read(),k2))
+@pytest.mark.parametrize('off',[2,6,9,20,40,-1,-17])
+def test_crypto_tamper_detected(env,off):
+    k=U.user_key('c3');raw=bytearray(_put(k,"My car is a blue Honda Civic."));raw[off]^=0x01;open(T.path(k),'wb').write(bytes(raw));T._cache.clear()
+    with pytest.raises(ValueError):T.load(k)
+    r=T.turn('My sister lives in Denver.',user='c3');assert r.get('err')=='ValueError' and bytes(raw)==open(T.path(k),'rb').read()
+def test_crypto_wrong_key_and_swapped_file_fail(env):
+    k=U.user_key('c4');_put(k,"My car is red.");kp=T.kpath(k);open(kp,'wb').write(os.urandom(32));T._cache.clear()
+    with pytest.raises(ValueError):T.load(k)
+    k5,k6=U.user_key('c5'),U.user_key('c6');_put(k5,"My car is red.");_put(k6,"My car is blue.");open(T.path(k6),'wb').write(open(T.path(k5),'rb').read());T._cache.clear()
+    with pytest.raises(ValueError):T.load(k6)
+    ku=U.user_key('c7');_put(ku,"My car is red.");os.remove(T.kpath(ku));T._cache.clear()
+    with pytest.raises(ValueError):T.load(ku)
+    with pytest.raises(ValueError):T.unseal(T.seal(b'x'*40,os.urandom(32)),os.urandom(32))
+def test_crypto_strict_key_permissions(env):
+    k=U.user_key('c8');_put(k,"My car is red.");os.chmod(T.kpath(k),0o644);T._cache.clear()
+    with pytest.raises(PermissionError):T.load(k)
+    os.chmod(T.kpath(k),0o600);os.chmod(T.kdir(),0o755);T._cache.clear()
+    with pytest.raises(PermissionError):T.load(k)
+    os.chmod(T.kdir(),0o700);T._cache.clear();assert 'red' in _ans(T.load(k),'What color is my car?')
+def test_crypto_migrates_plaintext_pages(env):
+    k=U.user_key('c9');st=_st(["My dog is called Biscuit.","My sister lives in Denver."]);p=T.path(k);os.makedirs(os.path.dirname(p),exist_ok=True);open(p,'wb').write(T.encode(st));os.chmod(p,0o600)
+    assert b'Denver' not in open(p,'rb').read() and open(p,'rb').read()[4:6]==b'\x01\x00' and not os.path.exists(T.kpath(k))
+    s2=T.load(k);raw=open(p,'rb').read();assert raw[4:6]==b'\x02\x00' and os.path.exists(T.kpath(k)) and 'Denver' in _ans(s2,'Where does my sister live?')
+    T._cache.clear();assert np.array_equal(T.load(k).s,st.s) and T.decode(T.unseal(raw,T._uk(open(T.kpath(k),'rb').read(),k))).u.shape==st.u.shape
+def test_crypto_forget_rotates_key_and_shreds(env):
+    k=U.user_key('c10');old=_put(k,"My brother lives in Austin.","My sister lives in Denver.");ok=open(T.kpath(k),'rb').read()
+    assert T.forget(k,'Please forget everything about my brother.')[0]=='brother';new=open(T.path(k),'rb').read();nk=open(T.kpath(k),'rb').read()
+    assert nk!=ok and new[8:16]!=old[8:16] and not os.path.exists(T.kpath(k)+'.new');st=T.load(k)
+    assert _ans(st,'Where does my brother live?')=='' and 'Denver' in _ans(st,'Where does my sister live?') and not any('Austin' in st.utext(i) for i in range(len(st.uidx()[0])))
+    with pytest.raises(ValueError):T.unseal(old,T._uk(nk,k))
+    r=T.turn('Forget everything you know about me.',user='c10x');assert r['forgot']==('all',0)
+    kk=U.user_key('c10x');[T.turn(m,user='c10x') for m in ("My car is red.",)];assert os.path.exists(T.path(kk)) and os.path.exists(T.kpath(kk))
+    r=T.turn('Forget everything you know about me.',user='c10x');assert r['forgot']==('all',1) and not os.path.exists(T.path(kk)) and not os.path.exists(T.kpath(kk))
+def test_crypto_forget_all_works_when_undecryptable(env):
+    k=U.user_key('c11');_put(k,"My car is red.");open(T.kpath(k),'wb').write(os.urandom(32));T._cache.clear()
+    assert T.turn('Forget everything you know about me.',user='c11')['forgot']==('all',1) and not os.path.exists(T.path(k)) and not os.path.exists(T.kpath(k))
+def test_crypto_interrupted_rotation_recovers(env):
+    k=U.user_key('c12');_put(k,"My car is red.");kp=T.kpath(k);st=T.load(k);kf=os.urandom(32);T._wfile(kp+'.new',kf);T._wfile(T.path(k),T.seal(T.encode(st),T._uk(kf,k)));T._cache.clear()
+    assert 'red' in _ans(T.load(k),'What color is my car?') and open(kp,'rb').read()==kf and not os.path.exists(kp+'.new')
+    T._wfile(kp+'.new',os.urandom(32));T._cache.clear();assert 'red' in _ans(T.load(k),'What color is my car?') and open(kp,'rb').read()==kf and not os.path.exists(kp+'.new')
+def test_crypto_no_plaintext_or_key_in_bus_ledger_or_logs(env,tmp_path,monkeypatch,caplog):
+    monkeypatch.chdir(tmp_path);k=U.user_key('c13');_put(k,"My passport is in the top drawer of my desk.");kf=open(T.kpath(k),'rb').read()
+    assert not caplog.records and not [f for f in os.listdir(tmp_path) if f not in ('keys',) and not f.endswith(('.torus','.salt'))]
+    assert all(kf not in open(os.path.join(dp,f),'rb').read() for dp,_,fs in os.walk(tmp_path) for f in fs if not f.endswith('.key'))

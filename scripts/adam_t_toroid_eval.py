@@ -4,7 +4,8 @@ sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from amni.serve import user_toroid as T,user_memory as U
 from amni.serve.adam_t_client import Proto,template,STOPS,_fit,_mem
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)));DEV=os.path.join(ROOT,'data','adam_t','eval','toroid','toroid_dev.jsonl');OUT=os.path.join(ROOT,'data','adam_t','eval','toroid')
-LIC='CC0-1.0 (written from scratch for ADAM-T USER-TOROID, 2026-09-28; no dataset text)'
+LIC='CC0-1.0 (written from scratch for ADAM-T USER-TOROID, 2026-09-28; no dataset text)';LIC2='CC0-1.0 (written from scratch for ADAM-T TOROID-HARDEN, 2026-09-29; no dataset text)'
+DEV2=os.path.join(OUT,'toroid_dev2.jsonl');SRCS=[os.path.join(ROOT,'data','adam_t','eval',*x) for x in (('chat','chat_src.jsonl'),('toroid','toroid_dev.jsonl'),('harness','harness_dev.jsonl'))]
 _W=re.compile(r"[a-z0-9]+");STV={'the','a','an','my','his','her','their','our','on','at','in','to','from','by','of','is','it','its'}
 nt=lambda s:_W.findall(str(s).lower());core=lambda s:[x for x in nt(s) if x not in STV] or nt(s)
 CLAIM=re.compile(r"(?i)\byou (?:told|said|mentioned)|\byour [\w' ]{1,30}? (?:is|are|was|lives|works|name|goes)\b|\bif i remember\b|\byou (?:live|work|drive|moved|go|get|take|keep|parked|pay|cook|make|use)\b|^(?:because|by|with|on|in|at|it's)\b")
@@ -22,22 +23,23 @@ def inr(a,r):
 def ans_ok(reply,d):
     bad=[b for b in d['bad'] if not any(set(core(b))<=set(core(a)) for a in d['ans'])];bh=any(inr(b,reply) for b in bad)
     return (any(inr(a,reply) for a in d['ans']) and not bh) if d['ans'] else (not bh and bool(ABST.search(reply)))
+def _strs(o,k=''):return [(k,o)] if isinstance(o,str) else [x for kk,v in (o.items() if isinstance(o,dict) else enumerate(o) if isinstance(o,list) else []) for x in _strs(v,kk if isinstance(kk,str) else k)]
 def ngrams(ws,n=6):return {tuple(ws[i:i+n]) for i in range(len(ws)-n+1)}
 def dtexts(d):return [t['u'] for t in d['turns']]+[t['a'] for t in d['turns']]+[d['q']]
 def build(a):
     D=[json.loads(l) for f in sorted(glob.glob(os.path.join(a.src,'*.jsonl'))) for l in open(f,encoding='utf-8') if l.strip()]
-    src=[json.loads(l) for l in open(os.path.join(ROOT,'data','adam_t','eval','chat','chat_src.jsonl'),encoding='utf-8')];G=set()
-    for r in src:
-        for v in [r.get('q','')]+[x for t in r.get('turns',[]) for x in (t if isinstance(t,list) else [t.get('u',''),t.get('a','')] if isinstance(t,dict) else [t])]+[x for x in r.get('gold',[]) if isinstance(x,str)]+[x for x in r.get('ctx',[]) if isinstance(x,str)]:G|=ngrams(nt(v))
+    v2=os.path.abspath(a.dev)!=os.path.abspath(DEV);G=set();lic=LIC2 if v2 else LIC
+    for f in SRCS[:3 if v2 else 1]:
+        for l in open(f,encoding='utf-8'):l.strip() and [G.update(ngrams(nt(v))) for k,v in _strs(json.loads(l)) if k!='license']
     bad=[];ov=[]
     for i,d in enumerate(D):
-        d['split']='tune' if int(re.findall(r'\d+',d['id'])[-1])%2 else 'test';d['license']=LIC
+        d['split']='tune' if int(re.findall(r'\d+',d['id'])[-1])%2 else 'test';d['license']=lic
         o=[g for x in dtexts(d) for g in ngrams(nt(x)) if g in G];o and ov.append((d['id'],[' '.join(g) for g in o][:3]))
         for t in d['turns']:[bad.append((d['id'],'val',f['val'])) for f in t.get('facts',[]) if f['val'].lower() not in t['u'].lower()]
         [bad.append((d['id'],'ans',x)) for x in d['ans'] if not any(x.lower() in t['u'].lower() for t in d['turns'])]
-    os.makedirs(OUT,exist_ok=True);open(DEV,'w',encoding='utf-8').write(''.join(json.dumps(d,ensure_ascii=False)+'\n' for d in D))
-    m={'n':len(D),'by_w':{w:sum(d['w']==w for d in D) for w in T.WS},'by_kind':{k:sum(d['kind']==k for d in D) for k in sorted({d['kind'] for d in D})},'split':{s:sum(d['split']==s for d in D) for s in ('tune','test')},'sixgram_overlap_chat_src':len(ov),'overlap_items':ov,'validation':bad,'license':LIC,'src_ngrams':len(G)}
-    json.dump(m,open(os.path.join(OUT,'toroid_meta.json'),'w'),indent=1);print(json.dumps({k:v for k,v in m.items() if k!='overlap_items'},indent=1))
+    os.makedirs(OUT,exist_ok=True);open(a.dev,'w',encoding='utf-8').write(''.join(json.dumps(d,ensure_ascii=False)+'\n' for d in D))
+    m={'n':len(D),'by_w':{w:sum(d['w']==w for d in D) for w in T.WS},'by_kind':{k:sum(d['kind']==k for d in D) for k in sorted({d['kind'] for d in D})},'by_style':{k:sum(d.get('style')==k for d in D) for k in sorted({d.get('style','') for d in D})},'split':{s:sum(d['split']==s for d in D) for s in ('tune','test')},'sixgram_overlap_chat_src' if not v2 else 'sixgram_overlap_chat_src_toroid_dev_harness_dev':len(ov),'overlap_items':ov,'validation':bad,'license':lic,'src_ngrams':len(G)}
+    json.dump(m,open(a.dev[:-6]+'_meta.json' if v2 else os.path.join(OUT,'toroid_meta.json'),'w'),indent=1);print(json.dumps({k:v for k,v in m.items() if k!='overlap_items'},indent=1))
 def gold_line(d):
     fs={};fg=set()
     for t in d['turns']:
@@ -78,32 +80,41 @@ def soft_eval(D,S,fw):
         t0=time.perf_counter();kn=st.ents();qa=T.ask(d['q'],T._last(st),list(kn),st.names,st.lp);L=T.soft(st,qa,list(kn),st.names,'',fw) if qa else [];Sx,top=T._top(L);pn=max([x[0] for x in L if x[1] is None] or [1.0])
         v=top[1]['v'] if top else '';R.append((top[0] if top else pn,ret_ok(v,d),(time.perf_counter()-t0)*1000))
     return R
+def _pol(D,S,ix,gate=None):
+    R=[(D[i],T.respond(S[i][0],D[i]['q'],gate=gate)) for i in ix];f=lambda v:round(float(np.mean(v)),4) if len(v) else None;dr=[(d,o) for d,o in R if o['kind']=='direct'];un=[(d,o) for d,o in R if not d['ans']]
+    return {'direct_rate':f([o['kind']=='direct' for _,o in R]),'direct_precision':f([ret_ok(o.get('v',''),d) for d,o in dr]),'n_direct':len(dr),'false_recall_direct':f([o['kind']=='direct' for _,o in un]),'false_claim_any_line':f([o['kind'] in ('direct','hint','unsure') for _,o in un]),'n_nofact':len(un)}
+def _platt(p,y):
+    x=np.log(np.clip(p,1e-4,1-1e-4)/(1-np.clip(p,1e-4,1-1e-4)));G=[(a,b) for a in np.arange(0.05,2.01,0.05) for b in np.arange(-3,3.01,0.1)];L=[-np.mean(y*np.log(np.clip(q,1e-6,1))+(1-y)*np.log(np.clip(1-q,1e-6,1))) for a,b in G for q in [1/(1+np.exp(-(a*x+b)))]]
+    return tuple(round(float(v),3) for v in G[int(np.argmin(L))])
 def offline(a):
-    D=[json.loads(l) for l in open(a.dev,encoding='utf-8')];os.environ.update(AMNI_UMEM_LT='1',AMNI_UMEM_GN='1',AMNI_UMEM_G2='1')
-    t0=time.perf_counter();S=[run_store(d) for d in D];ing=(time.perf_counter()-t0)*1000/max(1,sum(len(d['turns']) for d in D))
-    G=[[f for f in t.get('facts',[])] for d in D for t in d['turns']];P=[p for _,ps in S for p in ps];O=[p for d in D for p in old_facts(d)]
-    res={'n':len(D),'ingest_ms_per_turn':round(ing,3),'extract_toroid':pr(P,G),'extract_user_memory':pr(O,G)}
-    fw=dict(T.FW);tune=[i for i,d in enumerate(D) if d['split']=='tune']
+    D=[json.loads(l) for l in open(a.dev,encoding='utf-8')]+[{**json.loads(l),'id':'v1:'+json.loads(l)['id'],'split':'v1'} for x in filter(None,a.extra.split(',')) for l in open(x,encoding='utf-8')];os.environ.update(AMNI_UMEM_LT='1',AMNI_UMEM_GN='1',AMNI_UMEM_G2='1');SP=a.splits.split(',');D=[d for d in D if d['split'] in SP or a.tune and d['split'] in ('tune','v1')]
+    t0=time.perf_counter();S=[run_store(d) for d in D];ing=(time.perf_counter()-t0)*1000/max(1,sum(len(d['turns']) for d in D));res={'n':len(D),'ingest_ms_per_turn':round(ing,3)}
+    for sp in SP:
+        ix=[i for i,d in enumerate(D) if sp=='all' or d['split']==sp];G=[[f for f in t.get('facts',[])] for i in ix for t in D[i]['turns']];res.setdefault('extract',{})[sp]={'toroid':pr([p for i in ix for p in S[i][1]],G),'user_memory':pr([p for i in ix for p in old_facts(D[i])],G) if a.old else None}
+    fw=dict(T.FW);tune=[i for i,d in enumerate(D) if d['split'] in ('tune','v1')]
     if a.tune:
         best=None
-        for nl,sp,rc in itertools.product((4.0,4.5,5.0,5.5,6.0,6.5,7.0),(1.0,2.0,3.0),(0.2,0.35,0.6)):
-            f={**fw,'null':nl,'sup':sp,'rec':rc};R=soft_eval([D[i] for i in tune],[S[i] for i in tune],f);acc=np.mean([r[1] for r in R]);best=max(best or (acc,f),(acc,f),key=lambda z:(round(z[0],6),z[1]['null'],z[1]['sup']))
+        for nl,sp,rc in itertools.product((3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0),(1.0,2.0,3.0),(0.2,0.35,0.6)):
+            f={**fw,'null':nl,'sup':sp,'rec':rc,'ca':1.0,'cb':0.0};R=soft_eval([D[i] for i in tune],[S[i] for i in tune],f);acc=np.mean([r[1] for r in R]);best=max(best or (acc,f),(acc,f),key=lambda z:(round(z[0],6),z[1]['null'],z[1]['sup']))
         fw=best[1];bt=None
         for tau in (0.5,0.75,1.0,1.25,1.5,2.0,2.5,3.0):
             f={**fw,'tau':tau};R=soft_eval([D[i] for i in tune],[S[i] for i in tune],f);nll=-np.mean([np.log(max(1e-6,p if y else 1-p)) for p,y,_ in R]);bt=min(bt or (nll,f),(nll,f),key=lambda z:z[0])
-        fw=bt[1];res['fw_tuned_on_tune']={k:fw[k] for k in ('null','sup','rec','tau')}
-    for sp in ('tune','test','all'):
+        fw=bt[1];T.FW.update(fw);ps=[];ys=[]
+        for i in tune:o=T.recall(S[i][0],D[i]['q'],'both',False,a.theta,fw);v=re.sub(r"^Memory: [^:]*: ",'',o['line']).rstrip('.').split(' or ')[0] if o['line'] else '';ps.append(o['p'] if o['line'] else o.get('pnull',1.0));ys.append(ret_ok(v,D[i]))
+        fw['ca'],fw['cb']=_platt(np.array(ps,float),np.array(ys,float));T.FW.update(fw);res['fw_tuned_on_tune']={k:fw[k] for k in ('null','sup','rec','tau','ca','cb')}
+    T.FW.update(fw)
+    for sp in SP:
         ix=[i for i,d in enumerate(D) if sp=='all' or d['split']==sp];r={}
         for tier in ('slot','soft','both'):
-            ok=[];lat=[];ps=[];ys=[];sup=[];byw={w:[] for w in T.WS};byk={}
+            ok=[];lat=[];ps=[];ys=[];sup=[];byw={w:[] for w in T.WS};byk={};bys={}
             for i in ix:
                 d,(st,_)=D[i],S[i];t1=time.perf_counter();o=T.recall(st,d['q'],tier,False,a.theta,fw);lat.append((time.perf_counter()-t1)*1000)
                 v=(o['slot']['v'] if o['slot'] else '') if tier=='slot' else (o['soft'][0][1]['v'] if o['soft'] and o['line'] and tier=='soft' else '') if tier=='soft' else (re.sub(r"^Memory: [^:]*: ",'',o['line']).rstrip('.').split(' or ')[0] if o['line'] else '')
-                y=ret_ok(v,d);ok.append(y);byw[d['w']].append(y);byk.setdefault(d['kind'],[]).append(y);d['kind']=='correction' and sup.append(y)
+                y=ret_ok(v,d);ok.append(y);byw[d['w']].append(y);byk.setdefault(d['kind'],[]).append(y);bys.setdefault(d.get('style','v1'),[]).append(y);d['kind']=='correction' and sup.append(y)
                 tier!='slot' and (ps.append(o['p'] if o['line'] else o.get('pnull',1.0)),ys.append(y))
-            r[tier]={'hit1':round(float(np.mean(ok)),4),'answerable_hit1':round(float(np.mean([y for i2,y in zip(ix,ok) if D[i2]['ans']])),4),'abstain_ok':round(float(np.mean([y for i2,y in zip(ix,ok) if not D[i2]['ans']])),4),'supersession_ok':round(float(np.mean(sup)),4) if sup else None,'by_w':{w:round(float(np.mean(v)),3) for w,v in byw.items() if v},'by_kind':{k:round(float(np.mean(v)),3) for k,v in byk.items()},'ms_p50':round(float(np.median(lat)),3),'ms_p95':round(float(np.percentile(lat,95)),3),**({'calibration':cal(ps,ys)} if ps else {})}
-        res[sp]=r
-    json.dump(res,open(a.out,'w'),indent=1);print(json.dumps({k:(v if k not in ('tune','test','all') else {t:{x:y for x,y in v[t].items() if x not in ('calibration','by_kind')} for t in v}) for k,v in res.items()},indent=1))
+            r[tier]={'hit1':round(float(np.mean(ok)),4),'answerable_hit1':round(float(np.mean([y for i2,y in zip(ix,ok) if D[i2]['ans']])),4),'abstain_ok':round(float(np.mean([y for i2,y in zip(ix,ok) if not D[i2]['ans']])),4),'supersession_ok':round(float(np.mean(sup)),4) if sup else None,'by_w':{w:round(float(np.mean(v)),3) for w,v in byw.items() if v},'by_kind':{k:round(float(np.mean(v)),3) for k,v in byk.items()},'by_style':{k:round(float(np.mean(v)),3) for k,v in bys.items()},'ms_p50':round(float(np.median(lat)),3),'ms_p95':round(float(np.percentile(lat,95)),3),**({'calibration':cal(ps,ys)} if ps else {})}
+        r['policy']={str(g):_pol(D,S,ix,g) for g in (0.8,0.9,0.95)};res[sp]=r
+    json.dump(res,open(a.out,'w'),indent=1);print(json.dumps({k:(v if k not in SP else {t:({x:y for x,y in v[t].items() if x not in ('calibration','by_kind')} if t!='policy' else v[t]['0.9']) for t in v}) for k,v in res.items() if k!='extract'},indent=1));print(json.dumps({sp:{k:{x:y for x,y in v.items() if x!='by_w'} if v else v for k,v in e.items()} for sp,e in res['extract'].items()}))
 def model(a):
     D=[json.loads(l) for l in open(a.dev,encoding='utf-8')];D=[d for d in D if a.split in ('all',d['split'])][:a.limit or None]
     tmp=tempfile.mkdtemp(dir=a.tmp);os.environ.update(AMNI_UMEM_DIR=tmp,AMNI_UMEM_LT='1',AMNI_UMEM_GN='1',AMNI_UMEM_G2='1',AMNI_USER_MEMORY='1');fw={**T.FW,**(json.load(open(a.fw)).get('fw_tuned_on_tune',{}) if a.fw else {})}
@@ -148,6 +159,6 @@ def report(a):
                 if c.startswith(('soft','both','direct')):Y=[r for r in X if r['line'] or r.get('route') in ('direct','hint','unsure','unknown')];res[k]['calibration_vs_model']=cal([min(1.0,max(0.0,r['p'])) for r in Y],[r['ok'] for r in Y],5)
     json.dump(res,open(a.summary,'w'),indent=1);[print(k,{x:y for x,y in v.items() if x not in ('by_kind','calibration_vs_model')}) for k,v in res.items() if k.startswith('test/') or k.startswith('all/')]
 if __name__=='__main__':
-    ap=argparse.ArgumentParser();ap.add_argument('cmd');ap.add_argument('--src',default=os.path.join(ROOT,'scratchpad','toroid','devset'));ap.add_argument('--dev',default=DEV);ap.add_argument('--out',default=os.path.join(OUT,'offline.json'));ap.add_argument('--summary',default=os.path.join(OUT,'model_summary.json'));ap.add_argument('--tune',action='store_true');ap.add_argument('--theta',type=float,default=0.5);ap.add_argument('--fw',default='')
+    ap=argparse.ArgumentParser();ap.add_argument('cmd');ap.add_argument('--src',default=os.path.join(ROOT,'scratchpad','toroid','devset'));ap.add_argument('--dev',default=DEV);ap.add_argument('--out',default=os.path.join(OUT,'offline.json'));ap.add_argument('--summary',default=os.path.join(OUT,'model_summary.json'));ap.add_argument('--tune',action='store_true');ap.add_argument('--theta',type=float,default=0.5);ap.add_argument('--fw',default='');ap.add_argument('--extra',default='');ap.add_argument('--splits',default='tune,test,all');ap.add_argument('--old',action='store_true')
     ap.add_argument('--gf17',default='');ap.add_argument('--bin',default=os.path.join(ROOT,'scratchpad','toroid','bin','adamt-tor'));ap.add_argument('--threads',type=int,default=2);ap.add_argument('--budget',type=int,default=2928);ap.add_argument('--max_bytes',type=int,default=160);ap.add_argument('--conds',default='cur,slot0,slotF,soft0,both0,bothF,bothU,gold0,goldF,turnB');ap.add_argument('--sets',default='same,cross');ap.add_argument('--split',default='all');ap.add_argument('--limit',type=int,default=0);ap.add_argument('--tmp',default=os.path.join(ROOT,'scratchpad','toroid'))
     a=ap.parse_args();{'build':build,'offline':offline,'model':model,'report':report,'cover':cover}[a.cmd](a)
