@@ -270,16 +270,28 @@ def _merge(P:list)->list:
     R=[]
     for x in P:(R.__setitem__(-1,R[-1]+' and '+x) if R and _vless(R[-1]) and not re.match(r"(?i)\s*(?:my|our|i|we)\b",x) else R.append(x))
     return [x for x in R if x]
+def _gap(pv:str,c:str)->str:
+    s0,T=toks(c);lw=[t[0].lower() for t in T];n=len(T)
+    if n<3 or not (lw[0] in DET|{'my','our','his','her','their'} or T[0][0][:1].isupper() and lw[0] not in PRONS|{'i'}):return c
+    q=next((k for k in range(1,n) if lw[k] in PREPW|{'by','via','through','with','using','for','because','since'} or _istime(T,k)),None)
+    if q is None or any(lw[k] in AUX or isv(lw[k]) or lw[k] in IRR for k in range(1,q)):return c
+    A=analyze(pv)
+    if not A or not A['verb']:return c
+    P=A['T'];pl=[t[0].lower() for t in P];vi=next((k for k in range(len(P)) if P[k][0]==A['verb']),None)
+    if vi is None:return c
+    le=A['sp'][-1][2] if A['sp'] else len(P);vp=A['c'][P[vi][1]:P[le-1][2]] if le>vi+1 else A['verb']
+    return (A['c'][:P[vi][2]]+' '+s0).strip() if pl[0] in ('i','we','he','she','they') else (s0[:T[q][1]].strip()+' '+vp+' '+s0[T[q][1]:]).strip()
 def clauses(msg:str):
     m=_EMO.sub(' ',msg.strip());m=_NOT.sub(' ',m) if re.search(r"(?i)\bnot\b",m) and (_CORR.search(m) or re.search(r"(?i),\s*not\b|^\W*(?:no\W+)?not\b",m)) else m
     for sn in re.split(r"(?<=[.!?])\s+",m):
         sn=norm(_LEAD.sub('',sn.strip()).rstrip(' .!?'))
         for R,b in _RW:sn=R.sub(b,sn)
+        pv_=''
         for c in _merge([x for x in _SPL.split(_FILL.sub(' ',sn)) if x]):
             c=_LEAD.sub('',c.strip())
             while (c2:=_REP.sub('',c))!=c:c=_LEAD.sub('',c2)
             c=re.sub(r"(?i)^(?:make (?:that|it)|change (?:that|it) to|i meant)\s+",'',c).strip(' ,.!-')
-            c=_pro(c) if c else c
+            c=_pro(c) if c else c;c=_gap(pv_,c) if c and pv_ else c;pv_=c or pv_
             c and (yield c)
 _placey=lambda ow:bool(ow) and (isplace(ow[-1]) or len(ow)>1 and ow[-2] in PLACEN and re.fullmatch(r"[a-z]|\d+",ow[-1]) is not None)
 PETS=S_("dog cat puppy kitten pet horse rabbit parrot hamster ferret turtle gecko goldfish hedgehog iguana cockatiel chinchilla tortoise snake budgie pup")
@@ -553,7 +565,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.913,own=0.385,att=1.194,attc=0.654,att_bad=-1.0,pred=-0.333,pmis=-1.272,rec=-0.963,sup=-2.815,slot=0.673,subj=0.6,null=1.085,tau=1.0,co=0.138,kb=-0.081,k_lp=0.958,k_ent=-0.278,k_att=0.144,k_slot=0.212,k_pri=-0.923,k_cor=0.708,k_mg=-0.001,k_nv=1.466,k_wild=0.06,k_sup=-0.138,cu=0.235,pri=1.145,own2=0.272,csup=-2.023,wild=-0.596,cor=1.195,ci=0.345,vlen=0.086,ment=0.547,nco=-0.095,psyn=0.534,xtyp=-0.48,tonly=-0.637,prox=0.952)
+FW=dict(ent=0.875,own=0.431,att=1.177,attc=0.675,att_bad=-1.0,pred=0.058,pmis=-1.242,rec=-0.993,sup=-2.824,slot=0.698,subj=0.736,null=1.15,tau=1.0,co=0.379,kb=0.06,k_lp=0.894,k_ent=-0.365,k_att=0.027,k_slot=0.332,k_pri=-0.729,k_cor=0.629,k_mg=-0.066,k_nv=1.409,k_wild=0.047,k_sup=-0.223,cu=0.078,pri=1.195,own2=0.196,csup=-2.045,wild=-0.572,cor=1.206,ci=0.346,vlen=0.104,ment=0.431,nco=-0.169,psyn=0.534,xtyp=-0.446,tonly=-0.643,prox=0.79)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
