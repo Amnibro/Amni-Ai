@@ -1,6 +1,6 @@
 # ADAM-T-HARNESS: verify-and-complete answer loop around ADAM-T
 
-Status: CPU prototype for mission ADAM-T-HARNESS, 2026-09-29.
+Status: CPU prototype for mission ADAM-T-HARNESS, 2026-09-29; revised as v2 by mission ADAM-T-HARNESS2 (next section). The sections from "Summary (v1)" on describe v1.
 
 - **Code:** `amni/serve/adam_t_harness.py`, wired into `adam_t_client.answer()` behind `AMNI_ADAM_T_HARNESS=1` (**off by default**). `gguf_runtime.py` is untouched, so emergency-first is unchanged.
 - **Tests:** `tests/test_adam_t_harness.py` (41 tests). The `test_adam_t_route`, `test_user_toroid`, `test_user_memory_*` and `test_decontam_adam_t` suites still pass.
@@ -10,7 +10,160 @@ Status: CPU prototype for mission ADAM-T-HARNESS, 2026-09-29.
   - Model: a read-only snapshot of `exports/adam_t/t30m_sft2/ckpt` at **step 4607**. `core.bin`, `mem.bin`, `state.txt`, `steps.txt` and `log.jsonl` had stable size and mtime over a 5 s window, were unchanged after the copy, and were `cmp`-identical. Exported to `.gf17` in scratch (sha256 `47a3540d…`, argmax parity 97.6%).
   - Binary built with its own `crates/target` and copied to `adamt-har`. Model copies and the target dir were deleted afterwards.
 
-## Summary
+## v2 (mission ADAM-T-HARNESS2, 2026-09-29)
+
+v2 applies the CTO decisions: a best guess in every knowledge hedge, hedges that do not restate the question, the agreement check on by default, and the cognition layer wired in. The flag `AMNI_ADAM_T_HARNESS` is still **off by default**. `gguf_runtime.py` is untouched (CRLF, byte-exact), so emergency-first is unchanged.
+
+- **Model:** the same snapshot as v1. `t30m_sft2/ckpt` was still paused at **step 4607**; the files were stable over a 5 s window, unchanged after the copy and `cmp`-identical. The re-export has the same sha256 (`47a3540d…`) as v1. Binary built in the worktree's own `crates/target`, copied to `adamt-h2`; model copies and the target dir were deleted afterwards.
+- **Baselines reproduce exactly.** The off and v1 E2E conditions were re-run once each on this build and gave 410/410 identical replies and identical metrics to the v1 reports, so the v1 reports stand as the off/v1 rows below.
+- **Tests:** `tests/test_adam_t_harness.py` (62 tests). `test_adam_t_route`, `test_cognition`, `test_user_toroid`, `test_user_memory_*` and `test_decontam_adam_t` still pass (186 total).
+
+### What changed
+
+1. **Best guess in every knowledge hedge.** When a knowledge or reading slot fails verification, the harness offers its top unverified candidate. The order is: a verified span the ranker disagreed with; an ADAM-T span that appears in the passage; the rknow ranker's top candidate; an uncorroborated weak Wikidata answer; last, an ADAM-T span not found in the passage. For open (`any`) questions, only short sentences found in the passage and the ranker's candidate are used.
+   - **Dates and numbers stay coarse**, as in the v6 reader data (`_coarse`): decade for years from 1500 on ("in the 1940s"), century otherwise or with BC ("in the 1st century BC"), the month when there is no year; numbers by magnitude ("somewhere in the thousands", "somewhere between ten and a hundred", "fewer than ten") or a 10-point percent band.
+   - **When there is no candidate at all,** the slot goes to the old context + ADAM-T path instead of saying "I'm not sure …".
+   - **User-memory slots keep the honest "You haven't told me that yet."**
+2. **Hedge wording.** Hedges no longer restate the question: "I think it's X, but I couldn't confirm it." A second or third hedge in the same reply rotates to "Probably X, though I couldn't verify that." and "Maybe X, but I'm not certain.", which keeps 3-gram repetition down. A single-slot memory miss is "You haven't told me that yet."; in a multi-part reply the sub-question is named so the user knows which part is missing.
+3. **Agreement check on by default** (`AMNI_ADAM_T_HARNESS_AGREE`, default now `1`).
+   - Agreement compares years for dates and values for numbers (`_same`), not strings, so "July 18, 1918" agrees with "18 July 1918".
+   - A Wikidata answer is flagged as a conflict when all of these hold:
+     - the question expects a typed answer (not an open `any` question);
+     - the ADAM-T passage reading is verified, short and not a list;
+     - the reading disagrees with Wikidata;
+     - the rknow ranker's top candidate does not support the Wikidata answer.
+   - The reply is then "I think Marie Curie was born in Freta Street, or maybe Warsaw."
+4. **Cognition wired in** (`AMNI_COGNITION=1`). Before slot decomposition, `cog()` reads `cognition.mode()` and `cognition.parse()`.
+   - **Engaged** for relate, common, analogy, abstract, deduce and connect operations, and for creative mode. **Factual mode stays on the strict slot path**: across both sets, 0 of 40 factual mode items engaged cognition.
+   - **Context:** `cognition.context()` lines go into the prompt one per line. `adam_t_client.template()` and `AdamT.gen()` gained `sep` (default `' '`, so existing prompts are byte-identical); the cognition route passes `'\n'`.
+   - **Coherence checks (every mode):**
+     - no role leak;
+     - no unfinished trailing sentence;
+     - at most `AMNI_ADAM_T_HARNESS_COG_WORDS` (55) words;
+     - 3-gram repetition ≤ 0.25;
+     - not an echo of the question;
+     - mostly alphanumeric.
+   - **Fact checks (analytical only; creative relaxes them):**
+     - at least 4 words;
+     - no copied `X, rel: Y` line format;
+     - mentions a queried term;
+     - uses at least one checked-link term that is not in the question;
+     - at most a third of its content words unsupported by the lines or the question;
+     - no unsupported capitalised names;
+     - the analogy answer is present;
+     - yes/no agrees with `holds`.
+   - **When the checks fail:**
+     - analytical replies are composed from the checked lines (`compose`: "Tennis and badminton are both kinds of racket sport and court game.", "Japan. Paris is the capital of France. Tokyo is the capital of Japan.");
+     - creative replies that fail coherence, and creative requests with no lines, defer to the old path.
+   - **Decoding:** the JSON-lines protocol has no per-request sampling field, so mode-driven decoding was not wired.
+5. **Routing fixes found on the tune half and in the v1 E2E hedges:**
+   - "we/our" only counts as personal when it does not name a generic noun ("our solar system", "the planet we live on");
+   - "between A and B" is not split;
+   - "good way / best way / what helps" questions are advice and go to the model;
+   - a knowledge slot that shares words with the user's own statements in a personal message hedges as unknown memory instead of guessing.
+6. **Memory recall:**
+   - typed attributes (job, age, name, birthday) bind without the predicate-verb match ("What does my sister do for a living?" ← "My sister is a nurse …");
+   - a relaxed retry drops time words ("my meeting tomorrow");
+   - when the toroid parser finds no slot but one of the user's own statements holds the entity, a question content word and the question's qualifiers, the harness quotes it: "You mentioned you play the cello in a community orchestra." (`_said`, counter `hsd`).
+7. **Counters** (no user text): `hgs` guesses, `hsd` quoted statements; cognition uses `hg`, `hgl` lines, `hgv` model reply accepted, `hgc` composed, `hgk` creative, `hgms`.
+
+### Results
+
+**Own dev set, held-out test half** (125 items; the tune half is where rules were developed; for the test half only aggregates and the ids of the false-memory items were looked at):
+
+| test half | off | v1 | **v2** (agree on) | v2, agree off |
+|---|---|---|---|---|
+| slot correct (answerable) | 0.139 | 0.387 | **0.490** | 0.490 |
+| … memory / knowledge / calc | 0.16 / 0.10 / 0.18 | 0.37 / 0.43 / 0.27 | 0.49 / 0.52 / 0.27 | same |
+| multi-part fully answered | 0.000 | 0.247 | 0.321 | 0.321 |
+| false memory (never-stated parts) | 0.800 | 0.133 | **0.133** (2/15) | 0.133 |
+| answered (≥ 1 non-hedged sentence) | 0.944 | 0.632 | 0.648 | 0.680 |
+| overclaim | 0.921 | 0.467 | 0.460 | 0.451 |
+| latency p50 / p90 ms | 772 / 2428 | 1179 / 3961 | 1346 / 4983 | 730 / 3763 |
+
+Tune half, v2: slot correct 0.637 (v1 0.587), false memory 0.027 (v1 0.027), answered 0.712 (v1 0.688). The two test false memories are the same two items v1 got wrong, not new ones. With only 15 never-stated test slots, one slot is 6.7 pp.
+
+**Locked E2E chat dev suite** (410 items, dry/tune, one run per condition):
+
+| metric | off | v1 | **v2** |
+|---|---|---|---|
+| chat_ans | 0.588 | 0.488 | **0.559** |
+| chat_good | 0.415 | 0.422 | **0.480** |
+| chat_fact | 0.403 | 0.423 | **0.577** |
+| chat_ctx | 0.451 | 0.437 | 0.535 |
+| chat_coh | 0.902 | 0.822 | **0.927** |
+| chat_dec | 0.022 | 0.161 | **0.017** |
+| chat_dup / nmfp / em | 0.012 / 0.037 / 1.00 | 0.000 / 0.037 / 1.00 | 0.027 / 0.037 / 1.00 |
+| milestones | C1 | none | **C1** |
+| route mix | adam_t 396 | adam_t 246, harness 150 | adam_t 251, harness 145 |
+| latency median / p90 ms (harness route) | – | 1115 / 2148 | 1446 / 2448 |
+
+- **By category** (answered / good, off → v2):
+  - know: 0.824 / 0.314 → 0.667 / 0.510;
+  - multi: 0.521 / 0.366 → 0.577 / 0.465;
+  - advice: 0.814 / 0.814 → 0.814 / 0.814.
+  - chat, explain, nearmiss and emergency are unchanged.
+  - No E2E item triggered cognition: the suite has no relation, analogy or abstraction requests.
+- **Why answered stops at 0.559 (target 0.60 missed by 4.2 pp, 17 items).**
+  - 26 items answered by off are not answered by v2. 22 of them are best-guess hedges whose candidate is not a gold keyword (17 entity guesses, 5 coarse numbers or dates), 3 are honest "You haven't told me" replies, and 1 is other.
+  - Of the 25 lost items that have a gold answer, off's answer was factually right on only 4.
+  - For `know` items, the locked scorer counts any reply of up to 4 words as on-topic ("Humid." for "What do bees make?"), but a longer reply only when it contains a keyword. So a wrong one-word guess counts as answered and a wrong hedged guess does not.
+  - v2 gains 14 items that off missed.
+  - Declines are now 1.7%, below off's 2.2%.
+
+**Cognition dev set** (310 items; replies through the live route; `hit` = a gold keyword stem in the reply; answered and coherent use the locked chat scorer with the gold stems as keywords):
+
+| dev | off | v1 | **v2** |
+|---|---|---|---|
+| hit (250 op items) | 0.096 | 0.088 | **0.840** |
+| … relate / common / analogy / abstract | 0.11 / 0.14 / 0.04 / 0.08 | 0.09 / 0.12 / 0.06 / 0.08 | 0.79 / 0.84 / 0.86 / 0.92 |
+| answered (all 310) | 0.145 | 0.119 | **0.845** |
+| coherent | 0.787 | 0.529 | **0.977** |
+| cognition engaged | 0 | 0 | 0.839 (factual 0/20, analytical 8/20, creative 5/20 mode items) |
+| model reply accepted (else composed or deferred) | – | – | 0.119 |
+| latency p50 / p90 ms | 2116 / 2406 | 1875 / 2646 | 477 / 1409 |
+
+Held-out cognition test (145 items, run once, off vs v2): hit 0.129 → **0.765**, answered 0.166 → 0.690, coherent 0.717 → 0.972. By op, relate / common / analogy / abstract are 0.63 / 0.87 / 0.70 / 0.95.
+
+- **ADAM-T is a weak verbaliser of these links.** Only 12% of its replies pass the fact checks. Typical failures are single nouns ("Albert.", "Belemnite."), copied line syntax, or new facts. Most accurate answers come from `compose`, which states only the checked links.
+- **Creative mode** passes coherent model text through, but the model often answers creative requests with "Sure, I'd be happy to help". Creative requests with no cognition lines (most poem, story and slogan prompts, since `parse` finds no operation) defer to the old path.
+
+### Cost of the agreement check (own dev test half, v2 with and without it)
+
+- **Accuracy:**
+  - test half: no change (slot correct 0.490, false memory 0.133 both ways), with 2 conflicts flagged;
+  - tune half: one conflict, the Marie Curie → Freta Street case, now "…Freta Street, or maybe Warsaw" (slot correct 0.631 → 0.637).
+- **Answered:** 0.680 → 0.648 on the test half. Four replies became hedges, from conflicts and from the second sentence-only read on passage answers.
+- **Latency:** each strong Wikidata slot now retrieves passages and runs one ADAM-T read. On the test half, p50 goes 730 → 1346 ms and p90 3763 → 4983 ms. On the tune half, p50 goes 4 → 1259 ms.
+- **Earlier rules that were dropped:**
+  - The v1 conflict rule compared strings. It hedged correct dates ("July 18, 1918" vs "18 July 1918") and a list span ("Canberra, or maybe Adelaide, Brisbane, …").
+  - A stricter rule that also required the ranker to back the passage flagged nothing on the dev set, Freta Street included.
+- **E2E caveat:** the one E2E run used that stricter rule (1 conflict flagged in 145 harness replies). The shipped rule was settled on the own dev set afterwards; the E2E suite was not re-run.
+- **Recommendation:** the check is on as the CTO asked. Its measured benefit is one caught Wikidata quirk, at about 0.6 s median latency and 3 pp of answered rate on the test half. It is worth revisiting when the Wikidata v3 KEEP list lands.
+
+### Targets
+
+| target | result | met |
+|---|---|---|
+| E2E answered ≥ 0.60 | 0.559 | **no** (−4.2 pp; see above) |
+| harness dev test-half fact ≥ 0.42 | 0.490 | yes |
+| harness dev test-half false memory ≤ 10% | 13.3% (2/15, same items as v1) | **no** (one slot) |
+| C1 (answered ≥ 0.50, coherent ≥ 0.60) | 0.559 / 0.927 | yes |
+
+### Reproduce (v2)
+
+```
+AMNI_COGNITION=1 python scripts/adam_t_harness_eval.py run --conds on,on-noagree --split all --bin <adamt-h2> --gf17 <model.gf17> --out data/adam_t/eval/harness/results_v2.jsonl
+python scripts/adam_t_harness_eval.py report --out data/adam_t/eval/harness/results_v2.jsonl --summary data/adam_t/eval/harness/summary_v2.json
+AMNI_COGNITION=1 python scripts/adam_t_harness_eval.py cog --cond v2 --cogset dev --bin <adamt-h2> --gf17 <model.gf17> --out data/adam_t/eval/cognition/harness_dev.jsonl
+python scripts/adam_t_harness_eval.py cogreport --out data/adam_t/eval/cognition/harness_dev.jsonl --summary data/adam_t/eval/cognition/harness_dev_summary.json
+env AMNI_ADAM_T_HARNESS=1 AMNI_COGNITION=1 AMNI_ADAM_T_HARNESS_AGREE=1 python scripts/adam_t_eval.py run --model proto --suites chat --e2e --tune --proto-cmd '<adamt-h2> serve <model.gf17>' --name adam-t-t30m-sft2-h2v2 --step 4607
+```
+
+Every command ran under `systemd-run --user --scope -p MemoryMax=6G -p CPUQuota=200% nice -n 15`. The cognition `off` and `v1` rows used `--cond off` and a frozen copy of the v1 code.
+
+
+## Summary (v1)
 
 The CEO's loop, "A was asked, B was in memory, return B, then check A+B and complete with C", runs outside the model:
 
