@@ -1,0 +1,27 @@
+{
+ "n": 250,
+ "by_kind": {
+  "mix": 50,
+  "multi_mem": 50,
+  "multi_know": 45,
+  "followup": 40,
+  "nomem": 40,
+  "single": 25
+ },
+ "slots": {
+  "mem": 186,
+  "know": 171,
+  "none": 52,
+  "calc": 16
+ },
+ "multipart": 170,
+ "split": {
+  "tune": 125,
+  "test": 125
+ },
+ "sixgram_overlap_chat_src_and_toroid_dev": 0,
+ "overlap_items": [],
+ "validation_failures": [],
+ "license": "CC0-1.0 (written from scratch for ADAM-T-HARNESS, 2026-09-29; no dataset text)",
+ "split_rule": "odd id = tune (rules developed and weights set here), even id = test (aggregates only)"
+}

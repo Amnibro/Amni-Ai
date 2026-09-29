@@ -1,0 +1,3619 @@
+{
+ "off": {
+  "test": {
+   "n": 125,
+   "answered": {
+    "rate": 0.944,
+    "n": 125,
+    "se": 0.0206
+   },
+   "slot_correct": {
+    "rate": 0.1392,
+    "n": 194,
+    "se": 0.0249
+   },
+   "slot_correct_by_src": {
+    "mem": {
+     "rate": 0.1635,
+     "n": 104,
+     "se": 0.0363
+    },
+    "know": {
+     "rate": 0.1013,
+     "n": 79,
+     "se": 0.0339
+    },
+    "calc": {
+     "rate": 0.1818,
+     "n": 11,
+     "se": 0.1163
+    }
+   },
+   "slot_correct_unhedged": {
+    "rate": 0.1392,
+    "n": 194,
+    "se": 0.0249
+   },
+   "slot_mentioned_loose": {
+    "rate": 0.1392,
+    "n": 194,
+    "se": 0.0249
+   },
+   "item_all_correct": {
+    "rate": 0.096,
+    "n": 125,
+    "se": 0.0263
+   },
+   "multipart_fully_answered": {
+    "rate": 0.0,
+    "n": 81,
+    "se": 0.0
+   },
+   "multipart_fully_answered_unhedged": {
+    "rate": 0.0,
+    "n": 81,
+    "se": 0.0
+   },
+   "false_memory": {
+    "rate": 0.8,
+    "n": 15,
+    "se": 0.1033
+   },
+   "hedge_rate": {
+    "rate": 0.088,
+    "n": 125,
+    "se": 0.0253
+   },
+   "hedge_warranted": {
+    "rate": 1.0,
+    "n": 11,
+    "se": 0.0
+   },
+   "overclaim_unhedged": {
+    "rate": 0.9211,
+    "n": 114,
+    "se": 0.0253
+   },
+   "latency_ms": {
+    "p50": 771.6,
+    "p90": 2427.6,
+    "mean": 1199.1
+   },
+   "routes": {
+    "adam_t": 125
+   },
+   "by_kind": {
+    "multi_mem": {
+     "n": 30,
+     "answered": {
+      "rate": 0.9667,
+      "n": 30,
+      "se": 0.0328
+     },
+     "slot_correct": {
+      "rate": 0.0984,
+      "n": 61,
+      "se": 0.0381
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.0984,
+       "n": 61,
+       "se": 0.0381
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.0984,
+      "n": 61,
+      "se": 0.0381
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.0984,
+      "n": 61,
+      "se": 0.0381
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 30,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 30,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 30,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.1,
+      "n": 30,
+      "se": 0.0548
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 3,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 27,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 741.0,
+      "p90": 1009.4,
+      "mean": 838.4
+     },
+     "routes": {
+      "adam_t": 30
+     }
+    },
+    "multi_know": {
+     "n": 20,
+     "answered": {
+      "rate": 0.85,
+      "n": 20,
+      "se": 0.0798
+     },
+     "slot_correct": {
+      "rate": 0.0732,
+      "n": 41,
+      "se": 0.0407
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "know": {
+       "rate": 0.0732,
+       "n": 41,
+       "se": 0.0407
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.0732,
+      "n": 41,
+      "se": 0.0407
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.0732,
+      "n": 41,
+      "se": 0.0407
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.15,
+      "n": 20,
+      "se": 0.0798
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 3,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 17,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 2129.1,
+      "p90": 2439.9,
+      "mean": 1999.0
+     },
+     "routes": {
+      "adam_t": 20
+     }
+    },
+    "mix": {
+     "n": 20,
+     "answered": {
+      "rate": 1.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "slot_correct": {
+      "rate": 0.1667,
+      "n": 36,
+      "se": 0.0621
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.4,
+       "n": 15,
+       "se": 0.1265
+      },
+      "know": {
+       "rate": 0.0,
+       "n": 15,
+       "se": 0.0
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 6,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.1667,
+      "n": 36,
+      "se": 0.0621
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.1667,
+      "n": 36,
+      "se": 0.0621
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": 1.0,
+      "n": 5,
+      "se": 0.0
+     },
+     "hedge_rate": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "hedge_warranted": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 465.5,
+      "p90": 893.1,
+      "mean": 539.9
+     },
+     "routes": {
+      "adam_t": 20
+     }
+    },
+    "followup": {
+     "n": 30,
+     "answered": {
+      "rate": 0.9333,
+      "n": 30,
+      "se": 0.0455
+     },
+     "slot_correct": {
+      "rate": 0.1351,
+      "n": 37,
+      "se": 0.0562
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.1667,
+       "n": 18,
+       "se": 0.0878
+      },
+      "know": {
+       "rate": 0.1176,
+       "n": 17,
+       "se": 0.0781
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 2,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.1351,
+      "n": 37,
+      "se": 0.0562
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.1351,
+      "n": 37,
+      "se": 0.0562
+     },
+     "item_all_correct": {
+      "rate": 0.1333,
+      "n": 30,
+      "se": 0.0621
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 7,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 7,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.0667,
+      "n": 30,
+      "se": 0.0455
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 2,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.8571,
+      "n": 28,
+      "se": 0.0661
+     },
+     "latency_ms": {
+      "p50": 2033.3,
+      "p90": 2616.3,
+      "mean": 1718.5
+     },
+     "routes": {
+      "adam_t": 30
+     }
+    },
+    "nomem": {
+     "n": 10,
+     "answered": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "slot_correct": {
+      "rate": 0.5,
+      "n": 4,
+      "se": 0.25
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.5,
+       "n": 4,
+       "se": 0.25
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.5,
+      "n": 4,
+      "se": 0.25
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.5,
+      "n": 4,
+      "se": 0.25
+     },
+     "item_all_correct": {
+      "rate": 0.3,
+      "n": 10,
+      "se": 0.1449
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 4,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 4,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": 0.7,
+      "n": 10,
+      "se": 0.1449
+     },
+     "hedge_rate": {
+      "rate": 0.3,
+      "n": 10,
+      "se": 0.1449
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 3,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 7,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 442.6,
+      "p90": 581.3,
+      "mean": 469.7
+     },
+     "routes": {
+      "adam_t": 10
+     }
+    },
+    "single": {
+     "n": 15,
+     "answered": {
+      "rate": 1.0,
+      "n": 15,
+      "se": 0.0
+     },
+     "slot_correct": {
+      "rate": 0.3333,
+      "n": 15,
+      "se": 0.1217
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.0,
+       "n": 6,
+       "se": 0.0
+      },
+      "know": {
+       "rate": 0.5,
+       "n": 6,
+       "se": 0.2041
+      },
+      "calc": {
+       "rate": 0.6667,
+       "n": 3,
+       "se": 0.2722
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.3333,
+      "n": 15,
+      "se": 0.1217
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.3333,
+      "n": 15,
+      "se": 0.1217
+     },
+     "item_all_correct": {
+      "rate": 0.3333,
+      "n": 15,
+      "se": 0.1217
+     },
+     "multipart_fully_answered": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.0,
+      "n": 15,
+      "se": 0.0
+     },
+     "hedge_warranted": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "overclaim_unhedged": {
+      "rate": 0.6667,
+      "n": 15,
+      "se": 0.1217
+     },
+     "latency_ms": {
+      "p50": 1126.1,
+      "p90": 2287.2,
+      "mean": 1180.4
+     },
+     "routes": {
+      "adam_t": 15
+     }
+    }
+   }
+  },
+  "tune": {
+   "n": 125,
+   "answered": {
+    "rate": 0.952,
+    "n": 125,
+    "se": 0.0191
+   },
+   "slot_correct": {
+    "rate": 0.1844,
+    "n": 179,
+    "se": 0.029
+   },
+   "slot_correct_by_src": {
+    "mem": {
+     "rate": 0.2805,
+     "n": 82,
+     "se": 0.0496
+    },
+    "know": {
+     "rate": 0.087,
+     "n": 92,
+     "se": 0.0294
+    },
+    "calc": {
+     "rate": 0.4,
+     "n": 5,
+     "se": 0.2191
+    }
+   },
+   "slot_correct_unhedged": {
+    "rate": 0.1844,
+    "n": 179,
+    "se": 0.029
+   },
+   "slot_mentioned_loose": {
+    "rate": 0.1844,
+    "n": 179,
+    "se": 0.029
+   },
+   "item_all_correct": {
+    "rate": 0.12,
+    "n": 125,
+    "se": 0.0291
+   },
+   "multipart_fully_answered": {
+    "rate": 0.0112,
+    "n": 89,
+    "se": 0.0112
+   },
+   "multipart_fully_answered_unhedged": {
+    "rate": 0.0112,
+    "n": 89,
+    "se": 0.0112
+   },
+   "false_memory": {
+    "rate": 0.6486,
+    "n": 37,
+    "se": 0.0785
+   },
+   "hedge_rate": {
+    "rate": 0.16,
+    "n": 125,
+    "se": 0.0328
+   },
+   "hedge_warranted": {
+    "rate": 1.0,
+    "n": 20,
+    "se": 0.0
+   },
+   "overclaim_unhedged": {
+    "rate": 0.9238,
+    "n": 105,
+    "se": 0.0259
+   },
+   "latency_ms": {
+    "p50": 645.8,
+    "p90": 2382.4,
+    "mean": 1085.1
+   },
+   "routes": {
+    "adam_t": 125
+   },
+   "by_kind": {
+    "multi_mem": {
+     "n": 20,
+     "answered": {
+      "rate": 0.95,
+      "n": 20,
+      "se": 0.0487
+     },
+     "slot_correct": {
+      "rate": 0.1463,
+      "n": 41,
+      "se": 0.0552
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.1463,
+       "n": 41,
+       "se": 0.0552
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.1463,
+      "n": 41,
+      "se": 0.0552
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.1463,
+      "n": 41,
+      "se": 0.0552
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.1,
+      "n": 20,
+      "se": 0.0671
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 2,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 18,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 710.8,
+      "p90": 2533.7,
+      "mean": 1001.2
+     },
+     "routes": {
+      "adam_t": 20
+     }
+    },
+    "multi_know": {
+     "n": 25,
+     "answered": {
+      "rate": 0.96,
+      "n": 25,
+      "se": 0.0392
+     },
+     "slot_correct": {
+      "rate": 0.0784,
+      "n": 51,
+      "se": 0.0376
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "know": {
+       "rate": 0.0784,
+       "n": 51,
+       "se": 0.0376
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.0784,
+      "n": 51,
+      "se": 0.0376
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.0784,
+      "n": 51,
+      "se": 0.0376
+     },
+     "item_all_correct": {
+      "rate": 0.04,
+      "n": 25,
+      "se": 0.0392
+     },
+     "multipart_fully_answered": {
+      "rate": 0.04,
+      "n": 25,
+      "se": 0.0392
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.04,
+      "n": 25,
+      "se": 0.0392
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.04,
+      "n": 25,
+      "se": 0.0392
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 1,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.9583,
+      "n": 24,
+      "se": 0.0408
+     },
+     "latency_ms": {
+      "p50": 2035.6,
+      "p90": 2363.1,
+      "mean": 2022.6
+     },
+     "routes": {
+      "adam_t": 25
+     }
+    },
+    "mix": {
+     "n": 30,
+     "answered": {
+      "rate": 0.9,
+      "n": 30,
+      "se": 0.0548
+     },
+     "slot_correct": {
+      "rate": 0.2075,
+      "n": 53,
+      "se": 0.0557
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.4783,
+       "n": 23,
+       "se": 0.1042
+      },
+      "know": {
+       "rate": 0.0,
+       "n": 27,
+       "se": 0.0
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 3,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.2075,
+      "n": 53,
+      "se": 0.0557
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.2075,
+      "n": 53,
+      "se": 0.0557
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 30,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 30,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 30,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": 0.4286,
+      "n": 7,
+      "se": 0.187
+     },
+     "hedge_rate": {
+      "rate": 0.2667,
+      "n": 30,
+      "se": 0.0807
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 8,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 22,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 476.6,
+      "p90": 699.1,
+      "mean": 615.4
+     },
+     "routes": {
+      "adam_t": 30
+     }
+    },
+    "followup": {
+     "n": 10,
+     "answered": {
+      "rate": 1.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "slot_correct": {
+      "rate": 0.0,
+      "n": 13,
+      "se": 0.0
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.0,
+       "n": 3,
+       "se": 0.0
+      },
+      "know": {
+       "rate": 0.0,
+       "n": 10,
+       "se": 0.0
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.0,
+      "n": 13,
+      "se": 0.0
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.0,
+      "n": 13,
+      "se": 0.0
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 3,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 3,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "hedge_warranted": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 2248.2,
+      "p90": 2439.1,
+      "mean": 1822.1
+     },
+     "routes": {
+      "adam_t": 10
+     }
+    },
+    "nomem": {
+     "n": 30,
+     "answered": {
+      "rate": 0.9667,
+      "n": 30,
+      "se": 0.0328
+     },
+     "slot_correct": {
+      "rate": 0.4545,
+      "n": 11,
+      "se": 0.1501
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.4545,
+       "n": 11,
+       "se": 0.1501
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.4545,
+      "n": 11,
+      "se": 0.1501
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.4545,
+      "n": 11,
+      "se": 0.1501
+     },
+     "item_all_correct": {
+      "rate": 0.2333,
+      "n": 30,
+      "se": 0.0772
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 11,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 11,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": 0.7,
+      "n": 30,
+      "se": 0.0837
+     },
+     "hedge_rate": {
+      "rate": 0.3,
+      "n": 30,
+      "se": 0.0837
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 9,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 21,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 434.9,
+      "p90": 651.4,
+      "mean": 563.7
+     },
+     "routes": {
+      "adam_t": 30
+     }
+    },
+    "single": {
+     "n": 10,
+     "answered": {
+      "rate": 1.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "slot_correct": {
+      "rate": 0.7,
+      "n": 10,
+      "se": 0.1449
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.25,
+       "n": 4,
+       "se": 0.2165
+      },
+      "know": {
+       "rate": 1.0,
+       "n": 4,
+       "se": 0.0
+      },
+      "calc": {
+       "rate": 1.0,
+       "n": 2,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.7,
+      "n": 10,
+      "se": 0.1449
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.7,
+      "n": 10,
+      "se": 0.1449
+     },
+     "item_all_correct": {
+      "rate": 0.7,
+      "n": 10,
+      "se": 0.1449
+     },
+     "multipart_fully_answered": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "hedge_warranted": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "overclaim_unhedged": {
+      "rate": 0.3,
+      "n": 10,
+      "se": 0.1449
+     },
+     "latency_ms": {
+      "p50": 884.7,
+      "p90": 2411.4,
+      "mean": 1145.3
+     },
+     "routes": {
+      "adam_t": 10
+     }
+    }
+   }
+  },
+  "all": {
+   "n": 250,
+   "answered": {
+    "rate": 0.948,
+    "n": 250,
+    "se": 0.014
+   },
+   "slot_correct": {
+    "rate": 0.1609,
+    "n": 373,
+    "se": 0.019
+   },
+   "slot_correct_by_src": {
+    "mem": {
+     "rate": 0.2151,
+     "n": 186,
+     "se": 0.0301
+    },
+    "know": {
+     "rate": 0.0936,
+     "n": 171,
+     "se": 0.0223
+    },
+    "calc": {
+     "rate": 0.25,
+     "n": 16,
+     "se": 0.1083
+    }
+   },
+   "slot_correct_unhedged": {
+    "rate": 0.1609,
+    "n": 373,
+    "se": 0.019
+   },
+   "slot_mentioned_loose": {
+    "rate": 0.1609,
+    "n": 373,
+    "se": 0.019
+   },
+   "item_all_correct": {
+    "rate": 0.108,
+    "n": 250,
+    "se": 0.0196
+   },
+   "multipart_fully_answered": {
+    "rate": 0.0059,
+    "n": 170,
+    "se": 0.0059
+   },
+   "multipart_fully_answered_unhedged": {
+    "rate": 0.0059,
+    "n": 170,
+    "se": 0.0059
+   },
+   "false_memory": {
+    "rate": 0.6923,
+    "n": 52,
+    "se": 0.064
+   },
+   "hedge_rate": {
+    "rate": 0.124,
+    "n": 250,
+    "se": 0.0208
+   },
+   "hedge_warranted": {
+    "rate": 1.0,
+    "n": 31,
+    "se": 0.0
+   },
+   "overclaim_unhedged": {
+    "rate": 0.9224,
+    "n": 219,
+    "se": 0.0181
+   },
+   "latency_ms": {
+    "p50": 704.6,
+    "p90": 2392.1,
+    "mean": 1142.1
+   },
+   "routes": {
+    "adam_t": 250
+   },
+   "by_kind": {
+    "multi_mem": {
+     "n": 50,
+     "answered": {
+      "rate": 0.96,
+      "n": 50,
+      "se": 0.0277
+     },
+     "slot_correct": {
+      "rate": 0.1176,
+      "n": 102,
+      "se": 0.0319
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.1176,
+       "n": 102,
+       "se": 0.0319
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.1176,
+      "n": 102,
+      "se": 0.0319
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.1176,
+      "n": 102,
+      "se": 0.0319
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 50,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 50,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 50,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.1,
+      "n": 50,
+      "se": 0.0424
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 5,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 45,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 717.1,
+      "p90": 1233.5,
+      "mean": 903.5
+     },
+     "routes": {
+      "adam_t": 50
+     }
+    },
+    "multi_know": {
+     "n": 45,
+     "answered": {
+      "rate": 0.9111,
+      "n": 45,
+      "se": 0.0424
+     },
+     "slot_correct": {
+      "rate": 0.0761,
+      "n": 92,
+      "se": 0.0276
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "know": {
+       "rate": 0.0761,
+       "n": 92,
+       "se": 0.0276
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.0761,
+      "n": 92,
+      "se": 0.0276
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.0761,
+      "n": 92,
+      "se": 0.0276
+     },
+     "item_all_correct": {
+      "rate": 0.0222,
+      "n": 45,
+      "se": 0.022
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0222,
+      "n": 45,
+      "se": 0.022
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0222,
+      "n": 45,
+      "se": 0.022
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.0889,
+      "n": 45,
+      "se": 0.0424
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 4,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.9756,
+      "n": 41,
+      "se": 0.0241
+     },
+     "latency_ms": {
+      "p50": 2090.9,
+      "p90": 2396.4,
+      "mean": 2012.1
+     },
+     "routes": {
+      "adam_t": 45
+     }
+    },
+    "mix": {
+     "n": 50,
+     "answered": {
+      "rate": 0.94,
+      "n": 50,
+      "se": 0.0336
+     },
+     "slot_correct": {
+      "rate": 0.191,
+      "n": 89,
+      "se": 0.0417
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.4474,
+       "n": 38,
+       "se": 0.0807
+      },
+      "know": {
+       "rate": 0.0,
+       "n": 42,
+       "se": 0.0
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 9,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.191,
+      "n": 89,
+      "se": 0.0417
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.191,
+      "n": 89,
+      "se": 0.0417
+     },
+     "item_all_correct": {
+      "rate": 0.0,
+      "n": 50,
+      "se": 0.0
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 50,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 50,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": 0.6667,
+      "n": 12,
+      "se": 0.1361
+     },
+     "hedge_rate": {
+      "rate": 0.16,
+      "n": 50,
+      "se": 0.0518
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 8,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 42,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 476.6,
+      "p90": 738.1,
+      "mean": 585.2
+     },
+     "routes": {
+      "adam_t": 50
+     }
+    },
+    "followup": {
+     "n": 40,
+     "answered": {
+      "rate": 0.95,
+      "n": 40,
+      "se": 0.0345
+     },
+     "slot_correct": {
+      "rate": 0.1,
+      "n": 50,
+      "se": 0.0424
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.1429,
+       "n": 21,
+       "se": 0.0764
+      },
+      "know": {
+       "rate": 0.0741,
+       "n": 27,
+       "se": 0.0504
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 2,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.1,
+      "n": 50,
+      "se": 0.0424
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.1,
+      "n": 50,
+      "se": 0.0424
+     },
+     "item_all_correct": {
+      "rate": 0.1,
+      "n": 40,
+      "se": 0.0474
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.05,
+      "n": 40,
+      "se": 0.0345
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 2,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.8947,
+      "n": 38,
+      "se": 0.0498
+     },
+     "latency_ms": {
+      "p50": 2124.7,
+      "p90": 2550.4,
+      "mean": 1744.4
+     },
+     "routes": {
+      "adam_t": 40
+     }
+    },
+    "nomem": {
+     "n": 40,
+     "answered": {
+      "rate": 0.95,
+      "n": 40,
+      "se": 0.0345
+     },
+     "slot_correct": {
+      "rate": 0.4667,
+      "n": 15,
+      "se": 0.1288
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.4667,
+       "n": 15,
+       "se": 0.1288
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.4667,
+      "n": 15,
+      "se": 0.1288
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.4667,
+      "n": 15,
+      "se": 0.1288
+     },
+     "item_all_correct": {
+      "rate": 0.25,
+      "n": 40,
+      "se": 0.0685
+     },
+     "multipart_fully_answered": {
+      "rate": 0.0,
+      "n": 15,
+      "se": 0.0
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.0,
+      "n": 15,
+      "se": 0.0
+     },
+     "false_memory": {
+      "rate": 0.7,
+      "n": 40,
+      "se": 0.0725
+     },
+     "hedge_rate": {
+      "rate": 0.3,
+      "n": 40,
+      "se": 0.0725
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 12,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 28,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 437.0,
+      "p90": 650.8,
+      "mean": 540.2
+     },
+     "routes": {
+      "adam_t": 40
+     }
+    },
+    "single": {
+     "n": 25,
+     "answered": {
+      "rate": 1.0,
+      "n": 25,
+      "se": 0.0
+     },
+     "slot_correct": {
+      "rate": 0.48,
+      "n": 25,
+      "se": 0.0999
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.1,
+       "n": 10,
+       "se": 0.0949
+      },
+      "know": {
+       "rate": 0.7,
+       "n": 10,
+       "se": 0.1449
+      },
+      "calc": {
+       "rate": 0.8,
+       "n": 5,
+       "se": 0.1789
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.48,
+      "n": 25,
+      "se": 0.0999
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.48,
+      "n": 25,
+      "se": 0.0999
+     },
+     "item_all_correct": {
+      "rate": 0.48,
+      "n": 25,
+      "se": 0.0999
+     },
+     "multipart_fully_answered": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.0,
+      "n": 25,
+      "se": 0.0
+     },
+     "hedge_warranted": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "overclaim_unhedged": {
+      "rate": 0.52,
+      "n": 25,
+      "se": 0.0999
+     },
+     "latency_ms": {
+      "p50": 1126.1,
+      "p90": 2376.4,
+      "mean": 1166.3
+     },
+     "routes": {
+      "adam_t": 25
+     }
+    }
+   }
+  }
+ },
+ "on": {
+  "test": {
+   "n": 125,
+   "answered": {
+    "rate": 0.632,
+    "n": 125,
+    "se": 0.0431
+   },
+   "slot_correct": {
+    "rate": 0.3866,
+    "n": 194,
+    "se": 0.035
+   },
+   "slot_correct_by_src": {
+    "mem": {
+     "rate": 0.3654,
+     "n": 104,
+     "se": 0.0472
+    },
+    "know": {
+     "rate": 0.4304,
+     "n": 79,
+     "se": 0.0557
+    },
+    "calc": {
+     "rate": 0.2727,
+     "n": 11,
+     "se": 0.1343
+    }
+   },
+   "slot_correct_unhedged": {
+    "rate": 0.3763,
+    "n": 194,
+    "se": 0.0348
+   },
+   "slot_mentioned_loose": {
+    "rate": 0.3866,
+    "n": 194,
+    "se": 0.035
+   },
+   "item_all_correct": {
+    "rate": 0.304,
+    "n": 125,
+    "se": 0.0411
+   },
+   "multipart_fully_answered": {
+    "rate": 0.2469,
+    "n": 81,
+    "se": 0.0479
+   },
+   "multipart_fully_answered_unhedged": {
+    "rate": 0.2346,
+    "n": 81,
+    "se": 0.0471
+   },
+   "false_memory": {
+    "rate": 0.1333,
+    "n": 15,
+    "se": 0.0878
+   },
+   "hedge_rate": {
+    "rate": 0.64,
+    "n": 125,
+    "se": 0.0429
+   },
+   "hedge_warranted": {
+    "rate": 0.9625,
+    "n": 80,
+    "se": 0.0212
+   },
+   "overclaim_unhedged": {
+    "rate": 0.4667,
+    "n": 45,
+    "se": 0.0744
+   },
+   "latency_ms": {
+    "p50": 1178.7,
+    "p90": 3960.7,
+    "mean": 1536.2
+   },
+   "routes": {
+    "harness": 121,
+    "adam_t": 4
+   },
+   "by_kind": {
+    "multi_mem": {
+     "n": 30,
+     "answered": {
+      "rate": 0.8333,
+      "n": 30,
+      "se": 0.068
+     },
+     "slot_correct": {
+      "rate": 0.3607,
+      "n": 61,
+      "se": 0.0615
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.3607,
+       "n": 61,
+       "se": 0.0615
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.3607,
+      "n": 61,
+      "se": 0.0615
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.3607,
+      "n": 61,
+      "se": 0.0615
+     },
+     "item_all_correct": {
+      "rate": 0.1333,
+      "n": 30,
+      "se": 0.0621
+     },
+     "multipart_fully_answered": {
+      "rate": 0.1333,
+      "n": 30,
+      "se": 0.0621
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.1333,
+      "n": 30,
+      "se": 0.0621
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.6667,
+      "n": 30,
+      "se": 0.0861
+     },
+     "hedge_warranted": {
+      "rate": 0.95,
+      "n": 20,
+      "se": 0.0487
+     },
+     "overclaim_unhedged": {
+      "rate": 0.7,
+      "n": 10,
+      "se": 0.1449
+     },
+     "latency_ms": {
+      "p50": 347.9,
+      "p90": 3809.4,
+      "mean": 1420.5
+     },
+     "routes": {
+      "harness": 30
+     }
+    },
+    "multi_know": {
+     "n": 20,
+     "answered": {
+      "rate": 0.65,
+      "n": 20,
+      "se": 0.1067
+     },
+     "slot_correct": {
+      "rate": 0.3902,
+      "n": 41,
+      "se": 0.0762
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "know": {
+       "rate": 0.3902,
+       "n": 41,
+       "se": 0.0762
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.3902,
+      "n": 41,
+      "se": 0.0762
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.3902,
+      "n": 41,
+      "se": 0.0762
+     },
+     "item_all_correct": {
+      "rate": 0.25,
+      "n": 20,
+      "se": 0.0968
+     },
+     "multipart_fully_answered": {
+      "rate": 0.25,
+      "n": 20,
+      "se": 0.0968
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.25,
+      "n": 20,
+      "se": 0.0968
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.5,
+      "n": 20,
+      "se": 0.1118
+     },
+     "hedge_warranted": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "overclaim_unhedged": {
+      "rate": 0.6,
+      "n": 10,
+      "se": 0.1549
+     },
+     "latency_ms": {
+      "p50": 3086.8,
+      "p90": 4320.6,
+      "mean": 2536.5
+     },
+     "routes": {
+      "harness": 19,
+      "adam_t": 1
+     }
+    },
+    "mix": {
+     "n": 20,
+     "answered": {
+      "rate": 0.75,
+      "n": 20,
+      "se": 0.0968
+     },
+     "slot_correct": {
+      "rate": 0.5,
+      "n": 36,
+      "se": 0.0833
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.6,
+       "n": 15,
+       "se": 0.1265
+      },
+      "know": {
+       "rate": 0.5333,
+       "n": 15,
+       "se": 0.1288
+      },
+      "calc": {
+       "rate": 0.1667,
+       "n": 6,
+       "se": 0.1521
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.4444,
+      "n": 36,
+      "se": 0.0828
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.5,
+      "n": 36,
+      "se": 0.0833
+     },
+     "item_all_correct": {
+      "rate": 0.35,
+      "n": 20,
+      "se": 0.1067
+     },
+     "multipart_fully_answered": {
+      "rate": 0.35,
+      "n": 20,
+      "se": 0.1067
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.3,
+      "n": 20,
+      "se": 0.1025
+     },
+     "false_memory": {
+      "rate": 0.2,
+      "n": 5,
+      "se": 0.1789
+     },
+     "hedge_rate": {
+      "rate": 0.75,
+      "n": 20,
+      "se": 0.0968
+     },
+     "hedge_warranted": {
+      "rate": 0.9333,
+      "n": 15,
+      "se": 0.0644
+     },
+     "overclaim_unhedged": {
+      "rate": 0.4,
+      "n": 5,
+      "se": 0.2191
+     },
+     "latency_ms": {
+      "p50": 1529.6,
+      "p90": 2436.2,
+      "mean": 1352.4
+     },
+     "routes": {
+      "harness": 20
+     }
+    },
+    "followup": {
+     "n": 30,
+     "answered": {
+      "rate": 0.4,
+      "n": 30,
+      "se": 0.0894
+     },
+     "slot_correct": {
+      "rate": 0.2162,
+      "n": 37,
+      "se": 0.0677
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.0556,
+       "n": 18,
+       "se": 0.054
+      },
+      "know": {
+       "rate": 0.4118,
+       "n": 17,
+       "se": 0.1194
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 2,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.2162,
+      "n": 37,
+      "se": 0.0677
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.2162,
+      "n": 37,
+      "se": 0.0677
+     },
+     "item_all_correct": {
+      "rate": 0.2,
+      "n": 30,
+      "se": 0.073
+     },
+     "multipart_fully_answered": {
+      "rate": 0.1429,
+      "n": 7,
+      "se": 0.1323
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.1429,
+      "n": 7,
+      "se": 0.1323
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.6667,
+      "n": 30,
+      "se": 0.0861
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 20,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.4,
+      "n": 10,
+      "se": 0.1549
+     },
+     "latency_ms": {
+      "p50": 1632.5,
+      "p90": 4653.2,
+      "mean": 1840.9
+     },
+     "routes": {
+      "harness": 29,
+      "adam_t": 1
+     }
+    },
+    "nomem": {
+     "n": 10,
+     "answered": {
+      "rate": 0.5,
+      "n": 10,
+      "se": 0.1581
+     },
+     "slot_correct": {
+      "rate": 0.75,
+      "n": 4,
+      "se": 0.2165
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.75,
+       "n": 4,
+       "se": 0.2165
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.75,
+      "n": 4,
+      "se": 0.2165
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.75,
+      "n": 4,
+      "se": 0.2165
+     },
+     "item_all_correct": {
+      "rate": 0.8,
+      "n": 10,
+      "se": 0.1265
+     },
+     "multipart_fully_answered": {
+      "rate": 0.75,
+      "n": 4,
+      "se": 0.2165
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.75,
+      "n": 4,
+      "se": 0.2165
+     },
+     "false_memory": {
+      "rate": 0.1,
+      "n": 10,
+      "se": 0.0949
+     },
+     "hedge_rate": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 9,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 1,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 2.6,
+      "p90": 659.1,
+      "mean": 330.3
+     },
+     "routes": {
+      "adam_t": 1,
+      "harness": 9
+     }
+    },
+    "single": {
+     "n": 15,
+     "answered": {
+      "rate": 0.6,
+      "n": 15,
+      "se": 0.1265
+     },
+     "slot_correct": {
+      "rate": 0.5333,
+      "n": 15,
+      "se": 0.1288
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.5,
+       "n": 6,
+       "se": 0.2041
+      },
+      "know": {
+       "rate": 0.5,
+       "n": 6,
+       "se": 0.2041
+      },
+      "calc": {
+       "rate": 0.6667,
+       "n": 3,
+       "se": 0.2722
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.5333,
+      "n": 15,
+      "se": 0.1288
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.5333,
+      "n": 15,
+      "se": 0.1288
+     },
+     "item_all_correct": {
+      "rate": 0.5333,
+      "n": 15,
+      "se": 0.1288
+     },
+     "multipart_fully_answered": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.4,
+      "n": 15,
+      "se": 0.1265
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 6,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.1111,
+      "n": 9,
+      "se": 0.1048
+     },
+     "latency_ms": {
+      "p50": 1060.6,
+      "p90": 2047.5,
+      "mean": 873.3
+     },
+     "routes": {
+      "harness": 14,
+      "adam_t": 1
+     }
+    }
+   }
+  },
+  "tune": {
+   "n": 125,
+   "answered": {
+    "rate": 0.688,
+    "n": 125,
+    "se": 0.0414
+   },
+   "slot_correct": {
+    "rate": 0.5866,
+    "n": 179,
+    "se": 0.0368
+   },
+   "slot_correct_by_src": {
+    "mem": {
+     "rate": 0.5854,
+     "n": 82,
+     "se": 0.0544
+    },
+    "know": {
+     "rate": 0.587,
+     "n": 92,
+     "se": 0.0513
+    },
+    "calc": {
+     "rate": 0.6,
+     "n": 5,
+     "se": 0.2191
+    }
+   },
+   "slot_correct_unhedged": {
+    "rate": 0.5754,
+    "n": 179,
+    "se": 0.0369
+   },
+   "slot_mentioned_loose": {
+    "rate": 0.5866,
+    "n": 179,
+    "se": 0.0368
+   },
+   "item_all_correct": {
+    "rate": 0.552,
+    "n": 125,
+    "se": 0.0445
+   },
+   "multipart_fully_answered": {
+    "rate": 0.4607,
+    "n": 89,
+    "se": 0.0528
+   },
+   "multipart_fully_answered_unhedged": {
+    "rate": 0.4382,
+    "n": 89,
+    "se": 0.0526
+   },
+   "false_memory": {
+    "rate": 0.027,
+    "n": 37,
+    "se": 0.0267
+   },
+   "hedge_rate": {
+    "rate": 0.624,
+    "n": 125,
+    "se": 0.0433
+   },
+   "hedge_warranted": {
+    "rate": 0.9744,
+    "n": 78,
+    "se": 0.0179
+   },
+   "overclaim_unhedged": {
+    "rate": 0.234,
+    "n": 47,
+    "se": 0.0618
+   },
+   "latency_ms": {
+    "p50": 6.9,
+    "p90": 2397.6,
+    "mean": 899.1
+   },
+   "routes": {
+    "harness": 121,
+    "adam_t": 4
+   },
+   "by_kind": {
+    "multi_mem": {
+     "n": 20,
+     "answered": {
+      "rate": 0.8,
+      "n": 20,
+      "se": 0.0894
+     },
+     "slot_correct": {
+      "rate": 0.439,
+      "n": 41,
+      "se": 0.0775
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.439,
+       "n": 41,
+       "se": 0.0775
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.439,
+      "n": 41,
+      "se": 0.0775
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.439,
+      "n": 41,
+      "se": 0.0775
+     },
+     "item_all_correct": {
+      "rate": 0.2,
+      "n": 20,
+      "se": 0.0894
+     },
+     "multipart_fully_answered": {
+      "rate": 0.2,
+      "n": 20,
+      "se": 0.0894
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.2,
+      "n": 20,
+      "se": 0.0894
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.65,
+      "n": 20,
+      "se": 0.1067
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 13,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.4286,
+      "n": 7,
+      "se": 0.187
+     },
+     "latency_ms": {
+      "p50": 4.9,
+      "p90": 3938.8,
+      "mean": 1025.2
+     },
+     "routes": {
+      "harness": 20
+     }
+    },
+    "multi_know": {
+     "n": 25,
+     "answered": {
+      "rate": 0.8,
+      "n": 25,
+      "se": 0.08
+     },
+     "slot_correct": {
+      "rate": 0.6471,
+      "n": 51,
+      "se": 0.0669
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "know": {
+       "rate": 0.6471,
+       "n": 51,
+       "se": 0.0669
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.6471,
+      "n": 51,
+      "se": 0.0669
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.6471,
+      "n": 51,
+      "se": 0.0669
+     },
+     "item_all_correct": {
+      "rate": 0.52,
+      "n": 25,
+      "se": 0.0999
+     },
+     "multipart_fully_answered": {
+      "rate": 0.52,
+      "n": 25,
+      "se": 0.0999
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.52,
+      "n": 25,
+      "se": 0.0999
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.4,
+      "n": 25,
+      "se": 0.098
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 10,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.1333,
+      "n": 15,
+      "se": 0.0878
+     },
+     "latency_ms": {
+      "p50": 450.4,
+      "p90": 3721.0,
+      "mean": 1400.4
+     },
+     "routes": {
+      "harness": 25
+     }
+    },
+    "mix": {
+     "n": 30,
+     "answered": {
+      "rate": 0.8,
+      "n": 30,
+      "se": 0.073
+     },
+     "slot_correct": {
+      "rate": 0.566,
+      "n": 53,
+      "se": 0.0681
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.7391,
+       "n": 23,
+       "se": 0.0916
+      },
+      "know": {
+       "rate": 0.4444,
+       "n": 27,
+       "se": 0.0956
+      },
+      "calc": {
+       "rate": 0.3333,
+       "n": 3,
+       "se": 0.2722
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.5283,
+      "n": 53,
+      "se": 0.0686
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.566,
+      "n": 53,
+      "se": 0.0681
+     },
+     "item_all_correct": {
+      "rate": 0.4,
+      "n": 30,
+      "se": 0.0894
+     },
+     "multipart_fully_answered": {
+      "rate": 0.4,
+      "n": 30,
+      "se": 0.0894
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.3333,
+      "n": 30,
+      "se": 0.0861
+     },
+     "false_memory": {
+      "rate": 0.0,
+      "n": 7,
+      "se": 0.0
+     },
+     "hedge_rate": {
+      "rate": 0.7,
+      "n": 30,
+      "se": 0.0837
+     },
+     "hedge_warranted": {
+      "rate": 0.9048,
+      "n": 21,
+      "se": 0.0641
+     },
+     "overclaim_unhedged": {
+      "rate": 0.2222,
+      "n": 9,
+      "se": 0.1386
+     },
+     "latency_ms": {
+      "p50": 1488.0,
+      "p90": 2304.7,
+      "mean": 1178.8
+     },
+     "routes": {
+      "harness": 30
+     }
+    },
+    "followup": {
+     "n": 10,
+     "answered": {
+      "rate": 0.6,
+      "n": 10,
+      "se": 0.1549
+     },
+     "slot_correct": {
+      "rate": 0.3846,
+      "n": 13,
+      "se": 0.1349
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.0,
+       "n": 3,
+       "se": 0.0
+      },
+      "know": {
+       "rate": 0.5,
+       "n": 10,
+       "se": 0.1581
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.3846,
+      "n": 13,
+      "se": 0.1349
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.3846,
+      "n": 13,
+      "se": 0.1349
+     },
+     "item_all_correct": {
+      "rate": 0.3,
+      "n": 10,
+      "se": 0.1449
+     },
+     "multipart_fully_answered": {
+      "rate": 0.6667,
+      "n": 3,
+      "se": 0.2722
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.6667,
+      "n": 3,
+      "se": 0.2722
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.4,
+      "n": 10,
+      "se": 0.1549
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 4,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.5,
+      "n": 6,
+      "se": 0.2041
+     },
+     "latency_ms": {
+      "p50": 1337.6,
+      "p90": 2586.7,
+      "mean": 1376.6
+     },
+     "routes": {
+      "harness": 8,
+      "adam_t": 2
+     }
+    },
+    "nomem": {
+     "n": 30,
+     "answered": {
+      "rate": 0.3667,
+      "n": 30,
+      "se": 0.088
+     },
+     "slot_correct": {
+      "rate": 0.9091,
+      "n": 11,
+      "se": 0.0867
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.9091,
+       "n": 11,
+       "se": 0.0867
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.9091,
+      "n": 11,
+      "se": 0.0867
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.9091,
+      "n": 11,
+      "se": 0.0867
+     },
+     "item_all_correct": {
+      "rate": 0.9333,
+      "n": 30,
+      "se": 0.0455
+     },
+     "multipart_fully_answered": {
+      "rate": 0.9091,
+      "n": 11,
+      "se": 0.0867
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.9091,
+      "n": 11,
+      "se": 0.0867
+     },
+     "false_memory": {
+      "rate": 0.0333,
+      "n": 30,
+      "se": 0.0328
+     },
+     "hedge_rate": {
+      "rate": 0.9667,
+      "n": 30,
+      "se": 0.0328
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 29,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 1,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 2.9,
+      "p90": 36.1,
+      "mean": 138.9
+     },
+     "routes": {
+      "harness": 29,
+      "adam_t": 1
+     }
+    },
+    "single": {
+     "n": 10,
+     "answered": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "slot_correct": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.75,
+       "n": 4,
+       "se": 0.2165
+      },
+      "know": {
+       "rate": 1.0,
+       "n": 4,
+       "se": 0.0
+      },
+      "calc": {
+       "rate": 1.0,
+       "n": 2,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "item_all_correct": {
+      "rate": 0.9,
+      "n": 10,
+      "se": 0.0949
+     },
+     "multipart_fully_answered": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.1,
+      "n": 10,
+      "se": 0.0949
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 1,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.0,
+      "n": 9,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 2.1,
+      "p90": 1636.5,
+      "mean": 357.9
+     },
+     "routes": {
+      "harness": 9,
+      "adam_t": 1
+     }
+    }
+   }
+  },
+  "all": {
+   "n": 250,
+   "answered": {
+    "rate": 0.66,
+    "n": 250,
+    "se": 0.03
+   },
+   "slot_correct": {
+    "rate": 0.4826,
+    "n": 373,
+    "se": 0.0259
+   },
+   "slot_correct_by_src": {
+    "mem": {
+     "rate": 0.4624,
+     "n": 186,
+     "se": 0.0366
+    },
+    "know": {
+     "rate": 0.5146,
+     "n": 171,
+     "se": 0.0382
+    },
+    "calc": {
+     "rate": 0.375,
+     "n": 16,
+     "se": 0.121
+    }
+   },
+   "slot_correct_unhedged": {
+    "rate": 0.4718,
+    "n": 373,
+    "se": 0.0258
+   },
+   "slot_mentioned_loose": {
+    "rate": 0.4826,
+    "n": 373,
+    "se": 0.0259
+   },
+   "item_all_correct": {
+    "rate": 0.428,
+    "n": 250,
+    "se": 0.0313
+   },
+   "multipart_fully_answered": {
+    "rate": 0.3588,
+    "n": 170,
+    "se": 0.0368
+   },
+   "multipart_fully_answered_unhedged": {
+    "rate": 0.3412,
+    "n": 170,
+    "se": 0.0364
+   },
+   "false_memory": {
+    "rate": 0.0577,
+    "n": 52,
+    "se": 0.0323
+   },
+   "hedge_rate": {
+    "rate": 0.632,
+    "n": 250,
+    "se": 0.0305
+   },
+   "hedge_warranted": {
+    "rate": 0.9684,
+    "n": 158,
+    "se": 0.0139
+   },
+   "overclaim_unhedged": {
+    "rate": 0.3478,
+    "n": 92,
+    "se": 0.0497
+   },
+   "latency_ms": {
+    "p50": 290.8,
+    "p90": 3791.2,
+    "mean": 1217.6
+   },
+   "routes": {
+    "harness": 242,
+    "adam_t": 8
+   },
+   "by_kind": {
+    "multi_mem": {
+     "n": 50,
+     "answered": {
+      "rate": 0.82,
+      "n": 50,
+      "se": 0.0543
+     },
+     "slot_correct": {
+      "rate": 0.3922,
+      "n": 102,
+      "se": 0.0483
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.3922,
+       "n": 102,
+       "se": 0.0483
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.3922,
+      "n": 102,
+      "se": 0.0483
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.3922,
+      "n": 102,
+      "se": 0.0483
+     },
+     "item_all_correct": {
+      "rate": 0.16,
+      "n": 50,
+      "se": 0.0518
+     },
+     "multipart_fully_answered": {
+      "rate": 0.16,
+      "n": 50,
+      "se": 0.0518
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.16,
+      "n": 50,
+      "se": 0.0518
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.66,
+      "n": 50,
+      "se": 0.067
+     },
+     "hedge_warranted": {
+      "rate": 0.9697,
+      "n": 33,
+      "se": 0.0298
+     },
+     "overclaim_unhedged": {
+      "rate": 0.5882,
+      "n": 17,
+      "se": 0.1194
+     },
+     "latency_ms": {
+      "p50": 6.6,
+      "p90": 3836.9,
+      "mean": 1262.4
+     },
+     "routes": {
+      "harness": 50
+     }
+    },
+    "multi_know": {
+     "n": 45,
+     "answered": {
+      "rate": 0.7333,
+      "n": 45,
+      "se": 0.0659
+     },
+     "slot_correct": {
+      "rate": 0.5326,
+      "n": 92,
+      "se": 0.052
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "know": {
+       "rate": 0.5326,
+       "n": 92,
+       "se": 0.052
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.5326,
+      "n": 92,
+      "se": 0.052
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.5326,
+      "n": 92,
+      "se": 0.052
+     },
+     "item_all_correct": {
+      "rate": 0.4,
+      "n": 45,
+      "se": 0.073
+     },
+     "multipart_fully_answered": {
+      "rate": 0.4,
+      "n": 45,
+      "se": 0.073
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.4,
+      "n": 45,
+      "se": 0.073
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.4444,
+      "n": 45,
+      "se": 0.0741
+     },
+     "hedge_warranted": {
+      "rate": 0.95,
+      "n": 20,
+      "se": 0.0487
+     },
+     "overclaim_unhedged": {
+      "rate": 0.32,
+      "n": 25,
+      "se": 0.0933
+     },
+     "latency_ms": {
+      "p50": 1748.1,
+      "p90": 4019.9,
+      "mean": 1905.3
+     },
+     "routes": {
+      "harness": 44,
+      "adam_t": 1
+     }
+    },
+    "mix": {
+     "n": 50,
+     "answered": {
+      "rate": 0.78,
+      "n": 50,
+      "se": 0.0586
+     },
+     "slot_correct": {
+      "rate": 0.5393,
+      "n": 89,
+      "se": 0.0528
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.6842,
+       "n": 38,
+       "se": 0.0754
+      },
+      "know": {
+       "rate": 0.4762,
+       "n": 42,
+       "se": 0.0771
+      },
+      "calc": {
+       "rate": 0.2222,
+       "n": 9,
+       "se": 0.1386
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.4944,
+      "n": 89,
+      "se": 0.053
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.5393,
+      "n": 89,
+      "se": 0.0528
+     },
+     "item_all_correct": {
+      "rate": 0.38,
+      "n": 50,
+      "se": 0.0686
+     },
+     "multipart_fully_answered": {
+      "rate": 0.38,
+      "n": 50,
+      "se": 0.0686
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.32,
+      "n": 50,
+      "se": 0.066
+     },
+     "false_memory": {
+      "rate": 0.0833,
+      "n": 12,
+      "se": 0.0798
+     },
+     "hedge_rate": {
+      "rate": 0.72,
+      "n": 50,
+      "se": 0.0635
+     },
+     "hedge_warranted": {
+      "rate": 0.9167,
+      "n": 36,
+      "se": 0.0461
+     },
+     "overclaim_unhedged": {
+      "rate": 0.2857,
+      "n": 14,
+      "se": 0.1207
+     },
+     "latency_ms": {
+      "p50": 1506.2,
+      "p90": 2370.6,
+      "mean": 1248.2
+     },
+     "routes": {
+      "harness": 50
+     }
+    },
+    "followup": {
+     "n": 40,
+     "answered": {
+      "rate": 0.45,
+      "n": 40,
+      "se": 0.0787
+     },
+     "slot_correct": {
+      "rate": 0.26,
+      "n": 50,
+      "se": 0.062
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.0476,
+       "n": 21,
+       "se": 0.0465
+      },
+      "know": {
+       "rate": 0.4444,
+       "n": 27,
+       "se": 0.0956
+      },
+      "calc": {
+       "rate": 0.0,
+       "n": 2,
+       "se": 0.0
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.26,
+      "n": 50,
+      "se": 0.062
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.26,
+      "n": 50,
+      "se": 0.062
+     },
+     "item_all_correct": {
+      "rate": 0.225,
+      "n": 40,
+      "se": 0.066
+     },
+     "multipart_fully_answered": {
+      "rate": 0.3,
+      "n": 10,
+      "se": 0.1449
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.3,
+      "n": 10,
+      "se": 0.1449
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.6,
+      "n": 40,
+      "se": 0.0775
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 24,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.4375,
+      "n": 16,
+      "se": 0.124
+     },
+     "latency_ms": {
+      "p50": 1591.9,
+      "p90": 4618.4,
+      "mean": 1724.8
+     },
+     "routes": {
+      "harness": 37,
+      "adam_t": 3
+     }
+    },
+    "nomem": {
+     "n": 40,
+     "answered": {
+      "rate": 0.4,
+      "n": 40,
+      "se": 0.0775
+     },
+     "slot_correct": {
+      "rate": 0.8667,
+      "n": 15,
+      "se": 0.0878
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.8667,
+       "n": 15,
+       "se": 0.0878
+      },
+      "know": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      },
+      "calc": {
+       "rate": null,
+       "n": 0,
+       "se": null
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.8667,
+      "n": 15,
+      "se": 0.0878
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.8667,
+      "n": 15,
+      "se": 0.0878
+     },
+     "item_all_correct": {
+      "rate": 0.9,
+      "n": 40,
+      "se": 0.0474
+     },
+     "multipart_fully_answered": {
+      "rate": 0.8667,
+      "n": 15,
+      "se": 0.0878
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": 0.8667,
+      "n": 15,
+      "se": 0.0878
+     },
+     "false_memory": {
+      "rate": 0.05,
+      "n": 40,
+      "se": 0.0345
+     },
+     "hedge_rate": {
+      "rate": 0.95,
+      "n": 40,
+      "se": 0.0345
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 38,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 1.0,
+      "n": 2,
+      "se": 0.0
+     },
+     "latency_ms": {
+      "p50": 2.9,
+      "p90": 326.1,
+      "mean": 186.7
+     },
+     "routes": {
+      "harness": 38,
+      "adam_t": 2
+     }
+    },
+    "single": {
+     "n": 25,
+     "answered": {
+      "rate": 0.72,
+      "n": 25,
+      "se": 0.0898
+     },
+     "slot_correct": {
+      "rate": 0.68,
+      "n": 25,
+      "se": 0.0933
+     },
+     "slot_correct_by_src": {
+      "mem": {
+       "rate": 0.6,
+       "n": 10,
+       "se": 0.1549
+      },
+      "know": {
+       "rate": 0.7,
+       "n": 10,
+       "se": 0.1449
+      },
+      "calc": {
+       "rate": 0.8,
+       "n": 5,
+       "se": 0.1789
+      }
+     },
+     "slot_correct_unhedged": {
+      "rate": 0.68,
+      "n": 25,
+      "se": 0.0933
+     },
+     "slot_mentioned_loose": {
+      "rate": 0.68,
+      "n": 25,
+      "se": 0.0933
+     },
+     "item_all_correct": {
+      "rate": 0.68,
+      "n": 25,
+      "se": 0.0933
+     },
+     "multipart_fully_answered": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "multipart_fully_answered_unhedged": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "false_memory": {
+      "rate": null,
+      "n": 0,
+      "se": null
+     },
+     "hedge_rate": {
+      "rate": 0.28,
+      "n": 25,
+      "se": 0.0898
+     },
+     "hedge_warranted": {
+      "rate": 1.0,
+      "n": 7,
+      "se": 0.0
+     },
+     "overclaim_unhedged": {
+      "rate": 0.0556,
+      "n": 18,
+      "se": 0.054
+     },
+     "latency_ms": {
+      "p50": 3.6,
+      "p90": 1888.9,
+      "mean": 667.2
+     },
+     "routes": {
+      "harness": 23,
+      "adam_t": 2
+     }
+    }
+   }
+  }
+ },
+ "harness_slots": {
+  "test": {
+   "n": 200,
+   "by_kind": {
+    "mem": 81,
+    "know": 102,
+    "calc": 4,
+    "other": 13
+   },
+   "by_src": {
+    "mem": 81,
+    "wd": 23,
+    "psg": 74,
+    "calc": 4,
+    "adam_t": 13,
+    "wd+psg": 5
+   },
+   "verified": {
+    "rate": 0.44,
+    "n": 200,
+    "se": 0.0351
+   },
+   "hedged": {
+    "rate": 0.495,
+    "n": 200,
+    "se": 0.0354
+   },
+   "retried": {
+    "rate": 0.545,
+    "n": 200,
+    "se": 0.0352
+   },
+   "conflict": 0
+  },
+  "tune": {
+   "n": 210,
+   "by_kind": {
+    "mem": 103,
+    "know": 98,
+    "other": 6,
+    "calc": 3
+   },
+   "by_src": {
+    "mem": 103,
+    "psg": 50,
+    "wd": 39,
+    "wd+psg": 9,
+    "adam_t": 6,
+    "calc": 3
+   },
+   "verified": {
+    "rate": 0.5238,
+    "n": 210,
+    "se": 0.0345
+   },
+   "hedged": {
+    "rate": 0.4476,
+    "n": 210,
+    "se": 0.0343
+   },
+   "retried": {
+    "rate": 0.4667,
+    "n": 210,
+    "se": 0.0344
+   },
+   "conflict": 0
+  },
+  "all": {
+   "n": 410,
+   "by_kind": {
+    "mem": 184,
+    "know": 200,
+    "calc": 7,
+    "other": 19
+   },
+   "by_src": {
+    "mem": 184,
+    "psg": 124,
+    "wd": 62,
+    "calc": 7,
+    "adam_t": 19,
+    "wd+psg": 14
+   },
+   "verified": {
+    "rate": 0.4829,
+    "n": 410,
+    "se": 0.0247
+   },
+   "hedged": {
+    "rate": 0.4707,
+    "n": 410,
+    "se": 0.0247
+   },
+   "retried": {
+    "rate": 0.5049,
+    "n": 410,
+    "se": 0.0247
+   },
+   "conflict": 0
+  }
+ }
+}
