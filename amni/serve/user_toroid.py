@@ -338,8 +338,8 @@ def analyze(c:str,last:str='',known=(),names=None,lp='',cor=False):
         if t in ('going','used') and j+2<n and lw[j+1]=='to' and lw[j+2] in VB and lw[j+2] not in NOUNISH:j+=2;continue
         if t in AUX or t in ADV or t=='gonna':cop=cop or lemma(t)=='be' or t in ("'s","'m","'re");hv=hv or lemma(t)=='have';j+=1;continue
         break
-    verb=T[j][0] if j<n and isv0(lw[j]) and not (cop and lw[j] in ('called','named')) and not (cop and not lw[j].endswith(('ed','ing','en')) and lw[j] not in IRR) else ''
-    pred=lemma(verb) if verb else 'be' if cop else 'have' if hv else ''
+    verb=T[j][0] if j<n and (isv0(lw[j]) or wv(lw[j],lw[j-1] if j else 'i') and lw[j].endswith(('ed','s')) and lw[j] not in NOUNISH) and not (cop and lw[j] in ('called','named')) and not (cop and not lw[j].endswith(('ed','ing','en')) and lw[j] not in IRR) else ''
+    pred=(lemma(verb) if isv0(verb.lower()) else _lm(verb)) if verb else 'be' if cop else 'have' if hv else ''
     k=j+1 if verb else j
     while verb and k<n and lw[k] in PART and not (k+1<n and lw[k+1] in DET and lw[k] in ('over','around')):k+=1
     subj=i>0 or ent=='me'
@@ -565,7 +565,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.875,own=0.431,att=1.177,attc=0.675,att_bad=-1.0,pred=0.058,pmis=-1.242,rec=-0.993,sup=-2.824,slot=0.698,subj=0.736,null=1.15,tau=1.0,co=0.379,kb=0.06,k_lp=0.894,k_ent=-0.365,k_att=0.027,k_slot=0.332,k_pri=-0.729,k_cor=0.629,k_mg=-0.066,k_nv=1.409,k_wild=0.047,k_sup=-0.223,cu=0.078,pri=1.195,own2=0.196,csup=-2.045,wild=-0.572,cor=1.206,ci=0.346,vlen=0.104,ment=0.431,nco=-0.169,psyn=0.534,xtyp=-0.446,tonly=-0.643,prox=0.79)
+FW=dict(ent=0.84,own=0.452,att=1.026,attc=0.644,att_bad=-1.0,pred=0.057,pmis=-1.238,rec=-1.01,sup=-2.822,slot=0.792,subj=0.616,null=1.181,tau=1.0,co=0.254,kb=-0.054,k_lp=0.956,k_ent=-0.388,k_att=-0.012,k_slot=0.256,k_pri=-0.556,k_cor=0.779,k_mg=-0.013,k_nv=1.222,k_wild=0.076,k_sup=-0.145,cu=0.123,pri=1.272,own2=0.366,csup=-2.034,wild=-0.639,cor=1.178,ci=0.281,vlen=0.306,ment=0.429,nco=-0.113,psyn=0.613,xtyp=-0.465,tonly=-0.662,prox=0.781)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
@@ -698,7 +698,7 @@ def cands(st:Store,qa:dict,known=(),names=None,slot:str=''):
         nco={x for x in Q&sp.get('cw',set())-EW if not isv(x) and not wv(x)};hm=any(_heq(_hd(sp['ent']),h) for h in qh);o2=bool(set(qa['ents'])&sp.get('ents',set()) or qh&{_hd(x) for x in sp.get('ents',()) if x});mt=bool((qh|EW)-{'me','thing','stuff','one','place','time','day'}&sp.get('cw',set())) or bool(DQ&({_hd(sp['ent'])}|sp.get('cw',set())))
         xt=qa['w']=='how' and sp['w']=='where' and (pcls(qa['pred'])=='keep' or qa['pred'] in COOKV|{'store','keep','save'});sp=({**sp,'w':'how','a':''} if xt else sp)
         to=bool(qa_) and qa_ not in ('','kind','likes') and sp['a']==qa_ and (sp['ent'] in ('','?','it','me') or not isper(_hd(sp['ent'])) and not _kin(_hd(sp['ent']))) and sp['w']==qa['w']
-        if ek or sp['w']!=qa['w'] or qa_ and sp['a'] and sp['a']!=qa_ and not (qa_ in KA and sp['a'] in KA) and not _acomp(qa_,sp['a']) or not (to or sp.get('ci') or sp['ent']==pe or hm or mt or o2 or nco or EW&set(' '.join(x for x in sp.get('ents',()) if x and x!='me').split())-{'thing','stuff','one'}):continue
+        if ek or qa_ in ('name','color','model','job','breed','age','allergy','favorite') and not sp['a'] and not wild and qa_ not in sp['ent'] or sp['w']!=qa['w'] or qa_ and sp['a'] and sp['a']!=qa_ and not (qa_ in KA and sp['a'] in KA) and not _acomp(qa_,sp['a']) or not (to or sp.get('ci') or sp['ent']==pe or hm or mt or o2 or nco or EW&set(' '.join(x for x in sp.get('ents',()) if x and x!='me').split())-{'thing','stuff','one'}):continue
         pm=sp['ent']=='me' and pe=='me' and bool(qp) and qp not in ('be','have','do') and bool(sp['pred']) and pcls(sp['pred']) not in (qp,'be','have') and not (qa['pred'] in GEN and qa['w']=='how' and (sp['pred'] in MOTION|MODE))
         f=dict(pmis=float(pm),ent=float(sp['ent']==pe),own=float(sp['ent'] in qa['ents'] or hm),att=float(bool(qa_) and (sp['a']==qa_ or qa_ in KA and sp['a'] in KA)),attc=float(bool(qa_) and _acomp(qa_,sp['a'])),att_bad=float(bool(qa_) and bool(sp['a']) and sp['a']!=qa_ and not (qa_ in KA and sp['a'] in KA) and not _acomp(qa_,sp['a'])),pred=float(bool(qp) and pcls(sp['pred'])==qp),rec=float(r),sup=float(sup),slot=float(bool(slot) and (sp['v'].lower() in slot.lower() or slot.lower() in sp['v'].lower())),subj=float(sp['subj']),co=float(min(3,len(Q&sp.get('cw',set())))),cu=float(min(3,len(Q&sp.get('ucw',set())))),pri=float(sp.get('pri',0.5)),own2=float(o2),csup=float(r>rc),wild=float(wild),cor=float(bool(sp.get('cor'))),ci=float(bool(sp.get('ci'))),vlen=min(12,len(sp['v'].split()))/6.0,ment=float(mt),nco=float(min(2,len(nco))),tonly=float(to and not (sp['ent']==pe or hm or mt or o2)),prox=_prox(sp,(qh|EW|{x for x in Q if not isv(x) and not wv(x)})-{'me','thing','stuff','one'}),xtyp=float(xt),psyn=float(bool(qa['pred']) and bool(sp['pred']) and qa['pred']!=sp['pred'] and bool(_vsn(qa['pred'])&_vsn(sp['pred']))))
         sp['f']=f;S.append((f,sp))
