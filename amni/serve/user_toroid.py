@@ -255,7 +255,7 @@ REPV=S_("say show confirm mean read list");COOKV=S_("cook make bake brew fry gri
 PURP=S_("health safety sake job work fun business school money love exercise research career studies family kids savings retirement budget relaxation comfort convenience privacy emergencies emergency reasons reason wedding birthday anniversary graduation funeral reunion conference interview meeting vacation holiday trip environment")
 _FILL=re.compile(r"(?i)\b(?:after all|these days|nowadays|lately|right now|at the moment|for now|for sure|lol|lmao|haha+|tbh|ngl|imo|af|fr|i guess|i think|i reckon|honestly|literally|basically|tho|rn|lowkey|highkey)\b")
 _REP=re.compile(r"(?i)^(?:(?:it\s+)?turns out|apparently|(?:the\s+)?[a-z]+(?:\s+[a-z]+)?\s+(?:says|said|confirmed|told me|thinks)|i (?:just )?(?:found out|heard|learned|realized|noticed|checked))(?:\s+that)?[\s,]+(?=(?:my|the|our|his|her|it|it's|he|she|they|i|we|some|a|an|this|that|someone|somebody|nobody|everyone)\b)")
-_SPL=re.compile(r"(?<=[.!?;])\s+|,?\s+and\s+(?=(?:mrs|mr|ms|dr|miss)\.?\s+[a-z]+\s+[a-z]+)|\s*:\s+(?=[a-z])|,?\s+(?:while|whereas|whilst)\s+(?=(?:little|big|old|young|baby)\s+[A-Z])|,\s+(?=[A-Z][a-z]+(?:'s|\s+(?:is|was|has|had|does|did|lives|works|moved|went))\b)|,?\s+(?:and|but|while|whereas|whilst)\s+(?=[A-Z][a-z]+\s+(?!and\b|or\b)[a-z]+)|\s*;\s*|\s+(?:saying|to say|says|said|told me|reckons|thinks)\s+(?:that\s+)?(?=(?:it|it's|he|she|they|the|my|our|his|her|their|we)\b)|,\s+so\s+(?=(?:the|my|our|his|her|their|it|that|this)\b)|,?\s+(?:and|but|while|whereas|plus)\s+(?=(?:my|i|i'm|he|she|they|it|it's|we|our|his|her|their|the)\b)|,\s+(?=(?:[Mm]y|I|I'm|[Hh]e|[Ss]he|[Tt]hey|[Ww]e|[Ii]t|[Ii]t's|[Hh]is|[Hh]er|[Tt]heir|[Oo]ur)\b)|,\s+(?=(?:and\s+)?(?:[Tt]he\s+|[Mm]y\s+|[Oo]ur\s+)?[A-Za-z]+(?:\s+[a-z]+)?\s+(?:is|are|was|were)\b)")
+_SPL=re.compile(r"(?<=[.!?;])\s+|,\s+(?=(?:[Tt]he|[Mm]y|[Oo]ur|[Hh]is|[Hh]er|[Tt]heir)\s+[a-z]+\s+(?:[a-z]+s|[a-z]+ed|has|had|does|did)\b)|,?\s+and\s+(?=(?:mrs|mr|ms|dr|miss)\.?\s+[a-z]+\s+[a-z]+)|\s*:\s+(?=[a-z])|,?\s+(?:while|whereas|whilst)\s+(?=(?:little|big|old|young|baby)\s+[A-Z])|,\s+(?=[A-Z][a-z]+(?:'s|\s+(?:is|was|has|had|does|did|lives|works|moved|went))\b)|,?\s+(?:and|but|while|whereas|whilst)\s+(?=[A-Z][a-z]+\s+(?!and\b|or\b)[a-z]+)|\s*;\s*|\s+(?:saying|to say|says|said|told me|reckons|thinks)\s+(?:that\s+)?(?=(?:it|it's|he|she|they|the|my|our|his|her|their|we)\b)|,\s+so\s+(?=(?:the|my|our|his|her|their|it|that|this)\b)|,?\s+(?:and|but|while|whereas|plus)\s+(?=(?:my|i|i'm|he|she|they|it|it's|we|our|his|her|their|the)\b)|,\s+(?=(?:[Mm]y|I|I'm|[Hh]e|[Ss]he|[Tt]hey|[Ww]e|[Ii]t|[Ii]t's|[Hh]is|[Hh]er|[Tt]heir|[Oo]ur)\b)|,\s+(?=(?:and\s+)?(?:[Tt]he\s+|[Mm]y\s+|[Oo]ur\s+)?[A-Za-z]+(?:\s+[a-z]+)?\s+(?:is|are|was|were)\b)")
 _RW=[(re.compile(r"(?i)^(?:you know|remember|did i (?:tell|mention to) you|guess what|fun fact|so basically)\W+(?:how\s+|that\s+|about\s+)?(?=(?:my|our|i|i'm|we|he|she|they|the)\b)"),''),(re.compile(r"(?i)^(?:so\s+|and\s+)?the\s+(?:whole\s+|real\s+|main\s+|only\s+|actual\s+|big\s+)?reason\s+(?:why\s+|that\s+)?(.+?),?\s+(?:is|was|'s)\s+(?:(?:just|simply|basically|honestly|really)\s+)?(?:that\s+|because\s+|bc\s+|cuz\s+|cause\s+)?(.+)$"),r"\1 because \2"),(re.compile(r"(?i)^(.+?),?\s+(?:so|which is why|that's why|that is why|and that's why|hence|and so)\s+((?:i|we|he|she|they|there|it|nobody|everyone|my\s+[\w'-]+|our\s+[\w'-]+|(?-i:(?!I')[A-Z][\w-]+(?:'s)?))(?:'s)?\s+(?!(?:can|could|will|would|might|may|won't|wouldn't|can't|don't|have to|need to)\b).+)$"),r"\1. \2 because \1"),(re.compile(r"(?i)^the\s+way\s+(.+?)\s+(?:is|was|'s)\s+(?:(?:just|basically|mostly|always|still)\s+)?(?:by\s+)?(.+)$"),r"\1 by \2"),(re.compile(r"(?i)^((?:my|our|his|her|their)\s+[\w-]+)(?:'s)?\s+(?:approach|method|system|trick|technique|routine|strategy|way|solution|go-to)\s+(?:is|was|'s)\s+(?:(?:just|basically|mostly|always|still)\s+)?(.+)$"),r"\1 does it by \2"),(re.compile(r"(?i)^(?:with|now that|ever since|given that|seeing as)\s+(.+?),\s+(.+)$"),r"\1. \2")]
 _EMO=re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]")
 DROPX=S_("love hope need want like thank thanks guess remember forget let please check look see imagine make try get go tell call text send wish mind")
@@ -265,10 +265,10 @@ def _pro(c:str)->str:
     tt=tspan(T,0,n) if n>3 else None
     if tt and tt[1]<n-1 and (T[tt[1]][0]==',' or T[tt[1]][0].lower() in ('my','our','i','we','he','she','they','his','her','their') or T[tt[1]][0][:1].isupper() and T[tt[1]][0].lower() not in AUX):k=tt[1]+(T[tt[1]][0]==',');return s0[T[k][1]:]+' '+s0[:T[tt[1]][1]].strip(' ,')
     return c
-_vless=lambda x:len(x.split())<=4 and re.match(r"(?i)(?:my|our|his|her|their)\s",x) is not None and not any(isv(w.lower()) or w.lower() in AUX or wv(w.lower()) for w in x.split()[1:])
+_vless=lambda x:len(x.split())<=4 and re.match(r"(?i)(?:my|our|his|her|their)\s|(?:me|i|you)\s*$",x) is not None and not any(isv(w.lower()) or w.lower() in AUX or wv(w.lower()) for w in x.split()[1:])
 def _merge(P:list)->list:
     R=[]
-    for x in P:(R.__setitem__(-1,R[-1]+' and '+x) if R and _vless(R[-1]) and not re.match(r"(?i)\s*(?:my|our|i|we)\b",x) else R.append(x))
+    for x in P:(R.__setitem__(-1,R[-1]+' and '+x) if R and _vless(R[-1]) and (not re.match(r"(?i)\s*(?:my|our|i|we)\b",x) or re.fullmatch(r"(?i)\s*(?:me|i|you)\s*",R[-1])) else R.append(x))
     return [x for x in R if x]
 def _gap(pv:str,c:str)->str:
     s0,T=toks(c);lw=[t[0].lower() for t in T];n=len(T)
@@ -289,7 +289,8 @@ def clauses(msg:str):
         pv_=''
         for c in _merge([x for x in _SPL.split(_FILL.sub(' ',sn)) if x]):
             c=_LEAD.sub('',c.strip())
-            while (c2:=_REP.sub('',c))!=c:c=_LEAD.sub('',c2)
+            while (c2:=_REP.sub('',c))!=c:
+                rp=c[:len(c)-len(c2)].strip(' ,');re.match(r"(?i)(?:my|our|his|her|their|the)\s+[\w'-]+",rp) and (yield re.sub(r"(?i)\s+(?:says|said|thinks|thought|reckons|confirmed|told me)\b.*$",' said so',rp));c=_LEAD.sub('',c2)
             c=re.sub(r"(?i)^(?:make (?:that|it)|change (?:that|it) to|i meant)\s+",'',c).strip(' ,.!-')
             c=_pro(c) if c else c;c=_gap(pv_,c) if c and pv_ else c;pv_=c or pv_
             c and (yield c)
@@ -576,7 +577,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.857,own=0.442,att=1.049,attc=0.583,att_bad=-1.0,pred=0.102,pmis=-1.239,rec=-0.971,sup=-2.829,slot=0.839,subj=0.609,null=1.182,tau=1.0,co=0.251,kb=0.121,k_lp=0.874,k_ent=0.203,k_att=0.199,k_slot=0.199,k_pri=-0.533,k_cor=0.597,k_mg=-0.097,k_nv=1.169,k_wild=0.072,k_sup=0.074,cu=0.106,pri=1.254,own2=0.351,csup=-2.045,wild=-0.63,cor=1.199,ci=0.244,vlen=0.298,ment=0.45,nco=-0.115,psyn=0.621,xtyp=-0.453,tonly=-0.67,prox=0.777)
+FW=dict(ent=0.86,own=0.443,att=1.053,attc=0.583,att_bad=-1.0,pred=0.102,pmis=-1.24,rec=-0.974,sup=-2.83,slot=0.839,subj=0.608,null=1.181,tau=1.0,co=0.253,kb=0.121,k_lp=0.874,k_ent=0.204,k_att=0.203,k_slot=0.199,k_pri=-0.537,k_cor=0.598,k_mg=-0.096,k_nv=1.169,k_wild=0.072,k_sup=0.074,cu=0.106,pri=1.252,own2=0.352,csup=-2.045,wild=-0.63,cor=1.198,ci=0.244,vlen=0.297,ment=0.45,nco=-0.117,psyn=0.62,xtyp=-0.453,tonly=-0.67,prox=0.778)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
