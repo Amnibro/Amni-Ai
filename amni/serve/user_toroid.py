@@ -336,7 +336,8 @@ def analyze(c:str,last:str='',known=(),names=None,lp='',cor=False):
     while x<n:
         t=lw[x];nx=lw[x+1] if x+1<n else '';y=None
         if t=='and' and nx and (isv(nx) or nx in IRR and IRR[nx] not in ('be','have','do')) and x+1>k:cv=T[x+1][0];x+=2;continue
-        if t in ('because','cause',"'cause",'coz','cuz') or t=='since' and x+1<n and not _istime(T,x+1) and not nx.isdigit() or t=='so' and (nx=='that' or nx in ('i','we','he','she','they','my','it','the','you','her','his') and any(q in ("can","could","would","will","'ll","'d","might","may","wo","ca","wouldn't","won't","can't") for q in lw[x+2:x+4])) or t=='in' and nx=='order' or t=='to' and (nx in VB or 1 in wpos(nx) and 0 not in wpos(nx) and nx.isalpha()) and nx not in ('say','tell','ask','let','check','confirm','see','know','hear') and not (nx in NOUNISH|{'work','school','bed','church','class','practice','college','town','camp','market','lunch','dinner','breakfast','brunch','court'} and (lemma(lw[x-1]) in MOTION or nx in ('work','school','bed','church','class','college','town','market','lunch','dinner','breakfast','brunch','court','camp'))) and x>0 and lemma(lw[x-1]) not in CATEN and lw[x-1] not in CATEN and lw[x-1] not in DET or t=='for' and any(q in PURP for q in lw[x+1:x+4]) and not (x+1<n and _istime(T,x+1)):y=('why','',x,n)
+        if t=='after' and x+2<n and (lw[x+1] in ('the','my','our','his','her','their','i','we','he','she','they') or T[x+1][0][:1].isupper()) and any(isv(q) or wv(q) and q.endswith('ed') for q in lw[x+2:x+6]):y=('why','',x,n)
+        elif t in ('because','cause',"'cause",'coz','cuz') or t=='since' and x+1<n and not _istime(T,x+1) and not nx.isdigit() or t=='so' and (nx=='that' or nx in ('i','we','he','she','they','my','it','the','you','her','his') and any(q in ("can","could","would","will","'ll","'d","might","may","wo","ca","wouldn't","won't","can't") for q in lw[x+2:x+4])) or t=='in' and nx=='order' or t=='to' and (nx in VB or 1 in wpos(nx) and 0 not in wpos(nx) and nx.isalpha()) and nx not in ('say','tell','ask','let','check','confirm','see','know','hear') and not (nx in NOUNISH|{'work','school','bed','church','class','practice','college','town','camp','market','lunch','dinner','breakfast','brunch','court'} and (lemma(lw[x-1]) in MOTION or nx in ('work','school','bed','church','class','college','town','market','lunch','dinner','breakfast','brunch','court','camp'))) and x>0 and lemma(lw[x-1]) not in CATEN and lw[x-1] not in CATEN and lw[x-1] not in DET or t=='for' and any(q in PURP for q in lw[x+1:x+4]) and not (x+1<n and _istime(T,x+1)):y=('why','',x,n)
         elif (tt:=tspan(T,x,n)):y=('when','',tt[0],tt[1])
         elif t=='by' and (e:=next((q for q in range(x+1,min(n,x+4)) if ismeans(lw[q]) or lw[q].endswith('ing') and q==x+1),None)) is not None and all(lw[q] not in PREPW|AUX for q in range(x+1,e)):y=('how','',x,e+1)
         elif t=='on' and nx=='foot' or t=='from' and nx=='scratch' or t=='in' and nx in ('cash','person','bulk'):y=('how','',x,x+2)
@@ -502,6 +503,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
         elif lw[i] in ('he','she','they','him','her','them') and i!=wi and (lp or last):ents.append(lp or last);i+=1
         elif lw[i]=='it' and i!=wi and last:ents.append(last);i+=1
         elif nm(i):ents.append(names[nm(i)]);used.add(i);i+=1
+        elif lw[i] in ('mrs','mr','ms','miss','dr','auntie','uncle','aunt','mrs.','mr.','dr.') and i+1<n and re.fullmatch(r"[a-z][a-z'-]+",rw[i+1]) and not isknown(rw[i+1].replace("'s",'')):ents.append(lw[i].rstrip('.')+' '+rw[i+1].replace("'s",''));used|={i,i+1};i+=2
         elif lw[i]=='the' and i+1<n and any(k in fu for k in range(i+1,min(n,i+4))):i+=1
         elif lw[i]=='the' and i+1<n:
             lab,_,p2,j=_np(T,i+1,n);lw=[x[0].lower() for x in T];used|=set(range(i,j));lab=re.sub(r"\s+(?:thing|stuff)$",'',lab)
@@ -517,7 +519,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
     fa=next((k for k in range(wi+1,n) if FRW.get(lw[k]) in ('why','how','when') and k not in used and not (k+1<n and re.fullmatch(r"[a-z][a-z-]+",lw[k+1]) and lw[k+1] not in PREPW|AUX|DET|PRONS|FUN_Q|{'i','we','you','that','behind','with','for','of','on'})),None) if w=='what' and not a else None
     if fa is not None:w=FRW[lw[fa]];used.add(fa);ents=[e for e in ents if e!=lw[fa]]
     for j in range(wi+1,n):
-        if j in used or lw[j] in AUX or lw[j] in ADV or lw[j] in ('my','i','we','you','the','usually','again','me','us','end','ended','ending') or lw[j] in DET or lw[j] in FRW:continue
+        if j in used or lw[j] in AUX or lw[j] in ADV or lw[j] in PART or lw[j] in ('my','i','we','you','the','usually','again','me','us','end','ended','ending','wind','wound') or lw[j] in DET or lw[j] in FRW:continue
         if (isv0(lw[j]) or wv(lw[j],lw[j-1])) and lw[j] not in ('called','named') and lw[j]!=cand:pred=lemma(lw[j]) if isv0(lw[j]) else next((v for v in _vf(lw[j]) if 1 in wpos(v)),lw[j]);break
     if 'called' in lw or 'named' in lw:a=a or ('name' if w=='what' else a)
     pc=pcls(pred)
@@ -551,7 +553,7 @@ def keys(msg:str,F,known=()):
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
-FW=dict(ent=0.851,own=0.285,att=1.198,attc=0.656,att_bad=-1.0,pred=-0.365,pmis=-1.289,rec=-1.055,sup=-2.713,slot=0.651,subj=0.673,null=0.957,tau=1.0,ca=0.3,cb=0.8,co=0.059,kb=-0.299,k_lp=0.876,k_ent=-0.087,k_att=0.062,k_slot=0.425,k_pri=-0.942,k_cor=0.612,k_mg=0.228,k_nv=1.338,k_wild=-0.066,k_sup=-0.672,cu=0.373,pri=1.194,own2=0.212,csup=-2.063,wild=-0.632,cor=0.966,ci=0.358,vlen=0.051,ment=0.727,nco=-0.039,psyn=0.534,xtyp=-0.427,tonly=-0.709)
+FW=dict(ent=0.856,own=0.241,att=1.186,attc=0.651,att_bad=-1.0,pred=-0.356,pmis=-1.246,rec=-1.015,sup=-2.71,slot=0.681,subj=0.667,null=0.984,tau=1.0,ca=0.3,cb=0.8,co=0.059,kb=-0.214,k_lp=0.88,k_ent=-0.119,k_att=0.072,k_slot=0.362,k_pri=-0.936,k_cor=0.705,k_mg=0.149,k_nv=1.32,k_wild=-0.103,k_sup=-0.544,cu=0.387,pri=1.206,own2=0.153,csup=-2.042,wild=-0.639,cor=1.006,ci=0.324,vlen=0.088,ment=0.751,nco=-0.063,psyn=0.532,xtyp=-0.504,tonly=-0.716)
 GEN=S_("get go commute travel come")
 MEANV=S_("take catch grab ride drive use get hop board book")
 MODEV=S_("walk cycle bike carpool hitchhike drive jog run fly sail skate scoot commute paddle row swim cab")
@@ -657,7 +659,7 @@ def cands(st:Store,qa:dict,known=(),names=None,slot:str=''):
     _cont=lambda tx:bool(_COR2.search(tx)) or re.match(r"(?i)\W*(?:(?:and|but|so|also|oh|ok|well|yeah|yea|tbh|lol|update|anyway)\W+)*(?:he|she|they|their|his|her|its|it|them)\b",tx) is not None
     ix=np.flatnonzero(m);ix=np.unique(np.concatenate([ix,[i+1 for i in ix if i+1<len(stt) and not m[i+1] and _cont(st.utext(int(i+1)))]]).astype(np.int64));ag=st.age(st.u[stt[ix],1]).astype(np.float64);order=ix[np.argsort(ag,kind='stable')];C=[];inv={v:k for k,v in st.ents().items()}
     for r,i in enumerate(order):
-        tx=st.utext(int(i));cr=bool(_COR2.search(tx));ci=_cont(tx) and not m[i] and i>0 and bool(m[i-1])
+        tx=st.utext(int(i));cr=bool(_COR2.search(tx));ci=_cont(tx) and i>0 and bool(m[i-1])
         pv=inv.get(int(K[i-1][0]),'') if cr and i>0 else '';pv=pv if pv!='me' or inv.get(int(K[i][0]),'')=='me' else ''
         for sp in spans(tx,known,names,pv or inv.get(int(K[i][0]),'')):sp['ui']=int(i);sp['cor']=cr;sp['ci']=ci and sp['ent'] in ('','?',pv or inv.get(int(K[i][0]),''));C.append((r,sp))
     qa_=qa['attr'];qp=pcls(qa['pred']) if qa['pred'] else '';pe=qa['ents'][0];qh={_hd(x) for x in qa['ents']};seen={};S=[];Q=set(qa.get('cw',()))-{'thing','stuff'};rc=min([r for r,sp in C if sp.get('cor') and sp['w'] in (qa['w'],'*')]+[10**6]);EW=set(' '.join(qa['ents']).split())
