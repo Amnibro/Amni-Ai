@@ -1,5 +1,6 @@
 import os,re,sys,json,time,glob,argparse,tempfile,itertools
 import numpy as np
+from scipy.optimize import minimize
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from amni.serve import user_toroid as T,user_memory as U
 from amni.serve.adam_t_client import Proto,template,STOPS,_fit,_mem
@@ -90,20 +91,23 @@ def _fitc(X,y,l2=1.0,it=60):
 def _platt(p,y):
     x=np.log(np.clip(p,1e-4,1-1e-4)/(1-np.clip(p,1e-4,1-1e-4)));G=[(a,b) for a in np.arange(0.05,2.01,0.05) for b in np.arange(-3,3.01,0.1)];L=[-np.mean(y*np.log(np.clip(q,1e-6,1))+(1-y)*np.log(np.clip(1-q,1e-6,1))) for a,b in G for q in [1/(1+np.exp(-(a*x+b)))]]
     return tuple(round(float(v),3) for v in G[int(np.argmin(L))])
-def _fitw(D,S,ix,fw0,l2=0.02,it=400,lr=0.1):
+PRIOR=dict(pmis=-1.5,ent=2.0,own=1.0,att=1.0,attc=0.5,att_bad=-1.0,pred=1.0,rec=-0.35,sup=-3.0,slot=1.5,subj=0.5,co=0.8,cu=0.3,pri=1.0,own2=0.7,csup=-1.5,wild=-0.8,cor=0.0,ci=0.0,vlen=0.0,ment=0.0,nco=0.0,psyn=0.5,xtyp=-0.5,null=1.5,tau=1.0)
+def _fitw(D,S,ix,fw0,l2=0.01,it=400,lr=0.1):
+    fw0={**fw0,**PRIOR}
     X=[];Y=[]
     for i in ix:
         st,_=S[i];kn=st.ents();qa=T.ask(D[i]['q'],T._last(st),list(kn),st.names,st.lp);L=T.lookup(st,qa) if qa else [];sv=T._row(st,L[0][1])['v'] if L and L[0][0]>=2.0 else ''
         C=T.cands(st,qa,list(kn),st.names,sv) if qa and qa['ents'] else [];y=np.array([ret_ok(sp['v'],D[i]) for _,sp in C],bool)
         if D[i]['ans'] and not y.any():continue
         X.append(np.array([[f[k] for k in T.FK] for f,_ in C],float).reshape(-1,len(T.FK)));Y.append(y)
-    w0=np.array([fw0[k] for k in T.FK],float)/fw0['tau'];b0=fw0['null']/fw0['tau'];w=w0.copy();b=b0
-    for _ in range(it):
-        g=np.zeros_like(w);gb=0.0
+    x0=np.array([fw0[k] for k in T.FK]+[fw0['null']],float)/fw0['tau']
+    def obj(x):
+        w,b=x[:-1],x[-1];L=0.0;g=np.zeros_like(x)
         for F,y in zip(X,Y):
-            z=np.concatenate([F@w,[b]]);p=np.exp(z-z.max());p/=p.sum();t=np.concatenate([y,[not y.any()]]).astype(float);q=p*t;r=q/max(q.sum(),1e-12);d=p-r;g+=F.T@d[:-1];gb+=d[-1]
-        w-=lr*(g/len(X)+l2*(w-w0));b-=lr*(gb/len(X)+l2*(b-b0))
-    return {**{k:round(float(v),4) for k,v in zip(T.FK,w)},'null':round(float(b),4),'tau':1.0}
+            z=np.concatenate([F@w,[b]]);p=np.exp(z-z.max());p/=p.sum();t=np.concatenate([y,[not y.any()]]).astype(float);q=p*t;L-=np.log(max(q.sum(),1e-12));r=q/max(q.sum(),1e-12);d=p-r;g[:-1]+=F.T@d[:-1];g[-1]+=d[-1]
+        return L/len(X)+0.5*l2*((x-x0)**2).sum(),g/len(X)+l2*(x-x0)
+    x=minimize(obj,x0,jac=True,method='L-BFGS-B').x
+    return {**{k:round(float(v),4) for k,v in zip(T.FK,x[:-1])},'null':round(float(x[-1]),4),'tau':1.0}
 def offline(a):
     D=[json.loads(l) for l in open(a.dev,encoding='utf-8')]+[{**json.loads(l),'id':'v1:'+json.loads(l)['id'],'split':'v1'} for x in filter(None,a.extra.split(',')) for l in open(x,encoding='utf-8')];os.environ.update(AMNI_UMEM_LT='1',AMNI_UMEM_GN='1',AMNI_UMEM_G2='1');SP=a.splits.split(',');D=[d for d in D if d['split'] in SP or a.tune and d['split'] in ('tune','v1')]
     t0=time.perf_counter();S=[run_store(d) for d in D];ing=(time.perf_counter()-t0)*1000/max(1,sum(len(d['turns']) for d in D));res={'n':len(D),'ingest_ms_per_turn':round(ing,3)}
