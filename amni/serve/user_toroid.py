@@ -29,7 +29,7 @@ NUMW=S_("one two three four five six seven eight nine ten eleven twelve twenty t
 ATTRN={'name':('what','name'),'color':('what','color'),'colour':('what','color'),'job':('what','job'),'occupation':('what','job'),'profession':('what','job'),'breed':('what','breed'),'age':('what','age'),'model':('what','model'),'make':('what','model'),'brand':('what','model'),'address':('where','home'),'time':('when',''),'date':('when',''),'day':('when',''),'location':('where','location'),'reason':('why',''),'favorite':('what','favorite'),'birthday':('when','birthday')}
 ADJ=S_("new old little big older younger baby current first second third next last upcoming usual regular new-ish lovely dear sweet whole same")
 PRONS={'he','she','they','it','him','her','them'}
-_TOK=re.compile(r"\d{1,2}:\d{2}|\d+(?:st|nd|rd|th|s\b)?|[A-Za-z]+(?:[.'-][A-Za-z]+)*\.?|'[a-z]+|[^\w\s]")
+_TOK=re.compile(r"\d{1,2}:\d{2}|\d+(?:st|nd|rd|th|s\b)?|[^\W\d_]+(?:[.'-][^\W\d_]+)*\.?|'[a-z]+|[^\w\s]")
 _CT=re.compile(r"(?i)\b(i|you|he|she|it|we|they|that|there|what|where|who|when|why|how)'(s|m|re|ve|ll|d)\b")
 _NT=re.compile(r"(?i)\b(do|does|did|is|was|are|were|ca|wo|could|would|should|have|has|had)n't\b")
 _LEAD=re.compile(r"(?i)^\W*(?:(?:ugh|argh|dang|darn|shoot|welp|oh no|actually|oh|so|well|also|and|but|btw|by the way|fun fact|funny story|update(?: on [^:,]{1,40})?|correction|confession|sorry|wait|oops|ok(?:ay)?|hey|hi|um|uh|yeah|yea|yes|no|nope|right|lol|lmao|haha+|ngl|tbh|omg|yo|nvm|never ?mind|hmm+|ah+|ooh|anyway|honestly|basically|good news|bad news|so anyway|scratch that|i misspoke|i meant|i mean|my (?:bad|mistake)|i got that wrong|i was wrong|just so you know|fyi|heads up|anyway|hmm|ah|guess what|quick update|small correction|change of plans?|not anymore|new info)\b[\s,:;.!-]*)+")
@@ -100,7 +100,7 @@ def tspan(T,i,n):
     k=k+2 if k+1<n and T[k][0].lower() in ('after','before') and T[k+1][0].lower() in ('that','then','this','next') else k
     return (i,k)
 FAV={'favourite':'favorite','fave':'favorite','go-to':'favorite','fav':'favorite'}
-NPSTOP=S_("and or but because so who which that where when why how what if as than then too again named called due not")
+NPSTOP=S_("and or but because so who which that where when why how what if as than then too again named called due not say says said tell tells told mention mentions mentioned think thinks thought reckon reckons")
 def _np(T,i,n,chain=True):
     j=i;lab=[];name=[];attr=None
     while j<n and T[j][0].lower() in ADJ:j+=1
@@ -388,6 +388,7 @@ def analyze(c:str,last:str='',known=(),names=None,lp='',cor=False):
     return dict(T=T,c=c,ent=ent,name=name,pa=pa,verb=verb,pred=pred,cop=cop,k=k,sp=sp,sv=sv,subj=subj,weak=weak)
 def _val(c,T,a,b,w):
     while a<b and (T[a][0].lower() in (DET|ADV|{'as','is','be'}) and w=='what' or w in ('where','when') and T[a][0].lower() in PREPW|{'on','at','in'} and a+1<b):a+=1
+    b=next((q for q in range(a+1,b) if T[q][0]==',' and q+1<b and T[q+1][0].lower() in ('i','he','she','they','we','you','my','his','her','their','our','its')),b) if w in ('what','how','where') and b-a>2 else b
     b=next((q for q in range(a+1,b) if T[q][0]==',' and q+1<b and T[q+1][0].lower() in ('which','who','whom','whose','but','though','although','whereas','while','so') or T[q][0] in (':',';') or T[q][0]==',' and q+2<b and T[q+1][0].lower()=='and' and T[q+2][0].lower() in ('then','i','we','he','she','they','my','our','the','his','her','their')),b) if w in ('why','how','what','where') else b
     b=next((q for q in range(a+1,b) if T[q][0].lower() in ('before','until','till','while','whenever','whereas','although','though') or T[q][0].lower() in ('when','because','since') and w!='why'),b) if w in ('how','what','where') else b
     b=next((q for q in range(a+2,b) if T[q][0].lower()=='and' and any(T[r][0].lower() in ('because','cuz','bc','since','cause','coz') for r in range(q+1,min(b,q+4)))),b) if w=='why' else b
@@ -530,7 +531,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
         elif lw[i]=='the' and i+1<n:
             lab,_,p2,j=_np(T,i+1,n);lw=[x[0].lower() for x in T];used|=set(range(i,j));lab=re.sub(r"\s+(?:thing|stuff)$",'',lab)
             lab and lab not in FRW and ents.append(_resolve(lab,known));i=max(j,i+1)
-        elif i!=wi and i>0 and re.fullmatch(r"[a-z][a-z-]+(?:'s)?",rw[i]) and (T[i][0][:1].isupper() or rw[i].endswith("'s")) and not isknown(rw[i].replace("'s",'')) and rw[i] not in names:ents.append(rw[i].replace("'s",''));used.add(i);i+=1
+        elif i!=wi and i>0 and re.fullmatch(r"[^\W\d_][\w-]+(?:'s)?",rw[i]) and (T[i][0][:1].isupper() or rw[i].endswith("'s")) and not isknown(rw[i].replace("'s",'')) and rw[i] not in names:ents.append(rw[i].replace("'s",''));used.add(i);i+=1
         elif i!=wi and isper(lw[i]) and lw[i] not in PRONS|AUX and not isv0(lw[i]) and 0 in wpos(lw[i]) and lw[i] not in ('who','i'):ents.append(_resolve(lw[i],known));used.add(i);i+=1
         else:
             for L in (2,1):
@@ -550,7 +551,7 @@ def ask(q:str,last:str='',known=(),names=None,lp=''):
     if w=='where' and not a:a='work' if {'job','work','working','teach','employed','hired','office'}&set(lw) else 'destination' if pred in ('send','ship','deliver','post','mail','move') and 'from' not in lw else 'home' if pc=='live' else 'work' if pc=='work' else 'origin' if 'from' in lw[-1:] or pred in ('','be','come','grow') and 'from' in lw or pred in ('grow','raise','bear','born') else 'destination' if pc=='go' and pred!='get' or 'to' in lw[-1:] or pred in MOTION and pred not in ('get','take') else 'location'
     nk=_resolve(cand,known) if cand else ''
     ents=(['me'] if fp and not ents else [])+([nk] if nk in known else [])+ents+sec;ents=list(dict.fromkeys(ents)) or ([last] if last else [])
-    cw=[x for x in dict.fromkeys(_sg(lemma(x[:-2] if x.endswith("'s") else x)) for k,x in enumerate(lw) if k not in fu and re.fullmatch(r"[a-z][a-z'-]+",x) and x not in AUX|DET|PREPW|ADV|PRONS|FUN_Q and len(x)>2)]
+    cw=[x for x in dict.fromkeys(_sg(lemma(x[:-2] if x.endswith("'s") else x)) for k,x in enumerate(lw) if k not in fu and re.fullmatch(r"[^\W\d_][\w'-]+",x) and x not in AUX|DET|PREPW|ADV|PRONS|FUN_Q and len(x)>2)]
     ents=ents or ([names[x] for x in cw if x in names][:1]) or [x for x in cw if x in known][:1] or ([cw[0]] if cw and not ents else ents)
     return dict(ents=ents,w=w,attr=a,pred=pred,cw=cw)
 FUN_Q=S_("what which who whom whose where when why how me my mine you your yours we our us i remind remember recall tell told say said mention mentioned again lol now these those days anymore still ever usually normally currently exactly end ended up thing stuff know think the its did does can could would should will")
@@ -571,7 +572,7 @@ def lookup(st:Store,qa:dict,known=None):
     return sorted(out,reverse=True)
 def keys(msg:str,F,known=()):
     ks=[e for e,*_ in F]+[x for c in clauses(msg) for T in [toks(c)[1]] for x in [_np(T,j+1,len(T))[0] for j,t in enumerate(T) if t[0].lower() in ('my','our')]]+(['me'] if re.search(r"(?i)\b(?:i|i'm|i've|i'd|i'll|me|we)\b",msg) else [])
-    ks=[_resolve(k,known) for k in ks if k and k!='?'];cw=[_lm(t) for t,_,_ in toks(msg)[1] if re.fullmatch(r"[a-z][a-z'-]{2,}",t.lower()) and t.lower() not in U._STOPW.split() and t.lower() not in AUX|ADV|DET|PREPW|PRONS|FUN_Q|TGL];nn=[t for t in cw if not isv(t) and not wv(t)]+[t for t in cw if isv(t) or wv(t)]
+    ks=[_resolve(k,known) for k in ks if k and k!='?'];cw=[_lm(t) for t,_,_ in toks(msg)[1] if re.fullmatch(r"[^\W\d_][\w'-]{2,}",t.lower()) and t.lower() not in U._STOPW.split() and t.lower() not in AUX|ADV|DET|PREPW|PRONS|FUN_Q|TGL];nn=[t for t in cw if not isv(t) and not wv(t)]+[t for t in cw if isv(t) or wv(t)]
     return [h32(k) for k in dict.fromkeys(ks+nn)]
 WHA=S_("home location work destination origin")
 _acomp=lambda a,b:a!=b and bool(a) and bool(b) and a in WHA and b in WHA and 'location' in (a,b) and 'origin' not in (a,b)
@@ -586,7 +587,7 @@ _AGE=re.compile(r"(?i)\b(?:is|'s|are|was|turned|turns|turning|being|aged|just)\s
 _ALG=re.compile(r"(?i)\ballerg(?:ic|y|ies)\s+(?:is\s+)?to\s+([^,.;!?]{2,40})")
 def _lm(x:str)->str:
     x=x.lower();x=x[:-2] if x.endswith("'s") else x;v=lemma(x);v=v if v!=x else next((u for u in _vf(x)[1:] if u in VB or 1 in wpos(u) and 0 not in wpos(x)),x);return _sg(v)
-def cwords(lw)->set:return {_lm(x) for x in lw if re.fullmatch(r"[a-z][a-z'-]+",x) and len(x)>2 and x not in AUX|DET|PREPW|ADV|PRONS|FUN_Q|TGL and x not in U._STOPW.split()}
+def cwords(lw)->set:return {_lm(x) for x in lw if re.fullmatch(r"[^\W\d_][\w'-]+",x) and len(x)>2 and x not in AUX|DET|PREPW|ADV|PRONS|FUN_Q|TGL and x not in U._STOPW.split()}
 def _det(T,lw,c):
     n=len(T);R=[];V=lambda a,b,w='what':_val(c,T,a,b,w)
     for k in range(n):
@@ -661,7 +662,7 @@ def _spc(text:str,known:tuple,nm:tuple,last:str)->tuple:
     out=[o for o in out if not (o['w']=='when' and _DUR.fullmatch(o['v'].lower().strip()))];ucw=set().union(*[x[1] for x in CL]) if CL else set()
     if CL and _COR2.search(text):
         for m in re.finditer(r"(?i)(?:^\W*\*\s*|\b(?:it's|it is|it was|its|it'll be|that's|make it|make that|actually)\s+(?:actually\s+|really\s+|now\s+)?)([^,.;!?]{1,60})",_EMO.sub(' ',text)):
-            v=re.split(r"\s+(?:he|she|they|i|we|you|not|now|instead|which|because|bc|cuz|since|so|and then|until|till|while|before|after|when|though|but)\b",re.sub(r"(?i)^(?:going to be|gonna be|gonna|going to|actually|really|now)\s+",'',m[1].strip()),maxsplit=1)[0].strip(' *');T_=toks(v)[1];vt=_vtype([t[0].lower() for t in T_],T_) if T_ else None;vt=None if vt and vt[1] in ('age','name') else vt
+            v=re.split(r",|\s+(?:he|she|they|i|we|you|not|now|instead|which|because|bc|cuz|since|so|and then|until|till|while|before|after|when|though|but)\b",re.sub(r"(?i)^(?:going to be|gonna be|gonna|going to|actually|really|now)\s+",'',m[1].strip()),maxsplit=1)[0].strip(' *');T_=toks(v)[1];vt=_vtype([t[0].lower() for t in T_],T_) if T_ else None;vt=None if vt and vt[1] in ('age','name') else vt
             v and not re.match(r"(?i)(?:because|bc|cuz|cause|since|to|so|going|gonna|been|a bit|fine|ok|okay|all|just|not|no)\b",v) and out.append(dict(v=v,w=vt[0] if vt else '*',a=vt[1] if vt else '',ent=CL[0][3],pred='',subj=False,cw=CL[0][1],ents=CL[0][2],pri=0.8))
         lc=re.sub(r"\s+",' ',CL[-1][0]).strip(' ,.');lc and len(lc)<=72 and len(lc.split())>=3 and out.append(dict(v=re.sub(r"(?i)^(?:i|we|he|she|they)\s+(?:told me|said|say|says|found out|heard)(?:\s+\w+)?\s*,?\s*",'',next((x for x in clauses(text) if x.lower()==CL[-1][0]),CL[-1][0])),w='*',a='',ent=CL[-1][3],pred=CL[-1][4],subj=False,cw=CL[-1][1],ents=CL[-1][2],pri=0.3))
     for e,vb,w,a,v,cf,_ in F:
