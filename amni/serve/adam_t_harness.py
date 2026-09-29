@@ -210,8 +210,9 @@ def _guess(z:str,e:str)->tuple:
     g=_coarse(z,e) if e in ('time','num') else _lc(z.strip().rstrip('.!?')) if e=='any' else z.strip().rstrip('.')
     return g,e if e in ('time','num') else 'sent' if e=='any' and len(g.split())>4 else 'ent'
 def fill_know(s:dict,cl,R,rq:str,mx:int)->dict:
-    qt=R.RL.qtype(rq);e=expect(rq,qt);ag=os.environ.get('AMNI_ADAM_T_HARNESS_AGREE','1')=='1';w=C._wd(R,rq,True,_forms(R,rq));w=w if w and fits(e,C.asc(w['answer'])) else None;s={**s,'rq':rq,'exp':e}
-    if not w and e=='any' and _NONF.search(rq):return {**s,'kind':'other'}
+    qt=R.RL.qtype(rq);e=expect(rq,qt);ag=os.environ.get('AMNI_ADAM_T_HARNESS_AGREE','1')=='1';w=C._wd(R,rq,True,_forms(R,rq));w=w if w and fits(e,C.asc(w['answer'])) else None;s={**s,'rq':rq,'exp':e};cs=_cs(s,rq,e) if not (w and w['strong']) else {}
+    if cs.get('ok') and cs.get('cs') not in ('class','sup'):return {**cs,'kind':'know'}
+    if not w and e=='any' and _NONF.search(rq):return {**cs,'kind':'know'} if cs else {**s,'kind':'other'}
     P,_=C._know(rq,2,int(_f('AMNI_ADAM_T_HARNESS_PASSAGE_BYTES',420)),None,False) if not w or not w['strong'] or ag else ([],rq);w0=w if w and not w['strong'] else None
     if w and not w['strong']:w=w if any(_has(a,x) for a in [w['answer'],*(w.get('forms') or [])[:6]] for x in P) else None;w and s.update(corr=True)
     if w:
@@ -227,19 +228,114 @@ def fill_know(s:dict,cl,R,rq:str,mx:int)->dict:
         if r['ok'] and ag and r['span'] and e!='any':
             sn=next((y for y in re.split(r"(?<=[.!?])\s+",line.partition(': ')[2]) if _has(r['span'],y)),'');r2=read(cl,R,rq,f"{line.partition(': ')[0]}: {sn}",e,mx) if sn else None;r['ok']=bool(r2) and _has(r['span'],r2['t'])
         r['ok']=r['ok'] and not _ANA.search(rq)
-        if r['ok'] and r['agree']:return {**s,'src':'psg','span':r['span'],'conf':1.0,'ok':True,'agree':True,'text':_first(r['t'],r['span'])}
+        if r['ok'] and r['agree'] and (e in ('time','num') or _tgate(rq,r['span'])[0]):return {**s,'src':'psg','span':r['span'],'conf':1.0,'ok':True,'agree':True,'text':_first(r['t'],r['span'])}
         best=best or (r if r['ok'] else None);r['span'] and G.append((r['span'],bool(r['inev'])))
     wv=C.asc(w0['answer']) if w0 else ''
+    if cs:return {**cs,'kind':'know'}
+    tg=None
     for z in ([best and best['span'],*top,*[x for x,i in G if i and len(x.split())<=12]] if e=='any' else [best and best['span'],*[x for x,i in G if i],*top,wv,*[x for x,i in G if not i]]):
-        g,gk=_guess(z,e)
-        if g:return {**s,'src':'wd' if z==wv else 'psg','ok':False,'hedge':True,'span':z,'guess':g,'gk':gk,'text':_hedge(g,gk)}
-    return {**s,'kind':'other','src':'psg' if P else 'none'}
+        g,gk=_guess(z,e);ty=_tgate(rq,g) if g and gk=='ent' else (True,'')
+        if g and not ty[0]:tg=ty[1];continue
+        if g:return {**s,'src':'wd' if z==wv else 'psg','ok':False,'hedge':True,'span':z,'guess':g,'gk':gk,'text':_hedge(g,gk),**({'tgate':ty[1]} if ty[1] else {})}
+    return {**s,'src':'tgate','ok':False,'hedge':True,'tgate':tg or 'thing','text':f"I'm not sure which {tg} that is." if tg else "I'm not sure about that one."} if tg is not None else {**s,'kind':'other','src':'psg' if P else 'none'}
 def _subp(q:str,e:str)->str:
     my='my '+e if e!='me' else '';ps=lambda m:m[0].lower() in ('his','their','its','hers') or (m[0].lower()=='her' and bool(re.match(r"\s+(?!(?:in|on|at|to|for|from|with|and|or|about|as|by|up|out|back|is|was|a|an|the|again|now|live|work|go|do|get|like|want|need)\b)[a-z]",q[m.end():],re.I)))
     return _PR.sub(lambda m:(f"{my}'s" if my else 'my') if ps(m) else (my or ('me' if m[0].lower() in ('him','her','them') else 'I')),q)
 def _pers(R,q:str,st)->int:
     return 2 if R.P1.search(q) or R.PW.search(q) and not _GW.search(q) or any(w.lower() in st.names for w in re.findall(r"\b[A-Z][a-z]+\b",q[1:])) else int(bool(R.PW.search(q)) or bool(set(_ct(q))&st.ht))
 _GW=re.compile(r"(?i)\b(?:planet|world|solar system|galaxy|universe|sun|moon|earth|species|atmosphere|oceans?|continents?|human body|bodies)\b")
+_EXQ=re.compile(r"(?i)^\W*(?:(?:so|and|but|ok(?:ay)?|hey|also)\W+)*(?:(?:(?:can|could|would) you\s+)?(?:please\s+)?explain\s+(?:to me\s+)?(?:how|why|what)\b|why\b|how\s+come\b|how\s+(?:do|does|did|is|are|was|were|can|could|would)\s+(?!(?:i|we|you)\b)|what\s+(?:causes|caused|makes|made|happens|happened)\b(?!\s+(?:you|me|my|your)\b))")
+_EXL=re.compile(r"(?i)^\W*(?:(?:so|and|but|ok(?:ay)?|hey|also)\W+)*(?:(?:can|could|would) you\s+)?(?:please\s+)?(?:explain\s+(?:to me\s+)?)?(?:why|how\s+come|how|what)\s+(?:(?:do|does|did|is|are|was|were|can|could|would|causes|caused|makes|made|happens|happened)\s+)?(?:(?:actually|really|exactly|usually)\s+)?")
+_EXADV=re.compile(r"(?i)\b(?:should|shall)\s+(?:i|we)\b|\bhow\s+(?:do|can|should|could)\s+(?:i|we|you)\b|\b(?:tips?|advice|best way|recommend)\b|(?<!\.)(?<!\b[a-z] )\bi\b(?!\.)|\b(?:me|my|myself|i'm|i've|mine)\b")
+_XCS=re.compile(r"(?i)\b(?:because|due to|caused by|as a result|results? in|resulting in|leads? to|so that|which (?:makes|causes|allows|lets|means)|allows?|allowing|enables?|by (?:\w+ing)|in order to|responsible for|thereby|works? by|when (?:the |a |an )?\w+|occurs? when|forms? when|converts?|produces?)\b")
+_XCUE=re.compile(r"(?i)\b(?:because|due to|caused by|causes?|causing|result(?:s|ing)? (?:in|from)|as a result|leads? to|so that|which (?:makes|causes|allows|lets|means)|allows?|allowing|enables?|by (?:\w+ing)|through|when|whereas|while|forms?|formed|formation|produces?|produced|converts?|converted|occurs?|in order to|responsible for|thereby|therefore|consists? of|process|works? by|mechanism|reaction|energy|heat|pressure)\b")
+_XBAD=re.compile(r"(?i)^(?:see also|references|external links|history|etymology|in popular culture)\b|\bmay refer to\b|\bis a list\b|\b(?:album|film|song|novel|band|episode|video game|season)\b|\|")
+_XP=re.compile(r"(?i)^(?:we|you|people|humans|some people|most people|some|many|it|they|someone|a person|animals|things)\s+")
+_XS=set('actually really exactly usually sometimes always often so very much more most such also just still even ever'.split())
+_xst=lambda w:w[:5] if len(w)>6 else w[:4] if len(w)>4 else w
+_XWORK=re.compile(r"(?i)\b(?:is|was) (?:a|an|the) (?:\d{4} )?(?:[\w'-]+ ){0,5}(?:novel|novella|film|movie|album|song|single|book|collection|band|series|episode|play|musical|video game|company|magazine|newspaper|character|comic|manga|anime|painting|poem|opera|ep|brand|rapper|singer|musician|actor|actress|group|duo|trio|team|club|party|fairy tale|folk tale|tale|story|legend|myth|ship|locomotive|racehorse|horse|station)\b")
+_XNE={5,11424,482994,7725634,7366,215380,5398426,8502,4022,515,486972,4830453,43229,7889,13442814,571,134556,101352,202444,3918,41176,23397,1093829,3624078,6256,532,747074,15416,105543609,169930,1002697,24856,839954,17537576,35127,1195098,618779,11446,13417114,4167836,5633421,811979,1248784,30022}
+def _xne(t:str)->bool:
+    try:
+        W=__import__('amni.compute.wikifact',fromlist=['store']);S=W.store();E=sorted({e for e,_ in S.ents(W.nrm(re.sub(r"\s*\([^()]*\)$",'',t)))},key=lambda e:-int(S.e_sl[e]))[:1] if S is not None else []
+        return bool(E) and not len(S.facts(E[0],[279])) and bool({int(S.e_qid[v]) for v in S.inst(E[0])}&_XNE)
+    except Exception:return False
+WF_wn=lambda w:bool(__import__('amni.compute.wikifact',fromlist=['_wn'])._wn() and __import__('amni.compute.wikifact',fromlist=['_wn'])._wn().synsets(w))
+_XGV=set('make look have get do go take turn use come keep give put seem become find help work need want'.split())
+_sgx=lambda w:w[:-3]+'y' if w.endswith('ies') else w[:-2] if w.endswith(('oes','ches','shes','xes','sses','zes')) else w[:-1] if w.endswith('s') and not w.endswith(('ss','us','is')) else w
+_vb=lambda w:bool(__import__('amni.compute.wikifact',fromlist=['_wn'])._wn() and __import__('amni.compute.wikifact',fromlist=['_wn'])._wn().synsets(w,'v'))
+def _adj(w:str)->bool:
+    wn=__import__('amni.compute.wikifact',fromlist=['_wn'])._wn();c=lambda p:sum(l.count()+1 for s in wn.synsets(w,p) for l in s.lemmas() if l.name().lower()==w) if wn else 0
+    return c('a')+c('s')+c('r')>2*c('n')
+def _xtop(q:str)->tuple:
+    r=_XP.sub('',_EXL.sub('',q.strip()).strip(' ?.!'));s=re.findall(r"[A-Za-z][\w'-]*",r);runs=[];cur=[]
+    for x in s+['.']:
+        if x.lower() not in _STW and x.lower() not in _XS and x!='.':cur.append(x.lower())
+        else:cur and runs.append(cur);cur=[]
+    vb=runs[0].pop() if runs and len(runs[0])>1 and re.match(r"(?i)\W*(?:why|how)\s+(?:do|does|did|can|could)\b",q) and _vb(runs[0][-1]) and not _adj(runs[0][-1]) else '';runs=runs+[[vb]] if vb else runs
+    P=[' '.join(rr[i:i+n]) for rr in runs for n in (3,2) for i in range(len(rr)-n+1)]+[x for rr in runs for x in rr[::-1] if not _adj(x) and x not in _XGV]+[(x[:-1] if x.endswith('e') and not x.endswith('ee') else x)+'ing' for x in ([vb] if vb else runs[0] if runs else []) if _vb(x) and x not in _XGV and not _adj(x)]
+    return list(dict.fromkeys(P)),r
+def _xdocs(R,q:str)->list:
+    I=R.ix();I.__dict__.setdefault('al',I.aliases());I.tz=getattr(I,'tz',None) or R.RL._kx()[1].z[0][1];P,r=_xtop(q);c={};o=[];nt=lambda z:{T._sg(w) for w in R.toks(z)}
+    for ph in P[:12]:
+        for v in dict.fromkeys([ph,_sgx(ph),ph+'s',ph.title(),ph.capitalize(),_sgx(ph).capitalize()]):
+            g=next((g for g in C._pages(I,R,v)[:2] if g not in [x[0] for x in o]),None);t=I.text(int(I.first[g]),c)[0] if g is not None else ''
+            if g is not None and not C._BADT.search(t) and not _XBAD.search(t) and (nt(re.sub(r"\s*\([^()]*\)$","",t)) in (nt(ph),nt(v)) or re.search(r"(?i)\b"+re.escape(ph)+r"\b",C.asc(I.text(int(I.first[g]),c)[1])[:150])) and not _XWORK.search(C.asc(I.text(int(I.first[g]),c)[1])[:240]) and not _xne(t):o.append((g,t,ph));break
+        if len(o)>=2:break
+    return o
+def _xsents(R,q:str,k:int=2)->dict:
+    I=R.ix();P,r=_xtop(q);D=_xdocs(R,q);Qt=[w for w in dict.fromkeys(R.toks(r)) if w not in R.QSTOP and not w.isdigit() and w not in _XGV];Wq={w:I.widf(w) for w in Qt};tot=sum(Wq.values()) or 1.0;c={};B=[];seen=set()
+    L=[(p,t,1,ph) for g,t,ph in D for p in range(int(I.first[g]),min(int(I.first[g+1]),int(I.first[g])+int(_f('AMNI_ADAM_T_HARNESS_EXPLAIN_PASS',80))))]
+    try:L+=[(p,'',0,'') for _,p in I.search(q,int(_f('AMNI_ADAM_T_HARNESS_EXPLAIN_BM25',15)))]
+    except Exception:pass
+    for j,(p,t0,td,ph) in enumerate(L):
+        if p in seen:continue
+        seen.add(p);t,x,g=I.text(int(p),c);t=C.asc(t)
+        if C._BADT.search(t) or _XBAD.search(t) or C._NAV.search(x[:300]) or not td and (_XWORK.search(C.asc(I.text(int(I.first[g]),c)[1])[:240]) or _xne(t)):continue
+        tk=set(R.toks(re.sub(r"\s*\([^()]*\)$","",t)));Z=[C.asc(y) for l in C._fix(x).split('\n') for y in re.split(r"(?<=[.!?])\s+",l) if y.strip()]
+        for i,z in enumerate(Z):
+            z=re.sub(r"\s*\([^()]*\)|\s*\[[^\]]*\]",'',z).strip();n=len(z.split())
+            if n<7 or n>45 or _XBAD.search(z) or re.search(r"[\"|;:]\s|\x01|^\W|\b(?:I|we|our|you)\b|\b(?:18|19|20)\d\d\b|\b\d+(?:st|nd|rd|th) century\b|\bcenturies\b",z) or sum(ch.isdigit() for ch in z)>4 or not z[:1].isupper() or z[-1:] not in '.!':continue
+            zt=[_xst(w) for w in R.toks(z)];m=[w for w in Qt if _xst(w) in zt];cv=sum(Wq[w] for w in m)/tot;tm=bool(tk&set(R.toks(r)))
+            cs_=bool(_XCS.search(z));cu=cs_ or bool(_XCUE.search(z))
+            if not m or cv<_f('AMNI_ADAM_T_HARNESS_EXPLAIN_COV',0.3) or not td and not (cv>=0.5 and cs_ and tm):continue
+            ex=tk-set(R.toks(q));pn=min(1.0,sum(0.15 if WF_wn(w) else 0.5 for w in ex));pr=bool(re.match(r"(?i)(?:it|they|this|these)\b",z));sc=-pn-0.4*bool(re.match(r"(?i)(?:however|conversely|also|in addition|furthermore|moreover|similarly|additionally|for example|for instance|meanwhile|instead|still|yet)\b",z))+2.0*cv+(0.8 if cs_ else 0.3 if cu else 0.0)+0.4*tm+0.3*td+0.25*(i==0)-0.15*(n>32)-0.02*min(j,40)-0.4*(pr and not tm)
+            B.append((sc,z,t,Z,i,p,tm,cu,cv))
+    if not B:return {}
+    b=max(B,key=lambda z:z[0]);sc,z,t,Z,i,p,tm,cu,cv=b
+    if sc<_f('AMNI_ADAM_T_HARNESS_EXPLAIN_MIN',1.2) or not (cu or cv>=0.6):return {}
+    ti=re.sub(r"\s*\([^()]*\)$","",t);z=re.sub(r"^(?:It|They)\b",ti if not ti.lower().startswith(('list','history')) else r"\g<0>",z,1) if tm else z;o=[z]
+    nx=re.sub(r"\s*\([^()]*\)|\s*\[[^\]]*\]",'',Z[i+1]).strip() if i+1<len(Z) and k>1 else ''
+    if nx and 6<=len(nx.split())<=35 and len((z+' '+nx).split())<=int(_f('AMNI_ADAM_T_HARNESS_EXPLAIN_WORDS',55)) and (_XCUE.search(nx) or re.match(r"(?i)(?:this|these|it|they|as a result|therefore|so|thus|then|in turn)\b",nx)) and nx[-1:] in '.!' and not re.search(r"[\"|]|\b(?:18|19|20)\d\d\b",nx):o.append(nx)
+    tx=' '.join(o)
+    while len(tx.encode())>380 and len(o)>1:o.pop();tx=' '.join(o)
+    return dict(text=tx if len(tx.encode())<=380 else C.clip(tx,380).rstrip(',;')+'.',title=ti,pid=int(p),score=round(sc,3),cov=round(cv,3),cue=cu)
+def _para(cl,q:str,x:dict,mx:int)->str:
+    if os.environ.get('AMNI_ADAM_T_HARNESS_EXPLAIN_PARA','1')!='1':return ''
+    try:t=_coh(cl.gen(q,min(mx,200),C.STOPS,None,(),[f"{x['title']}: {x['text']}"]),q)
+    except Exception:return ''
+    sw={w[:5] for w in re.findall(r"[a-z]+",(x['text']+' '+x['title']+' '+q).lower())};tw=re.findall(r"[a-z]+",t.lower());nw=[w for w in tw if len(w)>3 and w not in U._STOPW.split() and w[:5] not in sw];dg=set(re.findall(r"\d+",t))-set(re.findall(r"\d+",x['text']))
+    xc=set(_ct(x['text']));tc=set(_ct(t));g3=lambda z:{tuple(z[i:i+3]) for i in range(len(z)-2)};xw=re.findall(r"[a-z]+",(x['text']+' '+q).lower());tg=g3(tw)
+    return t if len(tw)>=8 and not nw and not dg and ':' not in t and xc and len(tc&xc)>=_f('AMNI_ADAM_T_HARNESS_PARA_COV',0.6)*len(xc) and tg and len(tg&g3(xw))>=0.6*len(tg) and t.strip()[-1:] in '.!' else ''
+def fill_expl(s:dict,cl,R,q:str,mx:int)->dict:
+    x=_xsents(R,q)
+    if not x:return {**s,'kind':'other'}
+    pa=_para(cl,q,x,mx);tx=pa or x['text']
+    return {**s,'kind':'explain','src':'wiki','ok':True,'grounded':True,'para':bool(pa),'conf':min(1.0,x['score']/3),'span':x['title'],'text':tx,'prov':[f"Wikipedia: {x['title']} (passage {x['pid']})"],'ev':x['text']}
+def _cs(s:dict,rq:str,e:str)->dict:
+    if os.environ.get('AMNI_ADAM_T_HARNESS_CS','1')!='1':return {}
+    try:k=__import__('amni.serve.cognition',fromlist=['know']).know(rq)
+    except Exception:return {}
+    if not k or not k.get('answer'):return {}
+    hc=float(k.get('conf') or 0)<_f('AMNI_ADAM_T_HARNESS_CS_SURE',0.6);tx=k['text'] if not hc else 'I think '+(k['text'] if k.get('proper') else k['text'][:1].lower()+k['text'][1:])
+    return {**s,'src':'cs','span':k['answer'],'conf':float(k.get('conf') or 0),'ok':not hc,'hedge':hc,'text':tx,'prov':k.get('prov') or [],'cs':k.get('kind'),'cls':k.get('cls','')}
+def _tgate(rq:str,z:str)->tuple:
+    if os.environ.get('AMNI_ADAM_T_HARNESS_TGATE','1')!='1' or not z:return (True,'')
+    try:G=__import__('amni.serve.cognition',fromlist=['qclass']);c=G.qclass(rq)
+    except Exception:return (True,'')
+    if not c:return (False,'') if not re.search(r"\s[A-Z0-9]",rq.strip()) and re.search(r"(?i)^\W*what\s+(?:do|does|did)\b",rq) and (re.search(r"\s[A-Z]",' '+z.strip()) or not G.wsyn(z.lower(),0)) else (True,'')
+    if c=='person' and re.fullmatch(r"(?:[A-Z][\w'.-]*\s+){0,3}[A-Z][\w'.-]*",z.strip()) and len(z.split())>1:return (True,'')
+    v=G.isa(z,c);return (bool(v[0]) or v[0] is None and v[1]=='name shape',c)
 def slot(q:str,prev,history,st,R,cl,mx:int)->dict:
     wn=re.match(r"(?i)\W*which\s+(\w+)",prev['q']) if prev and re.match(r"(?i)\W*which\s+(?:is|are|was|were|one)\b",q) else None;q=re.sub(r"(?i)^(\W*which)(?:\s+one)?\b",r"\1 "+wn[1],q,1) if wn else q
     tp=getattr(split,'topic','');tq=tp and not _pers(R,q,st) and not _ent(R,q)
@@ -251,9 +347,14 @@ def slot(q:str,prev,history,st,R,cl,mx:int)->dict:
     elif prev and pr and C._ELL.match(q) and prev.get('kind')=='mem':
         x=C._ELL.match(q);x=(x[1] or x[2]).strip();q=re.sub(r"(?i)\b(?:my|our|the)\s+"+re.escape(prev.get('ent') or '\x00')+r"\b",x if x.lower().startswith(('my ','our ','the ')) else 'my '+x,prev['q']) if prev.get('ent') and prev['ent']!='me' else q
     pl=_pers(R,q,st);av=bool(_ADVQ.search(q))
+    if os.environ.get('AMNI_ADAM_T_HARNESS_EXPLAIN','1')=='1' and _EXQ.match(q) and not _EXADV.search(q) and not pr and not C._ELL.match(q):
+        o=fill_expl({**s,'rq':q},cl,R,q,mx)
+        if o.get('ok'):return o
     if pl:
         o=fill_mem({**s,'kind':'mem','rq':q},st,q,0.9 if av else 0.0,pl==2 and not av)
         if o.get('ok') or o.get('hedge') and not av:return o
+        c2=_cs({**s,'kind':'know','rq':q},q,expect(q)) if pl==2 and not R.P1.search(q) and not av else {}
+        if c2:return {**c2,'kind':'know'}
         if pl==2:return {**o,'hedge':True,'unk':True,'text':''} if _MEMQ.search(q) and not av else {**s,'kind':'other','rq':q}
     m=C._math(q)
     if m:return {**s,'kind':'calc','rq':q,'src':'calc','ok':True,'conf':1.0,'span':m,'text':m}
@@ -322,5 +423,5 @@ def run(message:str,history,user,session,cl,mx:int)->Optional[dict]:
         s.get('kind')=='other' and s.update(text=_other(s,history,user,session,cl,mx),src='adam_t');s.get('unk') and s.update(text="You haven't told me that yet." if len(S)==1 else f"You haven't told me {ind(s['q'])} yet.")
         if s.get('guess') and s.get('hedge'):s['text']=_hedge(s['guess'],s['gk'],k);k+=1
     txt=C.asc(' '.join(_end(s['text']) for s in S if s.get('text'))).strip()
-    n={'hs':len(S),'hm':sum(s.get('kind')=='mem' for s in S),'hk':sum(s.get('kind')=='know' for s in S),'hc':sum(s.get('kind')=='calc' for s in S),'ho':sum(s.get('kind')=='other' for s in S),'hv':sum(bool(s.get('ok')) for s in S),'hh':sum(bool(s.get('hedge')) for s in S),'hgs':sum(bool(s.get('guess')) for s in S),'hsd':sum(bool(s.get('said')) for s in S),'hr':sum(int(s.get('retry') or 0) for s in S),'hx':sum(bool(s.get('conflict')) for s in S),'hms':round((time.perf_counter()-t0)*1000)}
+    n={'hs':len(S),'hm':sum(s.get('kind')=='mem' for s in S),'hk':sum(s.get('kind')=='know' for s in S),'hc':sum(s.get('kind')=='calc' for s in S),'ho':sum(s.get('kind')=='other' for s in S),'hv':sum(bool(s.get('ok')) for s in S),'hh':sum(bool(s.get('hedge')) for s in S),'hgs':sum(bool(s.get('guess')) for s in S),'hsd':sum(bool(s.get('said')) for s in S),'hr':sum(int(s.get('retry') or 0) for s in S),'hx':sum(bool(s.get('conflict')) for s in S),'hxe':sum(s.get('kind')=='explain' for s in S),'hcs':sum(s.get('src')=='cs' for s in S),'htg':sum(bool(s.get('tgate')) for s in S),'hms':round((time.perf_counter()-t0)*1000)}
     return {'text':txt,'n':n,'slots':S} if txt else None

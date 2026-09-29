@@ -1,6 +1,6 @@
 # ADAM-T-HARNESS: verify-and-complete answer loop around ADAM-T
 
-Status: CPU prototype for mission ADAM-T-HARNESS, 2026-09-29; revised as v2 by mission ADAM-T-HARNESS2 (next section). The sections from "Summary (v1)" on describe v1.
+Status: CPU prototype for mission ADAM-T-HARNESS, 2026-09-29; revised as v2 by mission ADAM-T-HARNESS2 and as v3 by mission ADAM-T-COMMONSENSE (next sections, newest first). The sections from "Summary (v1)" on describe v1.
 
 - **Code:** `amni/serve/adam_t_harness.py`, wired into `adam_t_client.answer()` behind `AMNI_ADAM_T_HARNESS=1` (**off by default**). `gguf_runtime.py` is untouched, so emergency-first is unchanged.
 - **Tests:** `tests/test_adam_t_harness.py` (41 tests). The `test_adam_t_route`, `test_user_toroid`, `test_user_memory_*` and `test_decontam_adam_t` suites still pass.
@@ -9,6 +9,110 @@ Status: CPU prototype for mission ADAM-T-HARNESS, 2026-09-29; revised as v2 by m
   - CPU only; everything ran under `systemd-run --user --scope -p MemoryMax=6G -p CPUQuota=200% nice -n 15`.
   - Model: a read-only snapshot of `exports/adam_t/t30m_sft2/ckpt` at **step 4607**. `core.bin`, `mem.bin`, `state.txt`, `steps.txt` and `log.jsonl` had stable size and mtime over a 5 s window, were unchanged after the copy, and were `cmp`-identical. Exported to `.gf17` in scratch (sha256 `47a3540d…`, argmax parity 97.6%).
   - Binary built with its own `crates/target` and copied to `adamt-har`. Model copies and the target dir were deleted afterwards.
+
+## v3 (mission ADAM-T-COMMONSENSE, 2026-09-29)
+
+v3 targets the "answered" gap that blocks milestone C2. It adds three lookup-first pieces to the harness/cognition path: an answer-type gate on best guesses, a commonsense resolver over WordNet, ConceptNet 5.7 and Wikidata v3, and an extractive explain route over the live Wikipedia index. `AMNI_ADAM_T_HARNESS` is still **off by default**, and each new piece has its own flag, all defaulting to on under the harness. `gguf_runtime.py` and `adam_t_client.py` are untouched, and `gguf_runtime.py` is still CRLF and byte-exact, so emergency-first is unchanged.
+
+- **Model:** `exports/adam_t/t30m_sft2/model.gf17`, used read-only (step 7773, the same file as the v2 "final" E2E runs). Binary built with its own target dir in scratch and copied to `adamt-cs`. The target dir was deleted right after the copy.
+- **Tests:** `tests/test_adam_t_harness.py` and `tests/test_cognition.py` gain 20 tests (explain detection, type gate, commonsense slot and hedge, paraphrase grounding, extractive explain, ConceptNet store, `isa`/`qclass`, `know`). 247 pass across `test_adam_t_harness`, `test_cognition`, `test_adam_t_route`, `test_adam_t_chat_eval` and `test_user_toroid`.
+
+### What changed
+
+- **Answer-type gate** (`_tgate`, `cognition.qclass`, `cognition.isa`). The expected class comes from the question noun: "which/what N ...", "the SUP N", "which N" at the end, "what is the X N of", or person for "who". A best-guess entity has to be a hyponym of that class before it is offered:
+  - WordNet hypernym closure (instance hypernyms included);
+  - otherwise ConceptNet `IsA`;
+  - otherwise Wikidata P31/P279/P106/P171 values mapped back into WordNet.
+  Unknown multi-word names pass only for person classes (name shape). Common-noun "what do X V" questions reject capitalised or non-WordNet guesses. When every candidate fails, the reply is an honest hedge ("I'm not sure which organ that is.") instead of "I think it's Like". The gate also applies to passage answers that the reader and ranker agree on. `AMNI_ADAM_T_HARNESS_TGATE=0` disables it.
+- **ConceptNet 5.7 store** (`scripts/build_conceptnet.py`, `data/concepts/conceptnet/`):
+  - Source: plain HTTPS download of `conceptnet-assertions-5.7.0.csv.gz` (497,963,447 B, sha256 `accd65fe…`). Filtered to English-English edges, 18 relations (IsA, UsedFor, CapableOf, PartOf, HasA, MadeOf, AtLocation, Causes, Desires, ReceivesAction, HasProperty, Antonym, CreatedBy, HasPrerequisite, CausesDesire, MotivatedByGoal, DefinedAs, LocatedNear), weight ≥ 1.0, and nodes of at most 6 words / 60 chars. Duplicates were merged.
+  - Result: **382,613 edges, 261,089 nodes, 22.3 MB on disk**. The layout follows the wikifact store: hash-sorted node table plus text blob, CSR forward and reverse edge arrays, and an `edges.gf17` base-17 twin whose round trip is verified exact.
+  - `manifest.json` records the licence (CC BY-SA 4.0), the ConceptNet attribution text, the source hash and the filter. `NOTICE` carries the attribution. The raw download was deleted after the build, and the deletion is logged in `data/ks/logs/deletions.log`.
+  - Cognition reads the store through `cnid`/`cnv`/`cne`, plus a target-word index `_cnx`. `relate` and `common` gain ConceptNet paths (`cn1`, `cnshare`; source `cn`, not in the strict factual set).
+- **Commonsense resolver** (`cognition.know`). Lookup only, and every answer carries provenance lines:
+  - antonym, synonym, plural, young-of and group-of from WordNet lemmas, the exception list and glosses, and ConceptNet Antonym;
+  - "how many N does X have" from number+noun patterns in WordNet glosses, ConceptNet HasA/PartOf/DefinedAs, or the subject's own Wikipedia article (possessive context only);
+  - "what is X made from" from WordNet glosses, ConceptNet MadeOf/ReceivesAction and Wikidata P186, with an optional class filter;
+  - "where do X live" from ConceptNet AtLocation, WordNet gloss places and Wikidata P2974/P183;
+  - "what do X V" (object) from ConceptNet CapableOf/Desires/UsedFor, ReceivesAction "V-ed by X", WordNet glosses, and Wikidata P1034/P1056/P2283 (only when the Wikidata subject's label matches). A low-confidence fallback votes over the ConceptNet edges of hypernyms and siblings;
+  - class and superlative questions ("which organ produces bile", "the tallest animal"): class hyponyms whose gloss has the rarest question word or the superlative directly before a class word (regional qualifiers rejected), ConceptNet reverse lookups on the question words, ConceptNet DefinedAs/IsA/HasProperty "SUP class" edges, and Wikipedia sentences "X is the SUP ... class" whose subject passes the class check.
+  In the harness (`_cs`), antonym, count, made, object, where and define answers return right after a strong Wikidata miss. Class and superlative answers wait until the passage reader and ranker have had their chance to agree. Confidence below `AMNI_ADAM_T_HARNESS_CS_SURE` (0.6) gives "I think …". "Who" questions stay on the Wikidata/passage path. Generic "we/our" questions that the memory path cannot answer are tried here before "You haven't told me that yet." `AMNI_ADAM_T_HARNESS_CS=0` disables it.
+- **Explain route** (`fill_expl`). How/why/what-causes questions that are not advice, not about the user, not a pronoun follow-up and not an ellipsis go to a new `explain` slot:
+  - Topic articles come from the question's noun phrases, subject first. The title must match the phrase, and works, people and places are rejected (lead-sentence pattern and Wikidata P31 without P279).
+  - Their passages are scored together with BM25 hits (`AMNI_ADAM_T_HARNESS_EXPLAIN_BM25`) on question-word coverage (idf, stem prefix), mechanism cues ("because", "due to", "caused by", "when X", "by …ing", "results in"…), title match, lead position and penalties (history/years, discourse openers, entity titles). A BM25 passage needs title overlap, coverage ≥ 0.5 and a strong cue.
+  - The reply is 1–2 checked sentences (≤ 55 words, ≤ 380 bytes), marked `grounded` with `prov=["Wikipedia: <title> (passage <id>)"]`.
+  - ADAM-T may rephrase it (`AMNI_ADAM_T_HARNESS_EXPLAIN_PARA`). The rephrase is used only if it adds no new content words or digits, keeps ≥ 60% of the extract's content words, has ≥ 60% of its trigrams in the passage and question, and ends a sentence. Otherwise the extract is returned as-is.
+  - When nothing passes, the question falls back to the old model path. `AMNI_ADAM_T_HARNESS_EXPLAIN=0` disables the route.
+- **Counters:** `hxe` (explain slots), `hcs` (commonsense slots) and `htg` (type-gate hedges) are added to the harness counters.
+
+### Results
+
+**Own dev set** (`data/adam_t/eval/commonsense/`, CC0, written from scratch for this mission):
+- Contents: 157 explain questions (with expected mechanism terms) and 161 everyday-knowledge questions (with accepted answers).
+- Overlap check: zero shared 6-grams with `chat/chat_src.jsonl`, the harness and cognition dev/test sets, and the toroid dev sets (22 draft questions were rewritten until the check passed).
+- Split: per category into tune (158) and test (160), seed 20260929.
+- Runs: through the live route (`gguf_runtime.chat` with AMNI_ADAM_T, harness and cognition on) by `scripts/adam_t_cs_eval.py`. "Before" is HEAD c828a2c on the same binary and model. The test half was scored once before and once after, with the code frozen.
+
+| split | category | answered | coherent | fact | explain term hit | grounded |
+|---|---|---|---|---|---|---|
+| test (held out) | explain (79) | 0.291 → **0.772** | 0.861 → 1.000 | | 0.228 → 0.595 | 0.000 → 0.899 |
+| test (held out) | know (81) | 0.333 → **0.568** | 0.975 → 0.901 | 0.222 → **0.494** | | |
+| test (held out) | all (160) | 0.313 → **0.669** | 0.919 → 0.950 | | | |
+| tune | explain (78) | 0.333 → 0.769 | 0.782 → 0.949 | | 0.218 → 0.513 | 0.000 → 0.795 |
+| tune | know (80) | 0.288 → 0.763 | 0.988 → 0.963 | 0.150 → 0.688 | | |
+
+The knowledge gain shrinks from tune (0.76) to test (0.57). The rules generalise, but not fully. Test declines rose from 0.025 to 0.148 because the type gate now says "I'm not sure …" where v2 offered a wrong-typed guess.
+
+**Locked E2E chat dev suite** (410 items):
+- Run: once, harness and cognition on, `--tune`, recorded as dry: `report_adam-t-t30m-sft2-cs-h1_7773_e2e_tune_dry.json`.
+- Baseline: the v2 "final-h1" run on the same model file.
+
+| metric | v2 final-h1 | v3 | target |
+|---|---|---|---|
+| answered | 0.551 | **0.637** (lo95 0.589) | ≥ 0.70 (C2: 0.80) |
+| fact | 0.577 | **0.705** | ≥ 0.55 |
+| coherent | 0.942 | **0.954** | ≥ 0.90 |
+| good | 0.480 | 0.578 | |
+| context use | 0.563 | 0.563 | |
+| 911 lead | 1.000 | 1.000 | no regression |
+| near-miss false positives | 0.037 | 0.037 | no regression |
+| duplicate replies | 0.042 | 0.022 | |
+| median / p90 latency | 688 / 2237 ms | 542 / 2109 ms | |
+
+By category (answered): explain 0.254 → 0.610, know 0.637 → 0.784, chat 0.494 → 0.481, and advice, multi, nearmiss and emergency unchanged:
+- Explain: 26 items gained and 5 lost. 46 of 59 explain items took the new route and 35 of those were answered. The other 13 fell back to the model (1 answered).
+- Know: 17 gained and 2 lost.
+- Chat: one "why" small-talk question now gets a Wikipedia sentence and lost its lexical overlap.
+
+### Targets
+
+- **Missed:** E2E answered ≥ 0.70 (0.637), and therefore C2's 0.80.
+- **Met:** fact ≥ 0.55 (0.705), coherent ≥ 0.90 (0.954), and no regression in 911 lead or near-miss false positives.
+
+The remaining gap is spread across categories:
+- chat (0.48): lexical scorer, deliberately left alone;
+- nearmiss (0.33) and advice (0.71): untouched by this mission;
+- explain questions whose topic article is not reachable by title or has no cue sentence (13/59 fall back);
+- held-out knowledge coverage.
+
+### Limitations and next steps
+
+- Topic selection is title-based. Wrong-sense titles still slip through ("Contract" for muscles contracting is kept out only by coverage scoring), and redirect-only topics ("sweat" → Perspiration) are missed.
+- The explain extract is chosen by coverage and cue words, not by answering the "why". Some replies are on-topic facts rather than mechanisms (kw hit 0.60 on test).
+- ADAM-T's paraphrase almost never passes the grounding check, so replies are effectively extractive.
+- Commonsense rules were tuned on 80 questions; held-out precision is lower. Observed errors include hypernym answers ("the vertebrate"), Wikipedia superlatives with the wrong subject, and the count template with plural subjects ("A spiders has eight legs").
+- ConceptNet crowd edges are noisy (for example "dogs CapableOf run across field"). Answers built on them alone stay at hedge confidence.
+
+### Reproduce (v3)
+
+```
+python scripts/build_conceptnet.py --src <conceptnet-assertions-5.7.0.csv.gz or URL>
+systemd-run --user --scope -p MemoryMax=6G -p CPUQuota=200% nice -n 15 env AMNI_ADAM_T_HARNESS=1 AMNI_COGNITION=1 \
+  python scripts/adam_t_cs_eval.py --split <tune|test> --label <label> --proto-cmd '<bin copy> serve <model.gf17>'
+systemd-run --user --scope -p MemoryMax=6G -p CPUQuota=200% nice -n 15 env AMNI_ADAM_T=<model.gf17> AMNI_ADAM_T_BIN=<bin copy> AMNI_ADAM_T_HARNESS=1 AMNI_COGNITION=1 \
+  python scripts/adam_t_eval.py run --model proto --suites chat --e2e --tune --proto-cmd '<bin copy> serve <model.gf17>' --step 7773 --name adam-t-t30m-sft2-cs-h1
+.venv-linux/bin/python -m pytest -q tests/test_adam_t_harness.py tests/test_cognition.py
+```
 
 ## v2 (mission ADAM-T-HARNESS2, 2026-09-29)
 

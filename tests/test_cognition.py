@@ -81,3 +81,24 @@ def test_context_is_flag_gated(monkeypatch):
 def test_context_lines_fit_budget(warm,monkeypatch):
     monkeypatch.setenv('AMNI_COGNITION','1');o=C.context('How are bees and almonds connected?',budget=300)
     assert o['mode']=='analytical' and o['op']=='relate' and o['lines'] and sum(len(x)+1 for x in o['lines'])<=300 and all(x.isascii() for x in o['lines'])
+HAVECN=HAVE and C._cn() is not None
+needcn=pytest.mark.skipif(not HAVECN,reason='conceptnet store missing')
+@needcn
+def test_conceptnet_store_licence_lookup_and_gf17():
+    m=C._cn()['m'];i=C.cnid('dog');E=C.cne(i,('IsA',));J=C.cne(i,None,True)
+    assert m['license']=='CC BY-SA 4.0' and 'ConceptNet 5' in m['attribution'] and m['gf17']['exact'] and m['filter']['min_weight']>=1.0 and set(m['filter']['relations'])>={'IsA','UsedFor','CapableOf','PartOf','HasA','MadeOf','AtLocation','Causes','Desires','ReceivesAction','HasProperty'}
+    assert i>=0 and C.cnt(i)=='dog' and E and all(r=='IsA' for r,_,_ in E) and J and C.cnid('zzqxv qqq')==-1 and i in C.cnv('dogs')
+@needcn
+def test_type_check_and_question_class(warm):
+    assert C.isa('liver','organ')[0] is True and C.isa('like','organ')[0] is False and C.isa('qzxv bnnm corp','organ')[0] is None
+    assert C.qclass('Which organ cleans the blood?')=='organ' and C.qclass('What is the largest planet?')=='planet' and C.qclass('Which big cat has a mane?')=='big cat' and C.qclass('What do termites eat?')==''
+@needcn
+@pytest.mark.parametrize('q,a,src',[("What is the opposite of cold?",'hot','WordNet'),("How many sides does a heptagon have?",'seven','WordNet'),("What is yogurt made from?",'milk','WordNet'),("What do termites eat?",'wood','WordNet'),("What is the plural of goose?",'geese','WordNet'),("What is the largest planet?",'Jupiter','')])
+def test_know_answers_with_provenance(warm,q,a,src):
+    o=C.know(q);assert o and o['answer'].lower()==a.lower() and a.lower() in o['text'].lower() and o['prov'] and (not src or o['prov'][0].startswith(src)) and 0<o['conf']<=0.95
+@needcn
+def test_know_declines_without_evidence(warm):
+    assert C.know("What colour is a zqxv?") is None and C.know("How are you today?") is None and C.know("Who wrote the novel Emma?") is None
+@needcn
+def test_relate_uses_conceptnet_paths(warm):
+    assert any(p['kind'] in ('cn1','cnshare') for p in C._cnp(C.resolve('bee'),C.resolve('flower')))

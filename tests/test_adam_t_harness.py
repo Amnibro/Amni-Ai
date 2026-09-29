@@ -97,3 +97,23 @@ def test_cognition_route_lines_checks_and_compose(on,monkeypatch):
     n=len(cl.P);H.run("What is the capital of France?",[],'g','g',cl,160);monkeypatch.setenv('AMNI_COGNITION','0');H.run("How are bees and almonds connected?",[],'g','g',cl,160);assert all('\n' not in ''.join(x[1]) for x in cl.P[n:])
 def test_cognition_template_newlines(monkeypatch):
     seen=[];monkeypatch.setattr(C,'template',lambda *a,**k:(seen.append(a),'x')[1]);p=types.SimpleNamespace(text=lambda t,m,s:'ok',alive=lambda:True,info={'ctx':1024});cl=C.AdamT('r','b');cl.p=p;cl.gen('How?',64,C.STOPS,[],(),['a.','b.'],'\n');assert seen[0][5]=='\n'
+@pytest.mark.parametrize('q,ok',[("Why do volcanoes erupt?",1),("How do glaciers form?",1),("What causes acid fog?",1),("Can you explain how magnets work?",1),("How can I sleep better?",0),("How do I fix my bike?",0),("How many moons does Mars have?",0),("Why is my phone slow?",0),("What makes you happy?",0),("How are you?",0)])
+def test_explain_detection(q,ok):assert bool(H._EXQ.match(q) and not H._EXADV.search(q))==bool(ok)
+def test_type_gate_rejects_wrong_class(monkeypatch):
+    G_=types.SimpleNamespace(qclass=lambda q:'organ',isa=lambda z,c:(z.lower() in ('liver','kidney'),''),wsyn=lambda w,p=-1:())
+    monkeypatch.setitem(sys.modules,'amni.serve.cognition',G_);assert H._tgate("Which organ cleans the blood?","Like")==(False,'organ') and H._tgate("Which organ cleans the blood?","liver")==(True,'organ')
+    G_.qclass=lambda q:'';assert H._tgate("What do termites eat?","Slow Wood Inc")==(False,'') and H._tgate("What does NASA stand for?","National Aeronautics")==(True,'')
+    monkeypatch.setenv('AMNI_ADAM_T_HARNESS_TGATE','0');assert H._tgate("Which organ cleans the blood?","Like")==(True,'')
+def test_commonsense_slot_and_hedge(on,monkeypatch):
+    G_=types.SimpleNamespace(know=lambda q:{'answer':'wood','text':'Termites eat wood.','conf':0.8,'prov':['WordNet termite.n.01: ...'],'kind':'object'})
+    monkeypatch.setitem(sys.modules,'amni.serve.cognition',G_);s=H._cs({'q':'x'},'What do termites eat?','any');assert s['ok'] and s['text']=='Termites eat wood.' and s['src']=='cs' and s['prov']
+    G_.know=lambda q:{'answer':'wood','text':'Termites eat wood.','conf':0.5,'prov':['x'],'kind':'object'};s=H._cs({},'What do termites eat?','any');assert not s['ok'] and s['hedge'] and s['text']=='I think termites eat wood.'
+    monkeypatch.setenv('AMNI_ADAM_T_HARNESS_CS','0');assert H._cs({},'What do termites eat?','any')=={}
+def test_explain_paraphrase_must_stay_grounded():
+    x={'title':'Glacier','text':'A glacier forms where the accumulation of snow exceeds its ablation over many years.','pid':1};assert H._para(FC('A glacier forms where snow accumulation exceeds its ablation over many years.'),'How do glaciers form?',x,200)
+    assert not H._para(FC('Glaciers are made of chocolate and dragons over many years.'),'How do glaciers form?',x,200) and not H._para(FC('Snow exceeds.'),'How do glaciers form?',x,200) and not H._para(FC('Glacier: A glacier forms where the accumulation of snow exceeds its ablation.'),'How do glaciers form?',x,200)
+HAVEIX=os.path.isdir(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'data','ks','index_rknow'))
+@pytest.mark.skipif(not HAVEIX,reason='wikipedia index missing')
+def test_explain_extracts_grounded_passage(on,monkeypatch):
+    monkeypatch.setenv('AMNI_ADAM_T_HARNESS_EXPLAIN_PARA','0');o=H.fill_expl({'q':'How do glaciers form?'},FC(),H._rk(),'How do glaciers form?',200)
+    assert o['kind']=='explain' and o['ok'] and o['grounded'] and o['prov'][0].startswith('Wikipedia: ') and 'glacier' in o['text'].lower() and len(o['text'].encode())<=380 and o['text'][-1] in '.!'

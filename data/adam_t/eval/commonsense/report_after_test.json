@@ -1,0 +1,2740 @@
+{
+ "label": "after",
+ "split": "test",
+ "env": {
+  "AMNI_ADAM_T_HARNESS": "1",
+  "AMNI_COGNITION": "1",
+  "AMNI_ADAM_T_HARNESS_EXPLAIN": null,
+  "AMNI_ADAM_T_HARNESS_CS": null
+ },
+ "adapter": {
+  "cmd": "/tmp/claude-1000/-home-anmire/0e47338f-6ded-4f3f-8ab7-4aece3c515d6/scratchpad/cs/adamt-cs serve /home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft2/model.gf17",
+  "ctx": 3328,
+  "ctx_symbols": 1024,
+  "fmt": "chat",
+  "gen": {
+   "no_repeat_ngram": 3,
+   "rep_penalty": 1.15,
+   "seed": 0,
+   "stop_repeat": true,
+   "temperature": 0.0,
+   "top_k": 0
+  },
+  "model": "adam-t-t30m_sft2",
+  "proto": 1,
+  "step": 7773,
+  "vocab": 4096,
+  "e2e": {
+   "AMNI_ADAM_T": "/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft2/model.gf17",
+   "AMNI_ADAM_T_BIN": "/tmp/claude-1000/-home-anmire/0e47338f-6ded-4f3f-8ab7-4aece3c515d6/scratchpad/cs/adamt-cs",
+   "AMNI_GEN_BACKEND": "ray",
+   "AMNI_RAY_ARCH": "cpu",
+   "AMNI_ADAM_T_HARNESS": "1",
+   "AMNI_ADAM_T_HARNESS_AGREE": "1",
+   "AMNI_COGNITION": "1"
+  },
+  "bin_sha256": "bd6a579544e4cecefb12a63e3c3c2aa3b0806ec1f6d18e1904b5d1df556c1efd",
+  "model_sha256": "4999462c69c335ccf1bd5f496e10d96ce7c5d163043bec7c7154530ee05cfc98"
+ },
+ "all": {
+  "n": 160,
+  "answered": 0.6687,
+  "coherent": 0.95,
+  "decline": 0.0813,
+  "echo": 0.05,
+  "on_topic": 0.6687,
+  "kw_any": 0.5949,
+  "fact": 0.4938,
+  "grounded": 0.8987,
+  "routes": {
+   "harness": 143,
+   "adam_t": 17
+  },
+  "median_ms": 937.0
+ },
+ "by_cat": {
+  "explain": {
+   "n": 79,
+   "answered": 0.7722,
+   "coherent": 1.0,
+   "decline": 0.0127,
+   "echo": 0.0,
+   "on_topic": 0.7722,
+   "kw_any": 0.5949,
+   "grounded": 0.8987,
+   "routes": {
+    "harness": 71,
+    "adam_t": 8
+   },
+   "median_ms": 794.4
+  },
+  "know": {
+   "n": 81,
+   "answered": 0.5679,
+   "coherent": 0.9012,
+   "decline": 0.1481,
+   "echo": 0.0988,
+   "on_topic": 0.5679,
+   "fact": 0.4938,
+   "routes": {
+    "harness": 72,
+    "adam_t": 9
+   },
+   "median_ms": 1961.5
+  }
+ },
+ "wall_s": 204.0,
+ "items": [
+  {
+   "id": "cs-explain-002",
+   "cat": "explain",
+   "q": "How do volcanoes erupt?",
+   "pred": "Most cinder cones erupt only once and some may be found in monogenetic volcanic fields that may include other features that form when magma comes into contact with water such as maar explosion craters and tuff rings. Cinder cones may form as flank vents on larger volcanoes, or occur on their own.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Volcano (passage 37901752)"
+   ],
+   "ms": 3882.1
+  },
+  {
+   "id": "cs-explain-003",
+   "cat": "explain",
+   "q": "What makes a clear daytime sky appear blue?",
+   "pred": "Air molecules scatter shorter wavelengths of sunlight more than longer wavels.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Sky (passage 29920705)"
+   ],
+   "ms": 1128.3
+  },
+  {
+   "id": "cs-explain-006",
+   "cat": "explain",
+   "q": "How do fish breathe underwater?",
+   "pred": "Fish gills are organs that allow fish to breathe underwater.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Fish gill (passage 17905777)"
+   ],
+   "ms": 969.9
+  },
+  {
+   "id": "cs-explain-010",
+   "cat": "explain",
+   "q": "How do magnets attract metal?",
+   "pred": "This attraction is hundreds of thousands of times weaker than that of ferromagnetic materials, so it can only be detected by using sensitive instruments or using extremely strong magnets.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Magnet (passage 14235586)"
+   ],
+   "ms": 771.8
+  },
+  {
+   "id": "cs-explain-012",
+   "cat": "explain",
+   "q": "How does a rocket move forward in space?",
+   "pred": "Rocket Slime.",
+   "route": "adam_t",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 2183.0
+  },
+  {
+   "id": "cs-explain-015",
+   "cat": "explain",
+   "q": "Why does iron rust?",
+   "pred": "Iron reacts readily with oxygen and water to produce brown-to-black hydrated iron oxides, commonly known as rust. Unlike the oxides of some other metals that form passivating layers, rust occupies more volume than the metal and thus flakes off, exposing more fresh surfaces for corrosion.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Iron (passage 38675331)"
+   ],
+   "ms": 1063.2
+  },
+  {
+   "id": "cs-explain-016",
+   "cat": "explain",
+   "q": "How does soap remove grease?",
+   "pred": "In ancient times, lubricating greases were made by the addition of lime to olive oil, which would produce calcium soaps.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Soap (passage 14338609)"
+   ],
+   "ms": 617.8
+  },
+  {
+   "id": "cs-explain-017",
+   "cat": "explain",
+   "q": "Why does popcorn pop when heated?",
+   "pred": "Popcorn is a variety of corn kernel which expands and puffs up when heated. The term also refers to the snack food produced by the expansion.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Popcorn (passage 30186997)"
+   ],
+   "ms": 582.3
+  },
+  {
+   "id": "cs-explain-018",
+   "cat": "explain",
+   "q": "How do hot air balloons rise?",
+   "pred": "The first military use of a hot air balloon happened in 1794 during the battle of Fleurus, when the French used the balloon l'Entreprenant for observation.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Hot air balloon (passage 41174947)"
+   ],
+   "ms": 708.2
+  },
+  {
+   "id": "cs-explain-021",
+   "cat": "explain",
+   "q": "How do glaciers move downhill?",
+   "pred": "Glaciers move downhill by the force of gravity and the internal deformation of ice. At the molecular level, ice consists of stacked layers of molecules with relatively weak bonds between layers.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Glacier (passage 40762165)"
+   ],
+   "ms": 724.1
+  },
+  {
+   "id": "cs-explain-024",
+   "cat": "explain",
+   "q": "How do fireworks get their bright colors?",
+   "pred": "Oxidations with the chlorates of barium.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 1914.2
+  },
+  {
+   "id": "cs-explain-025",
+   "cat": "explain",
+   "q": "Why do mosquito bites itch?",
+   "pred": "The mosquito's saliva is transferred to the host during the bite, and can cause an itchy rash. In addition, blood-feeding species can ingest pathogens while biting, and transmit them to other hosts.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Mosquito (passage 39214679)"
+   ],
+   "ms": 944.8
+  },
+  {
+   "id": "cs-explain-026",
+   "cat": "explain",
+   "q": "How does a submarine dive and come back up?",
+   "pred": "Submarines dive and resurface by using diving planes and by changing the amount of water and air in ballast tanks to affect their buoyancy.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Submarine (passage 41309295)"
+   ],
+   "ms": 814.0
+  },
+  {
+   "id": "cs-explain-032",
+   "cat": "explain",
+   "q": "How does fruit ripen?",
+   "pred": "In some fruits, the sepals, petals, stamens or the style of the flower fall away as the fleshy fruit ripens.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Fruit (passage 40478322)"
+   ],
+   "ms": 598.9
+  },
+  {
+   "id": "cs-explain-033",
+   "cat": "explain",
+   "q": "How do spiders make silk?",
+   "pred": "Other types of arthropods also produce silk, most notably various arachnids, such as spiders.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Silk (passage 14242607)"
+   ],
+   "ms": 413.2
+  },
+  {
+   "id": "cs-explain-034",
+   "cat": "explain",
+   "q": "How can owls see so well at night?",
+   "pred": "Feathers.",
+   "route": "adam_t",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 2134.9
+  },
+  {
+   "id": "cs-explain-038",
+   "cat": "explain",
+   "q": "How does GPS figure out where you are?",
+   "pred": "GPS figure is a type of computer programming language that is designed to be easily accessible and efficiently. It is used for scheduling, deployment, and deploying applications in software development.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 767.0
+  },
+  {
+   "id": "cs-explain-043",
+   "cat": "explain",
+   "q": "How do speakers make sound?",
+   "pred": "The sound waves are generated by a sound source, such as the vibrating diaphragm of a stereo speaker.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Sound (passage 8863568)"
+   ],
+   "ms": 893.9
+  },
+  {
+   "id": "cs-explain-048",
+   "cat": "explain",
+   "q": "How does an electric motor spin?",
+   "pred": "An electric motor is a machine that converts electrical energy into mechanical energy. Most electric motors operate through the interaction between the motor's magnetic field and electric current in a wire winding to generate Laplace force in the form of torque applied on the motor's shaft.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Electric motor (passage 14554279)"
+   ],
+   "ms": 829.4
+  },
+  {
+   "id": "cs-explain-054",
+   "cat": "explain",
+   "q": "How is caffeine removed to make decaf coffee?",
+   "pred": "Extraction of caffeine from coffee, to produce caffeine and decaffeinated coffee, can be performed using various solvents.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Caffeine (passage 38985836)"
+   ],
+   "ms": 544.0
+  },
+  {
+   "id": "cs-explain-056",
+   "cat": "explain",
+   "q": "Why does the ocean look blue?",
+   "pred": "As a result, the photic zone is the most biodiverse and the source of the food supply which sustains most of the ocean ecosystem.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Ocean (passage 8774975)"
+   ],
+   "ms": 674.3
+  },
+  {
+   "id": "cs-explain-057",
+   "cat": "explain",
+   "q": "How do fuel cells make electricity?",
+   "pred": "A fuel cell is an electrochemical cell that converts the chemical energy of a fuel and an oxidizing agent into electricity through a pair of redox reactions.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Fuel cell (passage 39984909)"
+   ],
+   "ms": 542.1
+  },
+  {
+   "id": "cs-explain-059",
+   "cat": "explain",
+   "q": "Why are most plants green?",
+   "pred": "The cell wall, made mostly of cellulose, allows plant cells to swell up with water without bursting. The vacuole allows the cell to change in size while the amount of cytoplasm stays the same.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Plant (passage 9221286)"
+   ],
+   "ms": 834.6
+  },
+  {
+   "id": "cs-explain-061",
+   "cat": "explain",
+   "q": "How is cheese made from milk?",
+   "pred": "The milk is curdled by adding acids such as vinegar or lemon juice.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Cheese (passage 5472611)"
+   ],
+   "ms": 677.7
+  },
+  {
+   "id": "cs-explain-063",
+   "cat": "explain",
+   "q": "How is glass made?",
+   "pred": "Due to its ease of formability into any shape, glass has been traditionally used for vessels, such as bowls, vases, bottles, jars and drinking glasses.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Glass (passage 38848459)"
+   ],
+   "ms": 1024.9
+  },
+  {
+   "id": "cs-explain-065",
+   "cat": "explain",
+   "q": "How do seeds sprout into plants?",
+   "pred": "The formation of the seed is the defining part of the process of reproduction in seed plants.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Seed (passage 40150456)"
+   ],
+   "ms": 470.5
+  },
+  {
+   "id": "cs-explain-066",
+   "cat": "explain",
+   "q": "How do ants find their way to food?",
+   "pred": "A trail on the way back to the colony; this trail is followed by other ants, then a forager that finds food.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 2207.3
+  },
+  {
+   "id": "cs-explain-067",
+   "cat": "explain",
+   "q": "Why do dogs pant?",
+   "pred": "Dogs have gained the ability to thrive on a starch-rich diet that would be inadequate for other canids.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Dog (passage 356704)"
+   ],
+   "ms": 817.8
+  },
+  {
+   "id": "cs-explain-070",
+   "cat": "explain",
+   "q": "Why do we shiver when we are cold?",
+   "pred": "The shiver response may be greatly diminished or even absent in the elderly, resulting in a significant drop in mean deep body temperature upon exposure to cold.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Shivering (passage 32912776)"
+   ],
+   "ms": 520.6
+  },
+  {
+   "id": "cs-explain-073",
+   "cat": "explain",
+   "q": "How does an X-ray show your bones?",
+   "pred": "Bones contain a high concentration of calcium, which, due to its relatively high atomic number, absorbs X-rays efficiently. This reduces the amount of X-rays reaching the detector in the shadow of the bones, making them clearly visible on the radiograph.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: X-ray (passage 41564335)"
+   ],
+   "ms": 1021.0
+  },
+  {
+   "id": "cs-explain-074",
+   "cat": "explain",
+   "q": "How does an MRI scanner make images?",
+   "pred": "In a real MRI scanner the signal is complex and due to off-resonance effects and other scanner imperfections the phase of the complex value may vary between different voxels, this leads to it being difficult to distinguish between a positive and negative signal. It is common to only reconstruct the magnitude image.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Synthetic MRI (passage 21768063)"
+   ],
+   "ms": 799.0
+  },
+  {
+   "id": "cs-explain-075",
+   "cat": "explain",
+   "q": "Why do stars shine?",
+   "pred": "Later that year the newsgroup rec.games.computer.stars became active, facilitating public discussion of tactics and allowing players to find new games.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Stars! (passage 31224607)"
+   ],
+   "ms": 845.9
+  },
+  {
+   "id": "cs-explain-080",
+   "cat": "explain",
+   "q": "How do camels survive in the desert?",
+   "pred": "Camels' mouths have a thick leathery lining, allowing them to chew thorny desert plants. Long eyelashes and ear hairs, together with nostrils that can close, form a barrier against sand.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Camel (passage 40003594)"
+   ],
+   "ms": 712.9
+  },
+  {
+   "id": "cs-explain-081",
+   "cat": "explain",
+   "q": "How do penguins stay warm in the cold?",
+   "pred": "The flippers of penguins have at least three branches of the axillary artery, which allows cold blood to be heated by blood that has already been warmed and limits heat loss from the flippers.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Penguin (passage 40752436)"
+   ],
+   "ms": 1089.7
+  },
+  {
+   "id": "cs-explain-086",
+   "cat": "explain",
+   "q": "How does the liver clean the blood?",
+   "pred": "These blood vessels subdivide into small capillaries known as liver sinusoids, which then lead to hepatic lobules.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Liver (passage 8131926)"
+   ],
+   "ms": 690.3
+  },
+  {
+   "id": "cs-explain-087",
+   "cat": "explain",
+   "q": "How do kidneys filter blood?",
+   "pred": "The kidneys are a pair of organs of the excretory system in vertebrates, which maintain the balance of water and electrolytes in the body, filter the blood, remove metabolic waste products, and, in many vertebrates, also produce hormones and maintain blood pressure.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Kidney (passage 28189909)"
+   ],
+   "ms": 921.4
+  },
+  {
+   "id": "cs-explain-088",
+   "cat": "explain",
+   "q": "How do lungs get oxygen into the blood?",
+   "pred": "The lungs have a unique blood supply, receiving deoxygenated blood sent from the heart to receive oxygen and a separate supply of oxygenated blood.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Lung (passage 39408366)"
+   ],
+   "ms": 541.8
+  },
+  {
+   "id": "cs-explain-089",
+   "cat": "explain",
+   "q": "Why is blood red?",
+   "pred": "Blood is bright red when its hemoglobin is oxygenated and dark red when it is deoxygenated.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Blood (passage 66200)"
+   ],
+   "ms": 528.8
+  },
+  {
+   "id": "cs-explain-091",
+   "cat": "explain",
+   "q": "How do our eyes see color?",
+   "pred": "In organisms dwelling near deep-sea vents, compound eyes are adapted to see the infra-red light produced by the hot vents, allowing the creatures to avoid being boiled alive.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Eye (passage 29568079)"
+   ],
+   "ms": 683.8
+  },
+  {
+   "id": "cs-explain-093",
+   "cat": "explain",
+   "q": "How does the nose detect smells?",
+   "pred": "The sensitive cold receptors in the skin detect the place where the nose is cooled the most and this is the direction a particular smell that the animal just picked up comes from.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Nose (passage 5431074)"
+   ],
+   "ms": 654.9
+  },
+  {
+   "id": "cs-explain-094",
+   "cat": "explain",
+   "q": "Why do people get a fever when sick?",
+   "pred": "A fever can be caused by many medical conditions ranging from non-serious to life-threatening. This includes viral, bacterial, and parasitic infections-such as influenza, the common cold, meningitis, urinary tract infections, appendicitis, Lassa fever, COVID-19, and malaria.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Fever (passage 14167799)"
+   ],
+   "ms": 996.4
+  },
+  {
+   "id": "cs-explain-095",
+   "cat": "explain",
+   "q": "How does alcohol affect the brain?",
+   "pred": "A variety of chemicals that bring out areas where specific types of molecules are present in high concentrations.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Brain (passage 60615)"
+   ],
+   "ms": 698.3
+  },
+  {
+   "id": "cs-explain-098",
+   "cat": "explain",
+   "q": "Why does hair turn gray with age?",
+   "pred": "Gray hair occurs when melanin production decreases or stops, while poliosis is white hair, typically in spots that never possessed melanin at all, or ceased for natural reasons, generally genetic, in the first years of life.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Hair (passage 40941589)"
+   ],
+   "ms": 684.3
+  },
+  {
+   "id": "cs-explain-105",
+   "cat": "explain",
+   "q": "How does a thermostat keep a room at the right temperature?",
+   "pred": "A thermostat is a regulating device component which senses the temperature of a physical system and performs actions so that the system's temperature is maintained near a desired setpoint.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Thermostat (passage 30420413)"
+   ],
+   "ms": 969.5
+  },
+  {
+   "id": "cs-explain-106",
+   "cat": "explain",
+   "q": "How do escalators move?",
+   "pred": "Escalators have the capacity to move large numbers of people.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Escalator (passage 9549818)"
+   ],
+   "ms": 337.1
+  },
+  {
+   "id": "cs-explain-107",
+   "cat": "explain",
+   "q": "How does a barcode scanner read a barcode?",
+   "pred": "These barcodes, now commonly referred to as linear or one-dimensional, can be scanned by special optical scanners, called barcode readers, of which there are several types.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Barcode (passage 14379368)"
+   ],
+   "ms": 537.6
+  },
+  {
+   "id": "cs-explain-109",
+   "cat": "explain",
+   "q": "Why does fire need oxygen to burn?",
+   "pred": "I'm not sure about that one yet.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": true,
+   "prov": [
+    "Wikipedia: Oxygen firebreak (passage 23361298)"
+   ],
+   "ms": 874.7
+  },
+  {
+   "id": "cs-explain-110",
+   "cat": "explain",
+   "q": "How does a candle keep burning?",
+   "pred": "A candle flame is formed because wax vaporizes on burning.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Candle (passage 14130625)"
+   ],
+   "ms": 486.9
+  },
+  {
+   "id": "cs-explain-111",
+   "cat": "explain",
+   "q": "Why do glow sticks glow?",
+   "pred": "Glow sticks also serve multiple functions as toys, readily visible night-time warnings to motorists.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Glow stick (passage 30537085)"
+   ],
+   "ms": 746.3
+  },
+  {
+   "id": "cs-explain-112",
+   "cat": "explain",
+   "q": "How do fireflies light up?",
+   "pred": "Light production in fireflies is due to the chemical process of bioluminescence. This occurs in specialized light-emitting organs, usually on a female firefly's lower abdomen.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Firefly (passage 14384998)"
+   ],
+   "ms": 568.7
+  },
+  {
+   "id": "cs-explain-114",
+   "cat": "explain",
+   "q": "How does a prism split white light into colors?",
+   "pred": "Isaac Newton discovered that white light after being split into its component colors when passed through a dispersive prism could be recombined to make white light by passing them through a different prism.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Color vision (passage 30616962)"
+   ],
+   "ms": 614.6
+  },
+  {
+   "id": "cs-explain-115",
+   "cat": "explain",
+   "q": "How does fog form?",
+   "pred": "Fog commonly produces precipitation in the form of drizzle or very light snow. Drizzle occurs when the humidity attains 100% and the minute cloud droplets begin to coalesce into larger droplets.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Fog (passage 14355480)"
+   ],
+   "ms": 1002.7
+  },
+  {
+   "id": "cs-explain-118",
+   "cat": "explain",
+   "q": "How do rivers form?",
+   "pred": "When a river carves a plateau or a similar high-elevation area, a canyon can form, with cliffs on either side of the river. Areas of a river with softer rock weather faster than areas with harder rock, causing a difference in elevation between two points of a river.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: River (passage 8775128)"
+   ],
+   "ms": 763.6
+  },
+  {
+   "id": "cs-explain-119",
+   "cat": "explain",
+   "q": "How do islands form?",
+   "pred": "There are continental islands, which were formed by being split from a continent by plate tectonics, and oceanic islands, which have never been part of a continent. Oceanic islands can be formed from volcanic activity, grow into atolls from coral reefs, and form from sediment along shorelines, creating barrier islands.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Island (passage 37874721)"
+   ],
+   "ms": 929.2
+  },
+  {
+   "id": "cs-explain-121",
+   "cat": "explain",
+   "q": "How do diamonds form?",
+   "pred": "The Diamonds decided to form a stand-up quartet called the Diamonds.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: The Diamonds (passage 351015)"
+   ],
+   "ms": 422.1
+  },
+  {
+   "id": "cs-explain-124",
+   "cat": "explain",
+   "q": "How does sugar cause tooth decay?",
+   "pred": "The WHO, Action on Sugar and the Scientific Advisory Committee on Nutrition state dental caries, also known as tooth decay/cavities, \"can be prevented by avoiding dietary free sugars\". A review of human studies showed that the incidence of caries is lower when sugar intake is less than 10% of total energy consumed.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Sugar (passage 39709315)"
+   ],
+   "ms": 830.2
+  },
+  {
+   "id": "cs-explain-125",
+   "cat": "explain",
+   "q": "Why do babies cry so much?",
+   "pred": "The message of the poster was that American soldiers were killing babies in Vietnam, and therefore that the war was immoral.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: And babies (passage 12360763)"
+   ],
+   "ms": 456.2
+  },
+  {
+   "id": "cs-explain-126",
+   "cat": "explain",
+   "q": "How does sound travel?",
+   "pred": "The particles of the medium do not travel with the sound wave. This is intuitively obvious for a solid, and the same is true for liquids and gases.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Sound (passage 8863569)"
+   ],
+   "ms": 794.8
+  },
+  {
+   "id": "cs-explain-127",
+   "cat": "explain",
+   "q": "Why is space dark if there are so many stars?",
+   "pred": "Survival.",
+   "route": "adam_t",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 2351.1
+  },
+  {
+   "id": "cs-explain-128",
+   "cat": "explain",
+   "q": "Why don't satellites fall down to Earth?",
+   "pred": "Because satellites can see a large portion of the Earth at once, communications satellites can relay information to remote places.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Satellite (passage 37741624)"
+   ],
+   "ms": 794.4
+  },
+  {
+   "id": "cs-explain-129",
+   "cat": "explain",
+   "q": "Why do astronauts float in the space station?",
+   "pred": "Space stations are often modular, featuring docking ports, through which they are built and maintained, allowing the joining or movement of modules and the docking of other spacecrafts for the exchange of people, supplies and tools. While space stations generally do not leave their orbit, they do feature thrusters for station keeping.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Space station (passage 14233011)"
+   ],
+   "ms": 1116.3
+  },
+  {
+   "id": "cs-explain-130",
+   "cat": "explain",
+   "q": "Why do objects fall to the ground?",
+   "pred": "A force of 1 g on an objectsetting the force from the ground.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 1729.9
+  },
+  {
+   "id": "cs-explain-132",
+   "cat": "explain",
+   "q": "How do pulleys help lift heavy things?",
+   "pred": "The mechanical advantage of the gun tackle can be increased by interchanging the fixed and moving blocks so the rope is attached to the moving block and the rope is pulled in the direction of the lifted load.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Pulley (passage 37848488)"
+   ],
+   "ms": 702.0
+  },
+  {
+   "id": "cs-explain-133",
+   "cat": "explain",
+   "q": "How does friction slow things down?",
+   "pred": "Friction can have dramatic consequences, as illustrated by the use of friction created by rubbing pieces of wood together to start a fire. Another important consequence of many types of friction can be wear, which may lead to performance degradation or damage to components.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Friction (passage 38713540)"
+   ],
+   "ms": 761.4
+  },
+  {
+   "id": "cs-explain-134",
+   "cat": "explain",
+   "q": "How do mosquitoes find people to bite?",
+   "pred": "The mosquito's saliva is transferred to the host during the bite, and can cause an itchy rash. In addition, blood-feeding species can ingest pathogens while biting, and transmit them to other hosts.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Mosquito (passage 39214679)"
+   ],
+   "ms": 970.4
+  },
+  {
+   "id": "cs-explain-136",
+   "cat": "explain",
+   "q": "How do cacti survive with so little water?",
+   "pred": "Liquid water.",
+   "route": "adam_t",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": false,
+   "decline": false,
+   "prov": [],
+   "ms": 2158.6
+  },
+  {
+   "id": "cs-explain-139",
+   "cat": "explain",
+   "q": "How does pollination work?",
+   "pred": "Pollinating animals travel from plant to plant carrying pollen on their bodies in a vital interaction that allows the transfer of genetic material critical to the reproductive system of most flowering plants. Self-pollination occurs within a closed flower.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Pollination (passage 30196901)"
+   ],
+   "ms": 1222.2
+  },
+  {
+   "id": "cs-explain-140",
+   "cat": "explain",
+   "q": "How do mushrooms grow?",
+   "pred": "As a result, for most mushrooms, if the cap is cut off and placed gill-side-down overnight, a powdery impression reflecting the shape of the gills is formed.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Mushroom (passage 37809997)"
+   ],
+   "ms": 650.8
+  },
+  {
+   "id": "cs-explain-141",
+   "cat": "explain",
+   "q": "Why does bread get moldy?",
+   "pred": "A study by the University of Hohenheim found that industrially produced bread typically has a high proportion of FODMAP carbohydrates due to a short rising time. The high proportion of FODMAP carbohydrates in such bread then causes flatulence.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Bread (passage 40562416)"
+   ],
+   "ms": 1169.9
+  },
+  {
+   "id": "cs-explain-142",
+   "cat": "explain",
+   "q": "Why does milk go sour?",
+   "pred": "In almost all mammals, milk is fed to infants through breastfeeding, either directly or by expressing the milk to be stored and consumed later.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Milk (passage 37864469)"
+   ],
+   "ms": 843.7
+  },
+  {
+   "id": "cs-explain-144",
+   "cat": "explain",
+   "q": "How does freeze-drying preserve food?",
+   "pred": "Freeze drying, also known as lyophilization or cryodesiccation, is a low temperature dehydration process that involves freezing the product and lowering pressure, thereby removing the ice by sublimation. This is in contrast to dehydration by most conventional methods that evaporate water using heat.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Freeze drying (passage 32389405)"
+   ],
+   "ms": 733.7
+  },
+  {
+   "id": "cs-explain-145",
+   "cat": "explain",
+   "q": "Why does salt help preserve meat?",
+   "pred": "Salt is made by layering salt and thin layers of meat, then dousing it in a brine mixture once the desired size has been reached.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Salt pork (passage 11709291)"
+   ],
+   "ms": 1167.7
+  },
+  {
+   "id": "cs-explain-146",
+   "cat": "explain",
+   "q": "How does a carbon monoxide detector work?",
+   "pred": "Alaska House Bill 351 requires a carbon monoxide detector to be installed in dwelling units that contain or are serviced by a carbon-based fuel appliance or other device that produces by-products of combustion.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Carbon monoxide detector (passage 36279357)"
+   ],
+   "ms": 686.7
+  },
+  {
+   "id": "cs-explain-147",
+   "cat": "explain",
+   "q": "How do hearing aids help people hear?",
+   "pred": "A hearing aid is a device designed to improve hearing by making sound audible to a person with hearing loss.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Hearing aid (passage 31787048)"
+   ],
+   "ms": 546.2
+  },
+  {
+   "id": "cs-explain-148",
+   "cat": "explain",
+   "q": "How does a pacemaker help the heart?",
+   "pred": "The heart pumps blood with a rhythm determined by a group of pacemaker cells in the sinoatrial node. These generate an electric current that causes the heart to contract, traveling through the atrioventricular node and along the conduction system of the heart.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Heart (passage 40173848)"
+   ],
+   "ms": 685.7
+  },
+  {
+   "id": "cs-explain-152",
+   "cat": "explain",
+   "q": "What causes acid rain?",
+   "pred": "Acid rain is caused by emissions of sulfur dioxide and nitrogen oxide.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Acid rain (passage 54058)"
+   ],
+   "ms": 833.1
+  },
+  {
+   "id": "cs-explain-153",
+   "cat": "explain",
+   "q": "What causes the northern lights?",
+   "pred": "When a beam of light crosses the boundary between a vacuum and another medium, or between two different media, the wavelength of the light changes, but the frequency remains constant. If the beam of light is not orthogonal to the boundary, the change in wavelength results in a change in the direction of the beam.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": null,
+   "kw_any": false,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Light (passage 39961197)"
+   ],
+   "ms": 796.3
+  },
+  {
+   "id": "cs-explain-156",
+   "cat": "explain",
+   "q": "What causes inflation in an economy?",
+   "pred": "Historically, when commodity money was used, periods of inflation and deflation would alternate depending on the condition of the economy. However, when large, prolonged infusions of gold or silver into an economy occurred, this could lead to long periods of inflation.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Inflation (passage 38397993)"
+   ],
+   "ms": 894.4
+  },
+  {
+   "id": "cs-explain-157",
+   "cat": "explain",
+   "q": "Why do we have leap years?",
+   "pred": "By inserting an additional day-a leap day-or month-a leap month-into some years, the drift between a civilisation's dating system and the physical properties of the Solar System can be corrected.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": null,
+   "kw_any": true,
+   "grounded": true,
+   "decline": false,
+   "prov": [
+    "Wikipedia: Leap year (passage 39738729)"
+   ],
+   "ms": 674.6
+  },
+  {
+   "id": "cs-know-001",
+   "cat": "know",
+   "q": "What do pandas mostly eat?",
+   "pred": "Pandas eat bamboo.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 pandas CapableOf live on bamboo (CC BY-SA 4.0)",
+    "ConceptNet 5.7 pandas Desires eat bamboo (CC BY-SA 4.0)"
+   ],
+   "ms": 2328.7
+  },
+  {
+   "id": "cs-know-004",
+   "cat": "know",
+   "q": "What do chickens lay?",
+   "pred": "Chickens lay eggs.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 chicken CapableOf lay eggs (CC BY-SA 4.0)",
+    "ConceptNet 5.7 chicken CapableOf lay egg (CC BY-SA 4.0)"
+   ],
+   "ms": 2.6
+  },
+  {
+   "id": "cs-know-005",
+   "cat": "know",
+   "q": "What do koalas eat?",
+   "pred": "I think koalas eat leaf.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "Wikidata Q36101 P1034 Q33971 (leaf)"
+   ],
+   "ms": 2036.6
+  },
+  {
+   "id": "cs-know-006",
+   "cat": "know",
+   "q": "What do tadpoles grow into?",
+   "pred": "I'm not sure about that one.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 1884.6
+  },
+  {
+   "id": "cs-know-007",
+   "cat": "know",
+   "q": "What do squirrels store for the winter?",
+   "pred": "Squirrels store nuts.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 squirrels CapableOf store nuts (CC BY-SA 4.0)",
+    "ConceptNet 5.7 squirrels CapableOf store nuts for winter (CC BY-SA 4.0)",
+    "ConceptNet 5.7 squirrels CapableOf store nuts in ground (CC BY-SA 4.0)"
+   ],
+   "ms": 2.3
+  },
+  {
+   "id": "cs-know-010",
+   "cat": "know",
+   "q": "What do sheep give us?",
+   "pred": "A sheep gives wool.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "Wikidata Q7368 P1672 Q42329 (wool)"
+   ],
+   "ms": 10.1
+  },
+  {
+   "id": "cs-know-013",
+   "cat": "know",
+   "q": "What sound does a dog make?",
+   "pred": "A dog makes a bark sound.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet bark.n.04: the sound made by a dog",
+    "WordNet bark.n.02: a noise resembling the bark of a dog"
+   ],
+   "ms": 1.5
+  },
+  {
+   "id": "cs-know-014",
+   "cat": "know",
+   "q": "What do fish use to breathe?",
+   "pred": "I think Fish from multiple groups can live, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1951.3
+  },
+  {
+   "id": "cs-know-018",
+   "cat": "know",
+   "q": "Which bird lives in Antarctica and cannot fly?",
+   "pred": "Adelie lives in Antarctica and cannot fly.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet adelie.n.01: medium-sized penguins occurring in large colonies on the Adelie Coast of Antarctica",
+    "WordNet adelie.n.01 is a kind of bird.n.01"
+   ],
+   "ms": 2137.6
+  },
+  {
+   "id": "cs-know-019",
+   "cat": "know",
+   "q": "Which animal is the largest mammal?",
+   "pred": "The vertebrate is the largest mammal.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet mammal.n.01: any warm-blooded vertebrate having the skin more or less covered with hair; young are born alive except for the small subclass of monotremes and nourished with milk",
+    "ConceptNet 5.7 mammal IsA vertebrate (CC BY-SA 4.0)",
+    "WordNet vertebrate.n.01 is a kind of animal.n.01"
+   ],
+   "ms": 1568.2
+  },
+  {
+   "id": "cs-know-020",
+   "cat": "know",
+   "q": "What is the largest bird in the world?",
+   "pred": "I'm not sure which bird that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 2105.5
+  },
+  {
+   "id": "cs-know-024",
+   "cat": "know",
+   "q": "Which river flows through Egypt?",
+   "pred": "Nile River.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1927.1
+  },
+  {
+   "id": "cs-know-027",
+   "cat": "know",
+   "q": "What is the coldest continent?",
+   "pred": "Antarctica.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2309.4
+  },
+  {
+   "id": "cs-know-028",
+   "cat": "know",
+   "q": "What is the largest country by area?",
+   "pred": "France is the largest country by area.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet france.n.01: a republic in western Europe; the largest country wholly in Europe",
+    "WordNet france.n.01 is a kind of country.n.02"
+   ],
+   "ms": 2326.2
+  },
+  {
+   "id": "cs-know-029",
+   "cat": "know",
+   "q": "Which gas giant has the most famous ring system?",
+   "pred": "I think it's Saturn, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1938.7
+  },
+  {
+   "id": "cs-know-030",
+   "cat": "know",
+   "q": "Name the innermost planet of our solar system.",
+   "pred": "Mercury.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2248.8
+  },
+  {
+   "id": "cs-know-032",
+   "cat": "know",
+   "q": "Saturn's biggest moon is called what?",
+   "pred": "I'm not sure which moon that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 3382.5
+  },
+  {
+   "id": "cs-know-035",
+   "cat": "know",
+   "q": "What is the smallest bird?",
+   "pred": "Birdwren.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2196.2
+  },
+  {
+   "id": "cs-know-036",
+   "cat": "know",
+   "q": "What is the largest fish?",
+   "pred": "The whale shark is the largest fish.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 whale shark DefinedAs largest fish (CC BY-SA 4.0)",
+    "WordNet whale_shark.n.01: large spotted shark of warm surface waters worldwide; resembles a whale and feeds chiefly on plankton",
+    "WordNet whale_shark.n.01 is a kind of fish.n.01"
+   ],
+   "ms": 245.1
+  },
+  {
+   "id": "cs-know-039",
+   "cat": "know",
+   "q": "Which organ do we think with?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 43.7
+  },
+  {
+   "id": "cs-know-040",
+   "cat": "know",
+   "q": "Which organ filters blood to make urine?",
+   "pred": "The kidney filters blood to make urine.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet kidney.n.01: either of two bean-shaped excretory organs that filter wastes (especially urea) from the blood and excrete them and water in urine",
+    "WordNet kidney.n.01 is a kind of organ.n.01"
+   ],
+   "ms": 2351.9
+  },
+  {
+   "id": "cs-know-041",
+   "cat": "know",
+   "q": "Which organ uses acid to digest food?",
+   "pred": "Stomach acid.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2064.2
+  },
+  {
+   "id": "cs-know-043",
+   "cat": "know",
+   "q": "What is the longest bone in the human body?",
+   "pred": "I'm not sure which bone that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 2470.4
+  },
+  {
+   "id": "cs-know-046",
+   "cat": "know",
+   "q": "What do red blood cells carry around the body?",
+   "pred": "I'm not sure about that one.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 1870.2
+  },
+  {
+   "id": "cs-know-047",
+   "cat": "know",
+   "q": "Which organ produces bile?",
+   "pred": "The liver produces bile.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet liver.n.01: large and complicated reddish-brown glandular organ located in the upper right portion of the abdominal cavity; secretes bile and functions in metabolism of protein and carbohydrate and fat; synthesizes substances involved in the clotting of the blood; synthesizes vitamin A; detoxifies poisonous substances and breaks down worn-out erythrocytes",
+    "WordNet bile.n.01: a digestive juice secreted by the liver and stored in the gallbladder; aids in the digestion of fats",
+    "ConceptNet 5.7 liver IsA bile producing digestive agent (CC BY-SA 4.0)",
+    "WordNet liver.n.01 is a kind of organ.n.01"
+   ],
+   "ms": 1916.9
+  },
+  {
+   "id": "cs-know-049",
+   "cat": "know",
+   "q": "How many legs does an ant have?",
+   "pred": "I think it's fewer than ten, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 3314.4
+  },
+  {
+   "id": "cs-know-054",
+   "cat": "know",
+   "q": "How many sides does an octagon have?",
+   "pred": "An octagon has eight sides.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet octagon.n.01: an eight-sided polygon",
+    "ConceptNet 5.7 octagon HasA eight sides (CC BY-SA 4.0)"
+   ],
+   "ms": 2.1
+  },
+  {
+   "id": "cs-know-055",
+   "cat": "know",
+   "q": "How many wheels does a tricycle have?",
+   "pred": "A tricycle has three wheels.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet tricycle.n.01: a vehicle with three wheels that is moved by foot pedals",
+    "ConceptNet 5.7 tricycle HasA three wheels (CC BY-SA 4.0)",
+    "ConceptNet 5.7 tricycles HasA three wheels (CC BY-SA 4.0)"
+   ],
+   "ms": 1.6
+  },
+  {
+   "id": "cs-know-056",
+   "cat": "know",
+   "q": "A leap year has how many days?",
+   "pred": "A leap year has 366 days.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 leap year HasA 366 days (CC BY-SA 4.0)"
+   ],
+   "ms": 6.7
+  },
+  {
+   "id": "cs-know-057",
+   "cat": "know",
+   "q": "How many months are in a year?",
+   "pred": "1 year is 12 months (1 x 12) (using 365.25-day years).",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 0.9
+  },
+  {
+   "id": "cs-know-058",
+   "cat": "know",
+   "q": "How many minutes make up one hour?",
+   "pred": "1 hour is 60 minutes (1 x 60).",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 343.6
+  },
+  {
+   "id": "cs-know-060",
+   "cat": "know",
+   "q": "What number of planets orbit our sun?",
+   "pred": "I think it's Earth, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1872.6
+  },
+  {
+   "id": "cs-know-061",
+   "cat": "know",
+   "q": "How many colors are in a rainbow?",
+   "pred": "There are seven colors in a rainbow.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 rainbow HasA seven colors (CC BY-SA 4.0)",
+    "ConceptNet 5.7 rainbow HasA seven colours (CC BY-SA 4.0)"
+   ],
+   "ms": 2.4
+  },
+  {
+   "id": "cs-know-062",
+   "cat": "know",
+   "q": "How many players does a basketball team have on the court?",
+   "pred": "I think it's fewer than ten, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2216.9
+  },
+  {
+   "id": "cs-know-063",
+   "cat": "know",
+   "q": "How many keys does a standard piano have?",
+   "pred": "A standard piano has 88 keys.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 piano HasA 88 keys (CC BY-SA 4.0)",
+    "ConceptNet 5.7 pianos HasA 88 keys (CC BY-SA 4.0)"
+   ],
+   "ms": 2.3
+  },
+  {
+   "id": "cs-know-067",
+   "cat": "know",
+   "q": "How many eyes do most spiders have?",
+   "pred": "I think it's somewhere between ten and a hundred, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 3839.8
+  },
+  {
+   "id": "cs-know-068",
+   "cat": "know",
+   "q": "How many wings does a bee have?",
+   "pred": "I think it's somewhere between ten and a hundred, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2710.0
+  },
+  {
+   "id": "cs-know-070",
+   "cat": "know",
+   "q": "How many centimeters are in a meter?",
+   "pred": "1 meter is 100 centimeters (1 x 100).",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1.2
+  },
+  {
+   "id": "cs-know-071",
+   "cat": "know",
+   "q": "How many faces does a cube have?",
+   "pred": "I think it's fewer than ten, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2442.8
+  },
+  {
+   "id": "cs-know-072",
+   "cat": "know",
+   "q": "How many zeros are in one million?",
+   "pred": "If one million people and two hundred emigrants is 40, then there are 40 - 4 = 36 people in one million.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2402.6
+  },
+  {
+   "id": "cs-know-073",
+   "cat": "know",
+   "q": "A century lasts how many years?",
+   "pred": "A century has 100 years.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet century.n.01: a period of 100 years"
+   ],
+   "ms": 2.4
+  },
+  {
+   "id": "cs-know-074",
+   "cat": "know",
+   "q": "What is the opposite of up?",
+   "pred": "The opposite of up is down.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet up.a.01 antonym down.a.01",
+    "WordNet up.r.01 antonym down.r.01",
+    "WordNet up.r.02 antonym down.r.05"
+   ],
+   "ms": 1.3
+  },
+  {
+   "id": "cs-know-076",
+   "cat": "know",
+   "q": "What is the opposite of early?",
+   "pred": "The opposite of early is late.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet early.a.01 antonym late.a.01",
+    "WordNet early.a.02 antonym late.a.06",
+    "WordNet early.a.05 antonym late.a.05"
+   ],
+   "ms": 1.0
+  },
+  {
+   "id": "cs-know-079",
+   "cat": "know",
+   "q": "What is the opposite of wet?",
+   "pred": "The opposite of wet is dry.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet wet.v.01 antonym dry.v.01",
+    "WordNet wet.a.01 antonym dry.a.01",
+    "WordNet wet.a.02 antonym dry.a.03"
+   ],
+   "ms": 0.9
+  },
+  {
+   "id": "cs-know-082",
+   "cat": "know",
+   "q": "What is the plural of child?",
+   "pred": "The plural of child is children.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet noun exception list children -> child"
+   ],
+   "ms": 0.8
+  },
+  {
+   "id": "cs-know-087",
+   "cat": "know",
+   "q": "What is a group of wolves called?",
+   "pred": "A group of wolves is called a wolf pack.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet wolf_pack.n.02: a group of wolves hunting together"
+   ],
+   "ms": 0.9
+  },
+  {
+   "id": "cs-know-090",
+   "cat": "know",
+   "q": "Mixing red and yellow paint gives what color?",
+   "pred": "I think it's Blue, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2063.9
+  },
+  {
+   "id": "cs-know-091",
+   "cat": "know",
+   "q": "What color is a ripe tomato?",
+   "pred": "The red is a ripe tomato.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet tomato.n.01: mildly acid red or yellow pulpy fruit eaten as a vegetable",
+    "WordNet red.n.01 is a kind of color.n.01"
+   ],
+   "ms": 2177.0
+  },
+  {
+   "id": "cs-know-092",
+   "cat": "know",
+   "q": "What color are most leaves in summer?",
+   "pred": "Lance.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 3887.3
+  },
+  {
+   "id": "cs-know-093",
+   "cat": "know",
+   "q": "What color is fresh snow?",
+   "pred": "Fresh greenery.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 4000.7
+  },
+  {
+   "id": "cs-know-097",
+   "cat": "know",
+   "q": "What is paper made from?",
+   "pred": "Paper is made from wood.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 paper MadeOf wood (CC BY-SA 4.0)",
+    "ConceptNet 5.7 paper ReceivesAction made out of wood (CC BY-SA 4.0)",
+    "ConceptNet 5.7 paper ReceivesAction made from wood (CC BY-SA 4.0)"
+   ],
+   "ms": 58.1
+  },
+  {
+   "id": "cs-know-103",
+   "cat": "know",
+   "q": "What is ketchup made from?",
+   "pred": "I think ketchup is made from tomato.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "Wikidata Q178143 P186 Q20638126 (tomato)"
+   ],
+   "ms": 2142.7
+  },
+  {
+   "id": "cs-know-105",
+   "cat": "know",
+   "q": "What gas do people breathe out?",
+   "pred": "I think In the conducting airways where no gas exchange can occur, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2011.6
+  },
+  {
+   "id": "cs-know-106",
+   "cat": "know",
+   "q": "What gas do we need to breathe in?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 5.4
+  },
+  {
+   "id": "cs-know-111",
+   "cat": "know",
+   "q": "What vegetable are pickles usually made from?",
+   "pred": "Pickles are made from cucumbers.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 pickle MadeOf cucumbers (CC BY-SA 4.0)",
+    "Wikidata Q1365891 P186 Q2735883 (cucumber)"
+   ],
+   "ms": 12.9
+  },
+  {
+   "id": "cs-know-117",
+   "cat": "know",
+   "q": "What device records earthquakes?",
+   "pred": "The seismograph records earthquakes.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet seismograph.n.01: a measuring instrument for detecting and measuring the intensity and direction and duration of movements of the ground (as an earthquake)",
+    "WordNet seismograph.n.01 is a kind of device.n.01"
+   ],
+   "ms": 1949.7
+  },
+  {
+   "id": "cs-know-118",
+   "cat": "know",
+   "q": "What do you use to unlock a door?",
+   "pred": "A door phone.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 3446.2
+  },
+  {
+   "id": "cs-know-123",
+   "cat": "know",
+   "q": "Where do kangaroos live in the wild?",
+   "pred": "Kangaroos live in Australia.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 kangaroo AtLocation australia (CC BY-SA 4.0)",
+    "WordNet kangaroo.n.01: any of several herbivorous leaping marsupials of Australia and New Guinea having large powerful hind legs and a long thick tail"
+   ],
+   "ms": 5.6
+  },
+  {
+   "id": "cs-know-124",
+   "cat": "know",
+   "q": "Where do emperor penguins live?",
+   "pred": "Antarctic.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1505.1
+  },
+  {
+   "id": "cs-know-127",
+   "cat": "know",
+   "q": "Where would you find wild camels living?",
+   "pred": "Niger.",
+   "route": "adam_t",
+   "answered": true,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 3994.8
+  },
+  {
+   "id": "cs-know-128",
+   "cat": "know",
+   "q": "Which month comes after March?",
+   "pred": "April comes after March.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet april.n.01: the month following March and preceding May",
+    "WordNet april.n.01 is a kind of calendar_month.n.01"
+   ],
+   "ms": 2814.0
+  },
+  {
+   "id": "cs-know-132",
+   "cat": "know",
+   "q": "Which is the coldest planet in our solar system?",
+   "pred": "I think it's Uranus, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1961.5
+  },
+  {
+   "id": "cs-know-133",
+   "cat": "know",
+   "q": "Which animal is known for changing its skin color?",
+   "pred": "American chameleon is known for changing its skin color.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet american_chameleon.n.01: small arboreal tropical American insectivorous lizards with the ability to change skin color",
+    "WordNet american_chameleon.n.01 is a kind of animal.n.01"
+   ],
+   "ms": 2095.1
+  },
+  {
+   "id": "cs-know-136",
+   "cat": "know",
+   "q": "What do blue whales mostly eat?",
+   "pred": "I'm not sure which blue that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 2558.8
+  },
+  {
+   "id": "cs-know-139",
+   "cat": "know",
+   "q": "Which insect glows in the dark?",
+   "pred": "I think it's Glo Friends, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2105.0
+  },
+  {
+   "id": "cs-know-141",
+   "cat": "know",
+   "q": "What is the largest internal organ in the human body?",
+   "pred": "I think it's Skin, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2090.1
+  },
+  {
+   "id": "cs-know-142",
+   "cat": "know",
+   "q": "Which planet has the Great Red Spot?",
+   "pred": "I think it's Great White Spot, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1883.8
+  },
+  {
+   "id": "cs-know-144",
+   "cat": "know",
+   "q": "Which animal is famous for its black and white stripes?",
+   "pred": "I'm not sure which animal that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 2028.4
+  },
+  {
+   "id": "cs-know-145",
+   "cat": "know",
+   "q": "Which big cat is the largest?",
+   "pred": "I think it's Lions, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2075.2
+  },
+  {
+   "id": "cs-know-146",
+   "cat": "know",
+   "q": "What is the largest living reptile?",
+   "pred": "I think it's Squamata, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2182.7
+  },
+  {
+   "id": "cs-know-147",
+   "cat": "know",
+   "q": "What gas makes up most of Jupiter?",
+   "pred": "I'm not sure which gas that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 1884.7
+  },
+  {
+   "id": "cs-know-148",
+   "cat": "know",
+   "q": "Which bird is a symbol of peace?",
+   "pred": "I'm not sure which bird that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 2039.9
+  },
+  {
+   "id": "cs-know-149",
+   "cat": "know",
+   "q": "What do cats like to drink?",
+   "pred": "I think cats drink water.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 cats CapableOf drink water (CC BY-SA 4.0)",
+    "ConceptNet 5.7 cat CapableOf drink water (CC BY-SA 4.0)"
+   ],
+   "ms": 1801.9
+  },
+  {
+   "id": "cs-know-150",
+   "cat": "know",
+   "q": "What is the biggest bone in the arm?",
+   "pred": "I'm not sure which bone that is.",
+   "route": "harness",
+   "answered": false,
+   "coherent": false,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": true,
+   "prov": [],
+   "ms": 2011.1
+  },
+  {
+   "id": "cs-know-152",
+   "cat": "know",
+   "q": "Which part of a plant takes in water from the soil?",
+   "pred": "I think it's CO2, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1605.8
+  },
+  {
+   "id": "cs-know-153",
+   "cat": "know",
+   "q": "Which part of the plant makes seeds?",
+   "pred": "I think it's Grafting, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1636.1
+  },
+  {
+   "id": "cs-know-154",
+   "cat": "know",
+   "q": "What do plants release into the air?",
+   "pred": "I think plants release into hybrid.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet hybrid.n.03: (genetics) an organism that is the offspring of genetically dissimilar parents or stock; especially offspring produced by breeding plants or animals of different varieties or breeds or species"
+   ],
+   "ms": 2300.0
+  },
+  {
+   "id": "cs-know-157",
+   "cat": "know",
+   "q": "Which gas makes balloons float?",
+   "pred": "Air makes balloons float.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "WordNet balloon.n.01: large tough nonrigid bag filled with gas or heated air",
+    "ConceptNet 5.7 air AtLocation balloon (CC BY-SA 4.0)",
+    "WordNet air.n.01 is a kind of gas.n.02"
+   ],
+   "ms": 2257.8
+  },
+  {
+   "id": "cs-know-159",
+   "cat": "know",
+   "q": "What is the heaviest land animal?",
+   "pred": "I think it's European, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": false,
+   "coherent": true,
+   "fact": false,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 1828.9
+  },
+  {
+   "id": "cs-know-160",
+   "cat": "know",
+   "q": "Which is the largest planet in terms of volume?",
+   "pred": "Jupiter is the largest planet in terms of volume.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [
+    "ConceptNet 5.7 jupiter DefinedAs largest planet in solar system (CC BY-SA 4.0)",
+    "ConceptNet 5.7 jupiter IsA biggest planet (CC BY-SA 4.0)",
+    "WordNet jupiter.n.01 is a kind of planet.n.01"
+   ],
+   "ms": 2000.3
+  },
+  {
+   "id": "cs-know-161",
+   "cat": "know",
+   "q": "Which ocean is the smallest?",
+   "pred": "I think it's Arctic Ocean, but I couldn't confirm it.",
+   "route": "harness",
+   "answered": true,
+   "coherent": true,
+   "fact": true,
+   "kw_any": null,
+   "grounded": null,
+   "decline": false,
+   "prov": [],
+   "ms": 2082.8
+  }
+ ]
+}
