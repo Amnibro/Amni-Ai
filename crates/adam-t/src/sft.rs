@@ -231,7 +231,7 @@ mod tests {
         let (bc, oc) = (Cfg::from_dir(&format!("{s}/base_run")).unwrap(), Cfg::from_dir(&format!("{s}/sft0")).unwrap());
         let ((b0, bm, _), (o0, om, _)) = (load::<NdArray>(&bc, &DEV).unwrap(), load::<NdArray>(&oc, &DEV).unwrap());
         assert!(oc.sft() && oc.d == 64 && oc.t == 128 && oc.corpus == "sft");
-        assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && f1(b0.head.w.val()) == f1(o0.head.w.val()) && f1(bm.unwrap().tab.val()) == f1(om.unwrap().tab.val()), "sft must start from the base weights (lr 0 keeps them)");
+        assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && f1(b0.head.w.val()) == f1(o0.head.w.val()) && bm.unwrap().flat() == om.unwrap().flat(), "sft must start from the base weights (lr 0 keeps them)");
         train::<Ad>(&sc("sft1", 2e-2, ""), DEV, 0).unwrap();
         let lg = fs::read_to_string(format!("{s}/sft1/log.jsonl")).unwrap();
         let v: Vec<f64> = lg.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()?["val_nats_per_tok"].as_f64()).collect();
@@ -246,7 +246,7 @@ mod tests {
         let (lc, ld, lz) = (Cfg::from_dir(&lb.out).unwrap(), Cfg::from_dir(&format!("{s}/sftl")).unwrap(), std::env::var("MEM_OPT").map_or(true, |v| v == "lazy"));
         assert!(ld.sft() && ld.lpe && ld.rb == 8 && ld.lazy == lz && PathBuf::from(format!("{s}/sftl/ckpt/lm.bin")).exists() == lz && PathBuf::from(format!("{s}/sftl/model.gf17")).exists(), "sft must inherit LPE, MEM_LOG2 and MEM_OPT from its base unless MEM_OPT is set");
         let ((b0, bm, _), (o0, om, _)) = (load::<NdArray>(&lc, &DEV).unwrap(), load::<NdArray>(&ld, &DEV).unwrap());
-        assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && f1(bm.unwrap().tab.val()) == f1(om.unwrap().tab.val()), "lazy sft at lr 0 keeps the base weights");
+        assert!(f1(b0.emb.val()) == f1(o0.emb.val()) && bm.unwrap().flat() == om.unwrap().flat(), "lazy sft at lr 0 keeps the base weights");
         let _ = fs::remove_dir_all(&r);
     }
 }

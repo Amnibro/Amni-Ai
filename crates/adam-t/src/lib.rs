@@ -5,20 +5,22 @@ pub mod recall;
 pub mod sft;
 #[cfg(test)]
 mod bind_tests;
+#[cfg(test)]
+mod shard_tests;
 use adam_ray::rng::Pcg64;
 use fa::Fa;
-use burn::{module::{AutodiffModule, Module, Param}, nn::loss::CrossEntropyLossConfig, optim::{grad_clipping::GradientClippingConfig, AdamWConfig, GradientsAccumulator, GradientsParams, Optimizer}, record::{BinFileRecorder, FullPrecisionSettings, Recorder}, tensor::{activation::{log_sigmoid, log_softmax, relu, softmax}, backend::{AutodiffBackend, Backend}, module::{attention, embedding}, ops::AttentionModuleOptions, Distribution, IndexingUpdateOp, Int, Tensor, TensorData}};
+use burn::{backend::{ndarray::NdArrayDevice, NdArray}, module::{AutodiffModule, Module, Param, ParamId}, nn::loss::CrossEntropyLossConfig, optim::{grad_clipping::GradientClippingConfig, AdamWConfig, GradientsAccumulator, GradientsParams, Optimizer}, record::{BinFileRecorder, FullPrecisionSettings, Recorder}, tensor::{activation::{log_sigmoid, log_softmax, relu, softmax}, backend::{AutodiffBackend, Backend}, module::{attention, embedding}, ops::AttentionModuleOptions, Distribution, IndexingUpdateOp, Int, Tensor, TensorData}};
 use memmap2::Mmap;
 use std::{env::var, fs, io::{self, Write}, path::Path, time::Instant};
 #[derive(Clone, Debug)]
-pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64, pub v: usize, pub bpe: String, pub micro: usize, pub base: String, pub sw: String, pub ep: f64, pub lpe: bool, pub lphi: f64, pub lsq: u32, pub init: String, pub lazy: bool, pub copy: bool, pub rmix: f64 }
+pub struct Cfg { pub d: usize, pub l: usize, pub h: usize, pub t: usize, pub ff: usize, pub ns: Vec<usize>, pub rb: u32, pub tern: bool, pub mem: bool, pub bs: usize, pub steps: usize, pub lr: f64, pub lrm: f64, pub wd: f32, pub warm: usize, pub seed: u64, pub ev: usize, pub ck: usize, pub evb: usize, pub tag: String, pub home: String, pub out: String, pub thf: String, pub corpus: String, pub par: usize, pub unit: f64, pub wall: f64, pub v: usize, pub bpe: String, pub micro: usize, pub base: String, pub sw: String, pub ep: f64, pub lpe: bool, pub lphi: f64, pub lsq: u32, pub init: String, pub lazy: bool, pub copy: bool, pub rmix: f64, pub shb: usize }
 impl Cfg {
     pub fn env() -> Cfg {
         let e = |k: &str, d: &str| var(k).unwrap_or_else(|_| d.into());
         let p = |k: &str, d: &str| e(k, d).trim().parse::<f64>().unwrap_or_else(|_| panic!("bad {k}"));
         let (home, d, tag, bpe, base) = (e("AMNI_HOME", "/home/anmire/ai/Amni-Ai"), p("D", "256") as usize, e("TAG", "smoke"), e("BPE", ""), e("BASE", ""));
         let sd = |a: &'static str, b: &'static str| if base.is_empty() { b } else { a };
-        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", sd("3e-4", "2e-3")), lrm: p("LR_MEM", &e("LR", sd("3e-4", "2e-3"))), wd: p("WD", "0.05") as f32, warm: p("WARM", sd("100", "200")) as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", sd("250", "500")) as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", sd("adam_t/sft", "clean2")), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), v: if bpe.is_empty() { 256 } else { serde_json::from_str::<serde_json::Value>(&fs::read_to_string(&bpe).unwrap_or_default()).ok().and_then(|j| j["vocab_size"].as_u64()).unwrap_or_else(|| panic!("bad BPE {bpe}")) as usize }, bpe, micro: p("MICRO", "1") as usize, sw: e("SRC_W", ""), ep: p("EPOCHS", "0"), lpe: e("LPE", "0") == "1", lphi: p("LPE_PHI", "4"), lsq: p("LPE_S", "64") as u32, init: e("INIT", ""), lazy: match e("MEM_OPT", "dense").as_str() { "lazy" => true, "dense" => false, o => panic!("bad MEM_OPT {o}: dense or lazy") }, copy: e("COPY", "0") == "1", rmix: Some(p("RECALL_MIX", "0")).filter(|r| (0.0..1.0).contains(r)).unwrap_or_else(|| panic!("bad RECALL_MIX: want 0 <= r < 1")), base, home }
+        Cfg { d, l: p("L", "8") as usize, h: p("H", "4") as usize, t: p("CTX", "256") as usize, ff: p("FF", &(4 * d).to_string()) as usize, ns: e("NGRAMS", "2,3,4,5,6,8").split(',').filter(|s| !s.is_empty()).map(|s| s.trim().parse().unwrap()).collect(), rb: p("MEM_LOG2", "15") as u32, tern: e("TERN", "1") == "1", mem: e("MEM", "0") == "1", bs: p("BS", "64") as usize, steps: p("STEPS", "2000") as usize, lr: p("LR", sd("3e-4", "2e-3")), lrm: p("LR_MEM", &e("LR", sd("3e-4", "2e-3"))), wd: p("WD", "0.05") as f32, warm: p("WARM", sd("100", "200")) as usize, seed: p("SEED", "0") as u64, ev: p("EVAL_EVERY", sd("250", "500")) as usize, ck: p("CKPT_EVERY", "500") as usize, evb: p("EVAL_BATCHES", "20") as usize, out: e("OUT", &format!("{home}/exports/adam_t/{tag}")), tag, thf: e("THROTTLE_FILE", &format!("{home}/throttle.txt")), corpus: e("CORPUS", sd("adam_t/sft", "clean2")), par: p("PARITY_WINDOWS", "8") as usize, unit: p("THROTTLE_UNIT_MS", "50"), wall: p("MAX_MIN", "19"), v: if bpe.is_empty() { 256 } else { serde_json::from_str::<serde_json::Value>(&fs::read_to_string(&bpe).unwrap_or_default()).ok().and_then(|j| j["vocab_size"].as_u64()).unwrap_or_else(|| panic!("bad BPE {bpe}")) as usize }, bpe, micro: p("MICRO", "1") as usize, sw: e("SRC_W", ""), ep: p("EPOCHS", "0"), lpe: e("LPE", "0") == "1", lphi: p("LPE_PHI", "4"), lsq: p("LPE_S", "64") as u32, init: e("INIT", ""), lazy: match e("MEM_OPT", "dense").as_str() { "lazy" => true, "dense" => false, o => panic!("bad MEM_OPT {o}: dense or lazy") }, copy: e("COPY", "0") == "1", rmix: Some(p("RECALL_MIX", "0")).filter(|r| (0.0..1.0).contains(r)).unwrap_or_else(|| panic!("bad RECALL_MIX: want 0 <= r < 1")), shb: (p("MEM_SHARD_MB", "256") * 1048576.0) as usize, base, home }
     }
     pub fn from_dir(dir: &str) -> io::Result<Cfg> {
         let l = fs::read_to_string(format!("{dir}/log.jsonl"))?.lines().next().unwrap_or("").to_string();
@@ -29,6 +31,7 @@ impl Cfg {
     pub fn sft(&self) -> bool { !self.base.is_empty() }
     pub fn k(&self) -> usize { if self.mem { self.ns.len() } else { 0 } }
     pub fn rows(&self) -> usize { self.k() << self.rb }
+    pub fn cut(&self) -> Vec<usize> { let (r, b) = (self.rows(), 4 * self.d); let s = if r * b <= self.shb { r.max(1) } else { 1usize << (self.shb / b).max(1).ilog2() }; (0..r.div_ceil(s)).map(|i| s.min(r - i * s)).collect() }
     pub fn dc(&self) -> usize { self.d / self.h }
     pub fn mult(&self, it: usize) -> f64 { let pr = ((it as f64 - self.warm as f64) / (self.steps.saturating_sub(self.warm)).max(1) as f64).clamp(0.0, 1.0); if it < self.warm { (it as f64 + 1.0) / self.warm as f64 } else { 0.1 + 0.45 * (1.0 + (std::f64::consts::PI * pr).cos()) } }
     pub fn core_params(&self) -> usize { self.v * self.d + self.t * self.d * !self.lpe as usize + self.l * (4 * self.d * self.d + 2 * self.d * self.ff) + self.d * self.v + self.copy as usize * (self.d * (2 * self.dc() + 1) + 1) }
@@ -44,7 +47,9 @@ pub struct Blk<B: Backend> { pub qkv: Lin<B>, pub o: Lin<B>, pub f1: Lin<B>, pub
 #[derive(Module, Debug)]
 pub struct Core<B: Backend> { pub emb: Param<Tensor<B, 2>>, pub pos: Param<Tensor<B, 2>>, pub blk: Vec<Blk<B>>, pub head: Lin<B> }
 #[derive(Module, Debug)]
-pub struct Mem<B: Backend> { pub tab: Param<Tensor<B, 2>> }
+pub struct Mem<B: Backend> { pub tab: Vec<Param<Tensor<B, 2>>> }
+#[derive(Module, Debug)]
+pub struct Tab<B: Backend> { pub tab: Param<Tensor<B, 2>> }
 #[derive(Module, Debug)]
 pub struct Cp<B: Backend> { pub w: Lin<B>, pub gb: Param<Tensor<B, 2>> }
 fn rnd<B: Backend>(s: [usize; 2], sd: f64, dev: &B::Device) -> Param<Tensor<B, 2>> { Param::from_tensor(Tensor::random(s, Distribution::Normal(0.0, sd), dev)) }
@@ -86,29 +91,67 @@ pub fn cmix<B: Backend>(lg: Tensor<B, 2>, c: Tensor<B, 2>, gb: Tensor<B, 2>, ids
     m.clone() + ((x - m.clone()).exp() + (y - m).exp()).log()
 }
 impl<B: Backend> Mem<B> {
-    pub fn new(c: &Cfg, dev: &B::Device) -> Self { Mem { tab: rnd([c.rows(), c.d], 0.02, dev) } }
-    pub fn fwd(&self, ix: Tensor<B, 2, Int>, k: usize) -> Tensor<B, 3> { mrow(self.tab.val(), ix, k) }
-    pub fn grow(self, k: usize, a: u32, b: u32) -> Self { if a == b { return self; } let t = self.tab.into_value().set_require_grad(false); let d = t.dims()[1]; Mem { tab: Param::from_tensor(t.reshape([k << a, 1, d]).repeat_dim(1, 1 << (b - a)).reshape([k << b, d])) } }
+    pub fn of(ts: Vec<Tensor<B, 2>>, id: ParamId) -> Self { Mem { tab: ts.into_iter().enumerate().map(|(i, t)| Param::initialized(if i == 0 { id } else { ParamId::from(sm(id.val() ^ i as u64)) }, t.require_grad())).collect() } }
+    pub fn new(c: &Cfg, dev: &B::Device) -> Self { Mem::of(c.cut().into_iter().map(|n| Tensor::random([n, c.d], Distribution::Normal(0.0, 0.02), dev)).collect(), ParamId::new()) }
+    pub fn ts(&self) -> Vec<Tensor<B, 2>> { self.tab.iter().map(|p| p.val()).collect() }
+    pub fn fwd(&self, ix: &[i32], b: usize, k: usize, dev: &B::Device) -> Tensor<B, 3> { mrow(&self.ts(), ix, b, k, dev) }
+    pub fn n(&self) -> usize { self.tab.iter().map(|p| p.dims()[0] * p.dims()[1]).sum() }
+    pub fn span(&self, a: usize, b: usize) -> Vec<f32> { self.tab.iter().scan(0, |o, p| { let n = p.dims()[0] * p.dims()[1]; *o += n; Some((*o - n, n, p)) }).filter(|&(o, n, _)| o < b && o + n > a).flat_map(|(o, n, p)| f1(p.val().reshape([n]).slice([a.max(o) - o..b.min(o + n) - o]))).collect() }
+    pub fn flat(&self) -> Vec<f32> { self.span(0, self.n()) }
+    pub fn grow(self, c: &Cfg, a: u32, dev: &B::Device) -> Self { if a == c.rb && self.tab.iter().map(|p| p.dims()[0]).eq(c.cut()) { return self; } let (t, s) = (self.tab.into_iter().map(|p| p.into_value().set_require_grad(false)).collect::<Vec<_>>(), c.rb - a); Mem::of(c.cut().into_iter().scan(0, |o, n| { *o += n; Some(pick(&t, &(*o - n..*o).map(|r| (r >> s) as i32).collect::<Vec<_>>(), dev)) }).collect(), ParamId::new()) }
+    pub fn save(&self, p: &str) -> io::Result<()> { tsave(&self.ts(), self.tab[0].id, p) }
+    pub fn load(c: &Cfg, p: &str, dev: &B::Device) -> io::Result<Self> { let (ts, id) = tload(c, p, dev)?; Ok(Mem::of(ts, id)) }
 }
-pub fn mrow<B: Backend>(tab: Tensor<B, 2>, ix: Tensor<B, 2, Int>, k: usize) -> Tensor<B, 3> { let ([b, tk], d) = (ix.dims(), tab.dims()[1]); embedding(tab, ix).reshape([b, tk / k, k, d]).sum_dim(2).reshape([b, tk / k, d]) }
-pub struct Lazy<B: Backend> { pub m: Tensor<B, 2>, pub v: Tensor<B, 2> }
+pub fn tsave<B: Backend>(ts: &[Tensor<B, 2>], id: ParamId, p: &str) -> io::Result<()> {
+    let d = ts[0].dims()[1];
+    let v = ts.iter().fold(Vec::<f32>::with_capacity(ts.iter().map(|t| t.dims()[0] * d).sum()), |mut v, t| { v.extend(t.clone().into_data().iter::<f32>()); v });
+    let r = v.len() / d;
+    Tab::<NdArray> { tab: Param::initialized(id, Tensor::from_data(TensorData::new(v, [r, d]), &NdArrayDevice::Cpu)) }.save_file(p, &BinFileRecorder::<FullPrecisionSettings>::new()).map_err(|e| io::Error::other(format!("{e:?}")))
+}
+pub fn tload<B: Backend>(c: &Cfg, p: &str, dev: &B::Device) -> io::Result<(Vec<Tensor<B, 2>>, ParamId)> {
+    let r: TabRecord<NdArray> = Recorder::<NdArray>::load(&BinFileRecorder::<FullPrecisionSettings>::new(), p.into(), &NdArrayDevice::Cpu).map_err(|e| io::Error::other(format!("{p}: {e:?}")))?;
+    let (id, t) = (r.tab.id, r.tab.into_value());
+    let (dt, want) = (t.dims(), [c.rows(), c.d]);
+    (dt == want).then_some(()).ok_or_else(|| io::Error::other(format!("{p}.bin holds a {dt:?} PTEX table, want {want:?}")))?;
+    let v = t.into_data();
+    let s = v.as_slice::<f32>().map_err(|e| io::Error::other(format!("{p}: {e:?}")))?;
+    Ok((c.cut().into_iter().scan(0, |o, n| { *o += n; Some(Tensor::from_data(TensorData::new(s[(*o - n) * c.d..*o * c.d].to_vec(), [n, c.d]), dev)) }).collect(), id))
+}
+pub fn pick<B: Backend>(tab: &[Tensor<B, 2>], ix: &[i32], dev: &B::Device) -> Tensor<B, 2> {
+    let (n, d) = (ix.len(), tab[0].dims()[1]);
+    let e = |t: Tensor<B, 2>, v: Vec<i32>| { let m = v.len(); embedding(t, it2(v, [1, m], dev)).reshape([m, d]) };
+    if tab.len() == 1 { return e(tab[0].clone(), ix.to_vec()); }
+    let o: Vec<usize> = tab.iter().scan(0, |a, t| { *a += t.dims()[0]; Some(*a - t.dims()[0]) }).collect();
+    let mut g: Vec<Vec<usize>> = vec![Vec::new(); tab.len()];
+    ix.iter().enumerate().for_each(|(i, &r)| g[o.partition_point(|&x| x <= r as usize) - 1].push(i));
+    let mut ps = vec![0i32; n];
+    g.iter().flatten().enumerate().for_each(|(j, &i)| ps[i] = j as i32);
+    Tensor::cat(g.iter().zip(tab).zip(&o).filter(|((p, _), _)| !p.is_empty()).map(|((p, t), &b)| e(t.clone(), p.iter().map(|&i| ix[i] - b as i32).collect())).collect(), 0).select(0, it1(ps, dev))
+}
+pub fn mrow<B: Backend>(tab: &[Tensor<B, 2>], ix: &[i32], b: usize, k: usize, dev: &B::Device) -> Tensor<B, 3> { let (n, d) = (ix.len() / b / k, tab[0].dims()[1]); pick(tab, ix, dev).reshape([b, n, k, d]).sum_dim(2).reshape([b, n, d]) }
+pub struct Lazy<B: Backend> { pub m: Vec<Tensor<B, 2>>, pub v: Vec<Tensor<B, 2>> }
 impl<B: Backend> Lazy<B> {
-    pub fn new(r: usize, d: usize, dev: &B::Device) -> Self { Lazy { m: Tensor::zeros([r, d], dev), v: Tensor::zeros([r, d], dev) } }
-    pub fn step(self, tab: Tensor<B, 2>, gs: Vec<(Vec<i32>, Tensor<B, 3>)>, k: usize, lr: f64, t: usize, dev: &B::Device) -> (Self, Tensor<B, 2>) {
-        let (ix, d, b1, b2) = (gs.iter().flat_map(|g| g.0.iter().copied()).collect::<Vec<i32>>(), tab.dims()[1], 0.9f32, 0.95f32);
+    pub fn new(c: &Cfg, dev: &B::Device) -> Self { let z = || c.cut().into_iter().map(|n| Tensor::zeros([n, c.d], dev)).collect(); Lazy { m: z(), v: z() } }
+    pub fn step(self, tab: Vec<Tensor<B, 2>>, gs: Vec<(Vec<i32>, Tensor<B, 3>)>, k: usize, lr: f64, t: usize, dev: &B::Device) -> (Self, Vec<Tensor<B, 2>>) {
+        let (ix, d, b1, b2) = (gs.iter().flat_map(|g| g.0.iter().copied()).collect::<Vec<i32>>(), tab[0].dims()[1], 0.9f32, 0.95f32);
         let mut u = ix.clone();
         u.sort_unstable();
         u.dedup();
-        let (ui, inv, n) = (it1::<B>(u.clone(), dev), it1::<B>(ix.iter().map(|r| u.binary_search(r).unwrap_or(0) as i32).collect(), dev), u.len());
+        let (inv, n) = (it1::<B>(ix.iter().map(|r| u.binary_search(r).unwrap_or(0) as i32).collect(), dev), u.len());
         let g = Tensor::<B, 2>::zeros([n, d], dev).select_assign(0, inv, Tensor::cat(gs.into_iter().map(|(_, g)| { let [b, w, _] = g.dims(); g.reshape([b * w, 1, d]).repeat_dim(1, k).reshape([b * w * k, d]) }).collect(), 0), IndexingUpdateOp::Add);
-        let m = self.m.clone().select(0, ui.clone()).mul_scalar(b1).add(g.clone().mul_scalar(1.0 - b1));
-        let v = self.v.clone().select(0, ui.clone()).mul_scalar(b2).add(g.square().mul_scalar(1.0 - b2));
-        let p = tab.clone().select(0, ui.clone()).sub(m.clone().div_scalar(1.0 - b1.powi(t as i32)).div(v.clone().div_scalar(1.0 - b2.powi(t as i32)).sqrt().add_scalar(1e-5)).mul_scalar(lr));
-        let (u2, w) = (ui.reshape([n, 1]), |a: Tensor<B, 2>, u: &Tensor<B, 2, Int>, b: Tensor<B, 2>| a.scatter_nd(u.clone(), b, IndexingUpdateOp::Assign));
-        (Lazy { m: w(self.m, &u2, m), v: w(self.v, &u2, v) }, w(tab, &u2, p))
+        let w = |a: Tensor<B, 2>, u: &Tensor<B, 2, Int>, b: Tensor<B, 2>| a.scatter_nd(u.clone(), b, IndexingUpdateOp::Assign);
+        let (m, (v, p)): (Vec<_>, (Vec<_>, Vec<_>)) = self.m.into_iter().zip(self.v).zip(tab).scan(0usize, |o, ((m, v), p)| { *o += p.dims()[0]; let (lo, hi) = (*o - p.dims()[0], *o); let (a, e) = (u.partition_point(|&r| (r as usize) < lo), u.partition_point(|&r| (r as usize) < hi)); Some(if a == e { (m, (v, p)) } else {
+            let (ui, g) = (it1::<B>(u[a..e].iter().map(|&r| r - lo as i32).collect(), dev), g.clone().narrow(0, a, e - a));
+            let mm = m.clone().select(0, ui.clone()).mul_scalar(b1).add(g.clone().mul_scalar(1.0 - b1));
+            let vv = v.clone().select(0, ui.clone()).mul_scalar(b2).add(g.square().mul_scalar(1.0 - b2));
+            let pp = p.clone().select(0, ui.clone()).sub(mm.clone().div_scalar(1.0 - b1.powi(t as i32)).div(vv.clone().div_scalar(1.0 - b2.powi(t as i32)).sqrt().add_scalar(1e-5)).mul_scalar(lr));
+            let u2 = ui.reshape([e - a, 1]);
+            (w(m, &u2, mm), (w(v, &u2, vv), w(p, &u2, pp)))
+        }) }).unzip();
+        (Lazy { m, v }, p)
     }
-    pub fn save(&self, ckd: &str) -> io::Result<()> { [("lm", &self.m), ("lv", &self.v)].into_iter().try_for_each(|(n, t)| Mem { tab: Param::from_tensor(t.clone()) }.save_file(format!("{ckd}/{n}"), &BinFileRecorder::<FullPrecisionSettings>::new()).map_err(|e| io::Error::other(format!("{e:?}")))) }
-    pub fn load(c: &Cfg, ckd: &str, dev: &B::Device) -> io::Result<Self> { let l = |n: &str| Mem::<B> { tab: Param::from_tensor(Tensor::zeros([c.rows(), c.d], dev)) }.load_file(format!("{ckd}/{n}"), &BinFileRecorder::<FullPrecisionSettings>::new(), dev).map(|m| m.tab.into_value()).map_err(|e| io::Error::other(format!("{e:?}"))); Ok(Lazy { m: l("lm")?, v: l("lv")? }) }
+    pub fn save(&self, ckd: &str) -> io::Result<()> { [("lm", &self.m), ("lv", &self.v)].into_iter().try_for_each(|(n, t)| tsave(t, ParamId::new(), &format!("{ckd}/{n}"))) }
+    pub fn load(c: &Cfg, ckd: &str, dev: &B::Device) -> io::Result<Self> { Ok(Lazy { m: tload(c, &format!("{ckd}/lm"), dev)?.0, v: tload(c, &format!("{ckd}/lv"), dev)?.0 }) }
 }
 pub const G17: [u8; 16] = { let mut t = [1u8; 16]; let mut i = 1; while i < 16 { t[i] = (t[i - 1] as u32 * 3 % 17) as u8; i += 1; } t };
 pub const L17: [u8; 17] = { let mut t = [0u8; 17]; let mut i = 0; while i < 16 { t[G17[i] as usize] = i as u8; i += 1; } t };
@@ -152,11 +195,11 @@ pub fn xy(w: Vec<Vec<u32>>, t: usize) -> (Vec<u32>, Vec<u32>) { (w.iter().flat_m
 pub fn tb(d: &Dat, seed: u64, it: usize, bs: usize, t: usize, rg: Option<&recall::Gen>) -> (Vec<u32>, Vec<u32>) { xy((0..bs).map(|j| match rg.filter(|g| g.hit(seed, it, j)) { Some(g) => g.window(seed, it, j, t + 1), None => d.get((sm(seed << 40 ^ (it as u64) << 12 ^ j as u64) % (d.len() - t - 1) as u64) as usize, t + 1) }).collect(), t) }
 pub fn it2<B: Backend>(v: Vec<i32>, s: [usize; 2], dev: &B::Device) -> Tensor<B, 2, Int> { Tensor::from_data(TensorData::new(v, s), dev) }
 pub fn it1<B: Backend>(v: Vec<i32>, dev: &B::Device) -> Tensor<B, 1, Int> { let n = v.len(); Tensor::from_data(TensorData::new(v, [n]), dev) }
-pub fn logits<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, x: &[u32], b: usize, dev: &B::Device) -> Tensor<B, 2> { let n = x.len() / b; lgm(c, core, mem.map(|m| m.fwd(it2(hix(x, b, n, &c.ns, c.rb, c.v > 256), [b, n * c.k()], dev), c.k())), cp, x, b, dev) }
+pub fn logits<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, x: &[u32], b: usize, dev: &B::Device) -> Tensor<B, 2> { let n = x.len() / b; lgm(c, core, mem.map(|m| m.fwd(&hix(x, b, n, &c.ns, c.rb, c.v > 256), b, c.k(), dev)), cp, x, b, dev) }
 pub fn lgm<B: Fa>(c: &Cfg, core: &Core<B>, m: Option<Tensor<B, 3>>, cp: Option<&Cp<B>>, x: &[u32], b: usize, dev: &B::Device) -> Tensor<B, 2> { core.fwd(it2(x.iter().map(|&v| v as i32).collect(), [b, x.len() / b], dev), m, c.h, c.tern, c.lz().map(|z| z.tensor::<B>(c.d, dev)), cp) }
-pub fn mleaf<B: AutodiffBackend>(c: &Cfg, m: &Mem<B>, x: &[u32], b: usize, dev: &B::Device) -> (Vec<i32>, Tensor<B, 3>) { let (n, ix) = (x.len() / b, hix(x, b, x.len() / b, &c.ns, c.rb, c.v > 256)); (ix.clone(), Tensor::from_inner(mrow(m.tab.val().inner(), it2(ix, [b, n * c.k()], dev), c.k())).require_grad()) }
+pub fn mleaf<B: AutodiffBackend>(c: &Cfg, m: &Mem<B>, x: &[u32], b: usize, dev: &B::Device) -> (Vec<i32>, Tensor<B, 3>) { let ix = hix(x, b, x.len() / b, &c.ns, c.rb, c.v > 256); (ix.clone(), Tensor::from_inner(mrow(&m.tab.iter().map(|p| p.val().inner()).collect::<Vec<_>>(), &ix, b, c.k(), dev)).require_grad()) }
 pub fn infer<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, x: &[u32], b: usize, dev: &B::Device) -> Vec<f32> { f1(logits(c, core, mem, cp, x, b, dev)) }
-pub fn load<B: Backend>(c: &Cfg, dev: &B::Device) -> io::Result<(Core<B>, Option<Mem<B>>, Option<Cp<B>>)> { let (rec, le) = (BinFileRecorder::<FullPrecisionSettings>::new(), |e: burn::record::RecorderError| io::Error::other(format!("{e:?}"))); Ok((Core::<B>::new(c, dev).load_file(format!("{}/ckpt/core", c.out), &rec, dev).map_err(le)?, c.mem.then(|| Mem::<B>::new(c, dev).load_file(format!("{}/ckpt/mem", c.out), &rec, dev).map_err(le)).transpose()?, c.copy.then(|| Cp::<B>::new(c, dev).load_file(format!("{}/ckpt/copy", c.out), &rec, dev).map_err(le)).transpose()?)) }
+pub fn load<B: Backend>(c: &Cfg, dev: &B::Device) -> io::Result<(Core<B>, Option<Mem<B>>, Option<Cp<B>>)> { let (rec, le) = (BinFileRecorder::<FullPrecisionSettings>::new(), |e: burn::record::RecorderError| io::Error::other(format!("{e:?}"))); Ok((Core::<B>::new(c, dev).load_file(format!("{}/ckpt/core", c.out), &rec, dev).map_err(le)?, c.mem.then(|| Mem::<B>::load(c, &format!("{}/ckpt/mem", c.out), dev)).transpose()?, c.copy.then(|| Cp::<B>::new(c, dev).load_file(format!("{}/ckpt/copy", c.out), &rec, dev).map_err(le)).transpose()?)) }
 pub fn ce<B: Backend>(lg: Tensor<B, 2>, y: &[u32], dev: &B::Device) -> Tensor<B, 1> { CrossEntropyLossConfig::new().init(dev).forward(lg, Tensor::from_data(TensorData::new(y.iter().map(|&v| v as i32).collect::<Vec<i32>>(), [y.len()]), dev)) }
 pub fn f1<B: Backend, const D: usize>(t: Tensor<B, D>) -> Vec<f32> { t.into_data().iter::<f32>().collect() }
 pub fn eval<B: Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, hold: &Dat, lens: &[u32], nb: usize, dev: &B::Device) -> f64 {
@@ -169,7 +212,7 @@ pub fn thr(p: &str) -> f64 { fs::read_to_string(p).ok().and_then(|s| s.trim().pa
 pub fn nap(th: f64, ms: f64, unit: f64) -> f64 { let s = if th > 0.0 { th * 1e3 * (ms / unit).max(1.0) } else { 0.0 }; (s > 0.0).then(|| std::thread::sleep(std::time::Duration::from_secs_f64(s / 1e3))); s }
 pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> io::Result<String> where B::InnerBackend: Fa {
     (c.base.is_empty() || c.init.is_empty()).then_some(()).ok_or_else(|| io::Error::other("BASE (sft) and INIT (continued pretraining) are exclusive"))?;
-    let bc = [&c.base, &c.init].into_iter().find(|s| !s.is_empty()).map(|d| Cfg::from_dir(d)).transpose()?;
+    let bc = [&c.base, &c.init].into_iter().find(|s| !s.is_empty()).map(|d| Cfg::from_dir(d).map(|b| Cfg { shb: c.shb, ..b })).transpose()?;
     bc.as_ref().is_none_or(|b| c.sft() || c.rb >= b.rb).then_some(()).ok_or_else(|| io::Error::other(format!("MEM_LOG2 {} is below the INIT checkpoint's {}: only growing is exact", c.rb, bc.as_ref().map_or(0, |b| b.rb))))?;
     let c = &bc.as_ref().map_or_else(|| c.clone(), |b| Cfg { d: b.d, l: b.l, h: b.h, t: b.t, ff: b.ff, ns: b.ns.clone(), rb: if c.sft() { b.rb } else { c.rb }, tern: b.tern, mem: b.mem, v: b.v, bpe: b.bpe.clone(), lpe: b.lpe, lphi: b.lphi, lsq: b.lsq, lazy: if c.sft() && var("MEM_OPT").is_err() { b.lazy } else { c.lazy }, copy: c.copy || (var("COPY").is_err() && b.copy), ..c.clone() });
     let sj = c.sft().then(|| sft::Job::new(c)).transpose()?;
@@ -179,25 +222,25 @@ pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> 
     Path::new(&c.thf).exists().then_some(()).ok_or_else(|| io::Error::other(format!("THROTTLE_FILE {} missing: refusing to train without the GPU governor", c.thf)))?;
     let (ckd, rec) = (format!("{}/ckpt", c.out), BinFileRecorder::<FullPrecisionSettings>::new());
     fs::create_dir_all(&ckd)?;
+    let st = format!("{ckd}/state.txt");
+    let start = if bench == 0 && Path::new(&st).exists() { fs::read_to_string(&st)?.trim().parse::<usize>().unwrap_or(0) } else { 0 };
     B::seed(&dev, c.seed);
     let mut core = Core::<B>::new(c, &dev);
-    let mut mem = c.mem.then(|| Mem::<B>::new(c, &dev));
+    let mut mem = (c.mem && start == 0).then(|| Mem::<B>::new(c, &dev));
     let mut cp = c.copy.then(|| Cp::<B>::new(c, &dev));
     let aw = || AdamWConfig::new().with_weight_decay(c.wd).with_beta_2(0.95).with_grad_clipping(Some(GradientClippingConfig::Norm(1.0)));
     let (mut oc, mut ocp) = (aw().init::<B, Core<B>>(), aw().init::<B, Cp<B>>());
     let mut om = AdamWConfig::new().with_weight_decay(0.0).with_beta_2(0.95).init::<B, Mem<B>>();
-    let st = format!("{ckd}/state.txt");
-    let start = if bench == 0 && Path::new(&st).exists() { fs::read_to_string(&st)?.trim().parse::<usize>().unwrap_or(0) } else { 0 };
     let le = |e: burn::record::RecorderError| io::Error::other(format!("{e:?}"));
     if start > 0 {
         core = core.load_file(format!("{ckd}/core"), &rec, &dev).map_err(le)?;
         oc = oc.load_record(rec.load(format!("{ckd}/oc").into(), &dev).map_err(le)?);
-        if let Some(m) = mem.take() { mem = Some(m.load_file(format!("{ckd}/mem"), &rec, &dev).map_err(le)?); if !c.lazy { om = om.load_record(rec.load(format!("{ckd}/om").into(), &dev).map_err(le)?); } }
+        if c.mem { mem = Some(Mem::load(c, &format!("{ckd}/mem"), &dev)?); if !c.lazy { om = om.load_record(rec.load(format!("{ckd}/om").into(), &dev).map_err(le)?); } }
         if let Some(p) = cp.take() { cp = Some(p.load_file(format!("{ckd}/copy"), &rec, &dev).map_err(le)?); ocp = ocp.load_record(rec.load(format!("{ckd}/ocp").into(), &dev).map_err(le)?); }
         println!("resumed {} at step {start}", c.out);
     }
-    if let (0, Some(b)) = (start, bc.as_ref()) { let (cr, m, pb) = load::<B>(b, &dev)?; (core, mem, cp) = (cr, m.map(|m| m.grow(c.k(), b.rb, c.rb)), c.copy.then(|| pb.unwrap_or_else(|| Cp::new(c, &dev)))); println!("{} init from {} step {}{}", if c.sft() { "sft" } else { "continued" }, b.out, fs::read_to_string(format!("{}/ckpt/state.txt", b.out)).unwrap_or_default().trim(), if b.rb < c.rb { format!(", PTEX memory grown 2^{} -> 2^{} rows per order", b.rb, c.rb) } else { String::new() }); }
-    let mut lo = (c.lazy && c.mem).then(|| if start > 0 { Lazy::<B::InnerBackend>::load(c, &ckd, &dev) } else { Ok(Lazy::new(c.rows(), c.d, &dev)) }).transpose()?;
+    if let (0, Some(b)) = (start, bc.as_ref()) { drop(mem.take()); let (cr, m, pb) = load::<B>(b, &dev)?; (core, mem, cp) = (cr, m.map(|m| m.grow(c, b.rb, &dev)), c.copy.then(|| pb.unwrap_or_else(|| Cp::new(c, &dev)))); println!("{} init from {} step {}{}", if c.sft() { "sft" } else { "continued" }, b.out, fs::read_to_string(format!("{}/ckpt/state.txt", b.out)).unwrap_or_default().trim(), if b.rb < c.rb { format!(", PTEX memory grown 2^{} -> 2^{} rows per order", b.rb, c.rb) } else { String::new() }); }
+    let mut lo = (c.lazy && c.mem).then(|| if start > 0 { Lazy::<B::InnerBackend>::load(c, &ckd, &dev) } else { Ok(Lazy::new(c, &dev)) }).transpose()?;
     if bench == 0 { fs::write(format!("{ckd}/steps.txt"), format!("{}\n", c.steps))?; }
     let mut log = fs::OpenOptions::new().create(true).append(true).open(format!("{}/log.jsonl", c.out))?;
     let steps = if bench > 0 { bench + 5 } else { c.steps };
@@ -232,7 +275,7 @@ pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> 
         let (to, lr) = (Instant::now(), c.lr * c.mult(it));
         core = oc.step(lr, core, ac.grads());
         cp = cp.map(|p| ocp.step(lr, p, ap.grads()));
-        mem = match (mem, lo.take()) { (Some(m), Some(o)) => { let (o, t) = o.step(m.tab.into_value().inner(), gs, c.k(), c.lrm * c.mult(it), it + 1, &dev); lo = Some(o); Some(Mem { tab: Param::from_tensor(Tensor::from_inner(t)) }) } (m, _) => m.map(|m| om.step(c.lrm * c.mult(it), m, am.grads())) };
+        mem = match (mem, lo.take()) { (Some(m), Some(o)) => { let id = m.tab[0].id; let (o, t) = o.step(m.tab.into_iter().map(|p| p.into_value().inner()).collect(), gs, c.k(), c.lrm * c.mult(it), it + 1, &dev); lo = Some(o); Some(Mem::of(t.into_iter().map(Tensor::from_inner).collect(), id)) } (m, _) => m.map(|m| om.step(c.lrm * c.mult(it), m, am.grads())) };
         B::sync(&dev).map_err(se)?;
         let t = to.elapsed().as_secs_f64() * 1e3;
         (ms, sl) = (ms + t, sl + nap(th, t, c.unit));
@@ -250,7 +293,7 @@ pub fn train<B: AutodiffBackend + Fa>(c: &Cfg, dev: B::Device, bench: usize) -> 
         if bench == 0 && c.ck > 0 && ((it + 1) % c.ck == 0 || done || wall) {
             core.clone().save_file(format!("{ckd}/core"), &rec).map_err(le)?;
             rec.record(oc.to_record(), format!("{ckd}/oc").into()).map_err(le)?;
-            if let Some(m) = mem.as_ref() { m.clone().save_file(format!("{ckd}/mem"), &rec).map_err(le)?; match lo.as_ref() { Some(o) => o.save(&ckd)?, None => rec.record(om.to_record(), format!("{ckd}/om").into()).map_err(le)? } }
+            if let Some(m) = mem.as_ref() { m.save(&format!("{ckd}/mem"))?; match lo.as_ref() { Some(o) => o.save(&ckd)?, None => rec.record(om.to_record(), format!("{ckd}/om").into()).map_err(le)? } }
             if let Some(p) = cp.as_ref() { p.clone().save_file(format!("{ckd}/copy"), &rec).map_err(le)?; rec.record(ocp.to_record(), format!("{ckd}/ocp").into()).map_err(le)?; }
             fs::write(&st, format!("{}\n", it + 1))?;
         }
@@ -392,7 +435,7 @@ mod mem_scale_tests {
     fn tiny(s: &str, v: usize, rb: u32) -> Cfg { Cfg { d: 64, l: 1, h: 1, t: 64, ff: 128, ns: vec![2, 3, 4], rb, tern: true, mem: true, v, bpe: String::new(), bs: 4, micro: 2, base: String::new(), init: String::new(), lazy: false, sw: String::new(), ep: 0.0, seed: 3, par: 2, wall: 0.0, unit: 50.0, home: s.into(), corpus: "syn".into(), out: format!("{s}/base"), thf: format!("{s}/thr.txt"), steps: 30, warm: 5, lr: 3e-3, lrm: 3e-3, ev: 10, ck: 10, evb: 1, lpe: false, lphi: 4.0, lsq: 64, copy: false, rmix: 0.0, ..Cfg::env() } }
     fn dir(tag: &str) -> String { let s = std::env::temp_dir().join(format!("adamt-mem-{tag}-{}", std::process::id())).to_string_lossy().to_string(); let _ = fs::remove_dir_all(&s); fs::create_dir_all(format!("{s}/data/syn")).unwrap(); fs::write(format!("{s}/thr.txt"), b"0\n").unwrap(); s }
     fn bits(v: &[f32]) -> Vec<u32> { v.iter().map(|x| x.to_bits()).collect() }
-    fn rows(m: &Mem<NdArray>) -> Vec<f32> { f1(m.tab.val()) }
+    fn rows(m: &Mem<NdArray>) -> Vec<f32> { m.flat() }
     #[test]
     fn hash_is_prefix_consistent_and_grow_is_bit_exact() {
         let (a, b) = (6u32, 11u32);
@@ -405,11 +448,11 @@ mod mem_scale_tests {
             <NdArray as Backend>::seed(&DEV, 5);
             let (core, mem) = (Core::<NdArray>::new(&c, &DEV), Mem::<NdArray>::new(&c, &DEV));
             let x: Vec<u32> = (0..2 * c.t as u64).map(|i| (sm(i + v as u64) % (v as u64 / 8)) as u32).collect();
-            let (cb, mg) = (Cfg { rb: b, ..c.clone() }, mem.clone().grow(c.k(), a, b));
+            let (cb, mg) = (Cfg { rb: b, ..c.clone() }, mem.clone().grow(&Cfg { rb: b, ..c.clone() }, a, &DEV));
             let (o, g, s) = (rows(&mem), rows(&mg), (b - a) as usize);
-            assert!(mg.tab.dims() == [c.k() << b, c.d] && (0..c.k() << b).all(|r| g[r * c.d..(r + 1) * c.d] == o[((r >> b) << a | (r & ((1 << b) - 1)) >> s) * c.d..][..c.d]));
+            assert!(mg.n() == (c.k() << b) * c.d && (0..c.k() << b).all(|r| g[r * c.d..(r + 1) * c.d] == o[((r >> b) << a | (r & ((1 << b) - 1)) >> s) * c.d..][..c.d]));
             let (l0, l1) = (f1(logits(&c, &core, Some(&mem), None, &x, 2, &DEV)), f1(logits(&cb, &core, Some(&mg), None, &x, 2, &DEV)));
-            let mk = Mem::<NdArray> { tab: Param::from_tensor(mem.tab.val().select(0, it1((0..c.k() << b).map(|r| ((r >> b) << a | (r & ((1 << a) - 1))) as i32).collect(), &DEV))) };
+            let mk = Mem::<NdArray>::of(vec![mem.tab[0].val().select(0, it1((0..c.k() << b).map(|r| ((r >> b) << a | (r & ((1 << a) - 1))) as i32).collect(), &DEV))], ParamId::new());
             let l2 = f1(logits(&cb, &core, Some(&mk), None, &x, 2, &DEV));
             println!("{{\"v\": {v}, \"grown_logits_bit_exact\": {}, \"mask_seeded_max_abs_dlogit\": {:.3e}}}", bits(&l0) == bits(&l1), l0.iter().zip(&l2).map(|(p, q)| (p - q).abs()).fold(0f32, f32::max));
             assert!(bits(&l0) == bits(&l1) && bits(&l0) != bits(&l2), "grown logits must be bit-identical, and low-bit seeding must not be");
@@ -425,10 +468,9 @@ mod mem_scale_tests {
         let (p0, p1, p2) = (format!("{s}/m6.gf17"), format!("{s}/m16.gf17"), format!("{s}/m16x.gf17"));
         lut::save(&p0, &c, &core, Some(&mem), None, 128).unwrap();
         let r = lut::grow(&p0, b, &p1).unwrap();
-        let (cb, mg) = (Cfg { rb: b, ..c.clone() }, mem.clone().grow(c.k(), a, b));
+        let (cb, mg) = (Cfg { rb: b, ..c.clone() }, mem.clone().grow(&Cfg { rb: b, ..c.clone() }, a, &DEV));
         let (it, _) = lut::save(&p2, &cb, &core, Some(&mg), None, 128).unwrap();
-        let (n, t) = lut::msrc(&mg);
-        let f = |x: usize, y: usize| f1(t.clone().slice([x..y]));
+        let (n, f) = (mg.n(), |x: usize, y: usize| mg.span(x, y));
         let st = adam_gf17::Store::open(&p2, 1 << 20).unwrap();
         println!("{r} pages {}", st.tabs[st.table("mem").unwrap()].np());
         assert!(st.tabs[st.table("mem").unwrap()].np() >= 2 && lut::check(&p2, &it, Some((n, &f))).unwrap(), "streamed multi-page export must roundtrip bit-exactly");
@@ -454,18 +496,18 @@ mod mem_scale_tests {
         let ((x, y), (x2, y2), lr) = (xy(0), xy(1 << 20), 1e-2);
         let mut om = AdamWConfig::new().with_weight_decay(0.0).with_beta_2(0.95).init::<Ad, Mem<Ad>>();
         fn dense<O: Optimizer<Mem<Ad>, Ad>>(c: &Cfg, core: &Core<Ad>, m: Mem<Ad>, om: &mut O, x: &[u32], y: &[u32], lr: f64) -> Mem<Ad> { let mut g = ce(logits(c, core, Some(&m), None, x, 2, &DEV), y, &DEV).backward(); let gp = GradientsParams::from_module(&mut g, &m); om.step(lr, m, gp) }
-        let sparse = |m: &Mem<Ad>, o: Lazy<NdArray>, x: &[u32], y: &[u32], t: usize| { let (ix, ml) = mleaf(&c, m, x, 2, &DEV); let g = ml.grad(&ce(lgm(&c, &core, Some(ml.clone()), None, x, 2, &DEV), y, &DEV).backward()).unwrap(); let (o, tb) = o.step(m.tab.val().inner(), vec![(ix.clone(), g)], c.k(), lr, t, &DEV); (o, Mem::<Ad> { tab: Param::from_tensor(Tensor::from_inner(tb)) }, ix) };
-        let t0 = f1(mem.tab.val().inner());
+        let sparse = |m: &Mem<Ad>, o: Lazy<NdArray>, x: &[u32], y: &[u32], t: usize| { let (ix, ml) = mleaf(&c, m, x, 2, &DEV); let g = ml.grad(&ce(lgm(&c, &core, Some(ml.clone()), None, x, 2, &DEV), y, &DEV).backward()).unwrap(); let (o, tb) = o.step(m.tab.iter().map(|p| p.val().inner()).collect(), vec![(ix.clone(), g)], c.k(), lr, t, &DEV); (o, Mem::<Ad>::of(tb.into_iter().map(Tensor::from_inner).collect(), ParamId::new()), ix) };
+        let t0 = mem.flat();
         let d1 = dense(&c, &core, mem.clone(), &mut om, &x, &y, lr);
-        let (o, s1, ix) = sparse(&mem, Lazy::new(c.rows(), c.d, &DEV), &x, &y, 1);
-        let (a, b) = (f1(d1.tab.val().inner()), f1(s1.tab.val().inner()));
+        let (o, s1, ix) = sparse(&mem, Lazy::new(&c, &DEV), &x, &y, 1);
+        let (a, b) = (d1.flat(), s1.flat());
         let hit: std::collections::HashSet<usize> = ix.iter().map(|&r| r as usize).collect();
         let md = a.iter().zip(&b).map(|(p, q)| (p - q).abs()).fold(0f32, f32::max);
         println!("{{\"touched_rows\": {}, \"rows\": {}, \"lazy_vs_adamw_step1_max_abs\": {md:.3e}}}", hit.len(), c.rows());
         assert!(md == 0.0 && (0..c.rows()).filter(|r| !hit.contains(r)).all(|r| b[r * c.d..(r + 1) * c.d] == t0[r * c.d..(r + 1) * c.d]) && hit.iter().all(|&r| b[r * c.d..(r + 1) * c.d] != t0[r * c.d..(r + 1) * c.d]));
         let (_, s2, ix2) = sparse(&s1, o, &x2, &y2, 2);
-        let (h2, b2): (std::collections::HashSet<usize>, Vec<f32>) = (ix2.iter().map(|&r| r as usize).collect(), f1(s2.tab.val().inner()));
-        let d2 = f1(dense(&c, &core, d1, &mut om, &x2, &y2, lr).tab.val().inner());
+        let (h2, b2): (std::collections::HashSet<usize>, Vec<f32>) = (ix2.iter().map(|&r| r as usize).collect(), s2.flat());
+        let d2 = dense(&c, &core, d1, &mut om, &x2, &y2, lr).flat();
         let idle: Vec<usize> = hit.iter().filter(|r| !h2.contains(r)).copied().collect();
         assert!(!idle.is_empty() && idle.iter().all(|&r| b2[r * c.d..(r + 1) * c.d] == b[r * c.d..(r + 1) * c.d]) && idle.iter().any(|&r| d2[r * c.d..(r + 1) * c.d] != a[r * c.d..(r + 1) * c.d]), "lazy rows move only when touched; dense AdamW keeps moving them by momentum");
     }

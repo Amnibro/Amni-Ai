@@ -1,7 +1,7 @@
 use crate::{bpe::{Bpe, PAT}, f1, hrow, logits, tq, Cfg, Core, Cp, Dat, Lz, Mem};
 use adam_gf17::{Store, Table, Writer, PX};
 use adam_ray::rng::Pcg64;
-use burn::tensor::{backend::Backend, Tensor};
+use burn::tensor::backend::Backend;
 use rayon::prelude::*;
 use serde_json::{json, Value};
 use std::{fs, io::{self, Write}, sync::Mutex, time::Instant};
@@ -36,11 +36,9 @@ pub fn check(p: &str, it: &[(Table, Vec<u8>)], mem: Option<Src>) -> io::Result<b
     let m = mem.map_or(Ok(st.table("mem").is_none()), |(n, f)| st.table("mem").map_or(Ok(false), |i| (0..st.tabs[i].np()).try_fold(st.tabs[i].n() == n, |ok, q| st.page_words(i, 0, q).map(|w| { let (a, b) = pg(n, q); ok && w == fw(&f(a, b)) }))))?;
     Ok(a.iter().all(|&x| x) && m)
 }
-pub fn msrc<B: Backend>(m: &Mem<B>) -> (usize, Tensor<B, 1>) { let [r, d] = m.tab.dims(); (r * d, m.tab.val().reshape([r * d])) }
 pub fn save<B: Backend>(p: &str, c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, tile: usize) -> io::Result<(Vec<(Table, Vec<u8>)>, Vec<(Vec<f32>, usize, usize)>)> {
-    let ((it, tr), ms) = (tabs(c, core, cp), mem.map(msrc));
-    let f = |a: usize, b: usize| ms.as_ref().map_or_else(Vec::new, |m| f1(m.1.clone().slice([a..b])));
-    wr(p, &it, ms.as_ref().map(|m| (m.0, &f as &dyn Fn(usize, usize) -> Vec<f32>)), tile)?;
+    let ((it, tr), f) = (tabs(c, core, cp), |a: usize, b: usize| mem.map_or_else(Vec::new, |m| m.span(a, b)));
+    wr(p, &it, mem.map(|m| (m.n(), &f as &dyn Fn(usize, usize) -> Vec<f32>)), tile)?;
     Ok((it, tr))
 }
 pub fn grow(src: &str, rb: u32, out: &str) -> io::Result<String> {
@@ -179,13 +177,12 @@ pub fn bpb(v: &[f64], y: &[u32], lens: &[u32]) -> f64 { v.iter().sum::<f64>() / 
 pub fn cpu_eval(lm: &Lm, x: &[u32], y: &[u32], lens: &[u32]) -> io::Result<(Vec<f32>, f64, f64)> { let t0 = Instant::now(); let lg = x.chunks(lm.t).map(|w| lm.fwd(w)).collect::<io::Result<Vec<_>>>()?.concat(); let s = t0.elapsed().as_secs_f64(); Ok((lg.clone(), bpb(&nll(&lg, y), y, lens), y.iter().map(|&t| lens[t as usize] as f64).sum::<f64>() / s)) }
 pub fn finish<B: crate::fa::Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, cp: Option<&Cp<B>>, hold: &Dat, lens: &[u32], dev: &B::Device, log: &mut fs::File, p: &str) -> io::Result<()> {
     let (it, tr) = save(p, c, core, mem, cp, 128)?;
-    let ms = mem.map(msrc);
-    let f = |a: usize, b: usize| ms.as_ref().map_or_else(Vec::new, |m| f1(m.1.clone().slice([a..b])));
-    let rt = check(p, &it, ms.as_ref().map(|m| (m.0, &f as &dyn Fn(usize, usize) -> Vec<f32>)))?;
+    let f = |a: usize, b: usize| mem.map_or_else(Vec::new, |m| m.span(a, b));
+    let rt = check(p, &it, mem.map(|m| (m.n(), &f as &dyn Fn(usize, usize) -> Vec<f32>)))?;
     let st = Store::open(p, 64 << 20)?;
     let tt = tr.iter().enumerate().all(|(i, (t, a, b))| st.table(&format!("w{i}")).map(|j| st.unpack(j, 4).map(|r| trits(&r.0.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect::<Vec<u16>>(), *a, *b) == *t).unwrap_or(false)).unwrap_or(false));
     let (nt, nz) = tr.iter().fold((0usize, 0usize), |(n, z), (t, _, _)| (n + t.len(), z + t.iter().filter(|v| **v == 0.0).count()));
-    let (raw, sz, tb_) = (it.iter().map(|x| x.1.len()).sum::<usize>() + 4 * ms.as_ref().map_or(0, |m| m.0), fs::metadata(p)?.len(), it.iter().filter(|x| x.0.name.starts_with('w')).map(|x| x.1.len()).sum::<usize>());
+    let (raw, sz, tb_) = (it.iter().map(|x| x.1.len()).sum::<usize>() + 4 * mem.map_or(0, |m| m.n()), fs::metadata(p)?.len(), it.iter().filter(|x| x.0.name.starts_with('w')).map(|x| x.1.len()).sum::<usize>());
     drop(st);
     let lm = Lm::open(p, 256 << 20)?;
     let (x, y) = hold_windows(hold, c.par.max(1), c.t);
@@ -193,7 +190,7 @@ pub fn finish<B: crate::fa::Fa>(c: &Cfg, core: &Core<B>, mem: Option<&Mem<B>>, c
     let (cl, cb, bps) = cpu_eval(&lm, &x, &y, lens)?;
     let (mx, sm, agree) = gl.chunks_exact(c.v).zip(cl.chunks_exact(c.v)).fold((0f32, 0f64, 0usize), |(m, s, a), (g, q)| (g.iter().zip(q).fold(m, |m, (u, v)| m.max((u - v).abs())), s + g.iter().zip(q).map(|(u, v)| (u - v).abs() as f64).sum::<f64>(), a + (am(g) == am(q)) as usize));
     let gb = bpb(&nll(&gl, &y), &y, lens);
-    let r = format!("{{\"export\": \"{p}\", \"tables\": {}, \"roundtrip_bytes_exact\": {rt}, \"roundtrip_trits_exact\": {tt}, \"trits\": {nt}, \"zero_frac\": {:.4}, \"payload_bytes\": {raw}, \"trit_code_bytes\": {tb_}, \"bits_per_trit_stored\": {:.4}, \"gf17_file_bytes\": {sz}, \"parity_windows\": {}, \"parity_positions\": {}, \"max_abs_dlogit\": {mx:.3e}, \"mean_abs_dlogit\": {:.3e}, \"argmax_agree\": {:.5}, \"gpu_bpb\": {gb:.5}, \"cpu_lut_bpb\": {cb:.5}, \"cpu_lut_bytes_per_s\": {bps:.1}}}", it.len() + ms.is_some() as usize, nz as f64 / nt as f64, tb_ as f64 * 8.0 / nt as f64, c.par, gl.len() / c.v, sm / gl.len() as f64, agree as f64 / (gl.len() / c.v) as f64);
+    let r = format!("{{\"export\": \"{p}\", \"tables\": {}, \"roundtrip_bytes_exact\": {rt}, \"roundtrip_trits_exact\": {tt}, \"trits\": {nt}, \"zero_frac\": {:.4}, \"payload_bytes\": {raw}, \"trit_code_bytes\": {tb_}, \"bits_per_trit_stored\": {:.4}, \"gf17_file_bytes\": {sz}, \"parity_windows\": {}, \"parity_positions\": {}, \"max_abs_dlogit\": {mx:.3e}, \"mean_abs_dlogit\": {:.3e}, \"argmax_agree\": {:.5}, \"gpu_bpb\": {gb:.5}, \"cpu_lut_bpb\": {cb:.5}, \"cpu_lut_bytes_per_s\": {bps:.1}}}", it.len() + mem.is_some() as usize, nz as f64 / nt as f64, tb_ as f64 * 8.0 / nt as f64, c.par, gl.len() / c.v, sm / gl.len() as f64, agree as f64 / (gl.len() / c.v) as f64);
     println!("{r}");
     writeln!(log, "{r}")
 }
