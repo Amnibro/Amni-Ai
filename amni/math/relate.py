@@ -1,12 +1,12 @@
-import re
+import re,itertools
 from fractions import Fraction as Fr
-from amni.math.word import quantities,lem,_f
+from amni.math.word import quantities,lem,_f,TOK,STOP as STOPW
 _COMMON=set("if the on in how what a an he she they it there this that these those each every after before when then his her their its at for of to and but so all some one two three four five six seven eight nine ten eleven twelve twenty thirty during while since by with as from yesterday today tomorrow last next first finally also later now we i you my our your mr mrs ms dr miss given find calculate determine half both twice only once out over because although however instead meanwhile overall total altogether together again still just monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december here several many most few other another no not do does did is are was were will would can could should must let suppose assume consider use using round note which who whose where why christmas halloween easter thanksgiving valentine new year years english spanish french american dollars usd am pm tv ok hi hello mom dad grandma grandpa mother father sister brother uncle aunt unfortunately fortunately luckily currently initially originally recently usually afterward afterwards eventually additionally furthermore moreover therefore thus hence besides either neither nor yet whether though upon onto into within without between among through throughout across around about above below under behind beside near far up down off per than more less fewer much any such own same very too quite rather almost nearly exactly approximately roughly even ever never always often sometimes already soon according as science math art history music".split())
 _RATK={'HALF','TWICE','TRIPLE','QUAD','THIRD','QUARTER','FIFTH','DOZEN'}
 _MULT={'twice':Fr(2),'double':Fr(2),'thrice':Fr(3),'triple':Fr(3),'half':Fr(1,2),'quadruple':Fr(4)}
 _FRW={'half':Fr(1,2),'third':Fr(1,3),'quarter':Fr(1,4),'fourth':Fr(1,4),'fifth':Fr(1,5),'tenth':Fr(1,10)}
 _PLUS=r"(?:more|longer|taller|older|heavier|bigger|larger|higher|greater|further|farther|extra|faster|later)";_MINUS=r"(?:fewer|less|shorter|younger|lighter|smaller|lower|cheaper|slower|earlier)"
-_VL=[('buy','G','buys bought buy buying'),('get','G','gets got get getting gotten'),('receive','G','receives received receive'),('find','G','finds found find'),('collect','G','collects collected collect'),('pick','G','picks picked pick'),('earn','G','earns earned earn'),('make','G','makes made make'),('bake','G','bakes baked bake'),('add','G','adds added add'),('win','G','wins won win'),('gain','G','gains gained gain'),('catch','G','catches caught catch'),('grow','G','grows grew grow'),('save','G','saves saved save'),('borrow','G','borrows borrowed borrow'),('bring','G','brings brought bring'),('gather','G','gathers gathered gather'),('harvest','G','harvests harvested harvest'),('produce','G','produces produced produce'),('score','G','scores scored score'),('lay','G','lays laid lay'),('give','L','gives gave give given'),('sell','L','sells sold sell'),('eat','L','eats ate eat eaten'),('use','L','uses used use'),('lose','L','loses lost lose'),('spend','L','spends spent spend'),('donate','L','donates donated donate'),('break','L','breaks broke break broken'),('throw','L','throws threw throw thrown'),('pay','L','pays paid pay'),('drink','L','drinks drank drink'),('share','L','shares shared share'),('lend','L','lends lent lend'),('discard','L','discards discarded discard'),('remove','L','removes removed remove'),('drop','L','drops dropped drop'),('burn','L','burns burned burnt burn'),('waste','L','wastes wasted waste'),('return','L','returns returned return'),('mail','L','mails mailed mail'),('send','L','sends sent send'),('trade','L','trades traded trade'),('read','A','reads read'),('walk','A','walks walked walk'),('run','A','runs ran run'),('drive','A','drives drove drive driven'),('swim','A','swims swam swim'),('write','A','writes wrote write written'),('jump','A','jumps jumped jump'),('ride','A','rides rode ride'),('travel','A','travels traveled travelled travel'),('practice','A','practices practiced practice'),('play','A','plays played play'),('work','A','works worked work'),('type','A','types typed type'),('watch','A','watches watched watch'),('climb','A','climbs climbed climb'),('paint','A','paints painted paint'),('plant','A','plants planted plant'),('cook','A','cooks cooked cook'),('wash','A','washes washed wash'),('knit','A','knits knitted knit'),('sew','A','sews sewed sew'),('fold','A','folds folded fold'),('do','A','does did do done'),('complete','A','completes completed complete'),('finish','A','finishes finished finish'),('solve','A','solves solved solve'),('answer','A','answers answered answer'),('hike','A','hikes hiked hike'),('jog','A','jogs jogged jog'),('bike','A','bikes biked bike'),('pack','A','packs packed pack'),('deliver','A','delivers delivered deliver'),('clean','A','cleans cleaned clean'),('build','A','builds built build'),('fill','A','fills filled fill'),('visit','A','visits visited visit'),('take','A','takes took take taken'),('post','A','posts posted post'),('sing','A','sings sang sing'),('draw','A','draws drew draw'),('shoot','A','shoots shot shoot'),('kick','A','kicks kicked kick'),('sleep','A','sleeps slept sleep'),('study','A','studies studied study'),('teach','A','teaches taught teach'),('see','A','sees saw see seen'),('count','A','counts counted count'),('order','G','orders ordered order'),('rent','A','rents rented rent'),('hire','A','hires hired hire'),('invite','A','invites invited invite'),('put','A','puts put')]
+_VL=[('buy','G','buys bought buy buying'),('get','G','gets got get getting gotten'),('receive','G','receives received receive'),('find','G','finds found find'),('collect','G','collects collected collect'),('pick','G','picks picked pick'),('earn','G','earns earned earn'),('make','G','makes made make'),('bake','G','bakes baked bake'),('add','G','adds added add'),('win','G','wins won win'),('gain','G','gains gained gain'),('catch','G','catches caught catch'),('grow','G','grows grew grow'),('save','G','saves saved save'),('borrow','G','borrows borrowed borrow'),('bring','G','brings brought bring'),('gather','G','gathers gathered gather'),('harvest','G','harvests harvested harvest'),('produce','G','produces produced produce'),('score','G','scores scored score'),('lay','G','lays laid lay'),('give','L','gives gave give given'),('sell','L','sells sold sell'),('eat','L','eats ate eat eaten'),('use','L','uses used use'),('lose','L','loses lost lose'),('spend','L','spends spent spend'),('donate','L','donates donated donate'),('break','L','breaks broke break broken'),('throw','L','throws threw throw thrown'),('pay','L','pays paid pay'),('drink','L','drinks drank drink'),('share','L','shares shared share'),('lend','L','lends lent lend'),('discard','L','discards discarded discard'),('remove','L','removes removed remove'),('drop','L','drops dropped drop'),('burn','L','burns burned burnt burn'),('waste','L','wastes wasted waste'),('return','L','returns returned return'),('mail','L','mails mailed mail'),('send','L','sends sent send'),('trade','L','trades traded trade'),('read','A','reads read'),('walk','A','walks walked walk'),('run','A','runs ran run'),('drive','A','drives drove drive driven'),('swim','A','swims swam swim'),('write','A','writes wrote write written'),('jump','A','jumps jumped jump'),('ride','A','rides rode ride'),('travel','A','travels traveled travelled travel'),('practice','A','practices practiced practice'),('play','A','plays played play'),('work','A','works worked work'),('type','A','types typed type'),('watch','A','watches watched watch'),('climb','A','climbs climbed climb'),('paint','A','paints painted paint'),('plant','A','plants planted plant'),('cook','A','cooks cooked cook'),('wash','A','washes washed wash'),('knit','A','knits knitted knit'),('sew','A','sews sewed sew'),('fold','A','folds folded fold'),('do','A','does did do done'),('complete','A','completes completed complete'),('finish','A','finishes finished finish'),('solve','A','solves solved solve'),('answer','A','answers answered answer'),('hike','A','hikes hiked hike'),('jog','A','jogs jogged jog'),('bike','A','bikes biked bike'),('pack','A','packs packed pack'),('deliver','A','delivers delivered deliver'),('clean','A','cleans cleaned clean'),('build','A','builds built build'),('fill','A','fills filled fill'),('visit','A','visits visited visit'),('take','A','takes took take taken'),('post','A','posts posted post'),('sing','A','sings sang sing'),('draw','A','draws drew draw'),('shoot','A','shoots shot shoot'),('kick','A','kicks kicked kick'),('sleep','A','sleeps slept sleep'),('study','A','studies studied study'),('teach','A','teaches taught teach'),('see','A','sees saw see seen'),('count','A','counts counted count'),('order','G','orders ordered order'),('rent','A','rents rented rent'),('hire','A','hires hired hire'),('invite','A','invites invited invite'),('put','A','puts put'),('deposit','G','deposits deposited deposit'),('withdraw','L','withdraws withdrew withdraw withdrawn')]
 VERB={f:(l,c) for l,c,fs in _VL for f in fs.split()}
 _VRE=r"(?:%s)"%'|'.join(sorted(VERB,key=len,reverse=True))
 _HAVE=r"(?:has|have|had|owns|owned|own|is|are|was|were|weighs|weighed|holds|contains|contained|costs|cost|measures|needs|need|wants|want|there)"
@@ -219,7 +219,7 @@ def compile_problem(text:str):
   p.eqs.append(sum((p.cur(w) for w in who),Lin())-C(p.pertot))
  t,tq=_target(p)
  if t is None:return None
- _,q=_ask(p);mt=re.search(r"how many\s(?:more\s|fewer\s)?()([a-z]+)\b",q)
+ _,q=_ask(p);mt=re.search(r"how many\s(?:more\s|fewer\s)?()(?!(?:do|does|did|are|is|were|was|will|can|could|would|should|have|has|had)\b)([a-z]+)\b",q)
  body=' '.join(x for i,x in enumerate(p.ss) if i!=p.qi)+' '+_ask(p)[0]
  if mt and ulem2(mt.group(2)) not in _GEN and ulem2(mt.group(2)) not in {ulem2(w) for w in re.findall(r"[a-z]+",body)}:p.unparsed.append(f"target noun {mt.group(2)} not in body")
  _,q=_ask(p);mu=re.search(r"how (?:many|much)\s(?:more\s)?(\w+)",q);qu=_UNITW.get(mu.group(1)) if mu else None
@@ -232,9 +232,81 @@ def compile_problem(text:str):
  if v is None:return None
  v=v*f;nums={f"#{i}" for i,q_ in enumerate(p.qs) if q_['kind'] not in _RATK}
  return {'value':v,'eqs':p.trace+([f"convert × {_f(f)}"] if f!=1 else []),'target':tq,'sol':{k:_f(x) for k,x in sol.items()},'all_used':nums<=p.used,'unused':sorted(nums-p.used),'verified':all(ev(e,sol)==0 for e in p.eqs if all(k=='' or k in sol for k in e)),'neg':any(x<0 for x in sol.values()),'unparsed':p.unparsed,'n_eq':len(p.eqs),'norm':p.ss}
+_POSTV={'away':'L','off':'L','popped':'L','taken':'L','burst':'L','broke':'L','died':'L','escaped':'L','melted':'L','on':'G','joined':'G','arrived':'G','back':'G','withdrawal':'L','withdrawals':'L','deposit':'G','deposits':'G'}
+_CMPW={'older':1,'more':1,'longer':1,'taller':1,'heavier':1,'extra':1,'younger':-1,'fewer':-1,'less':-1,'shorter':-1,'lighter':-1}
+_HAVEW=set('has have had holds hold held contains contain contained is are was were owe owes owed needs need there started start starts'.split());_AUXW=set('do does did are is were was will can could would should have has had'.split());_OBJ=set('her him them me us'.split());_RATK2={'HALF','THIRD','QUARTER','FIFTH'};_DIVW=set('split share shared sharing divide divided among between evenly equally'.split());_CUT={'and',',','.','?','!','then','but'};_MOV=set('get gets got flew fly flies ran went go goes came come comes hopped hop climbed jumped walked swam rode sailed moved wandered'.split())
+def _rr(x):return list(itertools.takewhile(lambda w:w not in _CUT,x['r']))
+def _sg(x):
+ l=x['l'];j=next((k for k in range(len(l)-1,-1,-1) if l[k] in VERB),None);pre=VERB[l[j]][1] if j is not None else None;rx=_rr(x)[:3];po=next((_POSTV[w] for k,w in enumerate(rx) if w in _POSTV and (w not in ('away','off','on','back') or k and (rx[k-1] in VERB or rx[k-1] in _MOV))),None) if pre is None or VERB[l[j]][0] in ('get','go','come') else None;pre='G' if pre=='L' and VERB[l[j]][0] in ('give','send','lend','mail','pass') and j+1<len(l) and l[j+1] in _OBJ else pre
+ return po or ('G' if pre=='A' else pre)
+def _per(x,Q):
+ l,r=x['l'],x['r']
+ if 'each' in l:j=len(l)-1-l[::-1].index('each');nx=l[j+1] if j+1<len(l) else '';return (lem(nx) if nx and nx not in VERB and nx not in _HAVEW else lem(l[j-1]) if j else ''),None
+ if r[:1]==['each']:return next((lem(w) for w in reversed(l) if w.isalpha() and w not in ('at','for','cost','costs','are','is','each','a','an','the')),''),None
+ n=next((y for y in Q if y['i']==x['i']+1 and y['v']==1 and y['s']==x['s'] and y['l'][-1:]==['for']),None);k=next((k for k in range(len(r)-1) if lem(r[k+1])==x['per'] and r[k] in ('per','each','every','a','an')),None)
+ return (n['unit'],n['i']) if n else (x['per'] if x['per'] and (x['per']!=x['unit'] or x['kind']=='MONEY') and (x['per'] not in VERB or k and r[k-1] in ('in','on','for','at','of','per') or k+2>=len(r) or not r[k+2].isalpha()) and k is not None and (r[k] in ('per','each','every') or x['per'] in _UNITW or any(y['unit']==x['per'] for y in Q)) else '',None)
+def _seg(l):k=max([i for i,w in enumerate(l) if w in ('and',',','then',';')]+[-1]);return l[k+1:],k>=0
+def _vb(l):
+ g,_=_seg(l);w=next((w for w in reversed(g) if w in VERB or w in _HAVEW),None);return (w,'H') if w in _HAVEW and w not in VERB else (w,VERB[w][1]) if w else (None,None)
+def _un(x):return {lem(w) for w in x['r'][:2] if w.isalpha() and w not in STOPW|_CUT|_MOV|_HAVEW|_POSTV.keys()|_CMPW.keys()|{'my','your','our','each','per','times','another','more','left'} and w not in VERB}
+def _seq(text:str):
+ I=quantities(text);ss=I['sents'];qi=I['qi'];Q=[dict(x,i=k) for k,x in enumerate(I['qs'])]
+ nm={w.lower() for w in re.findall(r"\b[A-Z][a-z']+",text) if w.lower() not in _COMMON and w.lower() not in VERB and w.lower() not in STOPW}
+ if not ss or not Q or len(Q)>4 or len(text.split())>32 or len(nm)>2 or re.search(r"(?i)\bthan\b|\b(?:half|third|quarter) as (?:many|much)\b|\bhow (?:many|much) (?:more|fewer|less)\b|\bpercent|%|\baverage\b|\bboth\b|\bfor every\b|\bwill be\b|\b(?:had|has|have|needs?|wants?) to\b|\bother\b|\d-|/|\bhead start\b|\btimes (?:that|the)\b|[^\x00-\x7f$]|\bone of\b|\bper \w+ per\b",text) or any(x['kind'] in ('PCT','FRAC') for x in Q):return None
+ qs=ss[qi];m=re.search(r"(?i)\b(?:how (?:many|much|far|old|long)|what(?:'s| is| was| will)\b)",qs)
+ if not m or re.search(r"\b(?:would|instead|if)\b",qs[m.start():].lower()) or any(y['t0']==x['tok']+1 or x['r'][:2]==['of','them'] and x['kind'] not in _RATK2 or x['kind']=='MONEY' and x['r'][:1] and x['r'][0] in _CMPW or 'each' in x['l'] and x['per'] for x in Q for y in Q):return None
+ wq=sum(1 for _,s in I['toks'] if s<qi)+len(TOK.findall(qs[:m.start()]));q=qs[m.start():].lower();B=[x for x in Q if x['tok']<wq];A=[x for x in Q if x['tok']>=wq];mt=re.search(r"how many (?:more |fewer |less )?([a-z]+)",q);tu=lem(mt[1]) if mt and mt[1] not in _AUXW else 'year' if q.startswith('how old') else None
+ bl={lem(w) for w in re.findall(r"[a-z]+",(' '.join(ss[:qi])+' '+qs[:m.start()]).lower())};tot=bool(re.search(r"\b(?:total|altogether|in all|combined|together)\b",q));each=bool(re.search(r"\beach\b|\bper (?:person|kid|child|friend|student)\b",q));used=set();st=[];pd=re.search(r"\b(?:in|per|a|each|every) (day|week|month|year|hour|minute)\b",q)
+ for x in Q:
+  if x['i'] in used or x['kind'] in _RATK2:continue
+  p,n=_per(x,Q);ofp=next((y for y in B if y['i']==x['i']-1 and y['r'][1:2]==['of'] and x['l'][-1:]==['of']),None)
+  if ofp and not p:used|={x['i'],ofp['i']};st.append(dict(x,v=x['v']*ofp['v'],vb=_vb(ofp['l']),why=f"{_f(ofp['v'])} × {_f(x['v'])}"));continue
+  if not p:continue
+  n is not None and used.add(n);cc=[y for y in A+B if y['i'] not in used|{x['i']} and y['unit']==p and not _per(y,Q)[0]];c=cc[0] if len(cc)==1 else None
+  if len(cc)>1:return None
+  if c and any(y['i']!=c['i'] and y['i'] not in used and y['s']==c['s'] and y['tok']>c['tok'] and y['kind']==c['kind'] and not _un(y) for y in Q if y['i']!=x['i']):return None
+  if c:used|={x['i'],c['i']};st.append(dict(x,tok=max(x['tok'],c['tok']),s=max(x['s'],c['s']),v=x['v']*c['v'],vb=next((v for v in (_vb(c['l']),_vb(x['l'])) if v[1] in ('G','L')),_vb(x['l']) if _vb(x['l'])[0] else _vb(c['l'])),ei='each' in x['l'],why=f"{_f(c['v'])} × {_f(x['v'])}"));continue
+  f=_CONV.get((pd[1],p)) if pd else None
+  if f:used.add(x['i']);st.append(dict(x,v=x['v']*f,vb=_vb(x['l']),why=f"{_f(x['v'])} × {_f(f)}"));continue
+  d=next((y for y in A if y['i'] not in used and y['unit']==x['unit']),None) if tu==p else None
+  if not d or len(Q)!=len(used|{x['i'],d['i']}):return None
+  v=d['v']/x['v'];return v,[f"{_f(d['v'])} ÷ {_f(x['v'])} = {_f(v)}"]
+ if len(st)>1:return None
+ V=None;mk=False;ls=None;W=[];dv=2 if each and re.search(r"\b(?:split|share|shared|divide|divided)\b[^.?!]*\bwith (?:her|his|my|their|a|an|the) [a-z]+",text.lower()) else None;fr=False
+ for x in sorted([x for x in B if x['i'] not in used]+st,key=lambda z:z['tok']):
+  r=_rr(x);l=x['l'];vw,vc=x['vb'] if 'vb' in x else _vb(l);g,jn=_seg(l);cm=next((_CMPW[w] for w in r[:3] if w in _CMPW),None);po=next((_POSTV[w] if w in _POSTV else VERB[w][1] for k,w in enumerate(r[:3]) if w in _POSTV and (w not in ('away','off','on','back') or k and (r[k-1] in VERB or r[k-1] in _MOV)) or w in VERB and VERB[w][1] in 'GL' and k and r[k-1] in ('were','was','are','is','got','get')),None) if vc in (None,'H') or VERB.get(vw,('',''))[0] in ('get','go','come') else None
+  s=po or ('G' if vc=='A' and VERB[vw][0] in ('plant','cook','build','paint','draw','write','knit','sew') else 'G' if vc=='L' and VERB[vw][0] in ('give','send','lend','mail','pass') and l[l.index(vw)+1:l.index(vw)+2]!=[] and l[l.index(vw)+1] in _OBJ else vc if vc in ('G','L') else None)
+  if x['kind'] in _RATK2:
+   pu=next((lem(w) for w in r if w.isalpha() and w not in ('of','them','it','are','is','were','was','the')),'');cp=bool(tu and pu and (tu!=pu and tu not in bl or re.search(r"\bnot "+re.escape(pu),q)) and re.search(r"\bof (?:them|those|these|the \w+) (?:are|were|is|was)\b",' '.join(r)))
+   if V is None or fr or not (s=='L' or cp):return None
+   pt=V/x['v'];V=V-pt;fr=True;ls=s if s=='L' else None;W.append(f"{_f(V+pt)} - 1/{_f(x['v'])} of it = {_f(V)}");continue
+  if x['kind'] in ('TWICE','TRIPLE','QUAD') or r[:1]==['times'] and 'as' in r:
+   wn=[w for w in re.findall(r"\b[A-Z][a-z]+",ss[x['s']]) if w.lower() in nm]
+   if V is None or r.count('as')!=1 or not tot and not (wn and wn[-1] in qs[m.start():]):return None
+   nv=V*x['v'];W.append(f"{_f(V)} × {_f(x['v'])} = {_f(nv)}");V=V+nv if tot else nv;ls=None;continue
+  if V is not None and each and any(w in _DIVW for w in l[-3:]+r[:4]):dv=x['v']+(l[-1:]==['with'] or l[-2:-1]==['with']);continue
+  if tu and tu in bl and _un(x) and tu not in _un(x) or V is not None and (x['kind']=='MONEY')!=mk and _un(x):return None
+  if V is None:
+   if x['v']==1 and not x.get('why') and x['kind']=='WORD':return None
+   V=x['v'];ps=x['s'];bc=vc;bu=_un(x);mk=x['kind']=='MONEY';ls='G' if vc in ('A','G','H') and not x.get('ei') else None;W.append(f"{x['why']} = {_f(V)}" if x.get('why') else f"start {_f(V)}");continue
+  if cm is not None and s is None:
+   if vc not in (None,'H') or cm<0 and vc is None:return None
+   nv=V+cm*x['v'];W.append(f"{_f(V)} {'+' if cm>0 else '-'} {_f(x['v'])} = {_f(nv)}");V=V+nv if tot else nv;ls=None;continue
+  if s=='G' and bc=='H' and mk and VERB.get(vw,('',''))[0] in ('buy','order','rent','pay'):s='L'
+  if s is None and vc=='H':return None
+  if s is None and not (jn and x['s']==ps and ls and (not _un(x) or not bu or _un(x)&(bu|{tu}))):return None
+  if _un(x) and bu and not _un(x)&(bu|{tu}) and not x.get('why'):return None
+  s=s or ls;ls=s;ps=x['s'];V=V+x['v'] if s=='G' else V-x['v'];W.append((x['why']+" = "+_f(x['v'])+", " if x.get('why') else '')+f"{'+' if s=='G' else '-'} {_f(x['v'])} = {_f(V)}")
+  if V<0:return None
+ if V is None or len(W)<2 and not st and not dv or any(x['i'] not in used for x in A) or each and not dv or not each and re.search(r"\b(?:split|splits|share|shares|shared|divide|divides|divided)\b",text.lower()):return None
+ if dv:V=V/dv;W.append(f"{_f(V*dv)} ÷ {_f(dv)} = {_f(V)}")
+ return None if tu and tu not in bl and not fr else (V,W)
 def solve_word(text:str):
  try:r=compile_problem(text)
  except (ValueError,ZeroDivisionError,KeyError,IndexError,TypeError,AttributeError,RecursionError):r=None
- if not (r and r['all_used'] and not r['unparsed'] and r['verified'] and not r['neg'] and r['value']>=0 and (r['value']*100).denominator==1):return None
+ if not (r and r['all_used'] and not r['unparsed'] and r['verified'] and not r['neg'] and r['value']>=0 and (r['value']*100).denominator==1):
+  try:z=_seq(text)
+  except (ValueError,ZeroDivisionError,KeyError,IndexError,TypeError,AttributeError,RecursionError):z=None
+  return {'value':z[0],'reply':f"The answer is {_f(z[0])}. Working: {'; '.join(z[1])}.",'conf':0.75,'path':'seq','trace':{'eqs':z[1],'target':'answer','sol':{}}} if z and z[0]>=0 and (z[0]*100).denominator==1 else None
  v=r['value'];conf=0.85 if v.denominator==1 else 0.65
  return {'value':v,'reply':f"The answer is {_f(v)}. Working: {'; '.join(r['eqs'])}; so {r['target']} = {_f(v)}.",'conf':conf,'path':'relate','trace':{'eqs':r['eqs'],'target':r['target'],'sol':r['sol']}}

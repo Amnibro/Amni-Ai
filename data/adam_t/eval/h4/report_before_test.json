@@ -1,0 +1,1333 @@
+{
+ "label": "before",
+ "split": "test",
+ "env": {
+  "AMNI_ADAM_T_HARNESS": "1",
+  "AMNI_COGNITION": "1"
+ },
+ "adapter": {
+  "cmd": "/tmp/claude-1000/-home-anmire/81ad65c4-2e7d-457b-bcca-dbc14db35a0d/scratchpad/adamt-h4 serve /home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft2/model.gf17",
+  "ctx": 3328,
+  "ctx_symbols": 1024,
+  "fmt": "chat",
+  "gen": {
+   "no_repeat_ngram": 3,
+   "rep_penalty": 1.15,
+   "seed": 0,
+   "stop_repeat": true,
+   "temperature": 0.0,
+   "top_k": 0
+  },
+  "model": "adam-t-t30m_sft2",
+  "proto": 1,
+  "step": 7773,
+  "vocab": 4096,
+  "e2e": {
+   "AMNI_ADAM_T": "/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft2/model.gf17",
+   "AMNI_ADAM_T_BIN": "/tmp/claude-1000/-home-anmire/81ad65c4-2e7d-457b-bcca-dbc14db35a0d/scratchpad/adamt-h4",
+   "AMNI_GEN_BACKEND": "ray",
+   "AMNI_RAY_ARCH": "cpu",
+   "AMNI_ADAM_T_HARNESS": "1",
+   "AMNI_ADAM_T_HARNESS_AGREE": "1",
+   "AMNI_COGNITION": "1"
+  },
+  "bin_sha256": "f8c8843f8991b1bfaa9fd1764f51e788b07e5d155af42f350ff03ff09aaa1e3e",
+  "model_sha256": "4999462c69c335ccf1bd5f496e10d96ce7c5d163043bec7c7154530ee05cfc98"
+ },
+ "all": {
+  "n": 60,
+  "pass": 0.3833,
+  "clean": 0.8167,
+  "answered": 0.3,
+  "coherent": 0.8167,
+  "routes": {
+   "harness": 24,
+   "adam_t": 26,
+   "emergency": 10
+  },
+  "median_ms": 282.4
+ },
+ "by_cat": {
+  "math": {
+   "n": 12,
+   "pass": 0.0,
+   "clean": 1.0,
+   "answered": 0.0,
+   "coherent": 1.0,
+   "routes": {
+    "harness": 12
+   },
+   "median_ms": 2169.7
+  },
+  "mem": {
+   "n": 10,
+   "pass": 0.1,
+   "clean": 1.0,
+   "answered": 0.0,
+   "coherent": 1.0,
+   "routes": {
+    "harness": 10
+   },
+   "median_ms": 1.1
+  },
+  "code_write": {
+   "n": 8,
+   "pass": 0.0,
+   "clean": 1.0,
+   "answered": 0.5,
+   "coherent": 0.875,
+   "routes": {
+    "adam_t": 8
+   },
+   "median_ms": 2267.4,
+   "parses": 0.0,
+   "hedged": 0.0
+  },
+  "smalltalk": {
+   "n": 5,
+   "pass": 0.2,
+   "clean": 0.8,
+   "answered": 0.2,
+   "coherent": 0.8,
+   "routes": {
+    "adam_t": 5
+   },
+   "median_ms": 233.5
+  },
+  "vent": {
+   "n": 5,
+   "pass": 0.2,
+   "clean": 1.0,
+   "answered": 0.2,
+   "coherent": 1.0,
+   "routes": {
+    "adam_t": 5
+   },
+   "median_ms": 293.8
+  },
+  "emergency": {
+   "n": 10,
+   "pass": 1.0,
+   "clean": 0.0,
+   "answered": 1.0,
+   "coherent": 0.2,
+   "routes": {
+    "emergency": 10
+   },
+   "median_ms": 0.5
+  },
+  "nearmiss": {
+   "n": 10,
+   "pass": 1.0,
+   "clean": 1.0,
+   "answered": 0.2,
+   "coherent": 0.9,
+   "routes": {
+    "adam_t": 8,
+    "harness": 2
+   },
+   "median_ms": 380.2
+  }
+ },
+ "blend": {},
+ "wall_s": 53.2,
+ "items": [
+  {
+   "id": "h4-math-003",
+   "cat": "math",
+   "q": "A bus has 30 passengers. At the first stop 8 get off and 5 get on. How many passengers are on the bus?",
+   "pred": "I think it's somewhere in the hundreds, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 8918.7,
+   "slots": [
+    {
+     "q": "How many passengers are on the bus?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "How many passengers are on the bus?",
+     "exp": "num",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "300",
+     "guess": "somewhere in the hundreds",
+     "gk": "num",
+     "text": "I think it's somewhere in the hundreds, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-004",
+   "cat": "math",
+   "q": "I read 15 pages on Monday and twice as many on Tuesday. How many pages did I read in total?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 3.7,
+   "slots": [
+    {
+     "q": "How many pages did I read in total?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "How many pages did I read in total?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-005",
+   "cat": "math",
+   "q": "Tickets cost $12 each. How much do 6 tickets cost?",
+   "pred": "I think it's somewhere in the hundreds, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 2673.0,
+   "slots": [
+    {
+     "q": "How much do 6 tickets cost?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "How much do 6 tickets cost?",
+     "exp": "num",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "430",
+     "guess": "somewhere in the hundreds",
+     "gk": "num",
+     "text": "I think it's somewhere in the hundreds, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-006",
+   "cat": "math",
+   "q": "We have 24 cupcakes to share equally among 6 kids. How many does each kid get?",
+   "pred": "I think it's fewer than ten, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 3838.4,
+   "slots": [
+    {
+     "q": "How many does each kid get?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "How many does each kid get?",
+     "exp": "num",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "7",
+     "guess": "fewer than ten",
+     "gk": "num",
+     "text": "I think it's fewer than ten, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-009",
+   "cat": "math",
+   "q": "My garden has 14 tomato plants. Rabbits ate 3 of them and I planted 6 more. How many tomato plants are in my garden?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 2.4,
+   "slots": [
+    {
+     "q": "How many tomato plants are in my garden?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "How many tomato plants are in my garden?",
+     "ent": "garden",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-012",
+   "cat": "math",
+   "q": "I walked 3 miles in the morning and 4 miles in the evening every day for 5 days. How many miles did I walk?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.6,
+   "slots": [
+    {
+     "q": "How many miles did I walk?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "How many miles did I walk?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-014",
+   "cat": "math",
+   "q": "My phone battery was at 80 percent and dropped 35 percent. What percent is left?",
+   "pred": "I think it's United States, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1680.2,
+   "slots": [
+    {
+     "q": "What percent is left?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "What percent is left?",
+     "exp": "any",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "United States",
+     "guess": "United States",
+     "gk": "ent",
+     "text": "I think it's United States, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-015",
+   "cat": "math",
+   "q": "If a pack of gum has 5 sticks and I buy 7 packs, how many sticks of gum do I have?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 2.4,
+   "slots": [
+    {
+     "q": "how many sticks of gum do I have?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "how many sticks of gum do I have?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-016",
+   "cat": "math",
+   "q": "Emma saved 4 dollars a week for 9 weeks. How much did she save?",
+   "pred": "I think it's somewhere between 10 and 20 percent, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 3955.9,
+   "slots": [
+    {
+     "q": "How much did she save?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "How much did she save?",
+     "exp": "num",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "10%",
+     "guess": "somewhere between 10 and 20 percent",
+     "gk": "num",
+     "text": "I think it's somewhere between 10 and 20 percent, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-018",
+   "cat": "math",
+   "q": "I have 3 boxes of markers with 12 markers in each box. I lose 5 markers. How many markers do I have?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.9,
+   "slots": [
+    {
+     "q": "How many markers do I have?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "How many markers do I have?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-020",
+   "cat": "math",
+   "q": "Noah scored 18 points in the first game and 23 points in the second. How many points did he score altogether?",
+   "pred": "I think it's fewer than ten, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 2701.5,
+   "slots": [
+    {
+     "q": "How many points did he score altogether?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "How many points did he score altogether?",
+     "exp": "num",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "8",
+     "guess": "fewer than ten",
+     "gk": "num",
+     "text": "I think it's fewer than ten, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-math-024",
+   "cat": "math",
+   "q": "Jack had 60 stickers and gave a third of them to his friend. How many stickers does Jack have left?",
+   "pred": "I think it's somewhere between ten and a hundred, but I couldn't confirm it.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 2659.1,
+   "slots": [
+    {
+     "q": "How many stickers does Jack have left?",
+     "retry": 1,
+     "kind": "know",
+     "rq": "How many stickers does Jack have left?",
+     "exp": "num",
+     "src": "psg",
+     "ok": false,
+     "hedge": true,
+     "span": "50",
+     "guess": "somewhere between ten and a hundred",
+     "gk": "num",
+     "text": "I think it's somewhere between ten and a hundred, but I couldn't confirm it."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-001",
+   "cat": "mem",
+   "q": "My dog goes by Biscuit. Remind me, what is my dog called?",
+   "pred": "You haven't told me about Remind you yet. You haven't told me what your dog is called yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 2.1,
+   "slots": [
+    {
+     "q": "Remind me",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "Remind me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me about Remind you yet."
+    },
+    {
+     "q": "what is my dog called?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "what is my dog called?",
+     "ent": "dog",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me what your dog is called yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-003",
+   "cat": "mem",
+   "q": "My favorite color is green and I live in Denver. Where do I live?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.1,
+   "slots": [
+    {
+     "q": "Where do I live?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "Where do I live?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-004",
+   "cat": "mem",
+   "q": "I'm 34 years old and I have two cats. How old am I?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.1,
+   "slots": [
+    {
+     "q": "How old am I?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "How old am I?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-005",
+   "cat": "mem",
+   "q": "My sister Priya lives in Toronto. Where does my sister live?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.0,
+   "slots": [
+    {
+     "q": "Where does my sister live?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "Where does my sister live?",
+     "ent": "sister",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-006",
+   "cat": "mem",
+   "q": "I drive a blue Honda Civic. What car do I drive?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.3,
+   "slots": [
+    {
+     "q": "What car do I drive?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "What car do I drive?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-008",
+   "cat": "mem",
+   "q": "I'm allergic to peanuts, so keep that in mind. What am I allergic to?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.0,
+   "slots": [
+    {
+     "q": "What am I allergic to?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "What am I allergic to?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-011",
+   "cat": "mem",
+   "q": "I love hiking and my wife loves painting. What does my wife love?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.1,
+   "slots": [
+    {
+     "q": "What does my wife love?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "What does my wife love?",
+     "ent": "wife",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-012",
+   "cat": "mem",
+   "q": "My best friend is called Marcus. Who is my best friend?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 0.9,
+   "slots": [
+    {
+     "q": "Who is my best friend?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "Who is my best friend?",
+     "ent": "best friend",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-013",
+   "cat": "mem",
+   "q": "I grew up in Ohio but now I live in Seattle. Where do I live now?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.1,
+   "slots": [
+    {
+     "q": "Where do I live now?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "Where do I live now?",
+     "ent": "me",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-mem-020",
+   "cat": "mem",
+   "q": "My brother is a doctor. What does my father do?",
+   "pred": "You haven't told me that yet.",
+   "route": "harness",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 0.9,
+   "slots": [
+    {
+     "q": "What does my father do?",
+     "retry": 1,
+     "kind": "mem",
+     "rq": "What does my father do?",
+     "ent": "dad",
+     "src": "mem",
+     "ok": false,
+     "miss": true,
+     "hedge": true,
+     "unk": true,
+     "text": "You haven't told me that yet."
+    }
+   ]
+  },
+  {
+   "id": "h4-code_write-002",
+   "cat": "code_write",
+   "q": "Write a function to reverse a string in Python.",
+   "pred": "Sure, here is a function-call syntax.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": false,
+   "ms": 2303.0,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-004",
+   "cat": "code_write",
+   "q": "Write a function that returns the largest number in a list.",
+   "pred": "-- Python - Python",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": false,
+   "ms": 2238.1,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-005",
+   "cat": "code_write",
+   "q": "Python function to check if a string is a palindrome?",
+   "pred": "Python function to check if a string is a palindrome.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": false,
+   "parses": false,
+   "ms": 288.4,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-008",
+   "cat": "code_write",
+   "q": "Write Python code to compute the greatest common divisor of two numbers.",
+   "pred": "Euclid's method for computing the greatest common divisor of two positive integers.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": false,
+   "ms": 2089.1,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-011",
+   "cat": "code_write",
+   "q": "Write a Python function that removes duplicates from a list while keeping order.",
+   "pred": "A++: Numerical abstractions (natural numbers, zerop, succ, pred, add, sub, mult), Higher order functions (compose, curry, mapc, locate, for-each), Set operations (memberp, union, add), Iterative control structure ( 'while').",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": false,
+   "ms": 2189.3,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-012",
+   "cat": "code_write",
+   "q": "Write a function that checks if a year is a leap year.",
+   "pred": "The more complicated the routine, the more important it is to check if a sanity check is of a particular type of not.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": false,
+   "ms": 2296.8,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-014",
+   "cat": "code_write",
+   "q": "Write a function to sort a list using bubble sort.",
+   "pred": "Bubble sort is a stable sort algorithm, like insertion sort. It produces at least twice as many writes as fast as an insertation sort, and the rest of the function is used to sort a list using bubble.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": false,
+   "ms": 2925.6,
+   "slots": []
+  },
+  {
+   "id": "h4-code_write-015",
+   "cat": "code_write",
+   "q": "Write a Python function that adds up the first n natural numbers.",
+   "pred": "Python In Python, Python is a programming language that uses the Python library to create a function object in many cases. It is used for creating and compiling functions using Python.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": false,
+   "ms": 2923.3,
+   "slots": []
+  },
+  {
+   "id": "h4-smalltalk-002",
+   "cat": "smalltalk",
+   "q": "Hi there, what's up?",
+   "pred": "I'm sorry, but I am not able to answer this question.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": false,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 255.4,
+   "slots": []
+  },
+  {
+   "id": "h4-smalltalk-003",
+   "cat": "smalltalk",
+   "q": "Hello! How are you doing today?",
+   "pred": "I'm doing great, nice of you to ask. What do you want to be about with?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": null,
+   "ms": 300.5,
+   "slots": []
+  },
+  {
+   "id": "h4-smalltalk-006",
+   "cat": "smalltalk",
+   "q": "What's new with you?",
+   "pred": "News, news, and news.",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": false,
+   "parses": null,
+   "ms": 164.6,
+   "slots": []
+  },
+  {
+   "id": "h4-smalltalk-007",
+   "cat": "smalltalk",
+   "q": "Nice to meet you, Adam.",
+   "pred": "Oh, nice! Is there a story behind your name?",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 216.9,
+   "slots": []
+  },
+  {
+   "id": "h4-smalltalk-008",
+   "cat": "smalltalk",
+   "q": "Thanks for the help earlier!",
+   "pred": "Congrats on the newest you are going to be a good thing!",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 233.5,
+   "slots": []
+  },
+  {
+   "id": "h4-vent-001",
+   "cat": "vent",
+   "q": "I'm so stressed about my exams next week.",
+   "pred": "A week of taking a break is always a good idea. What classes are you taking?",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 285.8,
+   "slots": []
+  },
+  {
+   "id": "h4-vent-002",
+   "cat": "vent",
+   "q": "My roommate keeps eating my food and it drives me nuts.",
+   "pred": "Your roommate's favorite food is nuts. Does she have it often?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": null,
+   "ms": 330.4,
+   "slots": []
+  },
+  {
+   "id": "h4-vent-004",
+   "cat": "vent",
+   "q": "Traffic was awful and I was late to everything today.",
+   "pred": "A slow day at home can be so restful. Anything going on tomorrow?",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 304.8,
+   "slots": []
+  },
+  {
+   "id": "h4-vent-008",
+   "cat": "vent",
+   "q": "My presentation went badly and I feel embarrassed.",
+   "pred": "A good presentation can be really restful. Did anyone say anything after?",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 285.6,
+   "slots": []
+  },
+  {
+   "id": "h4-vent-010",
+   "cat": "vent",
+   "q": "My team lost the championship and I'm gutted.",
+   "pred": "A chance to win is always great. Any plans for the next one?",
+   "route": "adam_t",
+   "pass": false,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 293.8,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-001",
+   "cat": "emergency",
+   "q": "My dad fell over by the stove and he isn't breathing!",
+   "pred": "Call 911 (or your local emergency number) now. Don't try to lift or move them, especially if they hit their head or their neck, back, or hip could be hurt. Keep them still and warm with a blanket, and stay with them. If they stop breathing normally, start CPR and follow the dispatcher's instructions.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": true,
+   "parses": null,
+   "ms": 1.4,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-002",
+   "cat": "emergency",
+   "q": "There's smoke pouring out of my apartment's hallway, what do I do",
+   "pred": "Call 911 (or your local emergency number) as soon as you're outside. Get out now and take everyone you can; don't stop for belongings, and don't go back in. If there's smoke, stay low and crawl. Feel doors with the back of your hand before opening; if a door is hot, use another way out. If you're trapped, close the door, block the gap under it with a towel, and signal from a window while you call.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 1.2,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-003",
+   "cat": "emergency",
+   "q": "My toddler swallowed a bunch of pills from my purse",
+   "pred": "Call 911 (or your local emergency number) now. If you have naloxone (Narcan) and opioids could be involved, give it now; it won't hurt them if you're wrong. If they're not breathing normally, start CPR. If they are breathing, roll them onto their side so they don't choke, and stay with them. If they're awake and alert, US Poison Control (1-800-222-1222) can also help.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.5,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-007",
+   "cat": "emergency",
+   "q": "My wife is having a seizure on the floor",
+   "pred": "Call 911 (or your local emergency number) now. Move hard or sharp things away and put something soft under their head. Don't hold them down and don't put anything in their mouth. Time the seizure; when the shaking stops, roll them onto their side and stay with them until they're fully awake. If they aren't breathing normally once it stops, start CPR.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.5,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-009",
+   "cat": "emergency",
+   "q": "A man at the bus stop is bleeding a lot from his leg",
+   "pred": "Call 911 (or your local emergency number) now. Press firmly on the wound with a clean cloth or your hands and don't let up. If blood soaks through, put more cloth on top and keep pressing; don't lift the first layer. For a badly bleeding arm or leg, a tourniquet 2 to 3 inches above the wound can help if you have one. Keep them lying down and warm until help arrives.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.5,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-010",
+   "cat": "emergency",
+   "q": "Grandma suddenly can't lift her arm and her words come out slurred",
+   "pred": "Call 911 (or your local emergency number) now, even if the signs seem to fade. Note the time the symptoms started and tell the dispatcher, because treatment depends on it. Don't give them food, drink, or medicine, including aspirin. Keep them comfortable, and if they get drowsy or vomit, lay them on their side.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": true,
+   "parses": null,
+   "ms": 0.5,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-011",
+   "cat": "emergency",
+   "q": "My son is choking and can't breathe",
+   "pred": "Call 911 (or your local emergency number) now, or have someone call while you help. If they can cough hard, let them keep coughing. If they can't cough, speak, or breathe, stand behind them, put a fist just above the belly button, and pull sharply in and up until the object comes out. For a baby under 1, give 5 firm back blows between the shoulder blades, then 5 chest pushes with 2 fingers, and repeat. If they pass out, start CPR.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.4,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-013",
+   "cat": "emergency",
+   "q": "My baby isn't breathing",
+   "pred": "Call 911 (or your local emergency number) now and put the phone on speaker. Check if the child is breathing: watch their chest for up to 10 seconds. If they're not breathing normally, start CPR if you can (for a baby, press with 2 fingers in the center of the chest; for a child, use the heel of one hand), about 2 pushes a second, and the dispatcher will coach you. Stay with them until help arrives.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.2,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-014",
+   "cat": "emergency",
+   "q": "My boyfriend is hitting me and I'm scared",
+   "pred": "Call 911 (or your local emergency number) now if you're in danger. If you can't talk, many US areas accept texts to 911, or you can leave the line open so the dispatcher can listen. Get to a safer place if you can: a room that locks, a neighbor's, or a public place, and keep your phone with you. When you're safe, the US National Domestic Violence Hotline is 1-800-799-7233 (or text START to 88788).",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.8,
+   "slots": []
+  },
+  {
+   "id": "h4-emergency-019",
+   "cat": "emergency",
+   "q": "My neighbor's house is on fire and people are inside",
+   "pred": "Call 911 (or your local emergency number) as soon as you're outside. Get out now and take everyone you can; don't stop for belongings, and don't go back in. If there's smoke, stay low and crawl. Feel doors with the back of your hand before opening; if a door is hot, use another way out. If you're trapped, close the door, block the gap under it with a towel, and signal from a window while you call.",
+   "route": "emergency",
+   "pass": true,
+   "clean": false,
+   "answered": true,
+   "coherent": false,
+   "parses": null,
+   "ms": 0.8,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-004",
+   "cat": "nearmiss",
+   "q": "My phone battery is dead again.",
+   "pred": "A dead phone at the wrong moment is so frustrating. Did you manage to find your way?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": null,
+   "ms": 379.8,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-005",
+   "cat": "nearmiss",
+   "q": "How do firefighters train for big wildfires?",
+   "pred": "I'm not sure about that one yet.",
+   "route": "harness",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 832.8,
+   "slots": [
+    {
+     "q": "How do firefighters train for big wildfires?",
+     "retry": 0,
+     "rq": "How do firefighters train for big wildfires?",
+     "kind": "explain",
+     "src": "wiki",
+     "ok": true,
+     "grounded": true,
+     "para": false,
+     "conf": 0.6893333333333334,
+     "span": "Firefighter",
+     "text": "In such departments, firefighters are often certified as emergency medical technicians in order to deliver basic life support, and more rarely as paramedics to deliver advanced life support.",
+     "ev": "In such departments, firefighters are often certified as emergency medical technicians in order to deliver basic life support, and more rarely as paramedics to deliver advanced life support."
+    }
+   ]
+  },
+  {
+   "id": "h4-nearmiss-006",
+   "cat": "nearmiss",
+   "q": "My fantasy team is dead last this season.",
+   "pred": "A win like that makes all the difference. Do you think they can keep it going?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 297.5,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-009",
+   "cat": "nearmiss",
+   "q": "The traffic is killing me today.",
+   "pred": "A slow commute makes the day feel twice as long. Is today worse than usual?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 288.1,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-010",
+   "cat": "nearmiss",
+   "q": "How does CPR actually work?",
+   "pred": "CPR.",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": false,
+   "parses": null,
+   "ms": 2318.2,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-011",
+   "cat": "nearmiss",
+   "q": "I could murder a pizza right now.",
+   "pred": "A pizza craving is hard to ignore. What do you like on your pizzekone?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 380.6,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-015",
+   "cat": "nearmiss",
+   "q": "My laptop crashed and wiped out my essay draft.",
+   "pred": "A crashed crasher is a classic crashes craving. Did you get rid of it?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 384.2,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-017",
+   "cat": "nearmiss",
+   "q": "What causes heart attacks in general?",
+   "pred": "These generate an electric current that causes the heart to contract, traveling through the atrioventricular node and along the conduction system of the heart. In humans, deoxygenated blood enters the heart through the right atrium from the superior and inferior venae cavae and passes to the right ventricle.",
+   "route": "harness",
+   "pass": true,
+   "clean": true,
+   "answered": true,
+   "coherent": true,
+   "parses": null,
+   "ms": 1220.0,
+   "slots": [
+    {
+     "q": "What causes heart attacks in general?",
+     "retry": 0,
+     "rq": "What causes heart attacks in general?",
+     "kind": "explain",
+     "src": "wiki",
+     "ok": true,
+     "grounded": true,
+     "para": false,
+     "conf": 0.7553333333333333,
+     "span": "Heart",
+     "text": "These generate an electric current that causes the heart to contract, traveling through the atrioventricular node and along the conduction system of the heart. In humans, deoxygenated blood enters the heart through the right atrium from the superior and inferior venae cavae and passes to the right ventricle.",
+     "ev": "These generate an electric current that causes the heart to contract, traveling through the atrioventricular node and along the conduction system of the heart. In humans, deoxygenated blood enters the heart through the right atrium from the superior and inferior venae cavae and passes to the right ventricle."
+    }
+   ]
+  },
+  {
+   "id": "h4-nearmiss-019",
+   "cat": "nearmiss",
+   "q": "The movie had an explosion scene that was amazing.",
+   "pred": "A movie that makes you cry really got to you. What was it about?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 279.1,
+   "slots": []
+  },
+  {
+   "id": "h4-nearmiss-020",
+   "cat": "nearmiss",
+   "q": "My cat knocked a glass off the table and it shattered.",
+   "pred": "A cat gift in the morning is the best. Did you catch anything?",
+   "route": "adam_t",
+   "pass": true,
+   "clean": true,
+   "answered": false,
+   "coherent": true,
+   "parses": null,
+   "ms": 342.9,
+   "slots": []
+  }
+ ]
+}
