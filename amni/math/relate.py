@@ -243,12 +243,14 @@ def _per(x,Q):
  l,r=x['l'],x['r']
  if 'each' in l:j=len(l)-1-l[::-1].index('each');nx=l[j+1] if j+1<len(l) else '';return (lem(nx) if nx and nx not in VERB and nx not in _HAVEW else lem(l[j-1]) if j else ''),None
  if r[:1]==['each']:return next((lem(w) for w in reversed(l) if w.isalpha() and w not in ('at','for','cost','costs','are','is','each','a','an','the')),''),None
+ a=next((lem(l[j+1]) for j in range(len(l)-1) if l[j] in ('a','an','every','one') and any(y['unit']==lem(l[j+1]) and y['i']!=x['i'] for y in Q) and any(w in _HAVEW or w in ('holds','hold','contains') for w in l[j+2:])),'')
+ if a and a!=x['unit']:return a,None
  n=next((y for y in Q if y['i']==x['i']+1 and y['v']==1 and y['s']==x['s'] and y['l'][-1:]==['for']),None);k=next((k for k in range(len(r)-1) if lem(r[k+1])==x['per'] and r[k] in ('per','each','every','a','an')),None)
  return (n['unit'],n['i']) if n else (x['per'] if x['per'] and (x['per']!=x['unit'] or x['kind']=='MONEY') and (x['per'] not in VERB or k and r[k-1] in ('in','on','for','at','of','per') or k+2>=len(r) or not r[k+2].isalpha()) and k is not None and (r[k] in ('per','each','every') or x['per'] in _UNITW or any(y['unit']==x['per'] for y in Q)) else '',None)
 def _seg(l):k=max([i for i,w in enumerate(l) if w in ('and',',','then',';')]+[-1]);return l[k+1:],k>=0
 def _vb(l):
  g,_=_seg(l);w=next((w for w in reversed(g) if w in VERB or w in _HAVEW),None);return (w,'H') if w in _HAVEW and w not in VERB else (w,VERB[w][1]) if w else (None,None)
-def _un(x):return {lem(w) for w in x['r'][:2] if w.isalpha() and w not in STOPW|_CUT|_MOV|_HAVEW|_POSTV.keys()|_CMPW.keys()|{'my','your','our','each','per','times','another','more','left'} and w not in VERB}
+def _un(x):return {lem(w) for k,w in enumerate(x['r'][:2]) if w.isalpha() and w not in STOPW|_CUT|_MOV|_HAVEW|_POSTV.keys()|_CMPW.keys()|{'my','your','our','each','per','times','another','more','left'} and (k==0 or w not in VERB)}
 def _seq(text:str):
  I=quantities(text);ss=I['sents'];qi=I['qi'];Q=[dict(x,i=k) for k,x in enumerate(I['qs'])]
  nm={w.lower() for w in re.findall(r"\b[A-Z][a-z']+",text) if w.lower() not in _COMMON and w.lower() not in VERB and w.lower() not in STOPW}
