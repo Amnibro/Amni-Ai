@@ -15,7 +15,7 @@ def parse(txt:str,src:str="")->list:
   l=l.strip()
   if not l:continue
   k,_,v=l.partition(" ");v=v.strip()
-  if k.startswith("@"):f=v.split();S.append({"id":k[1:],"mood":f[0],"cat":f[1],"w":next((float(x[2:]) for x in f[2:] if x.startswith("w=")),1.0),"hold":"nohold" not in f[2:],"src":src,"U":[],"V":{},"A":[],"Q":[],"X":[],"C":[]});continue
+  if k.startswith("@"):f=v.split();S.append({"id":k[1:],"mood":f[0],"cat":f[1],"w":next((float(x[2:]) for x in f[2:] if x.startswith("w=")),1.0),"hold":"nohold" not in f[2:],"em":next((x[3:] for x in f[2:] if x.startswith("em=")),""),"src":src,"U":[],"V":{},"A":[],"Q":[],"X":[],"C":[]});continue
   s=S[-1] if S else None
   if s is None:E.append((src,j+1,"no scenario"));continue
   if k=="V":[s["V"].__setitem__(a.strip(),P(b,",")) for a,_,b in (x.partition("=") for x in P(v,";"))]

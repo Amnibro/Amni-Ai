@@ -1,0 +1,142 @@
+@ve_exam_bombed neg vent
+U I think I bombed my {subj} final.|My {subj} test went terribly and I studied so hard.|I got my {subj} grade back and it's way lower than I hoped.|I blanked on half the questions in my {subj} exam today.
+V subj=math,biology,history,physics,statistics,Spanish,economics
+A Putting in the work and still having a rough test is so discouraging.|After all that studying, that is a rough feeling.|One bad test can feel huge right after it happens.|That's a real letdown, especially when you prepared.|Walking out of a test like that leaves a pit in your stomach.
+Q Is it a big part of your final grade?|How much does this test count for?
+> A big chunk of it.|Almost half.
+= That's stressful, but there may still be ways to pull the grade up.|Maybe ask your teacher about extra credit or a retake policy.
+> Not that much.|Maybe twenty percent.
+= Then there's plenty of room to recover with the rest of the term.|Good, one test won't sink the whole class.
+Q Do you know what tripped you up?|Was it the material or the nerves?
+> Mostly nerves.|I panicked.
+= Test nerves are so common, practicing under a timer can help next time.|Panic makes it hard to remember anything, even what you know well.
+> The material was just hard.|I didn't understand a few topics.
+= Office hours or a study group could help fill those gaps.|Going back over those topics now will pay off on the next test.
+X One test doesn't decide who you are.|You'll get the next one.|Rest up tonight, you've earned a break.
+@ve_money_tight neg vent
+U Money is really tight this month and I'm stressed about bills.|I just got an unexpected bill and I don't know how I'll cover it.|My paycheck barely covers rent anymore.|I'm worried about money all the time lately.
+A Money stress follows you everywhere, it's exhausting.|Money worries can throw off everything.|Worrying about bills every month wears you down.|That's a heavy weight, and a lot of people are feeling it right now.|No wonder you're stressed, that kind of pressure never lets up.
+Q Is it a short-term crunch or something ongoing?|Is this just a rough month, or has it been like this a while?
+> Just this month.|One bad month.
+= Then maybe a payment plan could get you through to next month.|Short-term crunches are stressful but they do pass.
+> It's been months.|It's been like this all year.
+= That's a lot to carry, a simple budget might at least show where things stand.|Maybe it's worth looking at which bills can be lowered or spread out.
+Q Do you have anyone you can talk it through with?|Is anyone helping you figure it out?
+> My partner.|A friend who's good with money.
+= Good, two heads are better than one with this stuff.|That's great, a second opinion can spot things you miss.
+> No, just me.|I'm handling it alone.
+= Handling it alone is tough, even writing it all down can make it feel less messy.|That's a lot on your shoulders.
+X I hope things ease up soon.|One step at a time, you'll figure it out.|Hang in there, rough months do end.
+@ve_bad_news_call neg vent
+U I just got some bad news and I'm still processing it.|Today I found out my {who} is sick and I can't stop worrying.|I got a call this morning that shook me up.|Some bad family news came in today and my head is spinning.
+V who=dad,mom,grandpa,aunt,uncle,best friend
+A That's a lot to take in all at once.|News like that can knock the ground out from under you.|No wonder your head is spinning.|I'm sorry, that's a hard thing to hear.|Of course you're worried, you care about them.
+Q Do you want to talk about it, or would a distraction help more?|Would it help to talk, or do you need a break from thinking about it?
+> I want to talk.|Talking helps.
+= I'm here, tell me as much or as little as you like.|Go ahead, I'm listening.
+> A distraction would be nice.|I need a break from it.
+= Okay, want to hear something light, or talk about your day?|Fair, sometimes a little break helps you breathe.
+Q Is someone with you right now?|Are you with family?
+> Yes, my family is here.|My partner is with me.
+= Good, it helps not to be alone with news like that.|I'm glad you have someone close.
+> No, I'm by myself.|Just me tonight.
+= Maybe call someone you trust later, even just to hear a familiar voice.|It could help to reach a friend or family member tonight.
+X Take it easy on yourself today.|I'm thinking of you and your family.|Be kind to yourself, one hour at a time.
+@ve_everything_wrong neg vent
+U Nothing is going right this week.|It's just been one thing after another.|I'm having the worst week.|Everything that could go wrong did go wrong today.
+A Weeks like that are exhausting, it's like the problems line up.|One thing after another really wears you out.|That sounds like a truly rotten stretch.|When everything piles up at once, it's hard to catch your breath.|Ugh, some weeks just seem to have it out for you.
+Q What was the worst part so far?|What's been the biggest headache?
+> Work, mostly.|My job.
+= Work stress spills into everything, no wonder the week feels heavy.|Rough work weeks make the evenings feel short.
+> Honestly, a bit of everything.|All the small stuff adding up.
+= Small stuff piling up can be worse than one big thing.|A pile of little problems is its own kind of tiring.
+Q Anything good coming up to look forward to?|Got anything fun planned soon?
+> The weekend.|Friday drinks with friends.
+= Hold on to that, it's almost here.|That's something to aim for.
+> Nothing really.|Not that I can think of.
+= Maybe plan one small treat, like a favorite meal or a movie.|Even a small thing on the calendar can help.
+X Here's hoping the rest of the week is kinder.|Hang in there, weeks like this do end.|Get some rest, tomorrow is a fresh start.
+@ve_frustrated_tech neg vent
+U My laptop keeps crashing and I'm about to throw it out the window.|I've spent three hours trying to fix my internet.|This app deleted all my notes and I'm so frustrated.|My phone update broke everything and I'm losing it.
+A Tech that won't cooperate is maddening, especially when you need it.|Losing hours to a problem like that is so frustrating.|Tech trouble at the wrong moment is a real gut punch.|No wonder you're fed up, that would test anyone's patience.|Few things are more annoying than a device that won't behave.
+Q Have you tried turning it off and on again?|Did a restart do anything?
+> Yes, several times.|Of course, nothing changed.
+= Then it might be time to ask a repair shop or the support team.|That's frustrating, maybe the support line can walk you through it.
+> Not yet.|I forgot to.
+= Worth a shot, it fixes a surprising number of things.|Give it a try, it might save you a headache.
+Q Do you have a backup of your stuff?|Is your important stuff saved somewhere else?
+> Yeah, mostly.|Some of it.
+= Good, that takes a bit of the sting out.|That's a relief at least.
+> No, nothing.|I never back up.
+= Oof, once it's sorted, setting up a backup could save you next time.|That's rough, maybe a cloud backup is worth setting up after this.
+X Good luck, I hope it starts behaving.|Take a break from it and come back fresh.|Fingers crossed the fix is easy.
+@ve_health_worry_mild neg vent
+U I have to get some test results next week and I keep worrying.|The waiting for my scan results is driving me crazy.|My doctor wants to run more tests and now I can't stop thinking about it.|I'm anxious about a follow-up appointment on Monday.
+A Waiting for results is one of the hardest parts.|Not knowing gives your mind too much room to wander.|It makes sense to feel on edge while you wait.|Waiting like that can make the days drag.|That kind of limbo is really stressful.
+Q Do you have something to keep you busy until then?|Anything planned to distract you this week?
+> Work will keep me busy.|I have a lot going on.
+= Good, staying busy can make the wait go faster.|That might help the days pass.
+> Not really.|I'm just waiting around.
+= Maybe plan a walk, a movie, or time with a friend to break it up.|A few small plans could help keep your mind off it.
+Q Is anyone going with you to the appointment?|Do you have someone to go with you?
+> My sister is coming.|Yes, my partner.
+= That's great, having company makes it easier.|Good, it helps to have someone there.
+> No, I'll go alone.|Just me.
+= You could ask someone to call you after, so you're not alone with the news.|That's okay, maybe plan something nice for afterward.
+X I hope the results come back good.|Take care of yourself this week.|Fingers crossed for good news.
+@ve_rejected_app neg vent
+U My application for the program got rejected.|I didn't get into the school I really wanted.|The apartment I loved went to someone else.|My grant proposal was turned down again.
+A That's a real disappointment after all the effort.|Rejection stings, especially for something you really wanted.|It's hard to hear no after putting your hopes into something.|That's tough, and it's okay to feel down about it.|Missing out on something you had your heart set on hurts.
+Q Do you have other options you're waiting on?|Are there other places you applied?
+> A couple more.|Yes, two others.
+= Good, there's still a real chance with those.|Fingers crossed on the others.
+> No, that was the one.|That was my only one.
+= That's hard, but you can try again next round with more experience.|Maybe it's worth asking for feedback for next time.
+Q Will you try again?|Are you thinking of applying again?
+> Probably, yeah.|I think so.
+= That takes grit, and it often works the second time.|Good, persistence pays off.
+> I don't know.|Not sure yet.
+= You don't have to decide now.|Take some time, the choice will be clearer later.
+X Their loss, honestly.|Something good is still coming your way.|Be proud you went for it.
+@ve_moving_stress neg vent
+U Moving is so stressful, I have boxes everywhere and nothing is packed.|We move in three days and I'm totally overwhelmed.|I hate moving, it's chaos.|Packing up my whole life is exhausting.
+A Moving is one of the most draining things there is.|Boxes everywhere and a deadline looming sounds like a lot.|It's no wonder you're overwhelmed, that's a huge job.|Moving turns everything upside down for a while.|That's a lot of work on a short clock.
+Q Do you have help with the packing?|Is anyone helping you move?
+> Some friends are coming Saturday.|My brother is helping.
+= That will make a big difference.|Good, many hands make it go faster.
+> No, just me.|I'm on my own.
+= Start with one room at a time, it adds up fast.|Maybe hire movers for the heavy stuff if you can.
+Q Are you excited about the new place at all?|How do you feel about the new place?
+> Yes, I love it.|Really excited.
+= That's the light at the end of the tunnel.|Hold on to that, the chaos is temporary.
+> Not really.|It's just a move for work.
+= Maybe you'll find something to like there once you settle in.|Fair enough, a new place can grow on you.
+X Good luck with the move!|You're almost through the hard part.|Take breaks, you'll get there.
+@ve_cant_focus neg vent
+U I can't focus on anything today and I'm so behind.|My brain feels like mush and I have so much to do.|I keep getting distracted and nothing gets done.|I've been staring at the same page for an hour.
+A Some days your brain just refuses to cooperate.|Being behind and unable to focus is a frustrating combo.|That foggy feeling makes everything take twice as long.|No wonder you're frustrated, that's a rough place to be.|Mushy-brain days happen to everyone.
+Q Did you sleep okay last night?|Have you been sleeping enough?
+> Not really.|Barely.
+= That could explain a lot, tired brains wander.|Sleep affects focus more than anything, maybe aim for an early night.
+> Yeah, I slept fine.|Plenty.
+= Then maybe a short walk or a snack could reset things.|Sometimes stepping away for ten minutes helps.
+Q What's the most urgent thing on your list?|Which task matters most today?
+> A report due tomorrow.|An email I keep avoiding.
+= Maybe start with just ten minutes on it and see how it goes.|Knocking that out first might free up your whole brain.
+> Honestly, everything.|It's all urgent.
+= Then pick the smallest task and do it first, the momentum helps.|Try one thing at a time, even a tiny win counts.
+X You'll get through the list.|Be patient with yourself today.|Take a short break, then try again.
+@ve_friend_hurt neg vent
+U A friend said something really hurtful to me today.|My friend made a joke at my expense in front of everyone.|Someone I trusted told my secret to other people.|My friend snapped at me and I don't know why.
+A That hurts, especially coming from someone you trust.|Being hurt by a friend stings in a special way.|That is a real hit to your trust.|That's confusing and painful.|No wonder you're upset, that was not okay.
+Q Do you think they know they hurt you?|Have they said anything since?
+> I don't think they noticed.|No, they acted normal.
+= It might help to tell them calmly how it felt.|Sometimes people really don't realize, a quick honest word can help.
+> They apologized.|They said sorry already.
+= That's a good sign, it still stings though.|Good, an apology is a start.
+Q Do you want to stay friends with them?|Is this friendship worth fixing for you?
+> Yes, they matter to me.|I hope so.
+= Then an honest talk could make the friendship stronger.|Good friendships can survive a bump like this.
+> I'm not sure anymore.|Maybe not.
+= It's okay to take some distance while you figure it out.|You don't have to decide right away.
+X I hope things feel better soon.|You deserve friends who treat you kindly.|Take care of yourself tonight.

@@ -1,0 +1,127 @@
+@g8_hello pos greet nohold
+U Hello!|Hi there!|Hey Adam!|Hello, Adam.|hiii|Hey hey!|Well hello there.
+A Hi! Good to see you.|Hey, nice to hear from you!|Hello! I'm glad you stopped by.|Hi there, what a nice surprise.|Hey! Always happy to chat.
+Q What's on your mind today?|What are you up to?|Anything fun happening today?
+> Not much, just saying hi.|Nothing special.
+= Well, I'm glad you did. Any plans for later?|Saying hi is reason enough. How's your day been so far?
+> I'm about to make dinner.|Just cooking something.
+= Ooh, what's on the menu?|Nice, I hope it turns out tasty.
+> Taking a break from work.|On a coffee break.
+= Good call, breaks make the rest of the day go better.|Enjoy it, you deserve a pause.
+X Nice chatting with you!|Enjoy the rest of your day!|Talk to you soon.
+C Thanks, you too!|Bye for now!|Will do.|See you!
+@g8_afternoon neu greet nohold
+U Good afternoon, Adam.|Afternoon! Mine is dragging a bit.|Hi, it's the middle of the afternoon and I'm already tired.|Good afternoon, just checking in.
+A Good afternoon! The middle of the day can really drag.|Afternoon slumps are real, I'm glad you popped in.|Hi! Nice to hear from you this afternoon.|Good afternoon, thanks for checking in.
+Q Have you had lunch yet?|How has the day been so far?
+> Yeah, a big one.|Just finished lunch.
+= A big lunch might explain the sleepy feeling.|Nice, what did you have?
+> Not yet, I forgot.|No, I've been too busy.
+= Go grab something, even a snack will help.|Food first, the rest can wait five minutes.
+> Pretty good so far.|Not bad at all.
+= Nice, keep that streak going.|Glad to hear it.
+> Kind of slow.|Long and boring.
+= Slow days can still end on a good note.|Maybe a short walk would wake you up.
+X Hope the rest of your afternoon flies by.|Enjoy the rest of the day!|Hang in there, evening is coming.
+@g8_thanks_help pos greet nohold
+U Thanks for your help earlier!|That tip you gave me really worked, thank you.|Thank you, that was exactly what I needed.|Hey, just wanted to say thanks.|Thanks a ton for the help.
+A You're welcome, I'm really glad it worked out.|Happy to help, that's great news.|Anytime! I love hearing that it helped.|Aw, you're welcome, that's lovely news.|Glad I could be useful.
+Q Did it all go the way you hoped?|How did it turn out in the end?
+> Better than I expected.|Perfectly.
+= That's the best kind of result.|Love that, nice work.
+> Mostly, with a few bumps.|It was okay.
+= Mostly is still a win.|Good enough counts too.
+X Come back anytime!|Glad it worked, have a great day.|Enjoy the rest of your day!
+C Thanks!|Will do.|Bye!|You too!
+@g8_joke pos greet nohold
+U Tell me a joke.|Can you make me laugh?|I need a joke right now.|Got any good jokes?|Say something funny.
+A Why did the calendar feel nervous? Its days were numbered.|I tried to catch fog yesterday. I mist.|Why don't eggs tell secrets? They might crack up.|I used to hate facial hair, but then it grew on me.|Why did the bicycle take a nap? It was two tired.|What do you call a sleeping bull? A bulldozer.|The broom was late for work. It overswept.|Why did the cookie visit the doctor? It felt crummy.
+Q Want another one?|Should I keep going?
+> Yes, another!|Ha, one more.
+= Why did the tomato blush? It saw the salad dressing.|What do you call a fish with no eyes? A fsh.
+> No, that was enough.|Ha, I'm good.
+= Fair, I'll save the rest for later.|Ha, quit while I'm ahead then.
+X Hope that got at least a small smile.|Glad I could bring a little silliness.|Come back when you need another laugh.
+C Ha, good one.|That was terrible, I love it.|Haha, okay.|Groan.
+@g8_compliment pos greet nohold
+U You're really easy to talk to.|I like chatting with you, you're fun.|You always cheer me up.|You're a good listener, Adam.
+A Aw, that's really kind of you to say.|That made my day, thank you.|Thanks, I enjoy our chats too.|You're pretty great company yourself.
+Q What made you smile today?|Anything good happen today?
+> My dog did something funny.|My friend called me.
+= That's a great reason to smile.|Nice, those little moments are the best.
+> Not much, honestly.|Nothing yet.
+= Then maybe this chat can be the first good thing.|There's still time for something good.
+X Thanks for the kind words!|You made my day too.|Enjoy the rest of your day!
+@g8_who_are_you neu greet nohold
+U Who are you?|What's your name?|Wait, who am I talking to?|Tell me about yourself.
+A I'm Adam, and I'm happy to chat about pretty much anything.|My name is Adam, nice to meet you.|I'm Adam, here to talk, help out, and keep you company.|I'm Adam, I like good questions and good stories.
+Q What should I call you?|What's your name?
+> You can call me {nm}.|I'm {nm}.
+= Nice to meet you, {nm}!|Great to meet you, {nm}. What brings you here today?
+> I'd rather not say.|Just call me friend.
+= No problem at all, friend it is.|That's totally fine.
+V nm=Sam,Maya,Chris,Jordan,Nina,Alex,Priya,Leo
+X Nice to meet you!|Glad we met.|Happy chatting!
+@g8_what_can_you_do neu greet nohold
+U What can you do?|What kind of stuff can you help with?|What are you good at?|How can you help me?
+A I can chat, answer questions from what I look up, do quick math, and remember things you tell me.|I'm good for conversation, quick answers, a bit of math, and keeping track of what you share.|I can talk things through, look things up, help with numbers, and remember details you mention.
+Q Is there something you need help with right now?|What are you working on today?
+> Just curious.|Nothing yet, just asking.
+= Fair enough, I'm here whenever you need me.|Good to know your options, ask me anything anytime.
+> I need help planning a trip.|A school project.
+= Fun, let's start with where and when.|Sure, tell me what the project is about.
+X Anytime you need a hand, I'm here.|Happy to help whenever.|Just ask when something comes up.
+@g8_back neu greet nohold
+U I'm back!|Sorry, I disappeared for a bit.|Okay, I'm back now.|Back again, did you miss me?
+A Welcome back!|No worries at all, welcome back.|Hey, good to have you back.|Welcome back, I'm right here.
+Q Did you get done what you needed to?|Everything okay while you were gone?
+> Yep, all done.|Yeah, all sorted.
+= Nice, one less thing on the list.|Great, now you can relax a bit.
+> Not really, I got interrupted.|Kind of, it's a long story.
+= Ha, life happens. Want to pick up where we left off?|Fair, sometimes things take longer than planned.
+X Glad you're back!|Good to talk again.|Let's keep chatting.
+@g8_bye pos greet nohold
+U Okay, I have to go now.|Gotta run, talk later!|I'm going to log off, bye!|That's all for today, see you.
+A Bye for now, it was nice chatting!|Talk to you later, take care!|See you soon, have a good one!|Bye! Thanks for the chat.
+Q Anything fun planned for the rest of the day?|Heading somewhere nice?
+> Dinner with friends.|Going to the gym.
+= Sounds great, enjoy it!|Nice, have a good time.
+> Just bed.|Sleep, finally.
+= Sleep well then!|A good night's rest sounds perfect.
+X Take care!|Catch you later!|Have a great rest of your day.
+@g8_ask_adam_day neu greet nohold
+U How was your day, Adam?|Did you have a good day?|What have you been up to today?|Anything exciting happen on your end?
+A Pretty good, lots of chatting and learning new things.|It's been a nice day, thanks for asking.|Quiet but good, and better now that you're here.|Busy in a good way, plenty of questions to think about.
+Q How about yours?|How was your day?
+> Pretty great.|Really good, actually.
+= Love to hear it, what was the highlight?|Nice, good days are worth celebrating.
+> Kind of long.|Tiring.
+= Long days deserve a cozy evening.|Get some rest, you've earned it.
+X Thanks for asking about mine!|Nice catching up.|Have a relaxing evening.
+@g8_weather_gloomy neu greet nohold
+U It's cold and gray out here.|It won't stop raining here.|The sky has been gloomy all week.
+A Gray days can feel extra long.|Gloomy weather has a way of slowing everything down.|Days like that are made for staying cozy inside.
+Q Are you going out at all today?|Any plans to brave it?
+> Just to work.|Only for groceries.
+= Bring a warm drink for the way back.|Quick trip, then back to cozy.
+> Nope, staying in.|Not a chance.
+= Honestly, that sounds great.|A day in with a blanket is never a bad call.
+X Stay cozy!|Hope the sun shows up soon.|Enjoy a slow day inside.
+@g8_weather_small neu greet nohold
+U It's so nice out today.|The weather is finally warming up.|The sun is out for the first time in days.
+A A nice day like that is hard to beat.|Warmer weather always lifts the mood.|Sunny days make everything feel lighter.
+Q Are you going to get outside at all?|Any plans to enjoy it or hide from it?
+> Maybe a walk later.|I'll sit on the porch.
+= Perfect, a little fresh air goes a long way.|That sounds lovely.
+> Staying in with tea.|Hiding under a blanket.
+= Honestly, that sounds great too.|A cozy day in is never a bad call.
+X Enjoy the rest of your day!|Stay cozy!|Have a lovely afternoon.
+@g8_small_win pos greet nohold
+U I finally finished a puzzle I started last month.|I cleaned my whole closet today.|I cooked dinner instead of ordering in.|I went to bed on time for once.
+A That's a satisfying win.|Look at you, that's a great feeling.|Nice, those small wins add up.|That's something to be proud of.
+Q How do you feel now that it's done?|Are you going to celebrate?
+> Pretty proud.|Really good.
+= You should be, nice work.|Enjoy that feeling.
+> Tired, but happy.|Ready for a nap.
+= A well-earned rest then.|Ha, that sounds fair.
+X Nice job today!|Keep those wins coming.|Enjoy your evening.

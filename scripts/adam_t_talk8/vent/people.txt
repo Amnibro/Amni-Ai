@@ -1,0 +1,113 @@
+@ve_breakup_fresh neg vent
+U My partner ended things with me last night.|We broke up after {years} together.|I just got dumped and I feel awful.|My relationship is over and I don't know what to do with myself.
+V years=three years,five years,a year,two years,seven months
+A Oh no, that's a lot to take in, especially so suddenly.|The end of something that big leaves a real hole.|That hurts, and there's no quick fix for it.|I'm really sorry, breakups can turn everything upside down.|Of course you feel awful, you're losing someone who mattered.
+Q Do you have friends around you right now?|Is anyone checking in on you?
+> My best friend came over.|Yeah, my sister is here.
+= Good, having someone close makes the first days a little easier.|I'm glad you're not alone tonight.
+> Not really, I'm alone.|No, I haven't told anyone yet.
+= It might help to tell one person you trust, even with a short text.|You don't have to carry it all by yourself, a friend would want to know.
+Q Was it a surprise, or had things been rocky?|Did you see it coming at all?
+> Total surprise.|Out of nowhere.
+= That makes it even harder, there was no time to brace for it.|A shock like that takes a while to sink in.
+> It had been rocky for a while.|Kind of, we fought a lot.
+= Even when it's been rocky, the ending still hurts.|That doesn't make it easy, it's still a loss.
+X Be gentle with your evening, eat something and get some sleep.|It won't always feel this heavy.|Take it one day at a time, you'll get through this.
+@ve_breakup_months neg vent
+U It's been months since the breakup and I still think about them every day.|I thought I'd be over my ex by now.|Everything still reminds me of my ex.|I keep checking my ex's profile even though I know I shouldn't.
+A Healing takes longer than anyone wants it to.|There's no deadline for getting over someone.|Little reminders can pull you right back, that's normal.|Some days it hits harder than others, and that is normal.|Missing someone months later just shows how much they mattered.
+Q Have you tried muting or unfollowing them?|Would it help to take a break from their profile?
+> I muted them.|Yeah, I blocked them for now.
+= Good call, out of sight really does help.|That's a strong step, give it some time.
+> I can't bring myself to.|Not yet.
+= Maybe try a week without looking and see how it feels.|No pressure, it can happen when you're ready.
+Q What's been helping, even a little?|Anything that takes your mind off it?
+> Going to the gym.|Spending time with friends.
+= Keep doing that, it's working even if it's slow.|That's great, lean into the things that lift you up.
+> Nothing really.|Just sleeping a lot.
+= Maybe try one small new thing, like a class or a walk somewhere new.|That's understandable, even a short walk outside could help a bit.
+X It does get easier, I promise.|You're doing better than you think.|One day you'll notice you went a whole day without thinking about them.
+@ve_left_out neg vent
+U My coworkers all went to lunch without me again.|I saw pictures of a party I wasn't invited to.|My cousins planned a trip and nobody asked me to come.|I always seem to be the last one to hear about plans.
+A Finding out you were left out stings in a quiet way.|That is a lonely feeling.|Being forgotten hurts more than people realize.|No wonder you feel down, that's a rough thing to discover.|That kind of thing can make you question where you stand.
+Q Do you think it was on purpose?|Could it have been an oversight?
+> I think it was on purpose.|Maybe, I'm not sure.
+= If it keeps happening, it might be worth asking one of them honestly.|Not knowing is the worst part, a gentle question could clear it up.
+> Probably an accident.|They might have just forgot.
+= Could be, sometimes people just don't think ahead.|Then maybe mention you'd love to come next time.
+Q Is there anyone in the group you're closer to?|Do you have one person you could ask about it?
+> Yeah, one friend.|There's one person I trust.
+= They might be able to tell you what happened, or include you next time.|That's a good person to talk to about it.
+> Not really.|No one in particular.
+= Then maybe plan something yourself and invite a couple of people.|Starting your own plan can shift things.
+X I hope next time you're the first one they ask.|You deserve to be included, don't forget that.|Treat yourself to something nice today.
+@ve_lonely_new_city neg vent
+U I don't know anyone in this town yet and my weekends are so quiet.|Moving here for work was a big step, but I haven't made a single friend.|I spend most evenings alone since I relocated.|It's hard making friends as an adult in a new place.
+A Starting over somewhere new can be really isolating.|Making friends as an adult takes way more effort than it should.|Quiet weekends in a new place can feel really long.|It takes time to build a circle, and the waiting part is hard.|That's a big change, and the lonely stretch is so common.
+Q Have you found anything you enjoy doing around town?|Are there any clubs or groups nearby that match your hobbies?
+> I like the climbing gym.|There's a running group.
+= Perfect, regulars at places like that often turn into friends.|Showing up to the same group every week is how friendships start.
+> Not yet.|I haven't looked.
+= Maybe pick one hobby and try a local meetup for it.|A class or volunteer shift is a low-pressure way to meet people.
+Q Do you keep in touch with friends from back home?|Do you still talk to your old friends?
+> Yes, we call a lot.|We text every day.
+= That's great, those connections are still yours.|Good, keeping those ties helps while you build new ones.
+> Not as much as I'd like.|We've drifted a bit.
+= A quick call this weekend might lift your spirits.|Maybe text one of them tonight, they probably miss you too.
+X Give it time, your people are out there.|I hope this weekend brings a good surprise.|You're braver than you think for making this move.
+@ve_sibling_fight neg vent
+U My brother and I got into a huge argument about money.|I had a blowup with my sister over the holidays.|My sibling said something really hurtful and we're not speaking.|Me and my twin haven't talked in a week after a fight.
+A Fights with family cut deeper because they know you so well.|That's a heavy thing to carry, especially with someone so close.|Arguments like that can get heated fast.|Not speaking to a sibling can feel strange and sad.|Family arguments leave a special kind of ache.
+Q Do you want to patch things up?|Are you hoping to make up?
+> Yes, but I don't know how.|I want to, I'm just stubborn.
+= A short message saying you miss them can open the door.|Sometimes one small step is all it takes.
+> Not right now.|I need some space first.
+= That's fair, a little space can help both of you cool down.|Taking a break from it is okay.
+Q Have you fought like this before?|Is this a new thing between you two?
+> We always bounce back.|It happens every year.
+= Then there's a good chance this will pass too.|If you always find your way back, that's a good sign.
+> This is the worst one yet.|Never this bad.
+= That makes it scarier, but it doesn't have to be permanent.|Big fights can still be repaired with time.
+X I hope you two find your way back to each other.|Give it a little time, it might soften.|Family can be hard, but it's worth the effort.
+@ve_parent_pressure neg vent
+U My parents always make me feel like I'm not doing enough.|My mom criticizes every decision I make.|My dad keeps saying I wasted my degree.|I can never live up to what my parents expect.
+A Feeling like you can't measure up to your own parents is exhausting.|Constant criticism from family wears you down over time.|That's a heavy thing to hear from the people you want support from.|No wonder it gets to you, their opinion matters.|That pressure can follow you around even when they're not there.
+Q Do they know how much it bothers you?|Have you ever told them how it feels?
+> I've tried.|Yes, they don't listen.
+= That's frustrating, sometimes a calm conversation at a different time lands better.|It's hard when they don't hear it, your feelings still count.
+> Never.|I don't think I could.
+= It might be worth trying, even in a letter or a text.|You could start small, with just one thing that hurts.
+Q Are you proud of the choices you've made?|How do you feel about your own path?
+> Yes, honestly.|I like where I am.
+= Then that's what matters most, it's your life.|That's great, hold on to that.
+> Not sure anymore.|They make me doubt it.
+= Try to think about what you want, separate from what they want.|It's okay to take time to figure out your own view.
+X You're doing better than they give you credit for.|Your path is yours to choose.|I hope they come around and see what I see.
+@ve_friend_drifting neg vent
+U My best friend barely replies to my texts anymore.|I feel like my oldest friend is drifting away.|My friend always cancels our plans at the last minute.|We used to talk every day and now it's once a month.
+A Watching a close friendship fade is really sad.|Being the one who always reaches out gets tiring.|Feeling like you care more than they do is painful.|That's a hard change, especially with someone you've known so long.|Friendships shift over time, but it still hurts when it happens.
+Q Is something big going on in their life?|Do you know if they're busy with something?
+> New job, I think.|They just had a baby.
+= That can eat up all their time, it may not be about you at all.|Big life changes make people disappear for a while.
+> Not that I know of.|No idea.
+= Maybe ask them directly if everything's okay.|A simple check-in might tell you a lot.
+Q Would you tell them you miss them?|Have you said how you feel?
+> I might.|Maybe I should.
+= Honest words like that often bring people back.|It could really help, people like to know they're missed.
+> I don't want to seem needy.|I'm scared to.
+= Saying you miss someone isn't needy, it's kind.|That's understandable, but they might be glad to hear it.
+X I hope you two reconnect soon.|Good friendships can survive quiet seasons.|Take care of yourself either way.
+@ve_ghosted neg vent
+U The guy I was dating just stopped answering me.|I got ghosted after three great dates.|She read my message and never replied.|Someone I really liked disappeared without a word.
+A Getting ghosted leaves you with so many questions.|That's confusing and hurtful, especially after things seemed good.|Silence like that can feel worse than a clear no.|No wonder you're frustrated, you deserved at least a reply.|That's a lousy way to end things.
+Q Are you going to message them again?|Will you send one more message?
+> One last message.|Maybe a short one.
+= That's fair, a short one lets you close the door on your terms.|Then let it go after that, you did your part.
+> No, I'm done.|Nope, I'll let it be.
+= Good for you, you deserve someone who shows up.|That's a strong choice.
+Q Are you going to keep dating?|Do you want to keep meeting people?
+> Yeah, eventually.|After a little break.
+= A break sounds healthy, then try again when you're ready.|Take your time, the right person will actually answer.
+> I'm not sure.|Not right now.
+= That's okay, no rush at all.|Fair, taking some time for yourself is good too.
+X Their silence says more about them than about you.|Someone better is out there.|Treat yourself well tonight.
