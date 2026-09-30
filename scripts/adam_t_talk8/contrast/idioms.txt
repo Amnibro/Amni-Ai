@@ -1,0 +1,127 @@
+@cn_done_week neg contrast nohold em=sh
+U I'm so done with this week.|This commute is going to be the death of me.|I could just die of embarrassment right now.|I want to crawl under a rock after that meeting.|Ugh, I'm so over today.
+A Sounds like today has taken a lot out of you.|Some days deserve a hard reset.|That sounds like a long, rough stretch.|Oof, that's a lot for one day.|Rough one, huh.
+Q What made it so rough?|What happened?
+> I tripped on stage during my presentation.|I called my teacher mom.
+= Ha, that's the kind of thing only you will remember next week.|Everyone has one of those moments, it'll be a funny story soon.
+> Just nonstop work.|Too many meetings.
+= That kind of grind wears anyone down.|Back-to-back meetings drain the life out of a day.
+Q Any plans to unwind tonight?|How are you going to recover?
+> Pizza and a movie.|Early bed.
+= That sounds like the perfect fix.|Good call, sleep fixes a lot.
+> No idea.|Probably just scroll my phone.
+= Maybe a hot shower and a favorite show.|Something cozy might help reset the mood.
+X Hang in there, the weekend is close.|Tomorrow is a fresh start.|Go treat yourself a little tonight.
+@cn_hot_day neg contrast nohold em=heat
+U It's so hot my ice cream melted in two minutes.|I'm sweating buckets just walking to my car.|This heat wave has me hiding inside all day.|It's so hot out that my sunglasses fogged up.
+A That kind of heat is no joke.|Summer is really showing off today.|Ugh, sticky, sweaty days are the worst.|Days like that make you appreciate shade.
+Q Do you have air conditioning?|Are you staying cool somehow?
+> Yes, thank goodness.|The AC is on full blast.
+= Stay close to it today.|Lucky, enjoy the cool air.
+> Just a fan.|No AC here.
+= Cold drinks and a damp towel help a lot.|Maybe find a library or cafe with good AC.
+Q Any plans to get in some water?|Going swimming at all?
+> Maybe the pool later.|Heading to the lake.
+= That sounds perfect for today.|Enjoy the water.
+> No, just staying in.|Too lazy.
+= A cold shower counts too.|Fair, staying in is smart on a day like this.
+X Stay cool and drink lots of water!|Keep cool out there.|Here's hoping it cools off tonight.
+@cn_cold_office neg contrast nohold em=cold
+U I'm freezing, the office AC is way too strong.|My hands are ice cold after walking the dog.|It's so chilly in my apartment I'm wearing two sweaters.|My feet are like ice cubes tonight.
+A Brr, that sounds uncomfortable.|Being cold makes it so hard to get comfy.|Nothing is worse than being chilly all day.|Time for layers and something warm.
+Q Do you have a blanket or something warm nearby?|Can you warm up with something?
+> Hot tea helps.|I have a blanket.
+= Perfect, get cozy.|Tea and a blanket fix most things.
+> Not really.|Nothing here.
+= Maybe a warm drink or a quick walk to get the blood moving.|Fuzzy socks might be worth buying.
+X Stay warm!|Get cozy tonight.|Hope you thaw out soon.
+@cn_puffed pos contrast nohold em=breath
+U I'm out of breath after climbing five flights of stairs.|I ran for the bus and I'm still huffing and puffing.|I tried a spin class and I'm totally winded.
+A Ha, that's a real workout.|Getting winded like that means you worked hard.|Stairs and sprints sneak up on everyone.|That's the good kind of tired.
+Q Did you make it in time?|Was it worth it?
+> Just barely.|Yes, totally.
+= Nice, a small victory.|That's the best feeling.
+> No, missed it.|Not really.
+= Oof, so close.|There's always the next one.
+X Catch your breath and enjoy the rest of your day!|Nice work.|Grab some water and relax.
+@cn_view pos contrast nohold em=breath
+U The view from the top of the hill took my breath away.|That sunset tonight literally took my breath away.|The first look at the canyon took my breath away.
+A Some views are just unreal.|Moments like that stick with you.|That sounds absolutely beautiful.|Nature really knows how to show off.
+Q Did you get a photo?|Who were you with?
+> Tons of photos.|A few good ones.
+= Nice, save one as your wallpaper.|Photos never quite capture it, but they help.
+> Just me.|A good friend.
+= Sounds like a perfect moment either way.|Sharing it makes it even better.
+X What a moment.|Enjoy the memory.|Sounds like a great day.
+@cn_wrong_pipe neu contrast nohold em=choke
+U My water went down the wrong pipe and I coughed for a minute, I'm fine now.|I laughed while drinking and snorted soda up my nose.|I swallowed my coffee too fast and coughed all over my desk.
+A Ha, that happens to everyone.|Glad you're okay, those coughing fits are so awkward.|That's the worst feeling for a second.|Classic, it always happens at the wrong moment.
+Q Did anyone see?|Were you in public?
+> Everyone saw.|The whole office.
+= Ha, they've all been there too.|It'll be forgotten by lunch.
+> No, I was alone.|Just me.
+= Small mercies.|Lucky, no witnesses.
+X Glad you're okay!|Take smaller sips next time.|Ha, hope the rest of your day is smoother.
+@cn_smell neg contrast nohold em=gas
+U My whole apartment smells like garlic after cooking.|The fridge smells weird, I think something went bad in there.|My gym bag smells awful.|The whole house smells like fish from dinner.
+A That's a strong smell to live with.|Some smells just refuse to leave.|Ugh, lingering smells are the worst.|That sounds like it needs some fresh air.
+Q Have you found the source?|Do you know what it is?
+> Yes, I found it.|I know exactly what it is.
+= Then a good clean and an open window should fix it.|Great, deal with it and air the place out.
+> Not yet.|No idea.
+= Check the corners and containers, then open a window.|Worth a full sweep, then let some air in.
+X Hope it airs out soon.|Good luck with the cleanup.|Fresh air to the rescue.
+@cn_garden_snake neu contrast nohold em=snake
+U I saw a little garter snake in the garden and screamed.|A snake slithered across the hiking trail in front of us.|There's a harmless little snake sunning itself on our patio.
+A That would make anyone jump.|Snakes have a way of startling people.|Surprise wildlife is always a jolt.|Ha, it probably got a scare too.
+Q Did it go away?|What did you do?
+> It slid off into the bushes.|It left on its own.
+= Good, it wanted space as much as you did.|Nice, everyone went their separate ways.
+> I backed away slowly.|We walked around it.
+= Smart move, giving it room is best.|Good call, leave it be.
+X Glad it was just a little visit.|Enjoy the rest of your day outside.|Nature says hi.
+@cn_trip_pride neg contrast nohold em=bone
+U I tripped up the stairs at work and everyone saw, only my pride is hurt.|I slipped on the ice but caught myself, I'm just embarrassed.|I walked into a glass door in front of my crush.|I fell off my chair laughing in class.
+A Ha, bruised pride heals fastest.|Everyone has a moment like that.|Honestly, that's a great story.|Oh no, that's a classic.
+Q Did anyone laugh?|How did people react?
+> Everyone laughed.|The whole room.
+= Laughing along usually makes it pass fast.|It'll be a funny memory by next week.
+> Nobody noticed, I think.|No one saw.
+= Even better, your secret is safe.|Lucky break.
+X Walk tall, it's already forgotten.|Ha, you'll laugh about it soon.|Hope the rest of your day is smoother.
+@cn_hay_fever neg contrast nohold em=anaph
+U My seasonal allergies have me sneezing nonstop.|Pollen season is making my eyes itchy and watery.|The cat at my friend's place makes me sniffle all night.|Spring allergies are wrecking me this week.
+A Allergy season can be relentless.|Ugh, sniffly days are no fun.|That constant sneezing and itching is exhausting.|Allergies make everything a little harder.
+Q Do you take anything for it?|Has anything helped?
+> Allergy pills.|Nasal spray.
+= Good, hopefully they kick in soon.|That usually takes the edge off.
+> Nothing yet.|I keep forgetting.
+= A pharmacist can suggest something simple.|Keeping windows closed on windy days helps too.
+X Hope it calms down soon.|Feel better!|Stock up on tissues.
+@cn_swallowed_gum neu contrast nohold em=poison
+U I accidentally swallowed my gum.|I ate way too much candy and my stomach feels heavy.|I bit into a lemon thinking it was an orange.|I drank my coffee after it sat out all day and it was gross.
+A Ha, that's a funny little mix-up.|Oops, that's one way to learn.|That's a sneaky kind of surprise.|Ha, we've all done something like that.
+Q Are you feeling okay now?|How's your stomach?
+> Fine, just silly.|All good.
+= Good, then it's just a funny moment.|Glad you're fine.
+> A bit queasy.|Kind of full.
+= Some water and a slow walk might help.|Take it easy for a bit.
+X Better luck with the next snack!|Ha, lesson learned.|Hope you feel great soon.
+@cn_raccoon neu contrast nohold em=intr
+U Something keeps getting into my trash at night, I think it's a raccoon.|The neighbor's cat keeps sneaking in through our dog door.|A squirrel got into our attic and it's making noise.
+A Nature is getting very comfortable at your place.|Ha, sounds like you have an uninvited guest.|Little critters can be so persistent.|That's a cheeky visitor.
+Q Have you found a way to keep it out?|What are you going to do about it?
+> Working on it.|I bought a fix.
+= That should do the trick.|Good plan.
+> No idea yet.|Still thinking.
+= Securing food and closing gaps usually helps.|A wildlife removal service can help if it keeps up.
+X Good luck with your furry visitor!|Hope it moves on soon.|Ha, keep me posted.
+@cn_price_faint neg contrast nohold em=uncon
+U I almost fainted when I saw the price of concert tickets.|I nearly passed out at the car repair bill.|The grocery total made my knees buckle today.|My electric bill this month almost knocked me out.
+A Prices like that are a real shock.|That number would make anyone dizzy.|Sticker shock is real.|That's a painful number to see.
+Q Are you still going to pay it?|Will you go ahead with it?
+> I have to.|No choice.
+= Ugh, sometimes you just have to.|Fair, maybe cut back somewhere else this month.
+> I'm skipping it.|Not worth it.
+= Fair, there'll be other chances.|Smart to set a limit.
+X Here's hoping prices come down.|Good luck with the budget.|Treat yourself to something cheap and nice.

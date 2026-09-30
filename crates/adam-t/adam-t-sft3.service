@@ -1,0 +1,12 @@
+[Unit]
+Description=ADAM-T 30M supervised tuning round 3 (sft_v8 blend format, GPU, governor-throttled) with chained selection and evaluation
+[Service]
+Type=exec
+WorkingDirectory=/home/anmire/ai/Amni-Ai
+Environment=AMNI_HOME=/home/anmire/ai/Amni-Ai THROTTLE_FILE=%h/.local/share/amni-ascend/throttle.txt RUN_DIR=/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft3 BASE_RUN=/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_bpe4096 CORPUS=adam_t/sft_v8 EPOCHS=1.2 MICRO=16 EVAL_SEGS=3 SNAP=1 TAG3=adam-t-t30m-sft3
+Environment="EVAL_ARGS=--suites chat"
+Environment=SRC_W=oasst1=1.5,oasst2=1.5,dolly=1,aya=1,mem=0.75,emergency=0.6,squad=1,adversarial_qa=1,hotpot_rc=1,hotpot_cb=0,drop=0.5,tydiqa=1,mintaka=0,csqa=0.5,qasc=0.5,gsm8k=0,dolly_ctx=1.5,calc=3,calc_gsm8k=1,wikidata=2,kctx=2,umem=2,emerg4=0.6,talk=2,reader=3,tmem=1.5,cmem=1.5,vent=3,greet=2,contrast=2,blend=3,story=2
+ExecStart=/usr/bin/bash /home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft3/bin/sft_chain.sh
+Nice=15
+CPUQuota=300%
+MemoryMax=4G

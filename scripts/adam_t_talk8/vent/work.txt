@@ -1,0 +1,99 @@
+@ve_boss_snapped neg vent
+U My boss snapped at me over a tiny typo today.|My supervisor got short with me about a small mistake and it ruined my mood.|My manager chewed me out for something that wasn't even my fault.|Got scolded by my boss this morning and I can't shake it off.
+A Getting snapped at over something small can sit with you all day.|That's a lousy way to be treated, especially over a {slip}.|Being told off like that stings, even when you know it's out of proportion.|No wonder you're rattled, that would get under anyone's skin.|A harsh word from a boss can drown out everything else that went right.
+V slip=typo,small slip,minor mistake,tiny error
+Q Is your boss usually like that, or was today unusual?|Does this happen a lot with them?
+> It happens all the time.|They're like that with everyone.
+= That constant tension is exhausting, and it says more about them than about you.|Working under someone that prickly wears you down. Do you have coworkers you can vent to?
+> No, today was weird.|Honestly this was a first.
+= Maybe they were having a bad day and it spilled onto you, which still isn't fair.|Then it might not be about you at all, though it still stung.
+Q Did you get a chance to say anything back?|How did you handle it in the moment?
+> I just stayed quiet.|I froze and said nothing.
+= Staying calm in the moment is hard, and it kept things from getting worse.|Freezing up is a really normal reaction when someone comes at you like that.
+> I told them it wasn't fair.|I pushed back a little.
+= Good for you for standing your ground.|That took some nerve, and it's okay to set that boundary.
+X I hope tomorrow is a lot kinder to you.|Go do something nice for yourself tonight, you earned it.|Shake it off with something fun this evening.
+@ve_workload neg vent
+U I have way too much on my plate at work and it keeps growing.|They keep piling projects on me and nobody asks if I have time.|Three people quit and now I'm doing all of their work too.|My to-do list at work is longer than my arm and I'm drowning.
+A That's a heavy load, and it keeps getting heavier without anyone noticing.|Doing the work of several people is a recipe for burnout.|No wonder you're overwhelmed, that list sounds endless.|Getting more piled on with no end in sight is exhausting.|That's a lot to carry, and it's not a sign you're doing anything wrong.
+Q Have you been able to talk to anyone about the workload?|Does your manager know how stretched you are?
+> Not yet.|I'm scared to bring it up.
+= It's worth a calm chat, and a list of everything on your plate makes it easy to see.|Bringing it up is scary, but they can't fix what they don't know about.
+> Yes, and nothing changed.|I tried, they just said to prioritize.
+= That's frustrating, maybe ask them to pick which tasks can wait.|Then it might help to ask directly what they want dropped.
+Q Are you getting any time to rest at all?|How are you holding up outside of work?
+> Barely, I work most evenings.|Not really.
+= That can't last forever, even one protected evening a week would help.|Your evenings should be yours, try to guard at least a little of that time.
+> Weekends are still free.|I'm okay on weekends.
+= Good, protect those weekends like gold.|That's something, make them count.
+X I hope things lighten up soon.|Take it one task at a time, you're doing more than enough.|Hang in there, and don't forget to rest.
+@ve_passed_over neg vent
+U I got passed over for the promotion again.|They gave the promotion to someone who started after me.|I found out today that I didn't get the promotion I worked so hard for.|Another round of promotions and my name wasn't on the list.
+A That's a real letdown after all the effort you put in.|Being passed over again would sting for anyone.|Watching someone else get it must feel especially unfair.|That's disappointing, and you're allowed to be upset about it.|All that hard work and no payoff yet is a tough pill to swallow.
+Q Did they tell you why?|Did anyone explain the decision?
+> They said I need more experience.|Something vague about next year.
+= Vague answers are frustrating, it might help to ask exactly what they want to see.|Maybe ask for specific goals so next time there's no room for doubt.
+> No explanation at all.|Nobody said a word.
+= That silence makes it even worse, you deserve some feedback.|It's fair to ask for a conversation about it.
+Q Are you thinking about looking elsewhere?|Does it make you want to switch jobs?
+> Maybe, I'm starting to wonder.|Kind of, yeah.
+= It never hurts to see what's out there.|Looking around can remind you how much you're worth.
+> No, I like it here otherwise.|Not yet.
+= Then a clear plan with your manager could be the way forward.|That's fair, one setback doesn't cancel the good parts.
+X Your time will come, don't give up on yourself.|I'm rooting for you next round.|Be proud of the work you did, it still counts.
+@ve_bad_review neg vent
+U My performance review was way worse than I expected.|I got a bad review at work and I'm kind of crushed.|My yearly review said I'm not meeting expectations.|The feedback in my review was brutal.
+A Hearing that after a whole year of effort is really hard to take in.|A rough review can knock the wind out of you.|That's a tough thing to read, especially when you didn't see it coming.|No wonder you're crushed, reviews can feel so personal.|That's a hard hit, and it's okay to take a moment with it.
+Q Was any of the feedback fair, or did it feel off?|Did it match how you see your own work?
+> Some of it was fair.|A few points were true.
+= That's a good sign, it means you can work on those pieces and prove the rest wrong.|Taking the fair parts on board is a strong move.
+> None of it felt fair.|It felt totally out of nowhere.
+= Then it's worth asking for specific examples so you know what they mean.|You could ask for a follow-up meeting to go through it point by point.
+Q Do you know what you want to do next?|Are you going to talk to your manager about it?
+> I'll ask for a plan.|Yeah, I want a follow-up.
+= That's a smart, calm way to handle it.|Good idea, a clear plan gives you something to aim for.
+> I don't know yet.|I need a few days first.
+= Taking a few days to cool off is wise.|That's fair, you don't have to decide tonight.
+X One review doesn't define you.|I believe you can turn this around.|Be kind to yourself tonight.
+@ve_quit_thoughts neg vent
+U I think I hate my job and I'm thinking about quitting.|Every Sunday I dread going back to work.|I'm so sick of my job, I want to walk out.|I'm miserable at work and I don't know what to do.
+A Dreading work every week takes a real toll.|Feeling stuck in a job you don't like is draining.|That's a lot of unhappiness to carry into every week.|It sounds like something needs to change, and it's good you're noticing it.|Hating the daily grind makes everything else harder too.
+Q What's the worst part of it for you?|Is it the work itself or the people?
+> The people, mostly.|It's my manager.
+= A bad team or boss can ruin even a good job.|People problems are often the hardest part to live with.
+> The work is boring.|I'm just not learning anything.
+= Feeling stuck and bored can be as tiring as being busy.|Wanting to grow is a good sign, maybe it's time to look for that.
+Q Do you have something else lined up?|Have you started looking for other jobs?
+> Not yet.|I'm too tired to look.
+= Maybe start small, like updating your resume one evening.|Even one application a week keeps the door open.
+> Yes, a couple of interviews.|I have one offer on the table.
+= That's exciting, you have options.|Nice, that gives you some breathing room.
+X I hope you find something that fits you better.|Good luck figuring it out, you deserve to like your work.|Take it one step at a time.
+@ve_teammate_slacker neg vent
+U My teammate never does their part of the group project.|I'm stuck carrying a coworker who does nothing.|One person on my team keeps missing deadlines and I have to cover.|I'm so fed up with a lazy coworker.
+A Picking up someone else's slack gets old really fast.|That's frustrating, especially when your name is on the work too.|Doing double duty because someone else won't is so unfair.|No wonder you're fed up, that would wear anyone out.|Carrying a teammate is exhausting and thankless.
+Q Have you said anything to them directly?|Does your lead know what's going on?
+> Not yet, I hate conflict.|No, I don't want drama.
+= A calm, private word can go a long way without any drama.|It's uncomfortable, but a short honest chat might fix a lot.
+> Yes, nothing changed.|I told my lead already.
+= Then keep a record of who did what, it protects you.|That's frustrating, a follow-up with your lead might be worth it.
+Q Is the deadline coming up soon?|How much time is left on it?
+> It's due Friday.|Next week.
+= Then focus on the pieces that matter most and flag the rest.|Tight, but you can get the key parts done.
+> We have a month.|Plenty of time still.
+= Good, that leaves room to sort out who does what.|That gives you time to split the work fairly.
+X Good luck with the project, I hope they step up.|You're doing more than your share, remember that.|Hang in there, it'll be done soon.
+@ve_commute_long neg vent
+U My commute is two hours each way and it's wearing me down.|I spend so much of my life stuck on the train to work.|The drive to my office is eating my whole day.|I'm exhausted from this long commute every day.
+A That much time in transit would drain anyone.|That's a huge chunk of your day just getting there and back.|Long commutes chip away at your energy in a sneaky way.|No wonder you're tired, that's a second job's worth of travel.|That much travel leaves hardly any time for yourself.
+Q Can you work from home any days?|Is remote work ever an option?
+> One day a week.|Sometimes on Fridays.
+= That one day is gold, maybe ask if a second is possible.|Every day at home is a win, protect it.
+> No, never.|They want us in every day.
+= Then maybe make the ride yours with a good podcast or audiobook.|That's rough, at least try to use the time for something you enjoy.
+Q What do you usually do on the ride?|How do you pass the time on the way?
+> Mostly scroll my phone.|Nothing, I just stare.
+= An audiobook or a show could make it feel shorter.|Maybe try a fun podcast, it can make the time fly.
+> I read.|I listen to music.
+= Nice, that's a good way to claim the time back.|Good choice, music makes a long ride easier.
+X I hope the ride goes by fast today.|Safe travels, and try to rest when you get home.|Hang in there, weekends are coming.

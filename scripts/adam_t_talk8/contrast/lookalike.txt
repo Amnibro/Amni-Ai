@@ -1,0 +1,170 @@
+@cn_lost_keys neg contrast nohold em=missing
+U I lost my keys somewhere in the mall.|I lost my wallet somewhere downtown today.|I think I left my headphones on the bus.|I lost my sunglasses at the beach.|I can't find my library card anywhere.
+A Losing something like that is so annoying.|Ugh, retracing your steps is the worst part.|That's frustrating, it always happens at the worst time.|Oh no, that's such a hassle.|Misplacing stuff can throw off a whole day.
+Q Where do you remember having it last?|When did you last see it?
+> At the food court, I think.|In the last store I went into.
+= Worth asking there, lost and found desks get a lot of those.|Good lead, maybe call that place and ask.
+> I have no idea.|I can't remember at all.
+= Try walking through your day backwards, it often jogs your memory.|Check the silly spots too, like your coat pockets or your bag.
+Q Do you have a spare?|Is there a backup you can use for now?
+> Yes, luckily.|I have a spare.
+= Phew, that takes the pressure off.|Good, at least you're not stuck.
+> No spare.|Nope, that was the only one.
+= Then it's worth a careful search before replacing it.|That's rough, I hope it turns up soon.
+X I hope it turns up soon!|Good luck with the search.|Fingers crossed someone turned it in.
+@cn_lost_car neg contrast nohold em=missing
+U I can't find my car in this giant parking garage.|I forgot which level I parked on at the airport.|I've walked the whole stadium lot and can't find my car.
+A Parking garages all look the same after a while.|Ugh, wandering a parking lot is the worst.|That's such a frustrating way to end an outing.|Every level looks identical in those places.
+Q Does your key fob have a panic button or a beep?|Do you remember anything near where you parked?
+> Oh, good idea.|I forgot about that.
+= Walk around and press it, the beep usually gives it away.|Try it on each level, it should honk.
+> A pillar with a letter on it.|Near the elevators, I think.
+= Start at the elevators and work outward.|That's a good landmark to go on.
+X Hope you find it quickly!|Good luck, and snap a photo of the spot next time.|Hang in there, it's there somewhere.
+@cn_kid_away neg contrast nohold em=missing
+U My son is at his first sleepover and the house is so quiet.|My daughter left for summer camp today and I miss her already.|Our youngest just started college and the house feels empty.|The kids are at their grandparents' for the week and I don't know what to do with myself.
+A A quiet house can feel strange when you're used to the noise.|Missing them already is a sweet kind of ache.|Time away is a big step for both of you.|It's funny how loud the silence gets.|That's a big milestone, even if it tugs at you.
+Q Have you heard from them yet?|Are they having fun so far?
+> Yes, they sent a happy text.|They called and sounded great.
+= That's the best news, they're having a blast.|Perfect, now you can relax a little.
+> Not yet.|No word so far.
+= No news usually means they're busy having fun.|They're probably too busy to check in, which is a good sign.
+Q What are you going to do with the free time?|Any plans while they're away?
+> Maybe a quiet dinner out.|Catch up on sleep.
+= That sounds like a well-earned treat.|Enjoy it, you deserve the rest.
+> No idea yet.|Probably clean.
+= Maybe do one thing just for you.|Ha, or put your feet up for once.
+X Enjoy the quiet while it lasts!|They'll be back before you know it.|Treat yourself a little this week.
+@cn_asleep_couch pos contrast nohold em=uncon
+U My husband fell asleep on the couch during the game and he's snoring like a chainsaw.|Grandpa dozed off in his armchair halfway through the movie again.|My roommate passed out on the sofa after a double shift, still in her work clothes.|My dad falls asleep every time we watch a movie together.
+A Ha, the couch nap is undefeated.|That's the most relatable thing I've heard today.|Some people just can't resist a comfy seat after a long day.|Sounds like someone had a long, tiring day.|A cozy seat and a screen is a recipe for a nap.
+Q Are you going to wake them up?|Will you let them sleep?
+> Nah, I'll let them sleep.|Let them rest.
+= Kind choice, maybe toss a blanket over them.|That's sweet, they probably need it.
+> I'll poke them in a bit.|I'll wake them for bed.
+= Good idea, a couch nap turns into a stiff neck fast.|Fair, the bed is much comfier.
+X Enjoy the peace and quiet!|Sweet dreams to the sleepyhead.|Have a cozy evening.
+@cn_crashed_sleep pos contrast nohold em=crash
+U I crashed on the couch at eight last night and slept till morning.|I totally crashed after the party and slept for twelve hours.|I crashed hard after my exams ended.
+A Sounds like your body really needed that sleep.|Nothing beats a long, heavy sleep after a big stretch.|That's the sleep of someone who earned it.|A crash like that usually means you were running on empty.
+Q Do you feel better now?|How are you feeling after all that sleep?
+> Like a new person.|So much better.
+= That's the magic of a proper rest.|Love that, enjoy the energy.
+> Still groggy.|Kind of foggy.
+= Some water and daylight should help shake it off.|Give it an hour, the fog usually lifts.
+X Enjoy feeling rested!|Keep that sleep streak going.|Have a great day.
+@cn_tech_crash neg contrast nohold em=crash
+U My computer crashed right before I saved my essay.|My game crashed right before the final boss.|The app crashed in the middle of my online order.|My phone crashed while I was writing a long message.
+A Crashing right before the big moment is so cruel.|Losing progress like that is painful.|Ugh, tech has terrible timing.|That's a frustrating kind of luck.
+Q Were you able to get it back?|Did anything get saved?
+> Yes, mostly.|Autosave saved me.
+= Nice, that's a relief.|Autosave is a hero.
+> No, it's gone.|Nothing saved.
+= That's rough, starting over is the worst.|Oof, take a short break before you redo it.
+X Here's hoping it behaves from now on.|Good luck with the redo.|Take a breather, then try again.
+@cn_fender_bender neu contrast nohold em=crash
+U I saw a tiny fender bender in the parking lot, everyone was fine and just swapping insurance info.|Someone bumped my car at a red light, just a scratch and nobody was hurt.|A shopping cart rolled into my car and left a dent.
+A Glad nobody was hurt, that's the main thing.|Little bumps like that are still such a hassle.|Annoying, but it could have been a lot worse.|Paperwork over a scratch is never fun.
+Q Did you get their information?|Are you going to get it fixed?
+> Yes, we swapped details.|Got their insurance info.
+= Good, that's the most important step.|Smart, that makes the rest easier.
+> Probably not, it's small.|I'll live with it.
+= Fair, small dents are easy to ignore.|Makes sense if it's just cosmetic.
+X Glad it was minor!|Drive safe out there.|Hope the rest of your day is smooth.
+@cn_drowning_tasks neg contrast nohold em=drown
+U I'm drowning in wedding planning.|I'm drowning in papers to grade this week.|I'm drowning in paperwork for my new apartment.|My inbox is drowning me today.
+A That's a lot to wade through at once.|Sounds like the to-do pile is winning right now.|No wonder you feel buried, that's a lot.|That kind of pile-up is overwhelming.|That's a mountain of stuff to get through.
+Q Is there a deadline coming up?|When does it all need to be done?
+> End of the month.|By Friday.
+= Breaking it into small daily chunks might help.|Tight, but doable if you pick the most important bits first.
+> No hard deadline.|Whenever, but it's stressing me out.
+= Then give yourself permission to do a little each day.|Maybe set a timer and do just twenty minutes at a time.
+Q Can anyone help you with it?|Is someone able to share the load?
+> My partner can help.|A friend offered.
+= Take them up on it, many hands make light work.|Say yes to that help.
+> Not really.|It's all on me.
+= Then be kind to yourself about the pace.|That's a lot for one person, pick the essentials first.
+X You'll get through it one piece at a time.|Hang in there!|Good luck with the pile.
+@cn_heart_race pos contrast nohold em=heart
+U My heart is racing, I just got asked out on a date!|I just finished my first 5k and my heart is pounding.|My heart is still beating fast from that roller coaster.|My heart was going a mile a minute during my speech.
+A What a rush!|That's a lot of excitement in one go.|Your heart sure knows how to celebrate.|Moments like that really get the blood pumping.|That sounds like quite the thrill.
+Q How did it go?|How are you feeling now?
+> Amazing, I'm grinning.|Really good.
+= Love that for you.|That's awesome, enjoy the moment.
+> Still a bit shaky.|Buzzing, kind of.
+= Sit for a minute and let the adrenaline settle.|Ride the wave, it'll calm down soon.
+Q Would you do it again?|What's next?
+> Definitely.|Already planning the next one.
+= That's the spirit.|Nice, sounds like you're hooked.
+> Maybe not soon.|Once was enough.
+= Fair, once is still a win.|Ha, fair enough.
+X Enjoy the good feeling!|Congrats!|That's a fun story to tell later.
+@cn_small_cut neg contrast nohold em=bleed
+U I got a paper cut and it stings like crazy.|I nicked my finger chopping onions, it's already bandaged.|I scraped my knee on the sidewalk, just a little scrape.|I got a splinter from the fence and it's annoying.
+A Ouch, little injuries like that sting more than they should.|That's the small kind of hurt that nags all day.|Ouch, annoying but not the end of the world.|Tiny hurts can be surprisingly distracting.
+Q Did you clean it up?|Did you wash it and put something on it?
+> Yes, bandage on.|Cleaned and covered.
+= Good, keep it clean and it'll heal fast.|Perfect, that's all a small one needs.
+> Not yet.|I just ignored it.
+= A quick rinse and a bandage will help it heal.|Worth washing it with soap and water.
+X Hope it stops stinging soon.|Heal up quick!|Careful out there.
+@cn_burnt_toast neg contrast nohold em=fire
+U I burned the toast and set off the smoke alarm, the whole kitchen smells now.|I scorched the rice again and the kitchen is a little smoky.|The toaster set off the smoke detector for the third time this week.|I let the popcorn burn and now the kitchen reeks.
+A Ha, the kitchen smoke show strikes again.|Burnt food has such a stubborn smell.|Nothing wakes up the house like a cooking mishap.|Ah, the classic smoke alarm dinner bell.
+Q Did you open the windows?|Is the smell clearing out?
+> Yes, windows wide open.|Fan is on.
+= Good, it should clear in a bit.|That should do it.
+> Not yet.|Still stinky.
+= Opening a window and running a fan helps a lot.|A bowl of vinegar can soak up some of the smell.
+Q Was the rest of the meal saved?|Did you manage to eat anything?
+> I made more.|Round two worked.
+= Second try is the charm.|Nice save.
+> We ordered pizza.|Cereal for dinner.
+= Honestly, pizza is a great backup plan.|Cereal dinner has its charms.
+X Better luck with the next batch!|Enjoy the fresh air.|Here's to smoke-free cooking.
+@cn_bonfire pos contrast nohold em=fire
+U We had a big bonfire in the backyard last night and my hair still smells like smoke.|We made s'mores over the fire pit and it was perfect.|The campfire last night was the best part of the trip.
+A A backyard fire is such a good night.|Campfire evenings are hard to beat.|That smoky smell is the souvenir of a good time.|Fire pit nights make the best memories.
+Q Did you make s'mores?|Who was there with you?
+> Of course!|Way too many.
+= As you should.|Ha, that's the right amount.
+> Just family.|A few friends.
+= That sounds really cozy.|Perfect crowd for a fire.
+X Sounds like a lovely night.|Enjoy the memories.|Do it again soon!
+@cn_static neu contrast nohold em=shock
+U I got a static shock from the doorknob again.|My cat and I keep shocking each other with static.|Every time I touch the car door I get zapped.|This dry winter air has me zapping everything I touch.
+A Static shocks are tiny but so startling.|That little zap gets you every time.|Dry air turns everyone into a battery.|Winter static is relentless.
+Q Have you tried a humidifier?|Does anything help with the static?
+> Not yet.|I don't have one.
+= A humidifier or touching metal with a key first can help.|Moisturizing your hands helps a bit too.
+> Yes, it helps a little.|Kind of.
+= Every little bit counts.|Good, winter will pass eventually.
+X Stay zap-free!|Good luck with the static.|Here's to spring.
+@cn_teething neg contrast em=baby
+U My baby is teething and was fussy all night.|Our baby has the hiccups again and won't stop.|My newborn only naps when I hold her.|The baby spit up all over my clean shirt.
+A Babies keep you on your toes.|The baby stage is a lot of laundry and very little sleep.|Ah, the glamorous life of a new parent.|Little ones have their own schedule, don't they.
+Q Are you getting any rest?|How are you holding up?
+> Barely.|Not much sleep.
+= Nap when the baby naps if you can.|Take turns if someone can help, even for an hour.
+> Doing okay.|Surviving.
+= Surviving counts as winning at this stage.|You're doing great.
+Q How old is the baby now?|How many months?
+> Three months.|Six months.
+= Such a sweet age.|That's right in the thick of it.
+> Just a few weeks.|Almost a year.
+= Every month gets a little easier.|Time flies, doesn't it.
+X Hang in there, it gets easier.|You're doing a great job.|Sending sleepy good vibes.
+@cn_pregnant pos contrast nohold em=labor1
+U I'm six months pregnant and craving pickles with ice cream.|We just set up the nursery and it looks so cute.|My wife is due in March and we're picking names.|The baby kicked for the first time today!
+A That's so exciting!|What a sweet stage.|Congratulations, that's wonderful news.|Such a special time.
+Q Do you know if it's a boy or a girl?|Have you picked a name yet?
+> A girl!|It's a boy.
+= How exciting, congratulations!|Congrats, that's wonderful.
+> We're keeping it a surprise.|Not yet.
+= Surprises are fun too.|Plenty of time to decide.
+Q How are you feeling these days?|Is everything going smoothly?
+> Pretty good.|Tired but happy.
+= Tired but happy sounds about right.|Glad to hear it.
+> A bit nervous.|Excited and scared.
+= That mix is so normal.|Totally understandable, it's a big change.
+X Congratulations again!|Wishing you all the best.|Enjoy these months.

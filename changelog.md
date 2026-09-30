@@ -1,3 +1,28 @@
+## 2026-09-30 ADAM-T-SFT8: sft_v8 in the blend format, and the round-3 launch chain
+- Why: the 2026-09-30 live probe on round-2 SFT got decline boilerplate on a greeting, the lost-child emergency template on a work vent, "haven't told me" on an in-message fact, and word salad on a story request. The CEO then confirmed ADAM-T's role: turn PTEX/torus material into varied, natural phrasing, not store knowledge.
+- `scripts/build_adam_t_sft.py` v8 adds `--scrub`. It rewrites every v7 base example:
+  - AI-assistant decline boilerplate is trimmed or the exchange dropped: 246 trimmed and 69 dropped in oasst1/oasst2, 468 in mem, plus prompt-only history turns;
+  - every base example is re-decontaminated: 13/8/6-gram, exact eval line, and a re-check after the rewrite, now covering the 7 ADAM-T eval sets added since v7 and probe8;
+  - a near-paraphrase guard covers the seen live prompts and probe8;
+  - factual oasst/dolly/aya replies get `Notes:` material built from their own sentences (~17k exchanges);
+  - chat5 distractor turns inside mem/emergency/emerg4 are prompt-only (22.6k turns);
+  - guessed hedges in reader/kctx/wikidata become honest no-guess hedges (7.7k).
+- New sources:
+  - `vent` (3,531), `greet` (1,267) and `contrast` (3,762, including ~860 matched real emergencies). These are CC0 scenario files in `scripts/adam_t_talk8/`, with `em=<kind>` linking each look-alike to its emergency twin.
+  - `blend` (15,692, Wikipedia passages from the R-KNOW index): paraphrase, merge, summarise, brief/warm/playful tone, and hedges for other-entity, missing-date and no-material questions. Every paraphrase reply passes the harness grounding check.
+  - `story` (2,945, CC0 beats to a short story).
+- `talk()`/`emerg4()` are parametrised (no new generators). `tok()` takes per-turn loss flags. `--probe8` writes the held-out blend probe once.
+- Recommended SRC_W puts closed-book sources at 0 (hotpot_cb, mintaka, gsm8k) and emergency/emerg4 at 0.6.
+- `data/adam_t/sft_v8`: 257,155 train / 5,756 hold examples, 50.6M train tokens. The post-hoc rescan finds 0 hits on new sources, and one residual near-probe flag inside reply-derived notes.
+- `data/adam_t/eval/probe8/`: the greeting/venting probe (68 CC0 items), the blend probe (182 items from a reserved document bucket), and the 4 seen live prompts. None of it trains.
+- `docs/adam_t/sft8_prereg.md` has 13 criteria. The headline is faithfulness, meaning the harness `_para` grounding pass rate. Phrasing diversity (distinct-2 and repeated openers) is added for the anti-canned role.
+- `scripts/adam_t_probe8.py`: probe runs, the grounding check (the harness's own `_ct`/stopwords), the pre-registered selection rule, and the report.
+- `crates/adam-t/sft_chain.sh` and `adam-t-sft3.service`:
+  - `sft.sh` training (EPOCHS 1.2, MICRO 16, governor), with a snapshot at every evaluation;
+  - export and blend-probe every snapshot, then select a step;
+  - run the A0 chat suite on the round-3 and round-2 gf17, then E2E with the harness off (`--tune`), then the round-2 probes;
+  - write `exports/adam_t/t30m_sft3/report.md`.
+
 ## 2026-09-29 WIKIDATA-PROPS3: Wikidata v3 store with commonsense relations
 - `crates/adam-wikifact`: KEEP grows from 145 to 189 properties (+44). Added: P171 parent taxon, P186 made from, P366 has use, P2283 uses, P1535 used by, P1034 main food source, P2974 habitat, P183 endemic to, P9714 taxon range, P2975 host, P1582/P1672 natural product, P703 found in taxon, P3094 develops from, P828/P1542/P1478/P1536/P1479/P1537/P5642 cause and effect, P780 symptoms, P2175/P2176 treats and treated with, P1995, P1060, P461 opposite of, P1269 facet of, P1552 has characteristic, P1557, P2578/P2579 studies and studied by, P425, P3095, P921 main subject, P460, P737, P941, P2012 cuisine, P2670, P4330, P516, P2079 and P462 color. `wf_extract` also writes `prop_counts.json` ([subjects, statements] for every property on the subjects). The `wf_extract`/`wf_pack` sources are now tracked.
 - `data/wikifact/v3/store`: built from the same wikidata-20260921 dump, re-streamed with md5 verified and no raw file on disk. It has 55,062,201 facts (+1,634,972) and 11,900,718 entities in 4.4 GB, and is GF(17)-exact. v2 is preserved exactly: same per-property counts, 3,000 subjects identical, same QA answers. The swap used `mv --exchange`, so `data/wikifact/v2` is now a symlink to `v3`. The old v2 store was then deleted and logged.
