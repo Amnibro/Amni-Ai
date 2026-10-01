@@ -1,0 +1,502 @@
+# 500 invented facts about 100 invented entities (people, towns, organisations, rivers). Written for TORUS-A gate A5, 2026-09-30. Dedicated to the public domain: CC0 1.0.
+# subject	property	object (Wikidata QID, or an invented entity named in this file)
+person:Kavanix Sikan	P31	Q5
+person:Kavanix Sikan	P19	town:Rirelethford
+person:Kavanix Sikan	P27	Q408
+person:Kavanix Sikan	P106	Q37226
+person:Kavanix Sikan	P106	Q81096
+person:Digriur Sara	P31	Q5
+person:Digriur Sara	P19	town:Zusikethford
+person:Digriur Sara	P27	Q183
+person:Digriur Sara	P106	Q36180
+person:Digriur Sara	P106	Q901
+person:Mimuneth Grieth	P31	Q5
+person:Mimuneth Grieth	P19	town:Tarelixford
+person:Mimuneth Grieth	P27	Q145
+person:Mimuneth Grieth	P106	Q39631
+person:Mimuneth Grieth	P106	Q901
+person:Katalix Torur	P31	Q5
+person:Katalix Torur	P19	town:Homunisford
+person:Katalix Torur	P27	Q408
+person:Katalix Torur	P106	Q639669
+person:Katalix Torur	P106	Q37226
+person:Divanur Doris	P31	Q5
+person:Divanur Doris	P19	town:Zusikethford
+person:Divanur Doris	P27	Q16
+person:Divanur Doris	P106	Q639669
+person:Divanur Doris	P106	Q36180
+person:Gugriur Neleth	P31	Q5
+person:Gugriur Neleth	P19	town:Rirelethford
+person:Gugriur Neleth	P27	Q30
+person:Gugriur Neleth	P106	Q901
+person:Gugriur Neleth	P106	Q36180
+person:Kabimo Griix	P31	Q5
+person:Kabimo Griix	P19	town:Zusikethford
+person:Kabimo Griix	P27	Q142
+person:Kabimo Griix	P106	Q1028181
+person:Kabimo Griix	P106	Q36180
+person:Felona Sikix	P31	Q5
+person:Felona Sikix	P19	town:Bevekethford
+person:Felona Sikix	P27	Q29
+person:Felona Sikix	P106	Q82955
+person:Felona Sikix	P106	Q901
+person:Kabimis Lonen	P31	Q5
+person:Kabimis Lonen	P19	town:Notalaford
+person:Kabimis Lonen	P27	Q30
+person:Kabimis Lonen	P106	Q81096
+person:Kabimis Lonen	P106	Q639669
+person:Bebimo Toreth	P31	Q5
+person:Bebimo Toreth	P19	town:Yagrianford
+person:Bebimo Toreth	P27	Q38
+person:Bebimo Toreth	P106	Q82955
+person:Bebimo Toreth	P106	Q39631
+person:Ribiman Quoa	P31	Q5
+person:Ribiman Quoa	P19	town:Zupesixford
+person:Ribiman Quoa	P27	Q38
+person:Ribiman Quoa	P106	Q82955
+person:Ribiman Quoa	P21	Q6581097
+person:Zuvaneth Sareth	P31	Q5
+person:Zuvaneth Sareth	P19	town:Tagrioford
+person:Zuvaneth Sareth	P27	Q17
+person:Zuvaneth Sareth	P106	Q39631
+person:Zuvaneth Sareth	P21	Q6581097
+person:Zutoreth Falix	P31	Q5
+person:Zutoreth Falix	P19	town:Losarurford
+person:Zutoreth Falix	P27	Q155
+person:Zutoreth Falix	P106	Q1028181
+person:Zutoreth Falix	P21	Q6581097
+person:Sanela Vanen	P31	Q5
+person:Sanela Vanen	P19	town:Guvanixford
+person:Sanela Vanen	P27	Q145
+person:Sanela Vanen	P106	Q1028181
+person:Sanela Vanen	P21	Q6581072
+person:Zumuno Relan	P31	Q5
+person:Zumuno Relan	P19	town:Rirelethford
+person:Zumuno Relan	P27	Q142
+person:Zumuno Relan	P106	Q81096
+person:Zumuno Relan	P21	Q6581072
+person:Nofala Biman	P31	Q5
+person:Nofala Biman	P19	town:Lovanenford
+person:Nofala Biman	P27	Q155
+person:Nofala Biman	P106	Q901
+person:Nofala Biman	P21	Q6581097
+person:Zufalo Grien	P31	Q5
+person:Zufalo Grien	P19	town:Fevekurford
+person:Zufalo Grien	P27	Q16
+person:Zufalo Grien	P106	Q37226
+person:Zufalo Grien	P21	Q6581097
+person:Rimuna Toran	P31	Q5
+person:Rimuna Toran	P19	town:Bevekethford
+person:Rimuna Toran	P27	Q183
+person:Rimuna Toran	P106	Q1028181
+person:Rimuna Toran	P21	Q6581072
+person:Guvekis Quois	P31	Q5
+person:Guvekis Quois	P19	town:Guvanixford
+person:Guvekis Quois	P27	Q145
+person:Guvekis Quois	P106	Q82955
+person:Guvekis Quois	P21	Q6581097
+person:Qufaleth Peso	P31	Q5
+person:Qufaleth Peso	P19	town:Lovanenford
+person:Qufaleth Peso	P27	Q142
+person:Qufaleth Peso	P106	Q39631
+person:Qufaleth Peso	P21	Q6581097
+person:Verelan Veka	P31	Q5
+person:Verelan Veka	P19	town:Riquooford
+person:Verelan Veka	P27	Q183
+person:Verelan Veka	P106	Q1028181
+person:Verelan Veka	P21	Q6581097
+person:Risaran Saran	P31	Q5
+person:Risaran Saran	P19	town:Rirelethford
+person:Risaran Saran	P27	Q183
+person:Risaran Saran	P106	Q36180
+person:Risaran Saran	P21	Q6581072
+person:Katalis Tala	P31	Q5
+person:Katalis Tala	P19	town:Zupesixford
+person:Katalis Tala	P27	Q29
+person:Katalis Tala	P106	Q1028181
+person:Katalis Tala	P21	Q6581072
+person:Febimix Torix	P31	Q5
+person:Febimix Torix	P19	town:Fepesanford
+person:Febimix Torix	P27	Q183
+person:Febimix Torix	P106	Q37226
+person:Febimix Torix	P21	Q6581097
+person:Kanelix Pesis	P31	Q5
+person:Kanelix Pesis	P19	town:Rirelethford
+person:Kanelix Pesis	P27	Q145
+person:Kanelix Pesis	P106	Q1028181
+person:Kanelix Pesis	P21	Q6581072
+person:Qutalix Lonan	P31	Q5
+person:Qutalix Lonan	P19	town:Fevekurford
+person:Qutalix Lonan	P27	Q183
+person:Qutalix Lonan	P106	Q39631
+person:Qutalix Lonan	P21	Q6581097
+person:Vefalan Talis	P31	Q5
+person:Vefalan Talis	P19	town:Tapesisford
+person:Vefalan Talis	P27	Q183
+person:Vefalan Talis	P106	Q36180
+person:Vefalan Talis	P21	Q6581072
+person:Ququoo Vekis	P31	Q5
+person:Ququoo Vekis	P19	town:Talonanford
+person:Ququoo Vekis	P27	Q38
+person:Ququoo Vekis	P106	Q39631
+person:Ququoo Vekis	P21	Q6581072
+person:Kadoro Sikis	P31	Q5
+person:Kadoro Sikis	P19	town:Yaquoanford
+person:Kadoro Sikis	P27	Q145
+person:Kadoro Sikis	P106	Q82955
+person:Kadoro Sikis	P21	Q6581072
+person:Verelo Munis	P31	Q5
+person:Verelo Munis	P19	town:Zusikurford
+person:Verelo Munis	P27	Q30
+person:Verelo Munis	P106	Q39631
+person:Verelo Munis	P21	Q6581097
+person:Fequoen Relen	P31	Q5
+person:Fequoen Relen	P19	town:Bevanaford
+person:Fequoen Relen	P27	Q408
+person:Fequoen Relen	P106	Q36180
+person:Fequoen Relen	P21	Q6581097
+person:Qupesen Sika	P31	Q5
+person:Qupesen Sika	P19	town:Nosaraford
+person:Qupesen Sika	P27	Q17
+person:Qupesen Sika	P106	Q81096
+person:Qupesen Sika	P21	Q6581072
+person:Logriix Talix	P31	Q5
+person:Logriix Talix	P19	town:Yagrianford
+person:Logriix Talix	P27	Q408
+person:Logriix Talix	P106	Q639669
+person:Logriix Talix	P21	Q6581072
+person:Lobimo Munur	P31	Q5
+person:Lobimo Munur	P19	town:Nobimanford
+person:Lobimo Munur	P27	Q145
+person:Lobimo Munur	P106	Q639669
+person:Lobimo Munur	P21	Q6581072
+person:Safalix Bimo	P31	Q5
+person:Safalix Bimo	P19	town:Zusikethford
+person:Safalix Bimo	P27	Q408
+person:Safalix Bimo	P106	Q36180
+person:Safalix Bimo	P21	Q6581097
+person:Gutaleth Loneth	P31	Q5
+person:Gutaleth Loneth	P19	town:Fepesanford
+person:Gutaleth Loneth	P27	Q17
+person:Gutaleth Loneth	P106	Q639669
+person:Gutaleth Loneth	P21	Q6581072
+person:Qulonan Loneth	P31	Q5
+person:Qulonan Loneth	P19	town:Lovanenford
+person:Qulonan Loneth	P27	Q17
+person:Qulonan Loneth	P106	Q639669
+person:Qulonan Loneth	P21	Q6581072
+person:Yatoreth Lona	P31	Q5
+person:Yatoreth Lona	P19	town:Bevanaford
+person:Yatoreth Lona	P27	Q29
+person:Yatoreth Lona	P106	Q639669
+person:Yatoreth Lona	P21	Q6581097
+person:Sapesen Lono	P31	Q5
+person:Sapesen Lono	P19	town:Tarelixford
+person:Sapesen Lono	P27	Q29
+person:Sapesen Lono	P106	Q39631
+person:Sapesen Lono	P21	Q6581072
+person:Yaveken Doran	P31	Q5
+person:Yaveken Doran	P19	town:Fepesanford
+person:Yaveken Doran	P27	Q30
+person:Yaveken Doran	P106	Q81096
+person:Yaveken Doran	P21	Q6581097
+town:Zuvekurford	P31	Q3957
+town:Zuvekurford	P17	Q29
+town:Zuvekurford	P206	river:Hosaro River
+town:Zuvekurford	P30	Q46
+town:Zuvekurford	P47	town:Zusikurford
+town:Bevekethford	P31	Q3957
+town:Bevekethford	P17	Q38
+town:Bevekethford	P206	river:Zugrian River
+town:Bevekethford	P30	Q46
+town:Bevekethford	P47	town:Zuvekurford
+town:Mipesanford	P31	Q3957
+town:Mipesanford	P17	Q183
+town:Mipesanford	P206	river:Mifala River
+town:Mipesanford	P30	Q46
+town:Mipesanford	P47	town:Fedoraford
+town:Tapesisford	P31	Q3957
+town:Tapesisford	P17	Q16
+town:Tapesisford	P206	river:Quvaneth River
+town:Tapesisford	P30	Q49
+town:Tapesisford	P47	town:Yaquoanford
+town:Tagrioford	P31	Q3957
+town:Tagrioford	P17	Q155
+town:Tagrioford	P206	river:Vedorix River
+town:Tagrioford	P30	Q18
+town:Tagrioford	P47	town:Bevanaford
+town:Qusaraford	P31	Q3957
+town:Qusaraford	P17	Q29
+town:Qusaraford	P206	river:Hosaro River
+town:Qusaraford	P30	Q46
+town:Qusaraford	P47	town:Zupesixford
+town:Guvanixford	P31	Q3957
+town:Guvanixford	P17	Q408
+town:Guvanixford	P206	river:Lovanis River
+town:Guvanixford	P30	Q3960
+town:Guvanixford	P47	town:Yagrianford
+town:Notalaford	P31	Q3957
+town:Notalaford	P17	Q408
+town:Notalaford	P206	river:Misiken River
+town:Notalaford	P30	Q3960
+town:Notalaford	P47	town:Guvanixford
+town:Talonanford	P31	Q3957
+town:Talonanford	P17	Q16
+town:Talonanford	P206	river:Gumunis River
+town:Talonanford	P30	Q49
+town:Talonanford	P47	town:Qusaraford
+town:Fepesanford	P31	Q3957
+town:Fepesanford	P17	Q30
+town:Fepesanford	P206	river:Gupesan River
+town:Fepesanford	P30	Q49
+town:Fepesanford	P47	town:Nosaraford
+town:Nosaraford	P31	Q3957
+town:Nosaraford	P17	Q155
+town:Nosaraford	P206	river:Gumunis River
+town:Nosaraford	P30	Q18
+town:Nosaraford	P47	town:Qusaraford
+town:Yaquoanford	P31	Q3957
+town:Yaquoanford	P17	Q38
+town:Yaquoanford	P206	river:Zugrian River
+town:Yaquoanford	P30	Q46
+town:Yaquoanford	P47	town:Nobimanford
+town:Rirelethford	P31	Q3957
+town:Rirelethford	P17	Q38
+town:Rirelethford	P206	river:Bedorix River
+town:Rirelethford	P30	Q46
+town:Rirelethford	P47	town:Tarelixford
+town:Fedoraford	P31	Q3957
+town:Fedoraford	P17	Q155
+town:Fedoraford	P206	river:Zugrian River
+town:Fedoraford	P30	Q18
+town:Fedoraford	P47	town:Yaquoanford
+town:Fefalurford	P31	Q3957
+town:Fefalurford	P17	Q145
+town:Fefalurford	P206	river:Yalono River
+town:Fefalurford	P30	Q46
+town:Fefalurford	P47	town:Nosaraford
+town:Gusarenford	P31	Q3957
+town:Gusarenford	P17	Q16
+town:Gusarenford	P206	river:Tamuno River
+town:Gusarenford	P30	Q49
+town:Gusarenford	P47	town:Fepesanford
+town:Fevekurford	P31	Q3957
+town:Fevekurford	P17	Q145
+town:Fevekurford	P206	river:Berelis River
+town:Fevekurford	P30	Q46
+town:Fevekurford	P47	town:Fepesanford
+town:Lovanenford	P31	Q3957
+town:Lovanenford	P17	Q38
+town:Lovanenford	P206	river:Gutalis River
+town:Lovanenford	P30	Q46
+town:Lovanenford	P47	town:Yagrianford
+town:Zusikurford	P31	Q3957
+town:Zusikurford	P17	Q183
+town:Zusikurford	P206	river:Hosaro River
+town:Zusikurford	P30	Q46
+town:Zusikurford	P47	town:Guvanixford
+town:Zupesixford	P31	Q3957
+town:Zupesixford	P17	Q145
+town:Zupesixford	P206	river:Mifala River
+town:Zupesixford	P30	Q46
+town:Zupesixford	P47	town:Yagrianford
+town:Bevanaford	P31	Q3957
+town:Bevanaford	P17	Q29
+town:Bevanaford	P206	river:Yalono River
+town:Bevanaford	P30	Q46
+town:Bevanaford	P47	town:Zuvekurford
+town:Losarurford	P31	Q3957
+town:Losarurford	P17	Q145
+town:Losarurford	P206	river:Gupesan River
+town:Losarurford	P30	Q46
+town:Losarurford	P47	town:Homunisford
+town:Homunisford	P31	Q3957
+town:Homunisford	P17	Q17
+town:Homunisford	P206	river:Misiken River
+town:Homunisford	P30	Q48
+town:Homunisford	P47	town:Nobimanford
+town:Fevanoford	P31	Q3957
+town:Fevanoford	P17	Q38
+town:Fevanoford	P206	river:Zugrian River
+town:Fevanoford	P30	Q46
+town:Fevanoford	P47	town:Bevanaford
+town:Tarelixford	P31	Q3957
+town:Tarelixford	P17	Q30
+town:Tarelixford	P206	river:Gupesan River
+town:Tarelixford	P30	Q49
+town:Tarelixford	P47	town:Zupesixford
+town:Zusikethford	P31	Q3957
+town:Zusikethford	P17	Q30
+town:Zusikethford	P206	river:Gutalis River
+town:Zusikethford	P30	Q49
+town:Zusikethford	P47	town:Fefalurford
+town:Riquooford	P31	Q3957
+town:Riquooford	P17	Q183
+town:Riquooford	P206	river:Bedorix River
+town:Riquooford	P30	Q46
+town:Riquooford	P47	town:Guvanixford
+town:Nobimanford	P31	Q3957
+town:Nobimanford	P17	Q29
+town:Nobimanford	P206	river:Vedorix River
+town:Nobimanford	P30	Q46
+town:Nobimanford	P47	town:Bevanaford
+town:Zusarenford	P31	Q3957
+town:Zusarenford	P17	Q38
+town:Zusarenford	P206	river:Zugrian River
+town:Zusarenford	P30	Q46
+town:Zusarenford	P47	town:Fepesanford
+town:Yagrianford	P31	Q3957
+town:Yagrianford	P17	Q183
+town:Yagrianford	P206	river:Gumunis River
+town:Yagrianford	P30	Q46
+town:Yagrianford	P47	town:Zuvekurford
+org:Tavanis Works	P31	Q4830453
+org:Tavanis Works	P159	town:Fepesanford
+org:Tavanis Works	P17	Q16
+org:Tavanis Works	P112	person:Gutaleth Loneth
+org:Tavanis Works	P749	org:Guvekan Works
+org:Gusikur Works	P31	Q4830453
+org:Gusikur Works	P159	town:Nobimanford
+org:Gusikur Works	P17	Q29
+org:Gusikur Works	P112	person:Mimuneth Grieth
+org:Gusikur Works	P749	org:Zuvanan Works
+org:Hotora Works	P31	Q3918
+org:Hotora Works	P159	town:Zupesixford
+org:Hotora Works	P17	Q38
+org:Hotora Works	P112	person:Logriix Talix
+org:Hotora Works	P749	org:Yagrio Works
+org:Zuvanan Works	P31	Q3918
+org:Zuvanan Works	P159	town:Qusaraford
+org:Zuvanan Works	P17	Q16
+org:Zuvanan Works	P112	person:Verelo Munis
+org:Zuvanan Works	P749	org:Hotora Works
+org:Yagrio Works	P31	Q4830453
+org:Yagrio Works	P159	town:Tarelixford
+org:Yagrio Works	P17	Q142
+org:Yagrio Works	P112	person:Sapesen Lono
+org:Yagrio Works	P749	org:Zutora Works
+org:Notalis Works	P31	Q4830453
+org:Notalis Works	P159	town:Fepesanford
+org:Notalis Works	P17	Q408
+org:Notalis Works	P112	person:Divanur Doris
+org:Notalis Works	P749	org:Tavanis Works
+org:Qugrian Works	P31	Q3918
+org:Qugrian Works	P159	town:Zupesixford
+org:Qugrian Works	P17	Q155
+org:Qugrian Works	P112	person:Kabimo Griix
+org:Qugrian Works	P749	org:Tavanis Works
+org:Zutora Works	P31	Q3918
+org:Zutora Works	P159	town:Tagrioford
+org:Zutora Works	P17	Q142
+org:Zutora Works	P112	person:Rimuna Toran
+org:Zutora Works	P749	org:Tasaris Works
+org:Sapeso Works	P31	Q4830453
+org:Sapeso Works	P159	town:Zupesixford
+org:Sapeso Works	P17	Q183
+org:Sapeso Works	P112	person:Ribiman Quoa
+org:Sapeso Works	P749	org:Qugrian Works
+org:Yaquoeth Works	P31	Q4830453
+org:Yaquoeth Works	P159	town:Fevekurford
+org:Yaquoeth Works	P17	Q29
+org:Yaquoeth Works	P112	person:Zumuno Relan
+org:Yaquoeth Works	P749	org:Zutora Works
+org:Misikan Works	P31	Q4830453
+org:Misikan Works	P159	town:Tapesisford
+org:Misikan Works	P17	Q142
+org:Misikan Works	P112	person:Vefalan Talis
+org:Misikan Works	P749	org:Sapeso Works
+org:Guvekan Works	P31	Q3918
+org:Guvekan Works	P159	town:Zupesixford
+org:Guvekan Works	P17	Q408
+org:Guvekan Works	P112	person:Febimix Torix
+org:Guvekan Works	P749	org:Feveketh Works
+org:Feveketh Works	P31	Q4830453
+org:Feveketh Works	P159	town:Yagrianford
+org:Feveketh Works	P17	Q17
+org:Feveketh Works	P112	person:Qutalix Lonan
+org:Feveketh Works	P749	org:Hotora Works
+org:Tasaris Works	P31	Q4830453
+org:Tasaris Works	P159	town:Qusaraford
+org:Tasaris Works	P17	Q183
+org:Tasaris Works	P112	person:Kavanix Sikan
+org:Tasaris Works	P749	org:Tanelen Works
+org:Tanelen Works	P31	Q3918
+org:Tanelen Works	P159	town:Guvanixford
+org:Tanelen Works	P17	Q155
+org:Tanelen Works	P112	person:Gugriur Neleth
+org:Tanelen Works	P749	org:Misikan Works
+river:Misiken River	P31	Q4022
+river:Misiken River	P17	Q183
+river:Misiken River	P30	Q46
+river:Misiken River	P403	river:Quvaneth River
+river:Misiken River	P885	town:Fedoraford
+river:Tamuno River	P31	Q4022
+river:Tamuno River	P17	Q38
+river:Tamuno River	P30	Q46
+river:Tamuno River	P403	river:Quvaneth River
+river:Tamuno River	P885	town:Zusikethford
+river:Lovanis River	P31	Q4022
+river:Lovanis River	P17	Q145
+river:Lovanis River	P30	Q46
+river:Lovanis River	P403	river:Mifala River
+river:Lovanis River	P885	town:Fepesanford
+river:Vedorix River	P31	Q4022
+river:Vedorix River	P17	Q30
+river:Vedorix River	P30	Q49
+river:Vedorix River	P403	river:Gupesan River
+river:Vedorix River	P885	town:Bevekethford
+river:Gutalis River	P31	Q4022
+river:Gutalis River	P17	Q408
+river:Gutalis River	P30	Q3960
+river:Gutalis River	P403	river:Gumunis River
+river:Gutalis River	P885	town:Fepesanford
+river:Berelis River	P31	Q4022
+river:Berelis River	P17	Q408
+river:Berelis River	P30	Q3960
+river:Berelis River	P403	river:Mifala River
+river:Berelis River	P885	town:Mipesanford
+river:Gumunis River	P31	Q4022
+river:Gumunis River	P17	Q30
+river:Gumunis River	P30	Q49
+river:Gumunis River	P403	river:Misiken River
+river:Gumunis River	P885	town:Guvanixford
+river:Bedorix River	P31	Q4022
+river:Bedorix River	P17	Q183
+river:Bedorix River	P30	Q46
+river:Bedorix River	P403	river:Gutalis River
+river:Bedorix River	P885	town:Gusarenford
+river:Gupesan River	P31	Q4022
+river:Gupesan River	P17	Q155
+river:Gupesan River	P30	Q18
+river:Gupesan River	P403	river:Yalono River
+river:Gupesan River	P885	town:Rirelethford
+river:Zugrian River	P31	Q4022
+river:Zugrian River	P17	Q408
+river:Zugrian River	P30	Q3960
+river:Zugrian River	P403	river:Hosaro River
+river:Zugrian River	P885	town:Notalaford
+river:Mifala River	P31	Q4022
+river:Mifala River	P17	Q17
+river:Mifala River	P30	Q48
+river:Mifala River	P403	river:Gumunis River
+river:Mifala River	P885	town:Homunisford
+river:Yalono River	P31	Q4022
+river:Yalono River	P17	Q145
+river:Yalono River	P30	Q46
+river:Yalono River	P403	river:Mifala River
+river:Yalono River	P885	town:Notalaford
+river:Fenelan River	P31	Q4022
+river:Fenelan River	P17	Q29
+river:Fenelan River	P30	Q46
+river:Fenelan River	P403	river:Zugrian River
+river:Fenelan River	P885	town:Gusarenford
+river:Quvaneth River	P31	Q4022
+river:Quvaneth River	P17	Q17
+river:Quvaneth River	P30	Q48
+river:Quvaneth River	P403	river:Berelis River
+river:Quvaneth River	P885	town:Nobimanford
+river:Hosaro River	P31	Q4022
+river:Hosaro River	P17	Q38
+river:Hosaro River	P30	Q46
+river:Hosaro River	P403	river:Vedorix River
+river:Hosaro River	P885	town:Rirelethford

@@ -1,5 +1,5 @@
 import os,numpy as np
-OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","data","a5_cc0_facts.tsv")
+OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","facts","a5_cc0_facts.tsv")
 A=["Ka","Lo","Mi","Ve","Zu","Ta","Ri","No","Sa","Fe","Gu","Di","Be","Ho","Ya","Qu"];B=["rel","van","sik","dor","mun","tal","pes","gri","lon","vek","sar","bim","tor","nel","quo","fal"];C=["a","en","is","o","ur","eth","ix","an"]
 CTRY=["Q30","Q142","Q183","Q145","Q38","Q29","Q17","Q155","Q16","Q408"];CONT={"Q30":"Q49","Q16":"Q49","Q155":"Q18","Q17":"Q48","Q408":"Q3960"};OCC=["Q901","Q36180","Q82955","Q639669","Q1028181","Q81096","Q39631","Q37226"]
 def main():
