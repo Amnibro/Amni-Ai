@@ -1,0 +1,19 @@
+[package]
+name = "adam-torus"
+version = "0.1.0"
+edition = "2021"
+description = "TORUS-A Layer 1: GF(17) solved retrieval table (sharded ribbon, 0/1 band, banded elimination over GF(17)) stored as Reffelt-packed RGBA PTEX pages, mmap lookups by LUT and integer adds, overlay learn/forget"
+[lib]
+path = "src/lib.rs"
+[[bin]]
+name = "torus_a"
+path = "src/bin/torus_a.rs"
+[dependencies]
+adam-gf17 = { path = "../adam-gf17" }
+memmap2 = "0.9"
+rayon = "1"
+libc = "0.2"
+[profile.release]
+opt-level = 3
+codegen-units = 1
+[workspace]

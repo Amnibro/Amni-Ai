@@ -125,3 +125,10 @@ fn checkpoint_roundtrip() {
         std::fs::remove_file(&p).unwrap();
     }
 }
+#[test]
+fn px17_roundtrip() {
+    let l = adam_gf17::lut17();
+    assert!((0..83521u32).all(|v| adam_gf17::pxw(&l[v as usize].to_le_bytes()) == v));
+    for n in [0usize, 1, 3, 4, 31, 32, 33, 1000, 4 * PX + 160] { let d: Vec<u8> = (0..n).map(|i| (sm(i as u64 ^ n as u64) % 17) as u8).collect(); let b = adam_gf17::pack17(&d); assert_eq!(b.len(), (n.div_ceil(4) * 17).div_ceil(8) + 8); assert_eq!(adam_gf17::unpack17(&b, n), d); (n > PX * 4).then(|| { let g = adam_gf17::page17(&b, n, 1); assert_eq!((g.len(), &g[..]), (160, &d[4 * PX..])); }); }
+    assert_eq!(adam_gf17::PG17, 35_651_584);
+}

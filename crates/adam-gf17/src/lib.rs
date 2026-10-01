@@ -36,6 +36,15 @@ pub fn unkey(k: u16, ord: bool) -> u16 { if !ord { k } else if k >> 15 == 1 { k 
 pub fn dec(k: u16, n: usize, ord: bool) -> u16 { unkey(if ord && n < 4 { k.clamp(0x0400, 0xFBFF) } else { k }, ord) }
 pub fn dig(v: u16, k: usize) -> u8 { (v as u32 / K4[k] % 17) as u8 }
 pub fn val(d: [u8; 4], n: usize) -> u16 { (0..4).map(|k| K4[k] * if k + n >= 4 { d[k] } else { MID } as u32).sum::<u32>().min(65535) as u16 }
+pub const PXB: usize = 17;
+pub const PG17: usize = PX * PXB / 8;
+pub fn pxw(d: &[u8]) -> u32 { (0..4).map(|k| K4[k] * *d.get(k).unwrap_or(&0) as u32).sum() }
+pub fn lut17() -> Vec<u32> { (0..K4[3] * 17).map(|v| u32::from_le_bytes(std::array::from_fn(|k| (v / K4[k] % 17) as u8))).collect() }
+#[inline(always)]
+pub fn px17(b: &[u8], p: usize) -> u32 { let o = (p << 4) + p; u32::from_le_bytes(b[o >> 3..(o >> 3) + 4].try_into().unwrap()) >> (o & 7) & 0x1FFFF }
+pub fn pack17(dg: &[u8]) -> Vec<u8> { let mut o = vec![0u8; (dg.len().div_ceil(4) * PXB).div_ceil(8) + 8]; o.par_chunks_mut(PXB).zip(dg.par_chunks(32)).for_each(|(b, c)| c.chunks(4).enumerate().for_each(|(i, d)| { let (s, w) = ((i << 4) + i, pxw(d) as u64); let v = w << (s & 7); (0..4).for_each(|j| { let k = (s >> 3) + j; (k < b.len()).then(|| b[k] |= (v >> (8 * j)) as u8); }) })); o }
+pub fn unpack17(b: &[u8], n: usize) -> Vec<u8> { let l = lut17(); let mut o = vec![0u8; n.div_ceil(4) * 4]; o.par_chunks_mut(4).enumerate().for_each(|(p, c)| c.copy_from_slice(&l[px17(b, p) as usize].to_le_bytes())); o.truncate(n); o }
+pub fn page17(b: &[u8], n: usize, pg: usize) -> Vec<u8> { let (a, z) = (pg * PX, ((pg + 1) * PX).min(n.div_ceil(4))); let l = lut17(); let mut o = vec![0u8; (z.max(a) - a) * 4]; o.par_chunks_mut(4).enumerate().for_each(|(i, c)| c.copy_from_slice(&l[px17(b, a + i) as usize].to_le_bytes())); o }
 pub fn words(b: &[u8]) -> Vec<u16> { b.par_chunks(2).with_min_len(1 << 14).map(|c| c[0] as u16 | (*c.get(1).unwrap_or(&0) as u16) << 8).collect() }
 pub fn rss() -> (usize, usize, usize) { let s = std::fs::read_to_string("/proc/self/status").unwrap_or_default(); let g = |k: &str| s.lines().find(|l| l.starts_with(k)).and_then(|l| l.split_whitespace().nth(1)).and_then(|v| v.parse::<usize>().ok()).unwrap_or(0) << 10; (g("VmRSS:"), g("VmHWM:"), g("RssFile:")) }
 pub fn hash(b: &[u8]) -> u32 { let mut h = 0x9E37_79B9_7F4A_7C15u64 ^ b.len() as u64; let mx = |h: u64, w: u64| (h ^ w).wrapping_mul(0xFF51_AFD7_ED55_8CCD).rotate_left(29); let c = b.chunks_exact(8); let r = c.remainder(); c.for_each(|x| h = mx(h, u64::from_le_bytes(x.try_into().unwrap()))); r.iter().for_each(|&x| h = mx(h, x as u64 | 0x100)); h = (h ^ h >> 31).wrapping_mul(0x94D0_49BB_1331_11EB); (h ^ h >> 32) as u32 }
