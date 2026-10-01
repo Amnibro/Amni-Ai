@@ -63,8 +63,8 @@ pub fn solve<const R: usize>(rows: &[(u32, u64, [u8; R])], m: usize, w: usize, s
     Some(Solve { z: e.back(seed), steps: e.steps, codes, bumped })
 }
 pub struct Built { pub dg: Vec<u8>, pub ms: Vec<u32>, pub codes: Vec<u8>, pub bumped: Vec<usize>, pub retries: u64, pub steps: u64, pub b: usize, pub th: [usize; 4] }
-pub fn build<const R: usize>(keys: &[(u64, u32)], w: usize, fd: usize, shard: usize, eps: f64, seed: u64, bump: Option<(usize, [usize; 4])>) -> Built {
-    let (tab, nsh) = (Tab::new(seed), keys.len().div_ceil(shard).max(1) as u64);
+pub fn build<const R: usize>(keys: &[(u64, u32)], w: usize, fd: usize, nsh: u64, eps: f64, seed: u64, bump: Option<(usize, [usize; 4])>, old: Option<(&Table<R>, &[bool])>) -> Built {
+    let tab = Tab::new(seed);
     let mut rec: Vec<(u32, u32, u64, [u8; R], u32)> = keys.par_iter().enumerate().map(|(i, &(k, id))| { let h = tab.h(k); (((h[0] >> 32).wrapping_mul(nsh) >> 32) as u32, h[0] as u32, h[1], vdig::<R>(id, &h, fd), i as u32) }).collect();
     rec.par_sort_unstable_by_key(|r| r.0);
     let mut cut = vec![0usize; nsh as usize + 1];
@@ -74,6 +74,7 @@ pub fn build<const R: usize>(keys: &[(u64, u32)], w: usize, fd: usize, shard: us
     let out: Vec<(Solve<R>, u32, u64, Vec<usize>)> = (0..nsh as usize).into_par_iter().map(|j| {
         let rs = &rec[cut[j]..cut[j + 1]];
         let n = rs.len();
+        if let Some((t, _)) = old.filter(|o| !o.1[j]) { let (m, b) = (t.ms[j] as usize, t.b); let cs = t.codes[t.boff[j] as usize..t.boff[j] as usize + if b > 0 { (m - w + 1).div_ceil(b) } else { 0 }].to_vec(); let z = t.digits(t.off[j] as usize * R, m * R).chunks(R).map(|c| c.try_into().unwrap()).collect(); let bi = rs.iter().filter(|r| { let s = fr(r.1 as u64, (m - w + 1) as u64) as usize; b > 0 && s % b < t.th[cs[s / b] as usize] }).map(|r| r.4 as usize).collect(); return (Solve { z, steps: 0, codes: cs, bumped: vec![] }, m as u32, 0, bi); }
         let (mut m, mut tries) = (((n as f64 * (1.0 + eps)).ceil() as usize).max(1) + w, 0u64);
         loop {
             let mut rows: Vec<(u32, u64, [u8; R], u32)> = rs.iter().map(|r| (fr(r.1 as u64, (m - w + 1) as u64) as u32, r.2 & wm, r.3, r.4)).collect();
@@ -106,7 +107,7 @@ pub fn save(path: &str, b: &Built, w: usize, r: usize, fd: usize, seed: u64, n_k
     f.sync_all()?;
     Ok((HDR + pk.len() + dir.len()) as u64)
 }
-pub struct Table<const R: usize> { pub map: Mmap, f: File, pub w: usize, pub fd: usize, pub nsh: u64, pub ms: Vec<u32>, pub off: Vec<u64>, pub b: usize, lb: u32, pub th: [usize; 4], pub codes: Vec<u8>, boff: Vec<u64>, tab: Tab, lut: Vec<u32>, pub n_keys: u64, pub cells: u64, pub nbytes: usize, pub bytes: u64, wm: u64, pub next: Option<Box<Table<R>>> }
+pub struct Table<const R: usize> { pub map: Mmap, f: File, pub w: usize, pub fd: usize, pub nsh: u64, pub ms: Vec<u32>, pub off: Vec<u64>, pub b: usize, lb: u32, pub th: [usize; 4], pub codes: Vec<u8>, pub boff: Vec<u64>, pub seed: u64, tab: Tab, lut: Vec<u32>, pub n_keys: u64, pub cells: u64, pub nbytes: usize, pub bytes: u64, wm: u64, pub next: Option<Box<Table<R>>> }
 impl<const R: usize> Table<R> {
     pub fn open(path: &str) -> io::Result<Table<R>> {
         let f = File::open(path)?;
@@ -125,7 +126,7 @@ impl<const R: usize> Table<R> {
         unsafe { libc::madvise(map.as_ptr() as *mut _, map.len(), libc::MADV_RANDOM) };
         let next = if ver == 2 { Some(Box::new(Table::open(&format!("{path}.l1"))?)) } else { None };
         let bytes = map.len() as u64 + next.as_ref().map_or(0, |t| t.bytes);
-        Ok(Table { map, f, w, fd, nsh, ms, off, b, lb: b.trailing_zeros(), th, codes, boff, tab: Tab::new(seed), lut: lut17(), n_keys, cells, nbytes, bytes, wm: if w == 64 { u64::MAX } else { (1u64 << w) - 1 }, next })
+        Ok(Table { map, f, w, fd, nsh, ms, off, b, lb: b.trailing_zeros(), th, codes, boff, seed, tab: Tab::new(seed), lut: lut17(), n_keys, cells, nbytes, bytes, wm: if w == 64 { u64::MAX } else { (1u64 << w) - 1 }, next })
     }
     #[inline(always)]
     pub fn data(&self) -> &[u8] { &self.map[HDR..HDR + self.nbytes] }
@@ -149,6 +150,8 @@ impl<const R: usize> Table<R> {
         let d = self.band(self.off[sh] + sl, h[1] & self.wm | 1);
         (0..self.fd).all(|k| d[VD + k] == fpd(&h, k)).then(|| unid(&d))
     }
+    pub fn digits(&self, a: usize, n: usize) -> Vec<u8> { (a..a + n).map(|g| self.lut[px17(self.data(), g >> 2) as usize].to_le_bytes()[g & 3]).collect() }
+    pub fn shard_of(&self, key: u64) -> usize { ((self.tab.h(key)[0] >> 32).wrapping_mul(self.nsh) >> 32) as usize }
     pub fn pages(&self) -> usize { (self.cells as usize * R).div_ceil(4).div_ceil(PX) }
     pub fn all_cells(&self) -> u64 { self.cells + self.next.as_ref().map_or(0, |t| t.all_cells()) }
     pub fn rgba(&self, pg: usize) -> Vec<u8> { adam_gf17::page17(self.data(), self.cells as usize * R, pg) }
@@ -156,11 +159,11 @@ impl<const R: usize> Table<R> {
 }
 pub fn keyof(s: u32, p: u16, idx: u16) -> u64 { s as u64 | (p as u64) << 24 | (idx as u64) << 40 }
 pub fn unkey(k: u64) -> (u32, u16, u16) { ((k & 0xFF_FFFF) as u32, (k >> 24) as u16, (k >> 40) as u16) }
-pub fn layered<const R: usize>(path: &str, keys: &[(u64, u32)], w: usize, fd: usize, shard: usize, eps: f64, seed: u64, bump: Option<(usize, [usize; 4])>, eps1: f64) -> io::Result<(Built, Option<Built>, u64)> {
-    let b0 = build::<R>(keys, w, fd, shard, eps, seed, bump);
+pub fn layered<const R: usize>(path: &str, keys: &[(u64, u32)], w: usize, fd: usize, shard: usize, eps: f64, seed: u64, bump: Option<(usize, [usize; 4])>, eps1: f64, old: Option<(&Table<R>, &[bool])>) -> io::Result<(Built, Option<Built>, u64)> {
+    let b0 = build::<R>(keys, w, fd, old.map_or(keys.len().div_ceil(shard).max(1) as u64, |o| o.0.nsh), eps, seed, bump, old);
     let n0 = keys.len() as u64 - b0.bumped.len() as u64;
     let mut by = save(path, &b0, w, R, fd, seed, n0)?;
-    let b1 = bump.map(|_| { let ks: Vec<(u64, u32)> = b0.bumped.iter().map(|&i| keys[i]).collect(); let b1 = build::<R>(&ks, w, fd, shard, eps1, seed ^ 0x5EED, None); save(&format!("{path}.l1"), &b1, w, R, fd, seed ^ 0x5EED, ks.len() as u64).map(|x| { by += x; b1 }) }).transpose()?;
+    let b1 = bump.map(|_| { let ks: Vec<(u64, u32)> = b0.bumped.iter().map(|&i| keys[i]).collect(); let b1 = build::<R>(&ks, w, fd, ks.len().div_ceil(shard).max(1) as u64, eps1, seed ^ 0x5EED, None, None); save(&format!("{path}.l1"), &b1, w, R, fd, seed ^ 0x5EED, ks.len() as u64).map(|x| { by += x; b1 }) }).transpose()?;
     Ok((b0, b1, by))
 }
 pub struct Live<const R: usize, const Q: usize> { pub base: Table<R>, pub ov: Option<Table<Q>> }
