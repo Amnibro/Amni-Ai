@@ -14,11 +14,11 @@ Branch `worktree-agent-a5667e1f0c990af2a` (reset onto `feat/ray-field-serve` 7c7
 - [x] Guardian council.
 - [x] Pre-registration written and committed before any A2b data build or run.
 - [x] Backups: torus_solve.py, torus_data.py, sphere_noleak.py, torus_a.rs, architecture_map.md, changelog.md -> backups/*.torus_a2b_2026-09-30.bak.
-- [ ] torus_data.py: A2b sampler (aux relations, degree-constrained split).
-- [ ] sphere_noleak.py: dataset/output paths; A2b no-leak sphere built.
-- [ ] torus_solve.py: data/out paths, test mode, save/load, chunked scoring, bounce, mix, lvl, calib, ECE, sphere recall from a given sphere.
-- [ ] Leak check (lift-only dev).
-- [ ] Dev ablation: baseline, bounce, mix, lvl, calib.
+- [x] torus_data.py: A2b sampler (aux relations, degree-constrained split).
+- [x] sphere_noleak.py: dataset/output paths; A2b no-leak sphere built.
+- [x] torus_solve.py: data/out paths, test mode, save/load, chunked scoring, bounce, mix, lvl, calib, ECE, sphere recall from a given sphere.
+- [x] Leak check (lift-only dev): max relation AUC 0.928 (P17, popularity prior), hypernym 0.573; no leak.
+- [x] Dev ablation: baseline, bounce, mix, lvl, calib, plus amendment-1 per-relation popularity weight. Frozen config in the prereg.
 - [ ] Final: train, dev LUTs, single test scoring.
 - [ ] Recall@20 torus vs A2b no-leak sphere.
 - [ ] torus_a l2pack: PTEX pages + bit-exact roundtrip.
