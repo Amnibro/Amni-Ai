@@ -1,6 +1,7 @@
-use adam_gf17::{npy, rss};
+use adam_gf17::{hash, lut17, npy, pack17, page17, px17, rss, HDR, PX};
 use adam_torus::{keyof, layered, sm, solve, unkey, Live, Table, Tab, TOMB, VD};
 use rayon::prelude::*;
+use memmap2::Mmap;
 use std::{collections::HashSet, fs, io, time::Instant};
 const R: usize = 9;
 const Q: usize = 18;
@@ -129,7 +130,37 @@ fn a5(a: &[String]) -> io::Result<()> {
     println!("{o}");
     fs::write(format!("{out}.json"), &o)
 }
+fn l2pack(a: &[String]) -> io::Result<()> {
+    let (dir, out, t0) = (arg(a, "--dir", "data/torus/a2b/l2"), arg(a, "--out", "data/torus/a2b/layer2.gf17l2p"), Instant::now());
+    let secs: Vec<(String, Vec<usize>, Vec<u8>)> = fs::read_to_string(format!("{dir}/manifest.tsv"))?.lines().filter(|l| !l.is_empty()).map(|l| { let (n, f) = l.split_once('\t').unwrap(); let (d, s, m, o) = npy(&format!("{dir}/{f}")).unwrap(); assert!(d == "|u1", "{n}: {d}"); (n.to_string(), s, m[o..].to_vec()) }).collect();
+    assert!(secs.iter().all(|s| s.2.iter().all(|&x| x < 17) && s.2.len() == s.1.iter().product::<usize>()));
+    let (mut dg, mut ds, mut offs) = (Vec::<u8>::new(), String::new(), vec![]);
+    for (n, s, v) in &secs { offs.push(dg.len()); ds += &format!("{n}\t{}\t{}\t{}\n", s.iter().map(|x| x.to_string()).collect::<Vec<_>>().join("x"), dg.len() / 4, v.len()); dg.extend_from_slice(v); dg.resize(dg.len().div_ceil(4) * 4, 0); }
+    assert!(ds.len() + 48 <= HDR);
+    let pk = pack17(&dg);
+    let mut h = vec![0u8; HDR];
+    h[..8].copy_from_slice(b"GF17L2P1");
+    [dg.len() as u64, pk.len() as u64, ds.len() as u64, secs.len() as u64].iter().enumerate().for_each(|(i, x)| h[8 + 8 * i..16 + 8 * i].copy_from_slice(&x.to_le_bytes()));
+    h[40..44].copy_from_slice(&hash(&pk).to_le_bytes());
+    h[48..48 + ds.len()].copy_from_slice(ds.as_bytes());
+    let x = hash(&h);
+    h[44..48].copy_from_slice(&x.to_le_bytes());
+    fs::write(&out, [h, pk].concat())?;
+    let m = unsafe { Mmap::map(&fs::File::open(&out)?)? };
+    let (n, nb) = (u64::from_le_bytes(m[8..16].try_into().unwrap()) as usize, u64::from_le_bytes(m[16..24].try_into().unwrap()) as usize);
+    let data = &m[HDR..HDR + nb];
+    let lut = lut17();
+    let pages = n.div_ceil(4).div_ceil(PX);
+    let page_bad: usize = (0..pages).map(|pg| page17(data, n, pg).iter().zip(&dg[pg * PX * 4..]).filter(|(a, b)| a != b).count()).sum();
+    let sec_bad: Vec<usize> = secs.iter().zip(&offs).map(|((_, _, v), &o)| v.par_iter().enumerate().filter(|&(i, &x)| lut[px17(data, (o + i) >> 2) as usize].to_le_bytes()[(o + i) & 3] != x).count()).collect();
+    let mut r = 0x5EEDu64;
+    let tot: usize = secs.iter().map(|s| s.2.len()).sum();
+    let rand_bad = (0..1_000_000).filter(|_| { let mut g = sm(&mut r) as usize % tot; let k = secs.iter().position(|s| { let f = g < s.2.len(); g -= if f { 0 } else { s.2.len() }; f }).unwrap(); lut[px17(data, (offs[k] + g) >> 2) as usize].to_le_bytes()[(offs[k] + g) & 3] != secs[k].2[g] }).count();
+    let hdr_ok = hash(&[&m[..44], &[0u8; 4][..], &m[48..HDR]].concat()) == u32::from_le_bytes(m[44..48].try_into().unwrap()) && hash(data) == u32::from_le_bytes(m[40..44].try_into().unwrap());
+    println!("{}", js(&[("file", format!("\"{out}\"")), ("sections", secs.len().to_string()), ("digits", tot.to_string()), ("digits_padded", n.to_string()), ("pixels", n.div_ceil(4).to_string()), ("logical_pages_4096x4096", pages.to_string()), ("bytes", m.len().to_string()), ("bits_per_digit", format!("{:.4}", nb as f64 * 8.0 / tot as f64)), ("page_mismatch", page_bad.to_string()), ("section_mismatch", sec_bad.iter().sum::<usize>().to_string()), ("random_access_mismatch_1M", rand_bad.to_string()), ("header_hash_ok", hdr_ok.to_string()), ("sec", format!("{:.2}", t0.elapsed().as_secs_f64())), ("per_section", format!("{{{}}}", secs.iter().zip(&sec_bad).map(|((n, s, v), b)| format!("\"{n}\":[\"{}\",{},{b}]", s.iter().map(|x| x.to_string()).collect::<Vec<_>>().join("x"), v.len())).collect::<Vec<_>>().join(",")))]));
+    Ok(())
+}
 fn main() -> io::Result<()> {
     let a: Vec<String> = std::env::args().collect();
-    match a.get(1).map(|s| s.as_str()) { Some("a1") => a1(&a), Some("a5") => a5(&a), Some("eps") => { eps(&a); Ok(()) } _ => { eprintln!("usage: torus_a a1|a5|eps ..."); Ok(()) } }
+    match a.get(1).map(|s| s.as_str()) { Some("a1") => a1(&a), Some("a5") => a5(&a), Some("eps") => { eps(&a); Ok(()) } Some("l2pack") => l2pack(&a), _ => { eprintln!("usage: torus_a a1|a5|eps|l2pack ..."); Ok(()) } }
 }
