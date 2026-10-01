@@ -164,7 +164,7 @@ def fill_mem(s:dict,st,q:str,gate:float=0.0,said:bool=False)->dict:
     qa=T.ask(q,T._last(st),list(st.ents()),st.names,st.lp);qa and qa['ents'] and s.__setitem__('ent',qa['ents'][0]);q2=_TW.sub('',q)
     for k,qq in enumerate([q,q]+([q2] if q2!=q else [])):
         X=_mcands(st,qq,e,bool(k));ok=sorted([x for x in X if x['fit'] and x['inev'] and x['bind']],key=lambda x:(x['tier']!='slot',-x['conf']));b=ok[0] if ok else None;e=X[0]['e'] if X else e;k and s.__setitem__('retry',s.get('retry',0)+1)
-        if b and b['conf']>=MG:x=_say(b,e,q);return {**s,'exp':e,'src':'mem','span':b['v'],'conf':b['conf'],'ok':True,'text':x,'tier':b['tier'],'ent':b['qa']['ents'][0],'mat':mat('mem',[f"You told me: {_end(_cap(b['ev']))}"] if b['ev'] else [],x,['user memory'],b['conf'],[b['v']])}
+        if b and b['conf']>=MG:x=_say(b,e,q);return {**s,'exp':e,'src':'mem','span':b['v'],'conf':b['conf'],'ok':True,'text':x,'tier':b['tier'],'ent':b['qa']['ents'][0],'mat':mat('mem',[f"Memory: {_end(_cap(b['ev']))}"] if b['ev'] else [],x,['user memory'],b['conf'],[b['v']])}
         if b and b['conf']>=HF and not s.get('weak'):s={**s,'weak':b}
     w=s.pop('weak',None)
     if w:return {**s,'src':'mem','span':w['v'],'conf':w['conf'],'ok':False,'hedge':True,'text':f"I think {_lc(_say(w,e,q))[:-1]}, but I'm not certain.",'ent':w['qa']['ents'][0]}
@@ -432,7 +432,7 @@ def gate(t:str,M:dict,q:str)->bool:
     return len(tw)>=mw and (not lr or len(tw)<=max(12,lr*len(_pw(M['extract'])))) and not [w for w in tw if len(w)>3 and w not in _SW and w[:5] not in sw] and not set(re.findall(r"\d+",t))-set(re.findall(r"\d+",src)) and ':' not in t and (not xc or len(set(_ct(t))&xc)>=cv*len(xc)) and (not tr or bool(tg) and len(tg&g(_pw(src)))>=tr*len(tg)) and t.strip()[-1:] in '.!?' and all(_has(x,t) or x in t for x in M['must'])
 def blend(cl,q:str,M:dict,mx:int)->tuple:
     if not M or not M['lines'] or cl is None or not _bon(M['route']):return (M.get('extract','') if M else ''),None
-    try:t=_coh(cl.gen(q,int(M.get('bytes') or min(mx,int(_f('AMNI_ADAM_T_HARNESS_BLEND_BYTES',200)))),C.STOPS,M.get('hist'),(),M['lines'],'\n'),M.get('echo',q))
+    try:t=_coh(cl.gen(q,int(M.get('bytes') or min(mx,int(_f('AMNI_ADAM_T_HARNESS_BLEND_BYTES',200)))),C.STOPS,M.get('hist'),(),M['lines'],' '),M.get('echo',q))
     except Exception:return M['extract'],None
     S=[x for x in re.split(r"(?<=[.!?])\s+",C.asc(t)) if x];x=next((' '.join(S[:k]) for k in range(len(S),0,-1) if gate(' '.join(S[:k]),M,q)),'');return (x or M['extract']),bool(x)
 def _wp(m:str)->bool:

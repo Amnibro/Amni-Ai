@@ -26,7 +26,7 @@ def test_indirect_question(q,want):assert H.ind(q)==want
 def test_type_fit(e,v,ok):assert H.fits(e,v)==bool(ok)
 def test_multi_slot_memory_with_pronoun_and_binding(on):
     cl=FC('model text');r=H.run("What's my sister's name and where does she live?",HIST,'u1','u1',cl,160)
-    assert r['text']=="Your sister's name is Priya. Your sister lives in Denver." and [s['src'] for s in r['slots']]==['mem','mem'] and all(s['ok'] for s in r['slots']) and [x[1] for x in cl.P]==[['You told me: My sister Priya lives in Denver.']]*2 and [s['blend'] for s in r['slots']]==[False,False]
+    assert r['text']=="Your sister's name is Priya. Your sister lives in Denver." and [s['src'] for s in r['slots']]==['mem','mem'] and all(s['ok'] for s in r['slots']) and [x[1] for x in cl.P]==[['Memory: My sister Priya lives in Denver.']]*2 and [s['blend'] for s in r['slots']]==[False,False]
     r=H.run("Where does my brother live?",HIST,'u1','u1',cl,160);assert 'Tucson' in r['text'] and 'Denver' not in r['text']
 def test_missing_memory_is_hedged_not_invented(on):
     r=H.run("What's my cat's name and how old is my sister?",HIST,'u2','u2',FC('Your cat is Biscuit.'),160)
@@ -63,7 +63,7 @@ def test_multi_hedges_vary_and_no_candidate_defers(on,monkeypatch):
     monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:{**s,'rq':rq,'kind':'other'});assert H.run("Which planet is red?",[],'k2','k2',FC(),160) is None
 def test_route_debug_log_has_no_user_text(fake,rules,on,monkeypatch,caplog):
     caplog.set_level('DEBUG',logger='amni.serve.adam_t');r=G.chat("What's my secret dog's name?",history=[("My secret dog is called Zorro.","Cute.")],user='ann',session='s')
-    recs=[x for x in caplog.records if x.name=='amni.serve.adam_t'];assert r['tier']=='tier_adam_t' and 'Zorro' in r['answer'] and all(x['p'].startswith('User: You told me:') for x in prompts(fake)) and rules==[]
+    recs=[x for x in caplog.records if x.name=='amni.serve.adam_t'];assert r['tier']=='tier_adam_t' and 'Zorro' in r['answer'] and all(x['p'].startswith('User: Memory:') for x in prompts(fake)) and rules==[]
     assert len(recs)==1 and recs[0].levelname=='DEBUG' and 'route=harness' in recs[0].getMessage() and 'hs:1' in recs[0].getMessage() and not any(w in x.getMessage() for x in caplog.records for w in ('secret','Zorro','dog'))
 def test_emergency_first_unchanged(fake,rules,on,monkeypatch):
     monkeypatch.setattr(H,'run',lambda *a,**k:(_ for _ in ()).throw(AssertionError('harness ran')))
