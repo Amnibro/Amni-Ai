@@ -85,3 +85,12 @@ ConceptNet 5.7 (English commonsense edges, data/concepts/conceptnet)
   selected relations by scripts/build_conceptnet.py; licence, attribution,
   source hash and filter are recorded in data/concepts/conceptnet/manifest.json.
   Answers that use it carry a "ConceptNet 5.7 ... (CC BY-SA 4.0)" provenance line.
+
+TheAlgorithms/Python (code retrieval for the ADAM-T harness code route)
+  Copyright (c) 2016-2022 TheAlgorithms and contributors. MIT License.
+  Read locally from AMNI_ADAM_T_CODE_CORPUS (default ~/ai/amni-code-corpus/Python)
+  by amni/serve/adam_t_code.py; nothing is copied into git. Only standalone
+  functions with doctest examples are indexed. Examples drive tile_synth
+  compose-and-verify; when a retrieved function is shown to the user, the
+  reply names "TheAlgorithms/Python (MIT License)" and the slot provenance
+  names the source file.

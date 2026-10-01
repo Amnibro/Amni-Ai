@@ -26,7 +26,7 @@ def test_indirect_question(q,want):assert H.ind(q)==want
 def test_type_fit(e,v,ok):assert H.fits(e,v)==bool(ok)
 def test_multi_slot_memory_with_pronoun_and_binding(on):
     cl=FC('model text');r=H.run("What's my sister's name and where does she live?",HIST,'u1','u1',cl,160)
-    assert r['text']=="Your sister's name is Priya. Your sister lives in Denver." and [s['src'] for s in r['slots']]==['mem','mem'] and all(s['ok'] for s in r['slots']) and cl.P==[]
+    assert r['text']=="Your sister's name is Priya. Your sister lives in Denver." and [s['src'] for s in r['slots']]==['mem','mem'] and all(s['ok'] for s in r['slots']) and [x[1] for x in cl.P]==[['You told me: My sister Priya lives in Denver.']]*2 and [s['blend'] for s in r['slots']]==[False,False]
     r=H.run("Where does my brother live?",HIST,'u1','u1',cl,160);assert 'Tucson' in r['text'] and 'Denver' not in r['text']
 def test_missing_memory_is_hedged_not_invented(on):
     r=H.run("What's my cat's name and how old is my sister?",HIST,'u2','u2',FC('Your cat is Biscuit.'),160)
@@ -43,9 +43,9 @@ def test_memory_value_feeds_knowledge_pronoun(on,monkeypatch):
     r=H.run("What am I allergic to, and who discovered it?",HIST,'u7','u7',FC(),160);assert seen==['who discovered penicillin?'] and r['text']=="You're allergic to penicillin. Penicillin was discovered by Alexander Fleming."
 def test_knowledge_verify_complete_and_hedge(on,monkeypatch):
     R=_fakes(monkeypatch);R.istitle=lambda x:False;W=sys.modules['amni.compute.wikifact'];W.NOUN={'author':[50],'capital':[36]};cl=FC('It was Captain Ahab.')
-    monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:(["Herman Melville: Herman Melville wrote Moby Dick in 1851."],m));monkeypatch.setattr(C,'_math',lambda m:'')
-    r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0];assert s['src']=='wd' and s['ok'] and not s['conflict'] and r['text']=="Moby-Dick was written by Herman Melville." and len(cl.P)==1
-    monkeypatch.setenv('AMNI_ADAM_T_HARNESS_AGREE','0');cl.P.clear();r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['ok'] and cl.P==[];monkeypatch.delenv('AMNI_ADAM_T_HARNESS_AGREE')
+    monkeypatch.setattr(C,'_know',lambda m,n,cap,h=None,w=None:(["Herman Melville: Herman Melville wrote Moby Dick in 1851."],m));monkeypatch.setattr(C,'_math',lambda m,f=False:('','',None) if f else '')
+    r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0];assert s['src']=='wd' and s['ok'] and not s['conflict'] and r['text']=="Moby-Dick was written by Herman Melville." and len(cl.P)==2 and not s['blend'] and s['mroute']=='know'
+    monkeypatch.setenv('AMNI_ADAM_T_HARNESS_AGREE','0');cl.P.clear();r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['ok'] and len(cl.P)==1;monkeypatch.delenv('AMNI_ADAM_T_HARNESS_AGREE')
     W.ask=lambda q:{"answer":"Herman Melville","conf":0.2,"e":5,"p":50,"lf":1.0};r=H.run("who wrote moby dick?",[],'k','k',cl,160);assert r['slots'][0]['src']=='wd+psg' and r['slots'][0]['ok']
     W.ask=lambda q:{"answer":"Nathaniel Hawthorne","conf":0.2,"e":5,"p":50,"lf":1.0};cl.P.clear();r=H.run("who wrote moby dick?",[],'k','k',cl,160);s=r['slots'][0]
     assert s['src']=='psg' and not s['ok'] and s['hedge'] and s['guess']=='Herman Melville' and r['text']=="I think it's Herman Melville, but I couldn't confirm it." and 'Ahab' not in r['text'] and 'moby' not in r['text'].lower() and cl.P[0][1][0].startswith('Herman Melville:')
@@ -58,12 +58,12 @@ def test_hedge_wording_short_and_varied():
     assert H._hedge('Jupiter','ent')=="I think it's Jupiter, but I couldn't confirm it." and H._hedge('in the 1940s','time')=="I think it was in the 1940s, but I couldn't confirm it." and H._hedge('Mars','ent',1)=="Probably Mars, though I couldn't verify that." and H._hedge('Mars','ent',2)=="Maybe Mars, but I'm not certain."
     assert H._guess("I'm not sure the passage says.",'any')==('','') and H._guess('Paris','name')==('Paris','ent') and H._guess('1969','time')==('in the 1960s','time')
 def test_multi_hedges_vary_and_no_candidate_defers(on,monkeypatch):
-    monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:{**s,'rq':rq,'kind':'know','src':'psg','ok':False,'hedge':True,'span':'X','guess':'Mars' if 'planet' in rq else 'Venus','gk':'ent','text':''});R=_fakes(monkeypatch);R.istitle=lambda x:False;monkeypatch.setattr(C,'_math',lambda m:'')
+    monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:{**s,'rq':rq,'kind':'know','src':'psg','ok':False,'hedge':True,'span':'X','guess':'Mars' if 'planet' in rq else 'Venus','gk':'ent','text':''});R=_fakes(monkeypatch);R.istitle=lambda x:False;monkeypatch.setattr(C,'_math',lambda m,f=False:('','',None) if f else '')
     r=H.run("Which planet is red? Which star is brightest?",[],'k2','k2',FC(),160);assert r['text']=="I think it's Mars, but I couldn't confirm it. Probably Venus, though I couldn't verify that."
     monkeypatch.setattr(H,'fill_know',lambda s,cl,R,rq,mx:{**s,'rq':rq,'kind':'other'});assert H.run("Which planet is red?",[],'k2','k2',FC(),160) is None
 def test_route_debug_log_has_no_user_text(fake,rules,on,monkeypatch,caplog):
     caplog.set_level('DEBUG',logger='amni.serve.adam_t');r=G.chat("What's my secret dog's name?",history=[("My secret dog is called Zorro.","Cute.")],user='ann',session='s')
-    recs=[x for x in caplog.records if x.name=='amni.serve.adam_t'];assert r['tier']=='tier_adam_t' and 'Zorro' in r['answer'] and prompts(fake)==[] and rules==[]
+    recs=[x for x in caplog.records if x.name=='amni.serve.adam_t'];assert r['tier']=='tier_adam_t' and 'Zorro' in r['answer'] and all(x['p'].startswith('User: You told me:') for x in prompts(fake)) and rules==[]
     assert len(recs)==1 and recs[0].levelname=='DEBUG' and 'route=harness' in recs[0].getMessage() and 'hs:1' in recs[0].getMessage() and not any(w in x.getMessage() for x in caplog.records for w in ('secret','Zorro','dog'))
 def test_emergency_first_unchanged(fake,rules,on,monkeypatch):
     monkeypatch.setattr(H,'run',lambda *a,**k:(_ for _ in ()).throw(AssertionError('harness ran')))
@@ -110,8 +110,9 @@ def test_commonsense_slot_and_hedge(on,monkeypatch):
     G_.know=lambda q:{'answer':'wood','text':'Termites eat wood.','conf':0.5,'prov':['x'],'kind':'object'};s=H._cs({},'What do termites eat?','any');assert not s['ok'] and s['hedge'] and s['text']=='I think termites eat wood.'
     monkeypatch.setenv('AMNI_ADAM_T_HARNESS_CS','0');assert H._cs({},'What do termites eat?','any')=={}
 def test_explain_paraphrase_must_stay_grounded():
-    x={'title':'Glacier','text':'A glacier forms where the accumulation of snow exceeds its ablation over many years.','pid':1};assert H._para(FC('A glacier forms where snow accumulation exceeds its ablation over many years.'),'How do glaciers form?',x,200)
-    assert not H._para(FC('Glaciers are made of chocolate and dragons over many years.'),'How do glaciers form?',x,200) and not H._para(FC('Snow exceeds.'),'How do glaciers form?',x,200) and not H._para(FC('Glacier: A glacier forms where the accumulation of snow exceeds its ablation.'),'How do glaciers form?',x,200)
+    x='A glacier forms where the accumulation of snow exceeds its ablation over many years.';M=H.mat('explain',['Glacier: '+x],x,['Wikipedia: Glacier (passage 1)']);q='How do glaciers form?';b=lambda t:H.blend(FC(t),q,M,200)
+    assert b('A glacier forms where snow accumulation exceeds its ablation over many years.')==('A glacier forms where snow accumulation exceeds its ablation over many years.',True)
+    assert all(b(t)==(x,False) for t in ('Glaciers are made of chocolate and dragons over many years.','Snow exceeds.','Glacier: A glacier forms where the accumulation of snow exceeds its ablation.'))
 HAVEIX=os.path.isdir(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'data','ks','index_rknow'))
 @pytest.mark.skipif(not HAVEIX,reason='wikipedia index missing')
 def test_explain_extracts_grounded_passage(on,monkeypatch):

@@ -83,8 +83,9 @@ def _tor(message:str,history,user,session,c:dict)->dict:
         T=__import__('amni.serve.user_toroid',fromlist=['turn']);t=T.turn(message,history,user,session) if T.enabled() else {'lines':[],'forgot':None}
         t['forgot'] and t['forgot'][1] and 'forgotten' not in (c['reply'] or '') and c.update(reply="Okay, I've forgotten that.");t.get('direct') and not c['reply'] and c.update(reply=t['direct']);return t
     except Exception as e:c['n']['tor_err']=type(e).__name__;return {'lines':[],'forgot':None}
-def _math(message:str)->str:
-    r=__import__('amni.math.answer',fromlist=['answer']).answer(message) if os.environ.get('AMNI_MATH','1')=='1' else None;r=asc(r[0]) if r and r[1]>=_f('AMNI_MATH_MIN_CONF',0.6) else '';return r+('' if not r or r[-1] in '.!?' else '.')
+def _math(message:str,full:bool=False):
+    A=__import__('amni.math.answer',fromlist=['solve_math']);r=A.solve_math(message) if os.environ.get('AMNI_MATH','1')=='1' else None;r=r if r and float(r['conf'])>=_f('AMNI_MATH_MIN_CONF',0.6) else None;t=asc(r['reply']) if r else '';t=t+('' if not t or t[-1] in '.!?' else '.')
+    return (t,A.fmt(r['value']) if r else '',r) if full else t
 _MO='January|February|March|April|May|June|July|August|September|October|November|December'
 _PRON=re.compile(r"(?i)\b(?:he|him|his|she|her|hers|it|its|they|them|their|there|that(?=\s*(?:in|on|at|from|of|by|for|located|\?|$)))\b")
 _ELL=re.compile(r"(?i)^\W*(?:(?:and|but|so|ok|okay)[\s,]+)?(?:what|how)\s+about\s+(.+?)[\s?.!]*$|^\W*and\s+(?!(?:what|who|whom|when|where|which|why|how|is|are|was|were|do|does|did|can|could|would|will|should|you|i|we)\b)(.+?)[\s?.!]*$")
@@ -229,6 +230,7 @@ def client()->AdamT:
         c=_C.get(r)
         if c is None:[x.close() for x in _C.values()];_C.clear();c=_C[r]=AdamT(r);os.environ.get('AMNI_ADAM_T_CONTEXT','1')=='1' and os.environ.get('AMNI_ADAM_T_WARM','1')=='1' and threading.Thread(target=warm,daemon=True,name='adam-t-warm').start()
         return c
+_safe=lambda m,t:__import__('amni.serve.adam_t_harness',fromlist=['safe']).safe(m,t) if os.environ.get('AMNI_ADAM_T_HARNESS','0')=='1' else t
 def _har(message:str,history,user,session,cl,mx:int,c:dict)->Optional[dict]:
     if os.environ.get('AMNI_ADAM_T_HARNESS','0')!='1':return None
     try:return __import__('amni.serve.adam_t_harness',fromlist=['run']).run(message,history,user,session,cl,mx)
@@ -240,6 +242,6 @@ def answer(message:str,history=None,max_new_tokens:int=512,user=None,session=Non
     try:
         cl=client()
         if not (cl.p and cl.p.alive()) and time.monotonic()<cl.until:raise ProtoError('restart backoff')
-        mx=min(int(_f('AMNI_ADAM_T_MAX_BYTES',400)),max(64,4*int(max_new_tokens or 0)));h=_har(message,history,user,session,cl,mx,c);c=c if h else (lambda x:(x['n'].update(c['n']),x)[1])(context(message,history,user,session,cl.budget(mx)));t=h['text'] if h else c['reply'] or cl.gen(message,mx,STOPS,c['hist'],c['pre'],c['rc']);why='' if t else 'empty';h and c['n'].update(h['n'])
+        mx=min(int(_f('AMNI_ADAM_T_MAX_BYTES',400)),max(64,4*int(max_new_tokens or 0)));h=_har(message,history,user,session,cl,mx,c);c=c if h else (lambda x:(x['n'].update(c['n']),x)[1])(context(message,history,user,session,cl.budget(mx)));t=h['text'] if h else c['reply'] or _safe(message,cl.gen(message,mx,STOPS,c['hist'],c['pre'],c['rc']));why='' if t else 'empty';h and c['n'].update(h['n'])
     except Exception as e:t,why,h='',type(e).__name__,None
     LOG.debug('route=%s ms=%d ctx_ms=%.1f ctx=%s',why and f'fallback:{why}' or ('harness' if h else 'memory_action' if c.get('reply') else 'adam_t'),int((time.monotonic()-t0)*1000),c.get('ms',0.0),','.join(f'{k}:{v}' for k,v in sorted(c.get('n',{}).items())));return t or None

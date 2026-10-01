@@ -1,0 +1,19 @@
+{
+ "note": "probe prompts seen during mission ADAM-T-HARNESS4 (2026-09-30); never use in dev/test sets",
+ "prompts": [
+  "hey adam, how's it going?",
+  "I had a rough day at work, my boss yelled at me in front of everyone.",
+  "If I have 3 apples and eat one, then buy 5 more, how many do I have?",
+  "My name is Anthony and I like trucks. What do I like?",
+  "Write a Python function that returns the n-th Fibonacci number.",
+  "Fix this code: def add(a,b) return a+b",
+  "What's the difference between a list and a tuple in Python?",
+  "Explain recursion to a 10 year old.",
+  "Summarize the plot of Romeo and Juliet in two sentences.",
+  "Can you help me plan a 3-day trip to Chicago?",
+  "What is the capital of Australia?",
+  "Why is the sky blue?",
+  "What is 17 times 23?",
+  "Write a short story about a robot who learns to paint."
+ ]
+}
