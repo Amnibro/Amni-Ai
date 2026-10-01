@@ -40,3 +40,8 @@ Re-run of the Stage A gate A2 (relational torus, Layer 2) from `docs/adam_t/toru
 ## Final run
 - The chosen config trains on the training split, fits the dev LUTs on the whole dev split, and scores test exactly once. Results go to `docs/adam_t/torus_a2b_results.md` and `data/torus/a2b/`.
 - Layer-2 positions, transforms and LUTs are packed into 4096x4096 RGBA GF(17) PTEX pages with the adam-gf17 17-bit Reffelt pixel codec; the roundtrip must be bit-exact. Storage is reported in digits per entity and projected to the 1T / 128 GB target.
+
+## Amendment 1 (2026-09-30, written after the lever-1/2/3 dev runs, before any test scoring)
+- Finding on dev: for `cn:UsedFor`, `cn:CapableOf` and `wd:P171` the torus ranks below the plain frequency baseline, because the popularity digit has one global weight (12). A 2-hop reachability check on dev explains why: held-out pairs reachable by any 2-hop training path are 15% (hypernym), 9% (member_holonym), 1% (P171) vs 68-87% for P19/P17/P131; the ray has little to work with on those relations.
+- Lever 5 (added, dev only): per-relation popularity weight `--pw` (an integer per relation on the popularity digit, part of the stored Layer-2 scoring LUT). Grid {12, 24, 48, 96, 192} run as uniform eval-only passes on the chosen model; per relation, the weight maximising dev hits@10 + dev raw AUC is kept. This selection is in-sample on dev (5 values per relation), so its dev row is optimistic; the test split stays the only honest read. The lever is kept only under the same win rule.
+- Nothing else changes: gates, data, splits, test protocol.
