@@ -19,7 +19,7 @@ Branch `worktree-agent-a5667e1f0c990af2a` (reset onto `feat/ray-field-serve` 7c7
 - [x] torus_solve.py: data/out paths, test mode, save/load, chunked scoring, bounce, mix, lvl, calib, ECE, sphere recall from a given sphere.
 - [x] Leak check (lift-only dev): max relation AUC 0.928 (P17, popularity prior), hypernym 0.573; no leak.
 - [x] Dev ablation: baseline, bounce, mix, lvl, calib, plus amendment-1 per-relation popularity weight. Frozen config in the prereg.
-- [ ] Final: train, dev LUTs, single test scoring.
-- [ ] Recall@20 torus vs A2b no-leak sphere.
-- [ ] torus_a l2pack: PTEX pages + bit-exact roundtrip.
-- [ ] Results doc, architecture_map.md + changelog.md entries, deletions log, target dir deleted, processes stopped.
+- [x] Final: dev-selected train-only solve loaded, calibration fitted on dev, test scored once (2.085x, AUC 0.907, ECE 0.006: PASS).
+- [x] Recall@20 torus vs A2b no-leak sphere (torus wins C-graph recall@20 0.127 vs 0.122, loses the rest).
+- [x] torus_a l2pack: PTEX pages + bit-exact roundtrip (0 mismatches; 47.7M digits, 25.3 MB).
+- [x] Results doc, architecture_map.md + changelog.md entries (shared tree, backed up first), deletions log, target dir deleted, processes stopped, pyflakes clean, cargo build warning-free. Export fix after test (lift_wd mask; pw section) applied without re-scoring.
