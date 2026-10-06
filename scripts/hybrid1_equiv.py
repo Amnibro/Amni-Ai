@@ -1,11 +1,11 @@
 import os,sys,json,gc,time,argparse,hashlib,torch
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path[:0]=[str(ROOT)];os.environ["AMNI_BLENDER_NOTHR"]="1"
-ap=argparse.ArgumentParser();ap.add_argument("--bake",required=True);ap.add_argument("--cfgs",required=True);ap.add_argument("--out",required=True);ap.add_argument("--set",default="orig",choices=("orig","dev"));ap.add_argument("--n-new",type=int,default=48);ap.add_argument("--long",type=int,default=0);ap.add_argument("--ref",default="");a=ap.parse_args()
+ap=argparse.ArgumentParser();ap.add_argument("--bake",required=True);ap.add_argument("--cfgs",required=True);ap.add_argument("--out",required=True);ap.add_argument("--set",default="orig",choices=("orig","dev"));ap.add_argument("--n-new",type=int,default=48);ap.add_argument("--long",type=int,default=0);ap.add_argument("--ref",default="");ap.add_argument("--max-dev",type=int,default=0);a=ap.parse_args()
 from amni.serve import blender_atex as B
 P=["User: Marlowe Bridge: Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic. What is Marlowe Bridge?\nAdam:","User: Calculator: The answer is 84. Working: 12 x 7 = 84. What is 12 times 7?\nAdam:","User: Hi Adam, long day at work and I am wiped out.\nAdam:"]
 D=ROOT/"data"/"adam_t"/"eval"/"hybrid1_dev";J=lambda f:[json.loads(l) for l in open(D/f) if l.strip()];BL=J("blend_probe.jsonl");GV=J("greet_vent_probe.jsonl")
-P+=[f"User: {' '.join(r['material']+[r['q']])}\nAdam:" for r in BL]+[f"User: {r['q']}\nAdam:" for r in GV] if a.set=="dev" else []
+P+=([f"User: {' '.join(r['material']+[r['q']])}\nAdam:" for r in BL]+[f"User: {r['q']}\nAdam:" for r in GV])[:a.max_dev or None] if a.set=="dev" else []
 P+=["".join(f"User: {' '.join(r['material']+[r['q']])}\nAdam: {r.get('ref') or 'I am not sure about that.'}\n\n" for r in BL[k*6%45:k*6%45+6])+f"User: {GV[k%len(GV)]['q']} Also, {BL[(k*6+7)%len(BL)]['q']}\nAdam:" for k in range(a.long)]
 R={"prompts":len(P),"n_new":a.n_new,"alloc_conf":os.environ.get("PYTORCH_HIP_ALLOC_CONF",""),"cfgs":{}};base=None;REF=None;rn=a.ref or next(iter(json.loads(a.cfgs)))
 for name,o in json.loads(a.cfgs).items():
