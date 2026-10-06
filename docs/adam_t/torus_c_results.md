@@ -212,3 +212,36 @@ Reading: seven of the ten are nearly pure relation clusters (three P171 clusters
 - Code: `crates/adam-torus/py/torus_solve.py`, `torus_b.py`, `torus_c_seed.py`, `torus_c_data.py`, `sphere_noleak.py` (`--c`). Rust `l2pack` reused unchanged.
 - Results: `data/torus/c/resc_final_s{17,23}_{m2,a2,seed}_test.json`, `resc_finalB_s{17,23}_m1_test.json`, dev `resc_c_*_dev.json`, solver logs `solve_*.log`, models `torus_final_s17.npz`, `torus_final_s23.npz`, `torus_finalB_s23.npz`, `torus_c_R.npz` (B config R seed 17, the final model), packed pages `layer2_c_final_s{17,23}.gf17l2p`, split `c_data.npz`, sphere `sphere_noleak.npz`, seeds `seed_K32r48.npz`, lock files `test_scored_*.lock`.
 - Docs: `docs/adam_t/torus_c_prereg.md` (with Amendment 1), `docs/checklists/checklist_torus_c_v1.md`, `docs/guardian_councils/guardian_council_torus_c.md`.
+
+## CTO audit (2026-10-06): reported results corrected against the saved test JSONs
+
+The agent summary and the CTO's relay to the CEO overstated TORUS-C. These come from `data/torus/c/resc_final_s{17,23}_m2_test.json`:
+
+**G5 was misreported as a pass.**
+- The pre-registered G5 metric is orientation accuracy: the forward vs reversed relation-subspace fit, prereg item 5, stored as `orientation_acc_antisym`.
+- It reads 0.535 (s17) and 0.543 (s23), which is chance. G5 FAILS.
+- The reported 0.778 / 0.768 is a different field, `polarity_acc_antisym` = (hs > rs). It is not the gate metric, and the "P19 0.9999" figure comes from that field too.
+
+**The geometry is worse than its own seeds at relation inference.**
+
+| metric | geometry s17 | geometry s23 | seeds-only (no geometry) |
+|---|---|---|---|
+| accuracy | 0.164 | 0.135 | 0.579 |
+| strict relations | 6 | 4 | 8 |
+| balanced relations | 6 | 4 | 9 |
+| purity | 0.68 | 0.69 | 0.76 |
+
+- Only NMI and residual NMI favour the geometry (0.506 vs 0.436).
+- The dev selection rule, "highest residual NMI", was declared after the fact (prereg line 77).
+- So G6 "passes" only on the metric that was chosen after the dev runs.
+
+**The AUC comes entirely from the proximity subspace.**
+- `auc_matched` 0.836 equals `auc_prox_matched` 0.836.
+- `auc_raw_matched` is 0.58, so the relation rays add nothing to relatedness.
+
+**The seed features carry the signal.** They are data-source origin, directed in/out-degree bins and sink depth, which sets the metadata baseline at NMI 0.434.
+
+**Corrected reading:**
+- G1 passes on NMI, but the geometry adds little beyond the hand-designed role features, and it is worse on accuracy and purity.
+- G2, G4 and G5 fail. G3 passes on one seed only.
+- The CEO's thesis (the ray, via angle and polarity, defines the relation) is NOT supported by TORUS-C. The earlier "qualified yes" is withdrawn.

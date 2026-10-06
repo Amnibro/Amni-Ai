@@ -303,3 +303,19 @@ python scripts/hybrid1_measure.py --bake bakes/qwen3_q8g64 --opts '{...}' --out 
 ```
 
 Environment: `docs/adam_t/hybrid1_env.txt` (torch 2.14.1+rocm7.2 wheels, Python 3.12, HIP device 0 = Navi 44 gfx1200; HIP device 1 is the iGPU). Raw run JSONs: `data/adam_t/eval/hybrid1_runs/`.
+
+## CTO audit caveats (2026-10-06)
+
+**"1.54 GB at 86.9% grounding" is an inference, not one measurement.**
+- probe8 quality was measured on the resident C8 numerics (5.22 GB).
+- Equivalence of the streamed path to the resident one was checked only on Granite 3B q4 (`runs/equiv_granite3b_q4.json`), not on Qwen.
+- The unexplained intermittent garbage run hit exactly the chunk256, kv and stream configurations.
+- Needed: a Qwen streamed-vs-resident equivalence check and a probe8 rerun on the streamed configuration before the VRAM and quality pairing is claimed.
+
+**The "<1 GB" configuration (Granite stream + CPU tables + kv4, 0.79 GB) has no quality measurement.** kv4 destroyed Qwen. Treat it as unvalidated.
+
+**The E2E `fact` metric is easy trivia** ("How many legs does a spider have?").
+- Open-model-alone scores 100% on easy, medium and hard.
+- The hybrid gets 66.7% of the easy items. That points to the harness material routes and grounding gate degrading answers the blender would get right, not only to missing PTEX coverage.
+
+**`tests/test_blender_atex.py` and `test_qgroup_gemv.py` were not run at merge.** The main venv lacks triton.
