@@ -1,4 +1,4 @@
-import os,re,sys,json,math,struct
+import os,re,sys,json,struct
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];DR=ROOT/"data"/"store1"/"drive";V3=ROOT/"data"/"wikifact"/"v3"/"store";OUT=ROOT/"data"/"store1"/"results"/"sizes.json"
 BYTESECS={"ta","ta_x","tb","tb_x","tc","tc_x"}

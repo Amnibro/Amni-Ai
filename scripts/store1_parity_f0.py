@@ -1,4 +1,4 @@
-import os,re,sys,json,time,numpy as np,multiprocessing as mp
+import re,sys,json,time,numpy as np,multiprocessing as mp
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from amni.compute import wikifact as WF
@@ -8,7 +8,7 @@ def keys(lines):
  for ln in lines:
   p=ln.rstrip("\n").split("\t",2)
   if len(p)<3:continue
-  e,k,s=int(p[0]),int(p[1]),p[2];x=WF.nrm(s)
+  k,s=int(p[1]),p[2];x=WF.nrm(s)
   if not x:continue
   o.append(x);x.startswith("the ") and len(x)>4 and o.append(x[4:])
   k==2 and s.rstrip().endswith(")") and (y:=WF.nrm(re.sub(r"\s*\([^)]*\)\s*$","",s))) and o.append(y)

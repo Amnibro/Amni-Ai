@@ -92,7 +92,7 @@ def whq(t:list,o:list=None)->str:
  w={'whom':'who','whose':'who'}.get(m[1],m[1]);cp=sorted(cphrase(t,o))
  return (nclass(t[cp[-1]]) or w) if w in ('which','what') and cp and WF.h64(lem(t[cp[-1]])) not in ptab() else w
 def etype(q:str,t:list,o:list=None)->str:
- s=' '.join(t);w=whq(t,o)
+ w=whq(t,o)
  if w=='when':return 'time'
  if w=='how':return 'number'
  if w=='where':return 'place'

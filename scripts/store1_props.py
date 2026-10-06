@@ -1,4 +1,4 @@
-import json,time,hashlib,urllib.request,urllib.parse,sys
+import json,time,hashlib,urllib.request,urllib.parse
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/"data"/"store1"/"props_en.json";API="https://www.wikidata.org/w/api.php"
 def keep()->list:

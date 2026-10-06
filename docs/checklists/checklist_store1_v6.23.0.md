@@ -5,17 +5,18 @@
 - [x] Store statistics measured on v3 only (entropy, Huffman, signatures, text)
 - [x] Guardian council `docs/guardian_councils/guardian_council_store1.md`
 - [x] Pre-registration `docs/adam_t/store1_prereg.md` committed before any eval set or scoring
-- [ ] Coverage audit of E2E know/explain items (separate agent) -> `data/store1/coverage_audit.json`
-- [ ] Eval set authoring (separate agent, no repo access) -> gold annotation -> decontam -> split -> lock
-- [ ] Property labels/aliases (Wikidata API, CC0) -> `data/store1/props_en.json`
-- [ ] Extend `crates/adam-torus` for generic digit rows (backup first)
-- [ ] `crates/adam-store1`: Huffman cascade, presence, counts, qualifiers, codebooks, names, text codec, container, reader, parity, C ABI
-- [ ] Build compact store, parity on everything, sizes, lookup speed warm/cold, RAM
-- [ ] Derivable-fact rules measured; reverse index decision
-- [ ] Resolver (`amni/serve/store1.py`): entity linking, property map, non-Wikidata routes, type gate, abstain
-- [ ] `scripts/store1_eval.py`: dev ablation, fingerprint budget, then single test scoring
-- [ ] Latency median/p99
-- [ ] Harness flag `AMNI_STORE1=1` (default off), tests
-- [ ] Results doc `docs/adam_t/store1_results.md`
-- [ ] Backups, changelog, architecture_map entries
-- [ ] Rust target dirs deleted, deletions logged, all own processes stopped
+- [x] Coverage audit of E2E know/explain items (separate agent) -> `data/store1/coverage_audit.json`
+- [x] Eval set authoring (separate agent, no repo access) -> gold annotation -> decontam -> split -> lock
+- [x] Property labels/aliases (Wikidata API, CC0) -> `data/store1/props_en.json`
+- [x] Extend `crates/adam-torus` for generic digit rows (backup first)
+- [x] `crates/adam-store1`: Huffman cascade, presence, counts, qualifiers, codebooks, names, text codec, container, reader, parity, C ABI
+- [x] Build compact store, parity on everything, sizes, lookup speed warm/cold, RAM
+- [x] Derivable-fact rules measured; reverse index decision
+- [x] Resolver (`amni/serve/store1.py`): entity linking, property map, non-Wikidata routes, type gate, abstain
+- [x] `scripts/store1_eval.py`: dev ablation, fingerprint budget, then single test scoring
+- [x] Latency median/p99
+- [x] Harness flag `AMNI_STORE1=1` (default off), tests
+- [x] Results doc `docs/adam_t/store1_results.md`
+- [x] Backups, changelog, architecture_map entries
+- [x] Rust target dirs deleted, deletions logged, all own processes stopped
+- Note: all items done; Part A and Part C gates FAIL on test, Part B passes (docs/adam_t/store1_results.md). Awaiting CTO/CEO confirmation.
