@@ -58,3 +58,17 @@ fn cascade_and_text_roundtrip() {
     let tm2 = Tm::load(&g, g.sec("tm").0);
     (0..500u64).for_each(|e| { let b = e / TB as u64; let mut dd = Dec::new(&g, g.sec("ta").0, g.u32at(g.sec("ta_x").0, b) as u64, &tm2); let mut last = (0u16, vec![], vec![]); for _ in 0..=e % TB as u64 { let tk = dd.field(0)[0]; let l = dd.field(1); let x = if tk >= 2 { dd.field(2) } else { vec![] }; last = (tk, l, x) } let want = &recs[e as usize]; assert_eq!(last.0, want[0].1[0]); assert_eq!(last.1, want[1].1); if last.0 >= 2 { assert_eq!(last.2, want[2].1) } });
 }
+#[test]
+fn rans17_symbols_uniform_roundtrip() {
+    use adam_store1::s2::*;
+    let mut r = 11u64;
+    let f = Fq::new(&(0..300u32).map(|i| (i, 1 + (sm(&mut r) % 1000) * (i % 5) as u64)).chain([(ESC, 7)]).collect::<Vec<_>>());
+    let xs: Vec<(u32, u64, u64)> = (0..20000).map(|_| { let s = f.sym[(sm(&mut r) % f.sym.len() as u64) as usize]; let n = 1 + sm(&mut r) % (1u64 << (sm(&mut r) % 40)); (s, n, sm(&mut r) % n) }).collect();
+    let mut e = Enc::default();
+    xs.iter().for_each(|&(s, n, u)| { assert!(f.put(&mut e, s)); e.uni(n, u) });
+    let d = e.finish();
+    assert!(d.iter().all(|&x| x < 17));
+    let mut dc = RDec::new(&d, 0);
+    xs.iter().for_each(|&(s, n, u)| { assert_eq!(dc.get(&f), s); assert_eq!(dc.uni(n), u) });
+    assert!((d.len() as f64) < e.bits() / 4.087 * 1.01 + 8.0);
+}

@@ -1,3 +1,16 @@
+## 2026-10-06 STORE-2 (v6.24.0): pixel-nonce text, facts as rank under prediction, nonce resolver (STORE-2 drive behind AMNI_STORE2, default off)
+- `crates/adam-store1` gains module `s2` and bin `store2` (`tstat`, `fstat`, `build`, `parity`, `bench`, `bblk`); the v3 loaders moved from the `store1` bin into the lib (no duplicates). C ABI `s2_*` (open, ents, keys, pieces, groups, values, quals, text, sitelinks, qid, ix, clear, cold).
+  - Base-17 rANS coder (M = 17^4, output stream in GF(17) digits) and one symmetric coding procedure used for counting, encoding and decoding.
+  - 83,521-piece vocabulary (one RGBA pixel per piece id: 512 byte-fallback + 83,009 BPE) with a case channel; labels/titles/strings context-coded (order-1 piece contexts with escape), aliases with a word-copy model; hot table (one pixel per piece) for 152,520 popular labels.
+  - Facts as rank under prediction: rules, block recency (MTF), signature/P31 context lists, near-index, country-class lists, escape to rANS-coded codebooks; a DFS breaks predictor cycles (84 facts).
+  - Streams per 32-entity block: header (QID gap, sitelinks), core (signature, counts, facts), labels, names, qualifiers; strings in 16-string blocks. Name table keyed by hashes of piece-id sequences (F=2 / F=3).
+- `amni/compute/store1.py`: `Drive(pre='s2')`, `drive2()`, `keys_many`, `pieces`, `clear`.
+- `amni/serve/store1.py`: STORE-2 mode (`AMNI_STORE2=1`): mined property map (`data/store2/props_mined.json`), piece-nonce keys, stricter absence, noun-class answer typing, drive-only class check, top-3 name verification, hedged time/place fallback; STORE-1 behaviour unchanged with the flag off.
+- `amni/serve/adam_t_harness.py`: `fill_s1` emits route `store2` when `AMNI_STORE2=1`; `_BG['store2']`.
+- Scripts: `store2_pieces.py`, `store2_names.py`, `store2_props.py`, `store2_evalset.py`, `store2_eval.py`, `store2_ablate.sh`, `store2_sizes.py`, `store2_torus_bound.py`. Tests: `tests/test_store2.py`; Rust test `rans17_symbols_uniform_roundtrip`.
+- Results (`docs/adam_t/store2_results.md`): drive 340,640,415 B (7.36% of v3, 83% of STORE-1) with 0 parity mismatches on every field; fact stream 9.81 bits/fact (STORE-1 11.21); test scored once: store-answer accuracy 0.7895, entity@1 0.8889, property 0.8655 (pass), abstain precision 0.6667, latency 7.6 / 44.9 ms (warm 3.9 / 26.5). G1, G3, G4, G5, G7, G8, G9 fail; G2 and G6 pass.
+- Docs: `docs/adam_t/store2_prereg.md` (+ Amendment 1), `docs/adam_t/store2_results.md`, `docs/checklists/checklist_store2_v6.24.0.md`, `docs/guardian_councils/guardian_council_store2.md`. Data: `data/store2/` (drive, eval set, results, vocab). Backups: `backups/store2/`.
+
 ## 2026-10-06 STORE-1 (v6.23.0): the exact GF(17) store as the drive (ultra-compact Wikidata drive + lookup resolver + harness route)
 - New crate `crates/adam-store1` (lib + `store1` bin + cdylib `libadam_store1.so`, C ABI `s1_*`):
   - Facts are 17-ary canonical Huffman codes per property, over (value, unit, preferred flag, qualifier count). Each code digit lives in a 1-digit GF(17) ribbon/BuRR level table (`<cascade>_<j>.gf17rib`), and the canonical codebooks are EV-delta digits in the container.
