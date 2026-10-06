@@ -59,8 +59,8 @@ The CTO narrowed the scope during the mission, and these parts were dropped:
      <user question>
      Adam: <blend>
      ```
-     - Material lines are `"<Source>: <text>"`, for example `Calculator: The answer is 16. Working: …`, `You told me: I work as a nurse.`, `<Wikidata label>, <relation>: <value>.` or `<Wikipedia title>: <passage>`. Licence tags in parentheses are stripped.
-     - This is `adam_t_client.template(q, history, budget, pre=(), rc=lines, sep='\n')`. Only cognition passes history.
+     - Material lines are `"<Source>: <text>"`, for example `Calculator: The answer is 16. Working: …`, `Memory: I work as a nurse.`, `<Wikidata label>, <relation>: <value>.` or `<Wikipedia title>: <passage>`. Licence tags in parentheses are stripped.
+     - This is `adam_t_client.template(q, history, budget, pre=(), rc=lines, sep=' ')`: material items joined by one space on the single User line, matching sft_v8 `material_format` (CTO fix 2026-09-30; v4 shipped with sep='\n' and a "You told me:" label, while SFT8 trained on ' ' and "Memory:"). Only cognition passes history.
    - **Gate:** the blend is kept only if it passes all of these:
      - it is coherent (`_coh`);
      - it is not boilerplate and not an emergency template;
