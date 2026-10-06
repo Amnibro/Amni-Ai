@@ -1,0 +1,21 @@
+# Checklist: STORE-1 (v6.23.0)
+
+- [x] Read CLAUDE.md, torus proposal, TORUS-A results, harness v3/v4, HYBRID-1 audit, v3 store layout and resolver code
+- [x] Worktree reset onto feat/ray-field-serve (b62845b), branch `store1`
+- [x] Store statistics measured on v3 only (entropy, Huffman, signatures, text)
+- [x] Guardian council `docs/guardian_councils/guardian_council_store1.md`
+- [x] Pre-registration `docs/adam_t/store1_prereg.md` committed before any eval set or scoring
+- [ ] Coverage audit of E2E know/explain items (separate agent) -> `data/store1/coverage_audit.json`
+- [ ] Eval set authoring (separate agent, no repo access) -> gold annotation -> decontam -> split -> lock
+- [ ] Property labels/aliases (Wikidata API, CC0) -> `data/store1/props_en.json`
+- [ ] Extend `crates/adam-torus` for generic digit rows (backup first)
+- [ ] `crates/adam-store1`: Huffman cascade, presence, counts, qualifiers, codebooks, names, text codec, container, reader, parity, C ABI
+- [ ] Build compact store, parity on everything, sizes, lookup speed warm/cold, RAM
+- [ ] Derivable-fact rules measured; reverse index decision
+- [ ] Resolver (`amni/serve/store1.py`): entity linking, property map, non-Wikidata routes, type gate, abstain
+- [ ] `scripts/store1_eval.py`: dev ablation, fingerprint budget, then single test scoring
+- [ ] Latency median/p99
+- [ ] Harness flag `AMNI_STORE1=1` (default off), tests
+- [ ] Results doc `docs/adam_t/store1_results.md`
+- [ ] Backups, changelog, architecture_map entries
+- [ ] Rust target dirs deleted, deletions logged, all own processes stopped
