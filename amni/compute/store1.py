@@ -1,7 +1,7 @@
 import os,ctypes as C,functools,numpy as np
 from pathlib import Path
 from amni.compute import wikifact as WF
-ROOT=Path(__file__).resolve().parents[2];DIR=Path(os.environ.get('AMNI_STORE1_DIR',str(ROOT/'data'/'store1'/'drive')));LIB=os.environ.get('AMNI_STORE1_LIB',str(ROOT/'data'/'store1'/'lib'/'libadam_store1.so'));FD=int(os.environ.get('AMNI_STORE1_FD','3'))
+ROOT=Path(__file__).resolve().parents[2];DIR=Path(os.environ.get('AMNI_STORE1_DIR',str(ROOT/'data'/'store1'/'drive')));LIB=os.environ.get('AMNI_STORE1_LIB',str(ROOT/'data'/'store1'/'lib'/'libadam_store1.so'));FD=int(os.environ.get('AMNI_STORE1_FD','0'))
 P8,P16,P32,P64=C.POINTER(C.c_uint8),C.POINTER(C.c_uint16),C.POINTER(C.c_uint32),C.POINTER(C.c_uint64)
 _ptr=lambda a,t:a.ctypes.data_as(t)
 class Drive:
@@ -18,7 +18,15 @@ class Drive:
    if n<=cap:break
    cap=n
   [O[a].append((b,c)) for a,b,c in zip(i[:n].tolist(),e[:n].tolist(),k[:n].tolist())];return O
- def ents(s,x:str)->list:return s.ents_many([WF.h64(x)])[0]
+ def ents(s,x:str)->list:
+  L=s.ents_many([WF.h64(x)])[0]
+  if s.fd:return L
+  o=[]
+  for e,k in L:
+   if not s.vfy(x,e):break
+   o.append((e,k))
+  return o
+ def vfy(s,x:str,e:int)->bool:N=s.names(e);return x in N or 'the '+x in N or x==WF.nrm(__import__('re').sub(r"\s*\([^)]*\)\s*$","",s.title(e)))
  def groups(s,e:int)->list:
   p,f=s.gb;n=int(s.L.s1_groups(s.p,int(e),_ptr(p,P16),_ptr(f,P8),64));return list(zip(p[:n].tolist(),f[:n].tolist()))
  def values(s,e:int,pn:int)->list:

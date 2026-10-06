@@ -125,7 +125,7 @@ class R:
   ex=[(i,j,' '.join(t[k]+('s' if k in ps else '') for k in range(i,j))) for i,j,_ in SP if ps&set(range(i,j))]+[(i,j,x[:-1]) for i,j,x in SP if x.endswith('s') and len(x)>4]
   H=s.D.ents_many([WF.h64(x) for _,_,x in SP+ex]);E={};lk=set();cov=set()
   for (i,j,x),L in zip(SP+ex,H):
-   L=[z for z in L if s.vfy(x,z[0])] if s.D.fd==0 else L
+   L=[z for z in L if s.D.vfy(x,z[0])] if s.D.fd==0 else L
    if not L:continue
    lk.update(range(i,j));cov.add((i,j));c=[k for k in range(i,j) if t[k] not in STOP];nc=len([k for k in c if k not in pos]);cap=sum(o[k][:1].isupper() for k in range(i,j) if k>0 or t[0] not in STOP)/max(1,j-i-(i==0 and t[0] in STOP))
    loc=-0.15 if i>0 and t[i-1] in ('in','on','at','during','near') else 0.0
@@ -149,8 +149,6 @@ class R:
   for k,r in run.items():R2.setdefault(r,[]).append(k)
   ur=[v for v in R2.values() if len([x for x in v if x in pn])>=2 and not any(a<=min(v) and max(v)<b for a,b in cov)]
   return dict(sorted(E.items(),key=lambda z:-z[1][0])),((pn-lk)-pos)|{-1-i for i,_ in enumerate(ur)},ur
- def vfy(s,x:str,e:int)->bool:
-  N=s.D.names(e);t=WF.nrm(re.sub(r"\s*\([^)]*\)\s*$","",s.D.title(e)));return x in N or 'the '+x in N or x==t
  def ety(s,e:int)->str:
   G={p for p,_ in s.D.groups(e)}
   if 21 in G or 569 in G or any(v==s.hum for _,v,*_ in s.D.values(e,31)[:4]) or 106 in G:return 'person'
