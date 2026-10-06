@@ -1,4 +1,4 @@
-import os,sys,json,time,hashlib,argparse,numpy as np
+import json,time,hashlib,argparse,numpy as np
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];D=ROOT/"data"/"wikifact"/"v3"/"store";OUT=ROOT/"data"/"store2"/"pieces";NV=83521;NB=512
 def corpus(a):

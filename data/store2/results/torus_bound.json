@@ -1,0 +1,58 @@
+{
+ "torus_layer_bytes": 25348597,
+ "relations": {
+  "wd:P19": {
+   "torus_facts": 151898,
+   "store_facts": 1489817,
+   "coverage": 0.102,
+   "store2_bits_per_fact": 13.45,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 236391
+  },
+  "wd:P17": {
+   "torus_facts": 67173,
+   "store_facts": 2481164,
+   "coverage": 0.0271,
+   "store2_bits_per_fact": 2.526,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 12813
+  },
+  "wd:P131": {
+   "torus_facts": 80558,
+   "store_facts": 1701090,
+   "coverage": 0.0474,
+   "store2_bits_per_fact": 12.779,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 118612
+  },
+  "wd:P171": {
+   "torus_facts": 129796,
+   "store_facts": 534664,
+   "coverage": 0.2428,
+   "store2_bits_per_fact": 10.248,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 150044
+  },
+  "wd:P27": {
+   "torus_facts": 155714,
+   "store_facts": 1931951,
+   "coverage": 0.0806,
+   "store2_bits_per_fact": 3.344,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 45624
+  },
+  "wd:P20": {
+   "torus_facts": 53185,
+   "store_facts": 548786,
+   "coverage": 0.0969,
+   "store2_bits_per_fact": 10.196,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 61136
+  },
+  "wd:P106": {
+   "torus_facts": 289254,
+   "store_facts": 3649775,
+   "coverage": 0.0793,
+   "store2_bits_per_fact": 7.968,
+   "upper_bound_saving_bytes_if_every_covered_fact_cost_1_bit": 251940
+  }
+ },
+ "upper_bound_saving_bytes": 876561,
+ "kept": false,
+ "note": "Upper bound: every torus-covered fact of the relation coded at 1 bit instead of its measured STORE-2 cost (fstat_k8_nocyc.json per_prop). The torus layer itself would have to ship (torus_layer_bytes). Test hits@10 from res_test_final.json for reference.",
+ "torus_test_hits10": {}
+}

@@ -1,0 +1,9 @@
+{
+ "lines": 29185954,
+ "sha256": "904771c8d780d2af0a2ff7daefafb9a3729939f26693baa849972e8c1e7aeb2b",
+ "sources": [
+  "v3 e_lab.bin labels, str.lower()",
+  "v3 nm.bin normalized names (amni.compute.wikifact.nrm)"
+ ],
+ "license": "CC0 1.0 (Wikidata)"
+}

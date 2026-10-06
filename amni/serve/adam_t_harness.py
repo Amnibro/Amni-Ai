@@ -218,13 +218,14 @@ def _guess(z:str,e:str)->tuple:
     g=_coarse(z,e) if e in ('time','num') else _lc(z.strip().rstrip('.!?')) if e=='any' else z.strip().rstrip('.')
     return g,e if e in ('time','num') else 'sent' if e=='any' and len(g.split())>4 else 'ent'
 def fill_s1(s:dict,rq:str)->dict:
-    if os.environ.get('AMNI_STORE1','0')!='1':return {}
+    k='store2' if os.environ.get('AMNI_STORE2','0')=='1' else 'store1' if os.environ.get('AMNI_STORE1','0')=='1' else ''
+    if not k:return {}
     try:r=__import__('amni.serve.store1',fromlist=['resolve']).resolve(rq)
     except Exception:return {}
     b=r.get('best')
     if not b or not b.get('answer'):return {}
-    a=C.asc(str(b['answer']));o={**s,'kind':'know','rq':rq,'src':'store1','span':a,'conf':float(b['score']),'s1':b['store'],'s1ms':r['ms']}
-    return {**o,'ok':False,'hedge':True,'guess':a,'gk':'ent'} if b['store']=='wd' and not b.get('sure',True) else {**o,'ok':True,'text':C.asc(b['line']),'mat':mat('store1',[b['line']],C.asc(b['line']),[b.get('prov','')],float(b['score']),[a])}
+    a=C.asc(str(b['answer']));o={**s,'kind':'know','rq':rq,'src':k,'span':a,'conf':float(b['score']),'s1':b['store'],'s1ms':r['ms']}
+    return {**o,'ok':False,'hedge':True,'guess':a,'gk':'ent'} if b['store']=='wd' and not b.get('sure',True) else {**o,'ok':True,'text':C.asc(b['line']),'mat':mat(k,[b['line']],C.asc(b['line']),[b.get('prov','')],float(b['score']),[a])}
 def fill_know(s:dict,cl,R,rq:str,mx:int)->dict:
     o=fill_s1(s,rq)
     if o:return o
@@ -430,7 +431,7 @@ def emtpl(t:str)->bool:
     return bool(EMG.OUT.search(t)) or any(len(g&E)>=max(3,_f('AMNI_ADAM_T_HARNESS_EMT',0.5)*len(g)) for g in map(_g3,re.split(r"(?<=[.!?])\s+",t)))
 def guard(m:str,t:str)->str:return '' if not t or _BOIL.search(t) or emtpl(t) and (EMG.detect(m) or {}).get('tier')!='emergency' else t
 def safe(m:str,t:str)->str:return t if not t or os.environ.get('AMNI_ADAM_T_HARNESS_GUARD','1')!='1' else guard(m,t) or EMG.neutral(m)
-_BG={'store1':(0.8,0.6,4,2.0),'calc':(0.0,0.0,2,2.0),'mem':(0.5,0.5,3,2.0),'know':(0.8,0.6,4,2.0),'cs':(0.8,0.6,4,2.0),'explain':(0.6,0.6,8,0)}
+_BG={'store1':(0.8,0.6,4,2.0),'store2':(0.8,0.6,4,2.0),'calc':(0.0,0.0,2,2.0),'mem':(0.5,0.5,3,2.0),'know':(0.8,0.6,4,2.0),'cs':(0.8,0.6,4,2.0),'explain':(0.6,0.6,8,0)}
 _SW=set(U._STOPW.split());_PN={'your':'my','yours':'mine','you':'i','me':'i','yourself':'myself','are':'am','were':'was'}
 _pw=lambda t:[_PN.get(w,w) for w in re.findall(r"[a-z]+",t.lower())]
 def mat(route:str,lines,extract:str,prov=(),conf:float=1.0,must=(),gate:str='para',**k)->dict:return {'route':route,'lines':[re.sub(r"\s*\((?:CC|Creative Commons|licen[cs]e)[^)]*\)",'',C.asc(x)) for x in lines if x],'extract':extract,'prov':list(prov),'conf':float(conf),'must':[str(x) for x in must if x],'gate':gate,**k}

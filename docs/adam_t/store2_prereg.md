@@ -80,3 +80,11 @@ Written 2026-10-06, before any STORE-2 eval item exists and before any resolver 
 
 ## Rules
 CPU only; heavy commands under `systemd-run --user --scope -p MemoryMax=12G -p CPUQuota=300% nice -n 15`; Rust with its own target dir, deleted after; `data/store2/` <= 15 GB peak; deletions logged in `data/ks/logs/deletions.log`; v3 and `data/store1` are not deleted. Licence-clean data only. Failures are reported as failures, and any departure from the paradigm is declared.
+
+## Amendments (each written before the test split was scored)
+
+### Amendment 1 (2026-10-06T19:09:19-04:00): page-cache state and baseline placement in the latency protocol
+- What changed: before the scoring process starts, every drive file (`store2.gf17pg` and the chosen name-table files) is read once into the OS page cache (a serving steady state; the "unseen" protocol already keeps the page cache). The v3-resolver baseline is computed in a separate pass after the timed passes, not between timed questions.
+- Why: a dev run's cold pass (`posix_fadvise DONTNEED`) evicts the drive for the next process, so the "unseen" latency depended on run order (dev unseen median 4.2 ms in the ablation runs vs 14.2 ms in the run after a cold pass), and the interleaved v3 lookups disturbed the timed questions.
+- Effect: it helps the latency metrics (it makes them reproducible). It changes no accuracy metric, gate threshold or metric definition. Cold-cache numbers are still measured and reported.
+- Selection outcome under the pre-registered rule (not an amendment, recorded for traceability): no dev configuration reaches `abstain_prec` 0.90, so the Amendment-1 rule of STORE-1 (pre-registered above) applies; the configurations within one dev item of the best `e2e_acc_instore` are full, no_desc, no_latest, fallback_num, F=3 and no_templates, and no_templates has the highest `abstain_prec` (0.7347), so templates are off in the frozen configuration. F=2 meets both dev latency gates and ties F=3 on accuracy and abstain precision, so F=2.

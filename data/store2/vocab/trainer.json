@@ -1,0 +1,27 @@
+{
+ "model": "BPE",
+ "vocab_size": 83009,
+ "end_of_word_suffix": "</w>",
+ "pre_tokenizer": "WhitespaceSplit",
+ "limit_alphabet": 1000,
+ "min_frequency": 2,
+ "special_tokens": [],
+ "byte_fallback_ids": "0-255 mid-word bytes, 256-511 word-final bytes (own encoder)",
+ "piece_id_offset": 512,
+ "total_ids": 83521,
+ "library": "tokenizers 0.23.2",
+ "corpus": {
+  "lines": 29185954,
+  "sha256": "904771c8d780d2af0a2ff7daefafb9a3729939f26693baa849972e8c1e7aeb2b",
+  "sources": [
+   "v3 e_lab.bin labels, str.lower()",
+   "v3 nm.bin normalized names (amni.compute.wikifact.nrm)"
+  ],
+  "license": "CC0 1.0 (Wikidata)"
+ },
+ "vocab": 83009,
+ "merges": 81034,
+ "train_s": 41.8,
+ "vocab_sha256": "cb209340cd370bf1d9c76d8af01903d449890428063e69948fced11f50227656",
+ "merges_sha256": "4cd07e14dcfe1047cdddf03b5c745dc9a6414cfa9b8d8cc068b8b0a4bb114d68"
+}

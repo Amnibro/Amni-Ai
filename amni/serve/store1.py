@@ -6,6 +6,7 @@ ROOT=Path(__file__).resolve().parents[2];PJ=Path(os.environ.get('AMNI_STORE1_PRO
 on=lambda:os.environ.get('AMNI_STORE1','0')=='1'
 CF=dict(tau=float(os.environ.get('AMNI_STORE1_TAU','2.5')),wmin=float(os.environ.get('AMNI_STORE1_WMIN','0.5')),prior=0.35,cap=0.25,kind=(0.12,0.0,0.12,0.06),tfit=0.45,tbad=0.9,hand=1.0,alias=0.6,ncand=40,cs=0.55)
 ABL=set(filter(None,os.environ.get('AMNI_STORE1_ABL','').split(',')))
+v2=lambda:os.environ.get('AMNI_STORE2','0')=='1';PM2=Path(os.environ.get('AMNI_STORE2_PROPS',str(ROOT/'data'/'store2'/'props_mined.json')))
 STOP=set("a an the of in on at to for by with from as is are was were be been being am do does did done has have had having will would shall should can could may might must what which who whom whose when where why how that this these those it its they them their there here i you he she we me my your his her our us and or but not no yes if then than so very just also about into onto over under up down out off again ever any some all each every much many more most other such only own same few name named called call tell give know please one ones s".split())
 TH=set("film movie novel book song album band series show painting opera play game company team river mountain city island planet moon poem magazine newspaper statue building ship comic sculpture symphony musical".split())
 GEN=set("year date day time place country city people person number name thing things kind type sort part member first last current original famous known".split())
@@ -41,13 +42,39 @@ def lem(w:str)->str:
 def vinf(w:str)->bool:
  wn=WF._wn();v=wn.morphy(w,'v') if wn and len(w)>3 else None;return bool(v) and v!=w
 @functools.lru_cache(maxsize=1)
+def PF()->dict:
+ try:return {int(k[1:]):int(v.get('facts',0)) for k,v in mined().items()}
+ except Exception:return {}
+@functools.lru_cache(maxsize=1)
 def props()->dict:
  J=json.loads(PJ.read_text())['props'];return {int(k[1:]):v for k,v in J.items()}
+def _add(T:dict,k:str,ps:list,w:float,src:str):
+ for p in ps:T.setdefault(k,{});T[k][p]=max(T[k].get(p,(0,''))[0],w),src if w>=T[k].get(p,(0,''))[0] else T[k][p][1]
+def _hand(add):
+ for it in re.split(r"[;\n]",HAND):
+  k,_,v=it.strip().partition('=');wh,_,g=k.rpartition('|');g=' '.join(lem(x) for x in g.split());ps=[int(x) for x in v.split()];add((wh+'|' if wh else '')+g,ps,CF['hand'],'hand');wh and add(g,ps,0.7*CF['hand'],'hand')
+ for it in HAND2.split(';'):k,_,v=it.strip().partition('=');wh,_,g=k.rpartition('|');g=' '.join(lem(x) for x in g.split());add((wh+'|' if wh else '')+g,[int(x) for x in v.split()],0.75*CF['hand'],'hand')
+ for d,wh in ((WF.WHEN,'when'),(WF.WHO,'who')):
+  for k,v in d.items():add(wh+'|'+' '.join(lem(x) for x in k.split()),v,0.9*CF['hand'],'hand')
+ for k,v in WF.NOUN.items():add(' '.join(lem(x) for x in k.split()),v,0.9*CF['hand'],'hand')
+@functools.lru_cache(maxsize=1)
+def mined()->dict:return json.loads(PM2.read_text())['props']
+@functools.lru_cache(maxsize=1)
+def ptab2s()->dict:
+ T={};add=functools.partial(_add,T);A={}
+ if 'handonly' not in ABL:
+  for k,v in mined().items():
+   p=int(k[1:]);whs={'what':('what','which'),'who':('who',),'org':('who','which','what')}.get(v['wh'],(v['wh'],))
+   for x,w,src in v['keys']:
+    if src=='desc' and 'nodesc' in ABL or src in ('syn','der','gloss') and 'nownet' in ABL:continue
+    for kk in [x]+([h+'|'+x for h in whs] if 'tmpl' in ABL else []):A.setdefault(kk,{});A[kk][p]=max(A[kk].get(p,0.0),w)
+  for k,P in A.items():[add(k,[p],CF['alias']*w*(1.15 if '|' in k else 1.0)/len(P)**0.5,'mined') for p,w in P.items()]
+ 'nohand' not in ABL and _hand(add)
+ return T
 @functools.lru_cache(maxsize=1)
 def ptab()->dict:
  T={}
- def add(k,ps,w,src):
-  for p in ps:T.setdefault(k,{});T[k][p]=max(T[k].get(p,(0,''))[0],w),src if w>=T[k].get(p,(0,''))[0] else T[k][p][1]
+ add=functools.partial(_add,T)
  if 'alias' not in ABL:
   A={}
   for p,v in props().items():
@@ -56,14 +83,9 @@ def ptab()->dict:
     if t and not all(x in STOP for x in t) and len(t)<=4:A.setdefault(' '.join(t),set()).add((p,1.0 if i==0 else 0.8))
   for k,S in A.items():
    n=len({p for p,_ in S});[add(k,[p],CF['alias']*w*(0.6 if ' ' not in k else 1.0)/n,'alias') for p,w in S]
- if 'hand' not in ABL:
-  for it in re.split(r"[;\n]",HAND):
-   k,_,v=it.strip().partition('=');wh,_,g=k.rpartition('|');g=' '.join(lem(x) for x in g.split());ps=[int(x) for x in v.split()];add((wh+'|' if wh else '')+g,ps,CF['hand'],'hand');wh and add(g,ps,0.7*CF['hand'],'hand')
-  for it in HAND2.split(';'):k,_,v=it.strip().partition('=');wh,_,g=k.rpartition('|');g=' '.join(lem(x) for x in g.split());add((wh+'|' if wh else '')+g,[int(x) for x in v.split()],0.75*CF['hand'],'hand')
-  for d,wh in ((WF.WHEN,'when'),(WF.WHO,'who')):
-   for k,v in d.items():add(wh+'|'+' '.join(lem(x) for x in k.split()),v,0.9*CF['hand'],'hand')
-  for k,v in WF.NOUN.items():add(' '.join(lem(x) for x in k.split()),v,0.9*CF['hand'],'hand')
+ 'hand' not in ABL and _hand(add)
  return {WF.h64(k):v for k,v in T.items()}
+hk=lambda xs:[WF.h64(x) for x in xs]
 CONTR={'what','who','where','when','how','that','there','here','it','he','she','which'}
 def toks(q:str,brk:bool=False)->tuple:
  W=list(re.finditer(r"[^\W_]+(?:['’`´][^\W_]+)*",F:=WF.fold(q or '').replace("&"," and ")));o=[];ps=set();B=set();pe=0
@@ -78,21 +100,22 @@ def cphrase(t:list,O:list=None)->set:
    return S
  return set()
 @functools.lru_cache(maxsize=8192)
-def nclass(w:str)->str:
+def nclass(w:str,ext:bool=False)->str:
  wn=WF._wn();S=wn.synsets(w,'n')[:1] if wn else []
  if not S:return ''
  H={h.name() for h in S[0].closure(lambda z:z.hypernyms()+z.instance_hypernyms())}
- return 'who' if 'person.n.01' in H else 'where' if H&{'location.n.01','region.n.03','geographical_area.n.01','body_of_water.n.01','building.n.01','structure.n.01'} and w not in ('river','lake','sea','ocean','mountain','museum','building','stadium') else ''
-def whq(t:list,o:list=None)->str:
+ return 'who' if 'person.n.01' in H else 'where' if H&({'location.n.01','region.n.03','geographical_area.n.01','body_of_water.n.01','building.n.01','structure.n.01'}|({'community.n.01','political_unit.n.01','landmass.n.01','land.n.04'} if ext else set())) and (ext or w not in ('river','lake','sea','ocean','mountain','museum','building','stadium')) else ''
+def whq(t:list,o:list=None,T=None,K=None)->str:
  s=' '.join(t)
- if re.search(r"\b(?:what|which) (?:year|date|day|century|decade|month)\b|\bwhen\b",s):return 'when'
+ if re.search(r"\b(?:what|which) (?:year|date|day|century|decade|month)\b|\bwhen\b|\b(?:what|which) (?:is|was) the (?:date|year|day)\b",s):return 'when'
  if re.search(r"\bhow (?:many|much|tall|long|high|big|large|old|far|deep|heavy|wide)\b",s):return 'how'
  m=re.search(r"\b(who|whom|whose|where|which|what)\b",s)
  if not m:return 'what'
  w={'whom':'who','whose':'who'}.get(m[1],m[1]);cp=sorted(cphrase(t,o))
- return (nclass(t[cp[-1]]) or w) if w in ('which','what') and cp and WF.h64(lem(t[cp[-1]])) not in ptab() else w
-def etype(q:str,t:list,o:list=None)->str:
- w=whq(t,o)
+ if K is not None and K is not hk and 'oldwh' not in ABL and w in ('which','what') and cp:return next((c for c in (nclass(t[i],True) for i in cp) if c),w)
+ return (nclass(t[cp[-1]]) or w) if w in ('which','what') and cp and (K or hk)([lem(t[cp[-1]])])[0] not in (ptab() if T is None else T) else w
+def etype(q:str,t:list,o:list=None,T=None,K=None)->str:
+ w=whq(t,o,T,K)
  if w=='when':return 'time'
  if w=='how':return 'number'
  if w=='where':return 'place'
@@ -103,18 +126,17 @@ def etype(q:str,t:list,o:list=None)->str:
 def _qclass(q:str)->str:
  try:return __import__('amni.serve.cognition',fromlist=['qclass']).qclass(q)
  except Exception:return ''
-def cues(t:list,o:list=None)->tuple:
- lt=[lem(x) for x in t];w=whq(t);T=ptab();M=[];pos=set()
- for n in range(1,5):
-  for i in range(len(lt)-n+1):
-   g=' '.join(lt[i:i+n])
-   if n==1 and (g in STOP or len(g)<3):continue
-   for k in (g,w+'|'+g):
-    for p,(sc,_) in T.get(WF.h64(k),{}).items():
+def cues(t:list,o:list=None,T=None,K=None,Tw=None)->tuple:
+ lt=[lem(x) for x in t];w=whq(t,None,T if Tw is None else Tw,K);T=ptab() if T is None else T;M=[];pos=set()
+ G=[(n,i,k) for n in range(1,5) for i in range(len(lt)-n+1) for g in [' '.join(lt[i:i+n])] if not (n==1 and len(g)<3) and not (n==1 and g in STOP and (Tw is None or 'oldwh' in ABL)) for k in ((g,w+'|'+g) if not (n==1 and g in STOP) else (w+'|'+g,))];H=(K or hk)([k for _,_,k in G])
+ for (n,i,k),h in zip(G,H):
+    for p,(sc,_) in T.get(h,{}).items():
      sc=sc*(1.15 if '|' in k else 1.0)*(1+0.1*(n-1))*(0.3 if o and all(o[x][:1].isupper() and x>0 for x in range(i,i+n)) else 1.0);M.append((p,sc,i,i+n));sc>=0.3 and pos.update(range(i,i+n))
  return M,pos
 class R:
- def __init__(s,fd=None):s.D=D1.drive(D1.FD if fd is None else fd);s.hum=s.D.ix(5) if s.D else -1
+ def __init__(s,fd=None,v2_=False):
+  s.v2=v2_;s.D=D1.drive2(D1.FD2 if fd is None else fd) if v2_ else D1.drive(D1.FD if fd is None else fd);s.hum=s.D.ix(5) if s.D else -1;s.K=s.D.keys_many if s.D and v2_ else hk
+  s.T=(lambda T2:dict(zip(s.K(list(T2)),T2.values())))(ptab2s()) if v2_ and s.D else ptab();s.Tw={h for h,v in s.T.items() if any(w>=0.45 for w,_ in v.values())} if v2_ else s.T
  def link(s,o:list,t:list,pos:set,ps:set=frozenset(),cp:set=frozenset(),brk:set=frozenset())->tuple:
   pos=pos|cp;SP=[]
   for i in range(len(t)):
@@ -123,7 +145,7 @@ class R:
     if not c or set(c)<=cp or j-i==1 and (len(t[i])<3 and not (any(ch.isdigit() for ch in t[i]) and not t[i].isdigit() or o[i].isupper() and len(o[i])>1) or t[i] in GEN or t[i].isdigit()):continue
     SP.append((i,j,' '.join(t[i:j])))
   ex=[(i,j,' '.join(t[k]+('s' if k in ps else '') for k in range(i,j))) for i,j,_ in SP if ps&set(range(i,j))]+[(i,j,x[:-1]) for i,j,x in SP if x.endswith('s') and len(x)>4]
-  H=s.D.ents_many([WF.h64(x) for _,_,x in SP+ex]);E={};lk=set();cov=set()
+  H=s.D.ents_many(s.D.keys_many([x for _,_,x in SP+ex]));E={};X={};lk=set();cov=set()
   for (i,j,x),L in zip(SP+ex,H):
    L=[z for z in L if s.D.vfy(x,z[0])] if s.D.fd==0 else L
    if not L:continue
@@ -131,7 +153,7 @@ class R:
    loc=-0.15 if i>0 and t[i-1] in ('in','on','at','during','near') else 0.0
    for e,k in L:
     sc=1.0+0.25*min(len(c),3)-0.1*(len(c)-nc)-(0.4 if nc==0 else 0.0)+CF['cap']*cap+CF['kind'][min(k,3)]+loc
-    if sc>E.get(e,(-9,))[0]:E[e]=(sc,i,j,k)
+    if sc>E.get(e,(-9,))[0]:E[e]=(sc,i,j,k);X[e]=x
   th={x for x in t if x in TH or x.rstrip('s') in TH}
   for e in list(E):
    sl=s.D.sitelinks(e) if 'prior' not in ABL else 0;E[e]=(E[e][0]+CF['prior']*min(1.0,math.log2(1+sl)/9.0),)+E[e][1:]+(sl,)
@@ -142,12 +164,15 @@ class R:
   pn={k for k in range(1,len(o)) if o[k][:1].isupper() and t[k] not in STOP and not t[k].isdigit()};cu=pn|{k for k in range(1,len(o)-1) if t[k] in ('of','the','de','for','and','at','a') and k-1 in pn and k+1 in pn};run={}
   for k in sorted(cu):run[k]=run.get(k-1,k) if k not in brk else k
   E=dict(sorted(E.items(),key=lambda z:-z[1][0])[:CF['ncand']])
-  for e,(sc,i,j,k,sl) in list(E.items()):
-   rs={run[x] for x in range(i,j) if x in run};mis=len([x for x in pn if run.get(x) in rs and not i<=x<j]);lw=(i>0 or o[0][:1].islower()) and not any(o[x][:1].isupper() for x in range(i,j)) and 'case' not in ABL;lb=s.D.label(e) if lw else '';lc=lw and bool(lb) and lb[:1].isupper() and not lb[:1].lower()==lb[:1]
+  if s.v2 and 'novfy' not in ABL:
+   for e in list(E)[:3]:
+    x=X[e];x in s.D.names(e) or 'the '+x in s.D.names(e) or x==WF.nrm(re.sub(r'\s*\([^)]*\)\s*$','',s.D.title(e))) or any(WF.nrm(y)==x or WF.nrm(y)=='the '+x for y in (s.D.label(e),)) or (cov.discard(E.pop(e)[1:3]) if not any(v[1:3]==E[e][1:3] for f,v in E.items() if f!=e) else E.pop(e))
+  for r_,(e,(sc,i,j,k,sl)) in enumerate(list(E.items())):
+   rs={run[x] for x in range(i,j) if x in run};mis=len([x for x in pn if run.get(x) in rs and not i<=x<j]);lw=(i>0 or o[0][:1].islower()) and not any(o[x][:1].isupper() for x in range(i,j)) and 'case' not in ABL and not (s.v2 and not any(x[:1].isupper() for x in o[1:]));lb=(s.D.label(e) if not s.v2 or r_<12 else 'X') if lw else '';lc=lw and bool(lb) and lb[:1].isupper() and not lb[:1].lower()==lb[:1]
    E[e]=(sc-0.5*mis-0.6*lc,i,j,k,sl,mis)
   R2={}
   for k,r in run.items():R2.setdefault(r,[]).append(k)
-  ur=[v for v in R2.values() if len([x for x in v if x in pn])>=2 and not any(a<=min(v) and max(v)<b for a,b in cov)]
+  ur=[v for v in R2.values() if len([x for x in v if x in pn])>=2 and not any(a<=min(v) and max(v)<b for a,b in cov)] if not s.v2 or 'oldabs' in ABL else [v for v in R2.values() if len([x for x in v if x in pn])>=2 and not any(a<=min(v) and max(v)<b or b-a>=2 and len([x for x in v if x in pn and not a<=x<b])<=1 for a,b in cov)]
   return dict(sorted(E.items(),key=lambda z:-z[1][0])),((pn-lk)-pos)|{-1-i for i,_ in enumerate(ur)},ur
  def ety(s,e:int)->str:
   G={p for p,_ in s.D.groups(e)}
@@ -160,6 +185,9 @@ class R:
    for _,v,*_ in s.D.values(e,p)[:6]:
     n=WF.nrm(s.D.label(v))
     if n and (w[0] in n.split() or w[0].rstrip('s') in n.split()):return 1.0
+  if s.v2:
+   P=[v for _,v,*_ in s.D.values(e,31)[:4]]
+   return 1.0 if any(w[0] in n.split() or w[0].rstrip('s') in n.split() for v in P for _,u,*_ in s.D.values(v,279)[:4] for n in [WF.nrm(s.D.label(u))] if n) else -0.5 if P else 0.0
   try:r=__import__('amni.serve.cognition',fromlist=['isa']).isa(s.D.label(e),c)[0]
   except Exception:r=None
   return 1.0 if r else -1.0 if r is False else 0.0
@@ -170,6 +198,7 @@ class R:
   if et in ('person','place'):y=s.ety(v);return CF['tfit'] if y==et or et=='person' and y=='org' and False else 0.5*CF['tfit'] if et=='person' and y=='org' else -CF['tbad']*0.6
   if et.startswith('class:'):return CF['tfit']*s.cls(v,et[6:])
   return 0.0
+ def qyear(s,e:int,p:int,i:int,nq:int)->int:return max([WF.tu(v)[0] for qp,k,v in s.D.quals(e,p,i,nq) if k==2 and qp in (585,580,577)] or [0]) if nq else 0
  def qmatch(s,e:int,p:int,i:int,nq:int,Y:set,TS:set)->int:
   if not nq:return 0
   c=0;st=en=None
@@ -189,28 +218,38 @@ class R:
    return r[0],r
   t=s.D.string(v);return t,[t]
  def wd(s,q:str)->dict:
-  o,t,ps,bk=toks(q,True);M,pos=cues(t,o);et=etype(q,t,o);cp=cphrase(t,o);E,un,ur=s.link(o,t,pos,ps,cp,bk);B=[];Y={int(y) for y in re.findall(r"\b(1[0-9]{3}|20[0-9]{2})\b",' '.join(t))};TS=set(t);top=set(list(E)[:5]);cpp={m[0] for m in M if set(range(m[2],m[3]))<=cp}
+  o,t,ps,bk=toks(q,True);M,pos=cues(t,o,s.T,s.K,s.Tw);et=etype(q,t,o,s.Tw,s.K);cp=cphrase(t,o);E,un,ur=s.link(o,t,pos,ps,cp,bk);B=[];Y={int(y) for y in re.findall(r"\b(1[0-9]{3}|20[0-9]{2})\b",' '.join(t))};TS=set(t);top=set(list(E)[:5]);cpp={m[0] for m in M if set(range(m[2],m[3]))<=cp}
   for e,(sc,i,j,k,sl,mis) in E.items():
    P={}
    for p,w,a,b in M:
     if b<=i or a>=j:P[p]=max(P.get(p,0.0),w)
    if not P:continue
-   pen=0.6*len(un-set(range(i,j)))+0.2*len([v for v in ur if not set(v)&set(range(i,j))])
+   pen=0.6*len((un if not s.v2 or 'oldabs' in ABL else {x for x in un if x<0})-set(range(i,j)))+0.2*len([v for v in ur if not set(v)&set(range(i,j))])
    for p,_ in s.D.groups(e):
     w=P.get(p,0.0)
     if not w:continue
     V=s.D.values(e,p)
     if not V:continue
-    qm=[s.qmatch(e,p,i_,z[4],Y,TS) if len(V)>1 and e in top and 'qual' not in ABL else 0 for i_,z in enumerate(V)];o_=sorted(range(len(V)),key=lambda i_:(-qm[i_],-V[i_][3],i_));kk,v,x,_,_=V[o_[0]];tf=0.0 if 'tgate' in ABL or et.startswith('class:') and p in cpp else s.tfit(et,kk,v)
-    B.append((sc+w+tf+0.3*min(qm[o_[0]],2)-pen+(0.3 if p in cpp else 0.0),e,p,kk,v,x,sc,w,tf,pen+0.5*mis,[V[i_] for i_ in o_]))
+    qm=[s.qmatch(e,p,i_,z[4],Y,TS) if len(V)>1 and e in top and 'qual' not in ABL else 0 for i_,z in enumerate(V)];ly=[s.qyear(e,p,i_,z[4]) if s.v2 and not Y and len(V)>1 and e in top and 'latest' not in ABL else 0 for i_,z in enumerate(V)];o_=sorted(range(len(V)),key=lambda i_:(-qm[i_],-V[i_][3],-ly[i_],i_));kk,v,x,_,_=V[o_[0]];tf=0.0 if 'tgate' in ABL or et.startswith('class:') and p in cpp else s.tfit(et,kk,v)
+    B.append((sc+w+tf+0.3*min(qm[o_[0]],2)-pen+(0.3 if p in cpp else 0.0),e,p,kk,v,x,sc,w,tf,pen+(0.0 if s.v2 and 'oldabs' not in ABL else 0.5*mis),[V[i_] for i_ in o_]))
   B.sort(key=lambda z:-z[0])
+  if s.v2 and 'nofb' not in ABL and et in (('time','place','number') if 'fbnum' in ABL else ('time','place')) and (not B or B[0][7]<CF['wmin'] and B[0][8]<=0):
+   F=[]
+   for e,(sc,i,j,k,sl,mis) in list(E.items())[:5]:
+    if mis or {x for x in un if x<0}-set(range(i,j)) or [v for v in ur if not set(v)&set(range(i,j))]:continue
+    for p,_ in s.D.groups(e):
+     V=s.D.values(e,p)
+     if not V or p in (31,279,1813,1449):continue
+     tf=s.tfit(et,V[0][0],V[0][1]);wh=mined().get(f'P{p}',{}).get('wh','')
+     tf>0 and F.append((sc+tf+0.3*(wh=={'time':'when','number':'how','person':'who','place':'where'}[et] or wh=='org' and et=='person')+0.05*math.log10(1+PF().get(p,0))-1.0,e,p,V[0][0],V[0][1],V[0][2],sc,0.0,tf,0.0,V))
+   F.sort(key=lambda z:-z[0]);B=F[:1]+B
   ents=list(dict.fromkeys([b[1] for b in B]+list(E)));PP=sorted({m[0] for m in M},key=lambda p:-max(m[1] for m in M if m[0]==p))
   if not B:return {'store':'wd','score':0.0,'absent':True,'ents':ents,'props':PP,'et':et}
   b=B[0];a,forms=s.render(b[3],b[4],b[5],b[2])
   if b[3]==3 and len(b[10])>1:
    for z in b[10][1:4]:a2,f2=s.render(z[0],z[1],z[2],b[2]);forms+=f2;a+=f" ({a2})" if z[2]!=b[5] else ''
   pl=props().get(b[2],{}).get('label',f'P{b[2]}')
-  return {'store':'wd','score':b[0],'absent':b[9]>0 or b[7]<CF['wmin'] and b[8]<=0,'e':b[1],'p':b[2],'answer':a,'forms':forms,'ents':ents,'props':list(dict.fromkeys([x[2] for x in B]+PP)),'et':et,'parts':[round(x,3) for x in (b[6],b[7],b[8],b[9])],'line':f"{s.D.label(b[1])}, {pl}: {a}.",'prov':f"Wikidata Q{s.D.qid(b[1])} P{b[2]}",'key':(int(s.D.qid(b[1])),b[2])}
+  return {'store':'wd','score':b[0],'absent':b[9]>0 or b[7]<CF['wmin'] and b[8]<=0 and not (s.v2 and b[7]==0.0 and b[9]==0.0),'fb':s.v2 and b[7]==0.0,'e':b[1],'p':b[2],'answer':a,'forms':forms,'ents':ents,'props':list(dict.fromkeys([x[2] for x in B]+PP)),'et':et,'parts':[round(x,3) for x in (b[6],b[7],b[8],b[9])],'line':f"{s.D.label(b[1])}, {pl}: {a}.",'prov':f"Wikidata Q{s.D.qid(b[1])} P{b[2]}",'key':(int(s.D.qid(b[1])),b[2])}
 CSR=[('antonym',r"\b(?:opposite|antonym|reverse)\b"),('synonym',r"\b(?:synonym|another word|other word|word that means|same thing as|means the same|similar meaning)\b"),('young',r"\b(?:baby|babies|young|offspring|newborn)\b"),('group',r"\b(?:group|collective|bunch|gathering) of\b"),('sound',r"\b(?:sound|noise|call|cry)\b.*\bmake\b|\bmakes? what (?:sound|noise)\b"),
  ('count',r"\bhow many\b"),('made',r"\bmade (?:of|from|out of|with)\b|\bmaterial\b|\b(?:formed|produced|carved|crafted) from\b|\bingredient"),('used_for',r"\bused (?:for|to)\b|\buse (?:an? |the )?[a-z ]+ (?:for|to)\b|\bpurpose of\b|\bwhat (?:is|are) (?:an? |the )?[a-z ]+ for\b"),('color',r"\bcolou?r\b"),('where',r"\blives?\b|\bhabitat\b|\bfound in the wild\b|\bnests?\b"),
  ('eat',r"\b(?:eat|eats|feed|feeds|graze|hunt|diet)\b"),('drink',r"\bdrinks?\b"),('part_of',r"\bpart of\b"),('can_do',r"\bwhat can\b.*\bdo\b")]
@@ -339,10 +378,12 @@ def calc(q:str)->dict:
  if not r or float(r.get('conf') or 0)<0.6:return {'store':'calc','score':0.0}
  A=__import__('amni.math.answer',fromlist=['fmt']);v=A.fmt(r['value']) if r.get('value') is not None else str(r.get('reply'));return {'store':'calc','answer':v,'forms':[v,str(r.get('reply') or '')],'score':float(r['conf']),'line':'Calculator: '+str(r.get('reply')),'prov':'calculator: '+str(r.get('intent')),'key':(r.get('intent'),)}
 _R={}
-def resolver(fd=None)->R:
- k=D1.FD if fd is None else fd
- if k not in _R:_R[k]=R(k)
+def resolver(fd=None,two=None)->R:
+ two=v2() if two is None else two;k=((D1.FD2 if two else D1.FD) if fd is None else fd,two)
+ if k not in _R:_R[k]=R(k[0],two)
  return _R[k]
+def clear(cold:bool=False):
+ [f.cache_clear() for f in (lem,vinf,nclass,_qclass)];[r.D and r.D.clear(cold) for r in _R.values()]
 def resolve(q:str,fd=None)->dict:
  t0=time.perf_counter();Rs=resolver(fd);o,t,_=toks(q);ql=' '.join(t);C=[]
  c=calc(q) if 'calc' not in ABL else {'score':0.0};c['score']>0 and C.append(c)
@@ -356,4 +397,4 @@ def resolve(q:str,fd=None)->dict:
  best and best['store']=='wd' and best.update(sure=best['score']>=CF['tau'])
  return {'q':q,'abstain':not ok,'best':best if ok else None,'cands':C,'wd':w,'ms':round((time.perf_counter()-t0)*1000,3)}
 def material(q:str)->dict:
- r=resolve(q);b=r['best'];return {'route':'store1','lines':[b['line']] if b else [],'extract':(b['line'] if b else ''),'prov':[b.get('prov','')] if b else [],'conf':float(b['score']) if b else 0.0,'must':[b['answer']] if b else [],'abstain':r['abstain'],'ms':r['ms']}
+ r=resolve(q);b=r['best'];return {'route':'store2' if v2() else 'store1','lines':[b['line']] if b else [],'extract':(b['line'] if b else ''),'prov':[b.get('prov','')] if b else [],'conf':float(b['score']) if b else 0.0,'must':[b['answer']] if b else [],'abstain':r['abstain'],'ms':r['ms']}
