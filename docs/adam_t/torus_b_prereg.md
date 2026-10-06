@@ -63,3 +63,37 @@ CEO correction, 2026-10-05: "Rays were supposed to define concept relations." In
 
 ## Paradigm declaration
 Inference is integer only (digit differences mod 17, distance LUT, adds, argmax, an integer LUT). Build-time floats are reported as in A2b (sphere lift, cavity histograms rounded to integers before the ICM kernel, NMI and AUC evaluation). Anything outside the paradigm is named in the results.
+
+## Amendment 1 (2026-10-05, written after the dev ablation and the dev controls, before any test scoring and before the final solves)
+Everything below was measured on the dev split (solver seed 17, one dev check at seed 23) and the training split. No test quantity has been computed.
+
+### What dev showed (why the protocol changes)
+- Plain latent-relation EM (prereg B0 as written) from the sphere lift gives clusters that carry no relation labels: held-out NMI 0.03-0.05 at K = 8, 16, 32, 64, no better than k-modes on the unsolved lift (0.047). Train AUC 0.90, held-out matched AUC 0.57: the clusters memorise train edges.
+- Oracle diagnostics (labels seeded into the assignment, dev only, never in a headline): translation prototypes with the true labels fixed re-derive the labels at train NMI 0.67 and held-out NMI 0.27 (7 of 10 relations at 2x prior); oracle-initialised EM that is then free to move settles at held-out NMI 0.21. The labelled partition also has a higher train ray fit (0.666) than EM from random (0.61), so the objective prefers relations but the search does not find them. Metadata (origin pair x degree bins) alone reaches held-out NMI 0.449, higher than anything geometry produced even with labels in the placement.
+- Two levers close most of the generalisation gap and are added to the registered lever list: warm identity sweeps (`--warm`, A2b recipe) and sibling edges (`--sib`: pairs of training heads that share a tail, and pairs of tails that share a head, as neutral zero-ray pulls, built from training facts only, held-out pairs removed; a label-free second-order neighbourhood prior). Also tried: balance auction (`--bal`), cavity weight `--lam`, update rate `--rho`, more sweeps, LUT instead of translation prototypes (`--tm lut`).
+- The A2b labeled model scored ray-only (relation given, no popularity weight) under the same popularity-matched negatives reaches dev matched AUC 0.743 and hits@10 0.586. The CTO's example of AUC >= 0.85 with matched negatives therefore sits above what the labeled approach itself reaches. G2 is kept as written (an honest fail is informative), and a parity read G2' is added.
+
+### Dev controls measured (reference configuration below)
+| control | held-out NMI | matched AUC |
+|---|---|---|
+| shuffled positions (same prototypes) | 0.034 | 0.506 |
+| random rays | 0.001 | 0.501 |
+| k-modes on the unsolved lift | 0.047 | 0.497 |
+| metadata clustering (origin pair x 3x3 degree bins) | 0.449 | n/a |
+| popularity only, matched negatives / uniform negatives | n/a | 0.504 / 0.900 |
+| A2b labeled, ray only, matched negatives | n/a | 0.743 |
+| oracle-seeded EM, fixed labels (diagnostic) | 0.272 | 0.676 |
+
+### Frozen reference configuration R (chosen by the one-factor-at-a-time win rule on dev; the table is in the results doc)
+`torus_solve.py --unlab 32 --tm trans --S sharp --lam 24 --rho 500 --warm 10 --em 2 --sweeps 50 --sib 1 --ge 1 --tan 0 --bal 0 --D 64` (K = 32 translation prototypes, 8 tori of 8 dims, sibling edges and sphere graph edges as neutral pulls, no tangent edges, train-only solve), headline clusterer M1 (the EM prototypes), density LUT B = 8, positions D = 64. No variant beat R under the win rule: K 16/64, ge off, tangent edges, D 16/32, M2 and M3, rho 300, lam 12, 20 warm sweeps, LUT transforms, balance auction. Dev seed noise (R at seed 17 vs 23): NMI +-0.005, matched AUC +-0.014, so differences below 0.01 NMI and 0.015 AUC are inside the noise.
+
+### Gates as they are read on test (replaces the Gates section for the numbers marked amended)
+- G1 (amended): held-out NMI >= 0.15 AND >= 3x the shuffled control of the same model. The 1.25x metadata clause is demoted to a reported comparison: not even the oracle-seeded placement reaches it on dev (0.27 vs 0.449), so as a gate it would only measure the metadata, not the geometry. The 0.15 floor is 70% of the oracle-seeded EM level (0.21), set before any B result at test.
+- G2 (unchanged): pooled matched-negative AUC >= 0.85 AND hits@10 (1 vs 99 matched) >= 0.30. G2' (added, read next to it): AUC >= 0.69 (labeled ray-only dev 0.743 minus 0.05) AND hits@10 >= 0.30.
+- G3 (unchanged): recall_r >= 2 x pi_r on at least 6 of 10 relations, with the majority-label table. The balanced readout (cluster labelled by the relation that has the largest share of its edges there) is reported next to it.
+- G4 (amended): composition is gated on the hop-1-held-out variant (hop 1 is a held-out edge of the evaluated split and its cluster is assigned by geometry; hop 2 is a training edge), pooled hits@10 >= 2x the frequency baseline. Reason: with both hops stored, the true rays telescope, and the stored-hops variant is reported as informational only.
+- Pass/fail is read for each seed (17 and 23) separately; a gate passes overall only if it passes on both.
+- The thesis reading is unchanged: supported only if G1, G2 and G3 pass on both seeds.
+
+### Final procedure (frozen)
+Solve R from scratch on the training split for seeds 17 and 23 (tags `final_s17`, `final_s23`), then for each seed run `torus_b.py --split test --final 1 --clu m1 --ctl 1 --novel 1 --comp 1 --a2b 1 --export 1` once (a lock file refuses a second scoring). M2, M3 and the tori ablation are dev-only.
