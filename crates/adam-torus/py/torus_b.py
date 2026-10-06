@@ -4,7 +4,7 @@ import torus_solve as TS
 import torus_c_seed as SD
 Sa=TS.Sa;log=TS.log;X17=TS.X17
 ap=argparse.ArgumentParser()
-for k,v in dict(tag="k32",model="",split="dev",clu="m1",K=0,tori=8,seed=17,ctl=0,final=0,nq=20000,nneg=99,npos=300000,B=8,comp=0,a2b=0,export=0,out="",ksub=400000,kit=10,novel=0,dir="b",dset="a2b_data.npz",Bp=4,seedk=32,seedf="",lutk=1).items():ap.add_argument("--"+k,type=type(v),default=v)
+for k,v in dict(tag="k32",model="",split="dev",clu="m1",K=0,tori=8,seed=17,ctl=0,final=0,nq=20000,nneg=99,npos=300000,B=8,comp=0,a2b=0,export=0,out="",ksub=400000,kit=10,novel=0,dir="b",dset="a2b_data.npz",Bp=4,seedk=32,seedf="",lutk=1,cprox=0).items():ap.add_argument("--"+k,type=type(v),default=v)
 A=ap.parse_known_args()[0];TD=os.path.join(TS.ROOT,"data","torus",A.dir)
 ti.init(arch=ti.cpu,cpu_max_num_threads=3,default_ip=ti.i32,offline_cache=False,log_level=ti.ERROR)
 Sf=ti.field(ti.i32,shape=17);Sf.from_numpy(Sa.astype(np.int32));CH=400000
@@ -144,14 +144,14 @@ def inverse(C,Xm,ka):
 CH_=[("P19>P17",6,7),("P19>P131",6,8),("hyp>hyp",0,0),("P171>P171",9,9)]
 def compose(C,Xm,ka,rng,hold,aux,var,nmax=2000):
  if "T" not in C or C.get("ang"):return {"note":"angle-only codes carry no magnitude: the sum of two sector codes is undefined; composition needs the translation prototypes (m1)"}
- out={};T_=C["T"];ph=pb=0.0;pn=0;hh,ht,hr=hold;Xr=np.ascontiguousarray(Xm[:,P0:P0+C["du"]])
+ out={};T_=C["T"];ph=pb=0.0;pn=0;hh,ht,hr=hold;Xr=np.ascontiguousarray(Xm[:,:P0+C["du"]] if A.cprox else Xm[:,P0:P0+C["du"]])
  for nm,r1,r2 in CH_:
   e2=np.nonzero(Rt==r2)[0];o=e2[np.argsort(eh0[e2],kind="stable")];hs=eh0[o];tr1=np.nonzero(Rt==r1)[0];ho1=np.nonzero(hr==r1)[0]
   a_all,b_all,k_all=(eh0[tr1],et0[tr1],ka[tr1]) if var=="stored" else (hh[ho1],ht[ho1],aux["hk"][ho1]);pm=rng.permutation(len(a_all))[:30*nmax];a_,b_,k1_=a_all[pm],b_all[pm],k_all[pm];lo=np.searchsorted(hs,b_);hi=np.searchsorted(hs,b_,side="right");m=hi>lo;a_,b_,k1_,lo,hi=a_[m],b_[m],k1_[m],lo[m],hi[m];pk=o[lo+(rng.random(len(a_))*(hi-lo)).astype(np.int64)];c_=et0[pk];ok=(a_!=c_)&~isk(KN_ALL,a_,c_);a,c,k1,pk=a_[ok][:nmax],c_[ok][:nmax],k1_[ok][:nmax],pk[ok][:nmax];k2=ka[pk]
   a1={};a2={}
   for x,y in list(zip(eh0[tr1].tolist(),et0[tr1].tolist()))+list(zip(hh[ho1].tolist(),ht[ho1].tolist())):a1.setdefault(x,[]).append(y)
   for x,y in zip(eh0[e2].tolist(),et0[e2].tolist()):a2.setdefault(x,[]).append(y)
-  dd=np.arange(C["du"]);land=T_[k2[:,None],dd[None,:],T_[k1[:,None],dd[None,:],Xr[a]]].astype(np.int32);ht_=np.zeros(len(a));hb=np.zeros(len(a));inc=np.zeros(len(a))
+  dd=np.arange(C["du"]);land=T_[k2[:,None],dd[None,:],T_[k1[:,None],dd[None,:],Xm[a][:,P0:P0+C["du"]]]].astype(np.int32);land=np.concatenate([Xm[a][:,:P0].astype(np.int32),land],1) if A.cprox else land;ht_=np.zeros(len(a));hb=np.zeros(len(a));inc=np.zeros(len(a))
   for k in np.unique(k2):
    cand=np.unique(et0[ka==k]);fq=np.bincount(np.searchsorted(cand,et0[ka==k]),minlength=len(cand));qs=np.nonzero(k2==k)[0]
    for q0 in range(0,len(qs),100):

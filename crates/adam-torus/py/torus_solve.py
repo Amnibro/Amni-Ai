@@ -2,7 +2,7 @@ import os,time,json,argparse,numpy as np,taichi as ti
 from collections import defaultdict
 ROOT=os.environ.get("AMNI_ROOT","/home/anmire/ai/Amni-Ai");TD0=os.path.join(ROOT,"data","torus")
 ap=argparse.ArgumentParser()
-for k,v in dict(mode="dev",D=64,Ds=-1,sweeps=30,S="lin",lam=16,rho=500,wrel=1,seed=17,tag="run",nq=2000,tau="64",recall=1,a3=0,save=0,threads=3,fit=0,lift=1,tm="lut",sphere=0,cav=1,warm=0,prior=0,bidir=0,data="a2_data.npz",sph="",mix=1,bounce="",bk=4,bw=0,lvl=0,calib=0,load="",ebins=10,export=0,pw="",unlab=0,em=2,orient=0,ge=1,tan=0,bal=0,rsd=50,sib=0,oracle=0,rnoe=0,rolen=0,rolef="seed_K32.npz",psub=0,seedf="",seedfix=0,sibrel=0,gerel=0,rstart=0,xprox="",ro="trans").items():ap.add_argument("--"+k,type=type(v),default=v)
+for k,v in dict(mode="dev",D=64,Ds=-1,sweeps=30,S="lin",lam=16,rho=500,wrel=1,seed=17,tag="run",nq=2000,tau="64",recall=1,a3=0,save=0,threads=3,fit=0,lift=1,tm="lut",sphere=0,cav=1,warm=0,prior=0,bidir=0,data="a2_data.npz",sph="",mix=1,bounce="",bk=4,bw=0,lvl=0,calib=0,load="",ebins=10,export=0,pw="",unlab=0,em=2,orient=0,ge=1,tan=0,bal=0,rsd=50,sib=0,oracle=0,lamr=-1,rhor=-1,rnoe=0,rolen=0,rolef="seed_K32.npz",psub=0,seedf="",seedfix=0,sibrel=0,gerel=0,rstart=0,xprox="",ro="trans").items():ap.add_argument("--"+k,type=type(v),default=v)
 A=ap.parse_known_args()[0];D=A.D;DS=D if A.Ds<0 else A.Ds;HY=DS<D;TD=os.path.dirname(os.path.join(TD0,A.data));SPHP=A.sph or os.path.join(TD,"sphere_noleak.npz");KM=A.mix;MK=17**KM;P17=[1,17,289][:KM];TAU=float(A.tau);PW=[int(x) for x in A.pw.split(",")] if A.pw else []
 assert A.ro=="trans" or (A.psub>0 and A.psub%2==0 and A.unlab);assert A.psub==0 or (A.unlab and A.Ds<0 and KM==1 and A.bidir==0);assert KM==1 or (A.bidir==0 and A.tm=="lut" and DS%4==0 and D%4==0)
 SP={"lin":[8-min(v,17-v) for v in range(17)],"sharp":[[16,9,4,1,0,0,0,0,0][min(v,17-v)] for v in range(17)],"mid":[[12,10,7,4,2,1,0,0,0][min(v,17-v)] for v in range(17)]}[A.S];Sa=np.array(SP,np.int64)
@@ -273,7 +273,7 @@ def main():
     PHI.from_numpy(phi);updCav(Xa,phi)
    TF.from_numpy(TFa);updNG(Xa,TFa)
    Xn.copy_from(X)
-   for gi,(f,g,lo,hi) in enumerate(groups):(A.psub and ((gi==0 and A.xprox) or (gi==1 and s<W0))) or (icma if (A.ro=="ang" and gi==1) else icm)(*f,*g,lo,hi,A.lam,A.rho,A.seed*1000+s)
+   for gi,(f,g,lo,hi) in enumerate(groups):(A.psub and ((gi==0 and A.xprox) or (gi==1 and s<W0))) or (icma if (A.ro=="ang" and gi==1) else icm)(*f,*g,lo,hi,A.lamr if (gi==1 and A.psub and A.lamr>=0) else A.lam,A.rhor if (gi==1 and A.psub and A.rhor>=0) else A.rho,A.seed*1000+s)
    cp();ch=int((X.to_numpy()!=Xa).sum());(s%5==4 or s==0) and log(f"sweep {s+1}/{A.sweeps} changed={ch} ({ch/(NR*D):.4f}) t={time.time()-t0:.0f}s"+(f" nmi_train={nmi(asg,R[tr])[0]:.4f} purity={nmi(asg,R[tr])[1]:.3f} clusters_used={int((np.bincount(asg,minlength=NK)>0).sum())} max_share={np.bincount(asg,minlength=NK).max()/nT:.3f}" if A.unlab else ""))
   TFa=fitT(X.to_numpy().astype(np.int32)) if A.ro!="ang" else ID.copy()
   A.ro=="ang" and PHI.from_numpy(phi)
