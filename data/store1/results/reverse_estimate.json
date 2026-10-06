@@ -1,0 +1,7 @@
+{
+ "entity_facts": 45015432,
+ "object_property_groups": 5507783,
+ "est_digits": 203031735,
+ "est_bytes": 107860609,
+ "note": "lower-bound style estimate of a reverse index (object -> property -> sorted subjects) coded as base-17 EV deltas plus a 2-digit property and a count per group; excludes the object -> group directory; v3 r_v/r_f use 344 MB for the same mapping"
+}

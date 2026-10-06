@@ -75,3 +75,10 @@ Size justification: the measured information content (entity facts ~59 MB in 17-
 
 ## Rules
 CPU only; heavy commands under `systemd-run --user --scope -p MemoryMax=12G -p CPUQuota=300% nice -n 15`; Rust built with its own target dir, deleted after; deletions logged in `data/ks/logs/deletions.log`; v3 is not deleted. Failures are reported as failures.
+
+## Amendments (each written before the test split was scored)
+
+### Amendment 1 (2026-10-06T09:16:50-0400): configuration selection when no dev configuration meets the abstain constraint
+- What changed: the dev selection rule ("highest dev `e2e_acc_instore` subject to dev `abstain_prec` >= 0.90") cannot be applied as written, because no dev configuration reaches `abstain_prec` 0.90 (best 0.7073; `data/store1/results/ablate.log`). Added tie rule: among configurations within one dev item of the best `e2e_acc_instore`, keep the one with the highest `abstain_prec`; remaining ties go to fewer bytes, then lower latency.
+- Effect: it keeps the full configuration (dev `e2e_acc_instore` 0.8289, `abstain_prec` 0.7073) instead of the case-penalty ablation (`no_case`: 0.8333, 0.7000). It costs one dev item of `e2e_acc_instore` and gains 0.0073 `abstain_prec`; it does not help the headline metric. No gate threshold and no metric definition changed.
+- Fingerprint budget, by the pre-registered rule: F=0 (verify by decoding the candidate's names) ties F=2 and F=3 on dev `e2e_acc_instore` and `abstain_prec` and meets the latency gate on dev (`fd0` row of `data/store1/results/ablate.log`), so F=0 is selected; F=1 loses one absent item.
