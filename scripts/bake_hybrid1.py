@@ -12,9 +12,9 @@ RK=lambda k:None if re.match(r"(model\.visual\.|model\.mtp|mtp\.)",k) else k.rep
 TX and json.dump({**CF["text_config"],"architectures":[CF["architectures"][0].replace("ForConditionalGeneration","ForCausalLM")],"tie_word_embeddings":CF.get("tie_word_embeddings",CF["text_config"].get("tie_word_embeddings",False))},open(os.path.join(a.out,"config.json"),"w"),indent=1)
 man={"gs":a.gs,"bits":a.bits,"emb_bits":a.emb_bits,"emb_gs":a.emb_gs,"fmt":"qgroup-affine-v1"+("-gptq" if a.calib else ""),"text_only_from_multimodal":TX,"tensors":{}};rep={};t0=time.time();nb=[0]
 def bake(k,w,bits,gs,H=None):
-    W=w.to(dev);q,sa,sc=Q.gptq(W,H,bits,gs,a.damp) if H is not None else Q.quantize(W,bits,gs);pl=Q.split(q,bits);D=Q.dequant(pl,sa,sc,bits,gs,W.shape[1]);Wf=W.float();E=D-Wf
+    W=w.to(dev);q,sa,sc,dp=Q.gptq(W,H,bits,gs,a.damp) if H is not None else Q.quantize(W,bits,gs)+(None,);pl=Q.split(q,bits);D=Q.dequant(pl,sa,sc,bits,gs,W.shape[1]);Wf=W.float();E=D-Wf
     cos=torch.nn.functional.cosine_similarity(D.flatten(),Wf.flatten(),dim=0).item();rel=(E.norm()/Wf.norm()).item();ok=bool((Q.unpack(pl,bits,W.shape[1])==q).all());hr=((E@H*E).sum()/(Wf@H*Wf).sum()).clamp_min(0).sqrt().item() if H is not None else None
-    return {k+".p0":pl[0].cpu(),**({k+".p1":pl[1].cpu()} if len(pl)>1 else {}),k+".a":sa.cpu(),k+".c":sc.cpu()},{"cos":cos,"rel_err":rel,"out_rel_err":hr,"codes_roundtrip_exact":ok,"bits":bits,"gs":gs,"numel":W.numel()},D
+    return {k+".p0":pl[0].cpu(),**({k+".p1":pl[1].cpu()} if len(pl)>1 else {}),k+".a":sa.cpu(),k+".c":sc.cpu()},{"cos":cos,"rel_err":rel,"out_rel_err":hr,"damp":dp,"codes_roundtrip_exact":ok,"bits":bits,"gs":gs,"numel":W.numel()},D
 def put(sd,k,w,H=None):
     q=LIN(k,w) or (a.emb_bits and EMB(k,w));bits,gs=(a.bits,a.gs) if LIN(k,w) else (a.emb_bits,a.emb_gs);bits=next((b for p,b in MIX if p.search(k)),bits)
     o,r,D=bake(k,w,bits,gs,H) if q else ({k:w.to(torch.bfloat16) if w.is_floating_point() and w.dim()>1 else w},None,None);sd.update(o);r and rep.__setitem__(k,r);man["tensors"][k]={"q":1,"shape":list(w.shape),"bits":bits,"gs":gs} if q else {"q":0,"shape":list(w.shape)};nb[0]+=sum(v.numel()*v.element_size() for v in o.values()) if q else w.numel()*(2 if w.is_floating_point() and w.dim()>1 else w.element_size());return D

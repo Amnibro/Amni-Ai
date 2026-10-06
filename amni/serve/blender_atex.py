@@ -31,7 +31,7 @@ class QLin(nn.Module):
     def forward(s,x):
         f=x.reshape(-1,x.shape[-1]).half();return Q.qgemm(s.w[:-2],s.w[-2],s.w[-1],f,s.bits,s.gs).reshape(*x.shape[:-1],s.out).to(x.dtype)
 class QKV(DynamicLayer):
-    bits=8
+    bits=8;blk=256
     def __init__(s,**k):super().__init__(**k);s.n=0;s.S=None
     def _q(s,x):
         qm=2**(s.bits-1)-1;sc=(x.abs().amax(-1,keepdim=True).float()/qm).clamp_min(1e-8);q=torch.round(x.float()/sc).clamp(-qm,qm).to(torch.int8)
@@ -41,9 +41,9 @@ class QKV(DynamicLayer):
             lo=(q&15).to(torch.int8);hi=(q>>4).to(torch.int8);lo=torch.where(lo>7,lo-16,lo);hi=torch.where(hi>7,hi-16,hi);q=torch.stack([lo,hi],-1).flatten(-2)
         return (q.float()*sc.float()).to(dt)
     def update(s,k,v,*a,**kw):
-        s.is_initialized=True;s.dtype=k.dtype;s.device=k.device;kq,ks=s._q(k);vq,vs=s._q(v)
-        s.S=(kq,ks,vq,vs) if s.S is None else tuple(torch.cat([o,n],-2) for o,n in zip(s.S,(kq,ks,vq,vs)))
-        s.n=s.S[0].shape[-2];return s._d(s.S[0],s.S[1],k.dtype),s._d(s.S[2],s.S[3],v.dtype)
+        s.is_initialized=True;s.dtype=k.dtype;s.device=k.device;N=(*s._q(k),*s._q(v));e=s.n+k.shape[-2];c=-(-e//s.blk)*s.blk
+        s.S=s.S if s.S is not None and e<=s.S[0].shape[-2] else tuple((lambda z:(o is not None and z[...,:s.n,:].copy_(o[...,:s.n,:]),z)[1])(x.new_empty(*x.shape[:-2],c,x.shape[-1])) for o,x in zip(s.S or (None,)*4,N))
+        [o[...,s.n:e,:].copy_(x) for o,x in zip(s.S,N)];s.n=e;return s._d(s.S[0][...,:e,:],s.S[1][...,:e,:],k.dtype),s._d(s.S[2][...,:e,:],s.S[3][...,:e,:],v.dtype)
     def get_seq_length(s):return s.n
     def nbytes(s):return sum(t.numel()*t.element_size() for t in (s.S or ()))
 def noexp():torch.version.hip and getattr(torch._C,'_accelerator_setAllocatorSettings',torch.cuda.memory._set_allocator_settings)('expandable_segments:False')
@@ -96,7 +96,7 @@ class Atex:
         bt=lambda x:int(x[1:]) if x[0]=='q' else 0
         def qt(t,b):
             P=[];A=[];C=[]
-            for i in range(0,t.shape[0],8192):q,a,c=Q.quantize(t[i:i+8192].to(dev),b,128);P.append(Q.split(q,b));A.append(a);C.append(c)
+            for i in range(0,t.shape[0],1024):q,a,c=Q.quantize(t[i:i+1024].to(dev),b,128);P.append(Q.split(q,b));A.append(a);C.append(c)
             return QLin([torch.cat([p[j] for p in P]) for j in range(len(P[0]))]+[torch.cat(A),torch.cat(C)],b,128,t.shape[1])
         s.QE=s.QH=s.E=s.Hd=None
         if bt(embed):s.QE=qt(E,bt(embed))

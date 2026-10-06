@@ -1,6 +1,6 @@
 import os,sys,json
 from pathlib import Path
-H=Path(os.environ.get("HYBRID1_HOME","/home/anmire/ai/hybrid1"));R=H/"runs";B=H/"bakes"
+H=Path(os.environ.get("HYBRID1_HOME","/home/anmire/ai/hybrid1"));R=Path(os.environ.get("HYBRID1_RUNS") or H/"runs");B=H/"bakes"
 J=lambda p:json.load(open(p))
 pc=lambda v:"-" if v is None else f"{100*v:.1f}"
 def fid():
@@ -28,4 +28,17 @@ def e2e(*names):
         r=J(EV/f"report_{n}_e2e_tune_dry.json");m=r["m"];it=r["suites"]["chat"]["items"];bl=sum(int((x.get("ctx_n") or {}).get("hbl",0)) for x in it);bp=sum(int((x.get("ctx_n") or {}).get("hbp",0)) for x in it)
         L.append(f"| {n} | {pc(m['chat_ans'])} | {pc(m['chat_good'])} | {pc(m['chat_fact'])} | {pc(m['chat_ctx'])} | {pc(m['chat_coh'])} | {pc(m['chat_em'])} | {pc(m['chat_nmfp'])} | {pc(m['chat_dec'])} | {pc(m['chat_dup'])} | {m['chat_d2']:.3f} | {bl} | {bp} | {pc(bp/bl) if bl else '-'} |")
     return "\n".join(L)
-if __name__=="__main__":print({"fid":fid,"meas":meas,"probe":probe,"e2e":e2e}[sys.argv[1]](*sys.argv[2:]))
+def rows(*names):
+    g=lambda d,*k:__import__("functools").reduce(lambda x,y:(x or {}).get(y),k,d);f2=lambda v:"-" if v is None else f"{v:.2f}";A=["| config | source files (dev_ / probe_ + config + .json) | measure-phase peak GB `blender2.meas.peak_proc_vram_GB` | whole-run peak GB `blender2.proc_vram_peak_all_GB` | KV+state GB @2,560 `meas.kv_cache_GB_at_ctx` | pinned host GB | prefill tok/s | decode tok/s | ppl `blender2.ppl.ppl` | dev faithful % | dev no-new % | dev hedge % | dev blend coherent % | dev chat decline % |","|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"];P=["| config | probe8 faithful % `summary.blend_probe.faithful_para.p` | no-new % | hedge % | blend coherent % | chat answered % | chat coherent % | decline % | emergency-text FP % | distinct-2 | opener-3 repeat % | same process as the VRAM row |","|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for n in names:
+        d=J(R/f"dev_{n}.json") if (R/f"dev_{n}.json").exists() else {};q=J(R/f"probe_{n}.json") if (R/f"probe_{n}.json").exists() else {};x=(q or d).get("blender2") or {};m=x.get("meas") or {};sd=d.get("summary") or {};sq=q.get("summary") or {}
+        A.append(f"| {n} | dev_{n}.json, probe_{n}.json | {f2(m.get('peak_proc_vram_GB'))} | {f2(x.get('proc_vram_peak_all_GB'))} | {m.get('kv_cache_GB_at_ctx','-')} | {f2(m.get('host_pinned_GB'))} | {m.get('prefill_tok_s','-')} | {m.get('decode_tok_s','-')} | {g(x,'ppl','ppl') or '-'} | {pc(g(sd,'blend_probe','faithful_para','p'))} | {pc(g(sd,'blend_probe','no_new_content_para','p'))} | {pc(g(sd,'blend_probe','hedge_uncov','p'))} | {pc(g(sd,'blend_probe','coherent','p'))} | {pc(g(sd,'chat_probe','all','decline','p'))} |")
+        P.append(f"| {n} | {pc(g(sq,'blend_probe','faithful_para','p'))} | {pc(g(sq,'blend_probe','no_new_content_para','p'))} | {pc(g(sq,'blend_probe','hedge_uncov','p'))} | {pc(g(sq,'blend_probe','coherent','p'))} | {pc(g(sq,'chat_probe','all','answered','p'))} | {pc(g(sq,'chat_probe','all','coherent','p'))} | {pc(g(sq,'chat_probe','all','decline','p'))} | {pc(g(sq,'chat_probe','all','em_fp','p'))} | {g(sq,'diversity','distinct2_chat_probe') or '-'} | {pc(g(sq,'diversity','opener3_repeat_rate'))} | {bool(q) and bool(d) and q.get('blender2')==d.get('blender2')} |")
+    return "\n".join(A)+"\n\n"+"\n".join(P)
+def equiv(*tags):
+    L=["| file | config | reference | prompts token-identical to reference | logit max-abs-diff on identical prompts | max-abs-diff incl. divergence step | divergences (prompt index @ first differing step) | degenerate repeats |","|---|---|---|---|---|---|---|---|"]
+    for t in tags:
+        x=J(R/f"equiv_{t}.json")
+        for k,v in x["cfgs"].items():L.append(f"| equiv_{t}.json | {k} | {v['ref']} | {v['n_identical_to_ref']}/{v['n_cmp']} | {v['maxabs_identical_max']} | {v['maxabs_all_max']} | {', '.join(str(d['i'])+'@'+str(d['div']) for d in v['diverged'][:8])+(' ...' if len(v['diverged'])>8 else '')} | {len(v['degenerate_repeat_prompts'])} |")
+    return "\n".join(L)
+if __name__=="__main__":print({"fid":fid,"meas":meas,"probe":probe,"e2e":e2e,"rows":rows,"equiv":equiv}[sys.argv[1]](*sys.argv[2:]))
