@@ -55,3 +55,14 @@ def quantize(W,bits,gs,iters=3,grid=(1.0,0.95,0.9,0.85,0.8,0.75,0.7)):
     return q.reshape(o,i).to(torch.int32),a16.squeeze(-1).contiguous(),c16.squeeze(-1).contiguous()
 def dequant(planes,a,c,bits,gs,inn):
     q=unpack(planes,bits,inn).float().reshape(a.shape[0],-1,gs);return (q*a.float().unsqueeze(-1)+c.float().unsqueeze(-1)).reshape(a.shape[0],inn)
+def gptq(W,H,bits,gs,damp=0.01,blk=128):
+    W=W.float().clone();o,n=W.shape;qm=(1<<bits)-1;H=H.clone();dead=H.diagonal()==0;H[dead,dead]=1;W[:,dead]=0;H.diagonal().add_(damp*H.diagonal().mean());Hi=torch.linalg.cholesky(torch.cholesky_inverse(torch.linalg.cholesky(H)),upper=True)
+    Qc=torch.zeros(o,n,dtype=torch.int32,device=W.device);A=torch.zeros(o,n//gs,device=W.device);C=torch.zeros_like(A)
+    for i1 in range(0,n,blk):
+        i2=min(i1+blk,n);W1=W[:,i1:i2].clone();Er=torch.zeros_like(W1);H1=Hi[i1:i2,i1:i2]
+        for j in range(i2-i1):
+            c=i1+j;g=c//gs
+            if c%gs==0:_,a,b=quantize(W1[:,j:j+gs],bits,gs,iters=2);A[:,g]=a.float().reshape(-1);C[:,g]=b.float().reshape(-1)
+            w=W1[:,j];q=torch.clamp(torch.round((w-C[:,g])/A[:,g].clamp_min(1e-8)),0,qm);e=(w-(q*A[:,g]+C[:,g]))/H1[j,j];W1[:,j:]-=e[:,None]*H1[j,j:][None,:];Er[:,j]=e;Qc[:,c]=q.to(torch.int32)
+        W[:,i2:]-=Er@Hi[i1:i2,i2:]
+    return Qc,A.half().contiguous(),C.half().contiguous()

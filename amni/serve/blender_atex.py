@@ -2,7 +2,7 @@ import os,re,json,glob,time,threading,torch,torch.nn as nn
 from safetensors import safe_open
 from accelerate import init_empty_weights
 from transformers import AutoConfig,AutoTokenizer,AutoModelForCausalLM
-from transformers.cache_utils import Cache,DynamicLayer
+from transformers.cache_utils import Cache,DynamicLayer,DynamicCache
 from amni.inference import qgroup_gemv as Q
 SYSM={'blend':"You are Adam, a warm and concise assistant. The user message may begin with reference notes written as 'Label: text', followed by the user's question. When notes are present, answer in one to three plain sentences using only facts stated in the notes, and add no names, numbers or facts that are not in them. If the notes do not cover the question, say you are not sure. When there are no notes and the user asks for facts, say you are not sure; otherwise reply briefly and naturally to what the user said.",
 'blend2':"You are Adam, a warm assistant. The user message may begin with reference notes written as 'Label: text', followed by the question. If the notes answer the question, reply in two or three plain sentences that restate what the notes say, reusing their own wording and covering their main facts, and add nothing new: no extra names, numbers, dates or details. If the notes do not answer the question, or there are no notes and the user asks for facts, reply that you are not sure. If the user is just chatting, reply briefly and kindly.",
@@ -46,6 +46,8 @@ class QKV(DynamicLayer):
         s.n=s.S[0].shape[-2];return s._d(s.S[0],s.S[1],k.dtype),s._d(s.S[2],s.S[3],v.dtype)
     def get_seq_length(s):return s.n
     def nbytes(s):return sum(t.numel()*t.element_size() for t in (s.S or ()))
+def noexp():torch.version.hip and getattr(torch._C,'_accelerator_setAllocatorSettings',torch.cuda.memory._set_allocator_settings)('expandable_segments:False')
+def lbytes(l):return sum(x.numel()*x.element_size() for a in ('keys','values','conv_states','recurrent_states','S') for x in (lambda v:v if isinstance(v,(list,tuple)) else [v])(getattr(l,a,None)) if torch.is_tensor(x))
 def kvlayer(bits):return type(f'QKV{bits}',(QKV,),{'bits':bits})
 def card():
     for c in sorted(glob.glob('/sys/class/drm/card[0-9]')):
@@ -70,14 +72,14 @@ class Vram:
     def stop(s):s.run=False;s.t.join();return s.pk
 class Atex:
     def __init__(s,bake,head='bf16',embed='gpu',stream=False,kv=16,chunk=0,dev='cuda'):
-        s.bake=bake;s.o=dict(head=head,embed=embed,stream=stream,kv=kv,chunk=chunk);s.dev=dev;man=json.load(open(bake+'/bake_manifest.json'));s.man=man
-        s.tok=AutoTokenizer.from_pretrained(bake);cfg=AutoConfig.from_pretrained(bake);s.cfg=cfg;s.ls=float(getattr(cfg,'logits_scaling',1.0) or 1.0)
+        noexp();s.bake=bake;s.o=dict(head=head,embed=embed,stream=stream,kv=kv,chunk=chunk);s.dev=dev;man=json.load(open(bake+'/bake_manifest.json'));s.man=man
+        s.tok=AutoTokenizer.from_pretrained(bake);cfg=AutoConfig.from_pretrained(bake);s.cfg=cfg;s.tc=cfg.get_text_config() if hasattr(cfg,'get_text_config') else cfg;s.host_bytes=0;s.ls=float(getattr(cfg,'logits_scaling',1.0) or 1.0)
         with init_empty_weights():m=AutoModelForCausalLM.from_config(cfg).eval()
         T={}
         for fp in sorted(glob.glob(bake+'/*.safetensors')):
             f=safe_open(fp,framework='pt');T.update({k:f for k in f.keys()})
         g=lambda k:T[k].get_tensor(k)
-        pin=lambda t:t.pin_memory() if stream else t.to(dev)
+        pin=lambda t:t if stream else t.to(dev)
         def par(k):
             p=m
             for q in k.split('.')[:-1]:p=getattr(p,q)
@@ -110,18 +112,20 @@ class Atex:
         e=e if e is not None else cfg.eos_token_id;s.eos={int(x) for x in (e if isinstance(e,list) else [e]) if x is not None}|{int(x) for x in (cfg.eos_token_id if isinstance(cfg.eos_token_id,list) else [cfg.eos_token_id]) if x is not None}
         s.eos|={i for i in (s.tok.convert_tokens_to_ids(t) for t in ('<|im_end|>','<|end_of_text|>','<|endoftext|>','<|eot_id|>','<end_of_turn>')) if isinstance(i,int) and i>=0 and i!=s.tok.unk_token_id}
     def _stream_init(s):
-        s.cs=torch.cuda.Stream();s.slots=[[[torch.empty_like(t,device=s.dev) for t in q.w] for q in s.L[0]] for _ in range(2)];s.ready=[torch.cuda.Event() for _ in range(2)];s.done=[torch.cuda.Event() for _ in range(2)];s.have=[None,None];n=len(s.layers)
-        s.host=[[list(q.w) for q in L] for L in s.L]
+        n=len(s.layers);al=lambda b:(b+255)//256*256;M=[[(t,t.numel()*t.element_size()) for q in L for t in q.w] for L in s.L];O=[[sum(al(b) for _,b in m[:j]) for j in range(len(m)+1)] for m in M];sz=max(o[-1] for o in O);s.cs=torch.cuda.Stream()
+        s.host=[torch.empty(max(1,o[-1]),dtype=torch.uint8).pin_memory() for o in O];[s.host[i][o:o+b].copy_(t.contiguous().reshape(-1).view(torch.uint8)) for i,(m,oo) in enumerate(zip(M,O)) for (t,b),o in zip(m,oo)];s.host_bytes=sum(h.numel() for h in s.host)
+        s.slots=[torch.empty(sz,dtype=torch.uint8,device=s.dev) for _ in range(2)];s.ready=[torch.cuda.Event() for _ in range(2)];s.done=[torch.cuda.Event() for _ in range(2)];s.have=[None,None]
+        it=lambda i:iter([s.slots[i%2][o:o+b].view(t.dtype).view(t.shape) for (t,b),o in zip(M[i],O[i])]);s.V=[(lambda g:[[next(g) for _ in q.w] for q in L])(it(i)) for i,L in enumerate(s.L)];[setattr(q,'w',w) for L,V in zip(s.L,s.V) for q,w in zip(L,V)];s.hsz=[o[-1] for o in O]
         def fetch(i):
             sl=i%2
             with torch.cuda.stream(s.cs):
-                s.cs.wait_event(s.done[sl]);[d.copy_(h,non_blocking=True) for ds,hs in zip(s.slots[sl],s.host[i]) for d,h in zip(ds,hs)];s.ready[sl].record(s.cs)
+                s.cs.wait_event(s.done[sl]);s.slots[sl][:s.hsz[i]].copy_(s.host[i][:s.hsz[i]],non_blocking=True);s.ready[sl].record(s.cs)
             s.have[sl]=i
         def pre(i):
             def f(mod,args,kw=None):
                 sl=i%2;s.have[sl]!=i and fetch(i);torch.cuda.current_stream().wait_event(s.ready[sl])
-                for q,ds in zip(s.L[i],s.slots[sl]):q.w=ds
-                fetch((i+1)%n)
+                for q,w in zip(s.L[i],s.V[i]):q.w=w
+                (i+1<n or n%2==0) and fetch((i+1)%n)
             return f
         def post(i):
             def f(mod,args,out):s.done[i%2].record(torch.cuda.current_stream())
@@ -130,23 +134,25 @@ class Atex:
     def emb(s,ids):
         if s.QE is not None:
             w=s.QE.w;return Q.dequant([p.index_select(0,ids.to(p.device)) for p in w[:-2]],w[-2].index_select(0,ids.to(w[-2].device)),w[-1].index_select(0,ids.to(w[-1].device)),s.QE.bits,s.QE.gs,s.QE.inn).to(torch.bfloat16)
-        return s.E.index_select(0,ids.to(s.E.device)).to(s.dev,non_blocking=True)
+        return s.E.index_select(0,ids.to(s.E.device)).to(s.dev)
     def logits(s,h):
-        h=h.reshape(1,-1)
+        h=h.reshape(-1,h.shape[-1])
         if s.QH is not None:return s.QH(h).float()/s.ls
         if s.o['head']=='cpu':return (h.cpu().to(torch.bfloat16)@s.Hd.T).float().to(s.dev)/s.ls
         return (h.to(s.Hd.dtype)@s.Hd.T).float()/s.ls
-    def cache(s):return Cache(layer_class_to_replicate=kvlayer(s.o['kv'])) if s.o['kv'] in(8,4) else Cache(layer_class_to_replicate=DynamicLayer)
+    def cache(s):
+        K=kvlayer(s.o['kv']) if s.o['kv'] in(8,4) else DynamicLayer;lt=list(getattr(s.tc,'layer_types',None) or [])
+        return Cache(layer_class_to_replicate=K) if 'linear_attention' not in lt else (lambda c:[c.layers.__setitem__(i,K()) for i,t in enumerate(lt) if t=='full_attention'] and c)(DynamicCache(config=s.tc))
     @torch.no_grad()
-    def prefill(s,ids,cache):
-        c=s.o['chunk'] or ids.shape[-1]
-        for i in range(0,ids.shape[-1],c):o=s.base_model(inputs_embeds=s.emb(ids[0,i:i+c]).unsqueeze(0),past_key_values=cache,use_cache=True)
-        return o.last_hidden_state[0,-1]
+    def prefill(s,ids,cache,allh=False):
+        c=s.o['chunk'] or ids.shape[-1];H=[]
+        for i in range(0,ids.shape[-1],c):o=s.base_model(inputs_embeds=s.emb(ids[0,i:i+c]).unsqueeze(0),past_key_values=cache,use_cache=True);allh and H.append(o.last_hidden_state[0])
+        return torch.cat(H) if allh else o.last_hidden_state[0,-1]
     @torch.no_grad()
-    def generate(s,ids,max_new=64,stops=(),temperature=0.0,ign=False,tm=None):
+    def generate(s,ids,max_new=64,stops=(),temperature=0.0,ign=False,tm=None,lg_out=None):
         t0=time.time();ca=s.cache();h=s.prefill(ids,ca);torch.cuda.synchronize();t1=time.time();out=[];txt=''
         for _ in range(max_new):
-            lg=s.logits(h);t=int(lg.argmax(-1).item()) if temperature<=0 else int(torch.multinomial(torch.softmax(lg/temperature,-1),1).item())
+            lg=s.logits(h);lg_out is not None and lg_out.append(lg[0].float().cpu());t=int(lg.argmax(-1).item()) if temperature<=0 else int(torch.multinomial(torch.softmax(lg/temperature,-1),1).item())
             if t in s.eos and not ign:break
             out.append(t)
             if stops:
@@ -155,7 +161,7 @@ class Atex:
             len(out)%8==0 and time.sleep(thr())
             h=s.base_model(inputs_embeds=s.emb(torch.tensor([t])).unsqueeze(0),past_key_values=ca,use_cache=True).last_hidden_state[0,-1]
         torch.cuda.synchronize();t2=time.time();tm is not None and tm.update(prefill_s=t1-t0,decode_s=t2-t1,n_prompt=int(ids.shape[-1]),n_new=len(out))
-        s.kvb=sum(l.nbytes() if hasattr(l,'nbytes') else (l.keys.numel()+l.values.numel())*l.keys.element_size() if l.keys is not None else 0 for l in ca.layers);s.last_n=len(out);s.last_ids=out;return s.tok.decode(out,skip_special_tokens=True)
+        s.kvb=sum(lbytes(l) for l in ca.layers);s.last_n=len(out);s.last_ids=out;return s.tok.decode(out,skip_special_tokens=True)
 _U=re.compile(r"User: (.*?)\nAdam:(?: (.*?))?\n\n",re.S)
 def msgs(prompt):
     M=[];p=0

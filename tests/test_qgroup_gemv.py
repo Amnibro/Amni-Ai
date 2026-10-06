@@ -13,3 +13,8 @@ def test_error_monotone_in_bits():
     for b,gs in ((2,64),(3,64),(4,64),(8,64)):
         q,a,c=Q.quantize(W,b,gs);D=Q.dequant(Q.split(q,b),a,c,b,gs,512);e[b]=((D-W).norm()/W.norm()).item()
     assert e[8]<e[4]<e[3]<e[2]
+@pytest.mark.parametrize("bits,gs",[(4,128),(3,64)])
+def test_gptq_beats_rtn_on_output_error(bits,gs):
+    torch.manual_seed(2);out,inn=192,512;W=torch.randn(out,inn,device="cuda");X=torch.randn(4096,inn,device="cuda")@torch.randn(inn,inn,device="cuda")*0.1;H=X.T@X*2/X.shape[0]
+    e=lambda q,a,c:((X@(Q.dequant(Q.split(q,bits),a,c,bits,gs,inn)-W).T).norm()/(X@W.T).norm()).item()
+    q,a,c=Q.gptq(W,H,bits,gs);assert (Q.unpack(Q.split(q,bits),bits,inn)==q).all() and q.min()>=0 and q.max()<(1<<bits) and e(q,a,c)<0.9*e(*Q.quantize(W,bits,gs))
