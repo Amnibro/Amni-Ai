@@ -9,11 +9,11 @@
 - [x] Engine and flagged backend `amni/serve/blender_atex.py`; `AMNI_BLENDER=atex:<bake>`; hook in `adam_t_client.client()` (backup in `backups/`)
 - [x] Dev set `scripts/build_hybrid1_dev.py` (CC0, 6-gram clean)
 - [x] Evaluation plan frozen (`docs/adam_t/hybrid1_eval.md`)
-- [ ] Bakes and fidelity: Granite 3B, MiniCPM5-2B, Qwen3-4B-Instruct-2507 at 4/3/2 bits
-- [ ] VRAM/speed measurements and lever study
-- [ ] probe8 scoring (once per frozen configuration), ADAM-T r2/r3 baselines
-- [ ] E2E chat suite: hybrid, open alone, ADAM-T r3 + harness
-- [ ] `docs/adam_t/hybrid1_models.md`, `hybrid1_results.md`
-- [ ] NOTICE attribution, deletions.log entries
-- [ ] architecture_map.md and changelog.md dated entries (backups first)
-- [ ] Linter, tests, cleanup of processes and scratch
+- [x] Bakes and fidelity: Granite 3B, MiniCPM5-2B, Qwen3-4B-Instruct-2507 at 4/3/2 bits
+- [x] VRAM/speed measurements and lever study
+- [x] probe8 scoring (once per frozen configuration), ADAM-T r2/r3 baselines
+- [x] E2E chat suite: hybrid, open alone, ADAM-T r3 + harness
+- [x] `docs/adam_t/hybrid1_models.md`, `hybrid1_results.md`
+- [x] NOTICE attribution, deletions.log entries
+- [x] architecture_map.md and changelog.md dated entries (backups first)
+- [x] Linter, tests, cleanup of processes and scratch
