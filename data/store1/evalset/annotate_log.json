@@ -1,0 +1,156 @@
+[
+ {
+  "id": "a0023",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (8 subject candidates)"
+ },
+ {
+  "id": "a0106",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (8 subject candidates)"
+ },
+ {
+  "id": "a0108",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (15 subject candidates)"
+ },
+ {
+  "id": "a0111",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (2 subject candidates)"
+ },
+ {
+  "id": "a0199",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (11 subject candidates)"
+ },
+ {
+  "id": "a0201",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (8 subject candidates)"
+ },
+ {
+  "id": "a0203",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "a0214",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (8 subject candidates)"
+ },
+ {
+  "id": "a0215",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (3 subject candidates)"
+ },
+ {
+  "id": "a0274",
+  "split": "dev",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (3 subject candidates)"
+ },
+ {
+  "id": "a0287",
+  "split": "dev",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "a0314",
+  "split": "test",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "a0321",
+  "split": "test",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (3 subject candidates)"
+ },
+ {
+  "id": "a0322",
+  "split": "dev",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "a0341",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0363",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0379",
+  "split": "dev",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0398",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0400",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0409",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0430",
+  "split": "dev",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "a0503",
+  "split": "dev",
+  "cat": "absent",
+  "dropped": false,
+  "why": "review: span resolves in wikidata"
+ }
+]

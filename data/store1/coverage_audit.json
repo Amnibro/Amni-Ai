@@ -1,0 +1,3725 @@
+{
+ "source": "data/adam_t/eval/report_h1-hybrid-qwen3-4b-q8-C8_0_e2e_tune_dry.json",
+ "method": "Read-only audit, 2026-10-06. Wikidata v3 store (amni.compute.wikifact) scanned per item: all facts of the top question entities matched against gold, inverse facts of the gold entity, plus targeted QID/PID probes (qualifiers checked for counts/earliest). ConceptNet 5.7 edges (cognition.cne both directions) and WordNet glosses/lemmas/meronyms (nltk) for question terms and gold terms. Passages: rknow wiki_v2 index search (k=60) + linked pages + hand-picked title pages (adam_t_client._pages), sentence-level match of gold (know) or mechanism keywords (explain), then manual reading of the best sentence. Compute: amni.math.answer.solve_math on the raw question and on reformulations. classes = reachable with a stored fact/text that states the gold; weak_classes = related but indirect (loose property, partial join, figurative text, cause-only fact, needs an external fact or unsupported computation). primary = first strong class in order wd_entity, wd_value, concepts, passages, compute; primary_lenient also admits weak classes. Inverse WD facts (answer is the subject, e.g. symbol/short-name/nickname/atomic-number lookups) and WD aliases count as wd_value; superlatives/counts that need aggregation over several entities are not counted as WD-reachable. wd_subject_only = a WD entity for the question topic exists but no strong WD fact gives the gold (explain items: topic entity exists, no mechanism fact). v3_resolver_answer = W.ask(q) on the raw question; v3_accepted = W.answer(q) (conf >= AMNI_WIKIFACT_THR, temporal gate).",
+ "items": [
+  {
+   "id": "know-002",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasA (spiders, eight legs) w4.0; WordNet spider.n.01 gloss 'predatory arachnid with eight legs'",
+    "passages": "Spider anatomy #2210828"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q1357 spider has no leg-count property in v3"
+  },
+  {
+   "id": "know-003",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Green #39950893"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q1088/Q943 color entities exist; WD P155/P156 give spectral order, not mixing"
+  },
+  {
+   "id": "know-004",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet earth.n.01 gloss 'the planet we live on'",
+    "passages": "Earth #39512200"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "answer is the subject; topic entities (human/planet) carry no habitat fact"
+  },
+  {
+   "id": "know-005",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages",
+    "compute"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q23387 P2047 duration = 7 day",
+    "concepts": "ConceptNet HasA (week, seven days); WordNet week.n.01 gloss",
+    "passages": "Week #38927166",
+    "compute": "solve_math raw question: 1 week is 7 days"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-007",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet CapableOf (bees, make honey) w2.0; WordNet honey.n.01 gloss 'produced by bees'",
+    "passages": "Honey bee #14344888"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q7391 bee has no product property; Q10987 honey P186 = nectar only"
+  },
+  {
+   "id": "know-009",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Continent #9147172"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "count of continents is an aggregate, not a stored fact"
+  },
+  {
+   "id": "know-010",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q756 P2283 uses = carbon dioxide in the atmosphere of Earth (loose property)",
+    "concepts": "WordNet carbon_dioxide.n.01 gloss 'absorbed from the air by plants in photosynthesis'",
+    "passages": "Cactus #40009720; Carbon dioxide #107846"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-012",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet water.n.01 gloss 'boils above 100 degrees centigrade'",
+    "passages": "Boiling point #68440"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q283 water has no boiling point (P2102 not kept in v3)"
+  },
+  {
+   "id": "know-014",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q270952 cold P461 opposite of = hot (symmetric, reached via reverse index)",
+    "concepts": "ConceptNet Antonym (hot, cold) w1.6; DefinedAs (cold, opposite of hot)",
+    "passages": "Opposite (semantics) #15278389"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "WD fact sits on the answer entity"
+  },
+  {
+   "id": "know-015",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages",
+    "compute"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasA (day, 24 hours); IsA (day, 24 hours long) w3.5",
+    "passages": "Day #38957252",
+    "compute": "solve_math raw question: 1 day is 24 hours"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q573 day P527 hour has no quantity qualifier"
+  },
+  {
+   "id": "know-016",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Dairy #14313635"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q830 cattle has no drink fact; ConceptNet only generic water UsedFor drink"
+  },
+  {
+   "id": "know-017",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet blue.n.01 gloss 'color of the clear sky in the daytime'; ConceptNet IsA (sky, blue sometimes)",
+    "passages": "Scattering #29638493"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q527 sky has no P462"
+  },
+  {
+   "id": "know-018",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet jupiter.n.01 gloss 'the largest planet'",
+    "passages": "Planet #38399300"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative; derivable only by aggregating planet masses"
+  },
+  {
+   "id": "know-020",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasA (triangle, three sides) w6.6; WordNet triangle.n.01 'a three-sided polygon'",
+    "passages": "Triangle strip #168759"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q19821 P2670 edge has no quantity qualifier"
+  },
+  {
+   "id": "know-022",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet CapableOf (caterpillar, turn into butterfly); WordNet caterpillar.n.01 'larva of a butterfly or moth'",
+    "passages": "Caterpillar #14195166"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q81825 caterpillar only P279 insect larva"
+  },
+  {
+   "id": "know-024",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet giraffe.n.01 gloss 'tallest living quadruped'",
+    "passages": "List of largest mammals #19314867"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative; Q15083 P2048 height exists but needs cross-entity comparison"
+  },
+  {
+   "id": "know-027",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "compute"
+   ],
+   "keys": {
+    "passages": "Glossary of fuel cell terms #9001784",
+    "compute": "0 C -> 32 F via solve_math units, needs freezing point 0 C from WordNet water.n.01 gloss"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q283 has no melting point in v3"
+  },
+  {
+   "id": "know-028",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q12418 P170 creator = Leonardo da Vinci",
+    "passages": "Isleworth Mona Lisa #2175451; Mona Lisa #14502084"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-030",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet heart.n.02 gloss 'rhythmic contractions move the blood through the body'; blood.n.01 'pumped through the body by the heart'",
+    "passages": "Heart #40173864"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q1072 heart P366 = blood circulation is only an inverse hint"
+  },
+  {
+   "id": "know-031",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q283 P274 chemical formula = H2O (inverse: answer is subject); H2O is also a WD alias of Q283",
+    "concepts": "WordNet water.n.01 lemma H2O; ConceptNet IsA (water, h2o)",
+    "passages": "Water #37885256"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-032",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q11442 P279 subclass of = two-wheeler",
+    "concepts": "ConceptNet HasA (bicycle, two wheels) w6.6; WordNet bicycle.n.01 'has two wheels'",
+    "passages": "Bicycle #65262"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-033",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q30 P36 capital = Washington, D.C.",
+    "concepts": "WordNet washington.n.01 gloss 'the capital of the United States'",
+    "passages": "Washington, D.C. #14870343"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Washington, D.C.",
+    "conf": 0.8245,
+    "source": "Wikidata Q30 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-035",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity"
+   ],
+   "weak_classes": [
+    "passages"
+   ],
+   "keys": {
+    "wd_entity": "Q1311 winter P156 followed by = spring",
+    "passages": "Elisabeth Maria Post #28056932 (figurative only)"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-036",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages",
+    "compute"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "81 (number) #31140414 '81 is the square of 9'",
+    "compute": "solve_math raw question: sqrt(81) = 9"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "number entity exists, no root fact"
+  },
+  {
+   "id": "know-038",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q207968 P527 has part(s) = avocado",
+    "concepts": "WordNet guacamole.n.01 gloss 'dip made of mashed avocado'",
+    "passages": "Seven-layer dip #2834771"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-039",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet soccer.n.01 gloss 'two teams of 11 players'",
+    "passages": "Association football #40511134"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q2736 has no team-size property in v3"
+  },
+  {
+   "id": "know-043",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q111 P1449 nickname = Red Planet (inverse); 'Red Planet' also a WD alias of Q111",
+    "concepts": "WordNet mars.n.01 lemma Red_Planet",
+    "passages": "Name of Mars #27769909"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-044",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Mineral #39363267; Swiss Diamond International #18490267"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q5283 diamond has no hardness value in v3"
+  },
+  {
+   "id": "know-048",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q503 P462 color = yellow",
+    "concepts": "ConceptNet HasProperty (banana, yellow) w4.0; WordNet banana.n.02 'yellow fruit'",
+    "passages": "Yellow #40741578"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-049",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasA (guitars, six strings) w3.5; WordNet guitar.n.01 'usually having six strings'",
+    "passages": "List of extended-range guitar players #9557363"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q6607 P527 guitar string has no quantity"
+  },
+  {
+   "id": "know-051",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet armstrong.n.01 gloss 'the first man to set foot on the Moon'",
+    "passages": "Neil Armstrong #37900345"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "no 'first to walk on Moon' fact"
+  },
+  {
+   "id": "know-052",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q362 P582 end time = September 2, 1945",
+    "concepts": "WordNet world_war_ii.n.01 gloss 'from 1939 to 1945'",
+    "passages": "World War II #39500635"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "1945",
+    "conf": 0.0656,
+    "source": "Wikidata Q362 P582 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "when:end"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-053",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "compute"
+   ],
+   "keys": {
+    "passages": "2 #14427730 '2 is the smallest and the only even prime number'",
+    "compute": "trivially computable; solve_math raw question returns None"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "WD only says 2 P31 prime number"
+  },
+  {
+   "id": "know-055",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q43514 P61 discoverer or inventor = Albert Einstein",
+    "concepts": "WordNet einstein.n.01 gloss",
+    "passages": "History of gravitational theory #482162"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-056",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "March 2007 floods in Argentina's Litoral region #4410156"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative; WordNet amazon.n.03 only says world's 2nd longest"
+  },
+  {
+   "id": "know-057",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q658 P246 element symbol = Na",
+    "concepts": "WordNet sodium.n.01 lemma Na",
+    "passages": "Natron #14916984"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Na",
+    "conf": 0.85,
+    "source": "Wikidata Q658 P246 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:chemical symbol"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-059",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q556 P1086 atomic number = 1 (inverse: answer is subject)",
+    "concepts": "WordNet hydrogen.n.01 lemma atomic_number_1; ConceptNet HasProperty (atomic number of hydrogen, 1)",
+    "passages": "Hydrogen #40713250"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-061",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q145 P38 currency = pound sterling",
+    "concepts": "WordNet british_pound.n.01 gloss 'basic unit of money in Great Britain and Northern Ireland'",
+    "passages": "Amazon rubber cycle #6130998"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "pound sterling",
+    "conf": 0.8245,
+    "source": "Wikidata Q145 P38 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:currency"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-062",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q2 P610 highest point = Mount Everest (preferred rank)",
+    "concepts": "WordNet everest.n.01 gloss 'the highest mountain peak in the world'",
+    "passages": "Mount Everest #14101567"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-064",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet IsA (statue of liberty, gift from france) w2.0",
+    "passages": "Statue of Liberty Museum #25143896"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "near miss: Q9202 P495 country of origin = French Third Republic"
+  },
+  {
+   "id": "know-065",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "wd_value": "Q39572 mitochondrion carries WD alias 'powerhouse of the cell'",
+    "concepts": "ConceptNet IsA (mitochondria, energy producing components of cells)",
+    "passages": "BCKDHA #7043136"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "alias match, not a property value"
+  },
+  {
+   "id": "know-067",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q408 P36 capital = Canberra",
+    "concepts": "WordNet canberra.n.01 gloss 'the capital of Australia'",
+    "passages": "Australian Capital Territory #30282"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-070",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Mandarin Chinese #39773468"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative over speaker counts; aggregate only"
+  },
+  {
+   "id": "know-072",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet nitrogen.n.01 gloss '78 percent of the atmosphere'; ConceptNet IsA (atmosphere, mostly nitrogen)",
+    "passages": "Period (periodic table) #14641842"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "near miss: Q3230 P186 lists dinitrogen among 8 materials with no proportions"
+  },
+  {
+   "id": "know-073",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet hexagon.n.01 'a six-sided polygon'; ConceptNet IsA (hexagon, closed shape with six sides)",
+    "passages": "Hexagon #14367160"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q83043 has no side count"
+  },
+  {
+   "id": "know-076",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q183 P36 capital = Berlin",
+    "concepts": "WordNet berlin.n.01 gloss; ConceptNet DefinedAs (berlin, capital of germany)",
+    "passages": "Berlin #55010"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-078",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet universal_donor.n.01 gloss 'type O Rh-negative blood'",
+    "passages": "Blood type #14301499"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q47657 blood type has no donor fact"
+  },
+  {
+   "id": "know-079",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Skin care #1125683"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative; no WD/WordNet/ConceptNet statement"
+  },
+  {
+   "id": "know-080",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasA (adult human, 32 teeth)",
+    "passages": "Human tooth #14477234"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "no tooth-count fact"
+  },
+  {
+   "id": "know-082",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "compute"
+   ],
+   "keys": {
+    "concepts": "WordNet ten.n.01 lemmas include X; roman_numeral.n.01 gloss maps X to 10",
+    "passages": "Sign-value notation #1992492",
+    "compute": "Roman numeral conversion is computable; solve_math lacks it"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "near miss: Q38918 P527 lists the numeral glyphs without values"
+  },
+  {
+   "id": "know-083",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q11035 P61 includes Alexander Graham Bell (multi-valued; also Reis etc.)",
+    "concepts": "WordNet bell.n.08 gloss 'inventor of the telephone'",
+    "passages": "Frontier Telephone of Rochester #3876966"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Johann Philipp Reis",
+    "conf": 0.7857,
+    "source": "Wikidata Q11035 P61 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "who:invent"
+   },
+   "v3_correct_any_conf": false,
+   "v3_accepted": true,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-084",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet DefinedAs (venus, hottest planet)",
+    "passages": "Kepler-4b #11875670"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative"
+  },
+  {
+   "id": "know-085",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q29 P36 capital = Madrid (preferred rank)",
+    "concepts": "WordNet madrid.n.01 gloss 'the capital ... of Spain'",
+    "passages": "Spanish Grand Prix #31813560; Madrid #19243141"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-086",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q408 Australia P206 = Indian Ocean (Q15 Africa has no P206, so the two-sided join is incomplete)",
+    "concepts": "WordNet indian_ocean.n.01 gloss 'bounded by Africa on the west ... Australia on the east'",
+    "passages": "Outline of oceanography #7833667"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-087",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q7430 label deoxyribonucleic acid with P1813 short name = DNA (inverse)",
+    "concepts": "WordNet deoxyribonucleic_acid.n.01 lemma DNA; ConceptNet HasProperty (dna, short for deoxyribonucleic acid)",
+    "passages": "DNA #40492301"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-089",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q756 P2283 uses = photosynthesis",
+    "concepts": "WordNet photosynthesis.n.01 gloss 'with the aid of radiant energy (especially in plants)'",
+    "passages": "Glossary of biology #17440584"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-090",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q30 P6 head of government = George Washington (earliest P580 1789)",
+    "concepts": "WordNet washington.n.04 gloss '1st President of the United States'",
+    "passages": "President of the United States #38171452"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "needs earliest-start qualifier selection"
+  },
+  {
+   "id": "know-092",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q79 P36 capital = Cairo",
+    "concepts": "WordNet cairo.n.02 gloss; ConceptNet IsA (capital of egypt, cairo)",
+    "passages": "Cairo #39213700"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Cairo",
+    "conf": 0.85,
+    "source": "Wikidata Q79 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-093",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet mercury.n.01 gloss 'the only metal that is liquid at ordinary temperatures'",
+    "passages": "Mercury (element) #8656296"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "no phase-at-room-temperature fact"
+  },
+  {
+   "id": "know-094",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet cheetah.n.01 gloss 'the swiftest mammal'",
+    "passages": "Cheetah #14157750"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative"
+  },
+  {
+   "id": "know-095",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q6583 P30 continent = Africa",
+    "concepts": "ConceptNet PartOf (sahara, africa); WordNet sahara.n.01 part_holonym africa.n.01",
+    "passages": "Desert sparrow #403938"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Africa",
+    "conf": 0.4656,
+    "source": "Wikidata Q6583 P30 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "p30"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-096",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "compute"
+   ],
+   "keys": {
+    "passages": "Angle #14900",
+    "compute": "(n-2)*180 with n=3 is computable; solve_math raw question returns None"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q19821 has no angle-sum fact"
+  },
+  {
+   "id": "know-097",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet barometer.n.01 gloss 'an instrument that measures atmospheric pressure'",
+    "passages": "Barometer #14184040"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q79757 barometer has no measured-quantity fact in v3"
+  },
+  {
+   "id": "know-098",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Octopus #39757636"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q40152 has no heart count"
+  },
+  {
+   "id": "know-099",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q35160 P50 author = Homer",
+    "concepts": "WordNet odyssey.n.02 gloss 'attributed to Homer'",
+    "passages": "Odyssey #37860283"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Homer",
+    "conf": 0.2798,
+    "source": "Wikidata Q35160 P50 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "who:write"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-100",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q114 P36 capital = Nairobi",
+    "concepts": "WordNet nairobi.n.01 gloss",
+    "passages": "Malaba, Kenya #610381"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-101",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet mercury.n.03 gloss 'the smallest planet'",
+    "passages": "Planet #38399300"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative"
+  },
+  {
+   "id": "know-103",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q5086 P576 dissolved/demolished = November 9, 1989; Q69163529 P585 = November 9, 1989",
+    "passages": "Berlin Wall #60837"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-104",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q11254 P460/P527 = sodium chloride",
+    "concepts": "WordNet salt.n.02 lemma table_salt, gloss 'sodium chloride'; ConceptNet MadeOf (salt, sodium chloride)",
+    "passages": "Chemistry set #1310393"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-108",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q12190 P61 discoverer or inventor = Alexander Fleming",
+    "concepts": "WordNet fleming.n.02 gloss",
+    "passages": "Alexander Fleming #29952"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Alexander Fleming",
+    "conf": 0.9,
+    "source": "Wikidata Q12190 P61 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "who:discover"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-109",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q884 P36 capital = Seoul",
+    "concepts": "WordNet seoul.n.01 gloss",
+    "passages": "Seoul #8941126"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Seoul",
+    "conf": 0.85,
+    "source": "Wikidata Q884 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-110",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet violin.n.01 gloss 'has four strings'",
+    "passages": "Violin #39452054"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q8355 has no string count"
+  },
+  {
+   "id": "know-111",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q41567 P50 author = William Shakespeare",
+    "concepts": "WordNet hamlet.n.02 gloss 'hero of William Shakespeare's tragedy'",
+    "passages": "Ib Melchior #746153"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "William Shakespeare",
+    "conf": 0.5426,
+    "source": "Wikidata Q41567 P50 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "who:write"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-112",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q677 P246 element symbol = Fe",
+    "concepts": "WordNet iron.n.01 lemma Fe",
+    "passages": "Contemporary Latin #5162076"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Fe",
+    "conf": 0.85,
+    "source": "Wikidata Q677 P246 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:chemical symbol"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-113",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q711 P36 capital = Ulaanbaatar",
+    "concepts": "WordNet ulan_bator.n.01 gloss",
+    "passages": "Ulaanbaatar #14463022"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Ulaanbaatar",
+    "conf": 0.85,
+    "source": "Wikidata Q711 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-115",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q6534 P580 start time = July 14, 1789",
+    "concepts": "WordNet french_revolution.n.01 gloss '1789-1799'",
+    "passages": "History of Europe #38114820"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "1789",
+    "conf": 0.6721,
+    "source": "Wikidata Q6534 P580 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "when:begin"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-117",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q743 P246 element symbol = W",
+    "concepts": "WordNet tungsten.n.01 lemma W",
+    "passages": "Period 6 element #29809274"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "W",
+    "conf": 0.85,
+    "source": "Wikidata Q743 P246 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:chemical symbol"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-118",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q178869 P50 author = Gabriel Garcia Marquez",
+    "passages": "McOndo #3111327"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Gabriel García Márquez",
+    "conf": 0.5339,
+    "source": "Wikidata Q178869 P50 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "who:write"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-119",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q2 Earth P1589 lowest point = Challenger Deep (preferred rank)",
+    "passages": "Challenger Deep #41588057"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "subject is implicit (world = Earth)"
+  },
+  {
+   "id": "know-121",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Timeline of women in science in the United States #19561909"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q7186 has P166 Nobel prizes but no 'first woman' fact"
+  },
+  {
+   "id": "know-122",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q965 P36 capital = Ouagadougou",
+    "passages": "Ouagadougou #14311250"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Ouagadougou",
+    "conf": 0.85,
+    "source": "Wikidata Q965 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-123",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasA (mars, two moons) w2.0",
+    "passages": "Moons of Mars #33985551"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "P398 child bodies not kept in v3; count would be an aggregate"
+  },
+  {
+   "id": "know-124",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q12519 P571 inception = June 15, 1215",
+    "concepts": "WordNet magna_carta.n.01 gloss 'in 1215'",
+    "passages": "Air Forces Memorial #1160260"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-126",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet electric_resistance.n.01 'measured in ohms'; ohm.n.01 'a unit of electrical resistance'",
+    "passages": "Ohm #565689"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q25358 has no unit property in v3"
+  },
+  {
+   "id": "know-128",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q38433 P61 discoverer or inventor = Isaac Newton",
+    "concepts": "WordNet newton.n.01 gloss 'his three laws of motion'",
+    "passages": "Force #38149287"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-129",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q664 P36 capital = Wellington",
+    "concepts": "WordNet wellington.n.02 gloss",
+    "passages": "New Zealand #995250"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Wellington",
+    "conf": 0.7263,
+    "source": "Wikidata Q664 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-130",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet volga.n.01 gloss 'the longest river in Europe'",
+    "passages": "Caspian Sea #9156217"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative"
+  },
+  {
+   "id": "know-131",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q150827 P50 author = Mary Shelley",
+    "concepts": "WordNet shelley.n.01 gloss 'created Frankenstein's monster'",
+    "passages": "Mary Shelley #12773810"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Nick Dear",
+    "conf": 0.2919,
+    "source": "Wikidata Q3082890 P50 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "who:write"
+   },
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-132",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Time in Russia #295906"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q159 has no P421 time-zone facts in v3; count would be an aggregate"
+  },
+  {
+   "id": "know-134",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Glossary of chemistry terms #6610980"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "WordNet ph.n.01 only says 7 is neutral (weak, not counted)"
+  },
+  {
+   "id": "know-136",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q1973 P36 capital = Victoria",
+    "concepts": "WordNet victoria.n.07 gloss 'capital of the Canadian province of British Columbia'",
+    "passages": "Victoria, British Columbia #38976340"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Victoria",
+    "conf": 0.1549,
+    "source": "Wikidata Q1973 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-138",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet lake_victoria.n.01 gloss 'the largest lake in Africa'",
+    "passages": "Lake Victoria #14521928"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative"
+  },
+  {
+   "id": "know-139",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages",
+    "compute"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "New Jerusalem #41515640 '12 is the square root of 144'",
+    "compute": "solve_math raw question: sqrt(144) = 12"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "number entity exists, no root fact"
+  },
+  {
+   "id": "know-141",
+   "cat": "know",
+   "primary": "wd_value",
+   "primary_lenient": "wd_value",
+   "classes": [
+    "wd_value",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_value": "Q5300 label central processing unit with P1813 short name = CPU (inverse)",
+    "concepts": "WordNet central_processing_unit.n.01 lemma CPU",
+    "passages": "Computer for operations with functions #15611437"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": ""
+  },
+  {
+   "id": "know-142",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q419 P36 capital = Lima",
+    "concepts": "WordNet lima.n.01 gloss",
+    "passages": "Lima #14635895"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Lima",
+    "conf": 0.85,
+    "source": "Wikidata Q419 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-143",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet beethoven.n.01 gloss 'continued to compose after he lost his hearing'",
+    "passages": "Charles Limb #21670250"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "no deafness fact"
+  },
+  {
+   "id": "know-144",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet ReceivesAction (insulin, produced by pancreas); WordNet pancreas.n.01 'secretes ... insulin'",
+    "passages": "Hypoglycemia #39673230"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q50265665 insulin has no producing-organ fact"
+  },
+  {
+   "id": "know-146",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet oxygen.n.01 gloss 'the most abundant element in the earth's crust'",
+    "passages": "Aluminium #9234"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "superlative over crust abundance"
+  },
+  {
+   "id": "know-147",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q189 P36 capital = Reykjavik",
+    "concepts": "WordNet reykjavik.n.01 gloss",
+    "passages": "Football in Iceland #7551243"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Reykjavík",
+    "conf": 0.85,
+    "source": "Wikidata Q189 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "know-148",
+   "cat": "know",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet hemoglobin.n.01 gloss 'transport oxygen'; red_blood_cell.n.01 'contains hemoglobin to carry oxygen'",
+    "passages": "Red blood cell #14460782"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q43041 hemoglobin only P279 protein"
+  },
+  {
+   "id": "know-150",
+   "cat": "know",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "List of women monarchs #12159752; 2015 #14215959"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": false,
+   "v3_accepted": false,
+   "v3_accepted_correct": false,
+   "note": "Q9134365 P1308 lists only 2 holders; reign-length comparison is an aggregate"
+  },
+  {
+   "id": "know-152",
+   "cat": "know",
+   "primary": "wd_entity",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "wd_entity",
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "wd_entity": "Q43 P36 capital = Ankara",
+    "concepts": "WordNet ankara.n.01 gloss; ConceptNet DefinedAs (ankara, capital of turkey)",
+    "passages": "Ankara #6477"
+   },
+   "wd_subject_only": false,
+   "v3_resolver_answer": {
+    "answer": "Ankara",
+    "conf": 0.85,
+    "source": "Wikidata Q43 P36 (Wikidata CC0 1.0 (wikidata-20260921-all.json.gz))",
+    "rule": "noun:capital"
+   },
+   "v3_correct_any_conf": true,
+   "v3_accepted": true,
+   "v3_accepted_correct": true,
+   "note": ""
+  },
+  {
+   "id": "explain-002",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet aerodynamic_lift.n.01 'force on an airfoil that opposes gravity' (not linked to airplane)",
+    "passages": "Flight #29582807"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-004",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Vapor-compression refrigeration #806426"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": "WD Q37828 P2283 refrigerant is not a mechanism"
+  },
+  {
+   "id": "explain-005",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Autumn leaf color #3059367"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-007",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasProperty (ice, less dense than water) w2.8",
+    "passages": "Phase diagram #14315760"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-008",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet internet.n.01 'TCP/IP protocols'; router.n.02 'forwards data packets'",
+    "passages": "Packet switching #14120054; Internet #38597017"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-010",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet rainbow.n.01 'caused by refraction of the sun's rays by rain'",
+    "passages": "Rainbow #37495296"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-011",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet yawn.v.01 'as from lack of oxygen'",
+    "passages": "Yawn #30206572"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": "mechanism is contested in sources"
+  },
+  {
+   "id": "explain-012",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Electric battery #8949133"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-013",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Seawater #30347448"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-014",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q10987 honey P186 made from material = nectar",
+    "passages": "Honey #40972750"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-015",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "ConceptNet MotivatedByGoal (sleep, need to restore energy)",
+    "passages": "Sleep #40515413"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-016",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet microwave.n.02 'absorption of energy by the water molecules'",
+    "passages": "Microwave oven #14341224"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-020",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Glossary of plant morphology #6061183"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-021",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q684782 piloerection P828 has cause = pilomotor reflex",
+    "concepts": "WordNet pilomotor_reflex.n.01 'reflex erection of hairs ... in response to cold or emotional stress'",
+    "passages": "Goose bumps #39610825"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-022",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q34735 compass P2283 uses = magnetism",
+    "passages": "Compass #41430930"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-023",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet yeast.n.01 'used to raise the dough'",
+    "passages": "Gluten #40560467"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-024",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q7944 earthquake P828 has cause = active fault",
+    "concepts": "WordNet earthquake.n.01 'underground movement along a fault plane'",
+    "passages": "Earthquake #39232021"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-025",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "ConceptNet CapableOf (exercise, condition heart)",
+    "passages": "Exercise #29871494"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-027",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Twinkling #30050130"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-029",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Fingerprint #14631565"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-031",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Dog #356728; Body language of dogs #22869285"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-032",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q134808 vaccine P1542 has effect = adaptive immune system; Q12187 antibiotic P279 bactericide",
+    "concepts": "WordNet vaccine.n.01 'stimulate the production of antibodies'; antibiotic.n.01 'kill microorganisms and cure bacterial infections'",
+    "passages": "Vaccine #37814705; Antibiotic #27136"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-034",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Cloud #14184538"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": "WD Q8074 P186 water vapor gives composition only"
+  },
+  {
+   "id": "explain-037",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity",
+    "concepts"
+   ],
+   "keys": {
+    "wd_entity": "Q649717 sunburn P828 has cause = ultraviolet radiation",
+    "concepts": "WordNet sunburn.n.02 'caused by exposure to the rays of the sun'",
+    "passages": "Sunburn #9549760"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-038",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Bird migration #29973076"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-040",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Thermometer #40742017"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-041",
+   "cat": "explain",
+   "primary": "none",
+   "primary_lenient": "passages",
+   "classes": [],
+   "weak_classes": [
+    "passages"
+   ],
+   "keys": {
+    "passages": "Jordan River #14190051 (high evaporation rate, no explicit salinity cause)"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-042",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Headphones #29893292; Active noise control #30982974"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-045",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet spectacles.n.01 'correcting defective vision'; myopia.n.01 'faulty refractive ability'",
+    "passages": "Refractive error #39648873"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-046",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity"
+   ],
+   "keys": {
+    "wd_entity": "Q23384 tide P828 has cause = tidal force",
+    "concepts": "WordNet tide.n.01 'under the gravitational pull of the moon'",
+    "passages": "Tide #37846453"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-047",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Food browning #32340520"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-048",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet light_bulb.n.01 'filament ... emits light when heated by electricity'",
+    "passages": "Incandescent light bulb #14179910"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-049",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Equator #9533517"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": "WordNet torrid_zone/tropic glosses only split the facts"
+  },
+  {
+   "id": "explain-051",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Semicircular canals #30624768; Inner ear #14310442"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-052",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Bicycle and motorcycle dynamics #1393518"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-053",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet crater.n.03 'formed by the impact of a meteorite'",
+    "passages": "Moon #41066595"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-056",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet elevator.n.01 'raised and lowered mechanically in a vertical shaft'",
+    "passages": "Elevator #9044632"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-058",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet heart.n.02 'its rhythmic contractions move the blood through the body'",
+    "passages": "Cardiac cycle #35670118"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-059",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet static_electricity.n.01 'electricity produced by friction'",
+    "passages": "Triboelectric effect #14384125"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-061",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "ConceptNet UsedFor (drink, preventing dehydration); UsedFor (water, hydration)",
+    "passages": "Water #37885323; Dehydration #29542149"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-062",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet camera.n.01 'lightproof box with a lens ... and light-sensitive film'",
+    "passages": "Camera #14260777"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-064",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet geotropism.n.01 'an orienting response to gravity'",
+    "passages": "Gravitropism #33556115"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-065",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet HasProperty (hot air, less dense than cold air) w2.8",
+    "passages": "Electric heating #37054231"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-067",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet blood_group.n.01 'red blood cells that have the same antigens'",
+    "passages": "Blood type #14301469"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-071",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "ConceptNet UsedFor (hand washing, preventing spread of infectious disease); MotivatedByGoal (wash hands, kill germs)",
+    "passages": "Hand washing #31351871"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-072",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet bat.n.01 'echolocation by which they navigate'",
+    "passages": "Bat #10869923"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-073",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Wrinkle #40943270"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-074",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Dishwasher #14599145"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-076",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "WordNet stock_exchange.n.01 'an exchange where security trading is conducted'",
+    "passages": "Stock exchange #38964681; Stock market #14255867"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-077",
+   "cat": "explain",
+   "primary": "none",
+   "primary_lenient": "none",
+   "classes": [],
+   "weak_classes": [],
+   "keys": {},
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": "no passage on old-book odour found; no WD/concept fact"
+  },
+  {
+   "id": "explain-078",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Printer (computing) #93492; 3D printing #33212582"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-079",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "wd_entity",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "wd_entity",
+    "concepts"
+   ],
+   "keys": {
+    "wd_entity": "Q170579 laughter P828 has cause = amusement",
+    "concepts": "ConceptNet Causes (tickling -> laughter) w7.8, (socialising -> laughter)",
+    "passages": "Laughter #30206169"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-080",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Tropical cyclone #3587461"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-081",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "concepts",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [
+    "concepts"
+   ],
+   "keys": {
+    "concepts": "ConceptNet HasPrerequisite (breathe, use lungs); WordNet drown.v.03",
+    "passages": "Respiratory system #14454967"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-082",
+   "cat": "explain",
+   "primary": "concepts",
+   "primary_lenient": "concepts",
+   "classes": [
+    "concepts",
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "concepts": "WordNet wireless_local_area_network.n.01 'uses high frequency radio signals to transmit and receive data'",
+    "passages": "Wi-Fi #14422345; Radio wave #14762027"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-085",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Fruit #40478315; Tomato #5072195"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-086",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Smoke detector #30861368"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-088",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "NASA Clean Air Study #36487249"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  },
+  {
+   "id": "explain-089",
+   "cat": "explain",
+   "primary": "passages",
+   "primary_lenient": "passages",
+   "classes": [
+    "passages"
+   ],
+   "weak_classes": [],
+   "keys": {
+    "passages": "Dynamo theory #30347334; Magnetic field #39660455"
+   },
+   "wd_subject_only": true,
+   "v3_resolver_answer": null,
+   "v3_correct_any_conf": null,
+   "v3_accepted": null,
+   "v3_accepted_correct": null,
+   "note": ""
+  }
+ ],
+ "summary": {
+  "know": {
+   "n": 102,
+   "primary_strict": {
+    "wd_entity": {
+     "n": 33,
+     "share": 0.324
+    },
+    "wd_value": {
+     "n": 14,
+     "share": 0.137
+    },
+    "concepts": {
+     "n": 38,
+     "share": 0.373
+    },
+    "passages": {
+     "n": 17,
+     "share": 0.167
+    },
+    "compute": {
+     "n": 0,
+     "share": 0.0
+    },
+    "none": {
+     "n": 0,
+     "share": 0.0
+    }
+   },
+   "primary_lenient": {
+    "wd_entity": {
+     "n": 37,
+     "share": 0.363
+    },
+    "wd_value": {
+     "n": 14,
+     "share": 0.137
+    },
+    "concepts": {
+     "n": 34,
+     "share": 0.333
+    },
+    "passages": {
+     "n": 17,
+     "share": 0.167
+    },
+    "compute": {
+     "n": 0,
+     "share": 0.0
+    },
+    "none": {
+     "n": 0,
+     "share": 0.0
+    }
+   },
+   "multilabel_strict": {
+    "wd_entity": 33,
+    "wd_value": 14,
+    "concepts": 78,
+    "passages": 101,
+    "compute": 4
+   },
+   "multilabel_with_weak": {
+    "wd_entity": 37,
+    "wd_value": 14,
+    "concepts": 79,
+    "passages": 102,
+    "compute": 8
+   },
+   "labels_per_item_strict": {
+    "1": 16,
+    "2": 45,
+    "3": 40,
+    "4": 1
+   },
+   "wd_reachable_strict": 47,
+   "wd_reachable_with_weak": 51,
+   "wd_subject_only": 51,
+   "wd_no_subject": 0,
+   "non_wd_only_concepts_or_passages": 51,
+   "v3_resolver": {
+    "returned_answer": 23,
+    "correct_any_conf": 21,
+    "accepted_at_threshold": 18,
+    "accepted_and_correct": 17,
+    "returned_wrong": 2,
+    "wd_reachable_strict_but_not_correct": 26,
+    "wd_reachable_strict_but_not_accepted_correct": 30
+   }
+  },
+  "explain": {
+   "n": 59,
+   "primary_strict": {
+    "wd_entity": {
+     "n": 0,
+     "share": 0.0
+    },
+    "wd_value": {
+     "n": 0,
+     "share": 0.0
+    },
+    "concepts": {
+     "n": 17,
+     "share": 0.288
+    },
+    "passages": {
+     "n": 40,
+     "share": 0.678
+    },
+    "compute": {
+     "n": 0,
+     "share": 0.0
+    },
+    "none": {
+     "n": 2,
+     "share": 0.034
+    }
+   },
+   "primary_lenient": {
+    "wd_entity": {
+     "n": 8,
+     "share": 0.136
+    },
+    "wd_value": {
+     "n": 0,
+     "share": 0.0
+    },
+    "concepts": {
+     "n": 25,
+     "share": 0.424
+    },
+    "passages": {
+     "n": 25,
+     "share": 0.424
+    },
+    "compute": {
+     "n": 0,
+     "share": 0.0
+    },
+    "none": {
+     "n": 1,
+     "share": 0.017
+    }
+   },
+   "multilabel_strict": {
+    "wd_entity": 0,
+    "wd_value": 0,
+    "concepts": 17,
+    "passages": 57,
+    "compute": 0
+   },
+   "multilabel_with_weak": {
+    "wd_entity": 8,
+    "wd_value": 0,
+    "concepts": 31,
+    "passages": 58,
+    "compute": 0
+   },
+   "labels_per_item_strict": {
+    "0": 2,
+    "1": 40,
+    "2": 17
+   }
+  }
+ }
+}
