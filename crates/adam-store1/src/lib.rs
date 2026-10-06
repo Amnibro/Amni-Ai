@@ -1,8 +1,9 @@
-use adam_gf17::{hash, lut17, pack17, page17, px17, unpack17, K4, PX};
+use adam_gf17::{hash, lut17, npy, pack17, page17, px17, unpack17, K4, PX};
 use adam_torus::{drow, keyof, layered_by, Table};
 use memmap2::Mmap;
 use rayon::prelude::*;
 use std::{collections::{HashMap, VecDeque}, ffi::{c_char, CStr}, fs::{self, File, OpenOptions}, io, os::unix::fs::FileExt};
+pub mod s2;
 pub const MAGIC: &[u8; 8] = b"GF17S1PG";
 pub const HDR: usize = 4096;
 pub const BLK: usize = 32;
@@ -379,3 +380,19 @@ pub unsafe extern "C" fn s1_qid(s: *const Store, e: u32) -> u32 { (*s).qid(e) }
 pub unsafe extern "C" fn s1_ix(s: *const Store, q: u32) -> i64 { (*s).ix(q) }
 #[no_mangle]
 pub unsafe extern "C" fn s1_pkind(s: *const Store, pn: u16) -> i32 { let st = &*s; st.pidx.get(&pn).map_or(-1, |&p| st.pkind[p] as i32) }
+pub struct V<T> { pub m: Mmap, pub o: usize, pub n: usize, _t: std::marker::PhantomData<T> }
+impl<T: Copy> V<T> { pub fn s(&self) -> &[T] { unsafe { std::slice::from_raw_parts(self.m[self.o..].as_ptr() as *const T, self.n) } } }
+pub fn ld<T: Copy>(d: &str, n: &str) -> io::Result<V<T>> { let (_, sh, m, o) = npy(&format!("{d}/{n}.npy"))?; Ok(V { n: sh.iter().product(), m, o, _t: std::marker::PhantomData }) }
+pub fn raw(p: &str) -> io::Result<Mmap> { unsafe { Mmap::map(&fs::File::open(p)?) } }
+pub fn arg(a: &[String], k: &str, d: &str) -> String { a.iter().position(|x| x == k).and_then(|i| a.get(i + 1)).cloned().unwrap_or(d.into()) }
+pub fn js(kv: &[(&str, String)]) -> String { format!("{{{}}}", kv.iter().map(|(k, v)| format!("\"{k}\":{v}")).collect::<Vec<_>>().join(",")) }
+pub struct W3 { pub fsub: V<u32>, pub qid: V<u32>, pub sl: V<u16>, pub fs: V<u32>, pub fnn: V<u32>, pub lo: V<u64>, pub to: V<u64>, pub fp: V<u16>, pub fr: V<u8>, pub fk: V<u8>, pub fv: V<u64>, pub fx: V<u32>, pub fqo: V<u32>, pub qp: V<u16>, pub qk: V<u8>, pub qv: V<u64>, pub ah: V<u64>, pub ae: V<u32>, pub ak: V<u8>, pub lab: Mmap, pub tit: Mmap, pub st: Mmap }
+pub fn w3(d: &str) -> io::Result<W3> { Ok(W3 { fsub: ld(d, "f_s")?, qid: ld(d, "e_qid")?, sl: ld(d, "e_sl")?, fs: ld(d, "e_fs")?, fnn: ld(d, "e_fn")?, lo: ld(d, "e_lo")?, to: ld(d, "e_to")?, fp: ld(d, "f_p")?, fr: ld(d, "f_r")?, fk: ld(d, "f_k")?, fv: ld(d, "f_v")?, fx: ld(d, "f_x")?, fqo: ld(d, "f_qo")?, qp: ld(d, "q_p")?, qk: ld(d, "q_k")?, qv: ld(d, "q_v")?, ah: ld(d, "a_h")?, ae: ld(d, "a_e")?, ak: ld(d, "a_k")?, lab: raw(&format!("{d}/e_lab.bin"))?, tit: raw(&format!("{d}/e_tit.bin"))?, st: raw(&format!("{d}/str.bin"))? }) }
+pub fn sbytes(w: &W3, v: u64) -> &[u8] { let (o, l) = ((v >> 16) as usize, (v & 0xFFFF) as usize); &w.st[o..o + l] }
+pub fn lab(w: &W3, e: usize) -> &[u8] { &w.lab[w.lo.s()[e] as usize..w.lo.s()[e + 1] as usize] }
+pub fn tit(w: &W3, e: usize) -> &[u8] { &w.tit[w.to.s()[e] as usize..w.to.s()[e + 1] as usize] }
+pub fn tkind(l: &[u8], t: &[u8]) -> (u8, Vec<u8>) { if t.is_empty() { (0, vec![]) } else if t == l { (1, vec![]) } else if t.len() > l.len() + 3 && t.starts_with(l) && &t[l.len()..l.len() + 2] == b" (" && t.ends_with(b")") { (2, t[l.len() + 2..t.len() - 1].to_vec()) } else { (3, t.to_vec()) } }
+pub fn nmenc(p: &str, ne: usize) -> io::Result<Vec<Vec<(u8, Vec<u8>)>>> { let b = fs::read(p)?; let mut i = 0usize; Ok((0..ne).map(|_| { let n = u16::from_le_bytes([b[i], b[i + 1]]) as usize; i += 2; (0..n).map(|_| { let t = b[i]; i += 1; if t == 2 { let l = u16::from_le_bytes([b[i], b[i + 1]]) as usize; i += 2; i += l; (t, b[i - l..i].to_vec()) } else { (t, vec![]) } }).collect() }).collect()) }
+pub fn groups(w: &W3, e: usize) -> Vec<(u16, usize, usize)> { let (a, n) = (w.fs.s()[e] as usize, w.fnn.s()[e] as usize); let p = w.fp.s(); let mut o: Vec<(u16, usize, usize)> = vec![]; (a..a + n).for_each(|i| if o.last().is_some_and(|g| g.0 == p[i]) { o.last_mut().unwrap().2 += 1 } else { o.push((p[i], i, 1)) }); o }
+pub fn qc(w: &W3, i: usize) -> u64 { (w.fqo.s()[i + 1] - w.fqo.s()[i]) as u64 }
+pub fn nb<const R: usize>(p: &str, rows: &[(u64, [u8; 7])], fd: usize) -> io::Result<u64> { let r: Vec<(u64, [u8; R])> = rows.iter().map(|(k, d)| { let mut x = [0u8; R]; x[..7].copy_from_slice(d); (*k, x) }).collect(); Ok(layered_by::<R, [u8; R]>(p, &r, drow::<R>, 64, fd, 65536, -0.03, seed(p), Some((32, [0, 8, 16, 32])), 0.08, None)?.2) }

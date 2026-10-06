@@ -1,0 +1,12 @@
+{
+ "sha256": {
+  "dev": "18bc6d47eed7bc2147d318ee64c0dced632f2f26c8be339d6ac200e20072d82b",
+  "test": "abe975fab4f2e1c02c32185854157df7e21a92971fd950aed921c813dd27cb3f"
+ },
+ "n": {
+  "dev": 268,
+  "test": 275
+ },
+ "seed": 20261017,
+ "locked": "2026-10-06T17:55:43"
+}

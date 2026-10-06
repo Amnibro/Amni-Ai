@@ -10,6 +10,9 @@ crate-type = ["rlib", "cdylib"]
 [[bin]]
 name = "store1"
 path = "src/bin/store1.rs"
+[[bin]]
+name = "store2"
+path = "src/bin/store2.rs"
 [dependencies]
 adam-gf17 = { path = "../adam-gf17", default-features = false }
 adam-torus = { path = "../adam-torus" }

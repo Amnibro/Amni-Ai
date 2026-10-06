@@ -1,0 +1,3 @@
+open 0.19s
+entities done 289.6s
+{"fd":2,"full":true,"entities":11900718,"facts_checked":55062201,"quals_checked":8513727,"parity_groups_mismatch":0,"parity_facts_mismatch":0,"parity_quals_mismatch":0,"parity_labels_mismatch":0,"parity_names_mismatch":0,"parity_strings_mismatch":0,"parity_sitelinks_mismatch":0,"parity_qid_mismatch":0,"parity_ix_mismatch":0,"hot_labels":152520,"parity_hot_mismatch":0,"name_groups":15753155,"parity_ents_mismatch":0,"absent_name_probes":2000000,"absent_name_fp":824,"absent_name_fpr":"4.120e-4","sec":353.4}

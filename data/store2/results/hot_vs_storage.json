@@ -1,0 +1,8 @@
+{
+ "hot_entities_sampled": 3000,
+ "hot_label_ns_median": 1162,
+ "hot_label_ns_p99": 2876,
+ "storage_label_ns_median": 108063,
+ "storage_label_ns_p99": 854287,
+ "note": "same hot entities (sitelinks>=40); block caches cleared before each call; storage = rANS label stream decode of the 32-entity block"
+}
