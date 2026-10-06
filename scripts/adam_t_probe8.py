@@ -12,7 +12,7 @@ def fresh(t:str,src:str)->dict:sw={w[:5] for w in re.findall(r"[a-z]+",src.lower
 def rate(X:list,k:str)->dict:n=len(X);c=sum(bool(x[k]) for x in X);p=c/max(1,n);z=1.96;d=1+z*z/max(1,n);return {"n":n,"k":c,"p":round(p,4),"se":round(math.sqrt(p*(1-p)/max(1,n)),4),"lo95":round((p+z*z/(2*max(1,n))-z*math.sqrt(p*(1-p)/max(1,n)+z*z/(4*max(1,n)**2)))/d,4) if n else 0.0}
 def load(f)->list:return [json.loads(l) for l in open(f) if l.strip()]
 def run(a)->dict:
- A=importlib.import_module("adam_t_eval");M=A.E2E(a.proto_cmd) if a.e2e else A.Proto(a.proto_cmd);G=[];B=[];t0=time.time()
+ A=importlib.import_module("adam_t_eval");M=A.E2E(a.proto_cmd) if a.e2e else A.proto(a.proto_cmd);G=[];B=[];t0=time.time()
  for r in load(P8/"greet_vent_probe.jsonl"):p=M.item(r)["pred"] if a.e2e else M.gen(A.chat_prompt(r),A.MAXB["chat"]);s=A.chat_score(r,p);G.append({**s,"sub":r["sub"],"q":r["q"],"em_fp":bool(A.EMG.OUT.search(p)),"canned":bool(CANNED.search(p))})
  for r in ([] if a.e2e else load(P8/"blend_probe.jsonl")):
   u=" ".join(r["material"]+[r["q"]]);p=M.gen(f"User: {u}\nAdam:",A.MAXB["chat"]);c=A.chat_score({"id":r["id"],"cat":"chat","q":r["q"],"kw":[],"gold":[],"ctx":[]},p);x=next((m.partition(": ")[2] for m in r["material"] if m.startswith(r["title"]+": ")),"");f=fresh(p,u)
