@@ -1,0 +1,77 @@
+{
+ "name": "qwen3_q8_S_measonly",
+ "blender2": {
+  "bake": "/home/anmire/ai/hybrid1/bakes/qwen3_4b_q8g64",
+  "opts": {
+   "sys": "split4",
+   "stream": true,
+   "head": "q8",
+   "embed": "q8",
+   "kv": 8,
+   "chunk": 256
+  },
+  "engine_opts": {
+   "head": "q8",
+   "embed": "q8",
+   "stream": true,
+   "kv": 8,
+   "chunk": 256
+  },
+  "sets": [],
+  "outputs": {},
+  "meas": {
+   "opts": {
+    "head": "q8",
+    "embed": "q8",
+    "stream": true,
+    "kv": 8,
+    "chunk": 256
+   },
+   "after_warmup_proc_vram_GB": 1.006,
+   "kv_cache_GB_at_ctx": 0.1917,
+   "ctx_tokens": 2560,
+   "peak_proc_vram_GB": 1.627,
+   "torch_max_alloc_GB": 1.139,
+   "torch_max_reserved_GB": 1.319,
+   "prefill_tok_s": 689.8,
+   "decode_tok_s": 9.2,
+   "prefill_s": 2.97,
+   "decode_s": 55.64,
+   "host_pinned_GB": 3.86,
+   "bake_manifest_GB": 4.639,
+   "bits": 8,
+   "gs": 64,
+   "fmt": "qgroup-affine-v1",
+   "layers": 36,
+   "hidden": 2560,
+   "vocab": 151936,
+   "tied": true,
+   "layer_types": [
+    "full_attention"
+   ]
+  },
+  "ppl": {
+   "nll": 1.9314,
+   "ppl": 6.899,
+   "tokens": 1535,
+   "through": "engine prefill with the configured cache, chunking and tables"
+  },
+  "proc_vram_peak_GB": {
+   "load": 1.312,
+   "meas": 1.627,
+   "ppl": 1.415
+  },
+  "proc_vram_peak_all_GB": 1.627,
+  "times": {
+   "load_s": 5.2,
+   "meas_s": 60.1,
+   "ppl_s": 1.9
+  },
+  "same_process": true,
+  "alloc_conf_env": "",
+  "torch": "2.14.1+rocm7.2",
+  "hip": "7.2.53211",
+  "python": "3.12.14",
+  "throttle_obeyed_in_scoring": true
+ }
+}
