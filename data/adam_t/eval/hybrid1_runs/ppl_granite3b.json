@@ -1,0 +1,22 @@
+{
+ "granite3b_q8g64": {
+  "nll": 1.8597,
+  "ppl": 6.422,
+  "tokens": 1535
+ },
+ "granite3b_q4g128": {
+  "nll": 2.0092,
+  "ppl": 7.458,
+  "tokens": 1535
+ },
+ "granite3b_q3g64": {
+  "nll": 3.2138,
+  "ppl": 24.875,
+  "tokens": 1535
+ },
+ "granite3b_q2g64": {
+  "nll": 9.6963,
+  "ppl": 16256.933,
+  "tokens": 1535
+ }
+}

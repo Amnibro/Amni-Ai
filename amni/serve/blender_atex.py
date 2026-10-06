@@ -1,5 +1,4 @@
-import os,re,sys,json,glob,time,threading,torch,torch.nn as nn
-from pathlib import Path
+import os,re,json,glob,time,threading,torch,torch.nn as nn
 from safetensors import safe_open
 from accelerate import init_empty_weights
 from transformers import AutoConfig,AutoTokenizer,AutoModelForCausalLM
@@ -49,13 +48,21 @@ class QKV(DynamicLayer):
     def nbytes(s):return sum(t.numel()*t.element_size() for t in (s.S or ()))
 def kvlayer(bits):return type(f'QKV{bits}',(QKV,),{'bits':bits})
 def card():
-    for c in sorted(glob.glob('/sys/class/drm/card[0-9]'),key=lambda p:p):
+    for c in sorted(glob.glob('/sys/class/drm/card[0-9]')):
         try:
             if open(c+'/device/vendor').read().strip()=='0x1002' and int(open(c+'/device/mem_info_vram_total').read())>8<<30:return c+'/device/mem_info_vram_used'
         except OSError:pass
+def proc_vram(pid='self'):
+    d={}
+    for f in glob.glob(f'/proc/{pid}/fdinfo/*'):
+        try:t=open(f).read()
+        except OSError:continue
+        m=re.search(r'drm-client-id:\s*(\d+)',t);v=re.search(r'drm-memory-vram:\s*(\d+) KiB',t)
+        m and v and d.__setitem__(m[1],int(v[1])*1024)
+    return sum(d.values())
 class Vram:
-    def __init__(s):s.f=card();s.pk=0;s.run=False;s.base=s.cur()
-    def cur(s):return int(open(s.f).read()) if s.f else 0
+    def __init__(s,dev=False):s.f=card() if dev else None;s.pk=0;s.run=False;s.base=s.cur()
+    def cur(s):return int(open(s.f).read()) if s.f else proc_vram()
     def start(s):
         s.run=True;s.pk=s.cur();s.t=threading.Thread(target=s._l,daemon=True);s.t.start();return s
     def _l(s):

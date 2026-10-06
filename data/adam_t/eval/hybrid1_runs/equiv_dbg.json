@@ -1,0 +1,56 @@
+{
+ "base": {
+  "opts": {},
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge located over the River Tane in Eastmere County. It supports one lane of traffic."
+ },
+ "stream": {
+  "opts": {
+   "stream": true
+  },
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge located over the River Tane in Eastmere County. It supports one lane of traffic."
+ },
+ "base2": {
+  "opts": {},
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge located over the River Tane in Eastmere County. It supports one lane of traffic."
+ },
+ "chunk256": {
+  "opts": {
+   "chunk": 256
+  },
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge located over the River Tane in Eastmere County. It supports one lane of traffic."
+ },
+ "base3": {
+  "opts": {},
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge located over the River Tane in Eastmere County. It supports one lane of traffic."
+ }
+}

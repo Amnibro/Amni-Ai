@@ -1,0 +1,33 @@
+{
+ "name": "qwen3_4b_q4_tab_q4",
+ "opts": {
+  "head": "q4",
+  "embed": "q4"
+ },
+ "load_s": 2.6,
+ "vram_ctx_overhead_GB": 0.151,
+ "proc_vram_after_ctx_GB": 0.151,
+ "weights_vram_GB": 2.253,
+ "after_warmup_proc_vram_GB": 2.568,
+ "proc_vram_after_load_GB": 2.403,
+ "torch_alloc_after_load_GB": 2.137,
+ "torch_reserved_after_load_GB": 4.041,
+ "kv_cache_GB_at_ctx": 0.3775,
+ "ctx_tokens": 2560,
+ "peak_proc_vram_GB": 4.334,
+ "peak_vram_GB_incl_ctx": 4.334,
+ "peak_vram_GB_excl_ctx": 4.183,
+ "torch_max_alloc_GB": 3.944,
+ "torch_max_reserved_GB": 4.041,
+ "prefill_tok_s": 671.4,
+ "decode_tok_s": 15.38,
+ "prefill_s": 3.05,
+ "decode_s": 33.3,
+ "bake_manifest_GB": 2.709,
+ "bits": 4,
+ "gs": 128,
+ "layers": 36,
+ "hidden": 2560,
+ "vocab": 151936,
+ "tied": true
+}

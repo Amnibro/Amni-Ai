@@ -1,0 +1,57 @@
+{
+ "granite42_3b_q4g128": {
+  "nll": 2.1868,
+  "ppl": 8.906,
+  "tokens": 1535
+ },
+ "granite42_3b_q3g64": {
+  "nll": 3.9367,
+  "ppl": 51.252,
+  "tokens": 1535
+ },
+ "granite42_3b_q2g64": {
+  "nll": 9.8575,
+  "ppl": 19101.68,
+  "tokens": 1535
+ },
+ "minicpm5_2b_q8g64": {
+  "nll": 2.2638,
+  "ppl": 9.62,
+  "tokens": 1535
+ },
+ "minicpm5_2b_q4g128": {
+  "nll": 2.3693,
+  "ppl": 10.69,
+  "tokens": 1535
+ },
+ "minicpm5_2b_q3g64": {
+  "nll": 2.883,
+  "ppl": 17.867,
+  "tokens": 1535
+ },
+ "minicpm5_2b_q2g64": {
+  "nll": 14.6273,
+  "ppl": 2251969.042,
+  "tokens": 1535
+ },
+ "qwen3_4b_q8g64": {
+  "nll": 1.9306,
+  "ppl": 6.894,
+  "tokens": 1535
+ },
+ "qwen3_4b_q4g128": {
+  "nll": 2.0057,
+  "ppl": 7.431,
+  "tokens": 1535
+ },
+ "qwen3_4b_q3g64": {
+  "nll": 2.1307,
+  "ppl": 8.421,
+  "tokens": 1535
+ },
+ "qwen3_4b_q2g64": {
+  "nll": 6.1635,
+  "ppl": 475.106,
+  "tokens": 1535
+ }
+}
