@@ -1,4 +1,4 @@
-import os,sys,json,numpy as np
+import os,json,numpy as np
 ROOT=os.environ.get("AMNI_ROOT","/home/anmire/ai/Amni-Ai");TA=os.path.join(ROOT,"data","torus","a2b");TC=os.path.join(ROOT,"data","torus","c");SEED=6029;NSC=10
 def main():
  d=np.load(os.path.join(TA,"a2b_data.npz"),allow_pickle=True);H,T,R,SPo=d["h"],d["t"],d["r"].astype(np.int64),d["split"];N=len(d["names"]);rels=[str(x) for x in d["rels"]];NL=len(rels);rng=np.random.default_rng(SEED)

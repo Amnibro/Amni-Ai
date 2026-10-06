@@ -1,4 +1,4 @@
-import os,sys,json,argparse,numpy as np
+import os,json,argparse,numpy as np
 ROOT=os.environ.get("AMNI_ROOT","/home/anmire/ai/Amni-Ai");TC=os.path.join(ROOT,"data","torus","c");NRT=24
 def build(H,T,src,SPL,K,coarse=None,NRT=NRT):
  N=len(src);tr=SPL==0;eh,et=H[tr],T[tr];din=np.bincount(et,minlength=N);dout=np.bincount(eh,minlength=N);dd=np.full(N,3,np.int64);dd[(dout==0)&(din>0)]=0
