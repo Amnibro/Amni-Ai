@@ -4,12 +4,11 @@ import torus_solve as TS
 import torus_c_seed as SD
 Sa=TS.Sa;log=TS.log;X17=TS.X17
 ap=argparse.ArgumentParser()
-for k,v in dict(tag="k32",model="",split="dev",clu="m1",K=0,tori=8,seed=17,ctl=0,final=0,nq=20000,nneg=99,npos=300000,B=8,comp=0,a2b=0,export=0,out="",ksub=400000,kit=10,novel=0,dir="b",dset="a2b_data.npz",Bp=4,seedk=32,xcell=0).items():ap.add_argument("--"+k,type=type(v),default=v)
+for k,v in dict(tag="k32",model="",split="dev",clu="m1",K=0,tori=8,seed=17,ctl=0,final=0,nq=20000,nneg=99,npos=300000,B=8,comp=0,a2b=0,export=0,out="",ksub=400000,kit=10,novel=0,dir="b",dset="a2b_data.npz",Bp=4,seedk=32,seedf="",lutk=1).items():ap.add_argument("--"+k,type=type(v),default=v)
 A=ap.parse_known_args()[0];TD=os.path.join(TS.ROOT,"data","torus",A.dir)
 ti.init(arch=ti.cpu,cpu_max_num_threads=3,default_ip=ti.i32,offline_cache=False,log_level=ti.ERROR)
 Sf=ti.field(ti.i32,shape=17);Sf.from_numpy(Sa.astype(np.int32));CH=400000
-cx=np.where(X17<=8,X17,X17-17);CX,CY=np.meshgrid(cx,cx,indexing="ij");SECT=(np.floor(16*(np.arctan2(CY,CX)+np.pi)/(2*np.pi)).astype(np.int64)%16);SECT[0,0]=16
-sd_=np.minimum(np.abs(np.arange(17)[:,None]-np.arange(17)[None,:]),16-np.abs(np.arange(17)[:,None]-np.arange(17)[None,:]));SLa=np.where((np.arange(17)[:,None]==16)|(np.arange(17)[None,:]==16),16*(np.arange(17)[:,None]==np.arange(17)[None,:]),np.array([16,10,4,1,0,0,0,0,0])[np.minimum(sd_,8)]).astype(np.int32);SLc=Sa[(X17[:,None]-X17[None,:])%17].astype(np.int32)
+SECT,SLa=TS.SECT,TS.SLa;SLc=Sa[(X17[:,None]-X17[None,:])%17].astype(np.int32)
 @ti.kernel
 def ksc(X:ti.types.ndarray(),eh:ti.types.ndarray(),et:ti.types.ndarray(),T:ti.types.ndarray(),du:ti.i32,bk:ti.types.ndarray(),bs:ti.types.ndarray(),d0:ti.i32,SL:ti.types.ndarray()):
  for e in range(bk.shape[0]):
@@ -26,13 +25,13 @@ def csc(X:ti.types.ndarray(),land:ti.types.ndarray(),cand:ti.types.ndarray(),out
   for d in range(land.shape[1]):s+=Sf[(land[q,d]-X[cand[c],d]+17)%17]
   out[q,c]=s
 d=np.load(os.path.join(TD,A.dset),allow_pickle=True);H,T,R,SPL,src,names=d["h"],d["t"],d["r"].astype(np.int64),d["split"],d["src"].astype(np.int64),d["names"];N=len(src);rels=[str(x) for x in d["rels"]];NL=len(rels);NS=10;AS=[0,1,2,6,7,8,9]
-Mf=np.load(os.path.join(TD,f"torus_{A.model or A.tag}.npz"));X=Mf["X"].astype(np.int32);D=X.shape[1];P0=int(Mf["psub"]) if "psub" in Mf.files else 0;NK=Mf["TF"].shape[0]-1;K=A.K or NK;DU=min(D-P0,8*A.tori);T1=np.ascontiguousarray(Mf["TF"][:NK,P0:P0+DU]).astype(np.int32);tt=lambda P,ang:np.repeat(P[:,:,None],17,2).astype(np.int32) if ang else ((X17[None,None,:]+P[:,:,None])%17).astype(np.int32)
-tr=SPL==0;eh0,et0,Rt=H[tr].copy(),T[tr].copy(),R[tr];fl=Mf["orient_flip"] if "orient_flip" in Mf.files else np.zeros(0,np.int64);eh0[fl],et0[fl]=et0[fl].copy(),eh0[fl].copy()
+Mf=np.load(os.path.join(TD,f"torus_{A.model or A.tag}.npz"));X=Mf["X"].astype(np.int32);D=X.shape[1];P0=int(Mf["psub"]) if "psub" in Mf else 0;Mf={k:Mf[k] for k in Mf.files};Mf.setdefault("phi",np.zeros(0));NK=Mf["TF"].shape[0]-1;K=A.K or NK;DU=min(D-P0,8*A.tori);T1=np.ascontiguousarray(Mf["TF"][:NK,P0:P0+DU]).astype(np.int32);tt=lambda P,ang:np.repeat(P[:,:,None],17,2).astype(np.int32) if ang else ((X17[None,None,:]+P[:,:,None])%17).astype(np.int32)
+tr=SPL==0;eh0,et0,Rt=H[tr].copy(),T[tr].copy(),R[tr];fl=Mf["orient_flip"] if "orient_flip" in Mf else np.zeros(0,np.int64);eh0[fl],et0[fl]=et0[fl].copy(),eh0[fl].copy()
 deg=np.bincount(np.concatenate([eh0,et0]),minlength=N);bn=np.floor(np.log2(1+deg)).astype(np.int64)
 mkk=lambda h,t:np.unique(np.concatenate([h*N+t,t*N+h]))
 KN_ALL,KN_TR=mkk(H,T),mkk(eh0,et0)
 isk=lambda kn,a,b:(lambda k:(kn[np.minimum(np.searchsorted(kn,k),len(kn)-1)]==k))(a*N+b)
-SDm=dict(np.load(os.path.join(TD,f"seed_K{A.seedk}.npz"))) if A.clu=="seed" else None
+SDm=dict(np.load(os.path.join(TD,A.seedf or f"seed_K{A.seedk}.npz"))) if A.clu=="seed" else None
 W=50
 ORD={}
 def order(mode):
@@ -89,16 +88,17 @@ def fit(kind,Xm,rng,Kc,du):
  if kind in ("seed","cell"):return dict(kind=kind,K=int(SDm["table"].max()+1) if kind=="seed" else len(cellmap()[1])+1,du=0)
  if kind=="m1":return dict(kind="m1",T=np.ascontiguousarray(T1[:,:du]),du=du,K=NK)
  if kind=="m2":return dict(kind="m2",T=tt(kmodes(Xm,rng,Kc,du,A.kit,0),0),du=du,K=Kc)
- if kind=="a1":j=du//2;P0c=codes(T1[:,:du,0].astype(np.int64)).astype(np.int32);return dict(kind="a1",T=tt(kmodes(Xm,rng,NK,du,A.kit,1,P0c),1),du=j,nd=du,K=NK,ang=1)
+ if kind=="a2":j=du//2;ix_=rng.choice(len(eh0),Kc,replace=False);P0c=codes(rays(Xm,eh0[ix_],et0[ix_],du)).astype(np.int32);return dict(kind="a1",T=tt(kmodes(Xm,rng,Kc,du,A.kit,1,P0c),1),du=j,nd=du,K=Kc,ang=1)
+ if kind in ("a1","a0"):j=du//2;P0c=Mf["phi"][:,:j].astype(np.int32) if len(Mf["phi"]) else codes(T1[:,:du,0].astype(np.int64)).astype(np.int32);return dict(kind="a1",T=tt(kmodes(Xm,rng,NK,du,A.kit,1,P0c) if kind=="a1" else P0c,1),du=j,nd=du,K=NK,ang=1)
  sub=rng.choice(len(eh0),min(len(eh0),A.ksub),replace=False);r=rays(Xm,eh0[sub],et0[sub],8);c=np.where(np.minimum(r,17-r)<=1,0,np.where(r<=8,1,2));cd=(c*3**np.arange(8)).sum(1);u,n=np.unique(cd,return_counts=True);top=u[np.argsort(-n,kind="stable")[:Kc]];return dict(kind="m3",cent=np.stack([(top//3**j)%3 for j in range(8)],1),du=8,K=len(top))
 def dfit(k,s,p,kn,sn,pn,Kc,B,Bp):
- th=np.zeros((Kc,B-1),np.int64)
+ k,kn,Kc=k*A.lutk,kn*A.lutk,Kc if A.lutk else 1;th=np.zeros((Kc,B-1),np.int64)
  for c in range(Kc):
   m=s[k==c];th[c]=np.quantile(m,np.arange(1,B)/B,method="lower") if len(m)>=B else 0
  tp_=np.quantile(p,np.arange(1,Bp)/Bp,method="lower").astype(np.int64) if Bp>1 and P0 else np.zeros(0,np.int64);Bq=Bp if (Bp>1 and P0) else 1
  bk=lambda k_,s_,p_:(k_*B+(s_[:,None]>=th[k_]).sum(1))*Bq+(p_[:,None]>=tp_[None,:]).sum(1)
  cp,cn=np.bincount(bk(k,s,p),minlength=Kc*B*Bq),np.bincount(bk(kn,sn,pn),minlength=Kc*B*Bq);return (th,tp_),np.round(288*(cp+1)/(cp+cn+2)).astype(np.int64),(B,Bq)
-dap=lambda L,k,s,p:L[1][(k*L[2][0]+(s[:,None]>=L[0][0][k]).sum(1))*L[2][1]+(p[:,None]>=L[0][1][None,:]).sum(1)]/288
+dap=lambda L,k,s,p:L[1][(k*A.lutk*L[2][0]+(s[:,None]>=L[0][0][k*A.lutk]).sum(1))*L[2][1]+(p[:,None]>=L[0][1][None,:]).sum(1)]/288
 def hitsq(pt,pn):return np.clip((10-(pn>pt[:,None]).sum(1))/((pn==pt[:,None]).sum(1)+1),0,1)
 def rnmi(c,l,m,minn=200):
  um,mi_=np.unique(m,return_inverse=True);cu=np.unique(c,return_inverse=True)[1];lu=np.unique(l,return_inverse=True)[1];nm_,nc_,nl_=len(um),cu.max()+1,lu.max()+1;J=np.bincount((mi_.astype(np.int64)*nc_+cu)*nl_+lu,minlength=nm_*nc_*nl_).reshape(nm_,nc_,nl_).astype(np.float64);n=J.sum();Hs=lambda P:-float((P[P>0]*np.log(P[P>0])).sum());cmi=hc=hl=sn=sw=0.0

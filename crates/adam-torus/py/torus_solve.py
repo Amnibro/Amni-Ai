@@ -2,10 +2,12 @@ import os,time,json,argparse,numpy as np,taichi as ti
 from collections import defaultdict
 ROOT=os.environ.get("AMNI_ROOT","/home/anmire/ai/Amni-Ai");TD0=os.path.join(ROOT,"data","torus")
 ap=argparse.ArgumentParser()
-for k,v in dict(mode="dev",D=64,Ds=-1,sweeps=30,S="lin",lam=16,rho=500,wrel=1,seed=17,tag="run",nq=2000,tau="64",recall=1,a3=0,save=0,threads=3,fit=0,lift=1,tm="lut",sphere=0,cav=1,warm=0,prior=0,bidir=0,data="a2_data.npz",sph="",mix=1,bounce="",bk=4,bw=0,lvl=0,calib=0,load="",ebins=10,export=0,pw="",unlab=0,em=2,orient=0,ge=1,tan=0,bal=0,rsd=50,sib=0,oracle=0,psub=0,seedf="",seedfix=0,sibrel=0,gerel=0,rstart=0,xprox="").items():ap.add_argument("--"+k,type=type(v),default=v)
+for k,v in dict(mode="dev",D=64,Ds=-1,sweeps=30,S="lin",lam=16,rho=500,wrel=1,seed=17,tag="run",nq=2000,tau="64",recall=1,a3=0,save=0,threads=3,fit=0,lift=1,tm="lut",sphere=0,cav=1,warm=0,prior=0,bidir=0,data="a2_data.npz",sph="",mix=1,bounce="",bk=4,bw=0,lvl=0,calib=0,load="",ebins=10,export=0,pw="",unlab=0,em=2,orient=0,ge=1,tan=0,bal=0,rsd=50,sib=0,oracle=0,rnoe=0,rolen=0,rolef="seed_K32.npz",psub=0,seedf="",seedfix=0,sibrel=0,gerel=0,rstart=0,xprox="",ro="trans").items():ap.add_argument("--"+k,type=type(v),default=v)
 A=ap.parse_known_args()[0];D=A.D;DS=D if A.Ds<0 else A.Ds;HY=DS<D;TD=os.path.dirname(os.path.join(TD0,A.data));SPHP=A.sph or os.path.join(TD,"sphere_noleak.npz");KM=A.mix;MK=17**KM;P17=[1,17,289][:KM];TAU=float(A.tau);PW=[int(x) for x in A.pw.split(",")] if A.pw else []
-assert A.psub==0 or (A.unlab and A.Ds<0 and KM==1 and A.bidir==0);assert KM==1 or (A.bidir==0 and A.tm=="lut" and DS%4==0 and D%4==0)
+assert A.ro=="trans" or (A.psub>0 and A.psub%2==0 and A.unlab);assert A.psub==0 or (A.unlab and A.Ds<0 and KM==1 and A.bidir==0);assert KM==1 or (A.bidir==0 and A.tm=="lut" and DS%4==0 and D%4==0)
 SP={"lin":[8-min(v,17-v) for v in range(17)],"sharp":[[16,9,4,1,0,0,0,0,0][min(v,17-v)] for v in range(17)],"mid":[[12,10,7,4,2,1,0,0,0][min(v,17-v)] for v in range(17)]}[A.S];Sa=np.array(SP,np.int64)
+cx_=np.where(np.arange(17)<=8,np.arange(17),np.arange(17)-17);SECT=(np.floor(16*(np.arctan2(cx_[None,:],cx_[:,None])+np.pi)/(2*np.pi)).astype(np.int64)%16);SECT[0,0]=16
+sd_=np.minimum(np.abs(np.arange(17)[:,None]-np.arange(17)[None,:]),16-np.abs(np.arange(17)[:,None]-np.arange(17)[None,:]));SLa=np.where((np.arange(17)[:,None]==16)|(np.arange(17)[None,:]==16),16*(np.arange(17)[:,None]==np.arange(17)[None,:]),np.array([16,10,4,1,0,0,0,0,0])[np.minimum(sd_,8)]).astype(np.int32)
 COMP=[("c1 P19>P17",6,7),("c2 P19>P131",6,8),("c3 hyp>hyp",0,0),("c4 P171>P171",9,9)]
 X17=np.arange(17)
 def log(*a):print(*a,flush=True)
@@ -89,7 +91,12 @@ def main():
   rs_=np.random.default_rng(A.seed+55);sb=[]
   for a_,b_ in ((H[tr],T[tr]),(T[tr],H[tr])):o_=np.lexsort((rs_.random(len(a_)),b_));aa,bb=a_[o_],b_[o_];m_=bb[1:]==bb[:-1];sb.append(np.stack([aa[:-1][m_],aa[1:][m_]],1))
   sb=np.sort(np.concatenate(sb),1);sb=np.unique(sb[sb[:,0]!=sb[:,1]],axis=0);sb=sb[~np.isin(sb[:,0]*N+sb[:,1],hk)];ge=np.unique(np.concatenate([ge,sb]),axis=0);log("sibling_edges",len(sb))
- gk=ge[:,0]*N+ge[:,1];gtag=np.isin(gk,ge0[:,0]*N+ge0[:,1]).astype(np.int64)+2*np.isin(gk,sb[:,0]*N+sb[:,1]);RS=np.arange(nT+len(ge)) if not A.psub else np.concatenate([np.arange(nT),nT+np.nonzero((gtag&(A.gerel+2*A.sibrel))>0)[0]]);RL=A.psub
+ rolee=np.zeros((0,2),np.int64)
+ if A.rolen:
+  rl_=np.load(os.path.join(TD,A.rolef))["role"].astype(np.int64);rg_=np.random.default_rng(A.seed+88);ok_=np.nonzero(rl_>=0)[0];o_=ok_[np.argsort(rl_[ok_],kind="stable")];rs0=np.searchsorted(rl_[o_],np.arange(rl_.max()+1));rc_=np.bincount(rl_[ok_],minlength=rl_.max()+1);pr_=[]
+  for _ in range(A.rolen):j_=rs0[rl_[ok_]]+(rg_.random(len(ok_))*rc_[rl_[ok_]]).astype(np.int64);pr_.append(np.stack([ok_,o_[j_]],1))
+  rolee=np.sort(np.concatenate(pr_),1);rolee=np.unique(rolee[rolee[:,0]!=rolee[:,1]],axis=0);rolee=rolee[~np.isin(rolee[:,0]*N+rolee[:,1],hk)];ge=np.unique(np.concatenate([ge,rolee]),axis=0);log("role_edges",len(rolee))
+ gk=ge[:,0]*N+ge[:,1];gtag=np.isin(gk,ge0[:,0]*N+ge0[:,1]).astype(np.int64)+2*np.isin(gk,sb[:,0]*N+sb[:,1])+4*np.isin(gk,rolee[:,0]*N+rolee[:,1]);RS=np.arange(nT+len(ge)) if not A.psub else np.concatenate([np.arange(nT)[:0 if A.rnoe else nT],nT+np.nonzero((gtag&(A.gerel+2*A.sibrel+4*int(A.rolen>0)))>0)[0]]);PS=np.concatenate([np.arange(nT),nT+np.nonzero(gtag!=4)[0]]);RL=A.psub
  gh,gt,trr=np.concatenate([H[tr],ge[:,0]]+([T[tr]] if A.bidir else [])),np.concatenate([T[tr],ge[:,1]]+([H[tr]] if A.bidir else [])),np.concatenate([np.zeros(nT,np.int64) if A.unlab else R[tr].astype(np.int64),np.full(len(ge),REL)]+([R[tr].astype(np.int64)+NF+1] if A.bidir else []))
  fl=np.nonzero(np.random.default_rng(A.seed+77).random(nT)<0.5)[0] if A.orient else np.zeros(0,np.int64);gh[fl],gt[fl]=gt[fl].copy(),gh[fl].copy()
  log(f"mode={A.mode} data={A.data} D={D} Ds={DS} S={A.S} tm={A.tm} mix={KM} bounce={A.bounce}/{A.bk}/{A.bw} lvl={A.lvl} calib={A.calib} load={A.load} bidir={A.bidir} prior={A.prior} cav={A.cav} warm={A.warm} sweeps={A.sweeps} lam={A.lam} rho={A.rho} wrel={A.wrel} lift={A.lift} train_facts={int(tr.sum())} related_edges={len(ge)} eval={int(ev.sum())}")
@@ -103,6 +110,7 @@ def main():
   for k in range(3):m=trow[k]>=0;X0[trow[k][m]]=X0[np.nonzero(m)[0]]
  ti.init(arch=ti.cpu,cpu_max_num_threads=A.threads,random_seed=A.seed,default_ip=ti.i32,offline_cache=False,log_level=ti.ERROR)
  X=ti.field(ti.i32,shape=(NR,D));Xn=ti.field(ti.i32,shape=(NR,D));TF=ti.field(ti.i32,shape=(NREL,D,MK));Sf=ti.field(ti.i32,shape=17);Wf=ti.field(ti.i32,shape=NREL)
+ JA=max((D-A.psub)//2,1);PHI=ti.field(ti.i32,shape=(max(NK,1),JA));CAVH=ti.field(ti.i64,shape=(max(NK,1),JA,17,17));CAVT=ti.field(ti.i64,shape=(max(NK,1),JA,17,17));SECTf=ti.field(ti.i32,shape=(17,17));SLaf=ti.field(ti.i32,shape=(17,17));SECTf.from_numpy(SECT.astype(np.int32));SLaf.from_numpy(SLa)
  PCC=ti.field(ti.i64,shape=(NREL,D,17));NGT=ti.field(ti.i64,shape=(NREL,D,17));ID=np.tile(np.arange(MK)%17,(NREL,D,1)).astype(np.int32)
  A.xprox and X0.__setitem__((slice(None),slice(0,A.psub)),np.load(os.path.join(TD,f"torus_{A.xprox}.npz"))["X"][:,:A.psub].astype(np.int32));X.from_numpy(X0);Sf.from_numpy(Sa.astype(np.int32));Wf.from_numpy(np.array([A.wrel if r==REL else 1 for r in range(NREL)],np.int32));TFa=ID.copy()
  @ti.kernel
@@ -114,12 +122,23 @@ def main():
     for dd in range(d0,D):s+=Sf[(TF[k,dd,X[eh[e],dd]]-X[et[e],dd]+17)%17]
     if s>bs:bs=s;bi=k
    out[e]=bi;bsc[e]=bs
+ @ti.kernel
+ def estepa(eh:ti.types.ndarray(),et:ti.types.ndarray(),pen:ti.types.ndarray(),out:ti.types.ndarray(),bsc:ti.types.ndarray()):
+  for e in range(out.shape[0]):
+   bs=-1000000;bi=0
+   for k in range(NK):
+    s=-pen[k]
+    for j in range(JA):s+=SLaf[PHI[k,j],SECTf[(X[et[e],A.psub+2*j]-X[eh[e],A.psub+2*j]+17)%17,(X[et[e],A.psub+2*j+1]-X[eh[e],A.psub+2*j+1]+17)%17]]
+    if s>bs:bs=s;bi=k
+   out[e]=bi;bsc[e]=bs
  penv=np.zeros(NK)
  def assign(Xa,TFa,sz):
-  TF.from_numpy(TFa);o=np.zeros(nT,np.int64);b=np.zeros(nT,np.int32);penv[:]=np.maximum(penv+A.bal*np.clip(sz/(nT/NK)-1,-1,4),0) if sz.sum()>0 else penv;estep(np.ascontiguousarray(gh[:nT]),np.ascontiguousarray(gt[:nT]),np.round(penv).astype(np.int32),o,b,A.psub);return o,b
+  TF.from_numpy(TFa);o=np.zeros(nT,np.int64);b=np.zeros(nT,np.int32);penv[:]=np.maximum(penv+A.bal*np.clip(sz/(nT/NK)-1,-1,4),0) if sz.sum()>0 else penv;pe=np.round(penv).astype(np.int32);gq_,gr_=np.ascontiguousarray(gh[:nT]),np.ascontiguousarray(gt[:nT]);estepa(gq_,gr_,pe,o,b) if A.ro=="ang" else estep(gq_,gr_,pe,o,b,A.psub);return o,b
  kp0=lambda Xa,ix:(X17[None,None,:]+np.concatenate([np.zeros((NK,A.psub),np.int32),kpp(((Xa[gt[ix]]-Xa[gh[ix]])%17)[:,A.psub:].astype(np.int32),NK,rr_,Sa)],1)[:,:,None])%17
+ def codesE(Xa,h,t):r=(Xa[t][:,A.psub:]-Xa[h][:,A.psub:])%17;return SECT[r[:,0::2],r[:,1::2]]
+ phi=np.zeros(0,np.int32)
  if A.unlab:
-  rr_=np.random.default_rng(A.seed+3);sm_=rr_.choice(nT,min(nT,30000),replace=False);TFa[:NK]=kp0(X0,sm_)
+  rr_=np.random.default_rng(A.seed+3);sm_=rr_.choice(nT,min(nT,30000),replace=False);TFa[:NK]=kp0(X0,sm_);A.ro=="ang" and PHI.from_numpy(codesE(X0,gh[sm_[:NK]],gt[sm_[:NK]]).astype(np.int32));phi=PHI.to_numpy() if A.ro=="ang" else phi
  TF.from_numpy(TFa)
  groups=[]
  def mk(e_h,e_t,rel,lo,hi,sl=-1):
@@ -134,7 +153,7 @@ def main():
  unl=lambda Xa,TFa,s_:(lambda o,b:(trr.__setitem__(slice(0,nT),o),mk(gh[RS],gt[RS],trr[RS],RL,DS,int(A.psub>0)),o,b)[2:])(*assign(Xa,TFa,np.bincount(trr[:nT],minlength=NK)))
  asg=None
  if A.unlab:asg,_=assign(X0,TFa,np.zeros(NK));asg=R[tr].astype(np.int64) if A.oracle else asg;asg=np.load(os.path.join(TD,A.seedf))["seed"].astype(np.int64) if A.seedf else asg;assert len(asg)==nT and asg.max()<NK;trr[:nT]=asg
- A.psub and mk(gh,gt,np.full(len(gh),REL),0,A.psub)
+ A.psub and mk(gh[PS],gt[PS],np.full(len(PS),REL),0,A.psub)
  mk(gh[RS],gt[RS],trr[RS],RL,DS)
  if HY:mk(np.concatenate([trow[k][gh[ty==k]] for k in range(3)]),np.concatenate([trow[k][gt[ty==k]] for k in range(3)]),np.concatenate([trr[ty==k] for k in range(3)]),DS,D)
  @ti.kernel
@@ -171,6 +190,35 @@ def main():
      if g[v]>bg:bg=g[v];bv=v
     Xn[e,d]=bv
  @ti.kernel
+ def icma(p:ti.template(),o:ti.template(),rr:ti.template(),rl:ti.template(),cv:ti.template(),rp:ti.template(),rc:ti.template(),rh:ti.template(),rw:ti.template(),d0:ti.i32,d1:ti.i32,lam:ti.i64,rho:ti.i32,seed:ti.i32):
+  for e,dd in ti.ndrange(NR,d1-d0):
+   d=d0+dd;hsh=(ti.cast(e,ti.u32)*ti.u32(2654435761)+ti.cast(d,ti.u32)*ti.u32(40503)+ti.cast(seed,ti.u32)*ti.u32(2246822519))>>ti.u32(7)
+   Xn[e,d]=X[e,d]
+   if ti.cast(hsh%ti.u32(1000),ti.i32)<rho and p[e+1]>p[e]:
+    g=ti.Vector.zero(ti.i64,17);xe=X[e,d];pd=d^1;j=dd//2;ev=1-(d%2)
+    for k in range(p[e],p[e+1]):
+     q=o[k];r=rr[k];w=ti.cast(Wf[r]*cv[q],ti.i64)
+     for v in ti.static(range(17)):
+      if r==REL:g[v]+=w*Sf[(X[q,d]-v+17)%17]
+      else:
+       dt=(v-X[q,d]+17)%17;dp=(X[e,pd]-X[q,pd]+17)%17
+       if rl[k]==0:dt=(X[q,d]-v+17)%17;dp=(X[q,pd]-X[e,pd]+17)%17
+       g[v]+=w*SLaf[PHI[r,j],SECTf[dp if ev==0 else dt,dt if ev==0 else dp]]
+    for k in range(rp[e],rp[e+1]):
+     r=rc[k];a=ti.cast(rh[k],ti.i64)*16;b=ti.cast(rw[k],ti.i64)
+     for v in ti.static(range(17)):
+      if r==REL:g[v]-=lam*(a*PCC[r,d,v]+b*NGT[r,d,v])//256
+      else:
+       cx=v if ev==1 else X[e,pd];cy=X[e,pd] if ev==1 else v
+       g[v]-=lam*(a*CAVH[r,j,cx,cy]+b*CAVT[r,j,cx,cy])//256
+    cur=X[e,d];bg=g[0]
+    for v in ti.static(range(17)):
+     if v==cur:bg=g[v]
+    bv=cur
+    for v in ti.static(range(17)):
+     if g[v]>bg:bg=g[v];bv=v
+    Xn[e,d]=bv
+ @ti.kernel
  def cp():
   for e,dd in X:X[e,dd]=Xn[e,dd]
  def ends(r):
@@ -189,9 +237,20 @@ def main():
     elif A.tm=="trans":b=np.stack([G[:,X17,(X17+bb)%17].sum(1) for bb in range(17)],1).argmax(1);T[r,lo:hi]=(X17[None,:]+b[:,None])%17
     else:sc=np.stack([np.stack([G[:,X17,(aa*X17+bb)%17].sum(1) for bb in range(17)],1) for aa in range(17)],1).reshape(nd,289).argmax(1);T[r,lo:hi]=((sc//17)[:,None]*X17[None,:]+(sc%17)[:,None])%17
   return T
+ def fitPhi(Xa):
+  c=codesE(Xa,gh[:nT],gt[:nT]);k=trr[:nT];hist=np.bincount(((k[:,None]*JA+np.arange(JA)[None,:])*17+c).ravel(),minlength=NK*JA*17).reshape(NK,JA,17).astype(np.float64);return np.stack([(hist*SLa[y][None,None,:]).sum(-1) for y in range(17)],-1).argmax(2).astype(np.int32)
+ def updCav(Xa,phi):
+  Ht=np.zeros((NK,JA,17,17));Hh=np.zeros((NK,JA,17,17));k=trr[:nT];h,t=gh[:nT],gt[:nT]
+  for nm_,H_,e_ in (("t",Ht,t),("h",Hh,h)):
+   cx_=Xa[e_][:,A.psub:][:,0::2];cy_=Xa[e_][:,A.psub:][:,1::2];H_.reshape(-1)[:]=np.bincount((((k[:,None]*JA+np.arange(JA)[None,:])*17+cx_)*17+cy_).ravel(),minlength=NK*JA*289).astype(np.float64);H_/=np.maximum(H_.sum((2,3),keepdims=True),1)
+  Kp=SLa[phi[:,:,None,None],SECT[None,None,:,:]].astype(np.float64);ch=np.zeros((NK,JA,17,17));ct=np.zeros((NK,JA,17,17))
+  for ex in range(17):
+   for ey in range(17):ix=(X17-ex)%17;iy=(X17-ey)%17;ch[:,:,ex,ey]=(Ht*Kp[:,:,ix[:,None],iy[None,:]]).sum((2,3));ct[:,:,ex,ey]=(Hh*Kp[:,:,((ex-X17)%17)[:,None],((ey-X17)%17)[None,:]]).sum((2,3))
+  CAVH.from_numpy(np.round(256*ch).astype(np.int64));CAVT.from_numpy(np.round(256*ct).astype(np.int64))
  def updNG(Xa,T):
   pcc=np.zeros((NREL,D,17),np.int64);ngt=np.zeros((NREL,D,17),np.int64)
   for r in range(NREL):
+   if A.ro=="ang" and r!=REL:continue
    for h,t,lo,hi in ends(r) if r!=REL else ([(gh,gt,0,A.psub),(gh[RS][trr[RS]==r],gt[RS][trr[RS]==r],A.psub,DS)] if A.psub else [(gh[trr==r],gt[trr==r],0,DS)]+([(trow[0][gh[trr==r]],trow[0][gt[trr==r]],DS,D)] if HY else [])):
     nd=hi-lo;c=np.unique(t) if r!=REL else np.unique(np.concatenate([h,t]));pc=np.stack([np.bincount(Xa[c,lo+j],minlength=17) for j in range(nd)])/max(len(c),1)
     lnd=T[r][np.arange(lo,hi)[None,:],ixf(Xa,h,lo,hi)];la=np.stack([np.bincount(lnd[:,j],minlength=17) for j in range(nd)])/max(len(h),1)
@@ -206,17 +265,23 @@ def main():
    if A.unlab and A.warm>0 and s==A.warm and not A.oracle and not A.psub and not A.seedf:sm_=rr_.choice(nT,min(nT,30000),replace=False);TFa[:NK]=kp0(Xa,sm_)
    if A.unlab and s>=W0+(A.seedfix if A.seedf else 0) and s%A.em==0 and not(A.oracle and s==0):
     asg,bs_=unl(Xa,TFa,s);sz=np.bincount(asg,minlength=NK);dead=np.nonzero(sz<max(A.rsd,0.02*nT/NK))[0]
-   TFa=fitT(Xa) if s>=W0 else ID.copy()
-   if len(dead):w_=np.argpartition(bs_,len(dead))[:len(dead)];TFa[dead]=(X17[None,None,:]+(((Xa[gt[w_]]-Xa[gh[w_]])%17)*(np.arange(D)[None,:]>=A.psub))[:,:,None])%17
+   TFa=fitT(Xa) if (s>=W0 and A.ro!="ang") else ID.copy()
+   if len(dead):w_=np.argpartition(bs_,len(dead))[:len(dead)];A.ro=="ang" or TFa.__setitem__(dead,(X17[None,None,:]+(((Xa[gt[w_]]-Xa[gh[w_]])%17)*(np.arange(D)[None,:]>=A.psub))[:,:,None])%17)
+   if A.ro=="ang":
+    phi=fitPhi(Xa) if s>=W0 else phi
+    len(dead) and phi.__setitem__(dead,codesE(Xa,gh[w_],gt[w_]))
+    PHI.from_numpy(phi);updCav(Xa,phi)
    TF.from_numpy(TFa);updNG(Xa,TFa)
-   for gi,(f,g,lo,hi) in enumerate(groups):(A.psub and ((gi==0 and A.xprox) or (gi==1 and s<W0))) or icm(*f,*g,lo,hi,A.lam,A.rho,A.seed*1000+s)
+   Xn.copy_from(X)
+   for gi,(f,g,lo,hi) in enumerate(groups):(A.psub and ((gi==0 and A.xprox) or (gi==1 and s<W0))) or (icma if (A.ro=="ang" and gi==1) else icm)(*f,*g,lo,hi,A.lam,A.rho,A.seed*1000+s)
    cp();ch=int((X.to_numpy()!=Xa).sum());(s%5==4 or s==0) and log(f"sweep {s+1}/{A.sweeps} changed={ch} ({ch/(NR*D):.4f}) t={time.time()-t0:.0f}s"+(f" nmi_train={nmi(asg,R[tr])[0]:.4f} purity={nmi(asg,R[tr])[1]:.3f} clusters_used={int((np.bincount(asg,minlength=NK)>0).sum())} max_share={np.bincount(asg,minlength=NK).max()/nT:.3f}" if A.unlab else ""))
-  TFa=fitT(X.to_numpy().astype(np.int32))
+  TFa=fitT(X.to_numpy().astype(np.int32)) if A.ro!="ang" else ID.copy()
+  A.ro=="ang" and PHI.from_numpy(phi)
   if A.unlab:asg,_=assign(X.to_numpy().astype(np.int32),TFa,np.bincount(asg,minlength=NK))
  Xa=X.to_numpy().astype(np.int32);TF.from_numpy(TFa)
  res={"cfg":vars(A),"rows":int(NR),"entities":int(N),"stored_digits":int(N*DS+(NR-N)*(D-DS)) if HY else int(N*(D+1)),"transform_digits":int(TFa[RR].size),"digits_per_query":D,"solve_s":round(time.time()-t0,1)}
  rq=np.random.default_rng(1);gq=ge if len(ge) else np.stack([gh[:nT],gt[:nT]],1);ia=rq.integers(0,len(gq),20000);r1,r2=rq.integers(0,N,20000),rq.integers(0,N,20000);sx=lambda p,q:Sa[(Xa[p,:DS]-Xa[q,:DS])%17].sum(1);res["collapse"]={"dim_max_share":round(float(np.mean([np.bincount(Xa[:N,j],minlength=17).max()/N for j in range(DS)])),4),"related_pair_score":round(float(sx(gq[ia,0],gq[ia,1]).mean()),1),"random_pair_score":round(float(sx(r1,r2).mean()),1),"distinct_rows":int(len(np.unique(Xa[:N,:DS],axis=0)))};log("collapse",res["collapse"])
- if A.save:np.savez_compressed(os.path.join(TD,f"torus_{A.tag}.npz"),**({"assign":asg.astype(np.int16),"orient_flip":fl} if A.unlab else {}),X=Xa.astype(np.uint8),TF=TFa.astype(np.uint8),S=Sa.astype(np.uint8),Ds=np.int64(DS),psub=np.int64(A.psub),trow=np.stack([trow[k] for k in range(3)]) if HY else np.zeros(0),mix=np.int64(KM))
+ if A.save:np.savez_compressed(os.path.join(TD,f"torus_{A.tag}.npz"),**({"assign":asg.astype(np.int16),"orient_flip":fl} if A.unlab else {}),X=Xa.astype(np.uint8),TF=TFa.astype(np.uint8),S=Sa.astype(np.uint8),Ds=np.int64(DS),psub=np.int64(A.psub),phi=phi,trow=np.stack([trow[k] for k in range(3)]) if HY else np.zeros(0),mix=np.int64(KM))
  A.unlab and (log("unlab_saved",f"torus_{A.tag}.npz",int(nmi(asg,R[tr])[0]*1e4)/1e4) or json.dump(res,open(os.path.join(TD,f"res_{A.tag}.json"),"w"),indent=1))
  if A.unlab:return
  crow=lambda c,k:(c,np.where(trow[k][c]>=0,trow[k][c],c) if HY else c)
