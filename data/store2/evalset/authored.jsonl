@@ -1,0 +1,570 @@
+{"id": "s2-0001", "cat": "wd_entity", "q": "Who directed the 1960 film Psycho?", "answers": ["Alfred Hitchcock", "Hitchcock"], "subject": "Psycho", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0002", "cat": "wd_entity", "q": "Pulp Fiction was directed by whom?", "answers": ["Quentin Tarantino", "Tarantino"], "subject": "Pulp Fiction", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0003", "cat": "wd_entity", "q": "who was behind the camera for schindler's list", "answers": ["Steven Spielberg", "Spielberg"], "subject": "Schindler's List", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0004", "cat": "wd_entity", "q": "Who was behind the 2010 movie Inception?", "answers": ["Christopher Nolan", "Nolan"], "subject": "Inception", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0005", "cat": "wd_entity", "q": "Who was Seven Samurai's director?", "answers": ["Akira Kurosawa", "Kurosawa"], "subject": "Seven Samurai", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0006", "cat": "wd_entity", "q": "Which filmmaker helmed the animated film Spirited Away?", "answers": ["Hayao Miyazaki", "Miyazaki"], "subject": "Spirited Away", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0007", "cat": "wd_entity", "q": "Taxi Driver from 1976 was made by which director?", "answers": ["Martin Scorsese", "Scorsese"], "subject": "Taxi Driver", "prop": "P57", "alt_props": [], "rel": "director"}
+{"id": "s2-0008", "cat": "wd_entity", "q": "Where did Napoleon pass away?", "answers": ["Saint Helena", "St Helena", "Longwood", "Longwood House"], "subject": "Napoleon", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0009", "cat": "wd_entity", "q": "In which city did Mozart pass away?", "answers": ["Vienna", "Wien"], "subject": "Wolfgang Amadeus Mozart", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0010", "cat": "wd_entity", "q": "In what city did Martin Luther King Jr. lose his life?", "answers": ["Memphis", "Memphis, Tennessee"], "subject": "Martin Luther King Jr.", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0011", "cat": "wd_entity", "q": "Which place did Frida Kahlo die in?", "answers": ["Coyoacán", "Coyoacan", "Mexico City"], "subject": "Frida Kahlo", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0012", "cat": "wd_entity", "q": "where did john lennon lose his life", "answers": ["New York City", "New York", "Manhattan"], "subject": "John Lennon", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0013", "cat": "wd_entity", "q": "Vincent van Gogh passed away in which French village?", "answers": ["Auvers-sur-Oise", "Auvers"], "subject": "Vincent van Gogh", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0014", "cat": "wd_entity", "q": "What city was Oscar Wilde living in when he died?", "answers": ["Paris"], "subject": "Oscar Wilde", "prop": "P20", "alt_props": [], "rel": "place of death"}
+{"id": "s2-0015", "cat": "wd_entity", "q": "Who gave birth to Queen Elizabeth I of England?", "answers": ["Anne Boleyn"], "subject": "Elizabeth I", "prop": "P25", "alt_props": [], "rel": "mother"}
+{"id": "s2-0016", "cat": "wd_entity", "q": "Who was the mother of Alexander the Great?", "answers": ["Olympias"], "subject": "Alexander the Great", "prop": "P25", "alt_props": [], "rel": "mother"}
+{"id": "s2-0017", "cat": "wd_entity", "q": "Prince William's mum was who?", "answers": ["Diana, Princess of Wales", "Princess Diana", "Diana Spencer", "Lady Diana Spencer"], "subject": "William, Prince of Wales", "prop": "P25", "alt_props": [], "rel": "mother"}
+{"id": "s2-0018", "cat": "wd_entity", "q": "Which woman gave birth to Queen Victoria?", "answers": ["Princess Victoria of Saxe-Coburg-Saalfeld", "Victoria, Duchess of Kent", "Duchess of Kent"], "subject": "Queen Victoria", "prop": "P25", "alt_props": [], "rel": "mother"}
+{"id": "s2-0019", "cat": "wd_entity", "q": "In Christian tradition, who was the woman whose son was Jesus?", "answers": ["Mary", "Virgin Mary", "Mary, mother of Jesus"], "subject": "Jesus", "prop": "P25", "alt_props": [], "rel": "mother"}
+{"id": "s2-0020", "cat": "wd_entity", "q": "King Louis XIV of France was the son of which queen?", "answers": ["Anne of Austria"], "subject": "Louis XIV", "prop": "P25", "alt_props": [], "rel": "mother"}
+{"id": "s2-0021", "cat": "wd_entity", "q": "Elizabeth II's dad, the king who reigned before her, was who?", "answers": ["George VI", "King George VI"], "subject": "Elizabeth II", "prop": "P22", "alt_props": [], "rel": "father"}
+{"id": "s2-0022", "cat": "wd_entity", "q": "Kim Jong Un's father was who?", "answers": ["Kim Jong Il", "Kim Jong-il"], "subject": "Kim Jong Un", "prop": "P22", "alt_props": [], "rel": "father"}
+{"id": "s2-0023", "cat": "wd_entity", "q": "Which Indian prime minister was Indira Gandhi's dad?", "answers": ["Jawaharlal Nehru", "Nehru"], "subject": "Indira Gandhi", "prop": "P22", "alt_props": [], "rel": "father"}
+{"id": "s2-0024", "cat": "wd_entity", "q": "Who fathered King Henry VIII of England?", "answers": ["Henry VII", "Henry VII of England"], "subject": "Henry VIII", "prop": "P22", "alt_props": [], "rel": "father"}
+{"id": "s2-0025", "cat": "wd_entity", "q": "Who owns Pixar?", "answers": ["The Walt Disney Company", "Disney", "Walt Disney Company"], "subject": "Pixar", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0026", "cat": "wd_entity", "q": "LinkedIn is owned by which company?", "answers": ["Microsoft"], "subject": "LinkedIn", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0027", "cat": "wd_entity", "q": "Which company does Rolls-Royce Motor Cars belong to?", "answers": ["BMW", "BMW Group"], "subject": "Rolls-Royce Motor Cars", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0028", "cat": "wd_entity", "q": "who owns volvo cars nowadays", "answers": ["Geely", "Zhejiang Geely Holding Group", "Geely Holding"], "subject": "Volvo Cars", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0029", "cat": "wd_entity", "q": "Whole Foods Market belongs to which company?", "answers": ["Amazon", "Amazon.com"], "subject": "Whole Foods Market", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0030", "cat": "wd_entity", "q": "Jaguar Land Rover is owned by what Indian firm?", "answers": ["Tata Motors", "Tata"], "subject": "Jaguar Land Rover", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0031", "cat": "wd_entity", "q": "Which tech giant owns GitHub?", "answers": ["Microsoft"], "subject": "GitHub", "prop": "P127", "alt_props": ["P749"], "rel": "owned by"}
+{"id": "s2-0032", "cat": "wd_entity", "q": "What is Google's parent company?", "answers": ["Alphabet Inc.", "Alphabet"], "subject": "Google", "prop": "P749", "alt_props": ["P127"], "rel": "parent organization"}
+{"id": "s2-0033", "cat": "wd_entity", "q": "Lexus is a brand of which parent company?", "answers": ["Toyota", "Toyota Motor Corporation"], "subject": "Lexus", "prop": "P749", "alt_props": ["P127"], "rel": "parent organization"}
+{"id": "s2-0034", "cat": "wd_entity", "q": "instagram's parent company?", "answers": ["Meta Platforms", "Meta", "Facebook, Inc."], "subject": "Instagram", "prop": "P749", "alt_props": ["P127"], "rel": "parent organization"}
+{"id": "s2-0035", "cat": "wd_entity", "q": "Acura is the luxury division of which carmaker?", "answers": ["Honda", "Honda Motor Company"], "subject": "Acura", "prop": "P749", "alt_props": ["P127"], "rel": "parent organization"}
+{"id": "s2-0036", "cat": "wd_entity", "q": "Which larger group sits above Lamborghini as its parent?", "answers": ["Audi", "Volkswagen Group", "Volkswagen"], "subject": "Lamborghini", "prop": "P749", "alt_props": ["P127"], "rel": "parent organization"}
+{"id": "s2-0037", "cat": "wd_entity", "q": "Who took over from Abraham Lincoln as US president?", "answers": ["Andrew Johnson"], "subject": "Abraham Lincoln", "prop": "P1366", "alt_props": ["P1365"], "rel": "successor"}
+{"id": "s2-0038", "cat": "wd_entity", "q": "Who came after Margaret Thatcher as British prime minister?", "answers": ["John Major"], "subject": "Margaret Thatcher", "prop": "P1366", "alt_props": ["P1365"], "rel": "successor"}
+{"id": "s2-0039", "cat": "wd_entity", "q": "Which pope replaced Benedict XVI?", "answers": ["Pope Francis", "Francis", "Jorge Mario Bergoglio"], "subject": "Pope Benedict XVI", "prop": "P1366", "alt_props": ["P1365"], "rel": "successor"}
+{"id": "s2-0040", "cat": "wd_entity", "q": "Who succeeded Queen Victoria on the British throne?", "answers": ["Edward VII", "King Edward VII"], "subject": "Queen Victoria", "prop": "P1366", "alt_props": ["P1365"], "rel": "successor"}
+{"id": "s2-0041", "cat": "wd_entity", "q": "Nelson Mandela was followed as South African president by whom?", "answers": ["Thabo Mbeki"], "subject": "Nelson Mandela", "prop": "P1366", "alt_props": ["P1365"], "rel": "successor"}
+{"id": "s2-0042", "cat": "wd_entity", "q": "Who took over from Angela Merkel as chancellor of Germany?", "answers": ["Olaf Scholz"], "subject": "Angela Merkel", "prop": "P1366", "alt_props": ["P1365"], "rel": "successor"}
+{"id": "s2-0043", "cat": "wd_entity", "q": "Who did Barack Obama take over from as US president?", "answers": ["George W. Bush"], "subject": "Barack Obama", "prop": "P1365", "alt_props": ["P1366"], "rel": "predecessor"}
+{"id": "s2-0044", "cat": "wd_entity", "q": "Which prime minister came right before Theresa May?", "answers": ["David Cameron"], "subject": "Theresa May", "prop": "P1365", "alt_props": ["P1366"], "rel": "predecessor"}
+{"id": "s2-0045", "cat": "wd_entity", "q": "Ronald Reagan replaced which president in the White House?", "answers": ["Jimmy Carter"], "subject": "Ronald Reagan", "prop": "P1365", "alt_props": ["P1366"], "rel": "predecessor"}
+{"id": "s2-0046", "cat": "wd_entity", "q": "Who held the American presidency immediately before Bill Clinton?", "answers": ["George H. W. Bush", "George Bush"], "subject": "Bill Clinton", "prop": "P1365", "alt_props": ["P1366"], "rel": "predecessor"}
+{"id": "s2-0047", "cat": "wd_entity", "q": "Gordon Brown took over as UK prime minister from whom?", "answers": ["Tony Blair"], "subject": "Gordon Brown", "prop": "P1365", "alt_props": ["P1366"], "rel": "predecessor"}
+{"id": "s2-0048", "cat": "wd_entity", "q": "Who founded Microsoft?", "answers": ["Bill Gates", "Paul Allen"], "subject": "Microsoft", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0049", "cat": "wd_entity", "q": "Who set up the Red Cross?", "answers": ["Henry Dunant", "Henri Dunant"], "subject": "International Committee of the Red Cross", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0050", "cat": "wd_entity", "q": "Amazon was started by whom?", "answers": ["Jeff Bezos"], "subject": "Amazon", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0051", "cat": "wd_entity", "q": "Who started the Ford Motor Company?", "answers": ["Henry Ford"], "subject": "Ford Motor Company", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0052", "cat": "wd_entity", "q": "Which entrepreneur set up IKEA?", "answers": ["Ingvar Kamprad"], "subject": "IKEA", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0053", "cat": "wd_entity", "q": "Who were the founders of Google?", "answers": ["Larry Page", "Sergey Brin"], "subject": "Google", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0054", "cat": "wd_entity", "q": "who started wikipedia", "answers": ["Jimmy Wales", "Larry Sanger"], "subject": "Wikipedia", "prop": "P112", "alt_props": [], "rel": "founded by"}
+{"id": "s2-0055", "cat": "wd_entity", "q": "Who did Barack Obama marry?", "answers": ["Michelle Obama"], "subject": "Barack Obama", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0056", "cat": "wd_entity", "q": "Who did John Lennon wed in 1969?", "answers": ["Yoko Ono"], "subject": "John Lennon", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0057", "cat": "wd_entity", "q": "Whom did Pierre Curie tie the knot with?", "answers": ["Marie Curie", "Marie Skłodowska-Curie"], "subject": "Pierre Curie", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0058", "cat": "wd_entity", "q": "Who was Frida Kahlo's husband?", "answers": ["Diego Rivera"], "subject": "Frida Kahlo", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0059", "cat": "wd_entity", "q": "Who was Napoleon's first wife?", "answers": ["Joséphine de Beauharnais", "Josephine de Beauharnais", "Empress Joséphine", "Joséphine"], "subject": "Napoleon", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0060", "cat": "wd_entity", "q": "Johnny Cash tied the knot with which singer in 1968?", "answers": ["June Carter Cash", "June Carter"], "subject": "Johnny Cash", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0061", "cat": "wd_entity", "q": "Queen Victoria was married to whom?", "answers": ["Albert, Prince Consort", "Prince Albert", "Albert of Saxe-Coburg and Gotha"], "subject": "Queen Victoria", "prop": "P26", "alt_props": [], "rel": "spouse"}
+{"id": "s2-0062", "cat": "wd_entity", "q": "Where was Albert Einstein born?", "answers": ["Ulm"], "subject": "Albert Einstein", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0063", "cat": "wd_entity", "q": "Which Argentine city does Lionel Messi hail from?", "answers": ["Rosario"], "subject": "Lionel Messi", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0064", "cat": "wd_entity", "q": "Elvis Presley was born in what Mississippi town?", "answers": ["Tupelo", "Tupelo, Mississippi"], "subject": "Elvis Presley", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0065", "cat": "wd_entity", "q": "In what village was Chopin born?", "answers": ["Żelazowa Wola", "Zelazowa Wola"], "subject": "Frédéric Chopin", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0066", "cat": "wd_entity", "q": "Mozart was born and grew up in which Austrian city?", "answers": ["Salzburg"], "subject": "Wolfgang Amadeus Mozart", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0067", "cat": "wd_entity", "q": "What town does William Shakespeare hail from?", "answers": ["Stratford-upon-Avon", "Stratford"], "subject": "William Shakespeare", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0068", "cat": "wd_entity", "q": "cristiano ronaldo's birthplace?", "answers": ["Funchal", "Madeira"], "subject": "Cristiano Ronaldo", "prop": "P19", "alt_props": [], "rel": "place of birth"}
+{"id": "s2-0069", "cat": "wd_entity", "q": "The Grand Canyon lies within which American state?", "answers": ["Arizona"], "subject": "Grand Canyon", "prop": "P131", "alt_props": ["P17"], "rel": "located in the administrative territorial entity"}
+{"id": "s2-0070", "cat": "wd_entity", "q": "Mount Rushmore sits in which state?", "answers": ["South Dakota"], "subject": "Mount Rushmore", "prop": "P131", "alt_props": ["P17"], "rel": "located in the administrative territorial entity"}
+{"id": "s2-0071", "cat": "wd_entity", "q": "In which English county is Stonehenge situated?", "answers": ["Wiltshire"], "subject": "Stonehenge", "prop": "P131", "alt_props": ["P17"], "rel": "located in the administrative territorial entity"}
+{"id": "s2-0072", "cat": "wd_entity", "q": "Neuschwanstein Castle is in which German state?", "answers": ["Bavaria", "Bayern"], "subject": "Neuschwanstein Castle", "prop": "P131", "alt_props": ["P17"], "rel": "located in the administrative territorial entity"}
+{"id": "s2-0073", "cat": "wd_entity", "q": "Which Mexican state is Chichen Itza situated in?", "answers": ["Yucatán", "Yucatan"], "subject": "Chichen Itza", "prop": "P131", "alt_props": ["P17"], "rel": "located in the administrative territorial entity"}
+{"id": "s2-0074", "cat": "wd_entity", "q": "Uluru sits in which Australian territory?", "answers": ["Northern Territory"], "subject": "Uluru", "prop": "P131", "alt_props": ["P17"], "rel": "located in the administrative territorial entity"}
+{"id": "s2-0075", "cat": "wd_entity", "q": "Which country is Angkor Wat in?", "answers": ["Cambodia"], "subject": "Angkor Wat", "prop": "P17", "alt_props": ["P131"], "rel": "country"}
+{"id": "s2-0076", "cat": "wd_entity", "q": "Petra is situated in which country?", "answers": ["Jordan"], "subject": "Petra", "prop": "P17", "alt_props": ["P131"], "rel": "country"}
+{"id": "s2-0077", "cat": "wd_entity", "q": "What country is Mount Kilimanjaro located in?", "answers": ["Tanzania"], "subject": "Mount Kilimanjaro", "prop": "P17", "alt_props": ["P131"], "rel": "country"}
+{"id": "s2-0078", "cat": "wd_entity", "q": "timbuktu is in what country", "answers": ["Mali"], "subject": "Timbuktu", "prop": "P17", "alt_props": ["P131"], "rel": "country"}
+{"id": "s2-0079", "cat": "wd_entity", "q": "In which country can you find Machu Picchu?", "answers": ["Peru"], "subject": "Machu Picchu", "prop": "P17", "alt_props": ["P131"], "rel": "country"}
+{"id": "s2-0080", "cat": "wd_entity", "q": "The Alhambra palace sits in what country?", "answers": ["Spain"], "subject": "Alhambra", "prop": "P17", "alt_props": ["P131"], "rel": "country"}
+{"id": "s2-0081", "cat": "wd_entity", "q": "Which continent is Mongolia on?", "answers": ["Asia"], "subject": "Mongolia", "prop": "P30", "alt_props": [], "rel": "continent"}
+{"id": "s2-0082", "cat": "wd_entity", "q": "Madagascar is considered part of which continent?", "answers": ["Africa"], "subject": "Madagascar", "prop": "P30", "alt_props": [], "rel": "continent"}
+{"id": "s2-0083", "cat": "wd_entity", "q": "What continent does Paraguay belong to?", "answers": ["South America"], "subject": "Paraguay", "prop": "P30", "alt_props": [], "rel": "continent"}
+{"id": "s2-0084", "cat": "wd_entity", "q": "Geographically, Iceland is usually counted as part of which continent?", "answers": ["Europe"], "subject": "Iceland", "prop": "P30", "alt_props": [], "rel": "continent"}
+{"id": "s2-0085", "cat": "wd_entity", "q": "Brazilians officially use which language?", "answers": ["Portuguese"], "subject": "Brazil", "prop": "P37", "alt_props": [], "rel": "official language"}
+{"id": "s2-0086", "cat": "wd_entity", "q": "What language do people in Iran officially speak?", "answers": ["Persian", "Farsi"], "subject": "Iran", "prop": "P37", "alt_props": [], "rel": "official language"}
+{"id": "s2-0087", "cat": "wd_entity", "q": "What is Austria's official tongue?", "answers": ["German"], "subject": "Austria", "prop": "P37", "alt_props": [], "rel": "official language"}
+{"id": "s2-0088", "cat": "wd_entity", "q": "what's the official tongue of argentina", "answers": ["Spanish"], "subject": "Argentina", "prop": "P37", "alt_props": [], "rel": "official language"}
+{"id": "s2-0089", "cat": "wd_entity", "q": "Which language is official in Mozambique?", "answers": ["Portuguese"], "subject": "Mozambique", "prop": "P37", "alt_props": [], "rel": "official language"}
+{"id": "s2-0090", "cat": "wd_entity", "q": "Haiti's official languages are what?", "answers": ["French", "Haitian Creole"], "subject": "Haiti", "prop": "P37", "alt_props": [], "rel": "official language"}
+{"id": "s2-0091", "cat": "wd_entity", "q": "What currency is used in Japan?", "answers": ["Japanese yen", "yen"], "subject": "Japan", "prop": "P38", "alt_props": [], "rel": "currency"}
+{"id": "s2-0092", "cat": "wd_entity", "q": "What money is used in Switzerland?", "answers": ["Swiss franc", "franc"], "subject": "Switzerland", "prop": "P38", "alt_props": [], "rel": "currency"}
+{"id": "s2-0093", "cat": "wd_entity", "q": "Which currency do they use in Thailand?", "answers": ["Thai baht", "baht"], "subject": "Thailand", "prop": "P38", "alt_props": [], "rel": "currency"}
+{"id": "s2-0094", "cat": "wd_entity", "q": "If I visit Poland, what money will I need?", "answers": ["Polish złoty", "złoty", "zloty", "Polish zloty"], "subject": "Poland", "prop": "P38", "alt_props": [], "rel": "currency"}
+{"id": "s2-0095", "cat": "wd_entity", "q": "What's the currency of South Africa?", "answers": ["South African rand", "rand"], "subject": "South Africa", "prop": "P38", "alt_props": [], "rel": "currency"}
+{"id": "s2-0096", "cat": "wd_entity", "q": "What money is used in Vietnam?", "answers": ["Vietnamese đồng", "Vietnamese dong", "dong", "đồng"], "subject": "Vietnam", "prop": "P38", "alt_props": [], "rel": "currency"}
+{"id": "s2-0097", "cat": "wd_entity", "q": "Which city did Australia choose as its national capital?", "answers": ["Canberra"], "subject": "Australia", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0098", "cat": "wd_entity", "q": "Where is Canada's seat of government?", "answers": ["Ottawa"], "subject": "Canada", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0099", "cat": "wd_entity", "q": "Which city is the capital of Kenya?", "answers": ["Nairobi"], "subject": "Kenya", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0100", "cat": "wd_entity", "q": "Turkey's capital city is what?", "answers": ["Ankara"], "subject": "Turkey", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0101", "cat": "wd_entity", "q": "New Zealand's government is based in which city?", "answers": ["Wellington"], "subject": "New Zealand", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0102", "cat": "wd_entity", "q": "capital of mongolia?", "answers": ["Ulaanbaatar", "Ulan Bator"], "subject": "Mongolia", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0103", "cat": "wd_entity", "q": "Which city serves as Peru's capital?", "answers": ["Lima"], "subject": "Peru", "prop": "P36", "alt_props": [], "rel": "capital"}
+{"id": "s2-0104", "cat": "wd_entity", "q": "Which NBA team did Dirk Nowitzki play for his whole career?", "answers": ["Dallas Mavericks", "Mavericks"], "subject": "Dirk Nowitzki", "prop": "P54", "alt_props": [], "rel": "member of sports team"}
+{"id": "s2-0105", "cat": "wd_entity", "q": "Francesco Totti played for which club his entire career?", "answers": ["AS Roma", "Roma", "A.S. Roma"], "subject": "Francesco Totti", "prop": "P54", "alt_props": [], "rel": "member of sports team"}
+{"id": "s2-0106", "cat": "wd_entity", "q": "What baseball team did Derek Jeter play for?", "answers": ["New York Yankees", "Yankees"], "subject": "Derek Jeter", "prop": "P54", "alt_props": [], "rel": "member of sports team"}
+{"id": "s2-0107", "cat": "wd_entity", "q": "Which club did Paolo Maldini spend his whole playing career with?", "answers": ["AC Milan", "Milan", "A.C. Milan"], "subject": "Paolo Maldini", "prop": "P54", "alt_props": [], "rel": "member of sports team"}
+{"id": "s2-0108", "cat": "wd_entity", "q": "kobe bryant played for which team", "answers": ["Los Angeles Lakers", "Lakers"], "subject": "Kobe Bryant", "prop": "P54", "alt_props": [], "rel": "member of sports team"}
+{"id": "s2-0109", "cat": "wd_entity", "q": "Who did Tim Duncan play for in the NBA?", "answers": ["San Antonio Spurs", "Spurs"], "subject": "Tim Duncan", "prop": "P54", "alt_props": [], "rel": "member of sports team"}
+{"id": "s2-0110", "cat": "wd_entity", "q": "Which university did Stephen Hawking study at as an undergraduate?", "answers": ["University of Oxford", "Oxford", "University College, Oxford"], "subject": "Stephen Hawking", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0111", "cat": "wd_entity", "q": "What is Mark Zuckerberg's alma mater?", "answers": ["Harvard University", "Harvard"], "subject": "Mark Zuckerberg", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0112", "cat": "wd_entity", "q": "Where did Albert Einstein study?", "answers": ["ETH Zurich", "Swiss Federal Polytechnic", "University of Zurich"], "subject": "Albert Einstein", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0113", "cat": "wd_entity", "q": "Which university did Isaac Newton attend?", "answers": ["University of Cambridge", "Trinity College, Cambridge", "Cambridge"], "subject": "Isaac Newton", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0114", "cat": "wd_entity", "q": "Where did Oscar Wilde go to university?", "answers": ["Trinity College Dublin", "Magdalen College, Oxford", "University of Oxford"], "subject": "Oscar Wilde", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0115", "cat": "wd_entity", "q": "Which university did Margaret Thatcher study chemistry at?", "answers": ["University of Oxford", "Somerville College, Oxford", "Oxford"], "subject": "Margaret Thatcher", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0116", "cat": "wd_entity", "q": "Which American university did Elon Musk graduate from?", "answers": ["University of Pennsylvania", "Penn", "Wharton School"], "subject": "Elon Musk", "prop": "P69", "alt_props": [], "rel": "educated at"}
+{"id": "s2-0117", "cat": "wd_entity", "q": "Which label released Nirvana's Nevermind?", "answers": ["DGC Records", "DGC", "Geffen Records"], "subject": "Nevermind", "prop": "P264", "alt_props": [], "rel": "record label"}
+{"id": "s2-0118", "cat": "wd_entity", "q": "Michael Jackson's Thriller came out on what record label?", "answers": ["Epic Records", "Epic"], "subject": "Thriller", "prop": "P264", "alt_props": [], "rel": "record label"}
+{"id": "s2-0119", "cat": "wd_entity", "q": "What label put out the Beatles' Abbey Road?", "answers": ["Apple Records", "Apple"], "subject": "Abbey Road", "prop": "P264", "alt_props": [], "rel": "record label"}
+{"id": "s2-0120", "cat": "wd_entity", "q": "The Beach Boys' Pet Sounds was released by which label?", "answers": ["Capitol Records", "Capitol"], "subject": "Pet Sounds", "prop": "P264", "alt_props": [], "rel": "record label"}
+{"id": "s2-0121", "cat": "wd_entity", "q": "what record label released fleetwood mac's rumours", "answers": ["Warner Bros. Records", "Warner Bros.", "Warner Records"], "subject": "Rumours", "prop": "P264", "alt_props": [], "rel": "record label"}
+{"id": "s2-0122", "cat": "wd_entity", "q": "Who penned One Hundred Years of Solitude?", "answers": ["Gabriel García Márquez", "Gabriel Garcia Marquez", "García Márquez"], "subject": "One Hundred Years of Solitude", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0123", "cat": "wd_entity", "q": "Who wrote Moby-Dick?", "answers": ["Herman Melville", "Melville"], "subject": "Moby-Dick", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0124", "cat": "wd_entity", "q": "Frankenstein was penned by whom?", "answers": ["Mary Shelley", "Mary Wollstonecraft Shelley"], "subject": "Frankenstein", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0125", "cat": "wd_entity", "q": "who wrote the book war and peace", "answers": ["Leo Tolstoy", "Tolstoy", "Lev Tolstoy"], "subject": "War and Peace", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0126", "cat": "wd_entity", "q": "The Catcher in the Rye's author is who?", "answers": ["J. D. Salinger", "J.D. Salinger", "Salinger"], "subject": "The Catcher in the Rye", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0127", "cat": "wd_entity", "q": "Which author penned Things Fall Apart?", "answers": ["Chinua Achebe", "Achebe"], "subject": "Things Fall Apart", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0128", "cat": "wd_entity", "q": "Who is the writer behind The Little Prince?", "answers": ["Antoine de Saint-Exupéry", "Antoine de Saint-Exupery", "Saint-Exupéry"], "subject": "The Little Prince", "prop": "P50", "alt_props": [], "rel": "author"}
+{"id": "s2-0129", "cat": "wd_entity", "q": "Who sang Bohemian Rhapsody?", "answers": ["Queen"], "subject": "Bohemian Rhapsody", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0130", "cat": "wd_entity", "q": "Which artist sang 'Rolling in the Deep'?", "answers": ["Adele"], "subject": "Rolling in the Deep", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0131", "cat": "wd_entity", "q": "'Like a Rolling Stone' was performed by whom?", "answers": ["Bob Dylan", "Dylan"], "subject": "Like a Rolling Stone", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0132", "cat": "wd_entity", "q": "who sang purple rain", "answers": ["Prince"], "subject": "Purple Rain", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0133", "cat": "wd_entity", "q": "The song 'Imagine' was sung by which former Beatle?", "answers": ["John Lennon", "Lennon"], "subject": "Imagine", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0134", "cat": "wd_entity", "q": "Who first recorded and sang 'I Will Always Love You'?", "answers": ["Dolly Parton"], "subject": "I Will Always Love You", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0135", "cat": "wd_entity", "q": "Whose voice made 'Respect' a huge hit in 1967?", "answers": ["Aretha Franklin"], "subject": "Respect", "prop": "P175", "alt_props": [], "rel": "performer"}
+{"id": "s2-0136", "cat": "wd_entity", "q": "Who is Norway's head of state?", "answers": ["Harald V", "King Harald V", "Harald V of Norway"], "subject": "Norway", "prop": "P35", "alt_props": [], "rel": "head of state"}
+{"id": "s2-0137", "cat": "wd_entity", "q": "Who is the head of state of Japan?", "answers": ["Naruhito", "Emperor Naruhito"], "subject": "Japan", "prop": "P35", "alt_props": [], "rel": "head of state"}
+{"id": "s2-0138", "cat": "wd_entity", "q": "Sweden's head of state is who?", "answers": ["Carl XVI Gustaf", "King Carl XVI Gustaf"], "subject": "Sweden", "prop": "P35", "alt_props": [], "rel": "head of state"}
+{"id": "s2-0139", "cat": "wd_entity", "q": "Which monarch serves as head of state in Spain?", "answers": ["Felipe VI", "King Felipe VI"], "subject": "Spain", "prop": "P35", "alt_props": [], "rel": "head of state"}
+{"id": "s2-0140", "cat": "wd_entity", "q": "who is the head of state of the netherlands", "answers": ["Willem-Alexander", "King Willem-Alexander", "Willem-Alexander of the Netherlands"], "subject": "Netherlands", "prop": "P35", "alt_props": [], "rel": "head of state"}
+{"id": "s2-0141", "cat": "wd_entity", "q": "Which king is head of state of Jordan?", "answers": ["Abdullah II", "King Abdullah II", "Abdullah II of Jordan"], "subject": "Jordan", "prop": "P35", "alt_props": [], "rel": "head of state"}
+{"id": "s2-0142", "cat": "wd_entity", "q": "What is the sequel to The Godfather?", "answers": ["The Godfather Part II", "The Godfather: Part II", "Godfather Part II"], "subject": "The Godfather", "prop": "P156", "alt_props": ["P155"], "rel": "followed by"}
+{"id": "s2-0143", "cat": "wd_entity", "q": "Which book comes after The Hunger Games in the trilogy?", "answers": ["Catching Fire"], "subject": "The Hunger Games", "prop": "P156", "alt_props": ["P155"], "rel": "followed by"}
+{"id": "s2-0144", "cat": "wd_entity", "q": "In The Lord of the Rings, which volume follows The Fellowship of the Ring?", "answers": ["The Two Towers"], "subject": "The Fellowship of the Ring", "prop": "P156", "alt_props": ["P155"], "rel": "followed by"}
+{"id": "s2-0145", "cat": "wd_entity", "q": "What film came next after the original 1977 Star Wars?", "answers": ["The Empire Strikes Back", "Star Wars: Episode V – The Empire Strikes Back"], "subject": "Star Wars", "prop": "P156", "alt_props": ["P155"], "rel": "followed by"}
+{"id": "s2-0146", "cat": "wd_entity", "q": "what's the sequel to toy story 2", "answers": ["Toy Story 3"], "subject": "Toy Story 2", "prop": "P156", "alt_props": ["P155"], "rel": "followed by"}
+{"id": "s2-0147", "cat": "wd_entity", "q": "In the Harry Potter series, which novel immediately precedes Prisoner of Azkaban?", "answers": ["Harry Potter and the Chamber of Secrets", "Chamber of Secrets"], "subject": "Harry Potter and the Prisoner of Azkaban", "prop": "P155", "alt_props": ["P156"], "rel": "follows"}
+{"id": "s2-0148", "cat": "wd_entity", "q": "Back to the Future Part II follows which film?", "answers": ["Back to the Future"], "subject": "Back to the Future Part II", "prop": "P155", "alt_props": ["P156"], "rel": "follows"}
+{"id": "s2-0149", "cat": "wd_entity", "q": "Lewis Carroll's Through the Looking-Glass is the follow-up to which book?", "answers": ["Alice's Adventures in Wonderland", "Alice in Wonderland"], "subject": "Through the Looking-Glass", "prop": "P155", "alt_props": ["P156"], "rel": "follows"}
+{"id": "s2-0150", "cat": "wd_entity", "q": "What is the Statue of Liberty made of?", "answers": ["copper"], "subject": "Statue of Liberty", "prop": "P186", "alt_props": [], "rel": "made from material"}
+{"id": "s2-0151", "cat": "wd_entity", "q": "The Eiffel Tower is built from what material?", "answers": ["wrought iron", "iron", "puddle iron"], "subject": "Eiffel Tower", "prop": "P186", "alt_props": [], "rel": "made from material"}
+{"id": "s2-0152", "cat": "wd_entity", "q": "What stone is the Taj Mahal made of?", "answers": ["marble", "white marble"], "subject": "Taj Mahal", "prop": "P186", "alt_props": [], "rel": "made from material"}
+{"id": "s2-0153", "cat": "wd_entity", "q": "Michelangelo's David was carved from what?", "answers": ["marble", "Carrara marble"], "subject": "David", "prop": "P186", "alt_props": [], "rel": "made from material"}
+{"id": "s2-0154", "cat": "wd_entity", "q": "Rodin's The Thinker is cast in what metal?", "answers": ["bronze"], "subject": "The Thinker", "prop": "P186", "alt_props": [], "rel": "made from material"}
+{"id": "s2-0155", "cat": "wd_entity", "q": "Mount Rushmore's faces are carved into what kind of rock?", "answers": ["granite"], "subject": "Mount Rushmore", "prop": "P186", "alt_props": [], "rel": "made from material"}
+{"id": "s2-0156", "cat": "wd_entity", "q": "What genre of music is Bob Marley known for?", "answers": ["reggae"], "subject": "Bob Marley", "prop": "P136", "alt_props": [], "rel": "genre"}
+{"id": "s2-0157", "cat": "wd_entity", "q": "Which genre does Metallica play?", "answers": ["heavy metal", "thrash metal", "metal"], "subject": "Metallica", "prop": "P136", "alt_props": [], "rel": "genre"}
+{"id": "s2-0158", "cat": "wd_entity", "q": "Miles Davis played what style of music?", "answers": ["jazz"], "subject": "Miles Davis", "prop": "P136", "alt_props": [], "rel": "genre"}
+{"id": "s2-0159", "cat": "wd_entity", "q": "What literary genre is Frank Herbert's Dune?", "answers": ["science fiction", "sci-fi"], "subject": "Dune", "prop": "P136", "alt_props": [], "rel": "genre"}
+{"id": "s2-0160", "cat": "wd_entity", "q": "what genre is stephen king's the shining", "answers": ["horror", "horror fiction"], "subject": "The Shining", "prop": "P136", "alt_props": [], "rel": "genre"}
+{"id": "s2-0161", "cat": "wd_entity", "q": "Johnny Cash is mainly associated with which music genre?", "answers": ["country", "country music"], "subject": "Johnny Cash", "prop": "P136", "alt_props": [], "rel": "genre"}
+{"id": "s2-0162", "cat": "wd_entity", "q": "Where does the Nile empty?", "answers": ["Mediterranean Sea", "Mediterranean"], "subject": "Nile", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0163", "cat": "wd_entity", "q": "The Danube flows into which sea?", "answers": ["Black Sea"], "subject": "Danube", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0164", "cat": "wd_entity", "q": "Into which body of water does the Volga River drain?", "answers": ["Caspian Sea"], "subject": "Volga", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0165", "cat": "wd_entity", "q": "What does the river Thames flow into?", "answers": ["North Sea", "Thames Estuary"], "subject": "River Thames", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0166", "cat": "wd_entity", "q": "the ganges river flows into what", "answers": ["Bay of Bengal"], "subject": "Ganges", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0167", "cat": "wd_entity", "q": "Which ocean does the Amazon River empty into?", "answers": ["Atlantic Ocean", "Atlantic"], "subject": "Amazon River", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0168", "cat": "wd_entity", "q": "Where does the Seine finally reach the sea?", "answers": ["English Channel", "La Manche"], "subject": "Seine", "prop": "P403", "alt_props": [], "rel": "mouth of the watercourse"}
+{"id": "s2-0169", "cat": "wd_entity", "q": "Mount Everest belongs to what chain of mountains?", "answers": ["Himalayas", "Himalaya", "Mahalangur Himal"], "subject": "Mount Everest", "prop": "P4552", "alt_props": [], "rel": "mountain range"}
+{"id": "s2-0170", "cat": "wd_entity", "q": "Aconcagua belongs to which mountain range?", "answers": ["Andes"], "subject": "Aconcagua", "prop": "P4552", "alt_props": [], "rel": "mountain range"}
+{"id": "s2-0171", "cat": "wd_entity", "q": "Mount Elbrus is in which range?", "answers": ["Caucasus Mountains", "Caucasus", "Greater Caucasus"], "subject": "Mount Elbrus", "prop": "P4552", "alt_props": [], "rel": "mountain range"}
+{"id": "s2-0172", "cat": "wd_entity", "q": "The Matterhorn is a peak in what mountain range?", "answers": ["Alps", "Pennine Alps"], "subject": "Matterhorn", "prop": "P4552", "alt_props": [], "rel": "mountain range"}
+{"id": "s2-0173", "cat": "wd_entity", "q": "K2 sits in which mountain range?", "answers": ["Karakoram"], "subject": "K2", "prop": "P4552", "alt_props": [], "rel": "mountain range"}
+{"id": "s2-0174", "cat": "wd_entity", "q": "pikes peak is part of which mountains", "answers": ["Rocky Mountains", "Rockies", "Front Range"], "subject": "Pikes Peak", "prop": "P4552", "alt_props": [], "rel": "mountain range"}
+{"id": "s2-0175", "cat": "wd_entity", "q": "Who is Bolivia named after?", "answers": ["Simón Bolívar", "Simon Bolivar"], "subject": "Bolivia", "prop": "P138", "alt_props": [], "rel": "named after"}
+{"id": "s2-0176", "cat": "wd_entity", "q": "The Hubble Space Telescope was named in honour of whom?", "answers": ["Edwin Hubble"], "subject": "Hubble Space Telescope", "prop": "P138", "alt_props": [], "rel": "named after"}
+{"id": "s2-0177", "cat": "wd_entity", "q": "Victoria Falls got its name from whom?", "answers": ["Queen Victoria", "Victoria"], "subject": "Victoria Falls", "prop": "P138", "alt_props": [], "rel": "named after"}
+{"id": "s2-0178", "cat": "wd_entity", "q": "Who is Mount Everest named for?", "answers": ["George Everest", "Sir George Everest"], "subject": "Mount Everest", "prop": "P138", "alt_props": [], "rel": "named after"}
+{"id": "s2-0179", "cat": "wd_entity", "q": "Tesla, Inc. takes its name from which inventor?", "answers": ["Nikola Tesla"], "subject": "Tesla, Inc.", "prop": "P138", "alt_props": [], "rel": "named after"}
+{"id": "s2-0180", "cat": "wd_entity", "q": "Which king are the Philippines named after?", "answers": ["Philip II of Spain", "Philip II"], "subject": "Philippines", "prop": "P138", "alt_props": [], "rel": "named after"}
+{"id": "s2-0181", "cat": "wd_entity", "q": "Who discovered penicillin?", "answers": ["Alexander Fleming"], "subject": "penicillin", "prop": "P61", "alt_props": [], "rel": "discoverer or inventor"}
+{"id": "s2-0182", "cat": "wd_entity", "q": "Pluto was discovered by whom?", "answers": ["Clyde Tombaugh"], "subject": "Pluto", "prop": "P61", "alt_props": [], "rel": "discoverer or inventor"}
+{"id": "s2-0183", "cat": "wd_entity", "q": "Which astronomer discovered Uranus?", "answers": ["William Herschel"], "subject": "Uranus", "prop": "P61", "alt_props": [], "rel": "discoverer or inventor"}
+{"id": "s2-0184", "cat": "wd_entity", "q": "Who discovered the electron?", "answers": ["J. J. Thomson", "J.J. Thomson", "Joseph John Thomson"], "subject": "electron", "prop": "P61", "alt_props": [], "rel": "discoverer or inventor"}
+{"id": "s2-0185", "cat": "wd_entity", "q": "Who first spotted Saturn's moon Titan?", "answers": ["Christiaan Huygens", "Huygens"], "subject": "Titan", "prop": "P61", "alt_props": [], "rel": "discoverer or inventor"}
+{"id": "s2-0186", "cat": "wd_entity", "q": "Radium was discovered by which scientists?", "answers": ["Marie Curie", "Pierre Curie"], "subject": "radium", "prop": "P61", "alt_props": [], "rel": "discoverer or inventor"}
+{"id": "s2-0187", "cat": "wd_entity", "q": "Which band was Freddie Mercury a member of?", "answers": ["Queen"], "subject": "Freddie Mercury", "prop": "P463", "alt_props": [], "rel": "member of"}
+{"id": "s2-0188", "cat": "wd_entity", "q": "Kurt Cobain fronted which band?", "answers": ["Nirvana"], "subject": "Kurt Cobain", "prop": "P463", "alt_props": [], "rel": "member of"}
+{"id": "s2-0189", "cat": "wd_entity", "q": "Bono is a member of which Irish band?", "answers": ["U2"], "subject": "Bono", "prop": "P463", "alt_props": [], "rel": "member of"}
+{"id": "s2-0190", "cat": "wd_entity", "q": "which band is thom yorke in", "answers": ["Radiohead"], "subject": "Thom Yorke", "prop": "P463", "alt_props": [], "rel": "member of"}
+{"id": "s2-0191", "cat": "wd_entity", "q": "Which military alliance did Finland become a member of in 2023?", "answers": ["NATO", "North Atlantic Treaty Organization"], "subject": "Finland", "prop": "P463", "alt_props": [], "rel": "member of"}
+{"id": "s2-0192", "cat": "wd_entity", "q": "Mick Jagger belongs to which rock band?", "answers": ["The Rolling Stones", "Rolling Stones"], "subject": "Mick Jagger", "prop": "P463", "alt_props": [], "rel": "member of"}
+{"id": "s2-0193", "cat": "wd_entity", "q": "What nationality was Akira Kurosawa?", "answers": ["Japan", "Japanese"], "subject": "Akira Kurosawa", "prop": "P27", "alt_props": [], "rel": "country of citizenship"}
+{"id": "s2-0194", "cat": "wd_entity", "q": "Which country was Pablo Neruda a citizen of?", "answers": ["Chile", "Chilean"], "subject": "Pablo Neruda", "prop": "P27", "alt_props": [], "rel": "country of citizenship"}
+{"id": "s2-0195", "cat": "wd_entity", "q": "Ingmar Bergman held citizenship of which country?", "answers": ["Sweden", "Swedish"], "subject": "Ingmar Bergman", "prop": "P27", "alt_props": [], "rel": "country of citizenship"}
+{"id": "s2-0196", "cat": "wd_entity", "q": "Jean Sibelius was a citizen of what country?", "answers": ["Finland", "Finnish"], "subject": "Jean Sibelius", "prop": "P27", "alt_props": [], "rel": "country of citizenship"}
+{"id": "s2-0197", "cat": "wd_entity", "q": "satyajit ray was a citizen of which country", "answers": ["India", "Indian"], "subject": "Satyajit Ray", "prop": "P27", "alt_props": [], "rel": "country of citizenship"}
+{"id": "s2-0198", "cat": "wd_entity", "q": "What country was the muralist Diego Rivera a national of?", "answers": ["Mexico", "Mexican"], "subject": "Diego Rivera", "prop": "P27", "alt_props": [], "rel": "country of citizenship"}
+{"id": "s2-0199", "cat": "wd_entity", "q": "What did Ansel Adams do for a living?", "answers": ["photographer", "landscape photographer"], "subject": "Ansel Adams", "prop": "P106", "alt_props": [], "rel": "occupation"}
+{"id": "s2-0200", "cat": "wd_entity", "q": "Florence Nightingale worked in which profession?", "answers": ["nurse", "nursing"], "subject": "Florence Nightingale", "prop": "P106", "alt_props": [], "rel": "occupation"}
+{"id": "s2-0201", "cat": "wd_entity", "q": "What was Le Corbusier's job?", "answers": ["architect"], "subject": "Le Corbusier", "prop": "P106", "alt_props": [], "rel": "occupation"}
+{"id": "s2-0202", "cat": "wd_entity", "q": "Coco Chanel worked as what?", "answers": ["fashion designer", "designer", "couturier"], "subject": "Coco Chanel", "prop": "P106", "alt_props": [], "rel": "occupation"}
+{"id": "s2-0203", "cat": "wd_entity", "q": "What was Harry Houdini's occupation?", "answers": ["magician", "escapologist", "illusionist", "stunt performer"], "subject": "Harry Houdini", "prop": "P106", "alt_props": [], "rel": "occupation"}
+{"id": "s2-0204", "cat": "wd_entity", "q": "Ada Lovelace is best known as what kind of professional?", "answers": ["mathematician"], "subject": "Ada Lovelace", "prop": "P106", "alt_props": [], "rel": "occupation"}
+{"id": "s2-0205", "cat": "wd_entity", "q": "What sport does Serena Williams play?", "answers": ["tennis"], "subject": "Serena Williams", "prop": "P641", "alt_props": [], "rel": "sport"}
+{"id": "s2-0206", "cat": "wd_entity", "q": "Wayne Gretzky played which sport?", "answers": ["ice hockey", "hockey"], "subject": "Wayne Gretzky", "prop": "P641", "alt_props": [], "rel": "sport"}
+{"id": "s2-0207", "cat": "wd_entity", "q": "Which sport made Sachin Tendulkar famous?", "answers": ["cricket"], "subject": "Sachin Tendulkar", "prop": "P641", "alt_props": [], "rel": "sport"}
+{"id": "s2-0208", "cat": "wd_entity", "q": "michael phelps competed in what sport", "answers": ["swimming"], "subject": "Michael Phelps", "prop": "P641", "alt_props": [], "rel": "sport"}
+{"id": "s2-0209", "cat": "wd_entity", "q": "What sport is Tiger Woods known for?", "answers": ["golf"], "subject": "Tiger Woods", "prop": "P641", "alt_props": [], "rel": "sport"}
+{"id": "s2-0210", "cat": "wd_entity", "q": "In which sport did Usain Bolt win his Olympic golds?", "answers": ["athletics", "track and field", "sprinting"], "subject": "Usain Bolt", "prop": "P641", "alt_props": [], "rel": "sport"}
+{"id": "s2-0211", "cat": "wd_entity", "q": "Who composed The Magic Flute?", "answers": ["Wolfgang Amadeus Mozart", "Mozart"], "subject": "The Magic Flute", "prop": "P86", "alt_props": [], "rel": "composer"}
+{"id": "s2-0212", "cat": "wd_entity", "q": "The Four Seasons was written by which composer?", "answers": ["Antonio Vivaldi", "Vivaldi"], "subject": "The Four Seasons", "prop": "P86", "alt_props": [], "rel": "composer"}
+{"id": "s2-0213", "cat": "wd_entity", "q": "Who wrote the music for Swan Lake?", "answers": ["Pyotr Ilyich Tchaikovsky", "Tchaikovsky", "Peter Tchaikovsky"], "subject": "Swan Lake", "prop": "P86", "alt_props": [], "rel": "composer"}
+{"id": "s2-0214", "cat": "wd_entity", "q": "Which composer created Boléro?", "answers": ["Maurice Ravel", "Ravel"], "subject": "Boléro", "prop": "P86", "alt_props": [], "rel": "composer"}
+{"id": "s2-0215", "cat": "wd_entity", "q": "The Rite of Spring is the work of which composer?", "answers": ["Igor Stravinsky", "Stravinsky"], "subject": "The Rite of Spring", "prop": "P86", "alt_props": [], "rel": "composer"}
+{"id": "s2-0216", "cat": "wd_entity", "q": "Who painted the Mona Lisa?", "answers": ["Leonardo da Vinci", "Leonardo", "da Vinci"], "subject": "Mona Lisa", "prop": "P170", "alt_props": [], "rel": "creator"}
+{"id": "s2-0217", "cat": "wd_entity", "q": "The Starry Night was painted by whom?", "answers": ["Vincent van Gogh", "Van Gogh"], "subject": "The Starry Night", "prop": "P170", "alt_props": [], "rel": "creator"}
+{"id": "s2-0218", "cat": "wd_entity", "q": "Which artist was behind Guernica?", "answers": ["Pablo Picasso", "Picasso"], "subject": "Guernica", "prop": "P170", "alt_props": [], "rel": "creator"}
+{"id": "s2-0219", "cat": "wd_entity", "q": "Who created The Scream?", "answers": ["Edvard Munch", "Munch"], "subject": "The Scream", "prop": "P170", "alt_props": [], "rel": "creator"}
+{"id": "s2-0220", "cat": "wd_entity", "q": "Girl with a Pearl Earring is the work of which painter?", "answers": ["Johannes Vermeer", "Vermeer", "Jan Vermeer"], "subject": "Girl with a Pearl Earring", "prop": "P170", "alt_props": [], "rel": "creator"}
+{"id": "s2-0221", "cat": "wd_entity", "q": "The melting clocks of The Persistence of Memory came from which artist?", "answers": ["Salvador Dalí", "Salvador Dali", "Dalí", "Dali"], "subject": "The Persistence of Memory", "prop": "P170", "alt_props": [], "rel": "creator"}
+{"id": "s2-0222", "cat": "wd_entity", "q": "Who designed the Sagrada Família?", "answers": ["Antoni Gaudí", "Antoni Gaudi", "Gaudí", "Gaudi"], "subject": "Sagrada Família", "prop": "P84", "alt_props": [], "rel": "architect"}
+{"id": "s2-0223", "cat": "wd_entity", "q": "The Sydney Opera House was designed by which architect?", "answers": ["Jørn Utzon", "Jorn Utzon", "Utzon"], "subject": "Sydney Opera House", "prop": "P84", "alt_props": [], "rel": "architect"}
+{"id": "s2-0224", "cat": "wd_entity", "q": "Which architect was behind the Guggenheim Museum in Bilbao?", "answers": ["Frank Gehry", "Gehry"], "subject": "Guggenheim Museum Bilbao", "prop": "P84", "alt_props": [], "rel": "architect"}
+{"id": "s2-0225", "cat": "wd_entity", "q": "Who was the architect of Fallingwater?", "answers": ["Frank Lloyd Wright"], "subject": "Fallingwater", "prop": "P84", "alt_props": [], "rel": "architect"}
+{"id": "s2-0226", "cat": "wd_entity", "q": "Which architect drew up the plans for London's St Paul's Cathedral?", "answers": ["Christopher Wren", "Sir Christopher Wren"], "subject": "St Paul's Cathedral", "prop": "P84", "alt_props": [], "rel": "architect"}
+{"id": "s2-0227", "cat": "wd_entity", "q": "Where is Nestlé headquartered?", "answers": ["Vevey"], "subject": "Nestlé", "prop": "P159", "alt_props": [], "rel": "headquarters location"}
+{"id": "s2-0228", "cat": "wd_entity", "q": "In which city is BMW based?", "answers": ["Munich", "München"], "subject": "BMW", "prop": "P159", "alt_props": [], "rel": "headquarters location"}
+{"id": "s2-0229", "cat": "wd_entity", "q": "Where are the LEGO Group's headquarters?", "answers": ["Billund"], "subject": "The Lego Group", "prop": "P159", "alt_props": [], "rel": "headquarters location"}
+{"id": "s2-0230", "cat": "wd_entity", "q": "The International Olympic Committee is based in which city?", "answers": ["Lausanne"], "subject": "International Olympic Committee", "prop": "P159", "alt_props": [], "rel": "headquarters location"}
+{"id": "s2-0231", "cat": "wd_entity", "q": "Which German town is Volkswagen headquartered in?", "answers": ["Wolfsburg"], "subject": "Volkswagen", "prop": "P159", "alt_props": [], "rel": "headquarters location"}
+{"id": "s2-0232", "cat": "wd_entity", "q": "Which company makes the PlayStation?", "answers": ["Sony", "Sony Interactive Entertainment", "Sony Computer Entertainment"], "subject": "PlayStation", "prop": "P176", "alt_props": [], "rel": "manufacturer"}
+{"id": "s2-0233", "cat": "wd_entity", "q": "Who manufactured the Model T?", "answers": ["Ford Motor Company", "Ford"], "subject": "Ford Model T", "prop": "P176", "alt_props": [], "rel": "manufacturer"}
+{"id": "s2-0234", "cat": "wd_entity", "q": "The Walkman was made by which company?", "answers": ["Sony"], "subject": "Walkman", "prop": "P176", "alt_props": [], "rel": "manufacturer"}
+{"id": "s2-0235", "cat": "wd_entity", "q": "Who built the Concorde airliner?", "answers": ["Aérospatiale", "Aerospatiale", "British Aircraft Corporation", "BAC"], "subject": "Concorde", "prop": "P176", "alt_props": [], "rel": "manufacturer"}
+{"id": "s2-0236", "cat": "wd_entity", "q": "Who developed Minecraft?", "answers": ["Mojang Studios", "Mojang", "Markus Persson"], "subject": "Minecraft", "prop": "P178", "alt_props": [], "rel": "developer"}
+{"id": "s2-0237", "cat": "wd_entity", "q": "Which company developed Fortnite?", "answers": ["Epic Games"], "subject": "Fortnite", "prop": "P178", "alt_props": [], "rel": "developer"}
+{"id": "s2-0238", "cat": "wd_entity", "q": "Who created the video game Tetris?", "answers": ["Alexey Pajitnov", "Alexey Pazhitnov"], "subject": "Tetris", "prop": "P178", "alt_props": [], "rel": "developer"}
+{"id": "s2-0239", "cat": "wd_entity", "q": "Which company developed The Legend of Zelda?", "answers": ["Nintendo", "Nintendo EAD"], "subject": "The Legend of Zelda", "prop": "P178", "alt_props": [], "rel": "developer"}
+{"id": "s2-0240", "cat": "wd_entity", "q": "What instrument does Yo-Yo Ma play?", "answers": ["cello"], "subject": "Yo-Yo Ma", "prop": "P1303", "alt_props": [], "rel": "instrument"}
+{"id": "s2-0241", "cat": "wd_entity", "q": "Louis Armstrong was famous for playing which instrument?", "answers": ["trumpet", "cornet"], "subject": "Louis Armstrong", "prop": "P1303", "alt_props": [], "rel": "instrument"}
+{"id": "s2-0242", "cat": "wd_entity", "q": "Which instrument did John Coltrane play?", "answers": ["saxophone", "tenor saxophone", "soprano saxophone"], "subject": "John Coltrane", "prop": "P1303", "alt_props": [], "rel": "instrument"}
+{"id": "s2-0243", "cat": "wd_entity", "q": "Japan's loftiest summit is which mountain?", "answers": ["Mount Fuji", "Fuji", "Fujisan"], "subject": "Japan", "prop": "P610", "alt_props": [], "rel": "highest point"}
+{"id": "s2-0244", "cat": "wd_entity", "q": "Which mountain is the highest in Africa?", "answers": ["Mount Kilimanjaro", "Kilimanjaro", "Kibo"], "subject": "Africa", "prop": "P610", "alt_props": [], "rel": "highest point"}
+{"id": "s2-0245", "cat": "wd_entity", "q": "Which volcano is Spain's highest mountain?", "answers": ["Teide", "Mount Teide", "Pico del Teide"], "subject": "Spain", "prop": "P610", "alt_props": [], "rel": "highest point"}
+{"id": "s2-0246", "cat": "wd_value", "q": "When was Mozart born?", "answers": ["1756-01-27"], "subject": "Wolfgang Amadeus Mozart", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0247", "cat": "wd_value", "q": "What is Abraham Lincoln's date of birth?", "answers": ["1809-02-12"], "subject": "Abraham Lincoln", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0248", "cat": "wd_value", "q": "On what day did Marie Curie come into the world?", "answers": ["1867-11-07"], "subject": "Marie Curie", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0249", "cat": "wd_value", "q": "In what year was Charles Darwin born?", "answers": ["1809", "1809-02-12"], "subject": "Charles Darwin", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0250", "cat": "wd_value", "q": "gandhi's birthday?", "answers": ["1869-10-02"], "subject": "Mahatma Gandhi", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0251", "cat": "wd_value", "q": "When was Ada Lovelace born?", "answers": ["1815-12-10"], "subject": "Ada Lovelace", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0252", "cat": "wd_value", "q": "Nelson Mandela was born on what date?", "answers": ["1918-07-18"], "subject": "Nelson Mandela", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0253", "cat": "wd_value", "q": "What was Queen Elizabeth II's actual birth date?", "answers": ["1926-04-21"], "subject": "Elizabeth II", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0254", "cat": "wd_value", "q": "What's the birth date of Martin Luther King Jr.?", "answers": ["1929-01-15"], "subject": "Martin Luther King Jr.", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0255", "cat": "wd_value", "q": "What year did Leonardo da Vinci come into the world?", "answers": ["1452", "1452-04-15"], "subject": "Leonardo da Vinci", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0256", "cat": "wd_value", "q": "When was Galileo born?", "answers": ["1564-02-15"], "subject": "Galileo Galilei", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0257", "cat": "wd_value", "q": "What is Elvis Presley's birthday?", "answers": ["1935-01-08"], "subject": "Elvis Presley", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0258", "cat": "wd_value", "q": "In which year was the astronaut Neil Armstrong born?", "answers": ["1930", "1930-08-05"], "subject": "Neil Armstrong", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0259", "cat": "wd_value", "q": "Picasso was born when?", "answers": ["1881-10-25"], "subject": "Pablo Picasso", "prop": "P569", "alt_props": [], "rel": "date of birth"}
+{"id": "s2-0260", "cat": "wd_value", "q": "When did John F. Kennedy die?", "answers": ["1963-11-22"], "subject": "John F. Kennedy", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0261", "cat": "wd_value", "q": "In what year did Princess Diana pass away?", "answers": ["1997", "1997-08-31"], "subject": "Diana, Princess of Wales", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0262", "cat": "wd_value", "q": "On what date did Michael Jackson die?", "answers": ["2009-06-25"], "subject": "Michael Jackson", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0263", "cat": "wd_value", "q": "When did Steve Jobs pass away?", "answers": ["2011-10-05"], "subject": "Steve Jobs", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0264", "cat": "wd_value", "q": "In which year did Queen Victoria die?", "answers": ["1901", "1901-01-22"], "subject": "Queen Victoria", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0265", "cat": "wd_value", "q": "When did Van Gogh lose his life?", "answers": ["1890-07-29"], "subject": "Vincent van Gogh", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0266", "cat": "wd_value", "q": "freddie mercury date of death", "answers": ["1991-11-24"], "subject": "Freddie Mercury", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0267", "cat": "wd_value", "q": "What was the date of Winston Churchill's death?", "answers": ["1965-01-24"], "subject": "Winston Churchill", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0268", "cat": "wd_value", "q": "In which year did Einstein die?", "answers": ["1955", "1955-04-18"], "subject": "Albert Einstein", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0269", "cat": "wd_value", "q": "When did Stephen Hawking pass away?", "answers": ["2018-03-14"], "subject": "Stephen Hawking", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0270", "cat": "wd_value", "q": "The musician Prince died on what day?", "answers": ["2016-04-21"], "subject": "Prince", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0271", "cat": "wd_value", "q": "What year did Amy Winehouse lose her life?", "answers": ["2011", "2011-07-23"], "subject": "Amy Winehouse", "prop": "P570", "alt_props": [], "rel": "date of death"}
+{"id": "s2-0272", "cat": "wd_value", "q": "When was Google founded?", "answers": ["1998-09-04", "1998"], "subject": "Google", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0273", "cat": "wd_value", "q": "In what year was Apple founded?", "answers": ["1976", "1976-04-01"], "subject": "Apple Inc.", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0274", "cat": "wd_value", "q": "Microsoft was established on what date?", "answers": ["1975-04-04"], "subject": "Microsoft", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0275", "cat": "wd_value", "q": "When did the United Nations come into existence?", "answers": ["1945-10-24"], "subject": "United Nations", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0276", "cat": "wd_value", "q": "What year was Amazon started?", "answers": ["1994", "1994-07-05"], "subject": "Amazon", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0277", "cat": "wd_value", "q": "When was NATO founded?", "answers": ["1949-04-04"], "subject": "NATO", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0278", "cat": "wd_value", "q": "In which year was IKEA set up?", "answers": ["1943"], "subject": "IKEA", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0279", "cat": "wd_value", "q": "What year does Harvard University date its founding to?", "answers": ["1636"], "subject": "Harvard University", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0280", "cat": "wd_value", "q": "What year was FIFA established?", "answers": ["1904", "1904-05-21"], "subject": "FIFA", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0281", "cat": "wd_value", "q": "nintendo was founded in what year", "answers": ["1889", "1889-09-23"], "subject": "Nintendo", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0282", "cat": "wd_value", "q": "When did Wikipedia launch?", "answers": ["2001-01-15"], "subject": "Wikipedia", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0283", "cat": "wd_value", "q": "In what year was the Toyota Motor Corporation founded?", "answers": ["1937", "1937-08-28"], "subject": "Toyota", "prop": "P571", "alt_props": [], "rel": "inception"}
+{"id": "s2-0284", "cat": "wd_value", "q": "Jane Austen's Pride and Prejudice first appeared in print on what date?", "answers": ["1813-01-28", "1813"], "subject": "Pride and Prejudice", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0285", "cat": "wd_value", "q": "What year did Orwell's Nineteen Eighty-Four come out?", "answers": ["1949", "1949-06-08"], "subject": "Nineteen Eighty-Four", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0286", "cat": "wd_value", "q": "When was The Great Gatsby published?", "answers": ["1925-04-10", "1925"], "subject": "The Great Gatsby", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0287", "cat": "wd_value", "q": "In what year was To Kill a Mockingbird released?", "answers": ["1960", "1960-07-11"], "subject": "To Kill a Mockingbird", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0288", "cat": "wd_value", "q": "J. K. Rowling launched the boy wizard series with her debut novel on which date?", "answers": ["1997-06-26", "1997"], "subject": "Harry Potter and the Philosopher's Stone", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0289", "cat": "wd_value", "q": "In which year did Charles Darwin publish On the Origin of Species?", "answers": ["1859-11-24", "1859"], "subject": "On the Origin of Species", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0290", "cat": "wd_value", "q": "What year was Michael Jackson's Thriller album released?", "answers": ["1982", "1982-11-30", "1982-11-29"], "subject": "Thriller", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0291", "cat": "wd_value", "q": "When did Abbey Road come out?", "answers": ["1969-09-26", "1969"], "subject": "Abbey Road", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0292", "cat": "wd_value", "q": "What year did the movie Jurassic Park hit cinemas?", "answers": ["1993", "1993-06-11"], "subject": "Jurassic Park", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0293", "cat": "wd_value", "q": "When was Disney's The Lion King released in theaters?", "answers": ["1994", "1994-06-15", "1994-06-24"], "subject": "The Lion King", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0294", "cat": "wd_value", "q": "In what year was the original Super Mario Bros. game released?", "answers": ["1985", "1985-09-13"], "subject": "Super Mario Bros.", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0295", "cat": "wd_value", "q": "When did James Cameron's Titanic premiere?", "answers": ["1997", "1997-11-01", "1997-12-19"], "subject": "Titanic", "prop": "P577", "alt_props": [], "rel": "publication date"}
+{"id": "s2-0296", "cat": "wd_value", "q": "When did World War I begin?", "answers": ["1914-07-28", "1914"], "subject": "World War I", "prop": "P580", "alt_props": ["P585"], "rel": "start time"}
+{"id": "s2-0297", "cat": "wd_value", "q": "The French Revolution began in which year?", "answers": ["1789", "1789-05-05"], "subject": "French Revolution", "prop": "P580", "alt_props": ["P585"], "rel": "start time"}
+{"id": "s2-0298", "cat": "wd_value", "q": "What year did the American Civil War start?", "answers": ["1861", "1861-04-12"], "subject": "American Civil War", "prop": "P580", "alt_props": ["P585"], "rel": "start time"}
+{"id": "s2-0299", "cat": "wd_value", "q": "When did the Korean War break out?", "answers": ["1950-06-25", "1950"], "subject": "Korean War", "prop": "P580", "alt_props": ["P585"], "rel": "start time"}
+{"id": "s2-0300", "cat": "wd_value", "q": "On what date did World War II officially end?", "answers": ["1945-09-02", "1945"], "subject": "World War II", "prop": "P582", "alt_props": ["P585"], "rel": "end time"}
+{"id": "s2-0301", "cat": "wd_value", "q": "When was Apollo 11 launched?", "answers": ["1969-07-16"], "subject": "Apollo 11", "prop": "P619", "alt_props": ["P580", "P585"], "rel": "launch date"}
+{"id": "s2-0302", "cat": "wd_value", "q": "The Berlin Wall came down on which date?", "answers": ["1989-11-09"], "subject": "fall of the Berlin Wall", "prop": "P585", "alt_props": ["P580"], "rel": "point in time"}
+{"id": "s2-0303", "cat": "wd_value", "q": "What date did the Titanic sink?", "answers": ["1912-04-15", "1912-04-14"], "subject": "sinking of the Titanic", "prop": "P585", "alt_props": ["P580"], "rel": "point in time"}
+{"id": "s2-0304", "cat": "wd_value", "q": "On what date did the Chernobyl nuclear accident occur?", "answers": ["1986-04-26"], "subject": "Chernobyl disaster", "prop": "P585", "alt_props": ["P580"], "rel": "point in time"}
+{"id": "s2-0305", "cat": "wd_value", "q": "The Battle of Hastings took place in which year?", "answers": ["1066", "1066-10-14"], "subject": "Battle of Hastings", "prop": "P585", "alt_props": ["P580"], "rel": "point in time"}
+{"id": "s2-0306", "cat": "wd_value", "q": "How many people live in Iceland?", "answers": ["390000"], "subject": "Iceland", "prop": "P1082", "alt_props": [], "rel": "population", "range": [330000, 420000]}
+{"id": "s2-0307", "cat": "wd_value", "q": "What's the population of Australia?", "answers": ["27000000"], "subject": "Australia", "prop": "P1082", "alt_props": [], "rel": "population", "range": [24000000, 29000000]}
+{"id": "s2-0308", "cat": "wd_value", "q": "Roughly how many people does Canada have?", "answers": ["41000000"], "subject": "Canada", "prop": "P1082", "alt_props": [], "rel": "population", "range": [36000000, 43000000]}
+{"id": "s2-0309", "cat": "wd_value", "q": "How many residents does Tokyo have?", "answers": ["14000000"], "subject": "Tokyo", "prop": "P1082", "alt_props": [], "rel": "population", "range": [13000000, 38000000]}
+{"id": "s2-0310", "cat": "wd_value", "q": "What is New Zealand's population?", "answers": ["5200000"], "subject": "New Zealand", "prop": "P1082", "alt_props": [], "rel": "population", "range": [4500000, 5600000]}
+{"id": "s2-0311", "cat": "wd_value", "q": "how many people live in norway", "answers": ["5500000"], "subject": "Norway", "prop": "P1082", "alt_props": [], "rel": "population", "range": [5000000, 5800000]}
+{"id": "s2-0312", "cat": "wd_value", "q": "What's the population of the city of Paris?", "answers": ["2100000"], "subject": "Paris", "prop": "P1082", "alt_props": [], "rel": "population", "range": [2000000, 2300000]}
+{"id": "s2-0313", "cat": "wd_value", "q": "How many inhabitants does Monaco have?", "answers": ["38000"], "subject": "Monaco", "prop": "P1082", "alt_props": [], "rel": "population", "range": [36000, 40000]}
+{"id": "s2-0314", "cat": "wd_value", "q": "How many people live in Vatican City?", "answers": ["800"], "subject": "Vatican City", "prop": "P1082", "alt_props": [], "rel": "population", "range": [450, 1000]}
+{"id": "s2-0315", "cat": "wd_value", "q": "What is the population of Greenland?", "answers": ["56000"], "subject": "Greenland", "prop": "P1082", "alt_props": [], "rel": "population", "range": [55000, 58000]}
+{"id": "s2-0316", "cat": "wd_value", "q": "How tall is the Burj Khalifa in metres?", "answers": ["828"], "subject": "Burj Khalifa", "prop": "P2048", "alt_props": [], "rel": "height", "range": [828, 830]}
+{"id": "s2-0317", "cat": "wd_value", "q": "From base to tip, how many metres tall is the Eiffel Tower?", "answers": ["330"], "subject": "Eiffel Tower", "prop": "P2048", "alt_props": [], "rel": "height", "range": [300, 331]}
+{"id": "s2-0318", "cat": "wd_value", "q": "How high is the Empire State Building in metres?", "answers": ["443", "381"], "subject": "Empire State Building", "prop": "P2048", "alt_props": [], "rel": "height", "range": [380, 444]}
+{"id": "s2-0319", "cat": "wd_value", "q": "How tall is the Shanghai Tower in metres?", "answers": ["632"], "subject": "Shanghai Tower", "prop": "P2048", "alt_props": [], "rel": "height", "range": [630, 633]}
+{"id": "s2-0320", "cat": "wd_value", "q": "What's the height of Taipei 101 in metres?", "answers": ["508"], "subject": "Taipei 101", "prop": "P2048", "alt_props": [], "rel": "height", "range": [508, 509]}
+{"id": "s2-0321", "cat": "wd_value", "q": "How tall is the Great Pyramid of Giza in metres?", "answers": ["138.5", "146.6"], "subject": "Great Pyramid of Giza", "prop": "P2048", "alt_props": [], "rel": "height", "range": [138, 147]}
+{"id": "s2-0322", "cat": "wd_value", "q": "How many metres tall is the Leaning Tower of Pisa?", "answers": ["56"], "subject": "Leaning Tower of Pisa", "prop": "P2048", "alt_props": [], "rel": "height", "range": [55, 58]}
+{"id": "s2-0323", "cat": "wd_value", "q": "How tall is Toronto's CN Tower in metres?", "answers": ["553"], "subject": "CN Tower", "prop": "P2048", "alt_props": [], "rel": "height", "range": [553, 554]}
+{"id": "s2-0324", "cat": "wd_value", "q": "How tall is Usain Bolt, in metres?", "answers": ["1.95"], "subject": "Usain Bolt", "prop": "P2048", "alt_props": [], "rel": "height", "range": [1.94, 1.96]}
+{"id": "s2-0325", "cat": "wd_value", "q": "What is Yao Ming's height in metres?", "answers": ["2.29"], "subject": "Yao Ming", "prop": "P2048", "alt_props": [], "rel": "height", "range": [2.26, 2.29]}
+{"id": "s2-0326", "cat": "wd_value", "q": "How many metres above sea level does Mount Everest's summit reach?", "answers": ["8849"], "subject": "Mount Everest", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [8844, 8850]}
+{"id": "s2-0327", "cat": "wd_value", "q": "How high is Denali in metres?", "answers": ["6190"], "subject": "Denali", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [6190, 6194]}
+{"id": "s2-0328", "cat": "wd_value", "q": "What is the elevation of Mount Fuji in metres?", "answers": ["3776"], "subject": "Mount Fuji", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [3775, 3777]}
+{"id": "s2-0329", "cat": "wd_value", "q": "How tall is Ben Nevis in metres?", "answers": ["1345"], "subject": "Ben Nevis", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [1343, 1346]}
+{"id": "s2-0330", "cat": "wd_value", "q": "How high above sea level is the summit of the Matterhorn, in metres?", "answers": ["4478"], "subject": "Matterhorn", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [4477, 4479]}
+{"id": "s2-0331", "cat": "wd_value", "q": "what is the height of aconcagua in meters", "answers": ["6961"], "subject": "Aconcagua", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [6959, 6962]}
+{"id": "s2-0332", "cat": "wd_value", "q": "What's the summit elevation of Mont Blanc in metres?", "answers": ["4806"], "subject": "Mont Blanc", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [4800, 4811]}
+{"id": "s2-0333", "cat": "wd_value", "q": "How many metres high is Mount Elbrus?", "answers": ["5642"], "subject": "Mount Elbrus", "prop": "P2044", "alt_props": [], "rel": "elevation above sea level", "range": [5640, 5643]}
+{"id": "s2-0334", "cat": "wd_value", "q": "Russia covers how many square kilometres in total?", "answers": ["17098246"], "subject": "Russia", "prop": "P2046", "alt_props": [], "rel": "area", "range": [17000000, 17200000]}
+{"id": "s2-0335", "cat": "wd_value", "q": "How big is Lake Superior in square kilometres?", "answers": ["82100"], "subject": "Lake Superior", "prop": "P2046", "alt_props": [], "rel": "area", "range": [81000, 82500]}
+{"id": "s2-0336", "cat": "wd_value", "q": "What's the area of Iceland in square kilometres?", "answers": ["103000"], "subject": "Iceland", "prop": "P2046", "alt_props": [], "rel": "area", "range": [100000, 103200]}
+{"id": "s2-0337", "cat": "wd_value", "q": "How many square kilometres does Monaco cover?", "answers": ["2.02"], "subject": "Monaco", "prop": "P2046", "alt_props": [], "rel": "area", "range": [1.95, 2.1]}
+{"id": "s2-0338", "cat": "wd_value", "q": "What is the area of Texas in km²?", "answers": ["695662"], "subject": "Texas", "prop": "P2046", "alt_props": [], "rel": "area", "range": [690000, 696300]}
+{"id": "s2-0339", "cat": "wd_value", "q": "How large is Japan in square kilometres?", "answers": ["377975"], "subject": "Japan", "prop": "P2046", "alt_props": [], "rel": "area", "range": [377800, 378000]}
+{"id": "s2-0340", "cat": "wd_value", "q": "How long is the Nile River in kilometres?", "answers": ["6650"], "subject": "Nile", "prop": "P2043", "alt_props": [], "rel": "length", "range": [6600, 6853]}
+{"id": "s2-0341", "cat": "wd_value", "q": "From source to mouth, how many kilometres does the Mississippi River run?", "answers": ["3730"], "subject": "Mississippi River", "prop": "P2043", "alt_props": [], "rel": "length", "range": [3700, 3800]}
+{"id": "s2-0342", "cat": "wd_value", "q": "How many kilometres long is the Thames?", "answers": ["346"], "subject": "River Thames", "prop": "P2043", "alt_props": [], "rel": "length", "range": [340, 356]}
+{"id": "s2-0343", "cat": "wd_value", "q": "What's the length of the Danube in km?", "answers": ["2850"], "subject": "Danube", "prop": "P2043", "alt_props": [], "rel": "length", "range": [2840, 2888]}
+{"id": "s2-0344", "cat": "wd_value", "q": "how long is the rhine in kilometers", "answers": ["1233"], "subject": "Rhine", "prop": "P2043", "alt_props": [], "rel": "length", "range": [1230, 1325]}
+{"id": "s2-0345", "cat": "wd_value", "q": "How long is the Volga River in km?", "answers": ["3530"], "subject": "Volga", "prop": "P2043", "alt_props": [], "rel": "length", "range": [3500, 3700]}
+{"id": "s2-0346", "cat": "wd_value", "q": "How many episodes of Breaking Bad were made?", "answers": ["62"], "subject": "Breaking Bad", "prop": "P1113", "alt_props": [], "rel": "number of episodes"}
+{"id": "s2-0347", "cat": "wd_value", "q": "How many episodes does Game of Thrones have in total?", "answers": ["73"], "subject": "Game of Thrones", "prop": "P1113", "alt_props": [], "rel": "number of episodes"}
+{"id": "s2-0348", "cat": "wd_value", "q": "What's the total episode count of The Sopranos?", "answers": ["86"], "subject": "The Sopranos", "prop": "P1113", "alt_props": [], "rel": "number of episodes"}
+{"id": "s2-0349", "cat": "wd_value", "q": "How many seasons did Friends run for?", "answers": ["10"], "subject": "Friends", "prop": "P2437", "alt_props": [], "rel": "number of seasons"}
+{"id": "s2-0350", "cat": "wd_value", "q": "How many seasons of Seinfeld are there?", "answers": ["9"], "subject": "Seinfeld", "prop": "P2437", "alt_props": [], "rel": "number of seasons"}
+{"id": "s2-0351", "cat": "wd_value", "q": "Gold has which atomic number?", "answers": ["79"], "subject": "gold", "prop": "P1086", "alt_props": [], "rel": "atomic number"}
+{"id": "s2-0352", "cat": "wd_value", "q": "Which atomic number does iron have?", "answers": ["26"], "subject": "iron", "prop": "P1086", "alt_props": [], "rel": "atomic number"}
+{"id": "s2-0353", "cat": "wd_value", "q": "How many protons are in a uranium atom?", "answers": ["92"], "subject": "uranium", "prop": "P1086", "alt_props": [], "rel": "atomic number"}
+{"id": "s2-0354", "cat": "wd_value", "q": "silver's atomic number?", "answers": ["47"], "subject": "silver", "prop": "P1086", "alt_props": [], "rel": "atomic number"}
+{"id": "s2-0355", "cat": "wd_value", "q": "What's neon's atomic number?", "answers": ["10"], "subject": "neon", "prop": "P1086", "alt_props": [], "rel": "atomic number"}
+{"id": "s2-0356", "cat": "commonsense", "q": "What is the opposite of hot?", "answers": ["cold"], "concept": "hot", "rel": "antonym"}
+{"id": "s2-0357", "cat": "commonsense", "q": "What's an antonym for 'ancient'?", "answers": ["modern", "new"], "concept": "ancient", "rel": "antonym"}
+{"id": "s2-0358", "cat": "commonsense", "q": "Name an antonym of 'generous'.", "answers": ["stingy", "selfish", "mean", "miserly"], "concept": "generous", "rel": "antonym"}
+{"id": "s2-0359", "cat": "commonsense", "q": "What is the opposite of victory?", "answers": ["defeat", "loss"], "concept": "victory", "rel": "antonym"}
+{"id": "s2-0360", "cat": "commonsense", "q": "Opposite of shallow?", "answers": ["deep"], "concept": "shallow", "rel": "antonym"}
+{"id": "s2-0361", "cat": "commonsense", "q": "What word is the reverse of 'expand'?", "answers": ["contract", "shrink"], "concept": "expand", "rel": "antonym"}
+{"id": "s2-0362", "cat": "commonsense", "q": "What's the opposite of brave?", "answers": ["cowardly", "afraid", "timid"], "concept": "brave", "rel": "antonym"}
+{"id": "s2-0363", "cat": "commonsense", "q": "the opposite of rough is what", "answers": ["smooth"], "concept": "rough", "rel": "antonym"}
+{"id": "s2-0364", "cat": "commonsense", "q": "What is an antonym of 'arrive'?", "answers": ["depart", "leave"], "concept": "arrive", "rel": "antonym"}
+{"id": "s2-0365", "cat": "commonsense", "q": "What's the opposite of visible?", "answers": ["invisible"], "concept": "visible", "rel": "antonym"}
+{"id": "s2-0366", "cat": "commonsense", "q": "What's another word for happy?", "answers": ["glad", "joyful", "cheerful", "content"], "concept": "happy", "rel": "synonym"}
+{"id": "s2-0367", "cat": "commonsense", "q": "Give me a synonym for big.", "answers": ["large", "huge", "great"], "concept": "big", "rel": "synonym"}
+{"id": "s2-0368", "cat": "commonsense", "q": "Which word means the same as 'begin'?", "answers": ["start", "commence"], "concept": "begin", "rel": "synonym"}
+{"id": "s2-0369", "cat": "commonsense", "q": "What is a synonym of quick?", "answers": ["fast", "rapid", "speedy"], "concept": "quick", "rel": "synonym"}
+{"id": "s2-0370", "cat": "commonsense", "q": "another word for angry", "answers": ["mad", "furious", "irate", "cross"], "concept": "angry", "rel": "synonym"}
+{"id": "s2-0371", "cat": "commonsense", "q": "What's a word that means the same as tiny?", "answers": ["small", "little", "minute", "miniature"], "concept": "tiny", "rel": "synonym"}
+{"id": "s2-0372", "cat": "commonsense", "q": "What is a more everyday word for 'purchase'?", "answers": ["buy"], "concept": "purchase", "rel": "synonym"}
+{"id": "s2-0373", "cat": "commonsense", "q": "Name a synonym for 'difficult'.", "answers": ["hard", "tough", "challenging"], "concept": "difficult", "rel": "synonym"}
+{"id": "s2-0374", "cat": "commonsense", "q": "What is bread made from?", "answers": ["flour", "wheat", "dough"], "concept": "bread", "rel": "made_of"}
+{"id": "s2-0375", "cat": "commonsense", "q": "What is glass made of?", "answers": ["sand", "silica"], "concept": "glass", "rel": "made_of"}
+{"id": "s2-0376", "cat": "commonsense", "q": "What is cheese made from?", "answers": ["milk"], "concept": "cheese", "rel": "made_of"}
+{"id": "s2-0377", "cat": "commonsense", "q": "What is paper usually made from?", "answers": ["wood", "wood pulp", "pulp"], "concept": "paper", "rel": "made_of"}
+{"id": "s2-0378", "cat": "commonsense", "q": "what are candles made of", "answers": ["wax", "paraffin"], "concept": "candle", "rel": "made_of"}
+{"id": "s2-0379", "cat": "commonsense", "q": "Which legume is tofu produced from?", "answers": ["soybeans", "soy", "soya beans"], "concept": "tofu", "rel": "made_of"}
+{"id": "s2-0380", "cat": "commonsense", "q": "What fruit is wine made from?", "answers": ["grapes", "grape"], "concept": "wine", "rel": "made_of"}
+{"id": "s2-0381", "cat": "commonsense", "q": "What are scissors used for?", "answers": ["cutting"], "concept": "scissors", "rel": "used_for"}
+{"id": "s2-0382", "cat": "commonsense", "q": "What do you use an umbrella for?", "answers": ["keeping dry", "protection from rain", "rain", "shade"], "concept": "umbrella", "rel": "used_for"}
+{"id": "s2-0383", "cat": "commonsense", "q": "What does a thermometer do?", "answers": ["measuring temperature", "measure temperature"], "concept": "thermometer", "rel": "used_for"}
+{"id": "s2-0384", "cat": "commonsense", "q": "What is a broom for?", "answers": ["sweeping", "sweeping the floor"], "concept": "broom", "rel": "used_for"}
+{"id": "s2-0385", "cat": "commonsense", "q": "What do doctors use a stethoscope for?", "answers": ["listening to the heart", "listening to heartbeat", "listening to the body"], "concept": "stethoscope", "rel": "used_for"}
+{"id": "s2-0386", "cat": "commonsense", "q": "What's a kettle used for?", "answers": ["boiling water"], "concept": "kettle", "rel": "used_for"}
+{"id": "s2-0387", "cat": "commonsense", "q": "What would you use a shovel for?", "answers": ["digging"], "concept": "shovel", "rel": "used_for"}
+{"id": "s2-0388", "cat": "commonsense", "q": "What is a compass used for?", "answers": ["finding direction", "navigation"], "concept": "compass", "rel": "used_for"}
+{"id": "s2-0389", "cat": "commonsense", "q": "When a banana is ripe, what colour does it turn?", "answers": ["yellow"], "concept": "banana", "rel": "colour"}
+{"id": "s2-0390", "cat": "commonsense", "q": "What colour is grass?", "answers": ["green"], "concept": "grass", "rel": "colour"}
+{"id": "s2-0391", "cat": "commonsense", "q": "what color is fresh snow", "answers": ["white"], "concept": "snow", "rel": "colour"}
+{"id": "s2-0392", "cat": "commonsense", "q": "What colour is a ripe tomato usually?", "answers": ["red"], "concept": "tomato", "rel": "colour"}
+{"id": "s2-0393", "cat": "commonsense", "q": "What colour are flamingos?", "answers": ["pink"], "concept": "flamingo", "rel": "colour"}
+{"id": "s2-0394", "cat": "commonsense", "q": "What colour is coal?", "answers": ["black"], "concept": "coal", "rel": "colour"}
+{"id": "s2-0395", "cat": "commonsense", "q": "Where do camels live?", "answers": ["desert"], "concept": "camel", "rel": "habitat"}
+{"id": "s2-0396", "cat": "commonsense", "q": "What is the natural home of the polar bear?", "answers": ["Arctic", "sea ice"], "concept": "polar bear", "rel": "habitat"}
+{"id": "s2-0397", "cat": "commonsense", "q": "Where do honeybees live?", "answers": ["hive", "beehive"], "concept": "bee", "rel": "habitat"}
+{"id": "s2-0398", "cat": "commonsense", "q": "Where do bats typically sleep during the day?", "answers": ["cave", "caves"], "concept": "bat", "rel": "habitat"}
+{"id": "s2-0399", "cat": "commonsense", "q": "Where does a beaver live?", "answers": ["lodge", "river", "pond", "dam"], "concept": "beaver", "rel": "habitat"}
+{"id": "s2-0400", "cat": "commonsense", "q": "Where does a mole live?", "answers": ["underground", "burrow", "tunnels"], "concept": "mole", "rel": "habitat"}
+{"id": "s2-0401", "cat": "commonsense", "q": "What does a panda eat?", "answers": ["bamboo"], "concept": "giant panda", "rel": "eats"}
+{"id": "s2-0402", "cat": "commonsense", "q": "What do koalas eat?", "answers": ["eucalyptus", "eucalyptus leaves"], "concept": "koala", "rel": "eats"}
+{"id": "s2-0403", "cat": "commonsense", "q": "What do cows eat?", "answers": ["grass", "hay"], "concept": "cow", "rel": "eats"}
+{"id": "s2-0404", "cat": "commonsense", "q": "What does a hummingbird drink?", "answers": ["nectar"], "concept": "hummingbird", "rel": "eats"}
+{"id": "s2-0405", "cat": "commonsense", "q": "what do rabbits eat", "answers": ["grass", "carrots", "vegetables", "hay"], "concept": "rabbit", "rel": "eats"}
+{"id": "s2-0406", "cat": "commonsense", "q": "What does a vampire bat feed on?", "answers": ["blood"], "concept": "vampire bat", "rel": "eats"}
+{"id": "s2-0407", "cat": "commonsense", "q": "What does an anteater eat?", "answers": ["ants", "termites"], "concept": "anteater", "rel": "eats"}
+{"id": "s2-0408", "cat": "commonsense", "q": "What is a baby kangaroo called?", "answers": ["joey"], "concept": "kangaroo", "rel": "young"}
+{"id": "s2-0409", "cat": "commonsense", "q": "A baby goose goes by what name?", "answers": ["gosling"], "concept": "goose", "rel": "young"}
+{"id": "s2-0410", "cat": "commonsense", "q": "A baby frog is called what?", "answers": ["tadpole", "froglet"], "concept": "frog", "rel": "young"}
+{"id": "s2-0411", "cat": "commonsense", "q": "What's a baby deer called?", "answers": ["fawn"], "concept": "deer", "rel": "young"}
+{"id": "s2-0412", "cat": "commonsense", "q": "What is the name for a young swan?", "answers": ["cygnet"], "concept": "swan", "rel": "young"}
+{"id": "s2-0413", "cat": "commonsense", "q": "what's a baby horse called", "answers": ["foal", "colt", "filly"], "concept": "horse", "rel": "young"}
+{"id": "s2-0414", "cat": "commonsense", "q": "Young owls are known by what term?", "answers": ["owlet"], "concept": "owl", "rel": "young"}
+{"id": "s2-0415", "cat": "commonsense", "q": "What is a baby goat called?", "answers": ["kid"], "concept": "goat", "rel": "young"}
+{"id": "s2-0416", "cat": "commonsense", "q": "A family of lions living together is known as a what?", "answers": ["pride"], "concept": "lion", "rel": "group"}
+{"id": "s2-0417", "cat": "commonsense", "q": "What's the collective noun for crows?", "answers": ["murder"], "concept": "crow", "rel": "group"}
+{"id": "s2-0418", "cat": "commonsense", "q": "Fish swimming together in a group form a what?", "answers": ["school", "shoal"], "concept": "fish", "rel": "group"}
+{"id": "s2-0419", "cat": "commonsense", "q": "A bunch of wolves together goes by what name?", "answers": ["pack"], "concept": "wolf", "rel": "group"}
+{"id": "s2-0420", "cat": "commonsense", "q": "what is a group of geese called", "answers": ["gaggle", "skein"], "concept": "goose", "rel": "group"}
+{"id": "s2-0421", "cat": "commonsense", "q": "What is a group of owls called?", "answers": ["parliament"], "concept": "owl", "rel": "group"}
+{"id": "s2-0422", "cat": "commonsense", "q": "Whales travelling together are collectively termed a what?", "answers": ["pod"], "concept": "whale", "rel": "group"}
+{"id": "s2-0423", "cat": "commonsense", "q": "What sound does a lion make?", "answers": ["roar"], "concept": "lion", "rel": "sound"}
+{"id": "s2-0424", "cat": "commonsense", "q": "What sound do ducks typically make?", "answers": ["quack"], "concept": "duck", "rel": "sound"}
+{"id": "s2-0425", "cat": "commonsense", "q": "What sound does a snake make?", "answers": ["hiss"], "concept": "snake", "rel": "sound"}
+{"id": "s2-0426", "cat": "commonsense", "q": "What noise does a horse make?", "answers": ["neigh", "whinny", "nicker"], "concept": "horse", "rel": "sound"}
+{"id": "s2-0427", "cat": "commonsense", "q": "What sound does a donkey make?", "answers": ["bray", "hee-haw"], "concept": "donkey", "rel": "sound"}
+{"id": "s2-0428", "cat": "commonsense", "q": "Which call is an owl known for at night?", "answers": ["hoot"], "concept": "owl", "rel": "sound"}
+{"id": "s2-0429", "cat": "commonsense", "q": "Petals belong to which part of a plant?", "answers": ["flower"], "concept": "petal", "rel": "part_of"}
+{"id": "s2-0430", "cat": "commonsense", "q": "What body part is a finger attached to?", "answers": ["hand"], "concept": "finger", "rel": "part_of"}
+{"id": "s2-0431", "cat": "commonsense", "q": "The retina is part of which organ?", "answers": ["eye"], "concept": "retina", "rel": "part_of"}
+{"id": "s2-0432", "cat": "commonsense", "q": "A chapter is a part of what?", "answers": ["book"], "concept": "chapter", "rel": "part_of"}
+{"id": "s2-0433", "cat": "commonsense", "q": "Spiders walk on how many legs?", "answers": ["8", "eight"], "concept": "spider", "rel": "count"}
+{"id": "s2-0434", "cat": "commonsense", "q": "A tricycle rolls on how many wheels?", "answers": ["3", "three"], "concept": "tricycle", "rel": "count"}
+{"id": "s2-0435", "cat": "commonsense", "q": "Insects have how many legs in total?", "answers": ["6", "six"], "concept": "insect", "rel": "count"}
+{"id": "s2-0436", "cat": "compute", "q": "What is 347 plus 589?", "answers": ["936"], "expr": "347+589", "kind": "arith"}
+{"id": "s2-0437", "cat": "compute", "q": "What's 1,024 minus 389?", "answers": ["635"], "expr": "1024-389", "kind": "arith"}
+{"id": "s2-0438", "cat": "compute", "q": "Multiply 46 by 27.", "answers": ["1242"], "expr": "46*27", "kind": "arith"}
+{"id": "s2-0439", "cat": "compute", "q": "What is 7,224 divided by 12?", "answers": ["602"], "expr": "7224/12", "kind": "arith"}
+{"id": "s2-0440", "cat": "compute", "q": "what's seventeen times thirteen", "answers": ["221"], "expr": "17*13", "kind": "arith"}
+{"id": "s2-0441", "cat": "compute", "q": "If you add 2,358 and 4,679, what do you get?", "answers": ["7037"], "expr": "2358+4679", "kind": "arith"}
+{"id": "s2-0442", "cat": "compute", "q": "How much is 900 minus 456?", "answers": ["444"], "expr": "900-456", "kind": "arith"}
+{"id": "s2-0443", "cat": "compute", "q": "1,296 divided by 36 equals what?", "answers": ["36"], "expr": "1296/36", "kind": "arith"}
+{"id": "s2-0444", "cat": "compute", "q": "Calculate 125 × 64.", "answers": ["8000"], "expr": "125*64", "kind": "arith"}
+{"id": "s2-0445", "cat": "compute", "q": "What is the sum of 88, 77 and 66?", "answers": ["231"], "expr": "88+77+66", "kind": "arith"}
+{"id": "s2-0446", "cat": "compute", "q": "Subtract 1,999 from 5,000.", "answers": ["3001"], "expr": "5000-1999", "kind": "arith"}
+{"id": "s2-0447", "cat": "compute", "q": "What's 3 to the power of 7?", "answers": ["2187"], "expr": "3**7", "kind": "arith"}
+{"id": "s2-0448", "cat": "compute", "q": "What is 15 squared?", "answers": ["225"], "expr": "15**2", "kind": "arith"}
+{"id": "s2-0449", "cat": "compute", "q": "What is twelve thousand divided by forty-eight?", "answers": ["250"], "expr": "12000/48", "kind": "arith"}
+{"id": "s2-0450", "cat": "compute", "q": "What's the product of 19 and 21?", "answers": ["399"], "expr": "19*21", "kind": "arith"}
+{"id": "s2-0451", "cat": "compute", "q": "How much is 68 + 47 - 29?", "answers": ["86"], "expr": "68+47-29", "kind": "arith"}
+{"id": "s2-0452", "cat": "compute", "q": "What is 9 factorial?", "answers": ["362880"], "expr": "math.factorial(9)", "kind": "arith"}
+{"id": "s2-0453", "cat": "compute", "q": "Which whole number squared gives 1,764?", "answers": ["42"], "expr": "math.isqrt(1764)", "kind": "arith"}
+{"id": "s2-0454", "cat": "compute", "q": "If I have 250 apples and give away 87, how many are left?", "answers": ["163"], "expr": "250-87", "kind": "arith"}
+{"id": "s2-0455", "cat": "compute", "q": "What is 6,300 divided by 45?", "answers": ["140"], "expr": "6300/45", "kind": "arith"}
+{"id": "s2-0456", "cat": "compute", "q": "What do you get if you multiply 234 by 8?", "answers": ["1872"], "expr": "234*8", "kind": "arith"}
+{"id": "s2-0457", "cat": "compute", "q": "Add four hundred and twelve to two hundred and ninety-nine.", "answers": ["711"], "expr": "412+299", "kind": "arith"}
+{"id": "s2-0458", "cat": "compute", "q": "What's 10,000 minus 3,457?", "answers": ["6543"], "expr": "10000-3457", "kind": "arith"}
+{"id": "s2-0459", "cat": "compute", "q": "What's 37 times 37?", "answers": ["1369"], "expr": "37*37", "kind": "arith"}
+{"id": "s2-0460", "cat": "compute", "q": "Divide 2,048 by 16.", "answers": ["128"], "expr": "2048/16", "kind": "arith"}
+{"id": "s2-0461", "cat": "compute", "q": "Is 97 a prime number?", "answers": ["yes"], "expr": "isprime(97)", "kind": "prime"}
+{"id": "s2-0462", "cat": "compute", "q": "Is 91 prime?", "answers": ["no"], "expr": "isprime(91)", "kind": "prime"}
+{"id": "s2-0463", "cat": "compute", "q": "What is the next prime after 100?", "answers": ["101"], "expr": "nextprime(100)", "kind": "prime"}
+{"id": "s2-0464", "cat": "compute", "q": "What's the first prime number greater than 200?", "answers": ["211"], "expr": "nextprime(200)", "kind": "prime"}
+{"id": "s2-0465", "cat": "compute", "q": "Counting from 2, which number is the tenth prime?", "answers": ["29"], "expr": "nthprime(10)", "kind": "prime"}
+{"id": "s2-0466", "cat": "compute", "q": "If you list the primes in order, which one comes 25th?", "answers": ["97"], "expr": "nthprime(25)", "kind": "prime"}
+{"id": "s2-0467", "cat": "compute", "q": "How many prime numbers are there between 1 and 50?", "answers": ["15"], "expr": "countprimes(1,50)", "kind": "prime"}
+{"id": "s2-0468", "cat": "compute", "q": "How many primes lie between 100 and 150?", "answers": ["10"], "expr": "countprimes(100,150)", "kind": "prime"}
+{"id": "s2-0469", "cat": "compute", "q": "Is 221 a prime number?", "answers": ["no"], "expr": "isprime(221)", "kind": "prime"}
+{"id": "s2-0470", "cat": "compute", "q": "Is 2027 prime?", "answers": ["yes"], "expr": "isprime(2027)", "kind": "prime"}
+{"id": "s2-0471", "cat": "compute", "q": "Which prime is the lowest of all?", "answers": ["2"], "expr": "nthprime(1)", "kind": "prime"}
+{"id": "s2-0472", "cat": "compute", "q": "What's the largest prime below 1,000?", "answers": ["997"], "expr": "prevprime(1000)", "kind": "prime"}
+{"id": "s2-0473", "cat": "compute", "q": "What prime comes right after 89?", "answers": ["97"], "expr": "nextprime(89)", "kind": "prime"}
+{"id": "s2-0474", "cat": "compute", "q": "What is 15% of 240?", "answers": ["36"], "expr": "240*15/100", "kind": "percent"}
+{"id": "s2-0475", "cat": "compute", "q": "What's 8 percent of 1,250?", "answers": ["100"], "expr": "1250*8/100", "kind": "percent"}
+{"id": "s2-0476", "cat": "compute", "q": "What percentage of 80 is 20?", "answers": ["25", "25%"], "expr": "20/80*100", "kind": "percent"}
+{"id": "s2-0477", "cat": "compute", "q": "A jacket normally costing 60 dollars gets 25 percent knocked off, so what is the new price?", "answers": ["45", "$45"], "expr": "60*(100-25)/100", "kind": "percent"}
+{"id": "s2-0478", "cat": "compute", "q": "What is 120% of 45?", "answers": ["54"], "expr": "45*120/100", "kind": "percent"}
+{"id": "s2-0479", "cat": "compute", "q": "Increase 200 by 15 percent. What do you get?", "answers": ["230"], "expr": "200*(100+15)/100", "kind": "percent"}
+{"id": "s2-0480", "cat": "compute", "q": "What's 3.5% of 2,000?", "answers": ["70"], "expr": "2000*3.5/100", "kind": "percent"}
+{"id": "s2-0481", "cat": "absent", "q": "When was the novelist Thessaly Vornquist born?", "answers": [], "kind": "fictional", "subject": "Thessaly Vornquist"}
+{"id": "s2-0482", "cat": "absent", "q": "How many people live in the village of Quillmarsh Cross?", "answers": [], "kind": "fictional", "subject": "Quillmarsh Cross"}
+{"id": "s2-0483", "cat": "absent", "q": "Who directed the film The Lanterns of Oskeby Pier?", "answers": [], "kind": "fictional", "subject": "The Lanterns of Oskeby Pier"}
+{"id": "s2-0484", "cat": "absent", "q": "Which river runs through the town of Varnhold-on-Teague?", "answers": [], "kind": "fictional", "subject": "Varnhold-on-Teague"}
+{"id": "s2-0485", "cat": "absent", "q": "Who is the chief executive of Grenvale Hydrodynamics Ltd?", "answers": [], "kind": "fictional", "subject": "Grenvale Hydrodynamics"}
+{"id": "s2-0486", "cat": "absent", "q": "Which record label released The Marrowlights' album Velvet Static Harbour?", "answers": [], "kind": "fictional", "subject": "Velvet Static Harbour"}
+{"id": "s2-0487", "cat": "absent", "q": "In what year did the Duchy of Esterquin gain independence?", "answers": [], "kind": "fictional", "subject": "Duchy of Esterquin"}
+{"id": "s2-0488", "cat": "absent", "q": "Who wrote the poetry collection Salt Hymns for Brindlecote?", "answers": [], "kind": "fictional", "subject": "Salt Hymns for Brindlecote"}
+{"id": "s2-0489", "cat": "absent", "q": "Which city serves as the seat of power in the Republic of Kalvoria?", "answers": [], "kind": "fictional", "subject": "Republic of Kalvoria"}
+{"id": "s2-0490", "cat": "absent", "q": "Where was the painter Odalric Penhallow-Strade born?", "answers": [], "kind": "fictional", "subject": "Odalric Penhallow-Strade"}
+{"id": "s2-0491", "cat": "absent", "q": "How tall is the Zennerford Clock Tower?", "answers": [], "kind": "fictional", "subject": "Zennerford Clock Tower"}
+{"id": "s2-0492", "cat": "absent", "q": "Who first held the office of mayor in Port Ilsabeth?", "answers": [], "kind": "fictional", "subject": "Port Ilsabeth"}
+{"id": "s2-0493", "cat": "absent", "q": "Which club does the striker Teodor Vaskreyl-Ombu play for?", "answers": [], "kind": "fictional", "subject": "Teodor Vaskreyl-Ombu"}
+{"id": "s2-0494", "cat": "absent", "q": "What genre is the video game Thornwick Caverns of the Pale Sun?", "answers": [], "kind": "fictional", "subject": "Thornwick Caverns of the Pale Sun"}
+{"id": "s2-0495", "cat": "absent", "q": "Who is the cellist Miravel Ashgrove-Tunde married to?", "answers": [], "kind": "fictional", "subject": "Miravel Ashgrove-Tunde"}
+{"id": "s2-0496", "cat": "absent", "q": "What is the elevation of Mount Cardigrel in the Hessenreach Range?", "answers": [], "kind": "fictional", "subject": "Mount Cardigrel"}
+{"id": "s2-0497", "cat": "absent", "q": "When did the Glimmerholt Rail Company go bankrupt?", "answers": [], "kind": "fictional", "subject": "Glimmerholt Rail Company"}
+{"id": "s2-0498", "cat": "absent", "q": "What currency do they use on the island nation of San Teodrin?", "answers": [], "kind": "fictional", "subject": "San Teodrin"}
+{"id": "s2-0499", "cat": "absent", "q": "Who discovered Comet Quenzell-Abernathy?", "answers": [], "kind": "fictional", "subject": "Comet Quenzell-Abernathy"}
+{"id": "s2-0500", "cat": "absent", "q": "Who composed the opera The Widow of Larkspur Fen?", "answers": [], "kind": "fictional", "subject": "The Widow of Larkspur Fen"}
+{"id": "s2-0501", "cat": "absent", "q": "Which university did the physicist Ysolde Marchbanks-Ito attend?", "answers": [], "kind": "fictional", "subject": "Ysolde Marchbanks-Ito"}
+{"id": "s2-0502", "cat": "absent", "q": "How many episodes does the TV drama The Gullhaven Inheritance have?", "answers": [], "kind": "fictional", "subject": "The Gullhaven Inheritance"}
+{"id": "s2-0503", "cat": "absent", "q": "Which company owns the Brassweather Hotels chain?", "answers": [], "kind": "fictional", "subject": "Brassweather Hotels"}
+{"id": "s2-0504", "cat": "absent", "q": "What language is spoken in the province of Nordhalmia?", "answers": [], "kind": "fictional", "subject": "Nordhalmia"}
+{"id": "s2-0505", "cat": "absent", "q": "Who succeeded Chancellor Ermin Drovak of Vestalund?", "answers": [], "kind": "fictional", "subject": "Ermin Drovak"}
+{"id": "s2-0506", "cat": "absent", "q": "When was St Aldric's College in Wrenmoor founded?", "answers": [], "kind": "fictional", "subject": "St Aldric's College, Wrenmoor"}
+{"id": "s2-0507", "cat": "absent", "q": "Who sang the song Tangerine Lighthouse Blues?", "answers": [], "kind": "fictional", "subject": "Tangerine Lighthouse Blues"}
+{"id": "s2-0508", "cat": "absent", "q": "Where did the explorer Bartholomew Quayne-Hesketh die?", "answers": [], "kind": "fictional", "subject": "Bartholomew Quayne-Hesketh"}
+{"id": "s2-0509", "cat": "absent", "q": "Who made the first ascent of Mount Ondrevik in the Sallowmere Highlands?", "answers": [], "kind": "fictional", "subject": "Mount Ondrevik"}
+{"id": "s2-0510", "cat": "absent", "q": "What is the surface area of Lake Tarnwhistle?", "answers": [], "kind": "fictional", "subject": "Lake Tarnwhistle"}
+{"id": "s2-0511", "cat": "absent", "q": "Who is the mother of Prince Caspian Velloreau of Montclaire-sur-Vey?", "answers": [], "kind": "fictional", "subject": "Caspian Velloreau"}
+{"id": "s2-0512", "cat": "absent", "q": "When was the Orvanne Bridge in Kesterbury completed?", "answers": [], "kind": "fictional", "subject": "Orvanne Bridge"}
+{"id": "s2-0513", "cat": "absent", "q": "Which architect designed the Halcyon Spire in Dunmarrow City?", "answers": [], "kind": "fictional", "subject": "Halcyon Spire"}
+{"id": "s2-0514", "cat": "absent", "q": "What sport does Linnea Brask-Okonkwo play professionally?", "answers": [], "kind": "fictional", "subject": "Linnea Brask-Okonkwo"}
+{"id": "s2-0515", "cat": "absent", "q": "Which company manufactures the Ferrowind T-9 tractor?", "answers": [], "kind": "fictional", "subject": "Ferrowind T-9"}
+{"id": "s2-0516", "cat": "absent", "q": "What was Albert Einstein's favourite food?", "answers": [], "kind": "untracked", "subject": "Albert Einstein", "prop_phrase": "favourite food"}
+{"id": "s2-0517", "cat": "absent", "q": "What exactly did Neil Armstrong say as he stepped onto the Moon?", "answers": ["That's one small step for man, one giant leap for mankind", "That's one small step for a man, one giant leap for mankind"], "kind": "untracked", "subject": "Neil Armstrong", "prop_phrase": "first words on the Moon"}
+{"id": "s2-0518", "cat": "absent", "q": "What's the window count for the Empire State Building?", "answers": ["6514"], "kind": "untracked", "subject": "Empire State Building", "prop_phrase": "number of windows"}
+{"id": "s2-0519", "cat": "absent", "q": "Climbing the Eiffel Tower on foot to its summit means how many steps?", "answers": ["1665"], "kind": "untracked", "subject": "Eiffel Tower", "prop_phrase": "number of steps"}
+{"id": "s2-0520", "cat": "absent", "q": "What was Elvis Presley's favourite sandwich?", "answers": ["peanut butter and banana", "fried peanut butter and banana sandwich"], "kind": "untracked", "subject": "Elvis Presley", "prop_phrase": "favourite sandwich"}
+{"id": "s2-0521", "cat": "absent", "q": "How much did Avatar earn in the US on its opening weekend in December 2009?", "answers": ["77 million", "77025481"], "kind": "untracked", "subject": "Avatar", "prop_phrase": "opening weekend box office"}
+{"id": "s2-0522", "cat": "absent", "q": "What shoe size does Michael Phelps wear?", "answers": ["14", "US 14"], "kind": "untracked", "subject": "Michael Phelps", "prop_phrase": "shoe size"}
+{"id": "s2-0523", "cat": "absent", "q": "What are the opening words of Lincoln's Gettysburg Address?", "answers": ["Four score and seven years ago"], "kind": "untracked", "subject": "Gettysburg Address", "prop_phrase": "opening words of speech"}
+{"id": "s2-0524", "cat": "absent", "q": "How many bathrooms are there in the White House?", "answers": ["35"], "kind": "untracked", "subject": "White House", "prop_phrase": "number of bathrooms"}
+{"id": "s2-0525", "cat": "absent", "q": "What colour is Mr. Bean's car?", "answers": ["green", "lime green", "citron green"], "kind": "untracked", "subject": "Mr. Bean", "prop_phrase": "colour of car"}
+{"id": "s2-0526", "cat": "absent", "q": "What time did Barack Obama usually go to bed while he was president?", "answers": [], "kind": "untracked", "subject": "Barack Obama", "prop_phrase": "bedtime"}
+{"id": "s2-0527", "cat": "absent", "q": "What is the most popular drink on the Starbucks menu?", "answers": [], "kind": "untracked", "subject": "Starbucks", "prop_phrase": "most popular menu item"}
+{"id": "s2-0528", "cat": "absent", "q": "What was the name of Abraham Lincoln's dog?", "answers": ["Fido"], "kind": "untracked", "subject": "Abraham Lincoln", "prop_phrase": "pet's name"}
+{"id": "s2-0529", "cat": "absent", "q": "How many hours a night did Thomas Edison sleep?", "answers": [], "kind": "untracked", "subject": "Thomas Edison", "prop_phrase": "hours of sleep"}
+{"id": "s2-0530", "cat": "absent", "q": "What is Taylor Swift's lucky number?", "answers": ["13"], "kind": "untracked", "subject": "Taylor Swift", "prop_phrase": "favourite number"}
+{"id": "s2-0531", "cat": "absent", "q": "How many rooms does Buckingham Palace have?", "answers": ["775"], "kind": "untracked", "subject": "Buckingham Palace", "prop_phrase": "number of rooms"}
+{"id": "s2-0532", "cat": "absent", "q": "What colour is the front door of 10 Downing Street?", "answers": ["black"], "kind": "untracked", "subject": "10 Downing Street", "prop_phrase": "door colour"}
+{"id": "s2-0533", "cat": "absent", "q": "What is the first sentence of Martin Luther King Jr.'s 'I Have a Dream' speech?", "answers": ["I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation."], "kind": "untracked", "subject": "I Have a Dream", "prop_phrase": "opening line of speech"}
+{"id": "s2-0534", "cat": "absent", "q": "What does Warren Buffett order for breakfast at McDonald's?", "answers": [], "kind": "untracked", "subject": "Warren Buffett", "prop_phrase": "breakfast order"}
+{"id": "s2-0535", "cat": "absent", "q": "Which dog breed was Queen Elizabeth II's favourite?", "answers": ["Pembroke Welsh Corgi", "Corgi"], "kind": "untracked", "subject": "Elizabeth II", "prop_phrase": "favourite dog breed"}
+{"id": "s2-0536", "cat": "absent", "q": "How many steps do you climb from the pedestal to the Statue of Liberty's crown?", "answers": ["162"], "kind": "untracked", "subject": "Statue of Liberty", "prop_phrase": "number of steps to the crown"}
+{"id": "s2-0537", "cat": "absent", "q": "What did Julius Caesar reportedly say as he crossed the Rubicon?", "answers": ["The die is cast", "Alea iacta est"], "kind": "untracked", "subject": "Julius Caesar", "prop_phrase": "words spoken"}
+{"id": "s2-0538", "cat": "absent", "q": "What did Leonardo da Vinci personally think of Michelangelo?", "answers": [], "kind": "untracked", "subject": "Leonardo da Vinci", "prop_phrase": "opinion of a rival"}
+{"id": "s2-0539", "cat": "absent", "q": "How many light bulbs make the Eiffel Tower sparkle at night?", "answers": ["20000"], "kind": "untracked", "subject": "Eiffel Tower", "prop_phrase": "number of sparkling lights"}
+{"id": "s2-0540", "cat": "absent", "q": "What insurance valuation was the Mona Lisa given in 1962?", "answers": ["100 million", "100000000"], "kind": "untracked", "subject": "Mona Lisa", "prop_phrase": "insurance valuation"}
+{"id": "s2-0541", "cat": "absent", "q": "What colour was Napoleon's horse Marengo?", "answers": ["grey", "gray"], "kind": "untracked", "subject": "Marengo", "prop_phrase": "coat colour"}
+{"id": "s2-0542", "cat": "absent", "q": "How many hours a day did Charles Darwin spend on his scientific work?", "answers": [], "kind": "untracked", "subject": "Charles Darwin", "prop_phrase": "daily working hours"}
+{"id": "s2-0543", "cat": "absent", "q": "What was the name of Frida Kahlo's pet spider monkey?", "answers": ["Fulang Chang", "Fulang-Chang"], "kind": "untracked", "subject": "Frida Kahlo", "prop_phrase": "pet's name"}
+{"id": "s2-0544", "cat": "absent", "q": "How much did Titanic (1997) take at the North American box office on its opening weekend?", "answers": ["28.6 million", "28638131"], "kind": "untracked", "subject": "Titanic", "prop_phrase": "opening weekend box office"}
+{"id": "s2-0545", "cat": "absent", "q": "What did Usain Bolt famously eat during the 2008 Beijing Olympics?", "answers": ["chicken nuggets", "Chicken McNuggets"], "kind": "untracked", "subject": "Usain Bolt", "prop_phrase": "food eaten"}
+{"id": "s2-0546", "cat": "absent", "q": "How many elevators are in the Burj Khalifa?", "answers": ["57"], "kind": "untracked", "subject": "Burj Khalifa", "prop_phrase": "number of elevators"}
+{"id": "s2-0547", "cat": "absent", "q": "How many steps are there to the top of the Elizabeth Tower, home of Big Ben?", "answers": ["334"], "kind": "untracked", "subject": "Big Ben", "prop_phrase": "number of steps"}
+{"id": "s2-0548", "cat": "absent", "q": "What phrase did Steve Jobs close his 2005 Stanford commencement speech with?", "answers": ["Stay hungry. Stay foolish.", "Stay hungry, stay foolish"], "kind": "untracked", "subject": "Steve Jobs", "prop_phrase": "closing words of speech"}
+{"id": "s2-0549", "cat": "absent", "q": "What did Marilyn Monroe say she wore to bed?", "answers": ["Chanel No. 5", "a few drops of Chanel No. 5"], "kind": "untracked", "subject": "Marilyn Monroe", "prop_phrase": "what she wore to bed"}
+{"id": "s2-0550", "cat": "absent", "q": "How many sesame seeds are on a Big Mac bun?", "answers": [], "kind": "untracked", "subject": "Big Mac", "prop_phrase": "number of sesame seeds"}
+{"id": "s2-0551", "cat": "absent", "q": "What time does the Changing of the Guard at Buckingham Palace usually begin?", "answers": ["11:00", "11 am", "11:00 am"], "kind": "untracked", "subject": "Changing of the Guard", "prop_phrase": "start time"}
+{"id": "s2-0552", "cat": "absent", "q": "How many handwritten pages was Tolstoy's draft of War and Peace?", "answers": [], "kind": "untracked", "subject": "War and Peace", "prop_phrase": "manuscript page count"}
+{"id": "s2-0553", "cat": "absent", "q": "What was the name of Isaac Newton's dog, according to legend?", "answers": ["Diamond"], "kind": "untracked", "subject": "Isaac Newton", "prop_phrase": "pet's name"}
+{"id": "s2-0554", "cat": "absent", "q": "How many visitors does the Louvre get on an average day?", "answers": [], "kind": "untracked", "subject": "Louvre", "prop_phrase": "daily visitors"}
+{"id": "s2-0555", "cat": "absent", "q": "What nickname did Albert Einstein give his violin?", "answers": ["Lina"], "kind": "untracked", "subject": "Albert Einstein", "prop_phrase": "name of violin"}
+{"id": "s2-0556", "cat": "absent", "q": "How many baths did Winston Churchill take a day?", "answers": ["2", "two"], "kind": "untracked", "subject": "Winston Churchill", "prop_phrase": "daily baths"}
+{"id": "s2-0557", "cat": "absent", "q": "What was the first music video ever played on MTV?", "answers": ["Video Killed the Radio Star"], "kind": "untracked", "subject": "MTV", "prop_phrase": "first video aired"}
+{"id": "s2-0558", "cat": "absent", "q": "How many words long was Barack Obama's first inaugural address?", "answers": [], "kind": "untracked", "subject": "Barack Obama", "prop_phrase": "speech word count"}
+{"id": "s2-0559", "cat": "absent", "q": "What was Ernest Hemingway's favourite cocktail?", "answers": [], "kind": "untracked", "subject": "Ernest Hemingway", "prop_phrase": "favourite cocktail"}
+{"id": "s2-0560", "cat": "absent", "q": "What did Gandhi typically eat in a day?", "answers": [], "kind": "untracked", "subject": "Mahatma Gandhi", "prop_phrase": "daily diet"}
+{"id": "s2-0561", "cat": "absent", "q": "How many stitches are there on an official Major League baseball?", "answers": ["108"], "kind": "untracked", "subject": "baseball", "prop_phrase": "number of stitches"}
+{"id": "s2-0562", "cat": "absent", "q": "How many stars appear on the flag of Brazil?", "answers": ["27"], "kind": "untracked", "subject": "flag of Brazil", "prop_phrase": "number of stars"}
+{"id": "s2-0563", "cat": "absent", "q": "Which song did Queen open their Live Aid set with?", "answers": ["Bohemian Rhapsody"], "kind": "untracked", "subject": "Live Aid", "prop_phrase": "opening song"}
+{"id": "s2-0564", "cat": "absent", "q": "What were Steve Jobs's last words?", "answers": ["Oh wow. Oh wow. Oh wow.", "Oh wow"], "kind": "untracked", "subject": "Steve Jobs", "prop_phrase": "last words"}
+{"id": "s2-0565", "cat": "absent", "q": "How far did the Wright brothers' first powered flight travel?", "answers": ["120 feet", "37 metres", "36.6 m"], "kind": "untracked", "subject": "Wright Flyer", "prop_phrase": "distance flown"}
+{"id": "s2-0566", "cat": "absent", "q": "What is the official name of the paint colour used on the Golden Gate Bridge?", "answers": ["International Orange"], "kind": "untracked", "subject": "Golden Gate Bridge", "prop_phrase": "paint colour"}
+{"id": "s2-0567", "cat": "absent", "q": "What does Beyoncé eat for breakfast on a typical day?", "answers": [], "kind": "untracked", "subject": "Beyoncé", "prop_phrase": "daily breakfast"}
+{"id": "s2-0568", "cat": "absent", "q": "What was placed inside the Hall of Records vault behind Mount Rushmore's carvings?", "answers": ["porcelain enamel panels", "panels describing US history", "teakwood box of porcelain panels"], "kind": "untracked", "subject": "Mount Rushmore", "prop_phrase": "contents of hidden room"}
+{"id": "s2-0569", "cat": "absent", "q": "Why doesn't the Mona Lisa have visible eyebrows?", "answers": [], "kind": "untracked", "subject": "Mona Lisa", "prop_phrase": "reason for missing eyebrows"}
+{"id": "s2-0570", "cat": "absent", "q": "What did William Shakespeare leave his wife in his will?", "answers": ["his second-best bed", "second best bed"], "kind": "untracked", "subject": "William Shakespeare", "prop_phrase": "bequest in will"}

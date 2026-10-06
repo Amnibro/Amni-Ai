@@ -1,0 +1,240 @@
+[
+ {
+  "id": "s2-0026",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0031",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (3 subject candidates)"
+ },
+ {
+  "id": "s2-0037",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (29 subject candidates)"
+ },
+ {
+  "id": "s2-0038",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (3 subject candidates)"
+ },
+ {
+  "id": "s2-0039",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0041",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (8 subject candidates)"
+ },
+ {
+  "id": "s2-0042",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0043",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (4 subject candidates)"
+ },
+ {
+  "id": "s2-0044",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (2 subject candidates)"
+ },
+ {
+  "id": "s2-0045",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (7 subject candidates)"
+ },
+ {
+  "id": "s2-0046",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (2 subject candidates)"
+ },
+ {
+  "id": "s2-0047",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (23 subject candidates)"
+ },
+ {
+  "id": "s2-0121",
+  "split": "test",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (10 subject candidates)"
+ },
+ {
+  "id": "s2-0170",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (8 subject candidates)"
+ },
+ {
+  "id": "s2-0171",
+  "split": "dev",
+  "cat": "wd_entity",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0318",
+  "split": "test",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (2 subject candidates)"
+ },
+ {
+  "id": "s2-0322",
+  "split": "dev",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0324",
+  "split": "test",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0325",
+  "split": "dev",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0342",
+  "split": "dev",
+  "cat": "wd_value",
+  "dropped": true,
+  "why": "no match (1 subject candidates)"
+ },
+ {
+  "id": "s2-0385",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0408",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0417",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0419",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0421",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0422",
+  "split": "test",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0425",
+  "split": "dev",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "s2-0524",
+  "split": "dev",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: answer:Q1659114:P2046"
+ },
+ {
+  "id": "s2-0530",
+  "split": "dev",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: answer:Q26876:P569"
+ },
+ {
+  "id": "s2-0541",
+  "split": "test",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: answer:Q4281308:P279,answer:Q4281308:P361"
+ },
+ {
+  "id": "s2-0551",
+  "split": "test",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: prop:Q1650294:P580"
+ },
+ {
+  "id": "s2-0556",
+  "split": "test",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: answer:Q332528:P570,answer:Q5917366:P156,answer:Q92731208:P737"
+ },
+ {
+  "id": "s2-0563",
+  "split": "test",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: answer:Q15862:P800"
+ },
+ {
+  "id": "s2-0566",
+  "split": "dev",
+  "cat": "absent",
+  "dropped": true,
+  "why": "absent check: answer:Q44440:P462"
+ }
+]
