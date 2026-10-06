@@ -1,3 +1,25 @@
+## 2026-10-06 STORE-1 (v6.23.0): the exact GF(17) store as the drive (ultra-compact Wikidata drive + lookup resolver + harness route)
+- New crate `crates/adam-store1` (lib + `store1` bin + cdylib `libadam_store1.so`, C ABI `s1_*`):
+  - Facts are 17-ary canonical Huffman codes per property, over (value, unit, preferred flag, qualifier count). Each code digit lives in a 1-digit GF(17) ribbon/BuRR level table (`<cascade>_<j>.gf17rib`), and the canonical codebooks are EV-delta digits in the container.
+  - Presence: per-entity property signatures (ordered; single/multi/derived flags) plus counts for multi-valued groups, replacing per-fact fingerprints. Qualifiers have their own cascade, and string ids a 5-digit table.
+  - Rule-derived facts: P17 <- P131.P17 and P27 <- P19.P17 (1,970,574 facts), with rule + exceptions verified exact.
+  - Name table: (h64 name, chain index) -> (entity, kind), with F = 0..3 fingerprint digits and an END overlay. F=0 verifies a candidate by decoding its names.
+  - Text: static order-3 LUT context model + rANS, in 16- and 32-entity blocks.
+  - Container `store1.gf17pg`: Reffelt 17-bit pixel words, 4096^2 logical pages, bit-exact roundtrip.
+  - Bin modes: `build` (from v3 npy), `parity`, `bench`, `build --only text`.
+- `crates/adam-torus`: `build`/`layered` are generic over the value-row type (`Dig`, `vrow`, `drow`, `layered_by`), and `Table::row` returns the raw digits. Existing callers and the ribbon test are unchanged.
+- `amni/compute/store1.py`: the ctypes drive reader (`Drive`: ents/groups/values/quals/label/title/names/string/sitelinks/qid/ix). Default F=0, `AMNI_STORE1_DIR/LIB/FD`.
+- `amni/serve/store1.py`: the resolver. It does span hashing into the name table, a hashed lemma n-gram property table (Wikidata labels + aliases + a CC0 hand table reusing `wikifact.WHEN/WHO/NOUN`), presence join, type gate (`cognition.qclass/isa`), qualifier matching, ConceptNet/WordNet keys, a prime/arithmetic solver plus `amni.math`, and abstains only on absence evidence. `resolve()` returns ranked (store, key, conf); `material()`.
+- `amni/serve/adam_t_harness.py`: `fill_s1`, called first in `fill_know` when `AMNI_STORE1=1` (default off). It gives v4 material (`mat('store1', …)`) and hedges weak answers; `_BG['store1']`. `gguf_runtime.py` is untouched.
+- Scripts: `store1_props.py` (Wikidata property labels, CC0), `store1_nmenc.py`, `store1_evalset.py` (decontam/split/annotate/lock), `store1_eval.py`, `store1_ablate.sh`, `store1_sizes.py`, `store1_bound.py`, `store1_reverse_est.py`, `store1_parity_f0.py`. Tests: `tests/test_store1.py`. Rust tests: `crates/adam-store1/tests/store1.rs`.
+- Data: `data/store1/` holds the drive (about 0.6 GB including all four name tables), eval set (540 authored CC0, 526 annotated, dev 260 / test 266, hash-locked), coverage audit, results.
+- Results (`docs/adam_t/store1_results.md`):
+  - Part B passes: 410,155,258 bytes = 8.86% of v3; 0 parity mismatches over all facts, qualifiers, labels, names and 15.75M name keys; fact levels 11.21 bits/fact against a 10.30-bit entropy (A1: 38.46).
+  - Part A fails on test, scored once: store-answer accuracy 0.667 (dev 0.829; v3 resolver 0.121), entity@1 0.880, property 0.772, abstain precision 0.388.
+  - Part C fails: median 7.5 ms, p99 58 ms.
+- Docs: `docs/adam_t/store1_prereg.md` (+ Amendment 1), `docs/adam_t/store1_results.md`, `docs/checklists/checklist_store1_v6.23.0.md`, `docs/guardian_councils/guardian_council_store1.md`.
+- Backups: `backups/store1/` (adam-torus lib, adam_t_harness, changelog, architecture_map). Deletions are logged in `data/ks/logs/deletions.log`.
+
 ## 2026-10-06 HYBRID-1 (v6.22.0): an open dense model as the optional blender, ATEX group-quant at 2/3/4/8 bits, layer-streamed to 1.5 GB VRAM
 - Why: CEO decision 2026-10-05 lifted the no-third-party-weights rule for the BLENDER role only (Apache-2.0 or MIT). ADAM-T's blend passes the harness grounding gate 17% of the time in the E2E suite. Goal: the most compact VRAM, no MoE, no heavy quality loss.
 - New: `amni/inference/qgroup_gemv.py` (one Triton kernel for 2/3/4/8-bit affine group-quant bit-planes, MSE clip search plus least-squares refit, tests in `tests/test_qgroup_gemv.py`); `scripts/bake_hybrid1.py` (baker, per-tensor cos and relative error, exact code roundtrip); `amni/serve/blender_atex.py` (engine: tied/quantised tables, CPU or GPU lm_head, two-slot layer-streaming ring, int8/int4 KV, chunked prefill; `Blender` with the `AdamT.gen()` interface); `AMNI_BLENDER=atex:<bake>` (+ `AMNI_BLENDER_OPTS`) hook in `adam_t_client.client()`, default off; `adam_t_eval.proto()` and `adam_t_probe8` accept `atex:` commands; `scripts/hybrid1_{fetch,run,measure,ppl,equiv,report,e2e_diff}.py`, `scripts/build_hybrid1_dev.py`, dev set `data/adam_t/eval/hybrid1_dev/` (CC0, 6-gram clean).

@@ -1,0 +1,13 @@
+load+strings 1.4s strings 648308
+derive 1.4s groups 0 facts 0
+sig: keys 11900718 level-keys 32479912 levels-bytes 17618802 cb-digits 31304737 cbx 512728 hc 33 entries 2050826 14.5s
+sl: keys 11900718 level-keys 12913675 levels-bytes 7034652 cb-digits 996 cbx 128 hc 22 entries 461 4.2s
+cnt: keys 4710949 level-keys 4807120 levels-bytes 2641658 cb-digits 611 cbx 88 hc 17 entries 286 2.0s
+fact: keys 55062201 level-keys 145311563 levels-bytes 78652719 cb-digits 40003489 cbx 1739144 hc 2905 entries 6945301 59.5s
+qual: keys 8513727 level-keys 19752224 levels-bytes 10733705 cb-digits 4099507 cbx 163928 hc 1749 entries 646945 7.5s
+sid keys 716489 bytes 1924233 90.9s
+text 14.8s contexts 446281 symbols 460829668 model digits 17642568
+container 226429023 bytes, roundtrip true, pages 7
+name keys 17647067 dup 0
+name f0 bytes 66026723 end markers 0 end bytes 0
+{"entities":11900718,"facts":55062201,"quals":8513727,"strings":648308,"props":197,"derived_groups":0,"derived_facts":0,"text_order":3,"text_contexts":446281,"text_symbols":460829668,"container_bytes":226429023,"roundtrip_bitexact":true,"container_pages":7,"name_keys":17647067,"name_key_dups":0,"name_tables":[{"fd":0,"bytes":66026723,"end_markers":0}],"components":{"sig_levels":17618802,"sig_codebook":16903045,"sl_levels":7034652,"sl_codebook":608,"cnt_levels":2641658,"cnt_codebook":380,"fact_levels":78652719,"fact_codebook":22177317,"qual_levels":10733705,"qual_codebook":2265879,"sid":1924233,"qid":9203189,"text_model":9372614,"text_ta":118333613,"text_ta_x":3161133,"text_tb":39066893,"text_tb_x":1580570,"text_tc":4185928,"text_tc_x":172214,"name_f0":66026723},"build_s":111.4,"peak_rss":12891791360}

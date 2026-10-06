@@ -1,0 +1,40 @@
+{
+ "fd": 0,
+ "components": {
+  "fact_levels": 77159982,
+  "fact_codebooks": 22178394,
+  "qual_levels": 10734662,
+  "qual_codebooks": 2265925,
+  "presence_sig_levels": 17730404,
+  "presence_sig_codebook": 17373573,
+  "multi_counts": 2641546,
+  "string_ids": 1924229,
+  "sitelinks": 7035158,
+  "qid_map": 9203378,
+  "meta": 978,
+  "text_model": 9372807,
+  "labels_titles": 121497239,
+  "aliases": 40648298,
+  "strings": 4358232,
+  "name_table_f0": 66030453
+ },
+ "total_bytes": 410155258,
+ "v3_bytes": 4629551616,
+ "ratio_vs_v3": 0.0886,
+ "gate_GB2_max_ratio": 0.15,
+ "gate_GB2_pass": true,
+ "container_bytes": 226899814,
+ "container_pages_4096sq": 7,
+ "other_name_tables_bytes": {
+  "name_f0": 66030453,
+  "name_f1": 75946156,
+  "name_f2": 84882364,
+  "name_f3": 94256334
+ },
+ "facts": 55062201,
+ "fact_bits_per_fact_incl_codebooks": 14.433,
+ "fact_levels_bits_per_fact": 11.211,
+ "all_fact_side_bits_per_fact": 22.085,
+ "derived_facts_not_stored": 1970574,
+ "roundtrip_bitexact": true
+}

@@ -1,0 +1,6340 @@
+{
+ "name": "final",
+ "split": "test",
+ "fd": 0,
+ "abl": "",
+ "cf": {
+  "tau": 2.5,
+  "wmin": 0.5,
+  "prior": 0.35,
+  "cap": 0.25,
+  "kind": [
+   0.12,
+   0.0,
+   0.12,
+   0.06
+  ],
+  "tfit": 0.45,
+  "tbad": 0.9,
+  "hand": 1.0,
+  "alias": 0.6,
+  "ncand": 40,
+  "cs": 0.55
+ },
+ "metrics": {
+  "n": 266,
+  "n_instore": 231,
+  "n_wd": 158,
+  "e2e_acc_instore": 0.6667,
+  "ent_at1": 0.8797,
+  "ent_at5": 0.9684,
+  "prop_acc": 0.7722,
+  "abstain_prec": 0.3881,
+  "abstain_n": 67,
+  "abstain_rec": 0.7429,
+  "absent_false_answer": 0.2571,
+  "by_cat": {
+   "absent": {
+    "n": 30,
+    "acc": 0.0,
+    "abstain": 0.7667
+   },
+   "commonsense": {
+    "n": 48,
+    "acc": 0.5208,
+    "abstain": 0.1667
+   },
+   "compute": {
+    "n": 25,
+    "acc": 0.72,
+    "abstain": 0.16
+   },
+   "wd_entity": {
+    "n": 112,
+    "acc": 0.6696,
+    "abstain": 0.1964
+   },
+   "wd_value": {
+    "n": 46,
+    "acc": 0.7826,
+    "abstain": 0.1522
+   }
+  },
+  "lat_median_ms": 7.53,
+  "lat_p99_ms": 58.295,
+  "lat_max_ms": 340.895,
+  "v3_acc_instore_wd": 0.1772,
+  "v3_acc_instore": 0.1212
+ },
+ "rows": [
+  {
+   "id": "a0001",
+   "cat": "wd_entity",
+   "q": "Which city serves as Kenya's capital?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Nairobi",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    36,
+    131,
+    1376
+   ],
+   "wd_score": 3.397,
+   "ms": 6.415,
+   "v3_ok": false,
+   "gold": [
+    "Nairobi"
+   ]
+  },
+  {
+   "id": "a0002",
+   "cat": "wd_entity",
+   "q": "Which city is the seat of government and capital of Canada?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Ottawa",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    36,
+    159,
+    131
+   ],
+   "wd_score": 3.506,
+   "ms": 16.768,
+   "v3_ok": false,
+   "gold": [
+    "Ottawa"
+   ]
+  },
+  {
+   "id": "a0003",
+   "cat": "wd_entity",
+   "q": "name the capital city of mongolia",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Ulaanbaatar",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    36,
+    131,
+    1376
+   ],
+   "wd_score": 2.094,
+   "ms": 4.979,
+   "v3_ok": false,
+   "gold": [
+    "Ulaanbaatar",
+    "Ulan Bator",
+    "Ulaanbaatar City"
+   ]
+  },
+  {
+   "id": "a0004",
+   "cat": "wd_entity",
+   "q": "Reykjavík is the capital of which country?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Iceland",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1376,
+    17,
+    495
+   ],
+   "wd_score": 3.472,
+   "ms": 4.647,
+   "v3_ok": false,
+   "gold": [
+    "Iceland"
+   ]
+  },
+  {
+   "id": "a0008",
+   "cat": "wd_entity",
+   "q": "Neuschwanstein Castle stands in what country?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Germany",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    17,
+    495,
+    27
+   ],
+   "wd_score": 3.425,
+   "ms": 23.806,
+   "v3_ok": false,
+   "gold": [
+    "Germany",
+    "Bavaria, Germany"
+   ]
+  },
+  {
+   "id": "a0010",
+   "cat": "wd_entity",
+   "q": "paraguay lies on which continent",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "South America",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    30
+   ],
+   "wd_score": 2.392,
+   "ms": 1.997,
+   "v3_ok": false,
+   "gold": [
+    "South America"
+   ]
+  },
+  {
+   "id": "a0012",
+   "cat": "wd_entity",
+   "q": "Thailand's government uses which language officially?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Thai",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    37,
+    122,
+    2283
+   ],
+   "wd_score": 3.25,
+   "ms": 1.964,
+   "v3_ok": false,
+   "gold": [
+    "Thai",
+    "Thai language",
+    "Central Thai"
+   ]
+  },
+  {
+   "id": "a0016",
+   "cat": "wd_entity",
+   "q": "Tell me the currency of South Africa.",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "rand",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    38
+   ],
+   "wd_score": 3.202,
+   "ms": 11.528,
+   "v3_ok": false,
+   "gold": [
+    "South African rand",
+    "rand",
+    "ZAR"
+   ]
+  },
+  {
+   "id": "a0020",
+   "cat": "wd_entity",
+   "q": "Pablo Picasso's birthplace was which Spanish city?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Málaga",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    19,
+    131,
+    276
+   ],
+   "wd_score": 3.633,
+   "ms": 23.453,
+   "v3_ok": false,
+   "gold": [
+    "Málaga",
+    "Malaga"
+   ]
+  },
+  {
+   "id": "a0022",
+   "cat": "wd_entity",
+   "q": "Frédéric Chopin passed away in which city?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 3,
+   "prop_ok": false,
+   "top_props": [
+    131,
+    276
+   ],
+   "wd_score": 2.24,
+   "ms": 10.345,
+   "v3_ok": false,
+   "gold": [
+    "Paris"
+   ]
+  },
+  {
+   "id": "a0025",
+   "cat": "wd_entity",
+   "q": "Alexander the Great's father was which Macedonian king?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Philip II of Macedon",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    22,
+    35
+   ],
+   "wd_score": 3.549,
+   "ms": 26.863,
+   "v3_ok": false,
+   "gold": [
+    "Philip II of Macedon",
+    "Philip II",
+    "Philip of Macedon"
+   ]
+  },
+  {
+   "id": "a0027",
+   "cat": "wd_entity",
+   "q": "In Greek myth, which sea nymph gave birth to Achilles?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    206
+   ],
+   "wd_score": 0.0,
+   "ms": 8.877,
+   "v3_ok": false,
+   "gold": [
+    "Thetis"
+   ]
+  },
+  {
+   "id": "a0029",
+   "cat": "wd_entity",
+   "q": "Which Mexican muralist did Frida Kahlo marry?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Diego Rivera",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    26
+   ],
+   "wd_score": 3.767,
+   "ms": 6.208,
+   "v3_ok": false,
+   "gold": [
+    "Diego Rivera"
+   ]
+  },
+  {
+   "id": "a0030",
+   "cat": "wd_entity",
+   "q": "Henry the Eighth's first queen was who?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    35
+   ],
+   "wd_score": 0.0,
+   "ms": 12.148,
+   "v3_ok": false,
+   "gold": [
+    "Catherine of Aragon",
+    "Katherine of Aragon"
+   ]
+  },
+  {
+   "id": "a0032",
+   "cat": "wd_entity",
+   "q": "Hayao Miyazaki holds the citizenship of which country?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Japan",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    27,
+    17,
+    495
+   ],
+   "wd_score": 3.434,
+   "ms": 3.564,
+   "v3_ok": false,
+   "gold": [
+    "Japan"
+   ]
+  },
+  {
+   "id": "a0034",
+   "cat": "wd_entity",
+   "q": "Kofi Annan is best remembered for serving in what international post?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 7.375,
+   "v3_ok": false,
+   "gold": [
+    "Secretary-General of the United Nations",
+    "UN Secretary-General",
+    "Secretary-General"
+   ]
+  },
+  {
+   "id": "a0035",
+   "cat": "wd_entity",
+   "q": "Who was the only legitimate child of the poet Lord Byron?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Ada Lovelace",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    40,
+    22,
+    50
+   ],
+   "wd_score": 3.622,
+   "ms": 18.593,
+   "v3_ok": false,
+   "gold": [
+    "Ada Lovelace",
+    "Augusta Ada King",
+    "Ada King, Countess of Lovelace"
+   ]
+  },
+  {
+   "id": "a0036",
+   "cat": "wd_entity",
+   "q": "In Norse mythology, which son of Odin carries the hammer Mjölnir?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Baldur",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    40,
+    22,
+    25
+   ],
+   "wd_score": 3.179,
+   "ms": 20.357,
+   "v3_ok": false,
+   "gold": [
+    "Thor"
+   ]
+  },
+  {
+   "id": "a0037",
+   "cat": "wd_entity",
+   "q": "Orville Wright's brother and partner in building the first powered aeroplane was who?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Wilbur Wright",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    3373,
+    571,
+    26
+   ],
+   "wd_score": 3.498,
+   "ms": 28.238,
+   "v3_ok": false,
+   "gold": [
+    "Wilbur Wright",
+    "Wilbur"
+   ]
+  },
+  {
+   "id": "a0038",
+   "cat": "wd_entity",
+   "q": "What was the name of Vincent van Gogh's art-dealer brother?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Wil van Gogh",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    3373
+   ],
+   "wd_score": 3.35,
+   "ms": 11.471,
+   "v3_ok": false,
+   "gold": [
+    "Theo van Gogh",
+    "Theo",
+    "Theodorus van Gogh"
+   ]
+  },
+  {
+   "id": "a0039",
+   "cat": "wd_entity",
+   "q": "Brave New World came from the pen of which English writer?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Aldous Huxley",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    50,
+    58,
+    86
+   ],
+   "wd_score": 3.812,
+   "ms": 27.106,
+   "v3_ok": false,
+   "gold": [
+    "Aldous Huxley",
+    "Huxley"
+   ]
+  },
+  {
+   "id": "a0040",
+   "cat": "wd_entity",
+   "q": "Crime and Punishment is a novel by which Russian author?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Fyodor Dostoyevsky",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    50,
+    676
+   ],
+   "wd_score": 3.5,
+   "ms": 16.037,
+   "v3_ok": false,
+   "gold": [
+    "Fyodor Dostoevsky",
+    "Dostoevsky",
+    "Fyodor Dostoyevsky"
+   ]
+  },
+  {
+   "id": "a0042",
+   "cat": "wd_entity",
+   "q": "who wrote the little prince",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Antoine de Saint-Exupéry",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    50,
+    86,
+    58
+   ],
+   "wd_score": 2.902,
+   "ms": 21.389,
+   "v3_ok": true,
+   "gold": [
+    "Antoine de Saint-Exupéry",
+    "Saint-Exupéry",
+    "Antoine de Saint-Exupery"
+   ]
+  },
+  {
+   "id": "a0044",
+   "cat": "wd_entity",
+   "q": "Who drew the original pictures for A. A. Milne's Winnie-the-Pooh?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 4,
+   "prop_ok": false,
+   "top_props": [
+    170
+   ],
+   "wd_score": 2.541,
+   "ms": 16.027,
+   "v3_ok": false,
+   "gold": [
+    "E. H. Shepard",
+    "Ernest Howard Shepard",
+    "E.H. Shepard"
+   ]
+  },
+  {
+   "id": "a0047",
+   "cat": "wd_entity",
+   "q": "Who publishes The New Yorker magazine?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Condé Nast",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    123,
+    577,
+    1433
+   ],
+   "wd_score": 3.054,
+   "ms": 10.247,
+   "v3_ok": true,
+   "gold": [
+    "Condé Nast",
+    "Conde Nast"
+   ]
+  },
+  {
+   "id": "a0050",
+   "cat": "wd_entity",
+   "q": "Which Japanese filmmaker was behind Seven Samurai?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 14.66,
+   "v3_ok": false,
+   "gold": [
+    "Akira Kurosawa",
+    "Kurosawa"
+   ]
+  },
+  {
+   "id": "a0051",
+   "cat": "wd_entity",
+   "q": "Do you know who directed the 2019 Korean film Parasite?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Bong Joon-ho",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    57,
+    915
+   ],
+   "wd_score": 3.767,
+   "ms": 11.231,
+   "v3_ok": false,
+   "gold": [
+    "Bong Joon-ho",
+    "Bong Joon Ho"
+   ]
+  },
+  {
+   "id": "a0052",
+   "cat": "wd_entity",
+   "q": "pan's labyrinth was made by which director",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Guillermo del Toro",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    57,
+    170,
+    176
+   ],
+   "wd_score": 2.549,
+   "ms": 21.235,
+   "v3_ok": false,
+   "gold": [
+    "Guillermo del Toro",
+    "del Toro"
+   ]
+  },
+  {
+   "id": "a0053",
+   "cat": "wd_entity",
+   "q": "Who wrote the screenplay for Roman Polanski's Chinatown?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    58,
+    86,
+    50
+   ],
+   "wd_score": 1.852,
+   "ms": 16.106,
+   "v3_ok": true,
+   "gold": [
+    "Robert Towne"
+   ]
+  },
+  {
+   "id": "a0056",
+   "cat": "wd_entity",
+   "q": "Which composer wrote the ballet score The Rite of Spring?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Igor Stravinsky",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    86,
+    571,
+    58
+   ],
+   "wd_score": 3.324,
+   "ms": 15.63,
+   "v3_ok": false,
+   "gold": [
+    "Igor Stravinsky",
+    "Stravinsky"
+   ]
+  },
+  {
+   "id": "a0058",
+   "cat": "wd_entity",
+   "q": "Name the English composer of the orchestral suite The Planets.",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Gustav Holst",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    86
+   ],
+   "wd_score": 2.805,
+   "ms": 8.826,
+   "v3_ok": false,
+   "gold": [
+    "Gustav Holst",
+    "Holst"
+   ]
+  },
+  {
+   "id": "a0059",
+   "cat": "wd_entity",
+   "q": "Who wrote the words of The Star-Spangled Banner?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "John Stafford Smith",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    86,
+    676,
+    50
+   ],
+   "wd_score": 3.882,
+   "ms": 15.807,
+   "v3_ok": false,
+   "gold": [
+    "Francis Scott Key"
+   ]
+  },
+  {
+   "id": "a0060",
+   "cat": "wd_entity",
+   "q": "Who penned the lyrics to Over the Rainbow?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Yip Harburg",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    676,
+    50
+   ],
+   "wd_score": 3.345,
+   "ms": 14.631,
+   "v3_ok": true,
+   "gold": [
+    "Yip Harburg",
+    "E. Y. Harburg",
+    "Edgar Yipsel Harburg"
+   ]
+  },
+  {
+   "id": "a0062",
+   "cat": "wd_entity",
+   "q": "Rumours from 1977 is an album by which band?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Fleetwood Mac's albums in chronological order",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    361,
+    463
+   ],
+   "wd_score": 3.168,
+   "ms": 8.077,
+   "v3_ok": false,
+   "gold": [
+    "Fleetwood Mac"
+   ]
+  },
+  {
+   "id": "a0063",
+   "cat": "wd_entity",
+   "q": "who sang the original jolene",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Dolly Parton",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    175
+   ],
+   "wd_score": 2.561,
+   "ms": 7.243,
+   "v3_ok": true,
+   "gold": [
+    "Dolly Parton"
+   ]
+  },
+  {
+   "id": "a0064",
+   "cat": "wd_entity",
+   "q": "The album Back to Black was recorded by which British singer?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Amy Winehouse",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    175
+   ],
+   "wd_score": 3.738,
+   "ms": 20.059,
+   "v3_ok": true,
+   "gold": [
+    "Amy Winehouse"
+   ]
+  },
+  {
+   "id": "a0067",
+   "cat": "wd_entity",
+   "q": "What genre of music did Hank Williams sing?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "country music",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    136,
+    175
+   ],
+   "wd_score": 3.408,
+   "ms": 21.81,
+   "v3_ok": false,
+   "gold": [
+    "country music",
+    "country",
+    "honky-tonk"
+   ]
+  },
+  {
+   "id": "a0068",
+   "cat": "wd_entity",
+   "q": "What instrument is Yo-Yo Ma famous for playing?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "cello",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1303,
+    161,
+    800
+   ],
+   "wd_score": 3.651,
+   "ms": 5.502,
+   "v3_ok": false,
+   "gold": [
+    "cello",
+    "violoncello"
+   ]
+  },
+  {
+   "id": "a0070",
+   "cat": "wd_entity",
+   "q": "dizzy gillespie played what instrument",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "trumpet",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1303,
+    641,
+    161
+   ],
+   "wd_score": 2.556,
+   "ms": 3.691,
+   "v3_ok": false,
+   "gold": [
+    "trumpet"
+   ]
+  },
+  {
+   "id": "a0073",
+   "cat": "wd_entity",
+   "q": "Who gave voice to the Genie in Disney's 1992 Aladdin?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Scott Weinger",
+   "correct": false,
+   "ent_rank": 3,
+   "prop_ok": true,
+   "top_props": [
+    725
+   ],
+   "wd_score": 3.782,
+   "ms": 27.198,
+   "v3_ok": false,
+   "gold": [
+    "Robin Williams"
+   ]
+  },
+  {
+   "id": "a0075",
+   "cat": "wd_entity",
+   "q": "Who produced the Beatles album Sgt. Pepper's Lonely Hearts Club Band?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "George Martin",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    162,
+    361,
+    1056
+   ],
+   "wd_score": 4.167,
+   "ms": 33.653,
+   "v3_ok": true,
+   "gold": [
+    "George Martin",
+    "Sir George Martin"
+   ]
+  },
+  {
+   "id": "a0076",
+   "cat": "wd_entity",
+   "q": "Which animation studio made Toy Story?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Pixar",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    272,
+    750,
+    170
+   ],
+   "wd_score": 3.187,
+   "ms": 10.077,
+   "v3_ok": false,
+   "gold": [
+    "Pixar",
+    "Pixar Animation Studios"
+   ]
+  },
+  {
+   "id": "a0078",
+   "cat": "wd_entity",
+   "q": "Which company handled cinema distribution of the original 1977 Star Wars?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    161,
+    397
+   ],
+   "wd_score": 0.0,
+   "ms": 39.959,
+   "v3_ok": false,
+   "gold": [
+    "20th Century Fox",
+    "Twentieth Century Fox",
+    "20th Century Studios"
+   ]
+  },
+  {
+   "id": "a0079",
+   "cat": "wd_entity",
+   "q": "What US cable network first aired Breaking Bad?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "AMC",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    449
+   ],
+   "wd_score": 2.68,
+   "ms": 9.89,
+   "v3_ok": false,
+   "gold": [
+    "AMC",
+    "AMC (TV channel)"
+   ]
+  },
+  {
+   "id": "a0080",
+   "cat": "wd_entity",
+   "q": "The Sopranos originally aired on which channel?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "HBO",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    449
+   ],
+   "wd_score": 3.263,
+   "ms": 4.963,
+   "v3_ok": false,
+   "gold": [
+    "HBO",
+    "Home Box Office"
+   ]
+  },
+  {
+   "id": "a0081",
+   "cat": "wd_entity",
+   "q": "Which broadcaster first showed Doctor Who back in 1963?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "BBC One",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    449
+   ],
+   "wd_score": 3.178,
+   "ms": 30.672,
+   "v3_ok": false,
+   "gold": [
+    "BBC",
+    "BBC One",
+    "BBC Television"
+   ]
+  },
+  {
+   "id": "a0086",
+   "cat": "wd_entity",
+   "q": "The video game Tetris was first created in what country?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Soviet Union",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    495,
+    17,
+    170
+   ],
+   "wd_score": 3.474,
+   "ms": 54.158,
+   "v3_ok": false,
+   "gold": [
+    "Soviet Union",
+    "USSR",
+    "Russia"
+   ]
+  },
+  {
+   "id": "a0088",
+   "cat": "wd_entity",
+   "q": "Where did the rock band U2 get together?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Berlin U-Bahn",
+   "correct": false,
+   "ent_rank": 4,
+   "prop_ok": false,
+   "top_props": [
+    361,
+    463
+   ],
+   "wd_score": 3.007,
+   "ms": 40.799,
+   "v3_ok": false,
+   "gold": [
+    "Dublin"
+   ]
+  },
+  {
+   "id": "a0089",
+   "cat": "wd_entity",
+   "q": "Who founded Amazon?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Jeff Bezos",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    112,
+    571,
+    800
+   ],
+   "wd_score": 3.491,
+   "ms": 4.575,
+   "v3_ok": true,
+   "gold": [
+    "Jeff Bezos",
+    "Bezos"
+   ]
+  },
+  {
+   "id": "a0092",
+   "cat": "wd_entity",
+   "q": "Who is regarded as the founder of the Ottoman Empire?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 3,
+   "prop_ok": false,
+   "top_props": [
+    112,
+    921,
+    800
+   ],
+   "wd_score": 1.786,
+   "ms": 34.604,
+   "v3_ok": false,
+   "gold": [
+    "Osman I",
+    "Osman Gazi",
+    "Osman"
+   ]
+  },
+  {
+   "id": "a0094",
+   "cat": "wd_entity",
+   "q": "Volkswagen has its head office in which German city?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Wolfsburg",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    276,
+    131,
+    39
+   ],
+   "wd_score": 2.484,
+   "ms": 38.836,
+   "v3_ok": false,
+   "gold": [
+    "Wolfsburg"
+   ]
+  },
+  {
+   "id": "a0096",
+   "cat": "wd_entity",
+   "q": "Which city is home to FIFA's headquarters?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Zurich",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    159,
+    131,
+    276
+   ],
+   "wd_score": 3.356,
+   "ms": 54.93,
+   "v3_ok": false,
+   "gold": [
+    "Zürich",
+    "Zurich"
+   ]
+  },
+  {
+   "id": "a0097",
+   "cat": "wd_entity",
+   "q": "Which company owns Instagram?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 3.187,
+   "v3_ok": false,
+   "gold": [
+    "Meta Platforms",
+    "Meta",
+    "Facebook"
+   ]
+  },
+  {
+   "id": "a0098",
+   "cat": "wd_entity",
+   "q": "What's the parent company of YouTube?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 1,
+   "prop_ok": false,
+   "top_props": [
+    22,
+    25,
+    749
+   ],
+   "wd_score": 0.515,
+   "ms": 10.492,
+   "v3_ok": false,
+   "gold": [
+    "Google",
+    "Google LLC",
+    "Alphabet"
+   ]
+  },
+  {
+   "id": "a0100",
+   "cat": "wd_entity",
+   "q": "Which carmaker built the Model T?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    571,
+    176,
+    1619
+   ],
+   "wd_score": 0.737,
+   "ms": 9.733,
+   "v3_ok": false,
+   "gold": [
+    "Ford Motor Company",
+    "Ford"
+   ]
+  },
+  {
+   "id": "a0101",
+   "cat": "wd_entity",
+   "q": "Which studio developed Minecraft?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Nintendo eShop",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    750,
+    272,
+    178
+   ],
+   "wd_score": 2.954,
+   "ms": 6.942,
+   "v3_ok": false,
+   "gold": [
+    "Mojang Studios",
+    "Mojang"
+   ]
+  },
+  {
+   "id": "a0102",
+   "cat": "wd_entity",
+   "q": "Who developed the game The Witcher 3: Wild Hunt?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "CD Projekt RED",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    178
+   ],
+   "wd_score": 3.205,
+   "ms": 36.242,
+   "v3_ok": true,
+   "gold": [
+    "CD Projekt Red",
+    "CD Projekt",
+    "CDPR"
+   ]
+  },
+  {
+   "id": "a0103",
+   "cat": "wd_entity",
+   "q": "Catching Fire is the second book in which series?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "The Hunger Games",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    179
+   ],
+   "wd_score": 3.382,
+   "ms": 45.044,
+   "v3_ok": false,
+   "gold": [
+    "The Hunger Games",
+    "Hunger Games"
+   ]
+  },
+  {
+   "id": "a0107",
+   "cat": "wd_entity",
+   "q": "Return of the Jedi is the sequel to which film?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Switch",
+   "correct": false,
+   "ent_rank": 4,
+   "prop_ok": true,
+   "top_props": [
+    156,
+    915
+   ],
+   "wd_score": 3.179,
+   "ms": 56.275,
+   "v3_ok": false,
+   "gold": [
+    "The Empire Strikes Back",
+    "Empire Strikes Back",
+    "Star Wars: Episode V – The Empire Strikes Back"
+   ]
+  },
+  {
+   "id": "a0109",
+   "cat": "wd_entity",
+   "q": "What currency replaced the Deutsche Mark?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "euro",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1366,
+    1365,
+    38
+   ],
+   "wd_score": 3.111,
+   "ms": 2.841,
+   "v3_ok": false,
+   "gold": [
+    "euro",
+    "the euro",
+    "EUR"
+   ]
+  },
+  {
+   "id": "a0110",
+   "cat": "wd_entity",
+   "q": "Which organisation took over from the League of Nations?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    118,
+    108,
+    27
+   ],
+   "wd_score": 0.0,
+   "ms": 11.185,
+   "v3_ok": false,
+   "gold": [
+    "United Nations",
+    "UN",
+    "the UN"
+   ]
+  },
+  {
+   "id": "a0112",
+   "cat": "wd_entity",
+   "q": "Who was the architect of the Sydney Opera House?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Jørn Utzon",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    84,
+    276
+   ],
+   "wd_score": 4.128,
+   "ms": 63.793,
+   "v3_ok": true,
+   "gold": [
+    "Jørn Utzon",
+    "Jorn Utzon",
+    "Utzon"
+   ]
+  },
+  {
+   "id": "a0113",
+   "cat": "wd_entity",
+   "q": "Fallingwater was designed by which American architect?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Frank Lloyd Wright",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    84,
+    170
+   ],
+   "wd_score": 3.301,
+   "ms": 7.611,
+   "v3_ok": false,
+   "gold": [
+    "Frank Lloyd Wright"
+   ]
+  },
+  {
+   "id": "a0115",
+   "cat": "wd_entity",
+   "q": "who designed st paul's cathedral in london",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Christopher Wren",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    84,
+    170
+   ],
+   "wd_score": 3.112,
+   "ms": 58.295,
+   "v3_ok": true,
+   "gold": [
+    "Christopher Wren",
+    "Sir Christopher Wren",
+    "Wren"
+   ]
+  },
+  {
+   "id": "a0116",
+   "cat": "wd_entity",
+   "q": "Who painted The Birth of Venus?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Sandro Botticelli",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    170
+   ],
+   "wd_score": 3.635,
+   "ms": 10.974,
+   "v3_ok": true,
+   "gold": [
+    "Sandro Botticelli",
+    "Botticelli"
+   ]
+  },
+  {
+   "id": "a0119",
+   "cat": "wd_entity",
+   "q": "Girl with a Pearl Earring was painted by which Dutch master?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Johannes Vermeer",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    170
+   ],
+   "wd_score": 3.411,
+   "ms": 42.907,
+   "v3_ok": false,
+   "gold": [
+    "Johannes Vermeer",
+    "Vermeer",
+    "Jan Vermeer"
+   ]
+  },
+  {
+   "id": "a0120",
+   "cat": "wd_entity",
+   "q": "Who made the woodblock print The Great Wave off Kanagawa?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Katsushika Hokusai",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    170,
+    178,
+    176
+   ],
+   "wd_score": 3.903,
+   "ms": 11.506,
+   "v3_ok": true,
+   "gold": [
+    "Hokusai",
+    "Katsushika Hokusai"
+   ]
+  },
+  {
+   "id": "a0121",
+   "cat": "wd_entity",
+   "q": "Who discovered penicillin?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Alexander Fleming",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    61,
+    575,
+    571
+   ],
+   "wd_score": 3.238,
+   "ms": 1.347,
+   "v3_ok": true,
+   "gold": [
+    "Alexander Fleming",
+    "Sir Alexander Fleming",
+    "Fleming"
+   ]
+  },
+  {
+   "id": "a0125",
+   "cat": "wd_entity",
+   "q": "Which British physicist is credited with discovering the electron?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Joseph John Thomson",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    61,
+    575,
+    571
+   ],
+   "wd_score": 3.26,
+   "ms": 2.986,
+   "v3_ok": false,
+   "gold": [
+    "J. J. Thomson",
+    "J.J. Thomson",
+    "Joseph John Thomson"
+   ]
+  },
+  {
+   "id": "a0126",
+   "cat": "wd_entity",
+   "q": "What field of work is Sigmund Freud associated with?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "psychoanalysis",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    101,
+    108,
+    106
+   ],
+   "wd_score": 3.48,
+   "ms": 14.905,
+   "v3_ok": false,
+   "gold": [
+    "psychoanalysis",
+    "psychology"
+   ]
+  },
+  {
+   "id": "a0129",
+   "cat": "wd_entity",
+   "q": "Harry Houdini made his name in what line of work?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Side Effects Software Inc.",
+   "correct": false,
+   "ent_rank": 1,
+   "prop_ok": false,
+   "top_props": [
+    178,
+    106,
+    170
+   ],
+   "wd_score": 2.488,
+   "ms": 4.83,
+   "v3_ok": false,
+   "gold": [
+    "escapologist",
+    "magician",
+    "illusionist"
+   ]
+  },
+  {
+   "id": "a0130",
+   "cat": "wd_entity",
+   "q": "coco chanel's occupation",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "fashion designer",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    106
+   ],
+   "wd_score": 2.29,
+   "ms": 10.371,
+   "v3_ok": false,
+   "gold": [
+    "fashion designer",
+    "designer",
+    "couturier"
+   ]
+  },
+  {
+   "id": "a0131",
+   "cat": "wd_entity",
+   "q": "Katherine Johnson computed spaceflight trajectories while employed by which agency?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "National Aeronautics and Space Administration",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    108,
+    106
+   ],
+   "wd_score": 3.093,
+   "ms": 22.8,
+   "v3_ok": false,
+   "gold": [
+    "NASA",
+    "NACA"
+   ]
+  },
+  {
+   "id": "a0133",
+   "cat": "wd_entity",
+   "q": "Before Cambridge, Charles Darwin studied medicine at which university?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Christ's College",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    69,
+    101,
+    2578
+   ],
+   "wd_score": 3.486,
+   "ms": 16.423,
+   "v3_ok": false,
+   "gold": [
+    "University of Edinburgh",
+    "Edinburgh University",
+    "Edinburgh"
+   ]
+  },
+  {
+   "id": "a0136",
+   "cat": "wd_entity",
+   "q": "Jawaharlal Nehru belonged to which political party?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Indian National Congress",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    102,
+    463,
+    361
+   ],
+   "wd_score": 3.565,
+   "ms": 2.511,
+   "v3_ok": false,
+   "gold": [
+    "Indian National Congress",
+    "Congress",
+    "INC"
+   ]
+  },
+  {
+   "id": "a0137",
+   "cat": "wd_entity",
+   "q": "Franklin D. Roosevelt was a member of which American party?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Democratic Party",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    102,
+    463,
+    710
+   ],
+   "wd_score": 3.759,
+   "ms": 22.659,
+   "v3_ok": false,
+   "gold": [
+    "Democratic Party",
+    "Democrats",
+    "Democratic"
+   ]
+  },
+  {
+   "id": "a0138",
+   "cat": "wd_entity",
+   "q": "Pelé spent most of his club career at which Brazilian team?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Eskişehirspor",
+   "correct": false,
+   "ent_rank": 1,
+   "prop_ok": true,
+   "top_props": [
+    54,
+    106,
+    463
+   ],
+   "wd_score": 3.238,
+   "ms": 15.822,
+   "v3_ok": false,
+   "gold": [
+    "Santos FC",
+    "Santos",
+    "Santos Futebol Clube"
+   ]
+  },
+  {
+   "id": "a0141",
+   "cat": "wd_entity",
+   "q": "What position did Lev Yashin play?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "goalkeeper",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    413,
+    54,
+    641
+   ],
+   "wd_score": 3.422,
+   "ms": 9.74,
+   "v3_ok": true,
+   "gold": [
+    "goalkeeper",
+    "goalie",
+    "keeper"
+   ]
+  },
+  {
+   "id": "a0143",
+   "cat": "wd_entity",
+   "q": "What game is Magnus Carlsen known for?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 8.085,
+   "v3_ok": false,
+   "gold": [
+    "chess"
+   ]
+  },
+  {
+   "id": "a0147",
+   "cat": "wd_entity",
+   "q": "What league are the Toronto Maple Leafs part of?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "National Hockey League",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    118,
+    361,
+    527
+   ],
+   "wd_score": 3.641,
+   "ms": 14.781,
+   "v3_ok": false,
+   "gold": [
+    "National Hockey League",
+    "NHL"
+   ]
+  },
+  {
+   "id": "a0148",
+   "cat": "wd_entity",
+   "q": "What is the home ballpark of the Chicago Cubs?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    115
+   ],
+   "wd_score": 1.918,
+   "ms": 9.883,
+   "v3_ok": false,
+   "gold": [
+    "Wrigley Field"
+   ]
+  },
+  {
+   "id": "a0149",
+   "cat": "wd_entity",
+   "q": "Where do the Boston Red Sox play their home games?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "baseball",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    641,
+    161,
+    54
+   ],
+   "wd_score": 2.556,
+   "ms": 27.686,
+   "v3_ok": false,
+   "gold": [
+    "Fenway Park",
+    "Fenway"
+   ]
+  },
+  {
+   "id": "a0153",
+   "cat": "wd_entity",
+   "q": "Which prize did Malala Yousafzai receive in 2014?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Nobel Peace Prize",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    166
+   ],
+   "wd_score": 4.054,
+   "ms": 5.461,
+   "v3_ok": false,
+   "gold": [
+    "Nobel Peace Prize",
+    "the Nobel Peace Prize",
+    "Nobel Prize for Peace"
+   ]
+  },
+  {
+   "id": "a0160",
+   "cat": "wd_entity",
+   "q": "The Americas are named after which explorer?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Amerigo Vespucci",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    138
+   ],
+   "wd_score": 3.484,
+   "ms": 11.226,
+   "v3_ok": false,
+   "gold": [
+    "Amerigo Vespucci",
+    "Vespucci"
+   ]
+  },
+  {
+   "id": "a0161",
+   "cat": "wd_entity",
+   "q": "Who is Bolivia named for?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Simón Bolívar",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    138
+   ],
+   "wd_score": 3.493,
+   "ms": 1.922,
+   "v3_ok": true,
+   "gold": [
+    "Simón Bolívar",
+    "Simon Bolivar",
+    "Bolívar"
+   ]
+  },
+  {
+   "id": "a0163",
+   "cat": "wd_entity",
+   "q": "The Hudson River honours which explorer in its name?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 4,
+   "prop_ok": false,
+   "top_props": [
+    206,
+    403,
+    166
+   ],
+   "wd_score": 1.091,
+   "ms": 14.184,
+   "v3_ok": false,
+   "gold": [
+    "Henry Hudson"
+   ]
+  },
+  {
+   "id": "a0164",
+   "cat": "wd_entity",
+   "q": "West Side Story is a modern retelling of which Shakespeare play?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Natalie Wood",
+   "correct": false,
+   "ent_rank": 3,
+   "prop_ok": false,
+   "top_props": [
+    161,
+    641,
+    54
+   ],
+   "wd_score": 2.647,
+   "ms": 23.233,
+   "v3_ok": false,
+   "gold": [
+    "Romeo and Juliet"
+   ]
+  },
+  {
+   "id": "a0166",
+   "cat": "wd_entity",
+   "q": "Which novel features Captain Ahab?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    1552
+   ],
+   "wd_score": 0.0,
+   "ms": 12.347,
+   "v3_ok": false,
+   "gold": [
+    "Moby-Dick",
+    "Moby Dick"
+   ]
+  },
+  {
+   "id": "a0167",
+   "cat": "wd_entity",
+   "q": "Ebenezer Scrooge appears in which Dickens story?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "A Christmas Carol",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1441
+   ],
+   "wd_score": 2.423,
+   "ms": 11.614,
+   "v3_ok": false,
+   "gold": [
+    "A Christmas Carol"
+   ]
+  },
+  {
+   "id": "a0169",
+   "cat": "wd_entity",
+   "q": "In what Italian city is Shakespeare's Romeo and Juliet set?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    840,
+    276,
+    131
+   ],
+   "wd_score": 1.665,
+   "ms": 19.433,
+   "v3_ok": false,
+   "gold": [
+    "Verona"
+   ]
+  },
+  {
+   "id": "a0170",
+   "cat": "wd_entity",
+   "q": "James Joyce's Ulysses takes place over one day in which city?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 28,
+   "prop_ok": false,
+   "top_props": [
+    131,
+    585,
+    580
+   ],
+   "wd_score": 1.476,
+   "ms": 31.064,
+   "v3_ok": false,
+   "gold": [
+    "Dublin"
+   ]
+  },
+  {
+   "id": "a0173",
+   "cat": "wd_entity",
+   "q": "What is the main subject of Darwin's On the Origin of Species?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "natural selection",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    921,
+    27,
+    101
+   ],
+   "wd_score": 2.57,
+   "ms": 28.407,
+   "v3_ok": false,
+   "gold": [
+    "evolution",
+    "natural selection",
+    "evolution by natural selection"
+   ]
+  },
+  {
+   "id": "a0179",
+   "cat": "wd_entity",
+   "q": "Banff National Park lies in which Canadian province?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Alberta",
+   "correct": true,
+   "ent_rank": 1,
+   "prop_ok": true,
+   "top_props": [
+    131
+   ],
+   "wd_score": 3.54,
+   "ms": 34.529,
+   "v3_ok": false,
+   "gold": [
+    "Alberta"
+   ]
+  },
+  {
+   "id": "a0180",
+   "cat": "wd_entity",
+   "q": "Mount Rushmore is carved into a mountain in which state?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Pennington County",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    131,
+    17,
+    186
+   ],
+   "wd_score": 3.727,
+   "ms": 33.507,
+   "v3_ok": false,
+   "gold": [
+    "South Dakota"
+   ]
+  },
+  {
+   "id": "a0181",
+   "cat": "wd_entity",
+   "q": "Which Indian city is home to the Taj Mahal?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Agra",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    131,
+    276
+   ],
+   "wd_score": 2.757,
+   "ms": 23.972,
+   "v3_ok": false,
+   "gold": [
+    "Agra"
+   ]
+  },
+  {
+   "id": "a0183",
+   "cat": "wd_entity",
+   "q": "Which museum houses Rembrandt's The Night Watch?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    276
+   ],
+   "wd_score": 2.049,
+   "ms": 26.082,
+   "v3_ok": false,
+   "gold": [
+    "Rijksmuseum"
+   ]
+  },
+  {
+   "id": "a0187",
+   "cat": "wd_entity",
+   "q": "Baghdad lies on the banks of which river?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Tigris",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    206,
+    403
+   ],
+   "wd_score": 3.23,
+   "ms": 22.094,
+   "v3_ok": false,
+   "gold": [
+    "Tigris",
+    "Tigris River"
+   ]
+  },
+  {
+   "id": "a0188",
+   "cat": "wd_entity",
+   "q": "Which river runs through Prague?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Vltava",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    206,
+    403
+   ],
+   "wd_score": 3.234,
+   "ms": 7.297,
+   "v3_ok": false,
+   "gold": [
+    "Vltava",
+    "Moldau"
+   ]
+  },
+  {
+   "id": "a0189",
+   "cat": "wd_entity",
+   "q": "What river divides Dublin into a north side and a south side?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Liffey",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    206,
+    403
+   ],
+   "wd_score": 3.227,
+   "ms": 18.325,
+   "v3_ok": false,
+   "gold": [
+    "River Liffey",
+    "Liffey"
+   ]
+  },
+  {
+   "id": "a0195",
+   "cat": "wd_entity",
+   "q": "The Blue Nile flows out of which Ethiopian lake?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Nile",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    403,
+    206
+   ],
+   "wd_score": 2.426,
+   "ms": 14.909,
+   "v3_ok": false,
+   "gold": [
+    "Lake Tana",
+    "Tana"
+   ]
+  },
+  {
+   "id": "a0196",
+   "cat": "wd_entity",
+   "q": "What's the highest point in Japan?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Mount Fuji",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    610
+   ],
+   "wd_score": 3.359,
+   "ms": 2.217,
+   "v3_ok": true,
+   "gold": [
+    "Mount Fuji",
+    "Fuji",
+    "Fujisan"
+   ]
+  },
+  {
+   "id": "a0205",
+   "cat": "wd_entity",
+   "q": "Which planet does Ganymede orbit?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Jupiter",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    397
+   ],
+   "wd_score": 3.335,
+   "ms": 4.233,
+   "v3_ok": false,
+   "gold": [
+    "Jupiter"
+   ]
+  },
+  {
+   "id": "a0207",
+   "cat": "wd_entity",
+   "q": "Which genus does the lion belong to?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Panthera",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    171,
+    279,
+    361
+   ],
+   "wd_score": 2.985,
+   "ms": 7.953,
+   "v3_ok": false,
+   "gold": [
+    "Panthera"
+   ]
+  },
+  {
+   "id": "a0209",
+   "cat": "wd_entity",
+   "q": "What genus is the giant panda classified in?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Ailuropoda",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    171
+   ],
+   "wd_score": 2.6,
+   "ms": 9.5,
+   "v3_ok": false,
+   "gold": [
+    "Ailuropoda"
+   ]
+  },
+  {
+   "id": "a0211",
+   "cat": "wd_entity",
+   "q": "The kiwi bird is found naturally only in which country?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "United States",
+   "correct": false,
+   "ent_rank": 23,
+   "prop_ok": false,
+   "top_props": [
+    495,
+    17,
+    27
+   ],
+   "wd_score": 2.257,
+   "ms": 12.133,
+   "v3_ok": false,
+   "gold": [
+    "New Zealand"
+   ]
+  },
+  {
+   "id": "a0220",
+   "cat": "wd_entity",
+   "q": "Is the saxophone classed as a brass or a woodwind instrument?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 2,
+   "prop_ok": false,
+   "top_props": [
+    1303
+   ],
+   "wd_score": 0.0,
+   "ms": 3.452,
+   "v3_ok": false,
+   "gold": [
+    "woodwind instrument",
+    "woodwind"
+   ]
+  },
+  {
+   "id": "a0221",
+   "cat": "wd_entity",
+   "q": "Tenerife is the largest of which island group?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.683,
+   "v3_ok": false,
+   "gold": [
+    "Canary Islands",
+    "the Canaries",
+    "Canaries"
+   ]
+  },
+  {
+   "id": "a0223",
+   "cat": "wd_entity",
+   "q": "In what language did Dante write the Divine Comedy?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Tuscan",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    407,
+    364,
+    50
+   ],
+   "wd_score": 3.444,
+   "ms": 13.016,
+   "v3_ok": false,
+   "gold": [
+    "Italian",
+    "Tuscan",
+    "Florentine"
+   ]
+  },
+  {
+   "id": "a0224",
+   "cat": "wd_entity",
+   "q": "The Communist Manifesto was originally written in which language?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "German",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    407,
+    364,
+    50
+   ],
+   "wd_score": 3.449,
+   "ms": 9.348,
+   "v3_ok": false,
+   "gold": [
+    "German"
+   ]
+  },
+  {
+   "id": "a0226",
+   "cat": "wd_entity",
+   "q": "india's national anthem",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Jana Gana Mana",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    85
+   ],
+   "wd_score": 2.207,
+   "ms": 4.014,
+   "v3_ok": false,
+   "gold": [
+    "Jana Gana Mana",
+    "Jana-Gana-Mana"
+   ]
+  },
+  {
+   "id": "a0227",
+   "cat": "wd_entity",
+   "q": "France's national anthem goes by what title?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "La Marseillaise",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    85,
+    1476,
+    1477
+   ],
+   "wd_score": 2.61,
+   "ms": 6.661,
+   "v3_ok": false,
+   "gold": [
+    "La Marseillaise",
+    "Marseillaise"
+   ]
+  },
+  {
+   "id": "a0228",
+   "cat": "wd_entity",
+   "q": "What illness caused Marie Curie's death in 1934?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "July 4, 1934",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    570,
+    509,
+    20
+   ],
+   "wd_score": 3.179,
+   "ms": 9.372,
+   "v3_ok": false,
+   "gold": [
+    "aplastic anemia",
+    "aplastic anaemia",
+    "radiation poisoning"
+   ]
+  },
+  {
+   "id": "a0231",
+   "cat": "wd_value",
+   "q": "When was Albert Einstein born?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "March 14, 1879",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    569,
+    19
+   ],
+   "wd_score": 3.794,
+   "ms": 5.74,
+   "v3_ok": true,
+   "gold": [
+    "1879-03-14",
+    "14 March 1879",
+    "March 14, 1879"
+   ]
+  },
+  {
+   "id": "a0232",
+   "cat": "wd_value",
+   "q": "What's Mozart's date of birth?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "January 27, 1756",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    569,
+    585
+   ],
+   "wd_score": 2.535,
+   "ms": 2.608,
+   "v3_ok": false,
+   "gold": [
+    "1756-01-27",
+    "27 January 1756",
+    "January 27, 1756"
+   ]
+  },
+  {
+   "id": "a0234",
+   "cat": "wd_value",
+   "q": "frida kahlo birthday, day and year please",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "July 6, 1907",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    569,
+    585
+   ],
+   "wd_score": 2.317,
+   "ms": 4.009,
+   "v3_ok": false,
+   "gold": [
+    "1907-07-06",
+    "6 July 1907",
+    "July 6, 1907"
+   ]
+  },
+  {
+   "id": "a0235",
+   "cat": "wd_value",
+   "q": "Do you know when Nelson Mandela was born?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "July 18, 1918",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    569,
+    19
+   ],
+   "wd_score": 3.789,
+   "ms": 12.487,
+   "v3_ok": false,
+   "gold": [
+    "1918-07-18",
+    "18 July 1918",
+    "July 18, 1918"
+   ]
+  },
+  {
+   "id": "a0237",
+   "cat": "wd_value",
+   "q": "What was Marie Curie's date of birth?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "November 7, 1867",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    569,
+    585
+   ],
+   "wd_score": 2.899,
+   "ms": 1.457,
+   "v3_ok": false,
+   "gold": [
+    "1867-11-07",
+    "7 November 1867",
+    "November 7, 1867"
+   ]
+  },
+  {
+   "id": "a0238",
+   "cat": "wd_value",
+   "q": "Abraham Lincoln was born on what day?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "February 12, 1809",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    569,
+    19
+   ],
+   "wd_score": 3.789,
+   "ms": 14.079,
+   "v3_ok": false,
+   "gold": [
+    "1809-02-12",
+    "12 February 1809",
+    "February 12, 1809"
+   ]
+  },
+  {
+   "id": "a0239",
+   "cat": "wd_value",
+   "q": "On what date was John Lennon shot dead in New York?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "December 8, 1980",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    570,
+    915,
+    585
+   ],
+   "wd_score": 2.757,
+   "ms": 18.556,
+   "v3_ok": false,
+   "gold": [
+    "1980-12-08",
+    "8 December 1980",
+    "December 8, 1980"
+   ]
+  },
+  {
+   "id": "a0240",
+   "cat": "wd_value",
+   "q": "When did Abraham Lincoln die?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "April 15, 1865",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    570,
+    20,
+    509
+   ],
+   "wd_score": 3.789,
+   "ms": 1.442,
+   "v3_ok": true,
+   "gold": [
+    "1865-04-15",
+    "15 April 1865",
+    "April 15, 1865"
+   ]
+  },
+  {
+   "id": "a0241",
+   "cat": "wd_value",
+   "q": "Diana, Princess of Wales died on which date?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "August 31, 1997",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    570,
+    20,
+    509
+   ],
+   "wd_score": 3.939,
+   "ms": 18.068,
+   "v3_ok": false,
+   "gold": [
+    "1997-08-31",
+    "31 August 1997",
+    "August 31, 1997"
+   ]
+  },
+  {
+   "id": "a0244",
+   "cat": "wd_value",
+   "q": "What year did William Shakespeare die?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "April 23, 1616",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    570,
+    20,
+    509
+   ],
+   "wd_score": 3.797,
+   "ms": 5.578,
+   "v3_ok": true,
+   "gold": [
+    "1616",
+    "1616-04-23",
+    "23 April 1616"
+   ]
+  },
+  {
+   "id": "a0246",
+   "cat": "wd_value",
+   "q": "The United Nations was established in which year?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "October 24, 1945",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    571,
+    112,
+    585
+   ],
+   "wd_score": 3.797,
+   "ms": 5.87,
+   "v3_ok": false,
+   "gold": [
+    "1945",
+    "1945-10-24",
+    "October 24, 1945"
+   ]
+  },
+  {
+   "id": "a0247",
+   "cat": "wd_value",
+   "q": "What year was Apple founded by Jobs and Wozniak?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    571,
+    112,
+    106
+   ],
+   "wd_score": 2.593,
+   "ms": 6.46,
+   "v3_ok": false,
+   "gold": [
+    "1976",
+    "1976-04-01",
+    "April 1, 1976"
+   ]
+  },
+  {
+   "id": "a0248",
+   "cat": "wd_value",
+   "q": "When was NASA created?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "July 29, 1958",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    571,
+    577,
+    112
+   ],
+   "wd_score": 3.393,
+   "ms": 2.743,
+   "v3_ok": false,
+   "gold": [
+    "1958",
+    "1958-07-29",
+    "1958-10-01"
+   ]
+  },
+  {
+   "id": "a0249",
+   "cat": "wd_value",
+   "q": "FIFA was founded in what year?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "May 21, 1904",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    571,
+    740,
+    112
+   ],
+   "wd_score": 3.506,
+   "ms": 0.812,
+   "v3_ok": false,
+   "gold": [
+    "1904",
+    "1904-05-21",
+    "May 21, 1904"
+   ]
+  },
+  {
+   "id": "a0255",
+   "cat": "wd_value",
+   "q": "What year did Frankenstein first appear in print?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "The World's Greatest Super Friends",
+   "correct": false,
+   "ent_rank": 12,
+   "prop_ok": false,
+   "top_props": [
+    1441,
+    585
+   ],
+   "wd_score": 1.654,
+   "ms": 4.424,
+   "v3_ok": false,
+   "gold": [
+    "1818",
+    "1818-01-01"
+   ]
+  },
+  {
+   "id": "a0256",
+   "cat": "wd_value",
+   "q": "In which year was On the Origin of Species published?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "November 24, 1859",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    577,
+    123,
+    585
+   ],
+   "wd_score": 3.62,
+   "ms": 3.342,
+   "v3_ok": true,
+   "gold": [
+    "1859",
+    "1859-11-24",
+    "24 November 1859"
+   ]
+  },
+  {
+   "id": "a0258",
+   "cat": "wd_value",
+   "q": "The Great Gatsby was first published when?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "April 10, 1925",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    577,
+    123
+   ],
+   "wd_score": 3.719,
+   "ms": 4.528,
+   "v3_ok": false,
+   "gold": [
+    "1925",
+    "1925-04-10",
+    "April 10, 1925"
+   ]
+  },
+  {
+   "id": "a0265",
+   "cat": "wd_value",
+   "q": "What year did World War I begin?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "July 28, 1914",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    580,
+    585,
+    571
+   ],
+   "wd_score": 3.783,
+   "ms": 2.54,
+   "v3_ok": true,
+   "gold": [
+    "1914",
+    "1914-07-28",
+    "July 28, 1914"
+   ]
+  },
+  {
+   "id": "a0266",
+   "cat": "wd_value",
+   "q": "When did the American Civil War break out?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 5.511,
+   "v3_ok": false,
+   "gold": [
+    "1861",
+    "1861-04-12",
+    "April 12, 1861"
+   ]
+  },
+  {
+   "id": "a0267",
+   "cat": "wd_value",
+   "q": "In which year did World War II end?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "September 2, 1945",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    582,
+    585,
+    576
+   ],
+   "wd_score": 4.038,
+   "ms": 7.384,
+   "v3_ok": true,
+   "gold": [
+    "1945",
+    "1945-09-02",
+    "September 2, 1945"
+   ]
+  },
+  {
+   "id": "a0268",
+   "cat": "wd_value",
+   "q": "The Hundred Years' War ended in what year?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "October 9, 1453",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    582,
+    585,
+    576
+   ],
+   "wd_score": 3.993,
+   "ms": 5.166,
+   "v3_ok": false,
+   "gold": [
+    "1453",
+    "1453-10-19"
+   ]
+  },
+  {
+   "id": "a0270",
+   "cat": "wd_value",
+   "q": "When did William Herschel discover Uranus?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "March 13, 1781",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    575,
+    571,
+    61
+   ],
+   "wd_score": 3.532,
+   "ms": 3.611,
+   "v3_ok": false,
+   "gold": [
+    "1781",
+    "1781-03-13",
+    "March 13, 1781"
+   ]
+  },
+  {
+   "id": "a0271",
+   "cat": "wd_value",
+   "q": "Neptune was discovered in which year?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "September 23, 1846",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    575,
+    571,
+    61
+   ],
+   "wd_score": 3.53,
+   "ms": 7.206,
+   "v3_ok": false,
+   "gold": [
+    "1846",
+    "1846-09-23",
+    "September 23, 1846"
+   ]
+  },
+  {
+   "id": "a0272",
+   "cat": "wd_value",
+   "q": "When was the Soviet Union dissolved?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "December 26, 1991",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    576,
+    582
+   ],
+   "wd_score": 3.787,
+   "ms": 11.073,
+   "v3_ok": true,
+   "gold": [
+    "1991",
+    "1991-12-26",
+    "December 26, 1991"
+   ]
+  },
+  {
+   "id": "a0273",
+   "cat": "wd_value",
+   "q": "In what year did the Western Roman Empire fall?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    585
+   ],
+   "wd_score": 0.0,
+   "ms": 4.751,
+   "v3_ok": false,
+   "gold": [
+    "476",
+    "476 AD",
+    "AD 476"
+   ]
+  },
+  {
+   "id": "a0280",
+   "cat": "wd_value",
+   "q": "What's the elevation of Mount Fuji?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "3777.24 metre",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    2044
+   ],
+   "wd_score": 3.15,
+   "ms": 7.448,
+   "v3_ok": true,
+   "gold": [
+    "3776",
+    "3,776",
+    "3776 m"
+   ]
+  },
+  {
+   "id": "a0281",
+   "cat": "wd_value",
+   "q": "How tall is K2 above sea level?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "8611 metre",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    2044,
+    2048,
+    206
+   ],
+   "wd_score": 3.435,
+   "ms": 10.607,
+   "v3_ok": false,
+   "gold": [
+    "8611",
+    "8,611",
+    "8611 m"
+   ]
+  },
+  {
+   "id": "a0282",
+   "cat": "wd_value",
+   "q": "Ben Nevis rises to how many metres?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    885
+   ],
+   "wd_score": 0.0,
+   "ms": 11.319,
+   "v3_ok": false,
+   "gold": [
+    "1345",
+    "1,345",
+    "1345 m"
+   ]
+  },
+  {
+   "id": "a0289",
+   "cat": "wd_value",
+   "q": "What is the area of New York's Central Park?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 1,
+   "prop_ok": true,
+   "top_props": [
+    2046,
+    101,
+    518
+   ],
+   "wd_score": 0.679,
+   "ms": 15.829,
+   "v3_ok": false,
+   "gold": [
+    "3.41",
+    "3.41 km2",
+    "843 acres"
+   ]
+  },
+  {
+   "id": "a0290",
+   "cat": "wd_value",
+   "q": "Roughly what was Iceland's population in 2020?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "364,260",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1082
+   ],
+   "wd_score": 2.95,
+   "ms": 12.641,
+   "v3_ok": false,
+   "gold": [
+    "366000",
+    "about 366,000",
+    "364000"
+   ]
+  },
+  {
+   "id": "a0295",
+   "cat": "wd_value",
+   "q": "Uranium sits at what atomic number on the periodic table?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "92",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1086,
+    1545
+   ],
+   "wd_score": 3.31,
+   "ms": 1.976,
+   "v3_ok": false,
+   "gold": [
+    "92"
+   ]
+  },
+  {
+   "id": "a0297",
+   "cat": "wd_value",
+   "q": "Tin is abbreviated in chemistry with which two letters?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 15.531,
+   "v3_ok": false,
+   "gold": [
+    "Sn"
+   ]
+  },
+  {
+   "id": "a0298",
+   "cat": "wd_value",
+   "q": "Sodium is represented by which element symbol?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Na",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    246
+   ],
+   "wd_score": 3.314,
+   "ms": 0.766,
+   "v3_ok": false,
+   "gold": [
+    "Na"
+   ]
+  },
+  {
+   "id": "a0300",
+   "cat": "wd_value",
+   "q": "Tungsten's chemical symbol is which letter?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "W",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    246
+   ],
+   "wd_score": 2.101,
+   "ms": 1.415,
+   "v3_ok": false,
+   "gold": [
+    "W"
+   ]
+  },
+  {
+   "id": "a0303",
+   "cat": "wd_value",
+   "q": "Write the chemical formula for methane.",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "CH₄",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    274,
+    577,
+    86
+   ],
+   "wd_score": 2.739,
+   "ms": 1.324,
+   "v3_ok": false,
+   "gold": [
+    "CH4",
+    "CH₄"
+   ]
+  },
+  {
+   "id": "a0304",
+   "cat": "wd_value",
+   "q": "What's the formula of ammonia?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "NH₃",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    274,
+    246
+   ],
+   "wd_score": 2.638,
+   "ms": 1.561,
+   "v3_ok": true,
+   "gold": [
+    "NH3",
+    "NH₃"
+   ]
+  },
+  {
+   "id": "a0305",
+   "cat": "wd_value",
+   "q": "Glucose has which molecular formula?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "C₆H₁₂O₆",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    274,
+    246
+   ],
+   "wd_score": 3.186,
+   "ms": 0.736,
+   "v3_ok": false,
+   "gold": [
+    "C6H12O6",
+    "C₆H₁₂O₆"
+   ]
+  },
+  {
+   "id": "a0306",
+   "cat": "wd_value",
+   "q": "How many episodes of Fawlty Towers were made?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "12 episodes",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1113,
+    170,
+    179
+   ],
+   "wd_score": 3.728,
+   "ms": 2.084,
+   "v3_ok": true,
+   "gold": [
+    "12",
+    "twelve"
+   ]
+  },
+  {
+   "id": "a0309",
+   "cat": "wd_value",
+   "q": "Game of Thrones consisted of how many episodes?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "73 episodes",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    1113,
+    527
+   ],
+   "wd_score": 3.714,
+   "ms": 7.745,
+   "v3_ok": false,
+   "gold": [
+    "73"
+   ]
+  },
+  {
+   "id": "a0310",
+   "cat": "wd_value",
+   "q": "How many seasons did The Sopranos run for?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "6 seasons",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    2437,
+    4908
+   ],
+   "wd_score": 3.513,
+   "ms": 8.655,
+   "v3_ok": false,
+   "gold": [
+    "6",
+    "six"
+   ]
+  },
+  {
+   "id": "a0311",
+   "cat": "wd_value",
+   "q": "Seinfeld lasted for how many seasons?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "9 seasons",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    2437,
+    4908
+   ],
+   "wd_score": 3.498,
+   "ms": 1.691,
+   "v3_ok": false,
+   "gold": [
+    "9",
+    "nine"
+   ]
+  },
+  {
+   "id": "a0312",
+   "cat": "wd_value",
+   "q": "how many seasons of mad men were there",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "7 seasons",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    2437,
+    3450,
+    4908
+   ],
+   "wd_score": 2.893,
+   "ms": 8.605,
+   "v3_ok": true,
+   "gold": [
+    "7",
+    "seven"
+   ]
+  },
+  {
+   "id": "a0313",
+   "cat": "wd_value",
+   "q": "Breaking Bad was split into how many seasons?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "5 seasons",
+   "correct": true,
+   "ent_rank": 0,
+   "prop_ok": true,
+   "top_props": [
+    2437,
+    1366,
+    4908
+   ],
+   "wd_score": 3.78,
+   "ms": 5.311,
+   "v3_ok": false,
+   "gold": [
+    "5",
+    "five"
+   ]
+  },
+  {
+   "id": "a0315",
+   "cat": "wd_value",
+   "q": "Elton John was born with what name?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "March 25, 1947",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    569,
+    19
+   ],
+   "wd_score": 3.138,
+   "ms": 7.991,
+   "v3_ok": false,
+   "gold": [
+    "Reginald Kenneth Dwight",
+    "Reginald Dwight",
+    "Reg Dwight"
+   ]
+  },
+  {
+   "id": "a0318",
+   "cat": "wd_value",
+   "q": "Malcolm X was born under what name?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "May 19, 1925",
+   "correct": false,
+   "ent_rank": 0,
+   "prop_ok": false,
+   "top_props": [
+    569,
+    19
+   ],
+   "wd_score": 3.146,
+   "ms": 3.744,
+   "v3_ok": false,
+   "gold": [
+    "Malcolm Little"
+   ]
+  },
+  {
+   "id": "a0319",
+   "cat": "wd_value",
+   "q": "Which nickname was Louis XIV of France known by?",
+   "gstore": "wd",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": 6,
+   "prop_ok": false,
+   "top_props": [
+    1449,
+    742
+   ],
+   "wd_score": 0.0,
+   "ms": 4.399,
+   "v3_ok": false,
+   "gold": [
+    "the Sun King",
+    "Sun King",
+    "Le Roi Soleil"
+   ]
+  },
+  {
+   "id": "a0330",
+   "cat": "commonsense",
+   "q": "what's the opposite of shallow",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "deep",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    461
+   ],
+   "wd_score": 0.0,
+   "ms": 0.985,
+   "v3_ok": false,
+   "gold": [
+    "deep"
+   ]
+  },
+  {
+   "id": "a0331",
+   "cat": "commonsense",
+   "q": "Antonym of arrive?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "leave",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.135,
+   "v3_ok": false,
+   "gold": [
+    "depart",
+    "leave"
+   ]
+  },
+  {
+   "id": "a0333",
+   "cat": "commonsense",
+   "q": "Which word is the reverse of visible?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "invisible",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.903,
+   "v3_ok": false,
+   "gold": [
+    "invisible",
+    "hidden",
+    "unseen"
+   ]
+  },
+  {
+   "id": "a0334",
+   "cat": "commonsense",
+   "q": "The reverse of tame is what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "wild",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.101,
+   "v3_ok": false,
+   "gold": [
+    "wild",
+    "untamed",
+    "feral"
+   ]
+  },
+  {
+   "id": "a0335",
+   "cat": "commonsense",
+   "q": "What is the antonym of ascend?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "descend",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.957,
+   "v3_ok": false,
+   "gold": [
+    "descend",
+    "go down"
+   ]
+  },
+  {
+   "id": "a0337",
+   "cat": "commonsense",
+   "q": "Name a word that means the opposite of frequent.",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "infrequent",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    461
+   ],
+   "wd_score": 2.67,
+   "ms": 2.778,
+   "v3_ok": false,
+   "gold": [
+    "rare",
+    "infrequent",
+    "occasional"
+   ]
+  },
+  {
+   "id": "a0338",
+   "cat": "commonsense",
+   "q": "What's another word for enormous?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "tremendous",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.526,
+   "v3_ok": false,
+   "gold": [
+    "huge",
+    "gigantic",
+    "immense"
+   ]
+  },
+  {
+   "id": "a0339",
+   "cat": "commonsense",
+   "q": "Give a synonym of begin.",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "start",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    571,
+    580,
+    885
+   ],
+   "wd_score": 0.0,
+   "ms": 0.432,
+   "v3_ok": false,
+   "gold": [
+    "start",
+    "commence",
+    "initiate"
+   ]
+  },
+  {
+   "id": "a0340",
+   "cat": "commonsense",
+   "q": "Tell me a synonym for angry.",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "furious",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.677,
+   "v3_ok": false,
+   "gold": [
+    "mad",
+    "furious",
+    "irate"
+   ]
+  },
+  {
+   "id": "a0341",
+   "cat": "commonsense",
+   "q": "another word for sad",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "deplorable",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 3.582,
+   "v3_ok": false,
+   "gold": [
+    "unhappy",
+    "sorrowful",
+    "miserable"
+   ]
+  },
+  {
+   "id": "a0342",
+   "cat": "commonsense",
+   "q": "Which simpler word means the same as purchase?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "leverage",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.201,
+   "v3_ok": false,
+   "gold": [
+    "buy"
+   ]
+  },
+  {
+   "id": "a0344",
+   "cat": "commonsense",
+   "q": "What is glass mostly made from?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "sand",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    186,
+    176,
+    178
+   ],
+   "wd_score": 2.574,
+   "ms": 5.206,
+   "v3_ok": false,
+   "gold": [
+    "sand",
+    "silica",
+    "silicon dioxide"
+   ]
+  },
+  {
+   "id": "a0345",
+   "cat": "commonsense",
+   "q": "Bread is baked mainly from what ingredient?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "water",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    186,
+    527
+   ],
+   "wd_score": 2.375,
+   "ms": 3.003,
+   "v3_ok": false,
+   "gold": [
+    "flour",
+    "wheat",
+    "wheat flour"
+   ]
+  },
+  {
+   "id": "a0347",
+   "cat": "commonsense",
+   "q": "Cheese is produced from what liquid?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "milk",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    162,
+    1056,
+    1672
+   ],
+   "wd_score": 0.0,
+   "ms": 2.551,
+   "v3_ok": false,
+   "gold": [
+    "milk"
+   ]
+  },
+  {
+   "id": "a0349",
+   "cat": "commonsense",
+   "q": "Tofu is made from which beans?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "soy milk",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    186,
+    1582,
+    170
+   ],
+   "wd_score": 2.528,
+   "ms": 9.111,
+   "v3_ok": false,
+   "gold": [
+    "soybeans",
+    "soya beans",
+    "soy"
+   ]
+  },
+  {
+   "id": "a0354",
+   "cat": "commonsense",
+   "q": "What are scissors used for?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "cut",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    366,
+    2283
+   ],
+   "wd_score": 0.0,
+   "ms": 1.854,
+   "v3_ok": false,
+   "gold": [
+    "cutting",
+    "cutting paper",
+    "cutting things"
+   ]
+  },
+  {
+   "id": "a0355",
+   "cat": "commonsense",
+   "q": "What does a thermometer do?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.344,
+   "v3_ok": false,
+   "gold": [
+    "measures temperature",
+    "measuring temperature",
+    "measure temperature"
+   ]
+  },
+  {
+   "id": "a0363",
+   "cat": "commonsense",
+   "q": "What's a telescope for?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "look at objects in space",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.263,
+   "v3_ok": false,
+   "gold": [
+    "viewing distant objects",
+    "looking at stars",
+    "seeing far away"
+   ]
+  },
+  {
+   "id": "a0364",
+   "cat": "commonsense",
+   "q": "Where do camels usually live?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "desert",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    131,
+    2974,
+    183
+   ],
+   "wd_score": 0.0,
+   "ms": 3.564,
+   "v3_ok": false,
+   "gold": [
+    "desert",
+    "deserts",
+    "the desert"
+   ]
+  },
+  {
+   "id": "a0365",
+   "cat": "commonsense",
+   "q": "Where do honey bees make their home?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Beecraft",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    176,
+    170,
+    178
+   ],
+   "wd_score": 2.128,
+   "ms": 7.116,
+   "v3_ok": false,
+   "gold": [
+    "hive",
+    "beehive",
+    "a hive"
+   ]
+  },
+  {
+   "id": "a0368",
+   "cat": "commonsense",
+   "q": "Where do bats usually roost during the day?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    585
+   ],
+   "wd_score": 0.0,
+   "ms": 4.999,
+   "v3_ok": false,
+   "gold": [
+    "caves",
+    "cave",
+    "trees"
+   ]
+  },
+  {
+   "id": "a0370",
+   "cat": "commonsense",
+   "q": "What is a dolphin's habitat?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "ocean",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    2974
+   ],
+   "wd_score": 0.0,
+   "ms": 6.134,
+   "v3_ok": false,
+   "gold": [
+    "ocean",
+    "sea",
+    "the sea"
+   ]
+  },
+  {
+   "id": "a0373",
+   "cat": "commonsense",
+   "q": "A spider lives in its what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "cellar",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    131,
+    2974,
+    183
+   ],
+   "wd_score": 1.548,
+   "ms": 7.343,
+   "v3_ok": false,
+   "gold": [
+    "web",
+    "spider web",
+    "cobweb"
+   ]
+  },
+  {
+   "id": "a0377",
+   "cat": "commonsense",
+   "q": "What do squirrels like to eat?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1034
+   ],
+   "wd_score": 0.0,
+   "ms": 4.679,
+   "v3_ok": false,
+   "gold": [
+    "nuts",
+    "acorns",
+    "seeds"
+   ]
+  },
+  {
+   "id": "a0378",
+   "cat": "commonsense",
+   "q": "What do vultures mostly eat?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "on carrion",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1034
+   ],
+   "wd_score": 0.0,
+   "ms": 3.51,
+   "v3_ok": false,
+   "gold": [
+    "carrion",
+    "dead animals",
+    "dead meat"
+   ]
+  },
+  {
+   "id": "a0380",
+   "cat": "commonsense",
+   "q": "What do owls hunt and eat?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "Poponejo",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1034
+   ],
+   "wd_score": 0.0,
+   "ms": 1.965,
+   "v3_ok": false,
+   "gold": [
+    "mice",
+    "rodents",
+    "small mammals"
+   ]
+  },
+  {
+   "id": "a0382",
+   "cat": "commonsense",
+   "q": "What tiny creatures do blue whales eat?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "Euphausiacea",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1034
+   ],
+   "wd_score": 2.165,
+   "ms": 4.107,
+   "v3_ok": false,
+   "gold": [
+    "krill",
+    "plankton"
+   ]
+  },
+  {
+   "id": "a0383",
+   "cat": "commonsense",
+   "q": "Woodpeckers mainly eat what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1034
+   ],
+   "wd_score": 0.0,
+   "ms": 1.908,
+   "v3_ok": false,
+   "gold": [
+    "insects",
+    "grubs",
+    "larvae"
+   ]
+  },
+  {
+   "id": "a0385",
+   "cat": "commonsense",
+   "q": "What color is grass?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "green",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    462
+   ],
+   "wd_score": 2.222,
+   "ms": 4.363,
+   "v3_ok": false,
+   "gold": [
+    "green"
+   ]
+  },
+  {
+   "id": "a0387",
+   "cat": "commonsense",
+   "q": "What colour is coal?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "black",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    462
+   ],
+   "wd_score": 2.95,
+   "ms": 1.338,
+   "v3_ok": false,
+   "gold": [
+    "black"
+   ]
+  },
+  {
+   "id": "a0389",
+   "cat": "commonsense",
+   "q": "What colour is a lemon?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "yellow",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    462
+   ],
+   "wd_score": 2.148,
+   "ms": 3.063,
+   "v3_ok": false,
+   "gold": [
+    "yellow"
+   ]
+  },
+  {
+   "id": "a0391",
+   "cat": "commonsense",
+   "q": "What colour are carrots?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "orange",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    462
+   ],
+   "wd_score": 2.952,
+   "ms": 1.717,
+   "v3_ok": false,
+   "gold": [
+    "orange"
+   ]
+  },
+  {
+   "id": "a0393",
+   "cat": "commonsense",
+   "q": "Milk chocolate is what colour?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "white",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    462
+   ],
+   "wd_score": 3.231,
+   "ms": 5.698,
+   "v3_ok": false,
+   "gold": [
+    "brown"
+   ]
+  },
+  {
+   "id": "a0395",
+   "cat": "commonsense",
+   "q": "What noise does a duck make?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "quack",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    170,
+    178,
+    176
+   ],
+   "wd_score": 1.082,
+   "ms": 9.128,
+   "v3_ok": false,
+   "gold": [
+    "quack"
+   ]
+  },
+  {
+   "id": "a0396",
+   "cat": "commonsense",
+   "q": "A donkey makes what sound?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "William Steig",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    170,
+    178,
+    176
+   ],
+   "wd_score": 1.193,
+   "ms": 340.895,
+   "v3_ok": false,
+   "gold": [
+    "bray",
+    "hee-haw",
+    "heehaw"
+   ]
+  },
+  {
+   "id": "a0397",
+   "cat": "commonsense",
+   "q": "What do you call the sound a sheep makes?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Lewis Carroll",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    170,
+    178,
+    176
+   ],
+   "wd_score": 1.587,
+   "ms": 14.69,
+   "v3_ok": false,
+   "gold": [
+    "bleat",
+    "baa"
+   ]
+  },
+  {
+   "id": "a0398",
+   "cat": "commonsense",
+   "q": "When a snake is angry, what sound does it give?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 9.072,
+   "v3_ok": false,
+   "gold": [
+    "hiss"
+   ]
+  },
+  {
+   "id": "a0400",
+   "cat": "commonsense",
+   "q": "What's a baby kangaroo called?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.605,
+   "v3_ok": false,
+   "gold": [
+    "joey"
+   ]
+  },
+  {
+   "id": "a0403",
+   "cat": "commonsense",
+   "q": "Young swans are known as what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "cygnet",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1813,
+    1449,
+    742
+   ],
+   "wd_score": 2.507,
+   "ms": 8.588,
+   "v3_ok": false,
+   "gold": [
+    "cygnet",
+    "cygnets"
+   ]
+  },
+  {
+   "id": "a0406",
+   "cat": "commonsense",
+   "q": "What's the word for a baby sheep?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "lamb",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.557,
+   "v3_ok": false,
+   "gold": [
+    "lamb"
+   ]
+  },
+  {
+   "id": "a0409",
+   "cat": "commonsense",
+   "q": "A flock of crows has a spooky collective name. What is it?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 15.852,
+   "v3_ok": false,
+   "gold": [
+    "murder"
+   ]
+  },
+  {
+   "id": "a0410",
+   "cat": "commonsense",
+   "q": "What's the term for a group of fish swimming together?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 16.1,
+   "v3_ok": false,
+   "gold": [
+    "school",
+    "shoal"
+   ]
+  },
+  {
+   "id": "a0412",
+   "cat": "commonsense",
+   "q": "Cattle grazing together in a field form a what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "December 14, 2017",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    571,
+    101,
+    740
+   ],
+   "wd_score": 1.579,
+   "ms": 11.067,
+   "v3_ok": false,
+   "gold": [
+    "herd"
+   ]
+  },
+  {
+   "id": "a0413",
+   "cat": "commonsense",
+   "q": "A petal is part of what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "corolla",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    361,
+    527,
+    749
+   ],
+   "wd_score": 2.043,
+   "ms": 5.586,
+   "v3_ok": false,
+   "gold": [
+    "flower",
+    "blossom",
+    "bloom"
+   ]
+  },
+  {
+   "id": "a0415",
+   "cat": "commonsense",
+   "q": "The yolk is found inside what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    571,
+    112,
+    800
+   ],
+   "wd_score": 0.0,
+   "ms": 3.043,
+   "v3_ok": false,
+   "gold": [
+    "egg"
+   ]
+  },
+  {
+   "id": "a0416",
+   "cat": "commonsense",
+   "q": "A spoke is one piece of what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    37
+   ],
+   "wd_score": 0.0,
+   "ms": 7.147,
+   "v3_ok": false,
+   "gold": [
+    "wheel",
+    "bicycle wheel"
+   ]
+  },
+  {
+   "id": "a0417",
+   "cat": "commonsense",
+   "q": "A chimney is part of a what?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "house",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    361,
+    527,
+    749
+   ],
+   "wd_score": 0.0,
+   "ms": 2.563,
+   "v3_ok": false,
+   "gold": [
+    "house",
+    "building",
+    "fireplace"
+   ]
+  },
+  {
+   "id": "a0418",
+   "cat": "commonsense",
+   "q": "Your thumb is part of which body part?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "glove",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    361,
+    527,
+    749
+   ],
+   "wd_score": 2.286,
+   "ms": 7.237,
+   "v3_ok": false,
+   "gold": [
+    "hand"
+   ]
+  },
+  {
+   "id": "a0421",
+   "cat": "commonsense",
+   "q": "A Bactrian camel carries how many humps on its back?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "two",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 7.195,
+   "v3_ok": false,
+   "gold": [
+    "2",
+    "two"
+   ]
+  },
+  {
+   "id": "a0423",
+   "cat": "commonsense",
+   "q": "how many wheels on a tricycle",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "three",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.954,
+   "v3_ok": false,
+   "gold": [
+    "3",
+    "three"
+   ]
+  },
+  {
+   "id": "a0425",
+   "cat": "commonsense",
+   "q": "A unicycle has how many wheels?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.111,
+   "v3_ok": false,
+   "gold": [
+    "1",
+    "one"
+   ]
+  },
+  {
+   "id": "a0426",
+   "cat": "commonsense",
+   "q": "How many arms does a typical starfish have?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "five",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 5.021,
+   "v3_ok": false,
+   "gold": [
+    "5",
+    "five"
+   ]
+  },
+  {
+   "id": "a0428",
+   "cat": "commonsense",
+   "q": "What can fish do in water?",
+   "gstore": "concepts",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "fill bucket",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.059,
+   "v3_ok": false,
+   "gold": [
+    "swim",
+    "breathe underwater",
+    "swimming"
+   ]
+  },
+  {
+   "id": "a0431",
+   "cat": "compute",
+   "q": "What is 17 times 23?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "391",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.021,
+   "v3_ok": false,
+   "gold": [
+    "391"
+   ]
+  },
+  {
+   "id": "a0433",
+   "cat": "compute",
+   "q": "Subtract 387 from 1000.",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "613",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.017,
+   "v3_ok": false,
+   "gold": [
+    "613"
+   ]
+  },
+  {
+   "id": "a0437",
+   "cat": "compute",
+   "q": "what is 3456 minus 1789",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "1667",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.016,
+   "v3_ok": false,
+   "gold": [
+    "1667",
+    "1,667"
+   ]
+  },
+  {
+   "id": "a0439",
+   "cat": "compute",
+   "q": "Add up 15, 27 and 38.",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.561,
+   "v3_ok": false,
+   "gold": [
+    "80"
+   ]
+  },
+  {
+   "id": "a0440",
+   "cat": "compute",
+   "q": "What's (6 + 4) × 9 − 5?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "85",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.165,
+   "v3_ok": false,
+   "gold": [
+    "85"
+   ]
+  },
+  {
+   "id": "a0441",
+   "cat": "compute",
+   "q": "What is the largest prime below 60?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "59",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.031,
+   "v3_ok": false,
+   "gold": [
+    "59"
+   ]
+  },
+  {
+   "id": "a0448",
+   "cat": "compute",
+   "q": "Name the next prime number after 50.",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "53",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.021,
+   "v3_ok": false,
+   "gold": [
+    "53"
+   ]
+  },
+  {
+   "id": "a0450",
+   "cat": "compute",
+   "q": "What's the smallest prime bigger than 200?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "211",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.026,
+   "v3_ok": false,
+   "gold": [
+    "211"
+   ]
+  },
+  {
+   "id": "a0453",
+   "cat": "compute",
+   "q": "How many inches in a yard?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "36",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.072,
+   "v3_ok": false,
+   "gold": [
+    "36"
+   ]
+  },
+  {
+   "id": "a0454",
+   "cat": "compute",
+   "q": "How many grams make a kilogram?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Regin",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    170,
+    178,
+    176
+   ],
+   "wd_score": 0.748,
+   "ms": 9.918,
+   "v3_ok": false,
+   "gold": [
+    "1000",
+    "1,000"
+   ]
+  },
+  {
+   "id": "a0457",
+   "cat": "compute",
+   "q": "What is 100 degrees Celsius in Fahrenheit?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "212",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.086,
+   "v3_ok": false,
+   "gold": [
+    "212",
+    "212 °F",
+    "212 F"
+   ]
+  },
+  {
+   "id": "a0458",
+   "cat": "compute",
+   "q": "Convert minus 40 °C to Fahrenheit.",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 6.247,
+   "v3_ok": false,
+   "gold": [
+    "-40",
+    "-40 °F",
+    "minus 40"
+   ]
+  },
+  {
+   "id": "a0459",
+   "cat": "compute",
+   "q": "25 °C is how many degrees Fahrenheit?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "77",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.087,
+   "v3_ok": false,
+   "gold": [
+    "77",
+    "77 °F"
+   ]
+  },
+  {
+   "id": "a0460",
+   "cat": "compute",
+   "q": "How many seconds are in 3 hours?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "10,800",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.078,
+   "v3_ok": false,
+   "gold": [
+    "10800",
+    "10,800"
+   ]
+  },
+  {
+   "id": "a0461",
+   "cat": "compute",
+   "q": "4.5 metres equals how many centimetres?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "450",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.078,
+   "v3_ok": false,
+   "gold": [
+    "450"
+   ]
+  },
+  {
+   "id": "a0462",
+   "cat": "compute",
+   "q": "How many pints are in a US gallon?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.398,
+   "v3_ok": false,
+   "gold": [
+    "8",
+    "eight"
+   ]
+  },
+  {
+   "id": "a0465",
+   "cat": "compute",
+   "q": "45 is what percentage of 180?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "25",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.072,
+   "v3_ok": false,
+   "gold": [
+    "25",
+    "25%"
+   ]
+  },
+  {
+   "id": "a0466",
+   "cat": "compute",
+   "q": "A $60 jacket is 25% off. What's the sale price?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 36.926,
+   "v3_ok": false,
+   "gold": [
+    "45",
+    "$45"
+   ]
+  },
+  {
+   "id": "a0470",
+   "cat": "compute",
+   "q": "What's 6 cubed?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "216",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.15,
+   "v3_ok": false,
+   "gold": [
+    "216"
+   ]
+  },
+  {
+   "id": "a0473",
+   "cat": "compute",
+   "q": "What is 2 to the power of 10?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "1024",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.115,
+   "v3_ok": false,
+   "gold": [
+    "1024",
+    "1,024"
+   ]
+  },
+  {
+   "id": "a0475",
+   "cat": "compute",
+   "q": "How many days are there in a leap year?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "366",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    585
+   ],
+   "wd_score": 0.0,
+   "ms": 13.726,
+   "v3_ok": false,
+   "gold": [
+    "366"
+   ]
+  },
+  {
+   "id": "a0476",
+   "cat": "compute",
+   "q": "How many minutes are in one day?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "1440",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.091,
+   "v3_ok": false,
+   "gold": [
+    "1440",
+    "1,440"
+   ]
+  },
+  {
+   "id": "a0477",
+   "cat": "compute",
+   "q": "How many seconds make up an hour?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Abi Morgan",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    170,
+    178,
+    176
+   ],
+   "wd_score": 0.722,
+   "ms": 5.657,
+   "v3_ok": false,
+   "gold": [
+    "3600",
+    "3,600"
+   ]
+  },
+  {
+   "id": "a0479",
+   "cat": "compute",
+   "q": "A meeting starts at 10:45 and lasts 95 minutes. What time does it end?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "wd",
+   "answer": "July 24, 2015",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    580,
+    571,
+    582
+   ],
+   "wd_score": 1.643,
+   "ms": 17.967,
+   "v3_ok": false,
+   "gold": [
+    "12:20",
+    "12:20 PM",
+    "12:20 pm"
+   ]
+  },
+  {
+   "id": "a0480",
+   "cat": "compute",
+   "q": "Was 1900 a leap year?",
+   "gstore": "calc",
+   "instore": true,
+   "abstain": false,
+   "store": "calc",
+   "answer": "0",
+   "correct": true,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 0.074,
+   "v3_ok": false,
+   "gold": [
+    "no",
+    "not a leap year"
+   ]
+  },
+  {
+   "id": "a0481",
+   "cat": "absent",
+   "q": "In what year was the village of Hollowmere-on-Tavy granted its market charter?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    585,
+    276
+   ],
+   "wd_score": 0.0,
+   "ms": 17.377,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0483",
+   "cat": "absent",
+   "q": "Into which sea does the River Quellbrook empty?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    403,
+    206
+   ],
+   "wd_score": 0.541,
+   "ms": 6.455,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0486",
+   "cat": "absent",
+   "q": "Which town is the administrative centre of the Kerevan Islands?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    131,
+    276,
+    36
+   ],
+   "wd_score": 0.781,
+   "ms": 25.697,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0487",
+   "cat": "absent",
+   "q": "Which club did striker Marco Bellandrini play for during the 1987 Serie B season?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    641,
+    54,
+    161
+   ],
+   "wd_score": 1.709,
+   "ms": 35.166,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0488",
+   "cat": "absent",
+   "q": "How high is Mount Torvessa in the Draskel Range?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    2044,
+    2048,
+    4552
+   ],
+   "wd_score": 0.171,
+   "ms": 12.433,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0493",
+   "cat": "absent",
+   "q": "who was the first mayor of brindlecombe ohio",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Mike DeWine",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    6
+   ],
+   "wd_score": 2.527,
+   "ms": 13.858,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0494",
+   "cat": "absent",
+   "q": "Which genus does Merrow's ash-warbler belong to?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "wd",
+   "answer": "ash",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    279,
+    171,
+    463
+   ],
+   "wd_score": 2.755,
+   "ms": 28.738,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0495",
+   "cat": "absent",
+   "q": "What currency is used on Isla Corvanta?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    38,
+    2283,
+    366
+   ],
+   "wd_score": 0.0,
+   "ms": 6.87,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0496",
+   "cat": "absent",
+   "q": "Who painted Evening at the Lockkeeper's Cottage, Thrale?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    170
+   ],
+   "wd_score": 1.889,
+   "ms": 11.496,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0497",
+   "cat": "absent",
+   "q": "Where is Ostmark Tellurics AG headquartered?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    159
+   ],
+   "wd_score": 1.629,
+   "ms": 15.781,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0499",
+   "cat": "absent",
+   "q": "What was the population of Ashford Kemble at the 2011 census?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1082
+   ],
+   "wd_score": 0.835,
+   "ms": 16.363,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0504",
+   "cat": "absent",
+   "q": "What position did the rugby player Tane Hollowell-Rua play?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    161,
+    276,
+    413
+   ],
+   "wd_score": 0.471,
+   "ms": 34.06,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0508",
+   "cat": "absent",
+   "q": "How quickly can a pronghorn run flat out?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 5.841,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0510",
+   "cat": "absent",
+   "q": "What is the mass of Mars in kilograms?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 9.925,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0512",
+   "cat": "absent",
+   "q": "How many calories are in a medium apple?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    186
+   ],
+   "wd_score": 0.0,
+   "ms": 6.256,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0513",
+   "cat": "absent",
+   "q": "How long is the gestation period of an African elephant?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "wd",
+   "answer": "97 minute",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    2047,
+    2043
+   ],
+   "wd_score": 3.128,
+   "ms": 15.751,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0514",
+   "cat": "absent",
+   "q": "What's the wingspan of the wandering albatross?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 9.608,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0515",
+   "cat": "absent",
+   "q": "How many floors does the Empire State Building have?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    571,
+    176,
+    131
+   ],
+   "wd_score": 0.769,
+   "ms": 22.437,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0516",
+   "cat": "absent",
+   "q": "When was the Matterhorn first climbed?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 2.259,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0517",
+   "cat": "absent",
+   "q": "What is the density of gold?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 9.366,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0520",
+   "cat": "absent",
+   "q": "How many strings does a concert harp have?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 16.642,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0521",
+   "cat": "absent",
+   "q": "how long do giraffes live in the wild",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "concepts",
+   "answer": "savanna",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    2047,
+    2974,
+    131
+   ],
+   "wd_score": 2.531,
+   "ms": 4.463,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0523",
+   "cat": "absent",
+   "q": "How many steps lead to the top of the Eiffel Tower?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    488,
+    35,
+    6
+   ],
+   "wd_score": 0.0,
+   "ms": 28.001,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0524",
+   "cat": "absent",
+   "q": "How many seats are there in the Royal Albert Hall?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    36,
+    159
+   ],
+   "wd_score": 0.0,
+   "ms": 14.78,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0526",
+   "cat": "absent",
+   "q": "What is the running time of The Godfather?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "wd",
+   "answer": "175 minute",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    2047,
+    585
+   ],
+   "wd_score": 2.422,
+   "ms": 9.395,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0530",
+   "cat": "absent",
+   "q": "How quickly does sound move through seawater?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [],
+   "wd_score": 0.0,
+   "ms": 1.723,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0531",
+   "cat": "absent",
+   "q": "What do they call the dog owned by the night manager of the Hotel Adlon in Berlin?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    1037,
+    286
+   ],
+   "wd_score": 2.205,
+   "ms": 19.821,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0537",
+   "cat": "absent",
+   "q": "What was the first word spoken by the youngest child of a lighthouse keeper on the Isle of Skye?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": true,
+   "store": null,
+   "answer": null,
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    40,
+    37,
+    25
+   ],
+   "wd_score": 0.0,
+   "ms": 23.771,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0539",
+   "cat": "absent",
+   "q": "Which song was playing in a barber shop in Dunedin last Monday at noon?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "wd",
+   "answer": "Sebastian Stan",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    161,
+    840,
+    641
+   ],
+   "wd_score": 2.043,
+   "ms": 26.451,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  },
+  {
+   "id": "a0540",
+   "cat": "absent",
+   "q": "What is the favourite colour of the cashier who sold the millionth ticket at the Louvre?",
+   "gstore": "none",
+   "instore": false,
+   "abstain": false,
+   "store": "wd",
+   "answer": "color",
+   "correct": false,
+   "ent_rank": -1,
+   "prop_ok": false,
+   "top_props": [
+    462,
+    1056
+   ],
+   "wd_score": 2.439,
+   "ms": 8.431,
+   "v3_ok": false,
+   "gold": [
+    "NO_ANSWER"
+   ]
+  }
+ ],
+ "time": "2026-10-06T09:41:03"
+}

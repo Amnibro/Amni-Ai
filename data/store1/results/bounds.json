@@ -1,0 +1,7 @@
+{
+ "facts": 55062201,
+ "H0_fact_symbol_bits_per_fact": 10.3019,
+ "H0_value_only_bits_per_fact": 10.1544,
+ "codebook_bound_bits_per_fact": 15.0151,
+ "note": "0-order entropy of the stored fact symbol (value, unit, preferred flag, qualifier count) given the property; strings counted as unique (their text lives in the string codec). codebook bound = log2 of the per-property distinct-symbol count, the A1-style bound for fixed-width retrieval. Codebook storage itself is not in these bounds."
+}

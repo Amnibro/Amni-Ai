@@ -1,0 +1,10 @@
+{
+ "fd": 0,
+ "name_keys_checked": 15753155,
+ "distinct_hashes": 15753155,
+ "hash_collisions_distinct_strings": 0,
+ "parity_ents_mismatch": 0,
+ "examples": [],
+ "method": "chain read from the fd=0 table, each entity verified by decoding its names (names(e) contains the key, or 'the '+key, or the parenthesis-stripped title); kept as the maximal verified prefix",
+ "sec": 733.4
+}

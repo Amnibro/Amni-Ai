@@ -1,0 +1,3633 @@
+{
+ "license": "CC0 1.0 (Wikidata)",
+ "source": "https://www.wikidata.org/w/api.php",
+ "fetched": "2026-10-06T08:20:53",
+ "requests": [
+  {
+   "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=P6%7CP17%7CP19%7CP20%7CP21%7CP22%7CP25%7CP26%7CP27%7CP30%7CP31%7CP35%7CP36%7CP37%7CP38%7CP39%7CP40%7CP50%7CP54%7CP57%7CP58%7CP61%7CP69%7CP84%7CP85%7CP86%7CP101%7CP102%7CP106%7CP108%7CP110%7CP112%7CP115%7CP118%7CP122%7CP123%7CP127%7CP131%7CP136%7CP138%7CP140%7CP144%7CP155%7CP156%7CP159%7CP161%7CP162%7CP166%7CP169%7CP170&props=labels%7Caliases%7Cdescriptions%7Cdatatype&languages=en&format=json",
+   "sha256": "00c3c3616c5660d52eb45949677d8e810f81cff7ccfd8a15c4b4b36894067403"
+  },
+  {
+   "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=P171%7CP175%7CP176%7CP178%7CP179%7CP183%7CP186%7CP206%7CP246%7CP264%7CP272%7CP274%7CP276%7CP279%7CP286%7CP361%7CP364%7CP366%7CP397%7CP403%7CP407%7CP413%7CP425%7CP449%7CP451%7CP452%7CP453%7CP460%7CP461%7CP462%7CP463%7CP488%7CP495%7CP509%7CP516%7CP518%7CP527%7CP569%7CP570%7CP571%7CP575%7CP576%7CP577%7CP580%7CP582%7CP585%7CP610%7CP619%7CP620%7CP641&props=labels%7Caliases%7Cdescriptions%7Cdatatype&languages=en&format=json",
+   "sha256": "7d02fe302789a3acf97c5b4a346f6fd9a8f8c7e88d8bc7251a0aa29baf56daf5"
+  },
+  {
+   "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=P642%7CP664%7CP674%7CP676%7CP703%7CP710%7CP725%7CP729%7CP730%7CP737%7CP740%7CP742%7CP749%7CP750%7CP780%7CP800%7CP805%7CP828%7CP840%7CP885%7CP915%7CP921%7CP941%7CP991%7CP1034%7CP1037%7CP1056%7CP1060%7CP1080%7CP1082%7CP1086%7CP1113%7CP1120%7CP1128%7CP1132%7CP1191%7CP1269%7CP1303%7CP1308%7CP1346%7CP1365%7CP1366%7CP1376%7CP1431%7CP1433%7CP1441%7CP1449%7CP1476%7CP1477%7CP1478&props=labels%7Caliases%7Cdescriptions%7Cdatatype&languages=en&format=json",
+   "sha256": "3023a863041354c93c1ac09cbf8c73bba3face2be062fad3322eb0a83cb662f0"
+  },
+  {
+   "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=P1479%7CP1535%7CP1536%7CP1537%7CP1542%7CP1545%7CP1552%7CP1557%7CP1582%7CP1589%7CP1619%7CP1672%7CP1686%7CP1813%7CP1923%7CP1995%7CP2012%7CP2043%7CP2044%7CP2046%7CP2047%7CP2048%7CP2079%7CP2130%7CP2142%7CP2175%7CP2176%7CP2283%7CP2437%7CP2578%7CP2579%7CP2670%7CP2868%7CP2974%7CP2975%7CP3094%7CP3095%7CP3373%7CP3450%7CP3831%7CP4330%7CP4552%7CP4584%7CP4633%7CP4908%7CP5642%7CP9714&props=labels%7Caliases%7Cdescriptions%7Cdatatype&languages=en&format=json",
+   "sha256": "afe33d3e9da25df8a3e642a33b62f55fe1a12802f637ac0d0d6735dffe3df2d6"
+  }
+ ],
+ "props": {
+  "P6": {
+   "label": "head of government",
+   "aliases": [
+    "mayor",
+    "prime minister",
+    "premier",
+    "first minister",
+    "head of national government",
+    "chancellor",
+    "governor",
+    "government headed by",
+    "executive power headed by",
+    "president"
+   ],
+   "description": "head of the executive power of this town, city, municipality, state, country, or other governmental body",
+   "datatype": "wikibase-item"
+  },
+  "P17": {
+   "label": "country",
+   "aliases": [
+    "sovereign state",
+    "state",
+    "land",
+    "host country"
+   ],
+   "description": "sovereign state that this subject item is in (not to be used for human beings)",
+   "datatype": "wikibase-item"
+  },
+  "P19": {
+   "label": "place of birth",
+   "aliases": [
+    "birthplace",
+    "born in",
+    "POB",
+    "birth place",
+    "location born",
+    "born at",
+    "birth location",
+    "location of birth",
+    "birth city",
+    "born"
+   ],
+   "description": "most specific known birth location of a person, animal or fictional character",
+   "datatype": "wikibase-item"
+  },
+  "P20": {
+   "label": "place of death",
+   "aliases": [
+    "deathplace",
+    "died in",
+    "death place",
+    "POD",
+    "location of death",
+    "death location",
+    "killed in",
+    "died"
+   ],
+   "description": "most specific known (e.g. city instead of country, or hospital instead of city) death location of a person, animal or fictional character",
+   "datatype": "wikibase-item"
+  },
+  "P21": {
+   "label": "sex or gender",
+   "aliases": [
+    "biological sex",
+    "sex",
+    "gender or sex",
+    "gender identity",
+    "gender expression",
+    "gender"
+   ],
+   "description": "sex or gender identity of human or animal. For human: male, female, non-binary, intersex, transgender female, transgender male, agender, etc. For animal: male organism, female organism. Groups of same gender use subclass of (P279)",
+   "datatype": "wikibase-item"
+  },
+  "P22": {
+   "label": "father",
+   "aliases": [
+    "dad",
+    "daddy",
+    "has father",
+    "parent",
+    "is son of",
+    "is daughter of",
+    "is child of",
+    "son of",
+    "daughter of",
+    "child of",
+    "sire"
+   ],
+   "description": "male parent of the subject. For stepfather, use \"stepparent\" (P3448)",
+   "datatype": "wikibase-item"
+  },
+  "P25": {
+   "label": "mother",
+   "aliases": [
+    "mum",
+    "mom",
+    "mam",
+    "has mother",
+    "parent",
+    "is son of",
+    "is daughter of",
+    "is child of",
+    "son of",
+    "daughter of",
+    "child of",
+    "mummy",
+    "mommy",
+    "dam"
+   ],
+   "description": "female parent of the subject. For stepmother, use \"stepparent\" (P3448)",
+   "datatype": "wikibase-item"
+  },
+  "P26": {
+   "label": "spouse",
+   "aliases": [
+    "wife",
+    "married to",
+    "marry",
+    "marriage partner",
+    "married",
+    "wedded to",
+    "wed",
+    "wives",
+    "husbands",
+    "spouses",
+    "husband",
+    "marital partner",
+    "married partner",
+    "common-law spouse",
+    "common-law wife",
+    "common-law husband",
+    "partner"
+   ],
+   "description": "the subject has the object as their spouse (husband, wife, partner, etc.). Use \"unmarried partner\" (P451) for non-married companions",
+   "datatype": "wikibase-item"
+  },
+  "P27": {
+   "label": "country of citizenship",
+   "aliases": [
+    "subject of (country)",
+    "citizenship",
+    "citizen of",
+    "nation of citizenship",
+    "national of",
+    "(legal) nationality",
+    "nationality",
+    "country",
+    "nation"
+   ],
+   "description": "the object is a country that recognizes the subject as its citizen",
+   "datatype": "wikibase-item"
+  },
+  "P30": {
+   "label": "continent",
+   "aliases": [],
+   "description": "continent of which the subject is a part",
+   "datatype": "wikibase-item"
+  },
+  "P31": {
+   "label": "instance of",
+   "aliases": [
+    "is a",
+    "is an",
+    "is a[n]",
+    "unique individual of",
+    "unitary element of class",
+    "type",
+    "example of",
+    "is of type",
+    "has type",
+    "item of type",
+    "was a[n]",
+    "will be a[n] (use 'nature of statement' = 'expected')"
+   ],
+   "description": "type to which this subject corresponds/belongs. Different from P279 (subclass of); for example: K2 is an instance of mountain; volcano is a subclass of mountain",
+   "datatype": "wikibase-item"
+  },
+  "P35": {
+   "label": "head of state",
+   "aliases": [
+    "president",
+    "king",
+    "queen",
+    "emperor",
+    "monarch",
+    "state headed by",
+    "governor",
+    "leader",
+    "chief of state"
+   ],
+   "description": "official with the highest formal authority in a country/state",
+   "datatype": "wikibase-item"
+  },
+  "P36": {
+   "label": "capital",
+   "aliases": [
+    "capital city",
+    "capital town",
+    "chef-lieu",
+    "principal place",
+    "county seat",
+    "administrative centre",
+    "administrative headquarters",
+    "has capital",
+    "court residence",
+    "seat",
+    "administrative seat",
+    "seat of government",
+    "administrative capital",
+    "government capital",
+    "county town",
+    "government seat",
+    "administrative center",
+    "location of capital"
+   ],
+   "description": "seat of government of a country, province, state or other type of administrative territorial entity",
+   "datatype": "wikibase-item"
+  },
+  "P37": {
+   "label": "official language",
+   "aliases": [
+    "language official",
+    "spoken in",
+    "speaking",
+    "language spoken"
+   ],
+   "description": "language designated as official by this item",
+   "datatype": "wikibase-item"
+  },
+  "P38": {
+   "label": "currency",
+   "aliases": [
+    "base currency",
+    "used money"
+   ],
+   "description": "currency used by item",
+   "datatype": "wikibase-item"
+  },
+  "P39": {
+   "label": "position held",
+   "aliases": [
+    "political office held",
+    "political seat",
+    "public office",
+    "office held",
+    "position occupied",
+    "holds position",
+    "function",
+    "held position",
+    "job",
+    "role"
+   ],
+   "description": "subject currently or formerly holds the object position or public office",
+   "datatype": "wikibase-item"
+  },
+  "P40": {
+   "label": "child",
+   "aliases": [
+    "son",
+    "daughter",
+    "kid",
+    "has child",
+    "children",
+    "sons",
+    "daughters",
+    "kids",
+    "has children",
+    "has son",
+    "has sons",
+    "has daughter",
+    "has daughters",
+    "has kid",
+    "has kids",
+    "offspring",
+    "progeny",
+    "issue",
+    "parent of",
+    "descendants",
+    "father of",
+    "mother of"
+   ],
+   "description": "subject has object as child. Do not use for stepchildren—use \"relative\" (P1038), qualified with \"kinship to subject\" (P1039)",
+   "datatype": "wikibase-item"
+  },
+  "P50": {
+   "label": "author",
+   "aliases": [
+    "written by",
+    "writer",
+    "creator",
+    "playwright",
+    "poet",
+    "maker"
+   ],
+   "description": "main creator(s) of a written work (use on works, not humans); use P2093 (author name string) when Wikidata item is unknown or does not exist",
+   "datatype": "wikibase-item"
+  },
+  "P54": {
+   "label": "member of sports team",
+   "aliases": [
+    "member of team",
+    "team",
+    "played for",
+    "teams played for",
+    "of team",
+    "club played for",
+    "player of",
+    "part of team",
+    "team played for",
+    "plays for",
+    "sport team"
+   ],
+   "description": "sports teams or clubs that the subject represents or represented",
+   "datatype": "wikibase-item"
+  },
+  "P57": {
+   "label": "director",
+   "aliases": [
+    "directed by",
+    "film director",
+    "movie director",
+    "game director"
+   ],
+   "description": "director(s) of film, TV-series, stageplay, video game or similar",
+   "datatype": "wikibase-item"
+  },
+  "P58": {
+   "label": "screenwriter",
+   "aliases": [
+    "scriptwriter",
+    "screenplay by",
+    "teleplay by",
+    "writer (of screenplays)",
+    "film script by",
+    "written by",
+    "writing credits",
+    "scenarist",
+    "story by",
+    "video game writer",
+    "game writer",
+    "script writer"
+   ],
+   "description": "person(s) who wrote the script for subject item",
+   "datatype": "wikibase-item"
+  },
+  "P61": {
+   "label": "discoverer or inventor",
+   "aliases": [
+    "inventor",
+    "discoverer",
+    "inventor or discoverer",
+    "developer",
+    "first described",
+    "invented by",
+    "created by",
+    "invented",
+    "discovered by",
+    "developed by",
+    "introduced by",
+    "devised by",
+    "first studied by"
+   ],
+   "description": "subject who discovered, first described, invented, or developed this discovery or invention or scientific hypothesis or theory",
+   "datatype": "wikibase-item"
+  },
+  "P69": {
+   "label": "educated at",
+   "aliases": [
+    "alma mater",
+    "education",
+    "alumni of",
+    "alumna of",
+    "college attended",
+    "school attended",
+    "studied at",
+    "graduate of",
+    "graduated from",
+    "faculty",
+    "place of education",
+    "alumnus of",
+    "attended",
+    "went to school at",
+    "schooled at",
+    "attended school at",
+    "schooling place",
+    "education place",
+    "student of",
+    "student at",
+    "university attended",
+    "trained at",
+    "trained by",
+    "training at",
+    "training by",
+    "training from",
+    "training provided by"
+   ],
+   "description": "educational institution attended by subject",
+   "datatype": "wikibase-item"
+  },
+  "P84": {
+   "label": "architect",
+   "aliases": [
+    "architecture firm"
+   ],
+   "description": "person or architectural firm responsible for designing this building",
+   "datatype": "wikibase-item"
+  },
+  "P85": {
+   "label": "anthem",
+   "aliases": [
+    "national anthem",
+    "march",
+    "official song",
+    "official hymn",
+    "team anthem",
+    "club anthem"
+   ],
+   "description": "subject's official anthem",
+   "datatype": "wikibase-item"
+  },
+  "P86": {
+   "label": "composer",
+   "aliases": [
+    "songwriter",
+    "composed by",
+    "musical score by",
+    "music by",
+    "written by",
+    "film score by",
+    "soundtrack by",
+    "original music composer"
+   ],
+   "description": "person(s) who wrote the music [for lyricist, use \"lyrics by\" (P676)]",
+   "datatype": "wikibase-item"
+  },
+  "P101": {
+   "label": "field of work",
+   "aliases": [
+    "field of study",
+    "fields",
+    "discipline",
+    "subject",
+    "area",
+    "specialism",
+    "domain",
+    "academic discipline",
+    "scientific discipline",
+    "academic area",
+    "scientific area",
+    "FOW",
+    "studies",
+    "responsible for",
+    "conduct research about",
+    "be researcher in",
+    "research on",
+    "speciality",
+    "activity",
+    "domain of activity",
+    "activity domain",
+    "academic subject",
+    "trade",
+    "area of work",
+    "specialty",
+    "research",
+    "field of research",
+    "research fields",
+    "research field",
+    "purpose",
+    "work field",
+    "work area",
+    "field of activity",
+    "area of research",
+    "area of study",
+    "research theme"
+   ],
+   "description": "specialization of a person or organization; see P106 for the occupation/ P452 for industry",
+   "datatype": "wikibase-item"
+  },
+  "P102": {
+   "label": "member of political party",
+   "aliases": [
+    "party",
+    "member of",
+    "member of party",
+    "party membership",
+    "political party member",
+    "political party"
+   ],
+   "description": "the political party of which a person is or has been a member or otherwise affiliated",
+   "datatype": "wikibase-item"
+  },
+  "P106": {
+   "label": "occupation",
+   "aliases": [
+    "profession",
+    "job",
+    "work",
+    "career",
+    "employment",
+    "craft",
+    "employ",
+    "vocation",
+    "avocation"
+   ],
+   "description": "occupation of a person. See also \"field of work\" (Property:P101), \"position held\" (Property:P39). Not for groups of people. There, use \"field of work\" (Property:P101), \"industry\" (Property:P452), \"members have occupation\" (Property:P3989).",
+   "datatype": "wikibase-item"
+  },
+  "P108": {
+   "label": "employer",
+   "aliases": [
+    "employed by",
+    "works at",
+    "working for",
+    "worked for",
+    "works for",
+    "worked at",
+    "working place",
+    "working at",
+    "organization",
+    "organisation",
+    "of employer"
+   ],
+   "description": "person or organization for which the subject works or worked",
+   "datatype": "wikibase-item"
+  },
+  "P110": {
+   "label": "illustrator",
+   "aliases": [
+    "illustration by",
+    "illustrated by",
+    "drawing by",
+    "drawings by",
+    "drawn by",
+    "draftsperson",
+    "artist"
+   ],
+   "description": "person drawing the pictures or taking the photographs in a book or similar work",
+   "datatype": "wikibase-item"
+  },
+  "P112": {
+   "label": "founder",
+   "aliases": [
+    "co-founder",
+    "founders",
+    "established by",
+    "co-founded by",
+    "founder",
+    "started by",
+    "cofounder",
+    "cofounded by",
+    "institutor",
+    "instituted by",
+    "created by",
+    "creator",
+    "establisher",
+    "starter",
+    "begun by"
+   ],
+   "description": "founder or co-founder of this organization, religion, place or entity",
+   "datatype": "wikibase-item"
+  },
+  "P115": {
+   "label": "home venue",
+   "aliases": [
+    "ground",
+    "home field",
+    "arena",
+    "home ground",
+    "stadium",
+    "ballpark",
+    "home water",
+    "venue",
+    "plays at",
+    "played at",
+    "performs at",
+    "performed at",
+    "based at"
+   ],
+   "description": "home stadium or venue of a sports team or performing arts organization",
+   "datatype": "wikibase-item"
+  },
+  "P118": {
+   "label": "league or competition",
+   "aliases": [
+    "division",
+    "sports league",
+    "cup",
+    "tournament",
+    "competition"
+   ],
+   "description": "league or competition in which team or player has played, or in which an event occurs",
+   "datatype": "wikibase-item"
+  },
+  "P122": {
+   "label": "basic form of government",
+   "aliases": [
+    "type of government",
+    "form of government",
+    "government"
+   ],
+   "description": "subject's government",
+   "datatype": "wikibase-item"
+  },
+  "P123": {
+   "label": "publisher",
+   "aliases": [
+    "book publisher",
+    "video game publisher",
+    "software publisher",
+    "publishing house",
+    "published by",
+    "board game publisher",
+    "comic publisher",
+    "comic book publisher",
+    "music publisher",
+    "printed music publisher",
+    "sheet music publisher"
+   ],
+   "description": "organization or person responsible for publishing a work, such as a book, periodical, printed music, podcast, game or software",
+   "datatype": "wikibase-item"
+  },
+  "P127": {
+   "label": "owned by",
+   "aliases": [
+    "is owned by",
+    "owner",
+    "belongs to",
+    "shareholder",
+    "stockholder",
+    "shareholders",
+    "stockholders",
+    "owners",
+    "provenance",
+    "belonged to",
+    "proprietor"
+   ],
+   "description": "owner of the subject",
+   "datatype": "wikibase-item"
+  },
+  "P131": {
+   "label": "located in the administrative territorial entity",
+   "aliases": [
+    "located in the administrative unit",
+    "located in administrative unit",
+    "is in administrative unit",
+    "is located in",
+    "is in the state of",
+    "is in the province of",
+    "is in the county of",
+    "is in the district of",
+    "is in the department of",
+    "is in the region of",
+    "is in the borough of",
+    "is in the city of",
+    "is in the town of",
+    "is in the village of",
+    "is in the municipality of",
+    "is in the territory of",
+    "is in the prefecture of",
+    "is in the voivodeship of",
+    "is in the Indian reservation of",
+    "is in the Indian reserve of",
+    "is in the ward of",
+    "is in the administrative region of",
+    "is in the settlement of",
+    "is in the local government area of",
+    "is in the rural city of",
+    "is in the shire of",
+    "happens in",
+    "is in the commune of",
+    "in administrative unit",
+    "in",
+    "is in the administrative unit",
+    "administrative territorial entity",
+    "city",
+    "town",
+    "state",
+    "Indian reservation",
+    "in the administrative unit",
+    "locality",
+    "is in the parish of",
+    "location (administrative territorial entity)",
+    "is in the principal area of",
+    "located in the territorial entity",
+    "region",
+    "is in the arrondissement of",
+    "administrative territory",
+    "territory"
+   ],
+   "description": "the item is located on the territory of the following administrative entity. Use P276 for specifying locations that are non-administrative places and for items about events. Use P1382 if the item falls only partially into the administrative entity",
+   "datatype": "wikibase-item"
+  },
+  "P136": {
+   "label": "genre",
+   "aliases": [
+    "music genre",
+    "film genre",
+    "artistic genre",
+    "literary genre",
+    "kind of music",
+    "type of film",
+    "genre of music",
+    "type of music",
+    "art style",
+    "genres",
+    "genre of literature",
+    "map genre",
+    "atlas genre"
+   ],
+   "description": "creative work's genre or an artist's field of work (P101). Use main subject (P921) to relate creative works to their topic",
+   "datatype": "wikibase-item"
+  },
+  "P138": {
+   "label": "named after",
+   "aliases": [
+    "eponym",
+    "named for",
+    "namesake",
+    "etymology",
+    "toponym",
+    "name after",
+    "named in honor of",
+    "name origin"
+   ],
+   "description": "entity or event that inspired the subject's name, or namesake (in at least one language). Qualifier \"applies to name\" (P5168) can be used to indicate which one",
+   "datatype": "wikibase-item"
+  },
+  "P140": {
+   "label": "religion or worldview",
+   "aliases": [
+    "religious affiliation",
+    "faith",
+    "life stance",
+    "denomination",
+    "follower of religion",
+    "follows religion",
+    "has religion",
+    "religion or world view",
+    "pantheon",
+    "belief system",
+    "religion",
+    "worldview",
+    "believes",
+    "devotee of"
+   ],
+   "description": "religion of a person, organization or religious building, or associated with this subject",
+   "datatype": "wikibase-item"
+  },
+  "P144": {
+   "label": "based on",
+   "aliases": [
+    "adaptation of",
+    "adapted from",
+    "based on work",
+    "based upon",
+    "copy of",
+    "cover of",
+    "derivative of",
+    "derivative work of",
+    "derived from",
+    "extended from",
+    "fork of",
+    "has parts from",
+    "inherits from",
+    "inspired by",
+    "modeled after",
+    "modelled after",
+    "parody of",
+    "remake of",
+    "replica of",
+    "source work",
+    "theme",
+    "themed after",
+    "continuation of",
+    "expansion of",
+    "continues",
+    "follows",
+    "remix of",
+    "iteration of",
+    "reboot of",
+    "input",
+    "extends",
+    "expands",
+    "builds on"
+   ],
+   "description": "the work(s) or inputs used as the basis for subject item; for fictional analog use P1074",
+   "datatype": "wikibase-item"
+  },
+  "P155": {
+   "label": "follows",
+   "aliases": [
+    "succeeds to",
+    "previous is",
+    "before was",
+    "predecessor",
+    "preceded by",
+    "prequel is",
+    "sequel of",
+    "split from",
+    "comes after",
+    "successor to",
+    "succeeds",
+    "prev",
+    "previous element",
+    "is after",
+    "successor of"
+   ],
+   "description": "immediately prior item in a series of which the subject is a part, preferably use as qualifier of P179 [if the subject has replaced the preceding item, e.g. political offices, use \"replaces\" (P1365)]",
+   "datatype": "wikibase-item"
+  },
+  "P156": {
+   "label": "followed by",
+   "aliases": [
+    "continued as",
+    "prequel of",
+    "next is",
+    "precedes",
+    "sequel is",
+    "successor",
+    "comes before",
+    "next",
+    "next element",
+    "then",
+    "succeeded by"
+   ],
+   "description": "immediately following item in a series of which the subject is a part, preferably use as qualifier of P179 [if the subject has been replaced, e.g. political offices, use \"replaced by\" (P1366)]",
+   "datatype": "wikibase-item"
+  },
+  "P159": {
+   "label": "headquarters location",
+   "aliases": [
+    "head office location",
+    "HQ",
+    "garrison",
+    "admin HQ",
+    "seat",
+    "headquarters",
+    "head quarters",
+    "HQ location",
+    "based in",
+    "location of headquarters",
+    "principal office",
+    "headquarters city",
+    "headquarters town",
+    "headquarters locality"
+   ],
+   "description": "city or town where an organization's headquarters is or has been situated. Use P276 qualifier for specific building",
+   "datatype": "wikibase-item"
+  },
+  "P161": {
+   "label": "cast member",
+   "aliases": [
+    "starring",
+    "film starring",
+    "actor",
+    "actress",
+    "contestant of a play",
+    "starring (film/play)",
+    "feat."
+   ],
+   "description": "actor in the subject production [use \"character role\" (P453) and/or \"name of the character role\" (P4633) as qualifiers] [use \"voice actor\" (P725) for voice-only role] - [use \"recorded participant\" (P11108) for non-fiction productions]",
+   "datatype": "wikibase-item"
+  },
+  "P162": {
+   "label": "producer",
+   "aliases": [
+    "record producer",
+    "film producer",
+    "produced by",
+    "music producer",
+    "musical producer",
+    "creative producer"
+   ],
+   "description": "person(s) who produced the film, musical work, theatrical production, etc. (for film, this does not include executive producers, associate producers, etc.) [for production company, use P272, video games - use P178]",
+   "datatype": "wikibase-item"
+  },
+  "P166": {
+   "label": "award received",
+   "aliases": [
+    "prize received",
+    "awards",
+    "honorary title",
+    "recognition title",
+    "award",
+    "honours",
+    "honors",
+    "medals",
+    "awarded",
+    "award won",
+    "prize awarded",
+    "awards received",
+    "win",
+    "winner of",
+    "received award"
+   ],
+   "description": "award or recognition received by a person, organization or creative work",
+   "datatype": "wikibase-item"
+  },
+  "P169": {
+   "label": "chief executive officer",
+   "aliases": [
+    "CEO",
+    "chief executive",
+    "executive director"
+   ],
+   "description": "highest-ranking corporate officer appointed as the CEO within an organization",
+   "datatype": "wikibase-item"
+  },
+  "P170": {
+   "label": "creator",
+   "aliases": [
+    "artist (non-musical)",
+    "created by",
+    "painter",
+    "sculptor",
+    "made by",
+    "painted by",
+    "sculpted by",
+    "visual artist",
+    "art by",
+    "artwork by",
+    "art work by",
+    "realized by",
+    "realised by",
+    "drawer",
+    "drawn by",
+    "by",
+    "original author",
+    "photographer"
+   ],
+   "description": "maker of this creative work or other object (where no more specific property exists)",
+   "datatype": "wikibase-item"
+  },
+  "P171": {
+   "label": "parent taxon",
+   "aliases": [
+    "taxon parent",
+    "higher taxon"
+   ],
+   "description": "closest parent taxon of the taxon in question",
+   "datatype": "wikibase-item"
+  },
+  "P175": {
+   "label": "performer",
+   "aliases": [
+    "artist",
+    "musician",
+    "played by",
+    "portrayed by",
+    "recorded by",
+    "recording by",
+    "dancer",
+    "actor",
+    "musical artist",
+    "performed by",
+    "actress",
+    "sung by",
+    "singer"
+   ],
+   "description": "actor, musician, band or other performer associated with this role or musical work",
+   "datatype": "wikibase-item"
+  },
+  "P176": {
+   "label": "manufacturer",
+   "aliases": [
+    "manufactured by",
+    "maker",
+    "built by",
+    "builder",
+    "made by",
+    "product of",
+    "provider",
+    "provided by",
+    "assembler",
+    "assembled by",
+    "producer",
+    "mfr",
+    "produced by",
+    "brewer",
+    "brewed by"
+   ],
+   "description": "(main or final) manufacturer or producer of this product",
+   "datatype": "wikibase-item"
+  },
+  "P178": {
+   "label": "developer",
+   "aliases": [
+    "developed by",
+    "written by",
+    "created by",
+    "game developer",
+    "game dev",
+    "dev",
+    "video game developer",
+    "video game dev"
+   ],
+   "description": "organization or person that developed the item",
+   "datatype": "wikibase-item"
+  },
+  "P179": {
+   "label": "part of the series",
+   "aliases": [
+    "part of series",
+    "series",
+    "listed in",
+    "collection",
+    "issue of",
+    "episode of",
+    "subseries",
+    "video game series",
+    "in series"
+   ],
+   "description": "series which contains the subject",
+   "datatype": "wikibase-item"
+  },
+  "P183": {
+   "label": "endemic to",
+   "aliases": [
+    "endemic in",
+    "native to",
+    "native in"
+   ],
+   "description": "sole location or habitat type where the taxon lives",
+   "datatype": "wikibase-item"
+  },
+  "P186": {
+   "label": "made from material",
+   "aliases": [
+    "medium",
+    "made from",
+    "constructed from",
+    "constructed out of",
+    "construction material",
+    "media",
+    "built from",
+    "built out of",
+    "manufactured from",
+    "manufactured out of",
+    "crafted from",
+    "crafted out of",
+    "formed from",
+    "formed out of",
+    "made of",
+    "ore",
+    "source material",
+    "raw material",
+    "feedstock",
+    "reactant",
+    "ingredient",
+    "ingredients",
+    "made in",
+    "be made in",
+    "material used",
+    "made of material"
+   ],
+   "description": "material the subject or the object is made of or derived from (do not confuse with P10672 which is used for processes)",
+   "datatype": "wikibase-item"
+  },
+  "P206": {
+   "label": "located in or next to body of water",
+   "aliases": [
+    "on lake",
+    "next to lake",
+    "located on body of water",
+    "on bay",
+    "on harbour",
+    "on shore of",
+    "on the shore of",
+    "on the coast of",
+    "on coast of",
+    "on river",
+    "ocean",
+    "sea",
+    "lake",
+    "bay",
+    "located next to body of water",
+    "loc (water)",
+    "body of water",
+    "borders body of water",
+    "water next to the subject",
+    "along river",
+    "located in water",
+    "located on water",
+    "adjacent water body",
+    "in body of water"
+   ],
+   "description": "body of water on or next to which a place is located",
+   "datatype": "wikibase-item"
+  },
+  "P246": {
+   "label": "element symbol",
+   "aliases": [
+    "chemical symbol",
+    "formula"
+   ],
+   "description": "identifier for a chemical element",
+   "datatype": "string"
+  },
+  "P264": {
+   "label": "record label",
+   "aliases": [
+    "label",
+    "labels"
+   ],
+   "description": "brand and trademark associated with the marketing of subject music recordings and music videos",
+   "datatype": "wikibase-item"
+  },
+  "P272": {
+   "label": "production company",
+   "aliases": [
+    "film studio",
+    "studio",
+    "motion picture studio",
+    "movie studio",
+    "production house",
+    "theatre company",
+    "theater company",
+    "theatrical troupe",
+    "ballet company",
+    "broadcasting company",
+    "produced by (company)",
+    "producer (company)"
+   ],
+   "description": "company that produced this film, audio or performing arts work",
+   "datatype": "wikibase-item"
+  },
+  "P274": {
+   "label": "chemical formula",
+   "aliases": [
+    "formula",
+    "molecular formula"
+   ],
+   "description": "description of chemical compound giving element symbols and counts",
+   "datatype": "string"
+  },
+  "P276": {
+   "label": "location",
+   "aliases": [
+    "whereabouts",
+    "located in",
+    "venue",
+    "is in",
+    "place held",
+    "based in",
+    "neighborhood",
+    "region",
+    "in",
+    "located",
+    "locality",
+    "locale",
+    "from",
+    "place",
+    "neighbourhood",
+    "suburb",
+    "held by",
+    "city",
+    "town",
+    "village",
+    "near",
+    "exact location",
+    "position"
+   ],
+   "description": "location of the object, structure or event; use P131 to indicate the containing administrative entity, P8138 for statistical entities, or P706 for geographic entities; use P7153 for locations associated with the object",
+   "datatype": "wikibase-item"
+  },
+  "P279": {
+   "label": "subclass of",
+   "aliases": [
+    "rdfs:subClassOf",
+    "has superclass",
+    "subtype of",
+    "subcategory of",
+    "is thereby also a",
+    "is necessarily also a",
+    "whose instances are among",
+    "is a type of",
+    "is a class of",
+    "type of",
+    "form of",
+    "way of",
+    "all members of this class also belong to",
+    "category of",
+    "whose instances are a subset of those of",
+    "sc (abbreviation)",
+    "kind of",
+    "sort of",
+    "variant of",
+    "subgenre of"
+   ],
+   "description": "this item is a subclass (subset) of that item; ALL instances of this item are instances of that item; different from P31 (instance of), e.g.: volcano is a subclass of mountain; Everest is an instance of mountain",
+   "datatype": "wikibase-item"
+  },
+  "P286": {
+   "label": "head coach",
+   "aliases": [
+    "manager",
+    "club manager",
+    "senior coach",
+    "team manager",
+    "coach",
+    "trainer"
+   ],
+   "description": "on-field manager or head coach of a sports club (not to be confused with a general manager P505, which is not a coaching position) or person",
+   "datatype": "wikibase-item"
+  },
+  "P361": {
+   "label": "part of",
+   "aliases": [
+    "meronym of",
+    "section of",
+    "system of",
+    "subsystem of",
+    "subassembly of",
+    "contained within",
+    "assembly of",
+    "part of-property",
+    "component of",
+    "in",
+    "within",
+    "is part of",
+    "subgroup of",
+    "collateral branch of",
+    "branch of",
+    "element of",
+    "chain",
+    "contained in",
+    "of"
+   ],
+   "description": "object of which the subject is a part (if this subject is already part of object A which is a part of object B, then please only make the subject part of object A), inverse property of \"has part\" (P527, see also \"has parts of the class\" (P2670))",
+   "datatype": "wikibase-item"
+  },
+  "P364": {
+   "label": "original language of film or TV show",
+   "aliases": [
+    "original language",
+    "language of the original work",
+    "created on language",
+    "media language"
+   ],
+   "description": "language in which a film or a performance work was originally created. Deprecated for written works and songs; use P407 (\"language of work or name\") instead.",
+   "datatype": "wikibase-item"
+  },
+  "P366": {
+   "label": "has use",
+   "aliases": [
+    "function",
+    "role",
+    "mission",
+    "purpose",
+    "utility",
+    "used for",
+    "used in",
+    "usage",
+    "used as",
+    "as",
+    "unit mission",
+    "use",
+    "can be used for",
+    "has purpose",
+    "has function",
+    "had use",
+    "have use",
+    "for"
+   ],
+   "description": "main use of the subject (includes current and former usage)",
+   "datatype": "wikibase-item"
+  },
+  "P397": {
+   "label": "parent astronomical body",
+   "aliases": [
+    "parent body",
+    "orbits",
+    "star",
+    "planetary system",
+    "primary"
+   ],
+   "description": "major astronomical body the item belongs to",
+   "datatype": "wikibase-item"
+  },
+  "P403": {
+   "label": "mouth of the watercourse",
+   "aliases": [
+    "watercourse outflow",
+    "watercourse drain",
+    "outflow",
+    "drain",
+    "river mouth",
+    "outlet",
+    "watercourse ends in",
+    "flows into",
+    "tributary of"
+   ],
+   "description": "the body of water to which the watercourse drains",
+   "datatype": "wikibase-item"
+  },
+  "P407": {
+   "label": "language of work or name",
+   "aliases": [
+    "broadcasting language",
+    "audio language",
+    "available in",
+    "language of work",
+    "language of the reference",
+    "language of website",
+    "language of URL",
+    "used language",
+    "language of the name",
+    "language of name",
+    "language of spoken text",
+    "named in language",
+    "language",
+    "language of object"
+   ],
+   "description": "language associated with this creative work (such as books, shows, songs, broadcasts or websites) or a name (for persons use \"native language\" (P103) and \"languages spoken, written or signed\" (P1412))",
+   "datatype": "wikibase-item"
+  },
+  "P413": {
+   "label": "position played on team / speciality",
+   "aliases": [
+    "fielding position",
+    "specialism",
+    "position (on team)",
+    "speciality",
+    "player position",
+    "position"
+   ],
+   "description": "position or specialism of a player on a team",
+   "datatype": "wikibase-item"
+  },
+  "P425": {
+   "label": "field of this occupation",
+   "aliases": [
+    "profession's field",
+    "activity corresponding to this occupation",
+    "field of this profession",
+    "practices",
+    "practice",
+    "field of occupation",
+    "field of profession",
+    "works in",
+    "does"
+   ],
+   "description": "field corresponding to this occupation or profession (use only for occupations/professions - for people use Property:P101, for companies use P452)",
+   "datatype": "wikibase-item"
+  },
+  "P449": {
+   "label": "original broadcaster",
+   "aliases": [
+    "original channel",
+    "channel",
+    "TV channel",
+    "radio network",
+    "network",
+    "television channel",
+    "radio station",
+    "original air channel",
+    "broadcast on",
+    "first air channel",
+    "original network",
+    "aired on",
+    "airs on"
+   ],
+   "description": "network(s) or service(s) that originally broadcast a radio or television program",
+   "datatype": "wikibase-item"
+  },
+  "P451": {
+   "label": "unmarried partner",
+   "aliases": [
+    "girlfriend",
+    "boyfriend",
+    "lover",
+    "cohabitant",
+    "partner",
+    "domestic partner",
+    "significant other",
+    "enbyfriend",
+    "romantic partner",
+    "life partner",
+    "partners",
+    "is partner of",
+    "is the partner of",
+    "SO",
+    "partner of",
+    "posslq",
+    "spiritual partner",
+    "relationship",
+    "non-married partner"
+   ],
+   "description": "someone with whom the person is in a relationship without being married. Use \"spouse\" (P26) for married couples",
+   "datatype": "wikibase-item"
+  },
+  "P452": {
+   "label": "industry",
+   "aliases": [
+    "field of exercise",
+    "branch",
+    "economic branch",
+    "field of action",
+    "sector"
+   ],
+   "description": "specific industry of company or organization",
+   "datatype": "wikibase-item"
+  },
+  "P453": {
+   "label": "character role",
+   "aliases": [
+    "role",
+    "as",
+    "plays",
+    "acting role",
+    "performer of"
+   ],
+   "description": "specific role played or filled by subject -- use only as qualifier of \"cast member\" (P161), \"voice actor\" (P725)",
+   "datatype": "wikibase-item"
+  },
+  "P460": {
+   "label": "said to be the same as",
+   "aliases": [
+    "the same as",
+    "equivalent to",
+    "equivalent of",
+    "is the same as",
+    "is said to be the same as",
+    "same",
+    "conspecific with",
+    "said to be equal to",
+    "equal to",
+    "could be equal to",
+    "may be equal to",
+    "could be",
+    "may be",
+    "said to be same as",
+    "same as",
+    "synonymous with",
+    "said to be identical to",
+    "may be identical to",
+    "could be identical to",
+    "identical to",
+    "could be the same as",
+    "may be the same as",
+    "identical",
+    "equal",
+    "considered to be the same as",
+    "considered the same as"
+   ],
+   "description": "this item is said to be the same as that item, though this may be uncertain or disputed",
+   "datatype": "wikibase-item"
+  },
+  "P461": {
+   "label": "opposite of",
+   "aliases": [
+    "inverse",
+    "opposite",
+    "is the opposite of",
+    "inverse of",
+    "contrasted to",
+    "contrast of",
+    "is opposite of",
+    "opposite to",
+    "has opposite",
+    "antagonist",
+    "adversary",
+    "opponent"
+   ],
+   "description": "item that is in some way the opposite of this item",
+   "datatype": "wikibase-item"
+  },
+  "P462": {
+   "label": "color",
+   "aliases": [
+    "colour",
+    "colors",
+    "colours",
+    "has color",
+    "has colour",
+    "pigment",
+    "dye",
+    "has the colour",
+    "has the color",
+    "of the color",
+    "of the colour",
+    "with the colour",
+    "with the color"
+   ],
+   "description": "color of subject",
+   "datatype": "wikibase-item"
+  },
+  "P463": {
+   "label": "member of",
+   "aliases": [
+    "membership",
+    "band member of",
+    "member of musical group",
+    "in musical group",
+    "of organization",
+    "is member of",
+    "club"
+   ],
+   "description": "organization, club or musical group to which the subject belongs. Do not use for membership in ethnic or social groups, nor for holding a political position, such as a member of parliament (use P39 for that)",
+   "datatype": "wikibase-item"
+  },
+  "P488": {
+   "label": "chairperson",
+   "aliases": [
+    "leader",
+    "headed by",
+    "chairwoman",
+    "president",
+    "chair",
+    "dean",
+    "head of",
+    "rector",
+    "convener",
+    "chairman"
+   ],
+   "description": "presiding member of an organization, group or body",
+   "datatype": "wikibase-item"
+  },
+  "P495": {
+   "label": "country of origin",
+   "aliases": [
+    "place of origin",
+    "comes from",
+    "CoO",
+    "originates from",
+    "origin country",
+    "country",
+    "homeland"
+   ],
+   "description": "country of origin of this item (creative work, food, phrase, product, etc.)",
+   "datatype": "wikibase-item"
+  },
+  "P509": {
+   "label": "cause of death",
+   "aliases": [
+    "method of murder",
+    "death cause",
+    "die from",
+    "murder method",
+    "die of",
+    "died of"
+   ],
+   "description": "underlying or immediate cause of death. Underlying cause (e.g. car accident, stomach cancer) preferred. Use 'manner of death' (P1196) for broadest category, e.g. natural causes, accident, homicide, suicide",
+   "datatype": "wikibase-item"
+  },
+  "P516": {
+   "label": "powered by",
+   "aliases": [
+    "engine",
+    "prime mover",
+    "drive",
+    "powerplant",
+    "propulsion",
+    "power source"
+   ],
+   "description": "equipment used by the subject to convert a source into mechanical or electrical energy",
+   "datatype": "wikibase-item"
+  },
+  "P518": {
+   "label": "applies to part",
+   "aliases": [
+    "valid for part",
+    "line item",
+    "apply to",
+    "applied to",
+    "applies to aspect",
+    "apply to part",
+    "in form",
+    "when viewed as",
+    "of part",
+    "limited to part",
+    "involved part",
+    "for",
+    "in part",
+    "section",
+    "area",
+    "region",
+    "applies to phase",
+    "of",
+    "per",
+    "applies to form",
+    "relates to",
+    "aspect",
+    "limited to",
+    "restricted by"
+   ],
+   "description": "part, aspect, or form of the item to which the claim applies",
+   "datatype": "wikibase-item"
+  },
+  "P527": {
+   "label": "has part(s)",
+   "aliases": [
+    "formed from",
+    "formed out of",
+    "assembled from",
+    "assembled out of",
+    "created from",
+    "created out of",
+    "amalgamation of",
+    "set of",
+    "consists of",
+    "holonym of",
+    "parts",
+    "comprised of",
+    "includes part",
+    "has as part",
+    "has component",
+    "have part",
+    "composed of",
+    "has ingredient",
+    "has ingredients",
+    "ingredients",
+    "contain",
+    "contains",
+    "has member",
+    "has branch",
+    "divided by",
+    "incorporates",
+    "had part",
+    "has parts",
+    "has part",
+    "has part or parts",
+    "made up of",
+    "includes"
+   ],
+   "description": "part of this subject; inverse property of \"part of\" (P361). See also \"has parts of the class\" (P2670).",
+   "datatype": "wikibase-item"
+  },
+  "P569": {
+   "label": "date of birth",
+   "aliases": [
+    "birthdate",
+    "birthyear",
+    "born",
+    "born on",
+    "year of birth",
+    "DOB",
+    "birth date",
+    "birth year"
+   ],
+   "description": "date on which the subject was born",
+   "datatype": "time"
+  },
+  "P570": {
+   "label": "date of death",
+   "aliases": [
+    "date of the end",
+    "died on",
+    "DOD",
+    "year of death",
+    "dead",
+    "deathdate",
+    "death",
+    "died",
+    "death date"
+   ],
+   "description": "date on which the subject died",
+   "datatype": "time"
+  },
+  "P571": {
+   "label": "inception",
+   "aliases": [
+    "built",
+    "commenced on date",
+    "commencement date",
+    "completed",
+    "composed",
+    "constructed",
+    "construction end date",
+    "created",
+    "created in",
+    "created in year",
+    "created on",
+    "created on date",
+    "creation date",
+    "creation year",
+    "date commenced",
+    "date constructed",
+    "date created",
+    "date first created",
+    "date formed",
+    "date founded",
+    "date of commencement",
+    "date of creation",
+    "date of establishment",
+    "date of foundation",
+    "date of foundation or creation",
+    "date of founding",
+    "date of inception",
+    "date of origin",
+    "day of inception",
+    "dedication date",
+    "established",
+    "established on date",
+    "establishment date",
+    "first created on",
+    "first issue",
+    "formation",
+    "formation date",
+    "formed at",
+    "formed in",
+    "formed in year",
+    "formed on",
+    "formed on date",
+    "foundation",
+    "foundation date",
+    "foundation / creation date",
+    "founded",
+    "founded in",
+    "founded on",
+    "founded on date",
+    "founding date",
+    "inception date",
+    "initial release date",
+    "initiated",
+    "installated in",
+    "installated on",
+    "installation date",
+    "instantiation date",
+    "introduced",
+    "introduction",
+    "launch date",
+    "made in year",
+    "made on",
+    "start date",
+    "starting date",
+    "time of foundation or creation",
+    "time of inception",
+    "written on date",
+    "year commenced",
+    "year created",
+    "year established",
+    "year founded",
+    "year of creation",
+    "year of inception",
+    "year written",
+    "release date",
+    "released",
+    "released in",
+    "date of release",
+    "year of release",
+    "manufactured on",
+    "year of manufacture",
+    "year of mfg",
+    "date of manufacture",
+    "date of work",
+    "work date",
+    "date of creation of work",
+    "date of origin of work",
+    "origin date"
+   ],
+   "description": "time when an entity begins to exist; for date of official opening use P1619",
+   "datatype": "time"
+  },
+  "P575": {
+   "label": "time of discovery or invention",
+   "aliases": [
+    "date discovered",
+    "discovery date",
+    "date of discovery",
+    "discovered on",
+    "date of invention",
+    "time of discovery",
+    "time of invention",
+    "discovered",
+    "discovery time",
+    "invented",
+    "invention time",
+    "invented in",
+    "invented on"
+   ],
+   "description": "date or point in time when the item was discovered or invented",
+   "datatype": "time"
+  },
+  "P576": {
+   "label": "dissolved, abolished or demolished",
+   "aliases": [
+    "abolished",
+    "abolishment date",
+    "ceased date",
+    "ceased on",
+    "ceased publication",
+    "ceased to exist",
+    "cessation date",
+    "closed on",
+    "closure date",
+    "date disbanded",
+    "date disestablished",
+    "date dissolved",
+    "date of cessation",
+    "date of demolition",
+    "date of dissolution",
+    "date of termination",
+    "date repealed",
+    "defunct",
+    "defunct date",
+    "demise date",
+    "demolished",
+    "demolition date",
+    "destroyed in",
+    "disbanded",
+    "disbanded on",
+    "disestablished",
+    "dissolution date",
+    "dissolved",
+    "dissolved on date",
+    "dissolved or abolished",
+    "dissolved, abolished, or demolished",
+    "end date",
+    "ended",
+    "final issue",
+    "final year",
+    "folded",
+    "last issue",
+    "publication end date",
+    "publication terminal date",
+    "razed in",
+    "repealed date",
+    "terminal date",
+    "terminal issue",
+    "terminated on",
+    "termination date",
+    "time abolished",
+    "time dissolved",
+    "time of abolishment",
+    "time of dissolution",
+    "wound up on date",
+    "shutdown",
+    "disestablishment date"
+   ],
+   "description": "point in time at which the subject (organisation, building) ceased to exist; see \"date of official closure\" (P3999) for closing a facility, \"service retirement\" (P730) for retiring equipment, \"discontinued date\" (P2669) for stopping a product",
+   "datatype": "time"
+  },
+  "P577": {
+   "label": "publication date",
+   "aliases": [
+    "air date",
+    "airdate",
+    "be published during",
+    "be published in",
+    "broadcast date",
+    "date of first publication",
+    "date of publication",
+    "date of release",
+    "date published",
+    "date released",
+    "dop",
+    "first publication",
+    "first published",
+    "first released",
+    "initial release",
+    "launch date",
+    "launched",
+    "pubdate",
+    "publication",
+    "publication time",
+    "published",
+    "release date",
+    "released",
+    "released in",
+    "time of publication",
+    "was published during",
+    "was published in",
+    "year of publication",
+    "issued",
+    "drop date",
+    "date issued",
+    "release to the public date",
+    "original air date",
+    "first air date",
+    "date of first airing",
+    "date of original airing",
+    "official release date",
+    "pub date"
+   ],
+   "description": "date or point in time when a work or product was first published or released",
+   "datatype": "time"
+  },
+  "P580": {
+   "label": "start time",
+   "aliases": [
+    "from",
+    "starting",
+    "began",
+    "from time",
+    "since",
+    "from date",
+    "building date",
+    "starttime",
+    "introduced",
+    "introduction",
+    "started in",
+    "beginning",
+    "join date",
+    "join time",
+    "start date",
+    "joined",
+    "effective",
+    "effectivity",
+    "valid",
+    "validity",
+    "first air date",
+    "air date",
+    "first broadcast date",
+    "broadcast date",
+    "began airing",
+    "began broadcasting",
+    "began streaming"
+   ],
+   "description": "time an entity begins to exist or a statement starts being valid",
+   "datatype": "time"
+  },
+  "P582": {
+   "label": "end time",
+   "aliases": [
+    "abolished",
+    "cease date",
+    "cease operation",
+    "cease time",
+    "closed",
+    "completed in",
+    "discontinued",
+    "dissolved",
+    "divorced",
+    "end date",
+    "enddate",
+    "ending",
+    "ends",
+    "endtime",
+    "fall date",
+    "left office",
+    "stop time",
+    "till",
+    "to",
+    "until",
+    "ineffective",
+    "ineffectivity",
+    "invalid",
+    "invalidity",
+    "concluded on",
+    "concluded",
+    "concluded date",
+    "concluded time",
+    "conclusion on",
+    "finished airing",
+    "finished broadcasting",
+    "end of broadcast"
+   ],
+   "description": "moment when an entity ceases to exist and a statement stops being entirely valid or no longer be true",
+   "datatype": "time"
+  },
+  "P585": {
+   "label": "point in time",
+   "aliases": [
+    "date",
+    "as of",
+    "time of event",
+    "at time",
+    "when",
+    "year",
+    "time",
+    "during",
+    "on",
+    "by date",
+    "occurred on",
+    "point time"
+   ],
+   "description": "date something took place, existed or a statement was true; for providing time use the \"refine date\" property (P4241)",
+   "datatype": "time"
+  },
+  "P610": {
+   "label": "highest point",
+   "aliases": [
+    "highest peak",
+    "zenith",
+    "summit",
+    "extreme point highest",
+    "pinnacle",
+    "elevation of highest point",
+    "tallest point"
+   ],
+   "description": "point with highest elevation in a region or path",
+   "datatype": "wikibase-item"
+  },
+  "P619": {
+   "label": "UTC date of spacecraft launch",
+   "aliases": [
+    "date of spacecraft launch",
+    "time of spacecraft launch",
+    "spacecraft launch date",
+    "spacecraft launch time",
+    "launch date",
+    "launch time"
+   ],
+   "description": "date of spacecraft launch in UTC",
+   "datatype": "time"
+  },
+  "P620": {
+   "label": "UTC date of spacecraft landing",
+   "aliases": [
+    "date of spacecraft landing",
+    "time of spacecraft landing",
+    "spacecraft landing date",
+    "spacecraft landing time",
+    "landing date",
+    "landing time"
+   ],
+   "description": "date of spacecraft landing in UTC",
+   "datatype": "time"
+  },
+  "P641": {
+   "label": "sport",
+   "aliases": [
+    "sports",
+    "sport played",
+    "play",
+    "plays"
+   ],
+   "description": "sport that the subject participates or participated in or is associated with",
+   "datatype": "wikibase-item"
+  },
+  "P642": {
+   "label": "",
+   "aliases": [],
+   "description": "",
+   "datatype": ""
+  },
+  "P664": {
+   "label": "organizer",
+   "aliases": [
+    "organiser",
+    "event producer",
+    "organising body",
+    "organizing body",
+    "organized by",
+    "organised by",
+    "promoter",
+    "presenter",
+    "event organizer",
+    "event organiser"
+   ],
+   "description": "person or institution organizing an event",
+   "datatype": "wikibase-item"
+  },
+  "P674": {
+   "label": "characters",
+   "aliases": [
+    "protagonist",
+    "antagonist",
+    "hero",
+    "heroine",
+    "main character"
+   ],
+   "description": "characters which appear in this item (like plays, operas, operettas, books, comics, films, TV series, video games)",
+   "datatype": "wikibase-item"
+  },
+  "P676": {
+   "label": "lyricist",
+   "aliases": [
+    "words by",
+    "writer (of song lyrics)",
+    "author",
+    "text by",
+    "text poet",
+    "text author",
+    "text writer",
+    "songwriter",
+    "lyrics by"
+   ],
+   "description": "author of song lyrics",
+   "datatype": "wikibase-item"
+  },
+  "P703": {
+   "label": "found in taxon",
+   "aliases": [
+    "found in species",
+    "present in taxon"
+   ],
+   "description": "the taxon in which the item can be found",
+   "datatype": "wikibase-item"
+  },
+  "P710": {
+   "label": "participant",
+   "aliases": [
+    "participants",
+    "attendee",
+    "player",
+    "competitor",
+    "party",
+    "event participant",
+    "agent",
+    "belligerents",
+    "between",
+    "suspect",
+    "accused",
+    "has participant"
+   ],
+   "description": "person, group of people or organization (object) that actively takes/took part in an event or process (subject). Preferably qualify with \"object has role\" (P3831). Use P1923 for participants that are teams.",
+   "datatype": "wikibase-item"
+  },
+  "P725": {
+   "label": "voice actor",
+   "aliases": [
+    "voice dubber",
+    "dubbed by",
+    "VO",
+    "voiced by",
+    "VA",
+    "voice actress",
+    "voice actors",
+    "voice actresses",
+    "seiyu",
+    "vocal role as",
+    "seiyū",
+    "seiyuu",
+    "character voice",
+    "CV"
+   ],
+   "description": "performer of a spoken role in a creative work such as animation, video game, radio drama, or dubbing over [use \"character role\" (P453) as qualifier] [use \"cast member\" (P161) for live acting]",
+   "datatype": "wikibase-item"
+  },
+  "P729": {
+   "label": "service entry",
+   "aliases": [
+    "deployment date",
+    "entered service",
+    "date of service entry",
+    "time of service entry",
+    "service introduction",
+    "in service",
+    "established",
+    "launch date",
+    "commissioned",
+    "first light",
+    "entry to service"
+   ],
+   "description": "date or point in time on which a piece or class of equipment entered operational service",
+   "datatype": "time"
+  },
+  "P730": {
+   "label": "service retirement",
+   "aliases": [
+    "retirement",
+    "retired",
+    "date of service retirement",
+    "time of service retirement",
+    "out of service",
+    "decommissioned"
+   ],
+   "description": "date or point in time on which a piece or class of equipment was retired from operational service ; use P2669 for end of a public service",
+   "datatype": "time"
+  },
+  "P737": {
+   "label": "influenced by",
+   "aliases": [
+    "informed by",
+    "has influence",
+    "favorite player",
+    "role model",
+    "inspired by"
+   ],
+   "description": "the subject (person, idea, etc.) was influenced or inspired by this object entity, e.g. \"Heidegger was influenced by Aristotle\"",
+   "datatype": "wikibase-item"
+  },
+  "P740": {
+   "label": "location of formation",
+   "aliases": [
+    "originates from",
+    "comes from",
+    "place of foundation",
+    "founded in",
+    "formation location",
+    "source location of group/organisation",
+    "formed in",
+    "from",
+    "place of formation",
+    "place of incorporation",
+    "place of establishment",
+    "place of origin",
+    "land of formation",
+    "formation place"
+   ],
+   "description": "location where a group or organization was formed",
+   "datatype": "wikibase-item"
+  },
+  "P742": {
+   "label": "pseudonym",
+   "aliases": [
+    "pen name",
+    "stage name",
+    "code name",
+    "user name",
+    "known professionally as",
+    "heteronym",
+    "nom de plume",
+    "nom-de-plume",
+    "ring name",
+    "alias",
+    "nom de guerre",
+    "nom-de-guerre",
+    "nom-de-amore",
+    "nome de guerre",
+    "artistic name",
+    "sobriquet",
+    "artist name",
+    "penname"
+   ],
+   "description": "alias used by someone (for nickname use P1449)",
+   "datatype": "string"
+  },
+  "P749": {
+   "label": "parent organization or unit",
+   "aliases": [
+    "parent organisation",
+    "owned by (company or organisation)",
+    "holding",
+    "holding company",
+    "part of",
+    "parent unit",
+    "parent agency",
+    "superior formation",
+    "owned by (company or organization)",
+    "subsidiary of",
+    "parent company",
+    "has organizational parent",
+    "chapter of",
+    "parent institution",
+    "parent organization",
+    "parent organization unit",
+    "superior organization",
+    "superior organization unit"
+   ],
+   "description": "parent organization or unit of an organization or unit, opposite of child organization or unit (P355); use instance of (P31) to distinguish organization (Q43229) and organization unit (Q10387680)",
+   "datatype": "wikibase-item"
+  },
+  "P750": {
+   "label": "distributed by",
+   "aliases": [
+    "distributor"
+   ],
+   "description": "distributor of a creative work; distributor for a record label; news agency; film distributor",
+   "datatype": "wikibase-item"
+  },
+  "P780": {
+   "label": "symptoms and signs",
+   "aliases": [
+    "symptoms",
+    "has symptom",
+    "clinical sign",
+    "clinical symptom",
+    "signs and symptoms"
+   ],
+   "description": "possible symptoms or signs of a medical condition",
+   "datatype": "wikibase-item"
+  },
+  "P800": {
+   "label": "notable work",
+   "aliases": [
+    "major works",
+    "famous works",
+    "significant works",
+    "notable books",
+    "famous books",
+    "representative work",
+    "literary works",
+    "bibliography",
+    "work",
+    "works",
+    "known for",
+    "famous for",
+    "significance",
+    "artwork",
+    "creator of",
+    "representative of artwork type",
+    "they wrote",
+    "they designed",
+    "they discovered",
+    "they invented",
+    "they created",
+    "author of",
+    "writer of",
+    "wrote",
+    "books by",
+    "founder of",
+    "founded",
+    "main work",
+    "principal works"
+   ],
+   "description": "notable scientific, artistic or literary work, or other work of significance among subject's works",
+   "datatype": "wikibase-item"
+  },
+  "P805": {
+   "label": "statement is subject of",
+   "aliases": [
+    "article",
+    "artfor",
+    "subject of the claim",
+    "subject of the statement",
+    "dedicated article",
+    "dedicated item",
+    "is subject of",
+    "subject of",
+    "related item of statement",
+    "decided by",
+    "decided in",
+    "decided with",
+    "statement is the subject of",
+    "recognition"
+   ],
+   "description": "(qualifying) item that describes the relation identified in this statement",
+   "datatype": "wikibase-item"
+  },
+  "P828": {
+   "label": "has cause",
+   "aliases": [
+    "cause",
+    "has causes",
+    "has underlying cause",
+    "underlying cause",
+    "ultimate cause",
+    "ultimate causes",
+    "initial cause",
+    "effect of",
+    "outcome of",
+    "result of",
+    "has reason",
+    "reason",
+    "caused by",
+    "implied by",
+    "because",
+    "due to",
+    "originated due to",
+    "had cause",
+    "had reason",
+    "had underlying cause",
+    "why",
+    "start cause"
+   ],
+   "description": "underlying cause, entity that ultimately resulted in this effect",
+   "datatype": "wikibase-item"
+  },
+  "P840": {
+   "label": "narrative location",
+   "aliases": [
+    "setting location",
+    "narrative set in",
+    "location of narrative",
+    "set in location",
+    "takes place in",
+    "playing in",
+    "setting of work",
+    "work set in",
+    "setting",
+    "setting place",
+    "set in",
+    "place set in",
+    "place of setting"
+   ],
+   "description": "the narrative of the work is set in this location",
+   "datatype": "wikibase-item"
+  },
+  "P885": {
+   "label": "origin of the watercourse",
+   "aliases": [
+    "river source",
+    "stream source",
+    "source of a stream",
+    "water source",
+    "water origin",
+    "river head",
+    "source of watercourse",
+    "origin of the water body",
+    "origin of the body of water",
+    "water body origin",
+    "headwaters"
+   ],
+   "description": "main source of a river, stream or lake",
+   "datatype": "wikibase-item"
+  },
+  "P915": {
+   "label": "filming location",
+   "aliases": [
+    "location of filming",
+    "location where filmed",
+    "studio where filmed",
+    "place of filming",
+    "place where filmed",
+    "filmed at",
+    "shooting location",
+    "filming place",
+    "film location",
+    "shot in",
+    "filmed in",
+    "filmed on location in",
+    "film place"
+   ],
+   "description": "actual place where this scene/film was shot. For the setting, use \"narrative location\" (P840)",
+   "datatype": "wikibase-item"
+  },
+  "P921": {
+   "label": "main subject",
+   "aliases": [
+    "about",
+    "artistic theme",
+    "content deals with",
+    "content describes",
+    "content is about",
+    "describes",
+    "descriptor",
+    "focus",
+    "focuses on",
+    "has a subject",
+    "has subject",
+    "has topic",
+    "in regards to",
+    "index term",
+    "is about",
+    "keyword",
+    "main issue",
+    "main keyword",
+    "main theme",
+    "main thing",
+    "main topic",
+    "mainly about",
+    "of",
+    "plot keyword",
+    "primary keyword",
+    "primary subject",
+    "primary topic",
+    "regarding",
+    "regards",
+    "sitter",
+    "subject",
+    "subject heading",
+    "theme",
+    "topic",
+    "topic of work",
+    "/common/topic/subject",
+    "iconography",
+    "subject matter"
+   ],
+   "description": "primary topic of a work or act of communication",
+   "datatype": "wikibase-item"
+  },
+  "P941": {
+   "label": "inspired by",
+   "aliases": [
+    "source of inspiration",
+    "inspiration"
+   ],
+   "description": "work, human, place or event which inspired this creative work or fictional entity",
+   "datatype": "wikibase-item"
+  },
+  "P991": {
+   "label": "successful candidate",
+   "aliases": [
+    "elected person",
+    "winner of election",
+    "election winner",
+    "elected candidate",
+    "elected",
+    "election won by",
+    "winning candidate"
+   ],
+   "description": "person(s) or political organization(s) elected after the election",
+   "datatype": "wikibase-item"
+  },
+  "P1034": {
+   "label": "main food source",
+   "aliases": [
+    "food source",
+    "food plant",
+    "eats",
+    "ration",
+    "diet",
+    "ecology (Fossilworks field  name)"
+   ],
+   "description": "species, genus or family that an organism depends on for nutrition",
+   "datatype": "wikibase-item"
+  },
+  "P1037": {
+   "label": "director / manager",
+   "aliases": [
+    "manager",
+    "director",
+    "manager/director",
+    "general manager",
+    "director general",
+    "chief",
+    "boss",
+    "head",
+    "managing director",
+    "leader",
+    "Officer-in-Charge"
+   ],
+   "description": "person who manages any kind of group or organisation",
+   "datatype": "wikibase-item"
+  },
+  "P1056": {
+   "label": "product or material produced",
+   "aliases": [
+    "material produced",
+    "produces",
+    "manufactures",
+    "makes",
+    "has product",
+    "product",
+    "maker of",
+    "manufacturer of",
+    "producer of",
+    "results in",
+    "creates",
+    "output",
+    "products",
+    "work produced",
+    "commodity",
+    "they make",
+    "produced product",
+    "produced material",
+    "service provided",
+    "provides service",
+    "product or service provided",
+    "product, material, or service produced or provided",
+    "product produced",
+    "recipe for"
+   ],
+   "description": "material or product, including services, produced or provided by an organization, industry, facility, or process",
+   "datatype": "wikibase-item"
+  },
+  "P1060": {
+   "label": "disease transmission process",
+   "aliases": [
+    "transmitted by",
+    "transmission process",
+    "mode of transmission",
+    "pathogen transmission process"
+   ],
+   "description": "process by which a pathogen is transmitted, equivalent to \"transmitted by\" in the relation ontology http://purl.obolibrary.org/obo/RO_0002451",
+   "datatype": "wikibase-item"
+  },
+  "P1080": {
+   "label": "from narrative universe",
+   "aliases": [
+    "from universe",
+    "universe",
+    "featured in universe",
+    "appears in universe",
+    "fictional universe where entity is from",
+    "from mythology",
+    "mythology",
+    "continuity",
+    "in continuity",
+    "cycle",
+    "in cycle",
+    "in world of",
+    "story cycle",
+    "from narrative",
+    "from fictional universe",
+    "narrative universe",
+    "fictional universe"
+   ],
+   "description": "subject's fictional entity is in the object narrative. See also P1441 (present in work) and P1445 (fictional universe described in)",
+   "datatype": "wikibase-item"
+  },
+  "P1082": {
+   "label": "population",
+   "aliases": [
+    "inhabitants",
+    "human population"
+   ],
+   "description": "number of people inhabiting the place; number of people of subject",
+   "datatype": "quantity"
+  },
+  "P1086": {
+   "label": "atomic number",
+   "aliases": [
+    "Z",
+    "atom number",
+    "number of protons",
+    "proton number"
+   ],
+   "description": "number of protons found in the nucleus of the atom",
+   "datatype": "quantity"
+  },
+  "P1113": {
+   "label": "number of episodes",
+   "aliases": [
+    "episode count",
+    "series length",
+    "episodes",
+    "no. of episodes"
+   ],
+   "description": "number of episodes in a film/TV/radio series",
+   "datatype": "quantity"
+  },
+  "P1120": {
+   "label": "number of deaths",
+   "aliases": [
+    "deaths",
+    "fatalities",
+    "qty deaths",
+    "qty fatalities",
+    "death toll",
+    "death count",
+    "dead",
+    "number of fatalities",
+    "death number",
+    "number of deaths"
+   ],
+   "description": "total (cumulative) number of people/animals who died since start as a direct result of an event or cause",
+   "datatype": "quantity"
+  },
+  "P1128": {
+   "label": "employees",
+   "aliases": [
+    "number of employees",
+    "workers",
+    "personnel",
+    "employee count",
+    "number of staff",
+    "staff"
+   ],
+   "description": "total number of employees of a company at a given \"point in time\" (P585). Most recent data would generally have preferred rank; data for previous years normal rank (not deprecated rank). Add data for recent years, don't overwrite",
+   "datatype": "quantity"
+  },
+  "P1132": {
+   "label": "number of participants",
+   "aliases": [
+    "participant count",
+    "participants",
+    "qty participants",
+    "number of teams",
+    "number of competitors"
+   ],
+   "description": "number of participants of an event, e.g. people or groups of people that take part in the event (NO units)",
+   "datatype": "quantity"
+  },
+  "P1191": {
+   "label": "date of first performance",
+   "aliases": [
+    "premiere",
+    "time of first performance",
+    "premiere date",
+    "date of first performance",
+    "first performance date",
+    "date of premiere",
+    "world premiere",
+    "world premiere date"
+   ],
+   "description": "date a work was first debuted, performed or live-broadcasted (do not use for TV series episodes)",
+   "datatype": "time"
+  },
+  "P1269": {
+   "label": "facet of",
+   "aliases": [
+    "aspect of",
+    "subitem of",
+    "topic of",
+    "subtopic of",
+    "main topic",
+    "subject in",
+    "section in"
+   ],
+   "description": "topic of which this item is an aspect; item that offers a broader perspective on the same topic",
+   "datatype": "wikibase-item"
+  },
+  "P1303": {
+   "label": "instrument",
+   "aliases": [
+    "musical instrument",
+    "plays instrument",
+    "instrument played",
+    "plays",
+    "instrument taught",
+    "teaches instrument",
+    "player of",
+    "instruments",
+    "instrument(s)",
+    "uses this instrument",
+    "plays this instrument"
+   ],
+   "description": "musical instrument that a person plays or teaches or used in a music occupation",
+   "datatype": "wikibase-item"
+  },
+  "P1308": {
+   "label": "position holder",
+   "aliases": [
+    "incumbent",
+    "noble title holder",
+    "office holder",
+    "position held by"
+   ],
+   "description": "persons who hold and/or held the position",
+   "datatype": "wikibase-item"
+  },
+  "P1346": {
+   "label": "winner",
+   "aliases": [
+    "won by",
+    "victor",
+    "champion",
+    "winners",
+    "champ",
+    "top dog",
+    "leader",
+    "titleholder",
+    "prizewinner",
+    "1st place medalist",
+    "awardee",
+    "nominee",
+    "has winner"
+   ],
+   "description": "winner of a competition or similar event, not to be used from the awardees record (instead use \"award received\" (P166), possibly qualified with \"for work\" (P1686)) nor for wars or battles",
+   "datatype": "wikibase-item"
+  },
+  "P1365": {
+   "label": "replaces",
+   "aliases": [
+    "forefather",
+    "previous job holder",
+    "preceded by",
+    "succeeds",
+    "supersedes",
+    "continues from",
+    "continues",
+    "deprecates",
+    "replaced",
+    "absorbed",
+    "absorbs"
+   ],
+   "description": "person, state or item replaced. Use \"structure replaces\" (P1398) for structures. Use \"follows\" (P155) if the previous item was not replaced or predecessor and successor are identical",
+   "datatype": "wikibase-item"
+  },
+  "P1366": {
+   "label": "replaced by",
+   "aliases": [
+    "heir",
+    "next job holder",
+    "successor",
+    "succeeded by",
+    "superseded by",
+    "continued by",
+    "mediatised to",
+    "becomes",
+    "replaced with",
+    "split into",
+    "territory split into",
+    "mediatized to"
+   ],
+   "description": "other person or item which continues the item by replacing it in its role. Use P156 (\"followed by\") if the item is not replaced nor identical, but adds to the series (e.g. books in a series)",
+   "datatype": "wikibase-item"
+  },
+  "P1376": {
+   "label": "capital of",
+   "aliases": [
+    "county seat of",
+    "county seat for",
+    "administrative seat of",
+    "seat of",
+    "parish seat of",
+    "is capital of",
+    "state capital of",
+    "national capital of",
+    "capital",
+    "provincial capital of",
+    "state capital",
+    "national capital"
+   ],
+   "description": "country, state, department, canton or other administrative division of which the municipality is the governmental seat",
+   "datatype": "wikibase-item"
+  },
+  "P1431": {
+   "label": "executive producer",
+   "aliases": [
+    "executive producers"
+   ],
+   "description": "executive producer of a movie, TV show, or other piece of media or entertainment",
+   "datatype": "wikibase-item"
+  },
+  "P1433": {
+   "label": "published in",
+   "aliases": [
+    "on the tracklist of",
+    "venue",
+    "part of work",
+    "published in journal",
+    "chapter of",
+    "article of",
+    "essay of",
+    "work",
+    "volume of",
+    "tome of",
+    "volume of the book",
+    "tome of the book",
+    "serialized in",
+    "manga magazine",
+    "magazine",
+    "periodical",
+    "prepublished in"
+   ],
+   "description": "larger work that a given work was published in, like a journal, a website, a collection, a book or a music album",
+   "datatype": "wikibase-item"
+  },
+  "P1441": {
+   "label": "present in work",
+   "aliases": [
+    "from work",
+    "from narrative",
+    "featured in work",
+    "in work",
+    "in narrative",
+    "appears in",
+    "is shown in",
+    "appeared in",
+    "appears in work",
+    "character in"
+   ],
+   "description": "this (fictional or fictionalized) entity, place, or person appears in that work as part of the narration (use P2860 for works citing other works, P361/P1433 for works being part of other works, P1343 for entities described in non-fictional accounts)",
+   "datatype": "wikibase-item"
+  },
+  "P1449": {
+   "label": "nickname",
+   "aliases": [
+    "also known as",
+    "aka",
+    "moniker",
+    "informal name",
+    "sobriquet",
+    "epithet",
+    "fan-name",
+    "fanname",
+    "other_names",
+    "othername",
+    "hypocorism",
+    "hypocoristic",
+    "popular name",
+    "other name",
+    "unofficial name",
+    "a.k.a."
+   ],
+   "description": "informal name (for a pseudonym use P742)",
+   "datatype": "monolingualtext"
+  },
+  "P1476": {
+   "label": "title",
+   "aliases": [
+    "original title",
+    "known as",
+    "full title",
+    "headline",
+    "titled",
+    "page name",
+    "article title"
+   ],
+   "description": "published name of a work, such as a newspaper article, a literary work, piece of music, a website, or a performance work",
+   "datatype": "monolingualtext"
+  },
+  "P1477": {
+   "label": "birth name",
+   "aliases": [
+    "bn",
+    "bname",
+    "née",
+    "birthname",
+    "name at birth",
+    "nee",
+    "full name at birth",
+    "born as",
+    "full birth name",
+    "maiden name",
+    "name before marriage",
+    "unmarried name",
+    "né",
+    "ne",
+    "real name",
+    "full name"
+   ],
+   "description": "full name of a person at birth, if different from their current, generally used name",
+   "datatype": "monolingualtext"
+  },
+  "P1478": {
+   "label": "has immediate cause",
+   "aliases": [
+    "has immediate causes",
+    "immediate effect of",
+    "immediate result of",
+    "immediate outcome of",
+    "has proximate cause",
+    "has proximate causes",
+    "proximate effect of",
+    "proximate result of",
+    "proximate outcome of",
+    "is immediately caused by",
+    "is proximately caused by",
+    "immediately caused by",
+    "proximately caused by",
+    "immediate cause",
+    "failure mode",
+    "has direct cause",
+    "direct effect of",
+    "direct result of",
+    "direct outcome of",
+    "is directly caused by",
+    "directly caused by",
+    "direct cause"
+   ],
+   "description": "nearest, proximate thing that directly resulted in the subject as outcome or effect. Used in conjunction with 'has cause' (i.e. underlying cause) and 'has contributing factor'. See 'Help:Modeling causes'.",
+   "datatype": "wikibase-item"
+  },
+  "P1479": {
+   "label": "has contributing factor",
+   "aliases": [
+    "has contributing factors",
+    "contributing factor",
+    "significant contributing factor",
+    "indirect cause",
+    "indirectly caused by",
+    "is/was indirectly caused by"
+   ],
+   "description": "thing that significantly influenced, but did not directly cause, this outcome or effect. Used in conjunction with 'has cause' and 'has immediate cause'. See '[[Help:Modeling causes]]'.",
+   "datatype": "wikibase-item"
+  },
+  "P1535": {
+   "label": "used by",
+   "aliases": [
+    "user",
+    "played by",
+    "armiger",
+    "of"
+   ],
+   "description": "item or concept that makes use of the subject (use sub-properties when appropriate)",
+   "datatype": "wikibase-item"
+  },
+  "P1536": {
+   "label": "immediate cause of",
+   "aliases": [
+    "immediate effect",
+    "immediate result",
+    "immediate outcome",
+    "is immediate cause of",
+    "has immediate effect",
+    "has immediate result",
+    "has immediate outcome"
+   ],
+   "description": "immediate effect of this cause",
+   "datatype": "wikibase-item"
+  },
+  "P1537": {
+   "label": "contributing factor of",
+   "aliases": [
+    "indirectly caused"
+   ],
+   "description": "thing that is significantly influenced by this cause, but does not directly result from it. See 'Help:Modeling causes' for examples and discussion.",
+   "datatype": "wikibase-item"
+  },
+  "P1542": {
+   "label": "has effect",
+   "aliases": [
+    "effect",
+    "has result",
+    "result",
+    "has outcome",
+    "outcome",
+    "has symptom",
+    "consequence",
+    "causes",
+    "implies",
+    "cause of",
+    "led to",
+    "caused",
+    "results in",
+    "leads to"
+   ],
+   "description": "effect of this item",
+   "datatype": "wikibase-item"
+  },
+  "P1545": {
+   "label": "series ordinal",
+   "aliases": [
+    "sorting order",
+    "position in series",
+    "number",
+    "ordinal number",
+    "series number",
+    "sort order",
+    "section number",
+    "unit number",
+    "index",
+    "num.",
+    "rank",
+    "ordinal"
+   ],
+   "description": "position of an item in its parent series (most frequently a 1-based index), generally to be used as a qualifier (different from \"rank\" defined as a class, and from \"ranking\" defined as a property for evaluating a quality)",
+   "datatype": "string"
+  },
+  "P1552": {
+   "label": "has characteristic",
+   "aliases": [
+    "trait",
+    "inherent property",
+    "attribute",
+    "aspect",
+    "defining feature",
+    "has feature",
+    "has property",
+    "characterized by",
+    "required property",
+    "quality",
+    "defining parameter",
+    "parameter",
+    "requirement",
+    "defined by",
+    "feature",
+    "characteristic",
+    "has quality",
+    "object has characteristic",
+    "known to be"
+   ],
+   "description": "inherent or distinguishing quality or feature of the entity. Use a more specific property when possible",
+   "datatype": "wikibase-item"
+  },
+  "P1557": {
+   "label": "manifestation of",
+   "aliases": [
+    "realization of",
+    "reification of",
+    "concrete form of",
+    "instantiation of",
+    "embodiment of",
+    "expression of",
+    "embodies the concept",
+    "reifies"
+   ],
+   "description": "inherent and characteristic embodiment of a given concept",
+   "datatype": "wikibase-item"
+  },
+  "P1582": {
+   "label": "natural product of taxon",
+   "aliases": [
+    "fruit of (taxon)",
+    "comes from (taxon)",
+    "made from",
+    "product of taxon",
+    "produced by taxon",
+    "derived from"
+   ],
+   "description": "links a natural product with its source (animal, plant, fungal, algal, etc.)",
+   "datatype": "wikibase-item"
+  },
+  "P1589": {
+   "label": "lowest point",
+   "aliases": [
+    "extreme point lowest",
+    "extreme point deepest",
+    "deepest point"
+   ],
+   "description": "point with lowest elevation in a region or path",
+   "datatype": "wikibase-item"
+  },
+  "P1619": {
+   "label": "date of official opening",
+   "aliases": [
+    "opening date",
+    "opened",
+    "date opened",
+    "officially opened on",
+    "inaugurated",
+    "launch date",
+    "official opening",
+    "grand opening",
+    "date of opening",
+    "launched",
+    "inauguration",
+    "inauguration date",
+    "official opening time"
+   ],
+   "description": "date or point in time a place, organization, or event officially opened",
+   "datatype": "time"
+  },
+  "P1672": {
+   "label": "this taxon is source of",
+   "aliases": [
+    "this taxon is the source of",
+    "this taxon is a source of",
+    "has natural product",
+    "produces natural product",
+    "produces",
+    "secretes",
+    "natural product",
+    "taxon is source of",
+    "is source of"
+   ],
+   "description": "links a taxon to natural products it produces. Note that it does not say \"this taxon is the source of\" or \"this taxon is a source of\" as this may vary. Some products may be yielded by more than one taxon.",
+   "datatype": "wikibase-item"
+  },
+  "P1686": {
+   "label": "for work",
+   "aliases": [
+    "for their work on",
+    "nominated for work",
+    "awarded for work",
+    "citation for award"
+   ],
+   "description": "qualifier of award received (P166) to specify the work that an award was given to the creator for",
+   "datatype": "wikibase-item"
+  },
+  "P1813": {
+   "label": "short name",
+   "aliases": [
+    "acronym",
+    "abbreviation",
+    "shortened name",
+    "brief name",
+    "abbreviated name",
+    "initialism",
+    "shortname",
+    "short title",
+    "abbrev"
+   ],
+   "description": "short name of a place, organisation, person, journal, Wikidata property, etc. Used by some Wikipedia templates",
+   "datatype": "monolingualtext"
+  },
+  "P1923": {
+   "label": "participating team",
+   "aliases": [
+    "teams"
+   ],
+   "description": "like 'Participant' (P710) but for teams. For an event like a cycle race or a football match you can use this property to list the teams and P710 to list the individuals (with 'member of sports team' (P54) as a qualifier for the individuals)",
+   "datatype": "wikibase-item"
+  },
+  "P1995": {
+   "label": "health specialty",
+   "aliases": [
+    "medical speciality",
+    "medical specialty",
+    "medical field"
+   ],
+   "description": "main specialty relevant to this medical condition or treatment",
+   "datatype": "wikibase-item"
+  },
+  "P2012": {
+   "label": "cuisine",
+   "aliases": [],
+   "description": "type of food served by a restaurant or restaurant chain or national food culture",
+   "datatype": "wikibase-item"
+  },
+  "P2043": {
+   "label": "length",
+   "aliases": [
+    "distance",
+    "dimension",
+    "size",
+    "long",
+    "length overall",
+    "LOA"
+   ],
+   "description": "measured dimension of an object",
+   "datatype": "quantity"
+  },
+  "P2044": {
+   "label": "elevation above sea level",
+   "aliases": [
+    "altitude",
+    "height",
+    "MAMSL",
+    "MASL",
+    "AMSL",
+    "EASL",
+    "elevation",
+    "elevation above mean sea level"
+   ],
+   "description": "height of the item (geographical object) as measured relative to sea level",
+   "datatype": "quantity"
+  },
+  "P2046": {
+   "label": "area",
+   "aliases": [
+    "surface area",
+    "acreage",
+    "surface",
+    "size",
+    "total area",
+    "die size",
+    "die area",
+    "resolution",
+    "image resolution",
+    "photo resolution",
+    "camera resolution"
+   ],
+   "description": "area occupied by an object",
+   "datatype": "quantity"
+  },
+  "P2047": {
+   "label": "duration",
+   "aliases": [
+    "length",
+    "run time",
+    "runtime",
+    "running time",
+    "period",
+    "era",
+    "length of time",
+    "interval",
+    "timespan",
+    "time span",
+    "time interval",
+    "running length",
+    "cook time",
+    "time length",
+    "cooking time"
+   ],
+   "description": "length of time of an event or process",
+   "datatype": "quantity"
+  },
+  "P2048": {
+   "label": "height",
+   "aliases": [
+    "depth over terrain",
+    "size",
+    "heighth"
+   ],
+   "description": "vertical length of an entity",
+   "datatype": "quantity"
+  },
+  "P2079": {
+   "label": "fabrication method",
+   "aliases": [
+    "fabrication process",
+    "manufacturing process",
+    "production process",
+    "manufacturing method",
+    "production method",
+    "made by",
+    "assembly method",
+    "technique used",
+    "by method",
+    "method used",
+    "process used",
+    "technology used",
+    "by means",
+    "creation method",
+    "method of fabrication",
+    "method of assembly",
+    "assembly process",
+    "produced by",
+    "produced using",
+    "method of preparation",
+    "preparation method",
+    "method of cooking",
+    "cooking method",
+    "obtained by",
+    "building technique",
+    "result of process",
+    "created by",
+    "construction method",
+    "construction technique"
+   ],
+   "description": "method, process or technique used to grow, cook, weave, build, assemble, manufacture the item",
+   "datatype": "wikibase-item"
+  },
+  "P2130": {
+   "label": "capital cost",
+   "aliases": [
+    "unit cost",
+    "budget",
+    "cost",
+    "CAPEX"
+   ],
+   "description": "amount of money spent on building or producing an object",
+   "datatype": "quantity"
+  },
+  "P2142": {
+   "label": "box office",
+   "aliases": [
+    "earnings"
+   ],
+   "description": "box office takings accumulated by a film",
+   "datatype": "quantity"
+  },
+  "P2175": {
+   "label": "medical condition treated",
+   "aliases": [
+    "disease treated",
+    "treats",
+    "treats medical condition",
+    "treats disease",
+    "capable of inhibiting or preventing pathological process"
+   ],
+   "description": "disease that this pharmaceutical drug, procedure, or therapy is used to treat",
+   "datatype": "wikibase-item"
+  },
+  "P2176": {
+   "label": "drug or therapy used for treatment",
+   "aliases": [
+    "used for treatment",
+    "treatment",
+    "prescribed drug",
+    "treated by",
+    "prescription",
+    "cure"
+   ],
+   "description": "drug, procedure, or therapy that can be used to treat a medical condition",
+   "datatype": "wikibase-item"
+  },
+  "P2283": {
+   "label": "uses",
+   "aliases": [
+    "makes use of",
+    "item used",
+    "using",
+    "instrument played",
+    "wields",
+    "used",
+    "made use of",
+    "wielded",
+    "trope used",
+    "uses trope"
+   ],
+   "description": "item or concept used by the subject or in the operation (see also instrument [P1303] and armament [P520])",
+   "datatype": "wikibase-item"
+  },
+  "P2437": {
+   "label": "number of seasons",
+   "aliases": [
+    "seasons",
+    "number of series",
+    "no. of series",
+    "no. of seasons"
+   ],
+   "description": "number of seasons a television or radio series has had",
+   "datatype": "quantity"
+  },
+  "P2578": {
+   "label": "is the study of",
+   "aliases": [
+    "learning what?",
+    "working on what?",
+    "academic field for",
+    "scholarly field for",
+    "study of",
+    "research",
+    "researches",
+    "studies",
+    "is study of"
+   ],
+   "description": "the object that an academic field studies; distinct from field of work (P101), which is used for human, organization, etc.",
+   "datatype": "wikibase-item"
+  },
+  "P2579": {
+   "label": "studied by",
+   "aliases": [
+    "science, that studies",
+    "domain",
+    "researched by",
+    "researched in",
+    "in branch of science",
+    "is studied by",
+    "is studied in",
+    "studied in"
+   ],
+   "description": "subject is studied by this science or domain",
+   "datatype": "wikibase-item"
+  },
+  "P2670": {
+   "label": "has part(s) of the class",
+   "aliases": [
+    "has parts of the class",
+    "has component type(s)",
+    "part of the class",
+    "part of class",
+    "parts of the class",
+    "parts of class",
+    "has part of class",
+    "has component types",
+    "has component type",
+    "has part(s) forming subclass of",
+    "constitutent(s) are classified as",
+    "has part of the class",
+    "has parts of class",
+    "has members of the class"
+   ],
+   "description": "the subject has one or more parts of the object class",
+   "datatype": "wikibase-item"
+  },
+  "P2868": {
+   "label": "subject has role",
+   "aliases": [
+    "subject had role",
+    "subject of qualified statement has role",
+    "subject of statement has role",
+    "has role",
+    "role",
+    "subject role"
+   ],
+   "description": "role held by the item the statement appears on (\"subject\") in the context of that statement. For the role of the statement object/value, use P3831 (\"object has role\"). For acting roles, use P453 (\"character role\"). For persons, use P39.",
+   "datatype": "wikibase-item"
+  },
+  "P2974": {
+   "label": "habitat",
+   "aliases": [],
+   "description": "the natural environment in which an organism lives, or the physical environment that surrounds a species population",
+   "datatype": "wikibase-item"
+  },
+  "P2975": {
+   "label": "has host",
+   "aliases": [
+    "host taxon"
+   ],
+   "description": "an organism harboring another organism or organisms on or in itself",
+   "datatype": "wikibase-item"
+  },
+  "P3094": {
+   "label": "develops from",
+   "aliases": [
+    "developed from",
+    "antecedent anatomical structure",
+    "evolves from",
+    "evolved from"
+   ],
+   "description": "this class of items develops from another class of items (biology)",
+   "datatype": "wikibase-item"
+  },
+  "P3095": {
+   "label": "practiced by",
+   "aliases": [
+    "studied by",
+    "associated with",
+    "has proponent",
+    "practioner",
+    "proponent",
+    "has practitioner",
+    "implemented by",
+    "implementor",
+    "occupation of this field",
+    "done by",
+    "practitioners",
+    "observed by"
+   ],
+   "description": "type of agents that study this subject or work in this field",
+   "datatype": "wikibase-item"
+  },
+  "P3373": {
+   "label": "sibling",
+   "aliases": [
+    "sister",
+    "has sister",
+    "bro",
+    "has brother",
+    "brother or sister",
+    "sister or brother",
+    "sis",
+    "sib",
+    "siblings",
+    "sisters",
+    "brother",
+    "brothers and sisters",
+    "sisters and brothers",
+    "has sibling",
+    "is sibling of",
+    "is the sibling of",
+    "brothers",
+    "is brother of",
+    "is the brother of",
+    "is sister of",
+    "is the sister of",
+    "half-brother",
+    "half-sister",
+    "half-sibling",
+    "sibling of",
+    "brother of",
+    "sister of",
+    "twin"
+   ],
+   "description": "the subject and the object have at least one common parent (brother, sister, etc. including half-siblings); use \"relative\" (P1038) for siblings-in-law (brother-in-law, sister-in-law, etc.) and step-siblings (step-brothers, step-sisters, etc.)",
+   "datatype": "wikibase-item"
+  },
+  "P3450": {
+   "label": "sports season of league or competition",
+   "aliases": [
+    "is season of",
+    "is a season of",
+    "seasons of",
+    "season of",
+    "season of sports competition",
+    "season of sports tournament",
+    "season of sports league",
+    "sport season",
+    "is an edition of athletics meeting",
+    "edition of annual athletics meeting",
+    "athletics meeting item belonging to this instance"
+   ],
+   "description": "property that shows the competition of which the item is a season. Use P5138 for \"season of club or team\".",
+   "datatype": "wikibase-item"
+  },
+  "P3831": {
+   "label": "object of statement has role",
+   "aliases": [
+    "value has role",
+    "object has generic identity",
+    "role",
+    "specifically",
+    "has role",
+    "circumstances of employment",
+    "object of qualified statement has role",
+    "object had role",
+    "object has role",
+    "as",
+    "role of object"
+   ],
+   "description": "(qualifier) role held by the predicate value (object) of a statement in the context of that statement; for the role of the item the statement appears on (subject), use P2868",
+   "datatype": "wikibase-item"
+  },
+  "P4330": {
+   "label": "contains",
+   "aliases": [
+    "holds",
+    "surrounds",
+    "encloses",
+    "wraps",
+    "contents",
+    "has contents",
+    "stores",
+    "container of",
+    "receptacle for",
+    "packaging for"
+   ],
+   "description": "contents, item or substance located within this wrapping item, but not part of this receptacle or container; does not describe the ingredients or components of this container",
+   "datatype": "wikibase-item"
+  },
+  "P4552": {
+   "label": "mountain range",
+   "aliases": [
+    "range",
+    "located in mountain range",
+    "parent range",
+    "mountain system",
+    "located on mountain range",
+    "system of mountains",
+    "hill range",
+    "mountain belt"
+   ],
+   "description": "range or subrange to which the geographical item belongs",
+   "datatype": "wikibase-item"
+  },
+  "P4584": {
+   "label": "first appearance",
+   "aliases": [
+    "debut",
+    "initial appearance",
+    "first episode",
+    "first film",
+    "introduced in work",
+    "appeared first in",
+    "present initially in"
+   ],
+   "description": "work in which a fictional/mythical character or entity first appeared",
+   "datatype": "wikibase-item"
+  },
+  "P4633": {
+   "label": "name of the character role",
+   "aliases": [
+    "name of character role",
+    "name of the role",
+    "name of role",
+    "name of the character",
+    "role name",
+    "character name",
+    "role named as",
+    "character named as",
+    "character role named as",
+    "performer of",
+    "as",
+    "plays",
+    "acting role"
+   ],
+   "description": "name by which a character role is recorded in a database or mentioned in the context of a work, use as qualifier for cast; notably a specific performance of a theatrical production of a play",
+   "datatype": "string"
+  },
+  "P4908": {
+   "label": "season",
+   "aliases": [
+    "television season",
+    "television series",
+    "TV season",
+    "TV series",
+    "series of television program"
+   ],
+   "description": "season of a series (television, web, podcast)",
+   "datatype": "wikibase-item"
+  },
+  "P5642": {
+   "label": "risk factor",
+   "aliases": [],
+   "description": "factor associated with a high prevalence of a particular gene, disease or characteristic. These factors can be country of origin, country of citizenship, race, gender, occupation, anamnesis, etc.",
+   "datatype": "wikibase-item"
+  },
+  "P9714": {
+   "label": "taxon range",
+   "aliases": [
+    "range",
+    "taxon geographic range",
+    "geographic range",
+    "range of taxon",
+    "geographic range of taxon"
+   ],
+   "description": "geographic area(s) where a taxon is found",
+   "datatype": "wikibase-item"
+  }
+ }
+}

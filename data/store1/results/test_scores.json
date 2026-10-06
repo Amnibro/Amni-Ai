@@ -1,0 +1,46 @@
+{
+ "source": "data/store1/results/final_test.json",
+ "n": 266,
+ "n_instore": 231,
+ "n_wd": 158,
+ "e2e_acc_instore": 0.6667,
+ "ent_at1": 0.8797,
+ "ent_at5": 0.9684,
+ "prop_acc": 0.7722,
+ "abstain_prec": 0.3881,
+ "abstain_n": 67,
+ "abstain_rec": 0.7429,
+ "absent_false_answer": 0.2571,
+ "by_cat": {
+  "absent": {
+   "n": 30,
+   "acc": 0.0,
+   "abstain": 0.7667
+  },
+  "commonsense": {
+   "n": 48,
+   "acc": 0.5208,
+   "abstain": 0.1667
+  },
+  "compute": {
+   "n": 25,
+   "acc": 0.72,
+   "abstain": 0.16
+  },
+  "wd_entity": {
+   "n": 112,
+   "acc": 0.6696,
+   "abstain": 0.1964
+  },
+  "wd_value": {
+   "n": 46,
+   "acc": 0.7826,
+   "abstain": 0.1522
+  }
+ },
+ "lat_median_ms": 7.53,
+ "lat_p99_ms": 58.295,
+ "lat_max_ms": 340.895,
+ "v3_acc_instore_wd": 0.1772,
+ "v3_acc_instore": 0.1212
+}

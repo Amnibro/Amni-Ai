@@ -1,0 +1,17 @@
+load+strings 1.2s strings 648308
+derive 2.5s groups 1969795 facts 1970574
+sig: keys 11900718 level-keys 32688283 levels-bytes 17730404 cb-digits 32175917 cbx 526576 hc 33 entries 2106213 15.5s
+sl: keys 11900718 level-keys 12913675 levels-bytes 7034549 cb-digits 996 cbx 128 hc 22 entries 461 4.2s
+cnt: keys 4710182 level-keys 4806353 levels-bytes 2641166 cb-digits 611 cbx 88 hc 17 entries 286 2.3s
+fact: keys 53091627 level-keys 142549575 levels-bytes 77159982 cb-digits 40004669 cbx 1739136 hc 2904 entries 6945300 74.9s
+qual: keys 8513727 level-keys 19752224 levels-bytes 10734662 cb-digits 4099507 cbx 163928 hc 1749 entries 646945 8.5s
+sid keys 716489 bytes 1924229 110.8s
+text 20.0s contexts 446281 symbols 460829668 model digits 17642568
+container 226899814 bytes, roundtrip true, pages 7
+name keys 17647067 dup 0
+name f0 bytes 66030453 end markers 0 end bytes 0
+name f1 bytes 75434810 end markers 55195 end bytes 511346
+name f2 bytes 84847154 end markers 3328 end bytes 35210
+name f3 bytes 94249820 end markers 202 end bytes 6514
+{"entities":11900718,"facts":55062201,"quals":8513727,"strings":648308,"props":197,"derived_groups":1969795,"derived_facts":1970574,"text_order":3,"text_contexts":446281,"text_symbols":460829668,"container_bytes":226899814,"roundtrip_bitexact":true,"container_pages":7,"name_keys":17647067,"name_key_dups":0,"name_tables":[{"fd":0,"bytes":66030453,"end_markers":0},{"fd":1,"bytes":75946156,"end_markers":55195},{"fd":2,"bytes":84882364,"end_markers":3328},{"fd":3,"bytes":94256334,"end_markers":202}],"components":{"sig_levels":17730404,"sig_codebook":17373216,"sl_levels":7034549,"sl_codebook":608,"cnt_levels":2641166,"cnt_codebook":380,"fact_levels":77159982,"fact_codebook":22177939,"qual_levels":10734662,"qual_codebook":2265879,"sid":1924229,"qid":9203189,"text_model":9372614,"text_ta":118333613,"text_ta_x":3161133,"text_tb":39066893,"text_tb_x":1580570,"text_tc":4185928,"text_tc_x":172214,"name_f0":66030453,"name_f1":75946156,"name_f2":84882364,"name_f3":94256334},"build_s":167.1,"peak_rss":13252882432}
+EXIT 0
