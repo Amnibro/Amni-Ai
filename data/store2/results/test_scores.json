@@ -1,0 +1,51 @@
+{
+ "source": "data/store2/results/final_test_test.json",
+ "n": 275,
+ "n_instore": 228,
+ "n_wd": 171,
+ "e2e_acc_instore": 0.7895,
+ "ent_at1": 0.8889,
+ "ent_at5": 0.9591,
+ "prop_acc": 0.8655,
+ "abstain_prec": 0.6667,
+ "abstain_n": 51,
+ "abstain_rec": 0.7234,
+ "absent_false_answer": 0.2766,
+ "by_cat": {
+  "absent": {
+   "n": 41,
+   "acc": 0.0,
+   "abstain": 0.7317
+  },
+  "commonsense": {
+   "n": 34,
+   "acc": 0.7353,
+   "abstain": 0.1471
+  },
+  "compute": {
+   "n": 23,
+   "acc": 0.8261,
+   "abstain": 0.1739
+  },
+  "wd_entity": {
+   "n": 118,
+   "acc": 0.7966,
+   "abstain": 0.0508
+  },
+  "wd_value": {
+   "n": 53,
+   "acc": 0.7925,
+   "abstain": 0.0377
+  }
+ },
+ "lat_median_ms": 7.562,
+ "lat_p99_ms": 44.866,
+ "lat_max_ms": 145.902,
+ "v3_acc_instore_wd": 0.2749,
+ "v3_acc_instore": 0.2061,
+ "lat_warm_median_ms": 3.925,
+ "lat_warm_p99_ms": 26.493,
+ "lat_cold_median_ms": 67.786,
+ "lat_cold_p99_ms": 285.984,
+ "lat_protocol": "unseen: fresh process, 40 fictional/arithmetic warm-up questions, every in-process cache (Python LRU + drive block caches) cleared before each question, OS page cache kept; warm: second pass, caches kept; cold: plus madvise/fadvise DONTNEED on the drive before each question"
+}
