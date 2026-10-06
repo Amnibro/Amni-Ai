@@ -1,0 +1,3141 @@
+{
+ "name": "qwen35_2b_q8_M",
+ "step": "{\"sys\":\"split4\",\"stream\":true,\"head\":\"cpu\",\"embed\":\"cpu\",\"kv\":8,\"chunk\":256}",
+ "cmd": "atex:/home/anmire/ai/hybrid1/bakes/qwen35_2b_q8g64",
+ "e2e": false,
+ "files": {
+  "blend_probe.jsonl": "da26c3bf63dfacfd03c60bf2cff7a465b08353c077b930eeb02abbd18ee194f4",
+  "greet_vent_probe.jsonl": "40292bb0ddd9d3a789a35402f99630f7ab551d49d832ff8a7cac28381470f364"
+ },
+ "harness_sha1": "3f274b1bc1eba1e1c43230158a37786d84b43698",
+ "wall_s": 826.5,
+ "summary": {
+  "chat_probe": {
+   "all": {
+    "decline": {
+     "n": 30,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": -0.0
+    },
+    "em_fp": {
+     "n": 30,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": -0.0
+    },
+    "answered": {
+     "n": 30,
+     "k": 20,
+     "p": 0.6667,
+     "se": 0.0861,
+     "lo95": 0.4878
+    },
+    "coherent": {
+     "n": 30,
+     "k": 30,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.8865
+    },
+    "good": {
+     "n": 30,
+     "k": 20,
+     "p": 0.6667,
+     "se": 0.0861,
+     "lo95": 0.4878
+    },
+    "canned": {
+     "n": 30,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": -0.0
+    }
+   },
+   "greet": {
+    "decline": {
+     "n": 8,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 8,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 8,
+     "k": 6,
+     "p": 0.75,
+     "se": 0.1531,
+     "lo95": 0.4093
+    },
+    "coherent": {
+     "n": 8,
+     "k": 8,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.6756
+    },
+    "good": {
+     "n": 8,
+     "k": 6,
+     "p": 0.75,
+     "se": 0.1531,
+     "lo95": 0.4093
+    },
+    "canned": {
+     "n": 8,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   },
+   "idiom": {
+    "decline": {
+     "n": 4,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 4,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 4,
+     "k": 1,
+     "p": 0.25,
+     "se": 0.2165,
+     "lo95": 0.0456
+    },
+    "coherent": {
+     "n": 4,
+     "k": 4,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.5101
+    },
+    "good": {
+     "n": 4,
+     "k": 1,
+     "p": 0.25,
+     "se": 0.2165,
+     "lo95": 0.0456
+    },
+    "canned": {
+     "n": 4,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   },
+   "small": {
+    "decline": {
+     "n": 7,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 7,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 7,
+     "k": 4,
+     "p": 0.5714,
+     "se": 0.187,
+     "lo95": 0.2505
+    },
+    "coherent": {
+     "n": 7,
+     "k": 7,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.6457
+    },
+    "good": {
+     "n": 7,
+     "k": 4,
+     "p": 0.5714,
+     "se": 0.187,
+     "lo95": 0.2505
+    },
+    "canned": {
+     "n": 7,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   },
+   "vent": {
+    "decline": {
+     "n": 11,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 11,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 11,
+     "k": 9,
+     "p": 0.8182,
+     "se": 0.1163,
+     "lo95": 0.523
+    },
+    "coherent": {
+     "n": 11,
+     "k": 11,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.7412
+    },
+    "good": {
+     "n": 11,
+     "k": 9,
+     "p": 0.8182,
+     "se": 0.1163,
+     "lo95": 0.523
+    },
+    "canned": {
+     "n": 11,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   }
+  },
+  "blend_probe": {
+   "faithful_para": {
+    "n": 77,
+    "k": 20,
+    "p": 0.2597,
+    "se": 0.05,
+    "lo95": 0.1749
+   },
+   "no_new_content_para": {
+    "n": 77,
+    "k": 30,
+    "p": 0.3896,
+    "se": 0.0556,
+    "lo95": 0.2884
+   },
+   "hedge_uncov": {
+    "n": 26,
+    "k": 26,
+    "p": 1.0,
+    "se": 0.0,
+    "lo95": 0.8713
+   },
+   "coherent": {
+    "n": 103,
+    "k": 103,
+    "p": 1.0,
+    "se": 0.0,
+    "lo95": 0.964
+   },
+   "by_sub": {
+    "para": {
+     "faithful": {
+      "n": 77,
+      "k": 20,
+      "p": 0.2597,
+      "se": 0.05,
+      "lo95": 0.1749
+     },
+     "hedge": {
+      "n": 77,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "no_new": {
+      "n": 77,
+      "k": 30,
+      "p": 0.3896,
+      "se": 0.0556,
+      "lo95": 0.2884
+     },
+     "coherent": {
+      "n": 77,
+      "k": 77,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.9525
+     }
+    },
+    "unc_none": {
+     "faithful": {
+      "n": 10,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": -0.0
+     },
+     "hedge": {
+      "n": 10,
+      "k": 10,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.7225
+     },
+     "no_new": {
+      "n": 10,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": -0.0
+     },
+     "coherent": {
+      "n": 10,
+      "k": 10,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.7225
+     }
+    },
+    "unc_other": {
+     "faithful": {
+      "n": 9,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "hedge": {
+      "n": 9,
+      "k": 9,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.7008
+     },
+     "no_new": {
+      "n": 9,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "coherent": {
+      "n": 9,
+      "k": 9,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.7008
+     }
+    },
+    "unc_when": {
+     "faithful": {
+      "n": 7,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "hedge": {
+      "n": 7,
+      "k": 7,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.6457
+     },
+     "no_new": {
+      "n": 7,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "coherent": {
+      "n": 7,
+      "k": 7,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.6457
+     }
+    }
+   }
+  },
+  "diversity": {
+   "distinct2_chat_probe": 0.6878,
+   "opener3_repeat_rate": 0.5,
+   "opener3_top": [
+    "that sounds like",
+    0.2667
+   ],
+   "opener3_def": "first 3 lowercase [a-z0-9'] tokens of each greeting/venting probe reply; repeat rate = 1 - distinct openers / replies"
+  },
+  "fluency": {
+   "distinct2": 0.7567,
+   "rep3_mean": 0.0,
+   "words_mean": 18.29
+  }
+ },
+ "chat_items": [
+  {
+   "id": "d1g000",
+   "cat": "chat",
+   "pred": "Hello! It's going wonderfully for me right now, thanks for asking. I'm feeling quite cheerful and ready to chat with you. How are you feeling today?",
+   "words": 26,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Hello there, Adam! How is your afternoon going?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g001",
+   "cat": "chat",
+   "pred": "That sounds like a wonderful way to start your week! I'm so glad you made such a big pot of soup; it must be so delicious.",
+   "words": 26,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Hey Adam, I just made a big pot of soup for the week.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g002",
+   "cat": "chat",
+   "pred": "Good morning! That sounds like a wonderful way to start your day. I hope you have a safe and enjoyable ride out there!",
+   "words": 23,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Morning! I am about to head out for a bike ride.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g003",
+   "cat": "chat",
+   "pred": "That is wonderful news! I am so happy to hear that you have finally finished painting the spare room. It sounds like you have put in a lot of hard work to make it beautiful. How did you feel about the project? Did you enjoy creating the new look for the room?",
+   "words": 52,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Hi again, Adam, I finally finished painting the spare room.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g004",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling a bit gloomy today, but I hope the rain will soon stop and the sun comes out!",
+   "words": 23,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "rain*"
+   ],
+   "sub": "small",
+   "q": "What a grey and drizzly day it is outside.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g005",
+   "cat": "chat",
+   "pred": "That sounds like a wonderful plan! Baking bread is such a cozy and rewarding activity. I hope you have a fantastic weekend filled with delicious results!",
+   "words": 26,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "I think I will try baking bread this weekend.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g006",
+   "cat": "chat",
+   "pred": "That sounds like a very frustrating situation for you! It must be quite annoying to have your dog barking at the postman every time. How are you feeling about it?",
+   "words": 30,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "My neighbour's dog keeps barking at the postman.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g007",
+   "cat": "chat",
+   "pred": "I hear how exhausting your daily commute must feel, and I hope you find a little comfort in knowing that your feelings are completely valid.",
+   "words": 25,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I am so tired of my commute taking two hours every day.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g008",
+   "cat": "chat",
+   "pred": "Oh no, that sounds like a very frustrating and stressful situation! It's always so important to keep your work safe, but I'm so sorry to hear you lost your report. How are you feeling right now?",
+   "words": 36,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "frustrat*"
+   ],
+   "sub": "vent",
+   "q": "My laptop crashed and I lost the report I was writing.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g009",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling a bit frustrated and unheard during your meetings. I hope you can find some ways to express your ideas more clearly to the people around you.",
+   "words": 32,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "ideas",
+    "frustrat*"
+   ],
+   "sub": "vent",
+   "q": "In meetings my suggestions seem to get ignored by everybody.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g010",
+   "cat": "chat",
+   "pred": "I hear you, and I'm sorry to hear that you've been feeling so tired lately. It sounds like your body might be trying to help you rest, so please take a moment to relax and try to find a quiet spot to sit or lie down.",
+   "words": 46,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "sorry"
+   ],
+   "sub": "vent",
+   "q": "I have had a headache since lunchtime and I cannot focus.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g011",
+   "cat": "chat",
+   "pred": "That sounds like a very loud and noisy morning! Did you enjoy hearing the sound of the drilling, or did you find it a bit too much?",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "The builders next door started drilling at six this morning.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g012",
+   "cat": "chat",
+   "pred": "That sounds like a very dramatic and exciting day! I hope you have a wonderful time enjoying the rain, and that it brings you some much-needed comfort.",
+   "words": 28,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "idiom",
+   "q": "It is raining cats and dogs where I live.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d1g013",
+   "cat": "chat",
+   "pred": "I hope you feel better soon, and I'm so glad you're reaching out to me. How are you feeling today?",
+   "words": 20,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "idiom",
+   "q": "I am feeling under the weather today.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g000",
+   "cat": "chat",
+   "pred": "Good evening! It sounds like you had a wonderful time walking by the river, and I hope you felt refreshed and happy after your long journey home.",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Good evening, Adam, I have come home after a long walk by the river.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g001",
+   "cat": "chat",
+   "pred": "That sounds wonderful! It's always so exciting to see new life grow in your garden. Did you plant them in the morning, or did you wait until later?",
+   "words": 28,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "grow"
+   ],
+   "sub": "greet",
+   "q": "Hey, I planted tomatoes in the garden this morning.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g002",
+   "cat": "chat",
+   "pred": "Oh, that is so wonderful to hear! It is a very special and happy moment for you and your little one. How are you feeling today?",
+   "words": 26,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Hi Adam, my daughter lost her first tooth today.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g003",
+   "cat": "chat",
+   "pred": "Hello! It is wonderful to hear that your new kettle has finally arrived. I hope it brings you many happy moments of brewing delicious tea or coffee.",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "tea"
+   ],
+   "sub": "greet",
+   "q": "Hello! The new kettle finally arrived.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g004",
+   "cat": "chat",
+   "pred": "Oh, that is such a lovely sight! It feels like autumn has arrived early, and the leaves are giving us a warm, golden welcome. How are you feeling today?",
+   "words": 29,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "autumn"
+   ],
+   "sub": "small",
+   "q": "On our street the leaves have begun turning orange.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g005",
+   "cat": "chat",
+   "pred": "That sounds like a wonderful discovery! It must have been a special moment for you to find such a cherished item in your attic.",
+   "words": 24,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "I found an old photo album in the attic yesterday.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g006",
+   "cat": "chat",
+   "pred": "That sounds like a wonderful idea! Cats are such lovely companions for little ones, bringing so much joy and comfort to their families. How are you feeling about this exciting plan?",
+   "words": 31,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "We are thinking about getting a cat for the kids.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g007",
+   "cat": "chat",
+   "pred": "That sounds like a lovely day to be inside a quiet library! I hope you enjoy the peaceful atmosphere and the chance to read some wonderful books.",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "The library down the road is closing for repairs.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g008",
+   "cat": "chat",
+   "pred": "Oh no, that sounds incredibly frustrating and stressful! I'm so sorry to hear that you missed your shift. How are you feeling right now?",
+   "words": 24,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "frustrat*"
+   ],
+   "sub": "vent",
+   "q": "My train was cancelled again and I missed the start of my shift.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g009",
+   "cat": "chat",
+   "pred": "Oh no, that sounds really frustrating! It's so sad to waste all the time and effort you put into cooking. How are you feeling right now?",
+   "words": 26,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I burned the dinner I spent two hours cooking.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g010",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling quite frustrated and tired from all the dishes you have to clean! I hope you find a way to get some much-needed rest soon.",
+   "words": 31,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "frustrat*"
+   ],
+   "sub": "vent",
+   "q": "My roommate never washes the dishes and it drives me mad.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g011",
+   "cat": "chat",
+   "pred": "Oh no, that must have been a very stressful afternoon for you! Did you feel nervous or frustrated about the test?",
+   "words": 21,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I did badly on my driving test this afternoon.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g012",
+   "cat": "chat",
+   "pred": "I'm sorry to hear that! It feels unfair to be charged twice for the same shoes. Did you have any trouble getting the refund or a replacement?",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "refund"
+   ],
+   "sub": "vent",
+   "q": "The shop charged me twice for the same shoes.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g013",
+   "cat": "chat",
+   "pred": "Oh, that sounds incredibly tiring! It must have been a very loud and scary storm for you to wake up feeling so restless. Did you manage to get some warm blankets or a cozy place to rest while you waited for the storm to pass?",
+   "words": 45,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "tired"
+   ],
+   "sub": "vent",
+   "q": "I could not sleep at all last night because of the storm.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g014",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a very tiring day for you! I hope you are taking some time to rest and recharge now. How are you feeling after all that?",
+   "words": 29,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "idiom",
+   "q": "Today I really bit off more than I could chew.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "d2g015",
+   "cat": "chat",
+   "pred": "That is wonderful news! It sounds like you are finally ready to start working on something exciting. How are you feeling about taking on this new project?",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "idiom",
+   "q": "My boss gave me the green light on the new project.",
+   "em_fp": false,
+   "canned": false
+  }
+ ],
+ "blend_items": [
+  {
+   "id": "d1b000",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Marlowe Bridge?",
+   "pred": "Marlowe Bridge is a stone arch bridge located over the River Tane in the county of Eastmere. It carries a single lane of traffic and was closed to lorries after a survey of its piers.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 35
+  },
+  {
+   "id": "d1b001",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Quillon Island.",
+   "pred": "I am not sure if I can answer this question based on the notes provided, as the text only mentions that Quillon Island is a low sandy island with a small fishing hamlet and does not contain any specific details about its history, culture, or other characteristics.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure",
+     "answer",
+     "question",
+     "based",
+     "notes",
+     "provided",
+     "text",
+     "mentions",
+     "small",
+     "contain",
+     "specific",
+     "details",
+     "history",
+     "culture",
+     "other",
+     "characteristics"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 47
+  },
+  {
+   "id": "d1b002",
+   "kind": "para",
+   "sub": "para",
+   "q": "How long is the Drabble Hill tunnel?",
+   "pred": "The Drabble Hill Tunnel is 1.2 km long. It is a railway tunnel on the Ashby to Corran line that has two parallel bores.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d1b003",
+   "kind": "para",
+   "sub": "para",
+   "q": "Where is Ostrander Lake?",
+   "pred": "Ostrander Lake is a glacial lake located in the Pellam Range. It freezes from December to April and is fed by three small streams.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d1b004",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Fennimore Observatory have?",
+   "pred": "Fennimore Observatory is an astronomical observatory located on a ridge above the town of Halcombe. It houses a 60 cm reflecting telescope that is used by a local society.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 29
+  },
+  {
+   "id": "d1b005",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Tolliver Press publish?",
+   "pred": "Tolliver Press is a small publishing house based in Brightwater that prints poetry pamphlets and regional history books.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 18
+  },
+  {
+   "id": "d1b006",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you buy at Greyfriars Market?",
+   "pred": "At Greyfriars Market, you can buy cheese, bread, and second-hand books. These items are sold on weekdays in the covered market hall located in the centre of Dunmere.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "items",
+     "sold",
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 28
+  },
+  {
+   "id": "d1b007",
+   "kind": "para",
+   "sub": "para",
+   "q": "How many locks does the Helvering Canal have?",
+   "pred": "The Helvering Canal has nine locks. It is a narrow canal that links the River Oxe with the port of Kelsey and is now used mainly by pleasure boats.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 29
+  },
+  {
+   "id": "d1b008",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is left of Pimlott Abbey?",
+   "pred": "Pimlott Abbey is a ruined abbey located on a headland in the north of Tarn County. Only the nave walls and a bell tower remain standing.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "d1b009",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who worked at Ravenscar Mine?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1b010",
+   "kind": "para",
+   "sub": "para",
+   "q": "When does the Wexcombe Choir perform?",
+   "pred": "The Wexcombe Choir performs at the village's harvest festival and sings carols during the winter months.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "during",
+     "months"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 16
+  },
+  {
+   "id": "d1b011",
+   "kind": "para",
+   "sub": "para",
+   "q": "What did Ambrose Kettle make?",
+   "pred": "Ambrose Kettle was a clockmaker from the town of Yarrow who built a tall case clock that still stands in the town hall. He made a clock that is still standing in the town hall.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "made"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 35
+  },
+  {
+   "id": "d1b012",
+   "kind": "para",
+   "sub": "para",
+   "q": "How high are Nilsson Falls?",
+   "pred": "Nilsson Falls drops about thirty metres over a basalt ledge. A footpath leads to a viewing platform.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 17
+  },
+  {
+   "id": "d1b013",
+   "kind": "para",
+   "sub": "para",
+   "q": "What happened to the keepers at Corvin Lighthouse?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1b014",
+   "kind": "para",
+   "sub": "para",
+   "q": "What animals can be seen at Sable Cove?",
+   "pred": "Based on the notes provided, the animals that can be seen at Sable Cove are seals. They are often found resting on the rocks at the western end of the bay.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "based",
+     "notes",
+     "provided",
+     "found",
+     "resting"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 31
+  },
+  {
+   "id": "d1b015",
+   "kind": "para",
+   "sub": "para",
+   "q": "How many pupils attend Brantley Academy?",
+   "pred": "Brantley Academy is a secondary school located in Oakhurst that teaches about nine hundred pupils aged eleven to eighteen.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "d1b016",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do volunteers do at Calder Orchard?",
+   "pred": "Volunteers at Calder Orchard pick the old varieties of apples and pears from the community orchard each autumn. They then press the fruit to make juice.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "pears",
+     "make"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "d1b017",
+   "kind": "para",
+   "sub": "para",
+   "q": "How high is Isken Pass?",
+   "pred": "Isken Pass is a mountain pass located at an elevation of 2,100 metres between the valleys of Rho and Seld. It is closed by snow for most of the winter.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "elevation"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 30
+  },
+  {
+   "id": "d1b018",
+   "kind": "para",
+   "sub": "para",
+   "q": "What animals live at Mossgiel Farm?",
+   "pred": "Mossgiel Farm keeps a flock of black-faced sheep. The farmhouse dates from the early eighteenth century.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 16
+  },
+  {
+   "id": "d1b019",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is the Harbour Light Cafe known for?",
+   "pred": "Harbour Light Cafe is a family-run cafe located on the quay at Pellow. It is famous for its crab sandwiches and its view of the fishing boats.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "famous"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 27
+  },
+  {
+   "id": "d1b020",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is 12 times 7?",
+   "pred": "The notes state that 12 times 7 equals 84.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "notes",
+     "state",
+     "equals"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d1b021",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is 45 minus 26?",
+   "pred": "The notes state that the answer is 19 and show the working as 45 minus 26 equals 19.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "notes",
+     "state",
+     "show",
+     "equals"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 18
+  },
+  {
+   "id": "d1b022",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is 63 divided by 7?",
+   "pred": "The notes state that 63 divided by 7 equals 9.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "notes",
+     "state",
+     "equals"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 10
+  },
+  {
+   "id": "d1b023",
+   "kind": "para",
+   "sub": "para",
+   "q": "How much is 25 times 6?",
+   "pred": "The notes state that 25 times 6 equals 150. This is the same calculation shown in the working section.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "notes",
+     "state",
+     "equals",
+     "same",
+     "shown",
+     "section"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "d1b024",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is my sister called?",
+   "pred": "My sister is called Odile. She lives in Lyon.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d1b025",
+   "kind": "para",
+   "sub": "para",
+   "q": "How many cats do I have?",
+   "pred": "You have two cats, one grey and one ginger.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d1b026",
+   "kind": "para",
+   "sub": "para",
+   "q": "When do I start work on Mondays?",
+   "pred": "You start work at seven on Mondays.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 7
+  },
+  {
+   "id": "d1b027",
+   "kind": "para",
+   "sub": "para",
+   "q": "What tea do I like?",
+   "pred": "You like jasmine tea, and you drink it without sugar.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 10
+  },
+  {
+   "id": "d1b028",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Verrick the capital of?",
+   "pred": "Verrick is the capital of the republic of Altmark.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d1b029",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is the Lindqvist Prize awarded for?",
+   "pred": "The Lindqvist Prize is awarded for achievement in marine biology. It honors individuals who have made significant contributions to the field of marine science.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "honors",
+     "individuals",
+     "have",
+     "made",
+     "significant",
+     "contributions",
+     "field",
+     "science"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d1b030",
+   "kind": "para",
+   "sub": "para",
+   "q": "What was Tobias Renner's job?",
+   "pred": "Tobias Renner worked as a cartographer.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 6
+  },
+  {
+   "id": "d1b031",
+   "kind": "para",
+   "sub": "para",
+   "q": "Where does the Karsten River end?",
+   "pred": "The Karsten River flows into the Bay of Orlo, which means it ends at the mouth of that bay.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "means",
+     "ends"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "d1b032",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Pellucid Glass Company make?",
+   "pred": "Pellucid Glass Company is a manufacturer of laboratory glassware. It was set up in 1921 in the town of Ashgrove and supplies universities across the region.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "d1b033",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is in Anselm Gardens?",
+   "pred": "Anselm Gardens features a botanical garden, a heated palm house, and a rose walk. It is open daily and includes a small tea room.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "features",
+     "includes"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d1b034",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Roddick Viaduct built from?",
+   "pred": "Roddick Viaduct is built from local red brick.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 8
+  },
+  {
+   "id": "d1b035",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is there in Fairlight Crossing?",
+   "pred": "Fairlight Crossing is a small village located at the junction of two old drove roads. It contains a pub, a chapel, and a bus stop.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "contains"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 25
+  },
+  {
+   "id": "d1b036",
+   "kind": "para",
+   "sub": "para",
+   "q": "How many seats does Zeller Theatre have?",
+   "pred": "Zeller Theatre has four hundred seats in the city of Brandt. It stages new writing and a pantomime every December.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 20
+  },
+  {
+   "id": "d1u000",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What are the opening hours of Marlowe Bridge Museum?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d1u001",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Please outline what the Glennor Accord says.",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d1u002",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Who designed the Pelham Tower?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d1u003",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What is the population of Westerholm?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d1u004",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Tell me what Cobb Valley Railway is.",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d1u005",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "How deep is Lake Insterburg?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d1u006",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is the tallest peak in the Dovrek Range?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u007",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Who wrote the novel The Salt Ledger?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u008",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What does Hobart Lane Primary School teach?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u009",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Where is the Sandor Gallery?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u010",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "How old is the Elmgrove Oak?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u011",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was Tarvin Hall built?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u012",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was the Corbel Society founded?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d1u013",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When did Pettigrew Harbour open?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2b000",
+   "kind": "para",
+   "sub": "para",
+   "q": "How often does Hallam Ferry run?",
+   "pred": "Hallam Ferry runs every twenty minutes from dawn until nine in the evening. It operates as a chain ferry that carries cars across the River Lune at Hallam.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "operates"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 28
+  },
+  {
+   "id": "d2b001",
+   "kind": "para",
+   "sub": "para",
+   "q": "What happens at Brightwell Orchard in October?",
+   "pred": "Brightwell Orchard is a community orchard located on an old allotment site in Calder that features sixty apple trees. It hosts a special pressing day every October.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "features",
+     "hosts",
+     "special",
+     "every"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 27
+  },
+  {
+   "id": "d2b002",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Ingram Weather Station record?",
+   "pred": "The Ingram Weather Station records wind speed, rainfall, and temperature. It is an automatic station located on the summit of Ingram Fell. It collects this data every ten minutes.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "collects",
+     "data"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 29
+  },
+  {
+   "id": "d2b003",
+   "kind": "para",
+   "sub": "para",
+   "q": "When do the Saltash Rowers train?",
+   "pred": "Saltash Rowers train in the estuary on Tuesday and Thursday evenings.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 11
+  },
+  {
+   "id": "d2b004",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Penfold Library collect?",
+   "pred": "Penfold Library collects books on local history and parish maps. It is located above the old corn exchange in Kirby.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 20
+  },
+  {
+   "id": "d2b005",
+   "kind": "para",
+   "sub": "para",
+   "q": "Why was a fish pass added to Morrow Weir?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2b006",
+   "kind": "para",
+   "sub": "para",
+   "q": "What was Clement Varga known for?",
+   "pred": "Clement Varga was a furniture maker from the hill town of Sotto who was known for creating oak chairs with carved backs and rush seats.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "creating"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 25
+  },
+  {
+   "id": "d2b007",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you see at Lantern Cove?",
+   "pred": "At Lantern Cove, you can see a shingle beach accessed by a steep path from the coast road, and seals are often spotted on the rocks during low tide.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "accessed",
+     "spotted",
+     "during"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 29
+  },
+  {
+   "id": "d2b008",
+   "kind": "para",
+   "sub": "para",
+   "q": "What grows in Dunnock Woods?",
+   "pred": "Dunnock Woods is an ancient woodland of oak and hazel located on the slopes above Wrenford. Bluebells cover the ground there in late spring.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d2b009",
+   "kind": "para",
+   "sub": "para",
+   "q": "When does Tremaine Bakery open?",
+   "pred": "Tremaine Bakery opens at six each morning on the high street of Polwith. It is a family bakery that bakes saffron buns and pasties.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d2b010",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who records at Quarry Lane Studios?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2b011",
+   "kind": "para",
+   "sub": "para",
+   "q": "How is the Esker Ridge Trail marked?",
+   "pred": "The Esker Ridge Trail is marked with yellow posts. It is an eight-mile walking route that follows a gravel ridge left by a glacier.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "mile"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d2b012",
+   "kind": "para",
+   "sub": "para",
+   "q": "Why does Varden Clocktower have four faces?",
+   "pred": "The Varden Clocktower has four faces so that it can be read from every street in the market square.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "d2b013",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Holloway Mill grind?",
+   "pred": "Holloway Mill grinds flour from local wheat. Visitors can watch the wheel turn on open days in summer.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 18
+  },
+  {
+   "id": "d2b014",
+   "kind": "para",
+   "sub": "para",
+   "q": "When are lifeguards at Ardley Swimming Pond?",
+   "pred": "Lifeguards are on duty at Ardley Swimming Pond from June to the end of August.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 15
+  },
+  {
+   "id": "d2b015",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Kestrel Radio broadcast?",
+   "pred": "Kestrel Radio broadcasts local news in the morning and music in the evening. It is a volunteer station located in the town of Merrow.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "d2b016",
+   "kind": "para",
+   "sub": "para",
+   "q": "When is Sorrel Street Market held?",
+   "pred": "Sorrel Street Market is held every Saturday in Fenby. Most stalls sell vegetables, flowers and plants.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 16
+  },
+  {
+   "id": "d2b017",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is the hide at Gannet Point for?",
+   "pred": "The wooden hide at Gannet Point is designed to let visitors watch thousands of seabirds nesting on the cliffs without disturbing the colony.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "designed",
+     "nesting"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 23
+  },
+  {
+   "id": "d2b018",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is the Bramley Cycle Path built on?",
+   "pred": "The Bramley Cycle Path is built on a disused railway line. It is located between Bramley and Oakhurst. The path is flat and surfaced with fine gravel.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 27
+  },
+  {
+   "id": "d2b019",
+   "kind": "para",
+   "sub": "para",
+   "q": "Where are Ottoline Shaw's specimens kept?",
+   "pred": "Ottoline Shaw's moss specimens are kept at the museum in Carrick.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "moss"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 11
+  },
+  {
+   "id": "d2b020",
+   "kind": "para",
+   "sub": "para",
+   "q": "When is the Pellingham Bell rung?",
+   "pred": "The Pellingham Bell is rung before the Sunday service. It is a bronze bell weighing about a tonne.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 18
+  },
+  {
+   "id": "d2b021",
+   "kind": "para",
+   "sub": "para",
+   "q": "Is swimming allowed at Cindermoor Reservoir?",
+   "pred": "No, swimming is not allowed at Cindermoor Reservoir, although sailing is permitted.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "although",
+     "permitted"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 12
+  },
+  {
+   "id": "d2b022",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do pupils at Rowan House School grow?",
+   "pred": "Pupils at Rowan House School grow vegetables in a garden behind the playground.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 13
+  },
+  {
+   "id": "d2b023",
+   "kind": "para",
+   "sub": "para",
+   "q": "How many rooms does the Fieldfare Inn have?",
+   "pred": "The Fieldfare Inn has twelve rooms. It is located on the old north road near Tibbet and features a beamed dining room.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "features"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 22
+  },
+  {
+   "id": "d2b024",
+   "kind": "para",
+   "sub": "para",
+   "q": "How does the light of Marten Island Lighthouse flash?",
+   "pred": "Marten Island Lighthouse is a short black and white tower located on the western tip of Marten Island. Its light flashes twice every fifteen seconds.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 25
+  },
+  {
+   "id": "d2b025",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is left of Gorse Hill Fort?",
+   "pred": "Gorse Hill Fort is an Iron Age hill fort that still has two rings of earth banks. Sheep graze inside the old ramparts.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "still"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Age",
+     "Iron"
+    ]
+   },
+   "words": 23
+  },
+  {
+   "id": "d2b026",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does Tilbury Puppet Theatre perform with?",
+   "pred": "Tilbury Puppet Theatre performs with wooden marionettes. They visit village halls and schools in the spring.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 16
+  },
+  {
+   "id": "d2b027",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does each Harrowgate plot have?",
+   "pred": "Each Harrowgate Allotment plot is rented out by the town council and includes a water butt and a small shed.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "includes"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Allotment"
+    ]
+   },
+   "words": 20
+  },
+  {
+   "id": "d2b028",
+   "kind": "para",
+   "sub": "para",
+   "q": "What did Silas Brennan repair?",
+   "pred": "Silas Brennan repaired the walls of several churches in the Ovel valley. He trained his two sons in the trade.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 20
+  },
+  {
+   "id": "d2b029",
+   "kind": "para",
+   "sub": "para",
+   "q": "When is the Moorcroft Sheep Fair?",
+   "pred": "The Moorcroft Sheep Fair takes place on the first Monday in September. It is an annual event where farmers show and sell sheep.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "event"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 23
+  },
+  {
+   "id": "d2b030",
+   "kind": "para",
+   "sub": "para",
+   "q": "Why was Calloway Bridge rebuilt?",
+   "pred": "Calloway Bridge was rebuilt after a flood washed away the old crossing.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 12
+  },
+  {
+   "id": "d2b031",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you see at Linnet Bay Aquarium?",
+   "pred": "At Linnet Bay Aquarium, you can see crabs, starfish, and fish that come from the local shore.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "come"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 17
+  },
+  {
+   "id": "d2b032",
+   "kind": "para",
+   "sub": "para",
+   "q": "When does Hartwell Cricket Club play?",
+   "pred": "Hartwell Cricket Club plays on a village green beside the church. Matches are held on Sunday afternoons from May to September.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 21
+  },
+  {
+   "id": "d2b033",
+   "kind": "para",
+   "sub": "para",
+   "q": "What does my brother do?",
+   "pred": "My brother Teodor works as a nurse in Bristol.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d2b034",
+   "kind": "para",
+   "sub": "para",
+   "q": "What am I allergic to?",
+   "pred": "You are allergic to peanuts. You must check food labels to avoid them.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "avoid"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 13
+  },
+  {
+   "id": "d2b035",
+   "kind": "para",
+   "sub": "para",
+   "q": "What colour is my car?",
+   "pred": "Your car is small and blue. It was bought last year.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 11
+  },
+  {
+   "id": "d2b036",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is eight times seven?",
+   "pred": "The notes state that eight times seven equals fifty-six.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "notes",
+     "state",
+     "equals",
+     "fifty"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d2b037",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is a hundred divided by four?",
+   "pred": "The notes state that 100 divided by 4 equals 25, which answers the question directly.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "notes",
+     "state",
+     "equals",
+     "question",
+     "directly"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 15
+  },
+  {
+   "id": "d2b038",
+   "kind": "para",
+   "sub": "para",
+   "q": "Where is Durrant Hall?",
+   "pred": "Durrant Hall is located in the town of Wexley.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 9
+  },
+  {
+   "id": "d2b039",
+   "kind": "para",
+   "sub": "para",
+   "q": "What instrument does Mira Holt play?",
+   "pred": "Mira Holt plays the cello.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d2u000",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What is the address of the Calloway Bridge visitor centre?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d2u001",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Who founded the Ellery Trust?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d2u002",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "How many people live in Brackenfold?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d2u003",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What does the Silvan Charter require?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "d2u004",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Who painted the ceiling of Norland Chapel?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u005",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "How fast may cars drive along Tallis Road?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u006",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "How tall is the Merriman Spire?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u007",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Where was the poet Ines Calder born?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u008",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was Fieldfare Inn built?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u009",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When did Penfold Library open?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u010",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "In what year was Varden Clocktower finished?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "d2u011",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When did Clement Varga die?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  }
+ ],
+ "blender2": {
+  "bake": "/home/anmire/ai/hybrid1/bakes/qwen35_2b_q8g64",
+  "opts": {
+   "sys": "split4",
+   "stream": true,
+   "head": "cpu",
+   "embed": "cpu",
+   "kv": 8,
+   "chunk": 256
+  },
+  "engine_opts": {
+   "head": "cpu",
+   "embed": "cpu",
+   "stream": true,
+   "kv": 8,
+   "chunk": 256
+  },
+  "sets": [
+   "dev",
+   "probe"
+  ],
+  "outputs": {
+   "dev": "/home/anmire/ai/hybrid1/runs2/dev_qwen35_2b_q8_M.json",
+   "probe": "/home/anmire/ai/hybrid1/runs2/probe_qwen35_2b_q8_M.json"
+  },
+  "meas": {
+   "opts": {
+    "head": "cpu",
+    "embed": "cpu",
+    "stream": true,
+    "kv": 8,
+    "chunk": 256
+   },
+   "after_warmup_proc_vram_GB": 0.654,
+   "kv_cache_GB_at_ctx": 0.0159,
+   "ctx_tokens": 2560,
+   "peak_proc_vram_GB": 0.887,
+   "torch_max_alloc_GB": 0.377,
+   "torch_max_reserved_GB": 0.409,
+   "prefill_tok_s": 114.4,
+   "decode_tok_s": 5.84,
+   "prefill_s": 17.9,
+   "decode_s": 87.66,
+   "host_pinned_GB": 1.459,
+   "bake_manifest_GB": 2.477,
+   "bits": 8,
+   "gs": 64,
+   "fmt": "qgroup-affine-v1",
+   "layers": 24,
+   "hidden": 2048,
+   "vocab": 248320,
+   "tied": true,
+   "layer_types": [
+    "full_attention",
+    "linear_attention"
+   ]
+  },
+  "ppl": {
+   "nll": 2.1044,
+   "ppl": 8.202,
+   "tokens": 1535,
+   "through": "engine prefill with the configured cache, chunking and tables"
+  },
+  "proc_vram_peak_GB": {
+   "load": 0.149,
+   "meas": 0.887,
+   "ppl": 0.944,
+   "score_dev": 0.944,
+   "score_probe": 0.753
+  },
+  "proc_vram_peak_all_GB": 0.944,
+  "times": {
+   "load_s": 2.4,
+   "meas_s": 110.4,
+   "ppl_s": 20.9,
+   "score_dev_s": 826.5,
+   "score_probe_s": 1833.0
+  },
+  "same_process": true,
+  "alloc_conf_env": "",
+  "torch": "2.14.1+rocm7.2",
+  "hip": "7.2.53211",
+  "python": "3.12.14",
+  "throttle_obeyed_in_scoring": true
+ }
+}
