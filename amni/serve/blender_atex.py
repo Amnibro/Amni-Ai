@@ -146,7 +146,7 @@ class Atex:
     @torch.no_grad()
     def prefill(s,ids,cache,allh=False):
         c=s.o['chunk'] or ids.shape[-1];H=[]
-        for i in range(0,ids.shape[-1],c):o=s.base_model(inputs_embeds=s.emb(ids[0,i:i+c]).unsqueeze(0),past_key_values=cache,use_cache=True);allh and H.append(o.last_hidden_state[0])
+        for i in range(0,ids.shape[-1],c):o=s.base_model(inputs_embeds=s.emb(ids[0,i:i+c]).unsqueeze(0),past_key_values=cache,use_cache=True);allh and H.append(o.last_hidden_state[0]);c<ids.shape[-1] and torch.cuda.empty_cache()
         return torch.cat(H) if allh else o.last_hidden_state[0,-1]
     @torch.no_grad()
     def generate(s,ids,max_new=64,stops=(),temperature=0.0,ign=False,tm=None,lg_out=None):
@@ -158,7 +158,7 @@ class Atex:
             if stops:
                 txt=s.tok.decode(out,skip_special_tokens=True)
                 if any(x in txt.lstrip() for x in stops):break
-            len(out)%8==0 and time.sleep(thr())
+            len(out)%8==0 and time.sleep(thr());len(out)%QKV.blk==0 and torch.cuda.empty_cache()
             h=s.base_model(inputs_embeds=s.emb(torch.tensor([t])).unsqueeze(0),past_key_values=ca,use_cache=True).last_hidden_state[0,-1]
         torch.cuda.synchronize();t2=time.time();tm is not None and tm.update(prefill_s=t1-t0,decode_s=t2-t1,n_prompt=int(ids.shape[-1]),n_new=len(out))
         s.kvb=sum(lbytes(l) for l in ca.layers);s.last_n=len(out);s.last_ids=out;return s.tok.decode(out,skip_special_tokens=True)

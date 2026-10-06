@@ -2,9 +2,9 @@ import os,sys,json,glob,time,shutil,argparse,re,hashlib,torch,torch.nn as nn,saf
 from safetensors import safe_open
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),".."))
 from amni.inference import qgroup_gemv as Q
-ap=argparse.ArgumentParser();ap.add_argument("--src",required=True);ap.add_argument("--out",required=True);ap.add_argument("--bits",type=int,default=4);ap.add_argument("--gs",type=int,default=128);ap.add_argument("--emb-bits",type=int,default=0);ap.add_argument("--emb-gs",type=int,default=128);ap.add_argument("--mix",default="");ap.add_argument("--calib",default="");ap.add_argument("--nseq",type=int,default=128);ap.add_argument("--seqlen",type=int,default=512);ap.add_argument("--damp",type=float,default=0.01);ap.add_argument("--seed",type=int,default=11);a=ap.parse_args()
+ap=argparse.ArgumentParser();ap.add_argument("--src",required=True);ap.add_argument("--out",required=True);ap.add_argument("--bits",type=int,default=4);ap.add_argument("--gs",type=int,default=128);ap.add_argument("--emb-bits",type=int,default=0);ap.add_argument("--emb-gs",type=int,default=128);ap.add_argument("--mix",default="");ap.add_argument("--calib",default="");ap.add_argument("--nseq",type=int,default=128);ap.add_argument("--seqlen",type=int,default=512);ap.add_argument("--damp",type=float,default=0.01);ap.add_argument("--seed",type=int,default=11);ap.add_argument("--dev",default="cuda");a=ap.parse_args()
 MIX=[(re.compile(p),int(b)) for p,b in (x.split("=") for x in a.mix.split(",") if x)]
-os.makedirs(a.out,exist_ok=True);dev="cuda"
+os.makedirs(a.out,exist_ok=True);dev=a.dev
 LIN=lambda k,w:w.dim()==2 and ".layers." in k and k.endswith(".weight") and "norm" not in k
 EMB=lambda k,w:w.dim()==2 and (k.endswith("embed_tokens.weight") or k.endswith("lm_head.weight"))
 CF=json.load(open(a.src+"/config.json"));TX="text_config" in CF and "vision_config" in CF
@@ -13,7 +13,7 @@ TX and json.dump({**CF["text_config"],"architectures":[CF["architectures"][0].re
 man={"gs":a.gs,"bits":a.bits,"emb_bits":a.emb_bits,"emb_gs":a.emb_gs,"fmt":"qgroup-affine-v1"+("-gptq" if a.calib else ""),"text_only_from_multimodal":TX,"tensors":{}};rep={};t0=time.time();nb=[0]
 def bake(k,w,bits,gs,H=None):
     W=w.to(dev);q,sa,sc,dp=Q.gptq(W,H,bits,gs,a.damp) if H is not None else Q.quantize(W,bits,gs)+(None,);pl=Q.split(q,bits);D=Q.dequant(pl,sa,sc,bits,gs,W.shape[1]);Wf=W.float();E=D-Wf
-    cos=torch.nn.functional.cosine_similarity(D.flatten(),Wf.flatten(),dim=0).item();rel=(E.norm()/Wf.norm()).item();ok=bool((Q.unpack(pl,bits,W.shape[1])==q).all());hr=((E@H*E).sum()/(Wf@H*Wf).sum()).clamp_min(0).sqrt().item() if H is not None else None
+    cos=torch.nn.functional.cosine_similarity(D.flatten().double(),Wf.flatten().double(),dim=0).item();rel=(E.norm()/Wf.norm()).item();ok=bool((Q.unpack(pl,bits,W.shape[1])==q).all());hr=((E@H*E).sum()/(Wf@H*Wf).sum()).clamp_min(0).sqrt().item() if H is not None else None
     return {k+".p0":pl[0].cpu(),**({k+".p1":pl[1].cpu()} if len(pl)>1 else {}),k+".a":sa.cpu(),k+".c":sc.cpu()},{"cos":cos,"rel_err":rel,"out_rel_err":hr,"damp":dp,"codes_roundtrip_exact":ok,"bits":bits,"gs":gs,"numel":W.numel()},D
 def put(sd,k,w,H=None):
     q=LIN(k,w) or (a.emb_bits and EMB(k,w));bits,gs=(a.bits,a.gs) if LIN(k,w) else (a.emb_bits,a.emb_gs);bits=next((b for p,b in MIX if p.search(k)),bits)
