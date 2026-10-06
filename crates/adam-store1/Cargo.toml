@@ -1,0 +1,22 @@
+[package]
+name = "adam-store1"
+version = "0.1.0"
+edition = "2021"
+description = "STORE-1 ultra-compact exact Wikidata drive: 17-ary canonical Huffman cascades of 1-digit GF(17) ribbon levels (adam-torus), presence signatures, per-property codebooks, a solved name table, a static LUT context-model text codec, all in Reffelt-packed GF(17) PTEX pages; C ABI reader"
+[lib]
+name = "adam_store1"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+[[bin]]
+name = "store1"
+path = "src/bin/store1.rs"
+[dependencies]
+adam-gf17 = { path = "../adam-gf17", default-features = false }
+adam-torus = { path = "../adam-torus" }
+memmap2 = "0.9"
+rayon = "1"
+libc = "0.2"
+[profile.release]
+opt-level = 3
+codegen-units = 1
+[workspace]
