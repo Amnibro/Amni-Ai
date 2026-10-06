@@ -1,0 +1,8 @@
+{
+ "license": "CC0-1.0, written for mission HYBRID-1 (2026-10-05)",
+ "n_blend": 51,
+ "n_chat": 14,
+ "overlap_ngram": 6,
+ "overlap_flagged": 0,
+ "checked_against": "amni.compute.decontam.index(6) over 131 eval source files of the shared tree (probe8, chat suites, h4, harness, cognition, concepts eval)"
+}

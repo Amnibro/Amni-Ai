@@ -1,0 +1,33 @@
+{
+ "name": "minicpm5_2b_q4_head_q4_embed_q4",
+ "opts": {
+  "head": "q4",
+  "embed": "q4"
+ },
+ "load_s": 2.9,
+ "vram_ctx_overhead_GB": 0.151,
+ "proc_vram_after_ctx_GB": 0.151,
+ "weights_vram_GB": 1.467,
+ "after_warmup_proc_vram_GB": 1.761,
+ "proc_vram_after_load_GB": 1.618,
+ "torch_alloc_after_load_GB": 1.337,
+ "torch_reserved_after_load_GB": 2.275,
+ "kv_cache_GB_at_ctx": 0.1101,
+ "ctx_tokens": 2560,
+ "peak_proc_vram_GB": 2.566,
+ "peak_vram_GB_incl_ctx": 2.566,
+ "peak_vram_GB_excl_ctx": 2.416,
+ "torch_max_alloc_GB": 2.232,
+ "torch_max_reserved_GB": 2.275,
+ "prefill_tok_s": 1075.7,
+ "decode_tok_s": 24.07,
+ "prefill_s": 1.9,
+ "decode_s": 21.27,
+ "bake_manifest_GB": 2.123,
+ "bits": 4,
+ "gs": 128,
+ "layers": 42,
+ "hidden": 2048,
+ "vocab": 130560,
+ "tied": false
+}

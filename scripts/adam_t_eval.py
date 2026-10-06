@@ -127,6 +127,8 @@ class Proto(ProtoClient):
  def gen(s,p:str,n:int)->str:return s.text(p,n,["\n"]).strip()
  def lpb(s,P:list)->list:return s.lp(P,64)
  def logprob(s,c:bytes,x:bytes)->float:return s.lpb([(c,x)])[0]
+def proto(cmd:str):
+ B=__import__("amni.serve.blender_atex",fromlist=["Blender"]);return type("BProto",(B.Blender,),{"gen":lambda s,p,n:s.text(p,n,["\n"]),"lpb":None,"logprob":None})(cmd) if cmd.startswith("atex:") else Proto(cmd)
 class E2E:
  gen=logprob=lpb=None
  def __init__(s,cmd:str):
@@ -221,7 +223,7 @@ def main():
  assert MAN.exists(),"run prereg first";man=json.loads(MAN.read_text());t=time.time();su=tuple(s for s in a.suites.split(",") if s);tst=a.chat_split=="test";led=[json.loads(l) for l in open(CHL)] if CHL.exists() else []
  assert not (tst and a.tune),"--tune runs never touch the chat test split";assert not tst or (a.suites=="chat" and not a.limit and a.milestone in CHMS and not EL.verify(man) and not any(x["milestone"]==a.milestone for x in led)),f"chat test split needs --suites chat, no --limit, --milestone in {list(CHMS)}, a clean lock, and is touched once per milestone ({EL.rel(CHL)})"
  assert not a.e2e or (a.model=="proto" and a.suites=="chat" and not tst),"--e2e runs --model proto --suites chat on the dev split only"
- M=E2E(a.proto_cmd) if a.e2e else Proto(a.proto_cmd) if a.model=="proto" else Ray(NAMES[a.model][2],NAMES[a.model][3]=="chat");nm,st,fm=(a.name or M.info.get("model") or "adam-t",a.step or str(M.info.get("step","na")),a.fmt or M.info.get("fmt","plain")) if a.model=="proto" else (a.name or NAMES[a.model][0],a.step or NAMES[a.model][1],a.fmt or NAMES[a.model][3])
+ M=E2E(a.proto_cmd) if a.e2e else proto(a.proto_cmd) if a.model=="proto" else Ray(NAMES[a.model][2],NAMES[a.model][3]=="chat");nm,st,fm=(a.name or M.info.get("model") or "adam-t",a.step or str(M.info.get("step","na")),a.fmt or M.info.get("fmt","plain")) if a.model=="proto" else (a.name or NAMES[a.model][0],a.step or NAMES[a.model][1],a.fmt or NAMES[a.model][3])
  assert not tst or any(d.get("kind")=="prod" and d.get("chat_split")=="dev" and chat_ms(d["m"]).get(a.milestone) for d in (json.loads(q.read_text()) for q in EV.glob(f"report_{sn(nm)}_{sn(st)}*.json"))),f"{nm} {st} has no prod chat dev report meeting {a.milestone}; test stays untouched"
  r=evaluate(M.gen,M.logprob,fm,su,a.limit,M.lpb,lambda x:print(x,flush=True),a.chat_split,M if a.e2e else None);getattr(M,"close",None) and M.close();hl=headline(r["suites"]);ck="chat" in su
  ch=EL.verify(man);kind="dry" if a.limit or ch or a.tune or a.suites not in PRODS else "prod";p=EV/f"report_{sn(nm)}_{sn(st)}{f'_chattest-{a.milestone}' if tst else '_e2e' if a.e2e else '_chat' if a.suites=='chat' else ''}{'_tune' if a.tune else ''}{'' if kind=='prod' else '_'+kind}.json"

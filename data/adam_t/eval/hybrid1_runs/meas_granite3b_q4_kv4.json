@@ -1,0 +1,32 @@
+{
+ "name": "granite3b_q4_kv4",
+ "opts": {
+  "kv": 4
+ },
+ "load_s": 1.0,
+ "vram_ctx_overhead_GB": 0.151,
+ "proc_vram_after_ctx_GB": 0.151,
+ "weights_vram_GB": 2.189,
+ "after_warmup_proc_vram_GB": 2.662,
+ "proc_vram_after_load_GB": 2.34,
+ "torch_alloc_after_load_GB": 2.185,
+ "torch_reserved_after_load_GB": 4.054,
+ "kv_cache_GB_at_ctx": 0.0557,
+ "ctx_tokens": 2560,
+ "peak_proc_vram_GB": 4.445,
+ "peak_vram_GB_incl_ctx": 4.445,
+ "peak_vram_GB_excl_ctx": 4.294,
+ "torch_max_alloc_GB": 3.986,
+ "torch_max_reserved_GB": 4.054,
+ "prefill_tok_s": 681.0,
+ "decode_tok_s": 15.09,
+ "prefill_s": 3.01,
+ "decode_s": 33.92,
+ "bake_manifest_GB": 2.185,
+ "bits": 4,
+ "gs": 128,
+ "layers": 40,
+ "hidden": 2560,
+ "vocab": 100352,
+ "tied": true
+}

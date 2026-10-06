@@ -226,6 +226,7 @@ def warm()->None:
     except Exception:pass
 def client()->AdamT:
     r=os.environ.get('AMNI_ADAM_T','').strip()
+    if os.environ.get('AMNI_BLENDER','').startswith('atex:'):return __import__('amni.serve.blender_atex',fromlist=['blender']).blender()
     with _L:
         c=_C.get(r)
         if c is None:[x.close() for x in _C.values()];_C.clear();c=_C[r]=AdamT(r);os.environ.get('AMNI_ADAM_T_CONTEXT','1')=='1' and os.environ.get('AMNI_ADAM_T_WARM','1')=='1' and threading.Thread(target=warm,daemon=True,name='adam-t-warm').start()
