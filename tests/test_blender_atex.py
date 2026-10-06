@@ -41,7 +41,7 @@ def test_gated_deltanet_hybrid_stream_chunk_kv8(tmp_path,n):
     for o in ({},{"stream":True},{"chunk":16},{"stream":True,"chunk":16},{"kv":8,"chunk":16,"stream":True}):
         e=B.Atex(bk,**o);lg=[];e.generate(ids,10,ign=True,lg_out=lg);R.append((list(e.last_ids),torch.stack(lg),e.kvb,e.cache()));del e
     lin=[l for l in R[0][3].layers if not isinstance(l,B.DynamicLayer)];assert len(lin)==n-n//4 and all(isinstance(l,B.QKV) for l in R[4][3].layers if isinstance(l,B.DynamicLayer))
-    assert R[1][0]==R[0][0] and torch.equal(R[1][1],R[0][1]) and torch.equal(R[3][1],R[2][1]) and (R[2][1]-R[0][1]).abs().max()<0.05 and (R[4][1]-R[2][1]).abs().max()<0.5 and R[4][2]>0 and R[0][2]>0
+    assert R[1][0]==R[0][0] and torch.equal(R[1][1],R[0][1]) and torch.equal(R[3][1],R[2][1]) and (R[2][1]-R[0][1]).abs().max()<0.05 and (R[4][1]-R[2][1]).abs().max()<0.5 and R[4][2]>0 and R[0][2]>=(n-n//4)*4*64*64*4
 @pytest.mark.parametrize("bits",[4,8])
 def test_kv_capacity_growth_exact(bits):
     L=B.kvlayer(bits)();torch.manual_seed(5);X=[(torch.randn(1,2,n,64),torch.randn(1,2,n,64)) for n in (5,300,1,1,250)];R=B.kvlayer(bits)()

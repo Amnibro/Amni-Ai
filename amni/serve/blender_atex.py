@@ -47,7 +47,7 @@ class QKV(DynamicLayer):
     def get_seq_length(s):return s.n
     def nbytes(s):return sum(t.numel()*t.element_size() for t in (s.S or ()))
 def noexp():torch.version.hip and getattr(torch._C,'_accelerator_setAllocatorSettings',torch.cuda.memory._set_allocator_settings)('expandable_segments:False')
-def lbytes(l):return sum(x.numel()*x.element_size() for a in ('keys','values','conv_states','recurrent_states','S') for x in (lambda v:v if isinstance(v,(list,tuple)) else [v])(getattr(l,a,None)) if torch.is_tensor(x))
+def lbytes(l):return sum(x.numel()*x.element_size() for a in ('keys','values','conv_states','recurrent_states','S') for x in (lambda v:list(v.values()) if isinstance(v,dict) else v if isinstance(v,(list,tuple)) else [v])(getattr(l,a,None)) if torch.is_tensor(x))
 def kvlayer(bits):return type(f'QKV{bits}',(QKV,),{'bits':bits})
 def card():
     for c in sorted(glob.glob('/sys/class/drm/card[0-9]')):
