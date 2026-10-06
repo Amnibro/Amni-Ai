@@ -41,4 +41,15 @@ def equiv(*tags):
         x=J(R/f"equiv_{t}.json")
         for k,v in x["cfgs"].items():L.append(f"| equiv_{t}.json | {k} | {v['ref']} | {v['n_identical_to_ref']}/{v['n_cmp']} | {v['maxabs_identical_max']} | {v['maxabs_all_max']} | {', '.join(str(d['i'])+'@'+str(d['div']) for d in v['diverged'][:8])+(' ...' if len(v['diverged'])>8 else '')} | {len(v['degenerate_repeat_prompts'])} |")
     return "\n".join(L)
-if __name__=="__main__":print({"fid":fid,"meas":meas,"probe":probe,"e2e":e2e,"rows":rows,"equiv":equiv}[sys.argv[1]](*sys.argv[2:]))
+def select(*names):
+    g=lambda d,*k:__import__("functools").reduce(lambda x,y:(x or {}).get(y),k,d);D={}
+    for n in names:
+        d=J(R/f"dev_{n}.json");x=d["blender2"];S=d["summary"];D[n]={"f":100*g(S,"blend_probe","faithful_para","p"),"nn":100*g(S,"blend_probe","no_new_content_para","p"),"h":100*g(S,"blend_probe","hedge_uncov","p"),"c":100*g(S,"blend_probe","coherent","p"),"dec":100*g(S,"chat_probe","all","decline","p"),"ppl":x["ppl"]["ppl"],"vr":x["meas"]["peak_proc_vram_GB"],"va":x["proc_vram_peak_all_GB"],"tok":x["meas"]["decode_tok_s"]}
+    for n,v in D.items():r=D.get(n.rsplit("_",2)[0]+"_q8_S");v["pr"]=v["ppl"]/r["ppl"] if r else None;v["gate"]=v["h"]>=80 and v["c"]>=95 and v["dec"]<=5 and v["pr"] is not None and v["pr"]<=1.15;v["sum"]=v["f"]+v["nn"]
+    G=[n for n in D if D[n]["gate"]];F0=max(v["f"] for v in D.values());N0=max(v["nn"] for v in D.values());F3=max((D[n]["f"] for n in G),default=0);N3=max((D[n]["nn"] for n in G),default=0);S5=max((D[n]["sum"] for n in G),default=0)
+    e0=[n for n in G if D[n]["f"]>=F0-5 and D[n]["nn"]>=N0-5];e3=[n for n in G if D[n]["f"]>=F3-5 and D[n]["nn"]>=N3-5];e5=[n for n in G if D[n]["sum"]>=S5-5]
+    pick=lambda E:min(E,key=lambda n:(round(D[n]["vr"]/0.05),-D[n]["tok"])) if E else "none"
+    L=["| config | dev faithful % | dev no-new % | sum | dev hedge % | dev blend coherent % | dev chat decline % | ppl / own int8 S | passes gates | eligible: plan as written | eligible: amendment 3 | eligible: amendment 5 | measure-phase peak GB | whole-run peak GB | decode tok/s |","|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    L+=[f"| {n} | {v['f']:.1f} | {v['nn']:.1f} | {v['sum']:.1f} | {v['h']:.1f} | {v['c']:.1f} | {v['dec']:.1f} | {v['pr']:.3f} | {v['gate']} | {n in e0} | {n in e3} | {n in e5} | {v['vr']:.3f} | {v['va']:.3f} | {v['tok']} |" for n,v in D.items()]
+    return "\n".join(L)+f"\n\nBest dev faithful over all rows {F0:.1f}, over gate-passing rows {F3:.1f}; best no-new over all {N0:.1f}, over gate-passing {N3:.1f}; best summed score over gate-passing {S5:.1f}.\n\n- Plan as written selects: **{pick(e0)}**\n- Amendment 3 selects: **{pick(e3)}**\n- Amendment 5 selects: **{pick(e5)}**"
+if __name__=="__main__":print({"fid":fid,"meas":meas,"probe":probe,"e2e":e2e,"rows":rows,"equiv":equiv,"select":select}[sys.argv[1]](*sys.argv[2:]))
