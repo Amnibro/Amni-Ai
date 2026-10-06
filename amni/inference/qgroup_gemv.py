@@ -1,28 +1,37 @@
 import torch,triton,triton.language as tl
 PL={2:(2,0),3:(2,1),4:(4,0),8:(8,0)}
 @triton.jit
-def _qg(p0,p1,a_ptr,c_ptr,x_ptr,y_ptr,M,OUT,INN:tl.constexpr,NG:tl.constexpr,GS:tl.constexpr,B0:tl.constexpr,B1:tl.constexpr,BM:tl.constexpr,BN:tl.constexpr):
+def _qg(p0,p1,a_ptr,c_ptr,x_ptr,y_ptr,M,OUT,INN:tl.constexpr,NG:tl.constexpr,GS:tl.constexpr,B0:tl.constexpr,B1:tl.constexpr,BM:tl.constexpr,BN:tl.constexpr,BK:tl.constexpr):
     pm=tl.program_id(0);pn=tl.program_id(1)
     rm=pm*BM+tl.arange(0,BM);rn=pn*BN+tl.arange(0,BN);mm=rm<M;nm=rn<OUT
-    acc=tl.zeros((BM,BN),dtype=tl.float32);kk=tl.arange(0,GS)
-    for g in range(0,NG):
-        k=g*GS+kk
-        b0=tl.load(p0+rn[None,:]*(INN*B0//8)+(k[:,None]*B0//8),mask=nm[None,:],other=0).to(tl.int32)
-        c=(b0>>((k[:,None]*B0)%8))&((1<<B0)-1)
+    NU:tl.constexpr=8 if B1>0 else 8//B0
+    R0:tl.constexpr=INN*B0//8
+    R1:tl.constexpr=INN*B1//8
+    acc=tl.zeros((BM,BN),dtype=tl.float32)
+    for t in range(0,INN//NU,BK):
+        q=t+tl.arange(0,BK);qm=q<INN//NU;g=(q*NU)//GS;mk=qm[:,None]&nm[None,:]
+        a=tl.load(a_ptr+rn[None,:]*NG+g[:,None],mask=mk,other=0.0).to(tl.float32)
+        o=tl.load(c_ptr+rn[None,:]*NG+g[:,None],mask=mk,other=0.0).to(tl.float32)
         if B1>0:
-            b1=tl.load(p1+rn[None,:]*(INN*B1//8)+(k[:,None]*B1//8),mask=nm[None,:],other=0).to(tl.int32)
-            c=c|(((b1>>((k[:,None]*B1)%8))&((1<<B1)-1))<<B0)
-        a=tl.load(a_ptr+rn*NG+g,mask=nm,other=0.0).to(tl.float32)
-        o=tl.load(c_ptr+rn*NG+g,mask=nm,other=0.0).to(tl.float32)
-        w=(c.to(tl.float32)*a[None,:]+o[None,:]).to(tl.float16)
-        x=tl.load(x_ptr+rm[:,None]*INN+k[None,:],mask=mm[:,None],other=0.0).to(tl.float16)
-        acc+=tl.dot(x,w)
+            ba=tl.load(p0+rn[None,:]*R0+2*q[:,None],mask=mk,other=0).to(tl.int32)
+            bb=tl.load(p0+rn[None,:]*R0+2*q[:,None]+1,mask=mk,other=0).to(tl.int32)
+            bh=tl.load(p1+rn[None,:]*R1+q[:,None],mask=mk,other=0).to(tl.int32)
+        else:
+            b0=tl.load(p0+rn[None,:]*R0+q[:,None],mask=mk,other=0).to(tl.int32)
+        for j in tl.static_range(NU):
+            if B1>0:
+                c=(((ba if j<4 else bb)>>(2*(j%4)))&3)|(((bh>>j)&1)<<2)
+            else:
+                c=(b0>>(j*B0))&((1<<B0)-1)
+            w=(c.to(tl.float32)*a+o).to(tl.float16)
+            xj=tl.load(x_ptr+rm[:,None]*INN+(q[None,:]*NU+j),mask=mm[:,None]&qm[None,:],other=0.0).to(tl.float16)
+            acc+=tl.dot(xj,w)
     tl.store(y_ptr+rm[:,None]*OUT+rn[None,:],acc.to(tl.float16),mask=mm[:,None]&nm[None,:])
-def qgemm(planes,a,c,x,bits,gs,y=None,BN=None,nw=None):
+def qgemm(planes,a,c,x,bits,gs,y=None,BN=None,nw=None,BK=32):
     p0=planes[0];p1=planes[1] if len(planes)>1 else planes[0];B0,B1=PL[bits];out,ng=a.shape;inn=ng*gs;M=x.shape[0]
     y=torch.empty(M,out,device=x.device,dtype=torch.float16) if y is None else y
-    BM=16 if M<=16 else 32 if M<=64 else 64;BN=BN or (16 if M<=16 else 64);nw=nw or (1 if M<=16 else 4)
-    _qg[((M+BM-1)//BM,(out+BN-1)//BN)](p0,p1,a,c,x,y,M,out,INN=inn,NG=ng,GS=gs,B0=B0,B1=B1,BM=BM,BN=BN,num_warps=nw)
+    BM=16 if M<=16 else 32 if M<=64 else 64;BN=BN or 64;nw=nw or (2 if M<=16 else 4)
+    _qg[((M+BM-1)//BM,(out+BN-1)//BN)](p0,p1,a,c,x,y,M,out,INN=inn,NG=ng,GS=gs,B0=B0,B1=B1,BM=BM,BN=BN,BK=BK,num_warps=nw)
     return y
 def pack(codes,B):
     n=8//B;o,i=codes.shape;s=(torch.arange(n,device=codes.device,dtype=torch.int32)*B)

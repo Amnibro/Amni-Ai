@@ -14,9 +14,13 @@ SYSM={'blend':"You are Adam, a warm and concise assistant. The user message may 
 'split3':("You are Adam, a warm and friendly companion. The user message begins with reference notes written as 'Label: text', followed by the user's question. If the notes answer the question, reply in two or three plain sentences that restate the answer using the notes' own wording and their main facts, adding nothing that is not in the notes: no new names, numbers, dates or details. If the notes do not answer the question, reply exactly: I'm not sure about that.","You are Adam, a warm and friendly companion who knows no outside facts. If the user shares something, greets you or says how they feel, reply with one or two warm sentences about what they said. If the user asks a question about a fact, a person, a place or a thing, reply exactly: I'm not sure about that. Earlier turns of this conversation are the only thing you remember."),
 'alone':"You are Adam, a warm and concise assistant. Reply briefly and naturally."}
 SYSM['split4']=(SYSM['split2'][0],SYSM['split3'][1])
+SYSM['copyA']=("You are Adam, a warm assistant. The user message begins with reference notes written as 'Label: text', followed by the user's question. If the notes answer the question, reply by restating the notes almost word for word: reuse their own sentences and wording, keep all of their facts, change only what is needed to make the reply flow as an answer, and add nothing that is not in the notes. If the notes clearly do not answer the question, reply that you are not sure.",SYSM['split3'][1])
+SYSM['copyB']=("You are Adam, a warm assistant. The user message begins with reference notes written as 'Label: text', followed by the user's question. If the notes answer the question, reply with one or two short plain sentences that copy the notes' wording, and then repeat any remaining sentences from the notes unchanged. Never swap in synonyms and never add a fact, name, number or date that is not in the notes. If the notes clearly do not answer the question, reply that you are not sure.",SYSM['split3'][1])
+SYSM['copyC']=("You are Adam, a warm assistant. The user message begins with reference notes written as 'Label: text', followed by the user's question. If the notes answer the question, reply with a short paragraph that states every fact in the notes, sentence by sentence, in the notes' own words, starting with the part that answers the question. Do not leave any sentence of the notes out, do not swap in synonyms, and add no name, number, date or detail that is not in the notes. If the notes clearly do not answer the question, reply that you are not sure.",SYSM['split3'][1])
 NOTE=re.compile(r"[A-Z][\w ().,'\-]{0,60}: \S")
 thr_t=[0.0,0.0]
 def thr():
+    if os.environ.get('AMNI_BLENDER_NOTHR'):return 0.0
     if time.time()-thr_t[1]>2:
         thr_t[1]=time.time()
         try:thr_t[0]=float(open(os.path.expanduser('~/.local/share/amni-ascend/throttle.txt')).read())
@@ -79,17 +83,19 @@ class Atex:
         for mod in m.modules():
             for nm,b in list(mod._buffers.items()):
                 b is not None and b.device.type!=dev and mod._buffers.__setitem__(nm,b.to(dev))
-        s.m=m;s.base_model=m.model;s.E=g('model.embed_tokens.weight');s.H=g('lm_head.weight') if 'lm_head.weight' in T else s.E;s.tied=s.H is s.E or 'lm_head.weight' not in T
-        s.E=s.E.pin_memory() if embed=='cpu' else s.E.to(dev)
-        s.H=s.E if s.tied and head=='bf16' and embed!='cpu' else s.H
-        s.hq=None
-        if head in('q8','q4'):
-            bt=8 if head=='q8' else 4;Wd=(s.H if s.H.device.type==dev else s.H.to(dev));P=[];A=[];C=[]
-            for i in range(0,Wd.shape[0],8192):
-                q,a,c=Q.quantize(Wd[i:i+8192],bt,128);P.append(Q.split(q,bt));A.append(a);C.append(c)
-            s.hq=QLin([torch.cat([p[j] for p in P]) for j in range(len(P[0]))]+[torch.cat(A),torch.cat(C)],bt,128,Wd.shape[1]);s.Hd=None
-        elif head=='cpu':s.Hd=(s.H if s.H.device.type=='cpu' else s.H.cpu()).to(torch.bfloat16)
-        else:s.Hd=s.H if s.H.device.type==dev else s.H.to(dev)
+        s.m=m;s.base_model=m.model;E=g('model.embed_tokens.weight');Hh=g('lm_head.weight') if 'lm_head.weight' in T else E;s.tied=Hh is E
+        bt=lambda x:int(x[1:]) if x[0]=='q' else 0
+        def qt(t,b):
+            P=[];A=[];C=[]
+            for i in range(0,t.shape[0],8192):q,a,c=Q.quantize(t[i:i+8192].to(dev),b,128);P.append(Q.split(q,b));A.append(a);C.append(c)
+            return QLin([torch.cat([p[j] for p in P]) for j in range(len(P[0]))]+[torch.cat(A),torch.cat(C)],b,128,t.shape[1])
+        s.QE=s.QH=s.E=s.Hd=None
+        if bt(embed):s.QE=qt(E,bt(embed))
+        elif embed=='cpu':s.E=E.pin_memory()
+        else:s.E=E.to(dev)
+        if bt(head):s.QH=s.QE if s.tied and bt(embed)==bt(head) else qt(Hh,bt(head))
+        elif head=='cpu':s.Hd=(s.E if s.tied and s.E is not None and s.E.device.type=='cpu' else Hh).to(torch.bfloat16)
+        else:s.Hd=s.E if s.tied and s.E is not None and s.E.device.type==dev else Hh.to(dev)
         s.layers=list(m.model.layers);s.L=[[x for x in l.modules() if isinstance(x,QLin)] for l in s.layers];s.kvb=0
         stream and s._stream_init()
         gcp=bake+'/generation_config.json';e=s.tok.eos_token_id
@@ -114,10 +120,13 @@ class Atex:
             def f(mod,args,out):s.done[i%2].record(torch.cuda.current_stream())
             return f
         for i,l in enumerate(s.layers):l.register_forward_pre_hook(pre(i));l.register_forward_hook(post(i))
-    def emb(s,ids):return s.E.index_select(0,ids.to(s.E.device)).to(s.dev,non_blocking=True)
+    def emb(s,ids):
+        if s.QE is not None:
+            w=s.QE.w;return Q.dequant([p.index_select(0,ids.to(p.device)) for p in w[:-2]],w[-2].index_select(0,ids.to(w[-2].device)),w[-1].index_select(0,ids.to(w[-1].device)),s.QE.bits,s.QE.gs,s.QE.inn).to(torch.bfloat16)
+        return s.E.index_select(0,ids.to(s.E.device)).to(s.dev,non_blocking=True)
     def logits(s,h):
         h=h.reshape(1,-1)
-        if s.hq is not None:return s.hq(h).float()/s.ls
+        if s.QH is not None:return s.QH(h).float()/s.ls
         if s.o['head']=='cpu':return (h.cpu().to(torch.bfloat16)@s.Hd.T).float().to(s.dev)/s.ls
         return (h.to(s.Hd.dtype)@s.Hd.T).float()/s.ls
     def cache(s):return Cache(layer_class_to_replicate=kvlayer(s.o['kv'])) if s.o['kv'] in(8,4) else Cache(layer_class_to_replicate=DynamicLayer)
@@ -127,16 +136,19 @@ class Atex:
         for i in range(0,ids.shape[-1],c):o=s.base_model(inputs_embeds=s.emb(ids[0,i:i+c]).unsqueeze(0),past_key_values=cache,use_cache=True)
         return o.last_hidden_state[0,-1]
     @torch.no_grad()
-    def generate(s,ids,max_new=64,stops=(),temperature=0.0):
-        ca=s.cache();h=s.prefill(ids,ca);out=[];txt=''
+    def generate(s,ids,max_new=64,stops=(),temperature=0.0,ign=False,tm=None):
+        t0=time.time();ca=s.cache();h=s.prefill(ids,ca);torch.cuda.synchronize();t1=time.time();out=[];txt=''
         for _ in range(max_new):
             lg=s.logits(h);t=int(lg.argmax(-1).item()) if temperature<=0 else int(torch.multinomial(torch.softmax(lg/temperature,-1),1).item())
-            if t in s.eos:break
-            out.append(t);txt=s.tok.decode(out,skip_special_tokens=True)
-            if stops and any(x in txt.lstrip() for x in stops):break
+            if t in s.eos and not ign:break
+            out.append(t)
+            if stops:
+                txt=s.tok.decode(out,skip_special_tokens=True)
+                if any(x in txt.lstrip() for x in stops):break
             len(out)%8==0 and time.sleep(thr())
             h=s.base_model(inputs_embeds=s.emb(torch.tensor([t])).unsqueeze(0),past_key_values=ca,use_cache=True).last_hidden_state[0,-1]
-        s.kvb=sum(getattr(l,'nbytes',lambda:l.keys.numel()*l.keys.element_size()*2 if l.keys is not None else 0)() for l in ca.layers);s.last_n=len(out);return txt
+        torch.cuda.synchronize();t2=time.time();tm is not None and tm.update(prefill_s=t1-t0,decode_s=t2-t1,n_prompt=int(ids.shape[-1]),n_new=len(out))
+        s.kvb=sum(l.nbytes() if hasattr(l,'nbytes') else (l.keys.numel()+l.values.numel())*l.keys.element_size() if l.keys is not None else 0 for l in ca.layers);s.last_n=len(out);s.last_ids=out;return s.tok.decode(out,skip_special_tokens=True)
 _U=re.compile(r"User: (.*?)\nAdam:(?: (.*?))?\n\n",re.S)
 def msgs(prompt):
     M=[];p=0
@@ -152,10 +164,10 @@ class Blender:
         return s.e.tok(t,return_tensors='pt',add_special_tokens=False).input_ids
     def text(s,prompt,max_bytes=400,stops=(),timeout=None):
         with s.lock:
-            ids=s.prompt_ids(prompt);t=s.e.generate(ids,max(8,int(max_bytes)//3),('\n',),0.0);return t.lstrip().split('\n')[0].strip()
+            ids=s.prompt_ids(prompt);t=s.e.generate(ids,max(8,int(max_bytes)//3),('\n',),0.0);from amni.serve import adam_t_client as C;return C.asc(t.lstrip().split('\n')[0].strip())
     def gen(s,prompt,max_tokens=400,stops=(),history=None,pre=(),rc=(),sep=' '):
         from amni.serve import adam_t_client as C
-        return s.text(C.template(prompt,history,0,pre,rc,sep),max_tokens)
+        nm=os.environ.get('AMNI_BLENDER_NOMAT')=='1';return s.text(C.template(prompt,history,0,() if nm else pre,() if nm else rc,sep),max_tokens)
     def budget(s,max_tokens=400):return int(s.info['ctx'])*3
     def proto(s):return s
     def alive(s):return True
