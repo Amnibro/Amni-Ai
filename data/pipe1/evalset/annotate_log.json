@@ -1,0 +1,30 @@
+[
+ {
+  "id": "p1-0050",
+  "split": "dev",
+  "cat": "wd_fact",
+  "dropped": true,
+  "why": "no match (3 subject candidates)"
+ },
+ {
+  "id": "p1-0154",
+  "split": "dev",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "p1-0157",
+  "split": "dev",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ },
+ {
+  "id": "p1-0159",
+  "split": "dev",
+  "cat": "commonsense",
+  "dropped": false,
+  "why": "cs answer not in any store"
+ }
+]

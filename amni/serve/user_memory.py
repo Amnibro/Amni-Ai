@@ -966,9 +966,9 @@ def remember(key:str,facts:list,session=None,turn:int=0)->int:
             if (e,r) in lt and lt[(e,r)].val==v:continue
             clk+=1;f=F(e,r,clk,time.time(),turn,sid,v[:24],nm);fs.append(f);lt[(e,r)]=f;n+=1
         n and save(key,fs);return n
-def forget(key:str,ent=None,rel=None)->int:
+def forget(key:str,ent=None,rel=None,clk=None)->int:
     with _lock:
-        fs=load(key);keep=[f for f in fs if ent is not None and not (f.ent==ent and (not rel or f.rel==rel))];save(key,keep,len(keep)<len(fs));return len(fs)-len(keep)
+        fs=load(key);keep=[f for f in fs if ent is not None and not (f.ent==ent and (not rel or f.rel==rel) and (clk is None or f.clk==clk))];save(key,keep,len(keep)<len(fs));return len(fs)-len(keep)
 def render(f)->str:
     k=(f.ent,f.rel,f.val,f.name)
     if k not in _rcache:

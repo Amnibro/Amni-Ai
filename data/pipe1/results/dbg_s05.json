@@ -1,0 +1,508 @@
+{
+ "meta": {
+  "model": "/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft3/model.gf17",
+  "model_sha256": "dfe9521f9f29ce21c194cd2c97984c4b1ec51e9e1f677c8fd617749897a8c85d",
+  "bin_sha256": "f8c8843f8991b1bfaa9fd1764f51e788b07e5d155af42f350ff03ff09aaa1e3e",
+  "blender": "adam-t",
+  "commit": "c9144fd12d525a1b5176ce6076b2e20940fab87f",
+  "dirty": true,
+  "loadavg": [
+   4.251953125,
+   3.78515625,
+   3.81298828125
+  ],
+  "at": "2026-10-06T21:51:16-0400",
+  "def_s": {
+   "fact": 0.25,
+   "explain": 0.5,
+   "chat": 0.75
+  },
+  "cond": "0.5",
+  "notask": false
+ },
+ "summary": {
+  "store2": {
+   "n": 8,
+   "n_draft": 8,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.125,
+   "model_called": 1.0,
+   "retry_pass": 0.0,
+   "fallback": 0.875,
+   "distinct2": 0.9623,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 7.5,
+   "nat": 1.9623,
+   "gold_acc": 1.0,
+   "retrieval": 0.0,
+   "lat13_median_ms": 163.446,
+   "lat13_p90_ms": 270.167,
+   "lat_refine_median_ms": 924.21,
+   "wall_median_ms": 1097.543
+  },
+  "hedge": {
+   "n": 1,
+   "n_draft": 0,
+   "fact_preservation": null,
+   "grounded": null,
+   "refine_pass": null,
+   "model_called": null,
+   "retry_pass": null,
+   "fallback": null,
+   "distinct2": 1.0,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 10.0,
+   "nat": 2.0,
+   "gold_acc": 0.0,
+   "retrieval": 1.0,
+   "lat13_median_ms": 1655.248,
+   "lat13_p90_ms": 1655.248,
+   "lat_refine_median_ms": 0.0,
+   "wall_median_ms": 3880.46
+  },
+  "chat": {
+   "n": 3,
+   "n_draft": 0,
+   "fact_preservation": null,
+   "grounded": null,
+   "refine_pass": null,
+   "model_called": null,
+   "retry_pass": null,
+   "fallback": null,
+   "distinct2": 0.9867,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 25.0,
+   "nat": 1.9867,
+   "gold_acc": 0.3333,
+   "retrieval": 0.0,
+   "lat13_median_ms": 543.314,
+   "lat13_p90_ms": 567.592,
+   "lat_refine_median_ms": 2701.602,
+   "wall_median_ms": 3244.916
+  },
+  "ALL": {
+   "n": 12,
+   "n_draft": 8,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.125,
+   "model_called": 1.0,
+   "retry_pass": 0.0,
+   "fallback": 0.875,
+   "distinct2": 0.9784,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 12.08,
+   "nat": 1.9784,
+   "gold_acc": 0.75,
+   "retrieval": 0.0833,
+   "lat13_median_ms": 168.412,
+   "lat13_p90_ms": 567.592,
+   "lat_refine_median_ms": 924.21,
+   "wall_median_ms": 1140.642
+  }
+ },
+ "rows": [
+  {
+   "id": "p1-0002",
+   "cat": "wd_fact",
+   "q": "The Brothers Karamazov was written by whom?",
+   "reply": "The Brothers Karamazov was written by Fyodor Dostoyevsky.",
+   "route": "store2",
+   "draft": [
+    "The Brothers Karamazov was written by Fyodor Dostoyevsky."
+   ],
+   "mat": "Draft: The Brothers Karamazov was written by Fyodor Dostoyevsky. The Brothers Karamazov, author: Fyodor Dostoyevsky.",
+   "must": [
+    "Fyodor Dostoyevsky"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 1281.4957390073687,
+   "ref_ms": 1112.9047749564052,
+   "gin_ms": 1112.203222932294,
+   "gout_ms": 0.0,
+   "lat13_ms": 168.59096405096352
+  },
+  {
+   "id": "p1-0004",
+   "cat": "wd_fact",
+   "q": "who directed jaws",
+   "reply": "Jaws was directed by Steven Spielberg.",
+   "route": "store2",
+   "draft": [
+    "Jaws was directed by Steven Spielberg."
+   ],
+   "mat": "Draft: Jaws was directed by Steven Spielberg. Jaws, director: Steven Spielberg.",
+   "must": [
+    "Steven Spielberg"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 843.1312600150704,
+   "ref_ms": 825.8849149569869,
+   "gin_ms": 825.1836749259382,
+   "gout_ms": 0.0,
+   "lat13_ms": 17.246345058083534
+  },
+  {
+   "id": "p1-0006",
+   "cat": "wd_fact",
+   "q": "Who was behind the camera calling the shots on Vertigo, the 1958 thriller?",
+   "reply": "I think it's Kim Novak, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": false,
+   "wall_ms": 3880.460273940116,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2225.212143966928,
+   "lat13_ms": 1655.248129973188
+  },
+  {
+   "id": "p1-0007",
+   "cat": "wd_fact",
+   "q": "Who composed the set of violin concertos known as The Four Seasons?",
+   "reply": "The Four Seasons was composed by Antonio Vivaldi.",
+   "route": "store2",
+   "draft": [
+    "The Four Seasons was composed by Antonio Vivaldi."
+   ],
+   "mat": "Draft: The Four Seasons was composed by Antonio Vivaldi. The Four Seasons, composer: Antonio Vivaldi.",
+   "must": [
+    "Antonio Vivaldi"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 1071.5601710835472,
+   "ref_ms": 960.8304820721969,
+   "gin_ms": 960.499769076705,
+   "gout_ms": 0.0,
+   "lat13_ms": 110.72968901135027
+  },
+  {
+   "id": "p1-0008",
+   "cat": "wd_fact",
+   "q": "Name the composer whose score accompanies Swan Lake.",
+   "reply": "The ballet was premiered by the Bolshoi Ballet on 4 March [O.S. 20 February] 1877 at the Between the 1895 revival of Marius Petipa and Lev Ivanov, first staged for the Imperial Balton on 15 January 1893, at the Mariinsky Theatre in St. Petersburg.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 44,
+   "gold": false,
+   "wall_ms": 4276.9066580804065,
+   "ref_ms": 3709.314600098878,
+   "gin_ms": 3709.1020699590445,
+   "gout_ms": 0.0,
+   "lat13_ms": 567.5920579815283
+  },
+  {
+   "id": "p1-0009",
+   "cat": "wd_fact",
+   "q": "Rhapsody in Blue's composer was who?",
+   "reply": "Rhapsody in Blue was composed by George Gershwin.",
+   "route": "store2",
+   "draft": [
+    "Rhapsody in Blue was composed by George Gershwin."
+   ],
+   "mat": "Draft: Rhapsody in Blue was composed by George Gershwin. Rhapsody in Blue, composer: George Gershwin.",
+   "must": [
+    "George Gershwin"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 1048.8705660682172,
+   "ref_ms": 880.6379259331152,
+   "gin_ms": 880.3618570091203,
+   "gout_ms": 0.0,
+   "lat13_ms": 168.23264013510197
+  },
+  {
+   "id": "p1-0012",
+   "cat": "wd_fact",
+   "q": "Name the capital of Peru, please.",
+   "reply": "Anti-Peruvian sentiment: \"The Colombian troops have had the good fortune to stay in Lima: all that it owes us, only thinks of our ruins.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 24,
+   "gold": true,
+   "wall_ms": 3244.91585791111,
+   "ref_ms": 2701.602076063864,
+   "gin_ms": 2701.420024037361,
+   "gout_ms": 0.0,
+   "lat13_ms": 543.313781847246
+  },
+  {
+   "id": "p1-0017",
+   "cat": "wd_fact",
+   "q": "Munich lies in which German state?",
+   "reply": "The located in of Munich is Upper Bavaria.",
+   "route": "store2",
+   "draft": [
+    "The located in of Munich is Upper Bavaria."
+   ],
+   "mat": "Draft: The located in of Munich is Upper Bavaria. Munich, located in the administrative territorial entity: Upper Bavaria.",
+   "must": [
+    "Upper Bavaria"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 1157.7572929672897,
+   "ref_ms": 887.5900279963389,
+   "gin_ms": 887.1839519124478,
+   "gout_ms": 0.0,
+   "lat13_ms": 270.1672649709508
+  },
+  {
+   "id": "p1-0018",
+   "cat": "wd_fact",
+   "q": "The Golden Gate Bridge is located in which city?",
+   "reply": "Golden Gate Bridge is Marin County.",
+   "route": "store2",
+   "draft": [
+    "The located in of Golden Gate Bridge is Marin County."
+   ],
+   "mat": "Draft: The located in of Golden Gate Bridge is Marin County. Golden Gate Bridge, located in the administrative territorial entity: Marin County.",
+   "must": [
+    "Marin County"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.5
+   ],
+   "calls": [
+    1
+   ],
+   "blend": [
+    true
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 663.9319100650027,
+   "ref_ms": 578.0609520152211,
+   "gin_ms": 577.8077049180865,
+   "gout_ms": 0.0,
+   "lat13_ms": 85.87095804978162
+  },
+  {
+   "id": "p1-0023",
+   "cat": "wd_fact",
+   "q": "Mozart's dad was which violinist and teacher?",
+   "reply": "The father of Wolfgang Amadeus Mozart is Leopold Mozart.",
+   "route": "store2",
+   "draft": [
+    "The father of Wolfgang Amadeus Mozart is Leopold Mozart."
+   ],
+   "mat": "Draft: The father of Wolfgang Amadeus Mozart is Leopold Mozart. Wolfgang Amadeus Mozart, father: Leopold Mozart.",
+   "must": [
+    "Leopold Mozart"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": true,
+   "wall_ms": 1412.7869759686291,
+   "ref_ms": 1184.4330750172958,
+   "gin_ms": 1183.942071045749,
+   "gout_ms": 0.0,
+   "lat13_ms": 228.35390095133334
+  },
+  {
+   "id": "p1-0025",
+   "cat": "wd_fact",
+   "q": "Which queen gave birth to Elizabeth I of England?",
+   "reply": "I'm not sure about that one yet.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 405.303502921015,
+   "ref_ms": 401.26074000727385,
+   "gin_ms": 401.09827497508377,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.042762913741171
+  },
+  {
+   "id": "p1-0027",
+   "cat": "wd_fact",
+   "q": "what was the name of napoleon bonapartes mother",
+   "reply": "The mother of Napoleon is Maria-Letizia Bonaparte.",
+   "route": "store2",
+   "draft": [
+    "The mother of Napoleon is Maria-Letizia Bonaparte."
+   ],
+   "mat": "Draft: The mother of Napoleon is Maria-Letizia Bonaparte. Napoleon, mother: Maria-Letizia Bonaparte.",
+   "must": [
+    "Maria-Letizia Bonaparte"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 1123.526326031424,
+   "ref_ms": 964.867394999601,
+   "gin_ms": 964.3688459182158,
+   "gout_ms": 0.0,
+   "lat13_ms": 158.65893103182316
+  }
+ ]
+}

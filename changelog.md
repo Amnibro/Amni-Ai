@@ -1,3 +1,35 @@
+## 2026-10-06 PIPE-1 (v6.25.0): answer LUT -> retrieval -> Draft context -> img2img-style refine at strength s -> corrections into the knowledge store (behind AMNI_PIPE1, default off)
+- `amni/compute/gf17_overlay.py`: A5-style GF(17) overlay `Ov`.
+  - Solved 0/1-band ribbon, banded GF(17) elimination through MUL/M17 LUTs, 6 value + 6 fingerprint digits, TOMB markers.
+  - Learn and forget are sub-millisecond for single entries.
+  - Shard-local compaction is byte-identical to `rebuild()`.
+  - Cells and value heap are GF(17) digits packed four per Reffelt pixel.
+- `amni/serve/pipe1.py`:
+  - strength map `th`/`dec`/`plines`, `assemble` (Draft + supporting items + must-keep), `refine` (retry at s/2, then the s = 0 template), `chat`;
+  - overlay-aware STORE-2 LUT (`lut`, `overlay`, `ovslot`) and s = 0 template phrasing (`dtext`, `TPL`);
+  - typed, table-driven correction detection (`detect`, `xval2`), `correct` (personal -> user memory; world -> personal overlay + Proving Ground quarantine), reference `verify` (global overlay stores coordinates);
+  - admin `promote`/`reject`/`gforget`/`gcompact`, and `hist` (replays only active corrections);
+  - safety refusal (SAFE lexicon, SAFEP properties, emergency turns).
+- Storage: the personal overlay, global overlay and quarantine are sealed by `at_rest.Vault` (`p1u`/`p1g`/`p1q`).
+- `amni/serve/adam_t_harness.py`: flag-guarded hooks.
+  - Corrections run first; imperatives ("Name the X") are rewritten so they reach the LUT; the overlay pre-check runs in `slot`.
+  - `fill_s1` goes through `pipe1.lut`, templates and corroboration for low-confidence drafts; the agreement re-read is off under PIPE-1.
+  - `gate`/`blend` are s-aware (no new digits or capitalised names at any s); `run` calls assemble + refine; `_other` uses chat refine and filtered history; `_wsay` gains a property-label fallback.
+  - v4 behaviour is unchanged with the flag off.
+- `adam_t_client.py`: `Proto.text`/`AdamT.gen` pass decoding fields (temperature/top_k/seed); with PIPE-1 on, the chat path uses `pipe1.chat` and filtered history.
+- `blender_atex.py`: `generate` gains top_p and seed; `Blender.gen`/`text` take `dec`.
+- `user_memory.forget` gains an optional `clk`.
+- `gguf_runtime.py` is untouched.
+- Scripts: `pipe1_evalset.py`, `pipe1_eval.py` (sweep/corr/select/test, blender-agnostic), `pipe1_admin.py`. Tests: `tests/test_pipe1.py` (36).
+- Data `data/pipe1/`:
+  - eval set: 364 CC0 items authored by an isolated agent, 0 shared 6-grams, dev 181 / test 182, locked;
+  - results: dev sweep, selection, correction rounds, test once.
+- Results (`docs/adam_t/pipe1_results.md`), test scored once at 9c23efb, 4 of 8 gates pass:
+  - pass: fact preservation 1.00, isolation 1.00, emergency-first 1.00, steps 1-3 median 6.9 ms;
+  - fail: correction round-trip 0.65 (dev 0.975; the detector over-fit dev phrasings), forget 0.875, poison hedged 0.643 (poison never global 1.00), grounded 0.972 vs v4 0.986 (one item).
+  - Per-route s from dev: facts 0, explain 0.5, chat 1.0. The 30M blender refines 1-6% of fact drafts.
+- Docs: `docs/adam_t/pipe1_prereg.md` (+ Amendments 1-3), `docs/adam_t/pipe1_results.md`, `docs/checklists/checklist_pipe1_v6.25.0.md`, `docs/guardian_councils/guardian_council_pipe1.md`. Backups: `backups/pipe1/`.
+
 ## 2026-10-06 STORE-2 (v6.24.0): pixel-nonce text, facts as rank under prediction, nonce resolver (STORE-2 drive behind AMNI_STORE2, default off)
 - `crates/adam-store1` gains module `s2` and bin `store2` (`tstat`, `fstat`, `build`, `parity`, `bench`, `bblk`); the v3 loaders moved from the `store1` bin into the lib (no duplicates). C ABI `s2_*` (open, ents, keys, pieces, groups, values, quals, text, sitelinks, qid, ix, clear, cold).
   - Base-17 rANS coder (M = 17^4, output stream in GF(17) digits) and one symmetric coding procedure used for counting, encoding and decoding.

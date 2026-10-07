@@ -52,8 +52,8 @@ class Proto:
                 if not isinstance(r,dict):continue
                 if 'error' in r:raise ProtoError(str(r['error']))
                 return r
-    def text(s,prompt:str,max_bytes:int,stops:Iterable[str]=(),timeout:Optional[float]=None)->str:
-        return U64(s.rpc(timeout=timeout,op='gen',prompt=B64(prompt.encode('utf-8')),max=int(max_bytes),stop=[B64(x.encode('utf-8')) for x in stops])['text']).decode('utf-8','replace')
+    def text(s,prompt:str,max_bytes:int,stops:Iterable[str]=(),timeout:Optional[float]=None,dec:Optional[dict]=None)->str:
+        return U64(s.rpc(timeout=timeout,op='gen',prompt=B64(prompt.encode('utf-8')),max=int(max_bytes),stop=[B64(x.encode('utf-8')) for x in stops],**(dec or {}))['text']).decode('utf-8','replace')
     def lp(s,P:Sequence[Tuple[bytes,bytes]],chunk:int=64)->List[float]:
         return [float(x) for i in range(0,len(P),chunk) for x in s.rpc(op='lp',items=[[B64(a),B64(b)] for a,b in P[i:i+chunk]])['lp']]
     def close(s)->None:
@@ -210,9 +210,9 @@ class AdamT:
         with s.lock:
             try:return s._budget(max_tokens)
             except BaseException:s._fail();raise
-    def gen(s,prompt:str,max_tokens:int=400,stops:Iterable[str]=STOPS,history=None,pre:Sequence[str]=(),rc:Sequence[str]=(),sep:str=' ')->str:
+    def gen(s,prompt:str,max_tokens:int=400,stops:Iterable[str]=STOPS,history=None,pre:Sequence[str]=(),rc:Sequence[str]=(),sep:str=' ',dec:Optional[dict]=None)->str:
         with s.lock:
-            try:b=s._budget(max_tokens);t=s.p.text(template(prompt,history,b,pre,rc,sep),int(max_tokens),stops).strip();s.fails=0;return t
+            try:b=s._budget(max_tokens);t=s.p.text(template(prompt,history,b,pre,rc,sep),int(max_tokens),stops,**({'dec':dec} if dec else {})).strip();s.fails=0;return t
             except BaseException:s._fail();raise
     def status(s)->dict:
         p=s.p;return {'run':s.run,'alive':bool(p and p.alive()),'fails':s.fails,**({k:p.info.get(k) for k in ('model','step','fmt','ctx')} if p else {})}
@@ -243,6 +243,6 @@ def answer(message:str,history=None,max_new_tokens:int=512,user=None,session=Non
     try:
         cl=client()
         if not (cl.p and cl.p.alive()) and time.monotonic()<cl.until:raise ProtoError('restart backoff')
-        mx=min(int(_f('AMNI_ADAM_T_MAX_BYTES',400)),max(64,4*int(max_new_tokens or 0)));h=_har(message,history,user,session,cl,mx,c);c=c if h else (lambda x:(x['n'].update(c['n']),x)[1])(context(message,history,user,session,cl.budget(mx)));t=h['text'] if h else c['reply'] or _safe(message,cl.gen(message,mx,STOPS,c['hist'],c['pre'],c['rc']));why='' if t else 'empty';h and c['n'].update(h['n'])
+        mx=min(int(_f('AMNI_ADAM_T_MAX_BYTES',400)),max(64,4*int(max_new_tokens or 0)));h=_har(message,history,user,session,cl,mx,c);p1=os.environ.get('AMNI_PIPE1','0')=='1' and os.environ.get('AMNI_ADAM_T_HARNESS','0')=='1';c=c if h else (lambda x:(x['n'].update(c['n']),x)[1])(context(message,__import__('amni.serve.pipe1',fromlist=['hist']).hist(history,user) if p1 else history,user,session,cl.budget(mx)));t=h['text'] if h else c['reply'] or (__import__('amni.serve.pipe1',fromlist=['chat']).chat(cl,message,c,mx)[0] if p1 else _safe(message,cl.gen(message,mx,STOPS,c['hist'],c['pre'],c['rc'])));why='' if t else 'empty';h and c['n'].update(h['n'])
     except Exception as e:t,why,h='',type(e).__name__,None
     LOG.debug('route=%s ms=%d ctx_ms=%.1f ctx=%s',why and f'fallback:{why}' or ('harness' if h else 'memory_action' if c.get('reply') else 'adam_t'),int((time.monotonic()-t0)*1000),c.get('ms',0.0),','.join(f'{k}:{v}' for k,v in sorted(c.get('n',{}).items())));return t or None
