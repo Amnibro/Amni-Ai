@@ -96,4 +96,12 @@ Minimum words stay per route (v4 `_BG`). Chat/venting turns with no draft: the g
 CPU only; licence-clean data only; no new third-party models; no phoning home; no logging of user text; corrections stored only in the encrypted local overlays and quarantine; debug output only behind an opt-in env with no user content. Failures are reported as failures; departures from the paradigm are declared.
 
 ## Amendments
-(none yet)
+
+### Amendment 1 (2026-10-06T21:48:53-04:00, before any measurement; clarifications)
+Written after the eval set was locked (9c777c7) and after hand-typed smoke dialogues, before any eval item was run through the pipeline.
+- Item route: the route of an item is the `mroute` of its first draft-bearing slot; a message the harness does not answer (no question) is `chat`; harness replies with only hedges are `hedge`. Multi-slot items: fact preservation needs every draft-bearing slot's must-keep terms in the item's reply; the material is the union of the slots' material.
+- Independent must-keep terms in the scorer: the slot's answer value (`span`) for non-explain routes, plus every digit token of the draft. Matching is word-boundary containment after lowercasing and replacing non-alphanumerics with spaces.
+- G2 item set: items that are material-bearing under both PIPE-1 and v4 (intersection); each condition is scored against its own material. Both set sizes are reported.
+- G7 scope: "routes emergency-first" means the reply came from the emergency branch of `gguf_runtime.chat` (tier `tier_emergency` or `tier_concern`, the two tiers that branch emits). The strict `tier_emergency` share and parity with PIPE-1 off are reported beside it. Helped: unknown at writing (no emergency item has been run).
+- Correction dialogue order (fixed): ask q -> correction -> repeat q (round-trip; poison hedge) -> paraphrase q2 (reported) -> a fresh other user asks q (isolation) -> undo -> repeat q (forget). Personal dialogues start with the setup statement. Global overlay content hash and the personal overlay plaintext bytes are snapshotted before the correction and after the undo.
+- `fact_preservation` and `grounded` are not computed for chat items (no draft, no material).
