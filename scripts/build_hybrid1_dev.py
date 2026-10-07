@@ -2,7 +2,7 @@ import os,sys,json
 from pathlib import Path
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),".."))
 from amni.compute import decontam as D
-OUT="data/adam_t/eval/hybrid1_dev";LIC="CC0-1.0, written for mission HYBRID-1 (2026-10-05)"
+OUT="data/adam_t/eval/hybrid1_dev";LIC="CC0-1.0, written for mission HYBRID-1 (2026-10-05)";LIC2="CC0-1.0, written for mission BLENDER-2 (2026-10-06)"
 P=[("Marlowe Bridge","Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic and was closed to lorries after a survey of its piers.","What is Marlowe Bridge?"),
 ("Quillon Island","Quillon Island is a low sandy island off the southern coast of Varnia. Its only settlement is a fishing hamlet of about forty houses.","Tell me about Quillon Island."),
 ("Drabble Hill Tunnel","Drabble Hill Tunnel is a railway tunnel on the Ashby to Corran line. It is 1.2 km long and has two parallel bores.","How long is the Drabble Hill tunnel?"),
@@ -68,15 +68,80 @@ C=[("greet","Hello there, Adam! How is your afternoon going?",["afternoon","good
 ("vent","The builders next door started drilling at six this morning.",["builder*","drill*","morning","noise","early"]),
 ("idiom","It is raining cats and dogs where I live.",["rain*","cats","dogs","pour*","heavy"]),
 ("idiom","I am feeling under the weather today.",["weather","under","sick","unwell","rest"])]
+P2=[("Hallam Ferry","Hallam Ferry is a chain ferry that carries cars across the River Lune at Hallam. It runs every twenty minutes from dawn until nine in the evening.","How often does Hallam Ferry run?"),
+("Brightwell Orchard","Brightwell Orchard is a community orchard planted on an old allotment site in Calder. It has sixty apple trees and holds a pressing day each October.","What happens at Brightwell Orchard in October?"),
+("Ingram Weather Station","Ingram Weather Station is an automatic station on the summit of Ingram Fell. It records wind speed, rainfall and temperature every ten minutes.","What does Ingram Weather Station record?"),
+("Saltash Rowers","Saltash Rowers is a coastal rowing club that races wooden gigs. Its crews train in the estuary on Tuesday and Thursday evenings.","When do the Saltash Rowers train?"),
+("Penfold Library","Penfold Library is a reading room above the old corn exchange in Kirby. It lends books on local history and has a collection of parish maps.","What does Penfold Library collect?"),
+("Morrow Weir","Morrow Weir is a stone weir on the River Ebb below the village of Morrow. A fish pass was cut into its east side to help salmon move upstream.","Why was a fish pass added to Morrow Weir?"),
+("Clement Varga","Clement Varga was a furniture maker from the hill town of Sotto. He was known for oak chairs with carved backs and rush seats.","What was Clement Varga known for?"),
+("Lantern Cove","Lantern Cove is a shingle beach reached by a steep path from the coast road. Seals can often be seen on the rocks at low tide.","What can you see at Lantern Cove?"),
+("Dunnock Woods","Dunnock Woods is an ancient woodland of oak and hazel on the slopes above Wrenford. Bluebells cover the ground there in late spring.","What grows in Dunnock Woods?"),
+("Tremaine Bakery","Tremaine Bakery is a family bakery on the high street of Polwith. It bakes saffron buns and pasties and opens at six each morning.","When does Tremaine Bakery open?"),
+("Quarry Lane Studios","Quarry Lane Studios is a recording studio built inside a former stone barn. Folk bands and choirs book it for live recordings.","Who records at Quarry Lane Studios?"),
+("Esker Ridge Trail","Esker Ridge Trail is a walking route that follows a long gravel ridge left by a glacier. It is eight miles long and marked with yellow posts.","How is the Esker Ridge Trail marked?"),
+("Varden Clocktower","Varden Clocktower stands in the market square of Varden. Its clock was made with four faces so that it can be read from every street.","Why does Varden Clocktower have four faces?"),
+("Holloway Mill","Holloway Mill is a restored water mill that grinds flour from local wheat. Visitors can watch the wheel turn on open days in summer.","What does Holloway Mill grind?"),
+("Ardley Swimming Pond","Ardley Swimming Pond is a spring fed pond used for outdoor swimming. Lifeguards are on duty there from June to the end of August.","When are lifeguards at Ardley Swimming Pond?"),
+("Kestrel Radio","Kestrel Radio is a volunteer radio station for the town of Merrow. It broadcasts local news in the morning and music in the evening.","What does Kestrel Radio broadcast?"),
+("Sorrel Street Market","Sorrel Street Market is an open air market held every Saturday in Fenby. Most stalls sell vegetables, flowers and plants.","When is Sorrel Street Market held?"),
+("Gannet Point","Gannet Point is a headland where thousands of seabirds nest on the cliffs each summer. A wooden hide lets visitors watch them without disturbing the colony.","What is the hide at Gannet Point for?"),
+("Bramley Cycle Path","Bramley Cycle Path runs along a disused railway line between Bramley and Oakhurst. It is flat, surfaced with fine gravel and closed to cars.","What is the Bramley Cycle Path built on?"),
+("Ottoline Shaw","Ottoline Shaw was a botanist who collected mosses in the northern valleys. Her pressed specimens are kept at the museum in Carrick.","Where are Ottoline Shaw's specimens kept?"),
+("Pellingham Bell","Pellingham Bell is a bronze bell cast for the parish church of Pellingham. It weighs about a tonne and is rung before the Sunday service.","When is the Pellingham Bell rung?"),
+("Cindermoor Reservoir","Cindermoor Reservoir is a reservoir in the moors above Haxby that supplies drinking water to three towns. Sailing is allowed on it but swimming is not.","Is swimming allowed at Cindermoor Reservoir?"),
+("Rowan House School","Rowan House School is a small primary school with two classes. Pupils grow vegetables in a garden behind the playground.","What do pupils at Rowan House School grow?"),
+("Fieldfare Inn","Fieldfare Inn is a coaching inn on the old north road near Tibbet. It has twelve rooms and serves meals in a beamed dining room.","How many rooms does the Fieldfare Inn have?"),
+("Marten Island Lighthouse","Marten Island Lighthouse is a short black and white tower on the western tip of Marten Island. Its light flashes twice every fifteen seconds.","How does the light of Marten Island Lighthouse flash?"),
+("Gorse Hill Fort","Gorse Hill Fort is the remains of an iron age hill fort with two rings of earth banks. Sheep graze inside the old ramparts.","What is left of Gorse Hill Fort?"),
+("Tilbury Puppet Theatre","Tilbury Puppet Theatre is a touring company that performs with wooden marionettes. It visits village halls and schools in the spring.","What does Tilbury Puppet Theatre perform with?"),
+("Harrowgate Allotments","Harrowgate Allotments are forty garden plots rented out by the town council. Each plot has a water butt and a small shed.","What does each Harrowgate plot have?"),
+("Silas Brennan","Silas Brennan was a stonemason who repaired the walls of several churches in the Ovel valley. He trained his two sons in the trade.","What did Silas Brennan repair?"),
+("Moorcroft Sheep Fair","Moorcroft Sheep Fair is an annual fair where farmers show and sell sheep. It takes place on the first Monday in September.","When is the Moorcroft Sheep Fair?"),
+("Calloway Bridge","Calloway Bridge is a timber footbridge over the Brook of Tey. It was rebuilt after a flood washed away the old crossing.","Why was Calloway Bridge rebuilt?"),
+("Linnet Bay Aquarium","Linnet Bay Aquarium is a small aquarium on the harbour front of Linnet Bay. Its tanks show crabs, starfish and fish from the local shore.","What can you see at Linnet Bay Aquarium?"),
+("Hartwell Cricket Club","Hartwell Cricket Club plays on a village green beside the church. Matches are held on Sunday afternoons from May to September.","When does Hartwell Cricket Club play?"),
+("Memory","My brother Teodor works as a nurse in Bristol.","What does my brother do?"),
+("Memory","I am allergic to peanuts and have to check food labels.","What am I allergic to?"),
+("Memory","My car is a small blue hatchback that I bought last year.","What colour is my car?"),
+("Calculator","The answer is 56. Working: 8 x 7 = 56.","What is eight times seven?"),
+("Calculator","The answer is 25. Working: 100 / 4 = 25.","What is a hundred divided by four?"),
+("Durrant Hall, located in","Durrant Hall is located in the town of Wexley.","Where is Durrant Hall?"),
+("Mira Holt, instrument","Mira Holt plays the cello.","What instrument does Mira Holt play?")]
+U2=[("none","What is the address of the Calloway Bridge visitor centre?",[]),
+("none","Who founded the Ellery Trust?",[]),
+("none","How many people live in Brackenfold?",[]),
+("none","What does the Silvan Charter require?",[]),
+("other","Who painted the ceiling of Norland Chapel?",["Gorse Hill Fort: Gorse Hill Fort is the remains of an iron age hill fort with two rings of earth banks. Sheep graze inside the old ramparts."]),
+("other","How fast may cars drive along Tallis Road?",["Kestrel Radio: Kestrel Radio is a volunteer radio station for the town of Merrow. It broadcasts local news in the morning and music in the evening."]),
+("other","How tall is the Merriman Spire?",["Brightwell Orchard: Brightwell Orchard is a community orchard planted on an old allotment site in Calder. It has sixty apple trees and holds a pressing day each October."]),
+("other","Where was the poet Ines Calder born?",["Holloway Mill: Holloway Mill is a restored water mill that grinds flour from local wheat. Visitors can watch the wheel turn on open days in summer."]),
+("when","When was Fieldfare Inn built?",["Fieldfare Inn: Fieldfare Inn is a coaching inn on the old north road near Tibbet. It has twelve rooms and serves meals in a beamed dining room."]),
+("when","When did Penfold Library open?",["Penfold Library: Penfold Library is a reading room above the old corn exchange in Kirby. It lends books on local history and has a collection of parish maps."]),
+("when","In what year was Varden Clocktower finished?",["Varden Clocktower: Varden Clocktower stands in the market square of Varden. Its clock was made with four faces so that it can be read from every street."]),
+("when","When did Clement Varga die?",["Clement Varga: Clement Varga was a furniture maker from the hill town of Sotto. He was known for oak chairs with carved backs and rush seats."])]
+C2=[("greet","Good evening, Adam, I have come home after a long walk by the river.",["evening","walk","river","nice","back"]),
+("greet","Hey, I planted tomatoes in the garden this morning.",["tomato*","garden","plant*","morning","grow"]),
+("greet","Hi Adam, my daughter lost her first tooth today.",["tooth","daughter","first","lost","exciting"]),
+("greet","Hello! The new kettle finally arrived.",["kettle","new","arrived","tea","nice"]),
+("small","On our street the leaves have begun turning orange.",["leaves","orange","autumn","street","turn*"]),
+("small","I found an old photo album in the attic yesterday.",["photo*","album","attic","old","memor*"]),
+("small","We are thinking about getting a cat for the kids.",["cat","kids","getting","pet","fun"]),
+("small","The library down the road is closing for repairs.",["library","closing","repairs","road","shame"]),
+("vent","My train was cancelled again and I missed the start of my shift.",["train","cancel*","shift","missed","frustrat*"]),
+("vent","I burned the dinner I spent two hours cooking.",["dinner","burn*","cook*","hours","sorry"]),
+("vent","My roommate never washes the dishes and it drives me mad.",["roommate","dishes","wash*","annoy*","frustrat*"]),
+("vent","I did badly on my driving test this afternoon.",["driving","test","afternoon","sorry","next"]),
+("vent","The shop charged me twice for the same shoes.",["shop","charged","twice","shoes","refund"]),
+("vent","I could not sleep at all last night because of the storm.",["sleep","storm","night","tired","rest"]),
+("idiom","Today I really bit off more than I could chew.",["bit","chew","much","busy","today"]),
+("idiom","My boss gave me the green light on the new project.",["green","light","project","boss","great"])]
 def main():
     os.makedirs(OUT,exist_ok=True);B=[];G=[]
-    for i,(t,x,q) in enumerate(P):
-        m=f"{t}: {x}" if t in("Calculator","Memory") or "," not in t else f"{t}: {x}"
-        B.append({"id":f"d1b{i:03d}","kind":"para","sub":"para","material":[m],"q":q,"ref":x,"title":t,"license":LIC})
-    for i,(s,q,m) in enumerate(U):B.append({"id":f"d1u{i:03d}","kind":"uncov","sub":"unc_"+s,"material":m,"q":q,"title":m[0].split(":")[0] if m else "none","license":LIC})
-    for i,(s,q,k) in enumerate(C):G.append({"id":f"d1g{i:03d}","cat":"chat","sub":s,"q":q,"turns":[],"kw":k,"gold":[],"ctx":[],"license":LIC})
-    S=Path('/home/anmire/ai/Amni-Ai');fs=sorted({p.resolve() for pat in D.PATS for p in S.glob(pat) if p.is_file() and not D.SKIP.search(p.relative_to(S).as_posix()) and '.decontam_cache' not in p.parts});ix=D.index(6,files=fs,cache=None);bad=[(r["id"],D.dirty(" ".join(r.get("material",[])+[r["q"]]),ix=ix)) for r in B+G if D.dirty(" ".join(r.get("material",[])+[r["q"]]),ix=ix)]
+    for pf,lc,PP,UU,CC in (("d1",LIC,P,U,C),("d2",LIC2,P2,U2,C2)):
+        B+=[{"id":f"{pf}b{i:03d}","kind":"para","sub":"para","material":[f"{t}: {x}"],"q":q,"ref":x,"title":t,"license":lc} for i,(t,x,q) in enumerate(PP)]+[{"id":f"{pf}u{i:03d}","kind":"uncov","sub":"unc_"+s,"material":m,"q":q,"title":m[0].split(":")[0] if m else "none","license":lc} for i,(s,q,m) in enumerate(UU)];G+=[{"id":f"{pf}g{i:03d}","cat":"chat","sub":s,"q":q,"turns":[],"kw":k,"gold":[],"ctx":[],"license":lc} for i,(s,q,k) in enumerate(CC)]
+    S=Path('/home/anmire/ai/Amni-Ai');fs=sorted({p.resolve() for pat in D.PATS for p in S.glob(pat) if p.is_file() and not D.SKIP.search(p.relative_to(S).as_posix()) and '.decontam_cache' not in p.parts and not ({'hybrid1_dev','hybrid1_runs'}&set(p.parts))});ix=D.index(6,files=fs,cache=None);bad=[(r["id"],D.dirty(" ".join(r.get("material",[])+[r["q"]]),ix=ix)) for r in B+G if D.dirty(" ".join(r.get("material",[])+[r["q"]]),ix=ix)]
     assert len(B)+len(G)>=40 and not bad,bad
     open(f"{OUT}/blend_probe.jsonl","w").write("".join(json.dumps(r)+"\n" for r in B));open(f"{OUT}/greet_vent_probe.jsonl","w").write("".join(json.dumps(r)+"\n" for r in G))
-    json.dump({"license":LIC,"n_blend":len(B),"n_chat":len(G),"overlap_ngram":6,"overlap_flagged":len(bad),"checked_against":f"amni.compute.decontam.index(6) over {len(fs)} eval source files of the shared tree (probe8, chat suites, h4, harness, cognition, concepts eval)"},open(f"{OUT}/meta.json","w"),indent=1);print(len(B),len(G),"overlap flagged",len(bad))
+    json.dump({"license":LIC+"; d2* items: "+LIC2,"n_blend":len(B),"n_chat":len(G),"overlap_ngram":6,"overlap_flagged":len(bad),"checked_against":f"amni.compute.decontam.index(6) over {len(fs)} eval source files of the shared tree (probe8, chat suites, h4, harness, cognition, concepts eval)"},open(f"{OUT}/meta.json","w"),indent=1);print(len(B),len(G),"overlap flagged",len(bad))
 if __name__=="__main__":main()

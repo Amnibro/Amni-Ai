@@ -95,10 +95,11 @@ TheAlgorithms/Python (code retrieval for the ADAM-T harness code route)
   reply names "TheAlgorithms/Python (MIT License)" and the slot provenance
   names the source file.
 
-Open dense language models used as the optional blender (mission HYBRID-1, behind AMNI_BLENDER, off by default)
+Open dense language models used as the optional blender (missions HYBRID-1 and BLENDER-2, behind AMNI_BLENDER, off by default)
   Used only to turn gathered material into a reply; never as a knowledge source.
-  Weights are group-quantised by scripts/bake_hybrid1.py (a lossy derivative); not redistributed from the repository.
+  Weights are group-quantised by scripts/bake_hybrid1.py (a lossy derivative; int4 bakes are GPTQ-calibrated on ADAM-T SFT v8 text); not redistributed from the repository.
   - IBM Granite 4.1 3B and Granite 4.2 3B (ibm-granite/granite-4.1-3b rev c0650403e44e, ibm-granite/granite-4.2-3b rev e459acceac81). Copyright IBM Corp. Apache License 2.0.
   - MiniCPM5-2B (openbmb/MiniCPM5-2B rev f97400052a43). Copyright OpenBMB. Apache License 2.0.
   - Qwen3-4B-Instruct-2507 (Qwen/Qwen3-4B-Instruct-2507 rev cdbee75f17c0). Copyright Alibaba Cloud, Qwen Team. Apache License 2.0.
-  Licence texts and full revision hashes are recorded in docs/adam_t/hybrid1_models.md.
+  - Qwen3.5-2B and Qwen3.5-4B, text weights only (Qwen/Qwen3.5-2B rev 15852e8c1636, Qwen/Qwen3.5-4B rev 851bf6e806ef). Copyright Alibaba Cloud, Qwen Team. Apache License 2.0.
+  Licence texts and full revision hashes are recorded in docs/adam_t/hybrid1_models.md and docs/adam_t/blender2_models.md.

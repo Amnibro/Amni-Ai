@@ -1,0 +1,14 @@
+{
+ "minicpm5_q8g64": {
+  "nll": 2.263,
+  "ppl": 9.612,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ },
+ "minicpm5_q4g128_gptq": {
+  "nll": 2.2926,
+  "ppl": 9.901,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ }
+}

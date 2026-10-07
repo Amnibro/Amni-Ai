@@ -1,0 +1,70 @@
+{
+ "name": "t_v3",
+ "blender2": {
+  "bake": "/home/anmire/ai/hybrid1/bakes/granite42_q8g64",
+  "opts": {
+   "sys": "split4",
+   "stream": true,
+   "head": "q8",
+   "embed": "q8",
+   "kv": 8,
+   "chunk": 256
+  },
+  "engine_opts": {
+   "head": "q8",
+   "embed": "q8",
+   "stream": true,
+   "kv": 8,
+   "chunk": 256
+  },
+  "sets": [],
+  "outputs": {},
+  "meas": {
+   "opts": {
+    "head": "q8",
+    "embed": "q8",
+    "stream": true,
+    "kv": 8,
+    "chunk": 256
+   },
+   "after_warmup_proc_vram_GB": 1.103,
+   "kv_cache_GB_at_ctx": 0.1081,
+   "ctx_tokens": 2560,
+   "peak_proc_vram_GB": 1.463,
+   "torch_max_alloc_GB": 1.138,
+   "torch_max_reserved_GB": 1.158,
+   "prefill_tok_s": 749.7,
+   "decode_tok_s": 8.74,
+   "prefill_s": 2.73,
+   "decode_s": 58.55,
+   "host_pinned_GB": 3.342,
+   "bake_manifest_GB": 4.37,
+   "bits": 8,
+   "gs": 64,
+   "fmt": "qgroup-affine-v1",
+   "layers": 40,
+   "hidden": 2560,
+   "vocab": 100352,
+   "tied": false,
+   "layer_types": [
+    "full_attention"
+   ]
+  },
+  "ppl": null,
+  "proc_vram_peak_GB": {
+   "load": 1.122,
+   "meas": 1.463
+  },
+  "proc_vram_peak_all_GB": 1.463,
+  "times": {
+   "load_s": 7.6,
+   "meas_s": 62.5
+  },
+  "same_process": true,
+  "alloc_conf_env": "",
+  "torch": "2.14.1+rocm7.2",
+  "hip": "7.2.53211",
+  "python": "3.12.14",
+  "throttle_obeyed_in_scoring": true
+ }
+}

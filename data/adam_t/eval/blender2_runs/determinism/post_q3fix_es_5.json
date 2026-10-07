@@ -1,0 +1,551 @@
+{
+ "prompts": 11,
+ "n_new": 48,
+ "alloc_conf": "expandable_segments:True",
+ "cfgs": {
+  "base": {
+   "opts": {},
+   "ref": "base",
+   "identical_to_first": true,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 11,
+   "n_cmp": 11,
+   "diverged": [],
+   "maxabs_identical_max": 0.0,
+   "maxabs_all_max": 0.0,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "c1a091abefc9",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "a44018327387",
+    "03cbf8515639",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 20.2
+  },
+  "embed_cpu": {
+   "opts": {
+    "embed": "cpu"
+   },
+   "ref": "base",
+   "identical_to_first": true,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 11,
+   "n_cmp": 11,
+   "diverged": [],
+   "maxabs_identical_max": 0.0,
+   "maxabs_all_max": 0.0,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "c1a091abefc9",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "a44018327387",
+    "03cbf8515639",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 17.8
+  },
+  "head_cpu": {
+   "opts": {
+    "head": "cpu"
+   },
+   "ref": "base",
+   "identical_to_first": true,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 11,
+   "n_cmp": 11,
+   "diverged": [],
+   "maxabs_identical_max": 0.125,
+   "maxabs_all_max": 0.125,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "c1a091abefc9",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "a44018327387",
+    "03cbf8515639",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 40.0
+  },
+  "stream": {
+   "opts": {
+    "stream": true
+   },
+   "ref": "base",
+   "identical_to_first": true,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 11,
+   "n_cmp": 11,
+   "diverged": [],
+   "maxabs_identical_max": 0.0,
+   "maxabs_all_max": 0.0,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "c1a091abefc9",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "a44018327387",
+    "03cbf8515639",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 37.6
+  },
+  "chunk256": {
+   "opts": {
+    "chunk": 256
+   },
+   "ref": "base",
+   "identical_to_first": false,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 10,
+   "n_cmp": 11,
+   "diverged": [
+    {
+     "i": 8,
+     "div": 20,
+     "n": 34,
+     "n_ref": 31,
+     "np": 558,
+     "maxabs": 0.4375
+    }
+   ],
+   "maxabs_identical_max": 1.0625,
+   "maxabs_all_max": 1.0625,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "c1a091abefc9",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "b478871abcb8",
+    "03cbf8515639",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 21.2
+  },
+  "stream_chunk256_cpu_tab": {
+   "opts": {
+    "stream": true,
+    "chunk": 256,
+    "head": "cpu",
+    "embed": "cpu"
+   },
+   "ref": "base",
+   "identical_to_first": false,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 10,
+   "n_cmp": 11,
+   "diverged": [
+    {
+     "i": 8,
+     "div": 20,
+     "n": 34,
+     "n_ref": 31,
+     "np": 558,
+     "maxabs": 0.4375
+    }
+   ],
+   "maxabs_identical_max": 1.0625,
+   "maxabs_all_max": 1.0625,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "c1a091abefc9",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "b478871abcb8",
+    "03cbf8515639",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 72.5
+  },
+  "kv8": {
+   "opts": {
+    "kv": 8
+   },
+   "ref": "base",
+   "identical_to_first": false,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    0.815
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 7,
+   "n_cmp": 11,
+   "diverged": [
+    {
+     "i": 2,
+     "div": 22,
+     "n": 24,
+     "n_ref": 27,
+     "np": 109,
+     "maxabs": 1.25
+    },
+    {
+     "i": 4,
+     "div": 3,
+     "n": 26,
+     "n_ref": 27,
+     "np": 648,
+     "maxabs": 0.875
+    },
+    {
+     "i": 8,
+     "div": 13,
+     "n": 21,
+     "n_ref": 31,
+     "np": 558,
+     "maxabs": 2.375
+    },
+    {
+     "i": 9,
+     "div": 5,
+     "n": 42,
+     "n_ref": 31,
+     "np": 335,
+     "maxabs": 4.71875
+    }
+   ],
+   "maxabs_identical_max": 4.875,
+   "maxabs_all_max": 4.875,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "d6581a8e0b84",
+    "898d46490e47",
+    "d90029915712",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "d678848e3b43",
+    "ef31f8d92c85",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 21.1
+  },
+  "kv4": {
+   "opts": {
+    "kv": 4
+   },
+   "ref": "base",
+   "identical_to_first": false,
+   "token_match_frac": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sample": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+   "n_identical_to_ref": 0,
+   "n_cmp": 11,
+   "diverged": [
+    {
+     "i": 0,
+     "div": 0,
+     "n": 48,
+     "n_ref": 29,
+     "np": 146,
+     "maxabs": 46.4375
+    },
+    {
+     "i": 1,
+     "div": 0,
+     "n": 48,
+     "n_ref": 10,
+     "np": 136,
+     "maxabs": 44.8125
+    },
+    {
+     "i": 2,
+     "div": 0,
+     "n": 48,
+     "n_ref": 27,
+     "np": 109,
+     "maxabs": 27.375
+    },
+    {
+     "i": 3,
+     "div": 0,
+     "n": 48,
+     "n_ref": 23,
+     "np": 639,
+     "maxabs": 28.1875
+    },
+    {
+     "i": 4,
+     "div": 0,
+     "n": 48,
+     "n_ref": 27,
+     "np": 648,
+     "maxabs": 29.92188
+    },
+    {
+     "i": 5,
+     "div": 0,
+     "n": 48,
+     "n_ref": 25,
+     "np": 636,
+     "maxabs": 29.0625
+    },
+    {
+     "i": 6,
+     "div": 0,
+     "n": 48,
+     "n_ref": 27,
+     "np": 532,
+     "maxabs": 25.5
+    },
+    {
+     "i": 7,
+     "div": 0,
+     "n": 48,
+     "n_ref": 18,
+     "np": 389,
+     "maxabs": 33.5625
+    },
+    {
+     "i": 8,
+     "div": 0,
+     "n": 48,
+     "n_ref": 31,
+     "np": 558,
+     "maxabs": 35.5625
+    },
+    {
+     "i": 9,
+     "div": 0,
+     "n": 48,
+     "n_ref": 31,
+     "np": 335,
+     "maxabs": 32.53125
+    },
+    {
+     "i": 10,
+     "div": 0,
+     "n": 48,
+     "n_ref": 31,
+     "np": 423,
+     "maxabs": 28.5625
+    }
+   ],
+   "maxabs_identical_max": null,
+   "maxabs_all_max": 46.4375,
+   "degenerate_repeat_prompts": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "toks_sha1": [
+    "f16a5b3faa08",
+    "f16a5b3faa08",
+    "f16a5b3faa08",
+    "f16a5b3faa08",
+    "f16a5b3faa08",
+    "f430e8e9e484",
+    "f16a5b3faa08",
+    "66bba3c88d90",
+    "f16a5b3faa08",
+    "d36e9cd70a1e",
+    "89a47637748a"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 33.6
+  },
+  "tab_q8": {
+   "opts": {
+    "head": "q8",
+    "embed": "q8"
+   },
+   "ref": "base",
+   "identical_to_first": false,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    0.415
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 8,
+   "n_cmp": 11,
+   "diverged": [
+    {
+     "i": 2,
+     "div": 17,
+     "n": 41,
+     "n_ref": 27,
+     "np": 109,
+     "maxabs": 0.375
+    },
+    {
+     "i": 8,
+     "div": 20,
+     "n": 34,
+     "n_ref": 31,
+     "np": 558,
+     "maxabs": 1.125
+    },
+    {
+     "i": 9,
+     "div": 17,
+     "n": 34,
+     "n_ref": 31,
+     "np": 335,
+     "maxabs": 0.94531
+    }
+   ],
+   "maxabs_identical_max": 1.375,
+   "maxabs_all_max": 1.375,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "731cf8cbefba",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "b478871abcb8",
+    "8365516fd7a0",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 19.1
+  },
+  "tab_q4": {
+   "opts": {
+    "head": "q4",
+    "embed": "q4"
+   },
+   "ref": "base",
+   "identical_to_first": false,
+   "token_match_frac": [
+    1.0,
+    1.0,
+    0.447
+   ],
+   "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+   "n_identical_to_ref": 8,
+   "n_cmp": 11,
+   "diverged": [
+    {
+     "i": 2,
+     "div": 17,
+     "n": 38,
+     "n_ref": 27,
+     "np": 109,
+     "maxabs": 2.04688
+    },
+    {
+     "i": 8,
+     "div": 13,
+     "n": 27,
+     "n_ref": 31,
+     "np": 558,
+     "maxabs": 2.03125
+    },
+    {
+     "i": 9,
+     "div": 5,
+     "n": 34,
+     "n_ref": 31,
+     "np": 335,
+     "maxabs": 2.13281
+    }
+   ],
+   "maxabs_identical_max": 2.70312,
+   "maxabs_all_max": 2.70312,
+   "degenerate_repeat_prompts": [],
+   "toks_sha1": [
+    "6e039852dfbc",
+    "8b8f648ee993",
+    "f9f55f51bbbf",
+    "898d46490e47",
+    "d663d346c7a6",
+    "2871fd34e735",
+    "fdb0042634f0",
+    "b47c96a38e04",
+    "b68067f82416",
+    "af5710cff054",
+    "f45cd4bd1172"
+   ],
+   "max_prompt_tokens": 648,
+   "s": 18.2
+  }
+ }
+}

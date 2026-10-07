@@ -1,0 +1,14 @@
+{
+ "qwen35_4b_q8g64": {
+  "nll": 1.8143,
+  "ppl": 6.137,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ },
+ "qwen35_4b_q4g128_gptq": {
+  "nll": 1.8359,
+  "ppl": 6.271,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ }
+}

@@ -1,0 +1,107 @@
+[
+ {
+  "rep": 0,
+  "name": "base",
+  "bad": [],
+  "first": [],
+  "s": 8.5
+ },
+ {
+  "rep": 0,
+  "name": "sct",
+  "bad": [],
+  "first": [],
+  "s": 29.1
+ },
+ {
+  "rep": 0,
+  "name": "s_emb",
+  "bad": [],
+  "first": [],
+  "s": 15.8
+ },
+ {
+  "rep": 0,
+  "name": "s_head",
+  "bad": [],
+  "first": [],
+  "s": 25.8
+ },
+ {
+  "rep": 0,
+  "name": "emb",
+  "bad": [],
+  "first": [],
+  "s": 7.0
+ },
+ {
+  "rep": 1,
+  "name": "base",
+  "bad": [],
+  "first": [],
+  "s": 6.8
+ },
+ {
+  "rep": 1,
+  "name": "sct",
+  "bad": [],
+  "first": [],
+  "s": 27.4
+ },
+ {
+  "rep": 1,
+  "name": "s_emb",
+  "bad": [],
+  "first": [],
+  "s": 21.9
+ },
+ {
+  "rep": 1,
+  "name": "s_head",
+  "bad": [],
+  "first": [],
+  "s": 34.1
+ },
+ {
+  "rep": 1,
+  "name": "emb",
+  "bad": [],
+  "first": [],
+  "s": 9.8
+ },
+ {
+  "rep": 2,
+  "name": "base",
+  "bad": [],
+  "first": [],
+  "s": 9.2
+ },
+ {
+  "rep": 2,
+  "name": "sct",
+  "bad": [],
+  "first": [],
+  "s": 28.2
+ },
+ {
+  "rep": 2,
+  "name": "s_emb",
+  "bad": [],
+  "first": [],
+  "s": 14.3
+ },
+ {
+  "rep": 2,
+  "name": "s_head",
+  "bad": [],
+  "first": [],
+  "s": 29.5
+ },
+ {
+  "rep": 2,
+  "name": "emb",
+  "bad": [],
+  "first": [],
+  "s": 8.3
+ }
+]

@@ -1,0 +1,20 @@
+{
+ "granite42_q8g64": {
+  "nll": 2.0127,
+  "ppl": 7.483,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ },
+ "granite42_q4g128_rtn": {
+  "nll": 2.1868,
+  "ppl": 8.906,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ },
+ "granite42_q4g128_gptq": {
+  "nll": 2.0417,
+  "ppl": 7.703,
+  "tokens": 1535,
+  "through": "engine prefill with the configured cache, chunking and tables"
+ }
+}

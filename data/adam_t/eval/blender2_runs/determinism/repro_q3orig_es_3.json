@@ -1,0 +1,125 @@
+{
+ "base": {
+  "opts": {},
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic."
+ },
+ "embed_cpu": {
+  "opts": {
+   "embed": "cpu"
+  },
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic."
+ },
+ "head_cpu": {
+  "opts": {
+   "head": "cpu"
+  },
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic."
+ },
+ "stream": {
+  "opts": {
+   "stream": true
+  },
+  "identical_to_first": true,
+  "token_match_frac": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "sample": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic."
+ },
+ "chunk256": {
+  "opts": {
+   "chunk": 256
+  },
+  "identical_to_first": false,
+  "token_match_frac": [
+   0.083,
+   0.0,
+   0.0
+  ],
+  "sample": "Marlowebridge:marlowebridge is a stonearch bridge over the river Tane in The County of East. It carries a single of traffic. What is marlowebridge?"
+ },
+ "stream_chunk256_cpu_tab": {
+  "opts": {
+   "stream": true,
+   "chunk": 256,
+   "head": "cpu",
+   "embed": "cpu"
+  },
+  "identical_to_first": false,
+  "token_match_frac": [
+   0.0,
+   0.0,
+   0.021
+  ],
+  "sample": "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+ },
+ "kv8": {
+  "opts": {
+   "kv": 8
+  },
+  "identical_to_first": false,
+  "token_match_frac": [
+   0.083,
+   0.0,
+   0.0
+  ],
+  "sample": "Marlowebridge:marlowebridge is a stonearch bridge over the river Tane in the of East. It carries a single of traffic. What is marlowebridge?"
+ },
+ "kv4": {
+  "opts": {
+   "kv": 4
+  },
+  "identical_to_first": false,
+  "token_match_frac": [
+   0.271,
+   0.0,
+   0.0
+  ],
+  "sample": "Marlowebridge is a stonearch bridge over The river Tane in the County of east. It carries a single lane of traffic. What is marlowebridge? What is marlowebridge? What ismarlowebridge"
+ },
+ "tab_q8": {
+  "opts": {
+   "head": "q8",
+   "embed": "q8"
+  },
+  "identical_to_first": false,
+  "token_match_frac": [
+   0.083,
+   0.0,
+   0.0
+  ],
+  "sample": "Marlowebridge:marlowebridge is a stonearch bridge over the river Tane in The County of East. It carries a single of traffic. What is marlowebridge?"
+ },
+ "tab_q4": {
+  "opts": {
+   "head": "q4",
+   "embed": "q4"
+  },
+  "identical_to_first": false,
+  "token_match_frac": [
+   0.083,
+   0.0,
+   0.0
+  ],
+  "sample": "Marlowebridge:marlowebridge is a stonearch bridge over the river Tane in The County of East. It carries a lane of traffic. What is marlowebridge?"
+ }
+}

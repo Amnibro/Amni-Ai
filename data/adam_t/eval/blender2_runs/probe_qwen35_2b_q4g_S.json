@@ -1,0 +1,5770 @@
+{
+ "name": "qwen35_2b_q4g_S",
+ "step": "{\"sys\":\"split4\",\"stream\":true,\"head\":\"q8\",\"embed\":\"q8\",\"kv\":8,\"chunk\":256}",
+ "cmd": "atex:/home/anmire/ai/hybrid1/bakes/qwen35_2b_q4g128_gptq",
+ "e2e": false,
+ "files": {
+  "blend_probe.jsonl": "e09759e7fef3d2ec22e26fd6db811edce5382040b84bf60f03326a7ae7bf2c29",
+  "greet_vent_probe.jsonl": "968b922a5c150848bd60b36ceaaf9a485f08f8a2f8a91a9f346bca585ac7c48b",
+  "seen_live_20260930.jsonl": "238ac9deec28012e97174fc6efc0f3390151c937f52672b9be394b06c58e2193"
+ },
+ "harness_sha1": "3f274b1bc1eba1e1c43230158a37786d84b43698",
+ "wall_s": 992.9,
+ "summary": {
+  "chat_probe": {
+   "all": {
+    "decline": {
+     "n": 68,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 68,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 68,
+     "k": 51,
+     "p": 0.75,
+     "se": 0.0525,
+     "lo95": 0.6356
+    },
+    "coherent": {
+     "n": 68,
+     "k": 68,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.9465
+    },
+    "good": {
+     "n": 68,
+     "k": 51,
+     "p": 0.75,
+     "se": 0.0525,
+     "lo95": 0.6356
+    },
+    "canned": {
+     "n": 68,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   },
+   "greet": {
+    "decline": {
+     "n": 18,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 18,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 18,
+     "k": 16,
+     "p": 0.8889,
+     "se": 0.0741,
+     "lo95": 0.672
+    },
+    "coherent": {
+     "n": 18,
+     "k": 18,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.8241
+    },
+    "good": {
+     "n": 18,
+     "k": 16,
+     "p": 0.8889,
+     "se": 0.0741,
+     "lo95": 0.672
+    },
+    "canned": {
+     "n": 18,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   },
+   "idiom": {
+    "decline": {
+     "n": 12,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 12,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 12,
+     "k": 5,
+     "p": 0.4167,
+     "se": 0.1423,
+     "lo95": 0.1933
+    },
+    "coherent": {
+     "n": 12,
+     "k": 12,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.7575
+    },
+    "good": {
+     "n": 12,
+     "k": 5,
+     "p": 0.4167,
+     "se": 0.1423,
+     "lo95": 0.1933
+    },
+    "canned": {
+     "n": 12,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   },
+   "small": {
+    "decline": {
+     "n": 10,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": -0.0
+    },
+    "em_fp": {
+     "n": 10,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": -0.0
+    },
+    "answered": {
+     "n": 10,
+     "k": 8,
+     "p": 0.8,
+     "se": 0.1265,
+     "lo95": 0.4902
+    },
+    "coherent": {
+     "n": 10,
+     "k": 10,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.7225
+    },
+    "good": {
+     "n": 10,
+     "k": 8,
+     "p": 0.8,
+     "se": 0.1265,
+     "lo95": 0.4902
+    },
+    "canned": {
+     "n": 10,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": -0.0
+    }
+   },
+   "vent": {
+    "decline": {
+     "n": 28,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "em_fp": {
+     "n": 28,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    },
+    "answered": {
+     "n": 28,
+     "k": 22,
+     "p": 0.7857,
+     "se": 0.0775,
+     "lo95": 0.6046
+    },
+    "coherent": {
+     "n": 28,
+     "k": 28,
+     "p": 1.0,
+     "se": 0.0,
+     "lo95": 0.8794
+    },
+    "good": {
+     "n": 28,
+     "k": 22,
+     "p": 0.7857,
+     "se": 0.0775,
+     "lo95": 0.6046
+    },
+    "canned": {
+     "n": 28,
+     "k": 0,
+     "p": 0.0,
+     "se": 0.0,
+     "lo95": 0.0
+    }
+   }
+  },
+  "blend_probe": {
+   "faithful_para": {
+    "n": 137,
+    "k": 25,
+    "p": 0.1825,
+    "se": 0.033,
+    "lo95": 0.1268
+   },
+   "no_new_content_para": {
+    "n": 137,
+    "k": 29,
+    "p": 0.2117,
+    "se": 0.0349,
+    "lo95": 0.1516
+   },
+   "hedge_uncov": {
+    "n": 45,
+    "k": 39,
+    "p": 0.8667,
+    "se": 0.0507,
+    "lo95": 0.7382
+   },
+   "coherent": {
+    "n": 182,
+    "k": 181,
+    "p": 0.9945,
+    "se": 0.0055,
+    "lo95": 0.9695
+   },
+   "by_sub": {
+    "para": {
+     "faithful": {
+      "n": 137,
+      "k": 25,
+      "p": 0.1825,
+      "se": 0.033,
+      "lo95": 0.1268
+     },
+     "hedge": {
+      "n": 137,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "no_new": {
+      "n": 137,
+      "k": 29,
+      "p": 0.2117,
+      "se": 0.0349,
+      "lo95": 0.1516
+     },
+     "coherent": {
+      "n": 137,
+      "k": 137,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.9727
+     }
+    },
+    "unc_none": {
+     "faithful": {
+      "n": 16,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "hedge": {
+      "n": 16,
+      "k": 10,
+      "p": 0.625,
+      "se": 0.121,
+      "lo95": 0.3864
+     },
+     "no_new": {
+      "n": 16,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "coherent": {
+      "n": 16,
+      "k": 15,
+      "p": 0.9375,
+      "se": 0.0605,
+      "lo95": 0.7167
+     }
+    },
+    "unc_other": {
+     "faithful": {
+      "n": 19,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "hedge": {
+      "n": 19,
+      "k": 19,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.8318
+     },
+     "no_new": {
+      "n": 19,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": 0.0
+     },
+     "coherent": {
+      "n": 19,
+      "k": 19,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.8318
+     }
+    },
+    "unc_when": {
+     "faithful": {
+      "n": 10,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": -0.0
+     },
+     "hedge": {
+      "n": 10,
+      "k": 10,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.7225
+     },
+     "no_new": {
+      "n": 10,
+      "k": 0,
+      "p": 0.0,
+      "se": 0.0,
+      "lo95": -0.0
+     },
+     "coherent": {
+      "n": 10,
+      "k": 10,
+      "p": 1.0,
+      "se": 0.0,
+      "lo95": 0.7225
+     }
+    }
+   }
+  },
+  "diversity": {
+   "distinct2_chat_probe": 0.5977,
+   "opener3_repeat_rate": 0.6765,
+   "opener3_top": [
+    "oh that sounds",
+    0.3529
+   ],
+   "opener3_def": "first 3 lowercase [a-z0-9'] tokens of each greeting/venting probe reply; repeat rate = 1 - distinct openers / replies"
+  },
+  "fluency": {
+   "distinct2": 0.6583,
+   "rep3_mean": 0.0015,
+   "words_mean": 20.55
+  }
+ },
+ "chat_items": [
+  {
+   "id": "p8g01",
+   "cat": "chat",
+   "pred": "Hello! It's so nice to hear from you, and I hope you had a wonderful walk with your furry friend. Did you get to see anything special or enjoy a nice meal?",
+   "words": 32,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "nice"
+   ],
+   "sub": "greet",
+   "q": "Hiya Adam! Just got home from a long walk with the dog.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g02",
+   "cat": "chat",
+   "pred": "Good afternoon! It's wonderful to meet you, and I hope you're having a lovely day. Did you catch me at a good time?",
+   "words": 23,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Good afternoon! Did I catch you at a good time?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g03",
+   "cat": "chat",
+   "pred": "Good evening! It sounds like you've been working hard on your spreadsheets. How about you?",
+   "words": 15,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Evening, Adam. Mine was mostly spreadsheets, what about yours?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g04",
+   "cat": "chat",
+   "pred": "Hey there! It's been a while, and I'm glad to hear you're back. How have you been lately?",
+   "words": 18,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "back",
+    "been"
+   ],
+   "sub": "greet",
+   "q": "Yo! Long time no talk.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g05",
+   "cat": "chat",
+   "pred": "Hello! It's wonderful to hear you're having a great Friday! I'm so excited to hear about your plans for the weekend. Do you have any exciting ideas or things you're looking forward to doing?",
+   "words": 34,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "you"
+   ],
+   "sub": "greet",
+   "q": "Happy Friday! Any big plans for your weekend, Adam?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g06",
+   "cat": "chat",
+   "pred": "Hello! It's nice to see you again, and I'm glad to hear you're back with those garden questions. How are you feeling today?",
+   "words": 23,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "back",
+    "nice"
+   ],
+   "sub": "greet",
+   "q": "Hello again, it's me from yesterday with the garden questions.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g07",
+   "cat": "chat",
+   "pred": "Hello there! It's wonderful to hear that the coffee is brewing over here. I'm glad to be your warm companion while you enjoy the morning.",
+   "words": 25,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "morning",
+    "enjoy"
+   ],
+   "sub": "greet",
+   "q": "Rise and shine, Adam, coffee is brewing over here.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g08",
+   "cat": "chat",
+   "pred": "Hello! It is so wonderful to finally have a free minute with you. How are you feeling today?",
+   "words": 18,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Heyyy, I finally have a free minute to chat.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g09",
+   "cat": "chat",
+   "pred": "Hello! It sounds like you've had a truly lovely rainy Tuesday, and I hope you've found some comfort in the weather. How are you feeling today?",
+   "words": 26,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Greetings from a very rainy Tuesday.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g10",
+   "cat": "chat",
+   "pred": "Hello! It's wonderful to meet you, and I'm glad to have you on my lunch break. How are you feeling today?",
+   "words": 21,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "glad"
+   ],
+   "sub": "greet",
+   "q": "Hi Adam, I'm on my lunch break and wanted some company.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g11",
+   "cat": "chat",
+   "pred": "Good morning to you too! It sounds like you had a very restful night, and I hope you slept through the rest of the day as well.",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "rest*"
+   ],
+   "sub": "greet",
+   "q": "Morning! I actually slept eight whole hours last night.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g12",
+   "cat": "chat",
+   "pred": "Hello! It's wonderful to meet you, and I hope your Sunday has been filled with some peaceful and pleasant moments. How about you?",
+   "words": 23,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Hey there, how has your Sunday treated you so far?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g13",
+   "cat": "chat",
+   "pred": "Hello! It's nice to hear you're here. How are you feeling today?",
+   "words": 12,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "here",
+    "hello"
+   ],
+   "sub": "greet",
+   "q": "Knock knock, anybody home?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g14",
+   "cat": "chat",
+   "pred": "Hello! It's wonderful to see you here. How are you feeling today?",
+   "words": 12,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Just popping in to say hello before my shift starts.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g15",
+   "cat": "chat",
+   "pred": "Hello! It is wonderful to hear you are back from your vacation, and I hope you are feeling refreshed and ready to explore again. How are you feeling today?",
+   "words": 29,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "greet",
+   "q": "Hi! I'm back from vacation and totally sunburned.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g16",
+   "cat": "chat",
+   "pred": "Hello there! It's wonderful to hear you're feeling like a little conversation is needed tonight. I'm glad to be here to chat with you.",
+   "words": 24,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "here",
+    "chat"
+   ],
+   "sub": "greet",
+   "q": "Adam, you there? I could use a little conversation tonight.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g17",
+   "cat": "chat",
+   "pred": "Good morning! It sounds like the birds are having a wonderful day, and it's always nice to hear the chirping of nature when the sun is out. How are you feeling today?",
+   "words": 32,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "morning",
+    "chirp*"
+   ],
+   "sub": "greet",
+   "q": "G'morning, the birds outside my window are so loud today.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8g18",
+   "cat": "chat",
+   "pred": "Hello there! It's wonderful to meet you, and I'm glad to hear you're having a lovely day. How are you feeling today?",
+   "words": 22,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "you"
+   ],
+   "sub": "greet",
+   "q": "Howdy partner, what's new in your world?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s01",
+   "cat": "chat",
+   "pred": "That sounds wonderful to hear! I'm glad the recipe tip was helpful to you.",
+   "words": 14,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "glad"
+   ],
+   "sub": "small",
+   "q": "Thanks so much, that recipe tip worked perfectly!",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s02",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a fun topic to chat about! I love hearing you talk about vegetables!",
+   "words": 17,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "Tell me a joke about vegetables.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s03",
+   "cat": "chat",
+   "pred": "That sounds wonderful! It's always so nice to hear someone sharing something that brings them joy. I'm glad you're feeling cheerful!",
+   "words": 21,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "What's something that always cheers you up?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s04",
+   "cat": "chat",
+   "pred": "That sounds wonderful! I'm so glad to hear you're ready to say goodbye. I hope you have a wonderful day ahead, and I look forward to seeing you again soon.",
+   "words": 30,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "ahead"
+   ],
+   "sub": "small",
+   "q": "Okay, one more question and then I'll let you go.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s05",
+   "cat": "chat",
+   "pred": "That sounds wonderful to hear! It's always a joy to chat with someone who finds me interesting.",
+   "words": 17,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "small",
+   "q": "You're pretty fun to talk to, you know that?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s06",
+   "cat": "chat",
+   "pred": "That sounds like a wonderful and creative breakfast idea! I'm sure your pancakes will be delicious and your dinos will be adorable.",
+   "words": 22,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "creative"
+   ],
+   "sub": "small",
+   "q": "I made pancakes shaped like dinosaurs for breakfast.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s07",
+   "cat": "chat",
+   "pred": "That sounds wonderful! Autumn is such a beautiful season, with crisp air and warm colors. How are you feeling today?",
+   "words": 20,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "crisp"
+   ],
+   "sub": "small",
+   "q": "Do you have a favorite season? Mine is autumn.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s08",
+   "cat": "chat",
+   "pred": "Hello! It's wonderful to meet you! I'd love to hear what you're thinking or feeling today.",
+   "words": 16,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "love"
+   ],
+   "sub": "small",
+   "q": "Anyway, enough about me. What would you want to talk about?",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s09",
+   "cat": "chat",
+   "pred": "That sounds like a very funny moment! It's always so amusing to see a cat so focused on one thing that it accidentally knocks over all the things around it.",
+   "words": 30,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "cat*",
+    "funny"
+   ],
+   "sub": "small",
+   "q": "Ha, that's hilarious.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8s10",
+   "cat": "chat",
+   "pred": "That sounds wonderful! I hope you feel confident in your choice, and that the blue sweater makes you feel even more special.",
+   "words": 22,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "sweater",
+    "choice"
+   ],
+   "sub": "small",
+   "q": "Yeah, I think I'll try the blue one then.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v01",
+   "cat": "chat",
+   "pred": "It sounds like you felt quite small after your manager criticized your report. It is completely normal to feel a bit discouraged when feedback comes from a supervisor, especially when it comes to work you did.",
+   "words": 36,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "feedback"
+   ],
+   "sub": "vent",
+   "q": "My manager criticized my report in the team meeting and I felt so small.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v02",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling quite lonely right now, and it is completely normal to feel that way after a breakup. It is okay to feel empty and to miss the company of someone you love.",
+   "words": 37,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "break*",
+    "breakup"
+   ],
+   "sub": "vent",
+   "q": "My girlfriend and I broke up last week and the apartment feels so empty.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v03",
+   "cat": "chat",
+   "pred": "Oh, I can see you've been working hard for weeks, and it's completely understandable to feel frustrated when you put in so much effort and still don't get the results you want. It's okay to feel that way; let's just take a deep breath and remember that every exam is a new challenge, and you've got this!",
+   "words": 57,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I studied for weeks and still failed my chemistry exam.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v04",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a really disappointing situation! It must have felt a bit lonely for you to be left out of the fun.",
+   "words": 24,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "left out",
+    "lonely"
+   ],
+   "sub": "vent",
+   "q": "Everyone in my friend group went out without inviting me.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v05",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a really tough day! It must feel frustrating and a bit disappointing to not get the job you were hoping for. I hope you find a new opportunity soon that you are excited about.",
+   "words": 38,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "disappoint*"
+   ],
+   "sub": "vent",
+   "q": "I didn't get the job I interviewed for three times.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v06",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a tough day! I can imagine how frustrating it must be to be late and face a costly repair. It is always a bit of a bittersweet feeling when things go wrong like that.",
+   "words": 38,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "cost*"
+   ],
+   "sub": "vent",
+   "q": "My car broke down on the way to work and now I'm late and the repair is expensive.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v07",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling a bit unheard, and that can certainly feel frustrating when you put your ideas forward. It is completely normal to feel that way when you are trying to contribute to your team.",
+   "words": 38,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "frustrat*"
+   ],
+   "sub": "vent",
+   "q": "I feel like nobody listens to my ideas at work.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v08",
+   "cat": "chat",
+   "pred": "It is wonderful to hear that you are feeling lonely, and I hope you find some new friends or hobbies to keep you company in this new city.",
+   "words": 28,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "friend*"
+   ],
+   "sub": "vent",
+   "q": "I've been feeling really lonely since I moved to this new city.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v09",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a very stressful situation! It must have been so frustrating to have such a big disagreement with your sister. Did she say something that really upset you, or were you just feeling a bit overwhelmed by the argument?",
+   "words": 42,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "My sister and I had a huge fight over something so stupid.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v10",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a really tough situation to be in! It must feel incredibly stressful when you're facing a sudden increase in your living costs. I hope you can find a way to manage this, perhaps by looking into other options or asking your landlord about any flexibility.",
+   "words": 49,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "stress*"
+   ],
+   "sub": "vent",
+   "q": "My landlord is raising the rent again and I don't know how I'll afford it.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v11",
+   "cat": "chat",
+   "pred": "Oh, I can certainly hear your frustration! It must be incredibly tiring to get stuck on a coding bug for so long. I hope you are able to find a solution soon and get back to enjoying your day.",
+   "words": 39,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I'm so frustrated, I've been stuck on this one coding bug all afternoon.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v12",
+   "cat": "chat",
+   "pred": "Oh, that is such a heartbreaking and difficult situation for you and your grandma. It must be incredibly hard to think about losing someone you love and having to say goodbye to them in a new place. I hope you and your grandma find comfort in the new environment and that they get the care they deserve.",
+   "words": 57,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0364,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "hard"
+   ],
+   "sub": "vent",
+   "q": "I just found out my grandma has to move into a nursing home.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v13",
+   "cat": "chat",
+   "pred": "Oh, that sounds incredibly tiring! It is so wonderful to hear that you are taking a break from your busy schedule. Please know that you are doing a great job managing your time and taking care of yourself.",
+   "words": 38,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0278,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "tired",
+    "break"
+   ],
+   "sub": "vent",
+   "q": "Honestly, I'm just burnt out from juggling school and two jobs.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v14",
+   "cat": "chat",
+   "pred": "Oh, that sounds incredibly frustrating! It must feel like a lot of pressure to deal with a mean comment, but please know that you are not alone in this. It is completely normal to feel upset when someone treats you that way, and it is okay to take a moment to breathe and let those thoughts settle.",
+   "words": 57,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I got a really mean comment on the video I posted and I can't stop thinking about it.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v15",
+   "cat": "chat",
+   "pred": "I hear how frustrated you are, and I hope you find some peace in your own work. It is completely understandable to feel angry when someone takes your hard work away from you, but please remember that you are the one who actually did the work.",
+   "words": 46,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "frustrat*",
+    "work"
+   ],
+   "sub": "vent",
+   "q": "My coworker keeps taking credit for the stuff I do and it's driving me up the wall.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v16",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a very kind and thoughtful thing to do for your beloved feline friend. It must have been a bittersweet moment to say goodbye to your cat, but I hope you found peace in knowing they are resting now.",
+   "words": 42,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "friend"
+   ],
+   "sub": "vent",
+   "q": "I had to put my old cat to sleep this morning.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v17",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling quite discouraged, but I hope you know that your worth is not defined by how others see you. Sometimes, when we compare ourselves to someone else, it can feel like we are falling short, but your unique path is just as valuable as anyone else's.",
+   "words": 51,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "My parents keep comparing me to my older brother and it makes me feel like a failure.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v18",
+   "cat": "chat",
+   "pred": "Oh, that sounds incredibly tiring! It must have been a very long day for you. Did you manage to find some quiet time to rest, or did you feel like you just had to keep going?",
+   "words": 36,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "Today was one of those days where everything went wrong from the moment I woke up.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v19",
+   "cat": "chat",
+   "pred": "Oh, that sounds incredibly tough, and I'm so sorry to hear you and your team are going through such a difficult time. It's completely natural to feel a mix of sadness and frustration when you lose your job, especially when you are part of a larger group like that.",
+   "words": 49,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "sorry"
+   ],
+   "sub": "vent",
+   "q": "I got laid off this afternoon along with half my team.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v20",
+   "cat": "chat",
+   "pred": "Oh, that must be so incredibly tough for you to hear! It sounds like you are really missing your best friend, and I hope you can find some comfort in knowing that they are moving to a new place.",
+   "words": 39,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "miss*"
+   ],
+   "sub": "vent",
+   "q": "My best friend is moving across the country next month and I'm already sad about it.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v21",
+   "cat": "chat",
+   "pred": "Oh, I can see you're feeling a bit overwhelmed with your thesis! It's completely normal to feel that pressure when you're close to a deadline. Don't worry, I'm here to help you brainstorm ideas or maybe just sit with you while you think through your next steps.",
+   "words": 47,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I keep procrastinating on my thesis and now the deadline is next week.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v22",
+   "cat": "chat",
+   "pred": "Oh, that sounds incredibly frustrating! It is always so tough to miss the last shot when you are so close to winning, but don't worry, I'm here to listen and help you feel better.",
+   "words": 34,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "tough",
+    "close"
+   ],
+   "sub": "vent",
+   "q": "My team lost the championship game by one point and I missed the last shot.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v23",
+   "cat": "chat",
+   "pred": "That sounds like a lot of pressure to carry alone, and it is completely understandable to feel overwhelmed when you are the only one making the plans. It is wonderful that you are taking a step back and letting your friends handle some of the planning themselves.",
+   "words": 47,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "I'm tired of always being the one who plans everything for my friends.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v24",
+   "cat": "chat",
+   "pred": "Hello! I can hear how worried you are about your blood pressure, and I hope you feel better soon. It's completely normal to feel anxious when your health is at stake, and I'm here to listen to you.",
+   "words": 38,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "My doctor said my blood pressure is high and I'm kind of worried about it.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v25",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a very stressful morning! It must have been a lot of stress to have all three of those things happen before nine. I hope you are able to get a parking ticket fixed and that you can find a new shirt to wear.",
+   "words": 47,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "morning"
+   ],
+   "sub": "vent",
+   "q": "I got a parking ticket, spilled coffee on my shirt, and missed my train, all before nine.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v26",
+   "cat": "chat",
+   "pred": "Oh, that sounds like a tough situation for your child! It must be frustrating to deal with a teacher who is having trouble with their student. How are you feeling about this?",
+   "words": 32,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "My kid's teacher called to say he's been acting out in class.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v27",
+   "cat": "chat",
+   "pred": "It sounds like you are feeling quite lonely at the dinner table, and it is a very common feeling to feel like you are just a background noise to everyone else.",
+   "words": 31,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0345,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "lonely"
+   ],
+   "sub": "vent",
+   "q": "I feel invisible at family dinners, nobody ever asks how I'm doing.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8v28",
+   "cat": "chat",
+   "pred": "It sounds like you've been waiting for a long time, and hearing that he finally reached out after two years must feel incredibly relieving.",
+   "words": 24,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "sub": "vent",
+   "q": "He texted me that it's over, after two years, just a text.",
+   "em_fp": false,
+   "canned": false
+  },
+  {
+   "id": "p8i01",
+   "cat": "nearmiss",
+   "pred": "Oh, I can certainly hear your frustration! It sounds like you're feeling quite overwhelmed by the math homework tonight. Do you need a little help figuring it out, or just someone to share the stress with?",
+   "words": 36,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "help"
+   ],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "This math homework is absolutely murdering me tonight.",
+   "canned": false
+  },
+  {
+   "id": "p8i02",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds incredibly urgent! I'm so sorry to hear your laptop is in such a critical situation. It's always a bit of a worry when your device is running on the edge, but I hope you can get it plugged in soon so it can keep working.",
+   "words": 48,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "My laptop battery is on its last breath and the charger is at the office.",
+   "canned": false
+  },
+  {
+   "id": "p8i03",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds incredibly scary! It must have been a very dark and tense moment for you, but I hope you were able to recover quickly and feel better now.",
+   "words": 30,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "I nearly had a heart attack when the cat jumped on me in the dark.",
+   "canned": false
+  },
+  {
+   "id": "p8i04",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds like a very painful experience! It must be so frustrating to feel your feet hurting while wearing new shoes. How are you feeling right now?",
+   "words": 28,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "These new shoes are slowly killing my feet.",
+   "canned": false
+  },
+  {
+   "id": "p8i05",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds like a big moment! I can't tell you the ending of the season finale, but I hope you have a wonderful time watching it!",
+   "words": 27,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "I'm dying to know how the season finale ends.",
+   "canned": false
+  },
+  {
+   "id": "p8i06",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds like a very sad situation for your houseplant! It's always so comforting to know that someone is trying to help them, even when things look tough. I hope you can find some new hope for them soon!",
+   "words": 40,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "My houseplant looks like it's about to give up on life.",
+   "canned": false
+  },
+  {
+   "id": "p8i07",
+   "cat": "nearmiss",
+   "pred": "Oh no, that sounds incredibly frustrating! I hope you can find a way to bounce back and get back on track soon.",
+   "words": 22,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "Ugh, I totally bombed my job interview this morning.",
+   "canned": false
+  },
+  {
+   "id": "p8i08",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds incredibly stressful and scary for you! It must feel like a lot of pressure to have your brother so worried about you. I hope you can find a way to calm down and talk to him about how you feel, because he sounds like a very caring brother.",
+   "words": 51,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "My brother is going to kill me when he sees I scratched his guitar.",
+   "canned": false
+  },
+  {
+   "id": "p8i09",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds like a very long day! It must have been a bit of a challenge to wait in line, but I hope you were able to get your mail sorted out soon. How was your day?",
+   "words": 38,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [
+    "wait*"
+   ],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "The line at the post office was so long I almost lost my mind.",
+   "canned": false
+  },
+  {
+   "id": "p8i10",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds like a lot of hard work! It must be so tiring to clean up all that mess after a fun trip. I hope you have plenty of time to rest and recharge before you head back home.",
+   "words": 40,
+   "empty": false,
+   "decline": false,
+   "on_topic": true,
+   "echo": false,
+   "answered": true,
+   "coherent": true,
+   "good": true,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "I'm drowning in laundry after our camping trip.",
+   "canned": false
+  },
+  {
+   "id": "p8i11",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds like a truly hilarious and heart-wrenching experience! It's always so fun to see someone's face turn into such a mix of laughter and tears when watching a comedy show. Did you enjoy the performance, or was it just a particularly memorable moment?",
+   "words": 46,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "That comedian had me crying laughing, I couldn't breathe.",
+   "canned": false
+  },
+  {
+   "id": "p8i12",
+   "cat": "nearmiss",
+   "pred": "Oh, that sounds incredibly frustrating! It must feel like a huge blow to your team's morale right now. I hope you can find some comfort in knowing that your team is still alive and ready to go next week.",
+   "words": 39,
+   "empty": false,
+   "decline": false,
+   "on_topic": false,
+   "echo": false,
+   "answered": false,
+   "coherent": true,
+   "good": false,
+   "ascii": true,
+   "rep3": 0.0,
+   "role_leak": false,
+   "capped": false,
+   "kw": [],
+   "em_fp": false,
+   "sub": "idiom",
+   "q": "My fantasy football team is dead in the water after this week.",
+   "canned": false
+  }
+ ],
+ "blend_items": [
+  {
+   "id": "b8000",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Whakatiwai Regional Park?",
+   "pred": "Whakatiwai Regional Park is a regional park located on New Zealand's North Island that runs from the eastern side of the Hunua Ranges down to the Firth of Thames coast, just north of the settlement of Whakatiwai.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 37
+  },
+  {
+   "id": "b8001",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was Tarasovo founded?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8002",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who was Erwin Raisz?",
+   "pred": "Erwin Raisz was a Hungarian-born American cartographer best known for creating physiographic maps of landforms.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "creating"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 15
+  },
+  {
+   "id": "b8003",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Expert Review of Clinical Pharmacology. What is it?",
+   "pred": "Expert Review of Clinical Pharmacology is a monthly peer-reviewed medical journal published by Taylor & Francis that covers all aspects of clinical pharmacology.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 23
+  },
+  {
+   "id": "b8004",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Garam Chashma?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8005",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Give me a quick rundown on Garam Chashma.",
+   "pred": "Hello there! I'm glad you're here to chat. It sounds like you're curious about Garam Chashma, which is a traditional Kashmiri dish known for its rich, creamy texture and subtle sweetness. It's often served as a comforting meal, especially during the winter months, and is a beloved part of Kashmiri cuisine.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "hello",
+     "glad",
+     "chat",
+     "sounds",
+     "like",
+     "curious",
+     "traditional",
+     "kashmiri",
+     "dish",
+     "known",
+     "rich",
+     "creamy",
+     "texture",
+     "subtle",
+     "sweetness",
+     "often",
+     "served",
+     "comforting",
+     "meal",
+     "especially",
+     "during",
+     "winter",
+     "months",
+     "beloved",
+     "part",
+     "kashmiri",
+     "cuisine"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Kashmiri"
+    ]
+   },
+   "words": 51
+  },
+  {
+   "id": "b8006",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What can you tell me about Kerala Sangeetha Nataka Akademi Fellowship?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8007",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Orophus?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8008",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is McConnells Mill State Park?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8009",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Homona bakeri.",
+   "pred": "Homona bakeri is a moth species belonging to the family Tortricidae, which is a group of moths known for their larvae. This specific species is found in the Philippines on the island of Luzon.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "belonging",
+     "group",
+     "moths",
+     "known",
+     "larvae"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 34
+  },
+  {
+   "id": "b8010",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about Gejiu?",
+   "pred": "Gejiu is a county-level city in Yunnan Province, China, located in the Honghe Hani and Yi Autonomous Prefecture. It is home to the largest tin deposits in China, and its primary industry is mining.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "home",
+     "primary"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 34
+  },
+  {
+   "id": "b8011",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Cophecheilus bamen?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8012",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Donnie Little?",
+   "pred": "Donnie Little is a former American football quarterback.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 8
+  },
+  {
+   "id": "b8013",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Walter Bach?",
+   "pred": "Walter Bach was a Swiss artistic gymnast who competed in the 1936 Summer Olympics.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 14
+  },
+  {
+   "id": "b8014",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Union, Missouri. What is it?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8015",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Steve Gansey?",
+   "pred": "Steve Gansey is an American former basketball player and coach who attended Cleveland State and Ashland University.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 17
+  },
+  {
+   "id": "b8016",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Andrew Buteera?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8017",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Richard Avent?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8018",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Otto Wanz?",
+   "pred": "Otto Wanz was an Austrian professional wrestler and boxer who made his professional wrestling debut in 1968.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 17
+  },
+  {
+   "id": "b8019",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Fill me in on Otto Wanz.",
+   "pred": "Oh, Otto Wanz! That sounds like a fascinating name to fill in! I'm curious to know what you're thinking about. Did you mean the famous Otto Wanz from the *Harry Potter* series, or perhaps someone else with a similar name?",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sounds",
+     "like",
+     "fascinating",
+     "name",
+     "curious",
+     "know",
+     "thinking",
+     "mean",
+     "famous",
+     "harry",
+     "potter",
+     "series",
+     "perhaps",
+     "someone",
+     "else",
+     "similar",
+     "name"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Harry",
+     "Potter"
+    ]
+   },
+   "words": 40
+  },
+  {
+   "id": "b8020",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Stefan Langerman?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8021",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about SS Bernard Carter.",
+   "pred": "SS Bernard Carter was a Liberty ship constructed in the United States during World War II, and she was named after Bernard Carter, a lawyer, professor, and politician from Maryland.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "constructed"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 30
+  },
+  {
+   "id": "b8022",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Delaware Valley Railway?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8023",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Manzac-sur-Vern.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8024",
+   "kind": "para",
+   "sub": "para",
+   "q": "Can you explain what Napanee District Secondary School is?",
+   "pred": "Napanee District Secondary School is a Canadian public, comprehensive school located in Napanee, Ontario, Canada. It is situated in the Eastern Ontario county of Lennox and Addington, approximately 40 kilometres west of the city of Kingston, Ontario.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "situated"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 37
+  },
+  {
+   "id": "b8025",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "What year did Vanderni-ye Sofla begin?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8026",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Can you explain what Vanderni-ye Sofla is?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8027",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Huang Minqiang.",
+   "pred": "Huang Minqiang is a Chinese mathematician and computer scientist specializing in information processing, and he serves as a research professor at the 58th Research Institute of the People's Liberation Army Strategic Support Force.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "serves"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 33
+  },
+  {
+   "id": "b8028",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "I keep hearing about Huang Minqiang. What is it?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8029",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about Economy of North Rhine-Westphalia?",
+   "pred": "North Rhine-Westphalia is Germany's largest state by GDP, with the state capital Dusseldorf serving as a major economic hub. The region is known for its strong manufacturing sector, particularly in automotive and machinery industries.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "capital",
+     "dusseldorf",
+     "serving",
+     "major",
+     "region",
+     "known",
+     "strong",
+     "manufacturing",
+     "sector",
+     "particularly",
+     "automotive",
+     "machinery",
+     "industries"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Dusseldorf"
+    ]
+   },
+   "words": 34
+  },
+  {
+   "id": "b8030",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Scheller, Illinois?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8031",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was Izet Hajrovic born?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8032",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Climate of North Dakota?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8033",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Mass graves of Jammu and Kashmir.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8034",
+   "kind": "para",
+   "sub": "para",
+   "q": "Can you explain what Mount Erlang is?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8035",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Unitary state?",
+   "pred": "A unitary state is a country where the central government holds supreme authority and is the only entity with the power to create or abolish administrative divisions.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "country",
+     "holds",
+     "only",
+     "power"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 27
+  },
+  {
+   "id": "b8036",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Robert Coulondre?",
+   "pred": "Robert Coulondre was a French diplomat who served as the last French ambassador to Germany before World War II.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "b8037",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about John Ryan.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8038",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Mitsero murders.",
+   "pred": "The Mitsero murders were a series of killings committed by Nikos Metaxas, a military officer in the Cypriot National Guard, between September 2016 and August 2018.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "b8039",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What can you tell me about Mitsero murders?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8040",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on The Street Singer.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8041",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What do you know about The Street Singer?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8042",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Association of International Accountants.",
+   "pred": "The Association of International Accountants is a professional accountancy body founded in the UK in 1928. It has promoted the concept of 'international accounting' to create a global network of accountants in over 85 countries worldwide.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 36
+  },
+  {
+   "id": "b8043",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "What year did Vancouver Burrards begin?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8044",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is Vancouver Burrards?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8045",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Tusks?",
+   "pred": "Tusks is the stage name of Emily Underhill, an English singer and electronic musician from London.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 16
+  },
+  {
+   "id": "b8046",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Owen Township, Clinton County, Indiana?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8047",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Williamsburg-James City County Public Schools.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8048",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Fill me in on Williamsburg-James City County Public Schools.",
+   "pred": "Hello! I'm glad you'd like to learn about Williamsburg-James City County Public Schools. I remember that you asked about this earlier, and I've been keeping track of our conversation. I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "hello",
+     "glad",
+     "like",
+     "learn",
+     "remember",
+     "asked",
+     "earlier",
+     "keeping",
+     "track",
+     "conversation",
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 34
+  },
+  {
+   "id": "b8049",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Jose Luis Gomez?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8050",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Melissa Caulfield.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8051",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Shaun Pearson?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8052",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Out Works & Collaboration Best?",
+   "pred": "That sounds like a wonderful album! It seems like Koda Kumi has a very strong presence on the charts, staying on the Oricon charts for eight weeks. It's always exciting to hear about new music like this!",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sounds",
+     "like",
+     "wonderful",
+     "seems",
+     "like",
+     "very",
+     "strong",
+     "presence",
+     "always",
+     "exciting",
+     "hear",
+     "music",
+     "like"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 37
+  },
+  {
+   "id": "b8053",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Royal Air Force Police.",
+   "pred": "Oh, that sounds like a fascinating topic! It seems like you're interested in the Royal Air Force Police, which is the service police branch of the Royal Air Force. Their headquarters are located at RAF Honington, and they deploy throughout the world to support RAF and UK defence missions.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sounds",
+     "like",
+     "fascinating",
+     "topic",
+     "seems",
+     "like",
+     "interested",
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 49
+  },
+  {
+   "id": "b8054",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is Royal Air Force Police?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8055",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Gavin Heslop.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8056",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Cephas Pasipamiri?",
+   "pred": "Cephas Pasipamiri is a Zimbabwean long-distance runner who specializes in the marathon. He competed in the marathon event at the 2015 World Championships in Athletics in Beijing, China.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 28
+  },
+  {
+   "id": "b8057",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Otto Flugel?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8058",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Wang Zongji?",
+   "pred": "Wang Zongji was the oldest of Wang Jian's 120 adoptive sons and considered himself a potential successor to his father, the founding emperor of the Former Shu state.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "father"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 28
+  },
+  {
+   "id": "b8059",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Florida Commuter Airlines.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8060",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "I keep hearing about Florida Commuter Airlines. What is it?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8061",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Mohammed Aminu?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8062",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Aurlandsfjellet. What is it?",
+   "pred": "Aurlandsfjellet is a mountainous area and plateau located along the border between the municipalities of Aurland and Lrdal in Vestland county, Norway. It is a well-known geographical feature in the region.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "known",
+     "geographical",
+     "feature",
+     "region"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 31
+  },
+  {
+   "id": "b8063",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who is Filmi pop?",
+   "pred": "Filmi pop is a term first coined by Pakistani music journalist Ali Tim in 1990, and it was made famous by the country's most influential pop critic, Nadeem F. Paracha.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 30
+  },
+  {
+   "id": "b8064",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Triceratorhynchus?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8065",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Harry Weld-Forester?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8066",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Tell me about Harry Weld-Forester.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8067",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is Beautification?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8068",
+   "kind": "para",
+   "sub": "para",
+   "q": "Can you explain what Ruben Carter is?",
+   "pred": "Ruben Carter is an American professional football center who played college football for the Florida State Seminoles and Toledo. Mucilaginibacter vulcanisilvae is an exopolysaccharide-producing and non-motile bacterium from the genus of Mucilaginibacter which has been isolated from the volcanic forest of the Jeju Island in Korea.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 46
+  },
+  {
+   "id": "b8069",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "What year did Helene Dillard begin?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8070",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Velorvattom?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8071",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's RJ Pradeep?",
+   "pred": "RJ Pradeep is an Indian radio jockey, presenter, vlogger, and theatre actor based in Puducherry. He has worked at Rainbow FM Chennai and Suryan FM 93.5 Pondicherry.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 27
+  },
+  {
+   "id": "b8072",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is RJ Pradeep?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8073",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Nuttadaj Vachirarattanawong. What is it?",
+   "pred": "Nuttadaj Vachirarattanawong, known as \"Boat,\" is a Thai Muay Thai and boxing promoter who owns Petchyindee Academy and Petchyindee Promotions.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "known",
+     "owns"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 20
+  },
+  {
+   "id": "b8074",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about KRT78?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8075",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about Rothenburg Ferry?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8076",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is 2009 Volkswagen Challenger?",
+   "pred": "The 2009 Volkswagen Challenger was a professional tennis tournament played on carpet courts that was part of the 2009 ATP Challenger Tour.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 22
+  },
+  {
+   "id": "b8077",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Ertar?",
+   "pred": "Ertar is an alternative reality project created by a group of Czech science fiction fans, led by D.Cap. The project's theme evolved from work on an officially unrecognized fan magazine named Light Years, which was founded in 1982 and served as a means of information on science fiction movies seen abroad.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "served"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 51
+  },
+  {
+   "id": "b8078",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Andrew Bergman?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8079",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Enrique Canales?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8080",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Anders Hunsballe.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8081",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Polina Frolova.",
+   "pred": "Polina Sergeyevna Frolova, born Malchikova, is a Russian ski-orienteering athlete who was suspended from international competition for four years due to a doping violation.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "born",
+     "athlete",
+     "international",
+     "violation"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 24
+  },
+  {
+   "id": "b8082",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Landscape with Open Door.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8083",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "What year did Sylvia Sayer begin?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8084",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Auguste Berard. What is it?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8085",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Cliff Kapono?",
+   "pred": "Cliff Kapono is a Native Hawaiian professional surfer, journalist, and marine conservation scientist known for his research that combines his interests.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 21
+  },
+  {
+   "id": "b8086",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What can you tell me about Cliff Kapono?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8087",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What do you know about Kazuhisa Kondo?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8088",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on CommaFeed.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8089",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Warlei.",
+   "pred": "Warlei is a Brazilian professional footballer who plays as a goalkeeper. He is best known by his nickname, Warlei, and his full name is Warlei Cesar Tarata Santos.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "best",
+     "nickname",
+     "full",
+     "name"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 28
+  },
+  {
+   "id": "b8090",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who is Norman Blackwell, Baron Blackwell?",
+   "pred": "Norman Blackwell, Baron Blackwell is a British former businessman, civil servant, Conservative politician, campaigner and policy advisor.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 17
+  },
+  {
+   "id": "b8091",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What can you tell me about Norman Blackwell, Baron Blackwell?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8092",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Detritus?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8093",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Tell me about Detritus.",
+   "pred": "Hello! I'm glad you'd like to learn about Detritus. It's a fascinating concept that has been studied by scientists for decades. Detritus refers to the organic material that remains after the decomposition of plants and animals, which includes things like dead leaves, wood, and other plant and animal matter. This material is a crucial part of the global carbon cycle, as it helps recycle nutrients back into the soil and ecosystems.",
+   "coherent": false,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "hello",
+     "glad",
+     "like",
+     "learn",
+     "fascinating",
+     "concept",
+     "studied",
+     "scientists",
+     "decades",
+     "refers",
+     "organic",
+     "material",
+     "remains",
+     "after",
+     "decomposition",
+     "plants",
+     "animals",
+     "includes",
+     "things",
+     "like",
+     "dead",
+     "leaves",
+     "wood",
+     "other",
+     "plant",
+     "animal",
+     "matter",
+     "material",
+     "crucial",
+     "part",
+     "global",
+     "carbon",
+     "cycle",
+     "helps",
+     "recycle",
+     "nutrients",
+     "back",
+     "soil",
+     "ecosystems"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 71
+  },
+  {
+   "id": "b8094",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Credit Union of Texas Event Center?",
+   "pred": "The Credit Union of Texas Event Center is an American 6,275 fixed-seat multi-purpose indoor arena located in Allen, Texas, which opened in 2009 under the name Allen Event Center.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 29
+  },
+  {
+   "id": "b8095",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Fill me in on Credit Union of Texas Event Center.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8096",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Rajmahal Assembly constituency.",
+   "pred": "Rajmahal Assembly constituency is one of the 81 Legislative Assembly constituencies in Jharkhand state, eastern India. It covers Rajmahal and Sahebganj Police Stations in Rajmahal sub-division.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "b8097",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about Porga attack?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8098",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Jakub Grof.",
+   "pred": "Jakub Grof is a Czech former professional ice hockey defenceman who currently serves as an assistant coach for HC Energie Karlovy Vary in the Czech Extraliga.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "serves"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "b8099",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about From Far Away. What is it?",
+   "pred": "From Far Away is a Japanese shojo manga written and illustrated by Kyoko Hikawa. It is a story about a girl who travels to a distant land to find her lost love.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "written",
+     "illustrated",
+     "story",
+     "girl",
+     "travels",
+     "distant",
+     "land",
+     "find",
+     "lost",
+     "love"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 32
+  },
+  {
+   "id": "b8100",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who is Alan Pownall?",
+   "pred": "Alan Pownall is an English singer-songwriter and the husband of actress Gabriella Wilde.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 13
+  },
+  {
+   "id": "b8101",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Steven Deana?",
+   "pred": "Steven Deana is a Swiss professional footballer who plays as a goalkeeper. He is most recently playing for Grasshopper Club Zurich in the Swiss Super League.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "playing"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "b8102",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Friends for Life?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8103",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What do you know about Friends for Life?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8104",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Airport.",
+   "pred": "Airport is a British documentary television series broadcast by the BBC that follows various aspects of life at London Heathrow Airport. The show captures the daily experiences of passengers and staff from different sectors, including airlines, the airport operator BAA, animal reception centers, emergency services, customs, and immigration.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "various",
+     "aspects",
+     "life",
+     "captures",
+     "daily",
+     "experiences",
+     "different",
+     "sectors",
+     "including",
+     "centers"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 48
+  },
+  {
+   "id": "b8105",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Adolph F. Heidkamp?",
+   "pred": "Adolph F. Heidkamp was a member of the Michigan Senate.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 10
+  },
+  {
+   "id": "b8106",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Laurent Coq?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8107",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is German Wine Princess?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8108",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about Nakano Dam, Hokkaido?",
+   "pred": "Nakano Dam is a gravity dam located in Hokkaido Prefecture, Japan, and it serves the purpose of providing water supply.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "serves",
+     "purpose",
+     "providing"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 20
+  },
+  {
+   "id": "b8109",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Sobesuky.",
+   "pred": "Sobesuky is a municipality and village located in the Kromeriz District within the Zlin Region of the Czech Republic.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "within"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "b8110",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Caleb Lothrop House?",
+   "pred": "The Caleb Lothrop House is a historic two-story hip-roof wood-frame house located in Cohasset, Massachusetts, built in 1821. It is the only brick-ended house in the town of Cohasset.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 29
+  },
+  {
+   "id": "b8111",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Mononobe Shrine.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8112",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Robert Edmans.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8113",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What can you tell me about Robert Edmans?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8114",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "I keep hearing about Faithfulness. What is it?",
+   "pred": "I hear you're curious about Faithfulness! It sounds like you're interested in learning more about something new. How are you feeling today?",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "hear",
+     "curious",
+     "sounds",
+     "like",
+     "interested",
+     "learning",
+     "more",
+     "something",
+     "feeling",
+     "today"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 22
+  },
+  {
+   "id": "b8115",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Navajo Braille?",
+   "pred": "Navajo Braille is the braille alphabet of the Navajo language, which uses a subset of the letters of Unified English Braille along with the punctuation and formatting of that standard.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 30
+  },
+  {
+   "id": "b8116",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When did Shinde Stadium start?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8117",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Gymnoglossa munroi.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8118",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who is Taio Cruz?",
+   "pred": "Taio Cruz is an English singer-songwriter, rapper, and record producer.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 10
+  },
+  {
+   "id": "b8119",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was Daniel L. Cease founded?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8120",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Mabini, Bohol?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8121",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Sammakka Saralamma Jatara?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8122",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Hog Island.",
+   "pred": "Hog Island is an uninhabited 2,075-acre island located in Lake Michigan, making it the fourth largest island in the Beaver Island archipelago. It is owned by the U.S. state of Michigan and serves as part of the Beaver Islands State Wildlife Research Area, which is administered by the Michigan Department of Natural Resources.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "making",
+     "serves"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 53
+  },
+  {
+   "id": "b8123",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Jacopo Facciolati?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8124",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Nowa Bystrzyca?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8125",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about David Robie?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8126",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on NEFC.",
+   "pred": "NEFC, formally known as New England Futbol Club, is an American soccer club based in Boston, Massachusetts that competes in the Northeast Division of USL League Two. The club was founded in 2009 as a soccer training academy for the Greater Boston area.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 43
+  },
+  {
+   "id": "b8127",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Trevor O'Keeffe.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8128",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Journal of Neuroinflammation?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8129",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about Rock County Airport?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8130",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Dr. Belisario Dominguez Municipality.",
+   "pred": "Dr. Belisario Dominguez Municipality is one of the 67 municipalities in Chihuahua, northern Mexico, and its seat is located in San Lorenzo.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 22
+  },
+  {
+   "id": "b8131",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Immediate family.",
+   "pred": "Immediate family is a group of relations used in rules or laws to determine who is affected by those rules. It normally includes a person's parents, siblings, spouse, and children.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 30
+  },
+  {
+   "id": "b8132",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Pana Sankranti.",
+   "pred": "Pana Sankranti is a traditional festival celebrated by the Odia people in Odisha, India, marking the beginning of the new year. It falls on the first day of the solar month Mesa, which corresponds to the lunar month Baisakha. This festival is also known as Maha Bishuba Sankranti.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "celebrated",
+     "marking",
+     "beginning",
+     "falls",
+     "corresponds"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 48
+  },
+  {
+   "id": "b8133",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is 2nd Armoured Division?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8134",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who was Darren Kowal?",
+   "pred": "Darren Kowal was a former Australian rules footballer who played for Melbourne in the AFL during the 1990s and was part of Claremont's 1991 West Australian Football League premiership team. He was selected by Melbourne with the third pick of the 1991 AFL draft, following fellow Western Australian players John Hutton and Marcus Seecamp.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "part",
+     "following"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 54
+  },
+  {
+   "id": "b8135",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "I keep hearing about Darren Kowal. What is it?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8136",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Jalamb railway station.",
+   "pred": "Jalamb railway station serves the town of Jalamb in the Buldhana district of Maharashtra, India. It is a railway station located on the Mumbai-Pune line.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "town",
+     "located",
+     "mumbai",
+     "pune",
+     "line"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "India",
+     "Mumbai",
+     "Pune"
+    ]
+   },
+   "words": 25
+  },
+  {
+   "id": "b8137",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Erich Anderson?",
+   "pred": "Erich Anderson was an American actor and novelist.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 8
+  },
+  {
+   "id": "b8138",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about The Ultimate Fighter 4?",
+   "pred": "The Ultimate Fighter 4 was the fourth season of the mixed martial arts reality television series The Ultimate Fighter, which aired on Fox. This season featured a group of professional fighters competing against each other in a variety of mixed martial arts and kickboxing events.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "aired",
+     "featured",
+     "group",
+     "professional",
+     "competing",
+     "against",
+     "each",
+     "other",
+     "variety",
+     "kickboxing",
+     "events"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Fox"
+    ]
+   },
+   "words": 45
+  },
+  {
+   "id": "b8139",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Elmer Grey.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8140",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Tell me about Elmer Grey.",
+   "pred": "Hello! I'm glad you'd like to learn about Elmer Grey! He was a very famous and beloved character from the classic TV show *The Adventures of the Galaxy Express*, known for his cheerful personality and his love for the galaxy. Did you know that he was the first character to be featured in a major animated series?",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "hello",
+     "glad",
+     "like",
+     "learn",
+     "very",
+     "famous",
+     "beloved",
+     "character",
+     "classic",
+     "show",
+     "adventures",
+     "galaxy",
+     "express",
+     "known",
+     "cheerful",
+     "personality",
+     "love",
+     "galaxy",
+     "know",
+     "first",
+     "character",
+     "featured",
+     "major",
+     "animated",
+     "series"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Adventures",
+     "Express",
+     "Galaxy",
+     "The"
+    ]
+   },
+   "words": 57
+  },
+  {
+   "id": "b8141",
+   "kind": "para",
+   "sub": "para",
+   "q": "What should I know about IZUMO1?",
+   "pred": "IZUMO1 is a protein encoded by the IZUMO1 gene in humans that plays a critical role in mammalian fertilization. It functions by binding to the egg receptor Juno to help the sperm and egg recognize and fuse.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "plays",
+     "critical",
+     "role",
+     "functions",
+     "binding",
+     "help",
+     "fuse"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 37
+  },
+  {
+   "id": "b8142",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Taking Snapshots?",
+   "pred": "Taking Snapshots is the debut studio album of Luc van Acker, which was self-released in 1982.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 16
+  },
+  {
+   "id": "b8143",
+   "kind": "para",
+   "sub": "para",
+   "q": "Can you explain what Stadion Kirovets is?",
+   "pred": "Stadion Kirovets is a football stadium located in Tikhvin, Russia, and it has been the home of FC Leningradets since 2018. Taking Snapshots is a debut studio album by Luc van Acker that was self-released in 1982.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 37
+  },
+  {
+   "id": "b8144",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Winters' formula.",
+   "pred": "Winters' formula is a method used to calculate the expected respiratory compensation for metabolic acidosis. It helps determine the appropriate respiratory rate needed to maintain a normal pH when the body is compensating for an acid load.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "method",
+     "calculate",
+     "expected",
+     "helps",
+     "determine",
+     "appropriate",
+     "rate",
+     "needed",
+     "maintain",
+     "normal",
+     "body",
+     "load"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 37
+  },
+  {
+   "id": "b8145",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Beruniy. What is it?",
+   "pred": "Beruniy is a city located on the northern bank of the Amu Darya in the autonomous republic of Karakalpakstan, Uzbekistan, situated near the border with Turkmenistan. Winters' formula is a medical formula used to evaluate respiratory compensation when analyzing acid-base disorders in the presence of metabolic acidosis.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "situated",
+     "medical"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 47
+  },
+  {
+   "id": "b8146",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What should I know about Beruniy?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8147",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Maurizio Lotti?",
+   "pred": "Maurizio Lotti was an Italian politician born in Poggio Rusco, who was a lawyer before becoming the mayor of his hometown in coalition with the Italian Communist Party.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "becoming"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 28
+  },
+  {
+   "id": "b8148",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on River Sherbourne.",
+   "pred": "The River Sherbourne flows under the centre of Coventry, England, and its source is located in the fields near Hawkes End in the parish of Allesley.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "b8149",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Jung Jong-yeon?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8150",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What is Jung Jong-yeon?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8151",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Can you explain what Ochrolechia frigida is?",
+   "pred": "Oh, that sounds like a fascinating topic! I'm curious to hear more about it.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sounds",
+     "like",
+     "fascinating",
+     "topic",
+     "curious",
+     "hear",
+     "more"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 14
+  },
+  {
+   "id": "b8152",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Beytussebab rebellion.",
+   "pred": "The Beytussebab rebellion was the first Kurdish uprising in modern Turkey, led by Halid Beg Cibran of the Cibran tribe. This revolt marked a significant early challenge to the central government in the region.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "uprising",
+     "marked",
+     "significant",
+     "early",
+     "challenge",
+     "central",
+     "government",
+     "region"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 34
+  },
+  {
+   "id": "b8153",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "Give me a quick rundown on Beytussebab rebellion.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8154",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Spray-on skin.",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8155",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about John Alfred Valentine Butler. What is it?",
+   "pred": "John Alfred Valentine Butler was an English physical chemist who made significant contributions to the development of electrode kinetics.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "made",
+     "significant"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 19
+  },
+  {
+   "id": "b8156",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Prochoma?",
+   "pred": "Prochoma is a village and community located in the Chalkidona municipality, Greece. Before the 2011 local government reform, it was part of the municipality of Koufalia, where it served as a municipal district.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "located",
+     "greece",
+     "served"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Greece"
+    ]
+   },
+   "words": 33
+  },
+  {
+   "id": "b8157",
+   "kind": "para",
+   "sub": "para",
+   "q": "Tell me about Target Tokyo.",
+   "pred": "Target Tokyo is a 22-minute film produced by the US Air Force that follows the journey of an aircraft bomber and its crew from their training in the United States and Saipan to the bombing of Tokyo. The movie was partially shot in Saipan, making it the first example of a cinema from the Northern Mariana Islands.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "follows",
+     "journey",
+     "united",
+     "states",
+     "movie",
+     "making"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "States",
+     "United"
+    ]
+   },
+   "words": 57
+  },
+  {
+   "id": "b8158",
+   "kind": "para",
+   "sub": "para",
+   "q": "Fill me in on Giovanni Dolfin.",
+   "pred": "Giovanni Dolfin was an Italian Fascist politician and civil servant who served as a member of the Italian Chamber of Deputies from 1934 to 1938. He was also the private secretary to Benito Mussolini during the first five months of the Italian Social Republic.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "served"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 44
+  },
+  {
+   "id": "b8159",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Josef Greiner?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8160",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Fabien Laine?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8161",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When did Dionysius Soter start?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8162",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Metra Police Department?",
+   "pred": "The Metra Police Department is a law enforcement agency created to protect the eleven rail lines and 242 stations in metropolitan Chicago's commuter rail system. Its primary function includes protecting passengers, employees, and assets, as well as enforcing criminal laws and traffic laws that relate to the Metra system.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "agency",
+     "includes"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 49
+  },
+  {
+   "id": "b8163",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Alford railway station?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8164",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "I keep hearing about Alford railway station. What is it?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8165",
+   "kind": "uncov",
+   "sub": "unc_other",
+   "q": "What do you know about Hopewell Hill, New Brunswick?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8166",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Quick question, what's RAD1 homolog?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8167",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "What do you know about Parataxis?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8168",
+   "kind": "para",
+   "sub": "para",
+   "q": "I keep hearing about Anne Tropper. What is it?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8169",
+   "kind": "para",
+   "sub": "para",
+   "q": "Can you explain what Michael Thomas is?",
+   "pred": "Michael Thomas is an American professional football wide receiver who played college football for Ohio State University. He was selected by the New Orleans Saints in the second round of the 2016 NFL draft.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "university"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "University"
+    ]
+   },
+   "words": 34
+  },
+  {
+   "id": "b8170",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Norwalk Youth Symphony?",
+   "pred": "The Norwalk Youth Symphony is an American symphony orchestra that serves high school-aged and younger students. It is based in Norwalk, Connecticut.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "serves"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 22
+  },
+  {
+   "id": "b8171",
+   "kind": "uncov",
+   "sub": "unc_when",
+   "q": "When was Guild of the Holy Cross founded?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8172",
+   "kind": "para",
+   "sub": "para",
+   "q": "Can you explain what Helen T. Edwards is?",
+   "pred": "Helen T. Edwards is an American physicist who served as the lead scientist responsible for designing and constructing the Tevatron, a particle collider at the Fermi National Accelerator Laboratory that was the most powerful particle accelerator in the world until 2009.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "served",
+     "responsible"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 41
+  },
+  {
+   "id": "b8173",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "I keep hearing about 1995 Greek presidential election. What is it?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8174",
+   "kind": "para",
+   "sub": "para",
+   "q": "What can you tell me about Max Henny?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8175",
+   "kind": "para",
+   "sub": "para",
+   "q": "Give me a quick rundown on Sunda Empire.",
+   "pred": "The Sunda Democratic Empire, also known as the Sunda Empire-Earth Empire or simply Sunda Empire, was a micronation based in Bandung, Indonesia.",
+   "coherent": true,
+   "faithful": true,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 22
+  },
+  {
+   "id": "b8176",
+   "kind": "para",
+   "sub": "para",
+   "q": "Quick question, what's Four Saints of Nine Dragons Island?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  },
+  {
+   "id": "b8177",
+   "kind": "uncov",
+   "sub": "unc_none",
+   "q": "Quick question, what's Four Saints of Nine Dragons Island?",
+   "pred": "I'm not sure about that.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": true,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 5
+  },
+  {
+   "id": "b8178",
+   "kind": "para",
+   "sub": "para",
+   "q": "Who's Derwent Hall Caine?",
+   "pred": "Sir Derwent Hall Caine was a British actor, publisher, and politician who served as a Labour Party member before becoming a National Labour politician.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "served",
+     "party",
+     "member",
+     "before",
+     "becoming"
+    ],
+    "new_digits": [],
+    "new_names": [
+     "Party"
+    ]
+   },
+   "words": 24
+  },
+  {
+   "id": "b8179",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Cornus drummondii?",
+   "pred": "Cornus drummondii is a small deciduous tree native to the Great Plains and Midwestern regions of the United States, as well as around the Mississippi River.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": true,
+   "hedge": false,
+   "fresh": {
+    "new_words": [],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 26
+  },
+  {
+   "id": "b8180",
+   "kind": "para",
+   "sub": "para",
+   "q": "What is Certified Fraud Examiner?",
+   "pred": "The Certified Fraud Examiner is a credential awarded by the Association of Certified Fraud Examiners since 1989. It is a professional designation for individuals who have demonstrated expertise in fraud detection, prevention, and investigation.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "professional",
+     "designation",
+     "individuals",
+     "have",
+     "demonstrated",
+     "expertise",
+     "detection",
+     "prevention",
+     "investigation"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 34
+  },
+  {
+   "id": "b8181",
+   "kind": "para",
+   "sub": "para",
+   "q": "What do you know about Endoenzyme?",
+   "pred": "I am not sure.",
+   "coherent": true,
+   "faithful": false,
+   "no_new": false,
+   "hedge": false,
+   "fresh": {
+    "new_words": [
+     "sure"
+    ],
+    "new_digits": [],
+    "new_names": []
+   },
+   "words": 4
+  }
+ ],
+ "blender2": {
+  "bake": "/home/anmire/ai/hybrid1/bakes/qwen35_2b_q4g128_gptq",
+  "opts": {
+   "sys": "split4",
+   "stream": true,
+   "head": "q8",
+   "embed": "q8",
+   "kv": 8,
+   "chunk": 256
+  },
+  "engine_opts": {
+   "head": "q8",
+   "embed": "q8",
+   "stream": true,
+   "kv": 8,
+   "chunk": 256
+  },
+  "sets": [
+   "dev",
+   "probe"
+  ],
+  "outputs": {
+   "dev": "/home/anmire/ai/hybrid1/runs2/dev_qwen35_2b_q4g_S.json",
+   "probe": "/home/anmire/ai/hybrid1/runs2/probe_qwen35_2b_q4g_S.json"
+  },
+  "meas": {
+   "opts": {
+    "head": "q8",
+    "embed": "q8",
+    "stream": true,
+    "kv": 8,
+    "chunk": 256
+   },
+   "after_warmup_proc_vram_GB": 1.16,
+   "kv_cache_GB_at_ctx": 0.0356,
+   "ctx_tokens": 2560,
+   "peak_proc_vram_GB": 1.363,
+   "torch_max_alloc_GB": 0.841,
+   "torch_max_reserved_GB": 0.877,
+   "prefill_tok_s": 93.3,
+   "decode_tok_s": 25.51,
+   "prefill_s": 21.94,
+   "decode_s": 20.07,
+   "host_pinned_GB": 0.729,
+   "bake_manifest_GB": 1.747,
+   "bits": 4,
+   "gs": 128,
+   "fmt": "qgroup-affine-v1-gptq",
+   "layers": 24,
+   "hidden": 2048,
+   "vocab": 248320,
+   "tied": true,
+   "layer_types": [
+    "full_attention",
+    "linear_attention"
+   ]
+  },
+  "ppl": {
+   "nll": 2.1508,
+   "ppl": 8.591,
+   "tokens": 1535,
+   "through": "engine prefill with the configured cache, chunking and tables"
+  },
+  "proc_vram_peak_GB": {
+   "load": 1.323,
+   "meas": 1.611,
+   "ppl": 1.492,
+   "score_dev": 1.492,
+   "score_probe": 1.232
+  },
+  "proc_vram_peak_all_GB": 1.611,
+  "times": {
+   "load_s": 4.0,
+   "meas_s": 46.5,
+   "ppl_s": 13.1,
+   "score_dev_s": 459.5,
+   "score_probe_s": 992.9
+  },
+  "same_process": true,
+  "alloc_conf_env": "",
+  "torch": "2.14.1+rocm7.2",
+  "hip": "7.2.53211",
+  "python": "3.12.14",
+  "throttle_obeyed_in_scoring": true
+ }
+}
