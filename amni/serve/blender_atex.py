@@ -143,10 +143,12 @@ class Atex:
         for i in range(0,ids.shape[-1],c):o=s.base_model(inputs_embeds=s.emb(ids[0,i:i+c]).unsqueeze(0),past_key_values=cache,use_cache=True)
         return o.last_hidden_state[0,-1]
     @torch.no_grad()
-    def generate(s,ids,max_new=64,stops=(),temperature=0.0,ign=False,tm=None):
-        t0=time.time();ca=s.cache();h=s.prefill(ids,ca);torch.cuda.synchronize();t1=time.time();out=[];txt=''
+    def generate(s,ids,max_new=64,stops=(),temperature=0.0,ign=False,tm=None,top_p=1.0,seed=None):
+        t0=time.time();ca=s.cache();h=s.prefill(ids,ca);torch.cuda.synchronize();t1=time.time();out=[];txt='';g=torch.Generator(device=s.dev).manual_seed(int(seed)) if seed is not None and temperature>0 else None
+        def nuc(p):
+            v,i=torch.sort(p,-1,descending=True);k=(v.cumsum(-1)-v)<top_p;return torch.zeros_like(p).scatter(-1,i,v*k)
         for _ in range(max_new):
-            lg=s.logits(h);t=int(lg.argmax(-1).item()) if temperature<=0 else int(torch.multinomial(torch.softmax(lg/temperature,-1),1).item())
+            lg=s.logits(h);t=int(lg.argmax(-1).item()) if temperature<=0 else int(torch.multinomial(nuc(torch.softmax(lg/temperature,-1)) if top_p<1 else torch.softmax(lg/temperature,-1),1,generator=g).item())
             if t in s.eos and not ign:break
             out.append(t)
             if stops:
@@ -169,12 +171,12 @@ class Blender:
         try:t=s.e.tok.apply_chat_template(M,add_generation_prompt=True,tokenize=False,enable_thinking=False)
         except Exception:t=s.e.tok.apply_chat_template(M,add_generation_prompt=True,tokenize=False)
         return s.e.tok(t,return_tensors='pt',add_special_tokens=False).input_ids
-    def text(s,prompt,max_bytes=400,stops=(),timeout=None):
+    def text(s,prompt,max_bytes=400,stops=(),timeout=None,dec=None):
         with s.lock:
-            ids=s.prompt_ids(prompt);t=s.e.generate(ids,max(8,int(max_bytes)//3),('\n',),0.0);from amni.serve import adam_t_client as C;return C.asc(t.lstrip().split('\n')[0].strip())
-    def gen(s,prompt,max_tokens=400,stops=(),history=None,pre=(),rc=(),sep=' '):
+            d=dec or {};ids=s.prompt_ids(prompt);t=s.e.generate(ids,max(8,int(max_bytes)//3),('\n',),float(d.get('temperature',0.0)),top_p=float(d.get('top_p',1.0)),seed=d.get('seed'));from amni.serve import adam_t_client as C;return C.asc(t.lstrip().split('\n')[0].strip())
+    def gen(s,prompt,max_tokens=400,stops=(),history=None,pre=(),rc=(),sep=' ',dec=None):
         from amni.serve import adam_t_client as C
-        nm=os.environ.get('AMNI_BLENDER_NOMAT')=='1';return s.text(C.template(prompt,history,0,() if nm else pre,() if nm else rc,sep),max_tokens)
+        nm=os.environ.get('AMNI_BLENDER_NOMAT')=='1';return s.text(C.template(prompt,history,0,() if nm else pre,() if nm else rc,sep),max_tokens,dec=dec)
     def budget(s,max_tokens=400):return int(s.info['ctx'])*3
     def proto(s):return s
     def alive(s):return True

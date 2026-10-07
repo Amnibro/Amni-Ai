@@ -1,0 +1,4153 @@
+{
+ "meta": {
+  "model": "/home/anmire/ai/Amni-Ai/exports/adam_t/t30m_sft3/model.gf17",
+  "model_sha256": "dfe9521f9f29ce21c194cd2c97984c4b1ec51e9e1f677c8fd617749897a8c85d",
+  "bin_sha256": "f8c8843f8991b1bfaa9fd1764f51e788b07e5d155af42f350ff03ff09aaa1e3e",
+  "blender": "adam-t",
+  "commit": "4dc01f347337cc74a884418ed30c407c0d00e776",
+  "dirty": true,
+  "loadavg": [
+   7.873046875,
+   6.787109375,
+   5.88232421875
+  ],
+  "at": "2026-10-06T22:12:49-0400",
+  "def_s": {
+   "fact": 0.25,
+   "explain": 0.5,
+   "chat": 0.75
+  },
+  "cond": "0.5",
+  "notask": false
+ },
+ "summary": {
+  "store2": {
+   "n": 50,
+   "n_draft": 50,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.02,
+   "model_called": 1.0,
+   "retry_pass": 0.02,
+   "fallback": 0.98,
+   "distinct2": 0.8656,
+   "opener_rep": 0.22,
+   "coherent": 0.92,
+   "clean": 1.0,
+   "words": 7.0,
+   "nat": 1.5656,
+   "gold_acc": 0.7551,
+   "retrieval": 0.0,
+   "lat13_median_ms": 3.392,
+   "lat13_p90_ms": 7.175,
+   "lat_refine_median_ms": 878.006,
+   "wall_median_ms": 881.847
+  },
+  "hedge": {
+   "n": 21,
+   "n_draft": 0,
+   "fact_preservation": null,
+   "grounded": null,
+   "refine_pass": null,
+   "model_called": null,
+   "retry_pass": null,
+   "fallback": null,
+   "distinct2": 0.3656,
+   "opener_rep": 0.9524,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 9.9,
+   "nat": 0.4133,
+   "gold_acc": 0.0588,
+   "retrieval": 0.8095,
+   "lat13_median_ms": 196.411,
+   "lat13_p90_ms": 321.815,
+   "lat_refine_median_ms": 0.0,
+   "wall_median_ms": 1879.801
+  },
+  "chat": {
+   "n": 44,
+   "n_draft": 0,
+   "fact_preservation": null,
+   "grounded": null,
+   "refine_pass": null,
+   "model_called": null,
+   "retry_pass": null,
+   "fallback": null,
+   "distinct2": 0.7592,
+   "opener_rep": 0.4091,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 10.7,
+   "nat": 1.3501,
+   "gold_acc": 0.2667,
+   "retrieval": 0.0,
+   "lat13_median_ms": 2.115,
+   "lat13_p90_ms": 314.37,
+   "lat_refine_median_ms": 417.92,
+   "wall_median_ms": 448.851
+  },
+  "cs": {
+   "n": 1,
+   "n_draft": 1,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.0,
+   "model_called": 1.0,
+   "retry_pass": 0.0,
+   "fallback": 1.0,
+   "distinct2": 1.0,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 4.0,
+   "nat": 2.0,
+   "gold_acc": 0.0,
+   "retrieval": 0.0,
+   "lat13_median_ms": 358.985,
+   "lat13_p90_ms": 358.985,
+   "lat_refine_median_ms": 1194.23,
+   "wall_median_ms": 3091.745
+  },
+  "calc": {
+   "n": 3,
+   "n_draft": 3,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.3333,
+   "model_called": 1.0,
+   "retry_pass": 0.0,
+   "fallback": 0.6667,
+   "distinct2": 0.9524,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 8.33,
+   "nat": 1.9524,
+   "gold_acc": 1.0,
+   "retrieval": 0.0,
+   "lat13_median_ms": 0.643,
+   "lat13_p90_ms": 2.489,
+   "lat_refine_median_ms": 800.194,
+   "wall_median_ms": 800.58
+  },
+  "know": {
+   "n": 1,
+   "n_draft": 1,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.0,
+   "model_called": 1.0,
+   "retry_pass": 0.0,
+   "fallback": 1.0,
+   "distinct2": 0.0,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 1.0,
+   "nat": 1.0,
+   "gold_acc": 0.0,
+   "retrieval": 1.0,
+   "lat13_median_ms": 272.359,
+   "lat13_p90_ms": 272.359,
+   "lat_refine_median_ms": 1171.294,
+   "wall_median_ms": 2260.67
+  },
+  "explain": {
+   "n": 10,
+   "n_draft": 10,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.1,
+   "model_called": 1.0,
+   "retry_pass": 0.0,
+   "fallback": 0.9,
+   "distinct2": 0.9628,
+   "opener_rep": 0.0,
+   "coherent": 1.0,
+   "clean": 1.0,
+   "words": 29.7,
+   "nat": 1.9628,
+   "gold_acc": null,
+   "retrieval": 1.0,
+   "lat13_median_ms": 107.695,
+   "lat13_p90_ms": 207.721,
+   "lat_refine_median_ms": 1544.834,
+   "wall_median_ms": 1713.066
+  },
+  "ALL": {
+   "n": 130,
+   "n_draft": 65,
+   "fact_preservation": 1.0,
+   "grounded": 1.0,
+   "refine_pass": 0.0462,
+   "model_called": 1.0,
+   "retry_pass": 0.0154,
+   "fallback": 0.9538,
+   "distinct2": 0.7511,
+   "opener_rep": 0.3846,
+   "coherent": 0.9692,
+   "clean": 1.0,
+   "words": 10.43,
+   "nat": 1.3358,
+   "gold_acc": 0.5233,
+   "retrieval": 0.2154,
+   "lat13_median_ms": 4.626,
+   "lat13_p90_ms": 272.359,
+   "lat_refine_median_ms": 792.552,
+   "wall_median_ms": 881.847
+  }
+ },
+ "rows": [
+  {
+   "id": "p1-0002",
+   "cat": "wd_fact",
+   "q": "The Brothers Karamazov was written by whom?",
+   "reply": "The Brothers Karamazov was written by Fyodor Dostoyevsky.",
+   "route": "store2",
+   "draft": [
+    "The Brothers Karamazov was written by Fyodor Dostoyevsky."
+   ],
+   "mat": "Draft: The Brothers Karamazov was written by Fyodor Dostoyevsky. The Brothers Karamazov, author: Fyodor Dostoyevsky.",
+   "must": [
+    "Fyodor Dostoyevsky"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 1065.8124099718407,
+   "ref_ms": 1061.0816479893401,
+   "gin_ms": 1060.6712548760697,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.730761982500553
+  },
+  {
+   "id": "p1-0004",
+   "cat": "wd_fact",
+   "q": "who directed jaws",
+   "reply": "Jaws was directed by Steven Spielberg.",
+   "route": "store2",
+   "draft": [
+    "Jaws was directed by Steven Spielberg."
+   ],
+   "mat": "Draft: Jaws was directed by Steven Spielberg. Jaws, director: Steven Spielberg.",
+   "must": [
+    "Steven Spielberg"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 811.0616880003363,
+   "ref_ms": 809.792244923301,
+   "gin_ms": 809.5002641202882,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.2694430770352483
+  },
+  {
+   "id": "p1-0006",
+   "cat": "wd_fact",
+   "q": "Who was behind the camera calling the shots on Vertigo, the 1958 thriller?",
+   "reply": "I think it's Kim Novak, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": false,
+   "wall_ms": 2523.9703179104254,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2238.890770007856,
+   "lat13_ms": 285.0795479025692
+  },
+  {
+   "id": "p1-0007",
+   "cat": "wd_fact",
+   "q": "Who composed the set of violin concertos known as The Four Seasons?",
+   "reply": "The Four Seasons was composed by Antonio Vivaldi.",
+   "route": "store2",
+   "draft": [
+    "The Four Seasons was composed by Antonio Vivaldi."
+   ],
+   "mat": "Draft: The Four Seasons was composed by Antonio Vivaldi. The Four Seasons, composer: Antonio Vivaldi.",
+   "must": [
+    "Antonio Vivaldi"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 987.8808610374108,
+   "ref_ms": 983.6027420824394,
+   "gin_ms": 983.3101609256119,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.278118954971433
+  },
+  {
+   "id": "p1-0008",
+   "cat": "wd_fact",
+   "q": "Name the composer whose score accompanies Swan Lake.",
+   "reply": "Swan Lake was composed by Pyotr Ilyich Tchaikovsky.",
+   "route": "store2",
+   "draft": [
+    "Swan Lake was composed by Pyotr Ilyich Tchaikovsky."
+   ],
+   "mat": "Draft: Swan Lake was composed by Pyotr Ilyich Tchaikovsky. Swan Lake, composer: Pyotr Ilyich Tchaikovsky.",
+   "must": [
+    "Pyotr Ilyich Tchaikovsky"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 1217.6555199548602,
+   "ref_ms": 1215.2968209702522,
+   "gin_ms": 1214.7723829839379,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.358698984608054
+  },
+  {
+   "id": "p1-0009",
+   "cat": "wd_fact",
+   "q": "Rhapsody in Blue's composer was who?",
+   "reply": "Rhapsody in Blue was composed by George Gershwin.",
+   "route": "store2",
+   "draft": [
+    "Rhapsody in Blue was composed by George Gershwin."
+   ],
+   "mat": "Draft: Rhapsody in Blue was composed by George Gershwin. Rhapsody in Blue, composer: George Gershwin.",
+   "must": [
+    "George Gershwin"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 931.4011370297521,
+   "ref_ms": 928.6790530895814,
+   "gin_ms": 928.4141538664699,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.7220839401707053
+  },
+  {
+   "id": "p1-0012",
+   "cat": "wd_fact",
+   "q": "Name the capital of Peru, please.",
+   "reply": "The capital of Peru is Lima.",
+   "route": "store2",
+   "draft": [
+    "The capital of Peru is Lima."
+   ],
+   "mat": "Draft: The capital of Peru is Lima. Peru, capital: Lima.",
+   "must": [
+    "Lima"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 607.992165023461,
+   "ref_ms": 606.0093059204519,
+   "gin_ms": 605.5779519956559,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.9828591030091047
+  },
+  {
+   "id": "p1-0017",
+   "cat": "wd_fact",
+   "q": "Munich lies in which German state?",
+   "reply": "Munich is in Upper Bavaria.",
+   "route": "store2",
+   "draft": [
+    "Munich is in Upper Bavaria."
+   ],
+   "mat": "Draft: Munich is in Upper Bavaria. Munich, located in the administrative territorial entity: Upper Bavaria.",
+   "must": [
+    "Upper Bavaria"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 5,
+   "gold": true,
+   "wall_ms": 849.1551720071584,
+   "ref_ms": 839.1059400746599,
+   "gin_ms": 838.6089319828898,
+   "gout_ms": 0.0,
+   "lat13_ms": 10.049231932498515
+  },
+  {
+   "id": "p1-0018",
+   "cat": "wd_fact",
+   "q": "The Golden Gate Bridge is located in which city?",
+   "reply": "Golden Gate Bridge is in Marin County.",
+   "route": "store2",
+   "draft": [
+    "Golden Gate Bridge is in Marin County."
+   ],
+   "mat": "Draft: Golden Gate Bridge is in Marin County. Golden Gate Bridge, located in the administrative territorial entity: Marin County.",
+   "must": [
+    "Marin County"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 836.0087160253897,
+   "ref_ms": 832.2456791065633,
+   "gin_ms": 831.8044568877667,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.7630369188264012
+  },
+  {
+   "id": "p1-0023",
+   "cat": "wd_fact",
+   "q": "Mozart's dad was which violinist and teacher?",
+   "reply": "The father of Wolfgang Amadeus Mozart is Leopold Mozart.",
+   "route": "store2",
+   "draft": [
+    "The father of Wolfgang Amadeus Mozart is Leopold Mozart."
+   ],
+   "mat": "Draft: The father of Wolfgang Amadeus Mozart is Leopold Mozart. Wolfgang Amadeus Mozart, father: Leopold Mozart.",
+   "must": [
+    "Leopold Mozart"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": true,
+   "wall_ms": 1237.382146064192,
+   "ref_ms": 1235.1442449726164,
+   "gin_ms": 1234.4314600341022,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.2379010915756226
+  },
+  {
+   "id": "p1-0025",
+   "cat": "wd_fact",
+   "q": "Which queen gave birth to Elizabeth I of England?",
+   "reply": "I'm not sure about that one yet.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 445.3822679352015,
+   "ref_ms": 441.9566380092874,
+   "gin_ms": 441.70568499248475,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.4256299259141088
+  },
+  {
+   "id": "p1-0027",
+   "cat": "wd_fact",
+   "q": "what was the name of napoleon bonapartes mother",
+   "reply": "The mother of Napoleon is Maria-Letizia Bonaparte.",
+   "route": "store2",
+   "draft": [
+    "The mother of Napoleon is Maria-Letizia Bonaparte."
+   ],
+   "mat": "Draft: The mother of Napoleon is Maria-Letizia Bonaparte. Napoleon, mother: Maria-Letizia Bonaparte.",
+   "must": [
+    "Maria-Letizia Bonaparte"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 1007.865066989325,
+   "ref_ms": 1005.1479530520737,
+   "gin_ms": 1004.6176619362086,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.71711393725127
+  },
+  {
+   "id": "p1-0028",
+   "cat": "wd_fact",
+   "q": "Philip II of Macedon had a son who went on to conquer Persia. Who?",
+   "reply": "I'm not sure about that one yet.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 855.3574669640511,
+   "ref_ms": 853.4189310157672,
+   "gin_ms": 852.9458078555763,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.9385359482839704
+  },
+  {
+   "id": "p1-0033",
+   "cat": "wd_fact",
+   "q": "SpaceX was founded by who",
+   "reply": "Elon Musk.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 2,
+   "gold": true,
+   "wall_ms": 1965.1322469580919,
+   "ref_ms": 1791.2148620234802,
+   "gin_ms": 1790.957566932775,
+   "gout_ms": 0.0,
+   "lat13_ms": 173.91738493461162
+  },
+  {
+   "id": "p1-0036",
+   "cat": "wd_fact",
+   "q": "nestle's head office is in what town",
+   "reply": "London.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 1,
+   "gold": false,
+   "wall_ms": 1998.5307609895244,
+   "ref_ms": 1791.7343910085037,
+   "gin_ms": 1791.6106679476798,
+   "gout_ms": 0.0,
+   "lat13_ms": 206.7963699810207
+  },
+  {
+   "id": "p1-0037",
+   "cat": "wd_fact",
+   "q": "Thailand runs on which currency?",
+   "reply": "The currency of Thailand is baht.",
+   "route": "store2",
+   "draft": [
+    "The currency of Thailand is baht."
+   ],
+   "mat": "Draft: The currency of Thailand is baht. Thailand, currency: baht.",
+   "must": [
+    "baht"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 687.5281339744106,
+   "ref_ms": 686.4007679978386,
+   "gin_ms": 686.2625369103625,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.1273659765720367
+  },
+  {
+   "id": "p1-0039",
+   "cat": "wd_fact",
+   "q": "If I travel to South Africa, which currency will I be paying in?",
+   "reply": "The passage doesn't say, so I don't know.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": false,
+   "wall_ms": 278.2546819653362,
+   "ref_ms": 276.77017310634255,
+   "gin_ms": 276.63506695535034,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.4845088589936495
+  },
+  {
+   "id": "p1-0040",
+   "cat": "wd_fact",
+   "q": "Brazilians officially speak which language?",
+   "reply": "The language of work or name of The Brazilian is English.",
+   "route": "store2",
+   "draft": [
+    "The language of work or name of The Brazilian is English."
+   ],
+   "mat": "Draft: The language of work or name of The Brazilian is English. The Brazilian, language of work or name: English.",
+   "must": [
+    "English"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 11,
+   "gold": false,
+   "wall_ms": 702.5538490852341,
+   "ref_ms": 701.0670449817553,
+   "gin_ms": 700.7752049248666,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.4868041034787893
+  },
+  {
+   "id": "p1-0042",
+   "cat": "wd_fact",
+   "q": "Mongolia's official languge?",
+   "reply": "I think it's Mongolian, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": true,
+   "wall_ms": 1004.9855830147862,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 840.721397078596,
+   "lat13_ms": 164.2641859361902
+  },
+  {
+   "id": "p1-0044",
+   "cat": "wd_fact",
+   "q": "Which town did William Shakespeare come into the world in?",
+   "reply": "William Shakespeare was born in Stratford-upon-Avon.",
+   "route": "store2",
+   "draft": [
+    "William Shakespeare was born in Stratford-upon-Avon."
+   ],
+   "mat": "Draft: William Shakespeare was born in Stratford-upon-Avon. William Shakespeare, place of birth: Stratford-upon-Avon.",
+   "must": [
+    "Stratford-upon-Avon"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 1184.6697960281745,
+   "ref_ms": 1178.6939159501344,
+   "gin_ms": 1178.3897030400112,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.975880078040063
+  },
+  {
+   "id": "p1-0046",
+   "cat": "wd_fact",
+   "q": "Van Gogh spent his final days in which French village, where he died?",
+   "reply": "I think Auberge Ravoux is a lodgier, but I couldn't confirm it. Probably Germany, though I couldn't verify that.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 2,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 19,
+   "gold": false,
+   "wall_ms": 2988.3349059382454,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2012.3368699569255,
+   "lat13_ms": 975.9980359813198
+  },
+  {
+   "id": "p1-0048",
+   "cat": "wd_fact",
+   "q": "In which city did Mozart breathe his last?",
+   "reply": "Wolfgang Amadeus Mozart was born in Salzburg.",
+   "route": "store2",
+   "draft": [
+    "Wolfgang Amadeus Mozart was born in Salzburg."
+   ],
+   "mat": "Draft: Wolfgang Amadeus Mozart was born in Salzburg. Wolfgang Amadeus Mozart, place of birth: Salzburg.",
+   "must": [
+    "Salzburg"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 1001.9852390978485,
+   "ref_ms": 997.0339309656993,
+   "gin_ms": 996.2865019915625,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.951308132149279
+  },
+  {
+   "id": "p1-0051",
+   "cat": "wd_fact",
+   "q": "tim cook works for what company",
+   "reply": "Apple Inc.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 2,
+   "gold": true,
+   "wall_ms": 1925.178217003122,
+   "ref_ms": 1682.9483089968562,
+   "gin_ms": 1682.808946003206,
+   "gout_ms": 0.0,
+   "lat13_ms": 242.22990800626576
+  },
+  {
+   "id": "p1-0052",
+   "cat": "wd_fact",
+   "q": "Where did Charles Darwin study?",
+   "reply": "Charles Darwin studied at University of Cambridge.",
+   "route": "store2",
+   "draft": [
+    "Charles Darwin studied at University of Cambridge."
+   ],
+   "mat": "Draft: Charles Darwin studied at University of Cambridge. Charles Darwin, educated at: University of Cambridge.",
+   "must": [
+    "University of Cambridge"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 829.607998020947,
+   "ref_ms": 823.9438260206953,
+   "gin_ms": 823.3983470126987,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.66417200025171
+  },
+  {
+   "id": "p1-0053",
+   "cat": "wd_fact",
+   "q": "Which university did Mark Zuckerburg attend before he dropped out?",
+   "reply": "The passage doesn't say, so I don't know.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": false,
+   "wall_ms": 699.7511530062184,
+   "ref_ms": 288.4000459453091,
+   "gin_ms": 288.2495829835534,
+   "gout_ms": 0.0,
+   "lat13_ms": 411.35110706090927
+  },
+  {
+   "id": "p1-0054",
+   "cat": "wd_fact",
+   "q": "Obama earned his law degree at which school?",
+   "reply": "It's the graduate school.",
+   "route": "cs",
+   "draft": [
+    "It's the graduate school."
+   ],
+   "mat": "Draft: It's the graduate school. WordNet graduate_school.n.01: a school in a university offering study leading to degrees beyond the bachelor's degree WordNet graduate_school.n.01 is a kind of school.n.01",
+   "must": [
+    "graduate school"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 4,
+   "gold": false,
+   "wall_ms": 3091.74505493138,
+   "ref_ms": 1194.2304780241102,
+   "gin_ms": 1193.2478649541736,
+   "gout_ms": 1538.5292769642547,
+   "lat13_ms": 358.985299943015
+  },
+  {
+   "id": "p1-0056",
+   "cat": "wd_fact",
+   "q": "Lionel Messi spent most of his career at which club?",
+   "reply": "Lionel Messi played for Inter Miami CF.",
+   "route": "store2",
+   "draft": [
+    "Lionel Messi played for Inter Miami CF."
+   ],
+   "mat": "Draft: Lionel Messi played for Inter Miami CF. Lionel Messi, member of sports team: Inter Miami CF.",
+   "must": [
+    "Inter Miami CF"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 940.6639629742131,
+   "ref_ms": 932.5621239840984,
+   "gin_ms": 932.2758549824357,
+   "gout_ms": 0.0,
+   "lat13_ms": 8.10183899011463
+  },
+  {
+   "id": "p1-0057",
+   "cat": "wd_fact",
+   "q": "what hockey team did wayne gretzky win his first stanley cups with",
+   "reply": "Wayne Gretzky played for St. Louis Blues.",
+   "route": "store2",
+   "draft": [
+    "Wayne Gretzky played for St. Louis Blues."
+   ],
+   "mat": "Draft: Wayne Gretzky played for St. Louis Blues. Wayne Gretzky, member of sports team: St. Louis Blues.",
+   "must": [
+    "St. Louis Blues"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 1077.823803992942,
+   "ref_ms": 1069.5076510310173,
+   "gin_ms": 1068.7965400284156,
+   "gout_ms": 0.0,
+   "lat13_ms": 8.316152961924672
+  },
+  {
+   "id": "p1-0059",
+   "cat": "wd_fact",
+   "q": "Elvis Presley's very first record deal was with which label?",
+   "reply": "Elvis Presley recorded for Sun Records.",
+   "route": "store2",
+   "draft": [
+    "Elvis Presley recorded for Sun Records."
+   ],
+   "mat": "Draft: Elvis Presley recorded for Sun Records. Elvis Presley, record label: Sun Records.",
+   "must": [
+    "Sun Records"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 897.0430350163952,
+   "ref_ms": 891.7421780060977,
+   "gin_ms": 890.7265031011775,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.300857010297477
+  },
+  {
+   "id": "p1-0062",
+   "cat": "wd_fact",
+   "q": "Thriller is an album by which artist?",
+   "reply": "Thriller was created by Brian Clemens.",
+   "route": "store2",
+   "draft": [
+    "Thriller was created by Brian Clemens."
+   ],
+   "mat": "Draft: Thriller was created by Brian Clemens. Thriller, creator: Brian Clemens.",
+   "must": [
+    "Brian Clemens"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": false,
+   "wall_ms": 878.8286230992526,
+   "ref_ms": 876.2300120433792,
+   "gin_ms": 875.4765409976244,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.5986110558733344
+  },
+  {
+   "id": "p1-0063",
+   "cat": "wd_fact",
+   "q": "who performed bohemian rhapsody",
+   "reply": "Bohemian was performed by Judy Collins.",
+   "route": "store2",
+   "draft": [
+    "Bohemian was performed by Judy Collins."
+   ],
+   "mat": "Draft: Bohemian was performed by Judy Collins. Bohemian, performer: Judy Collins.",
+   "must": [
+    "Judy Collins"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": false,
+   "wall_ms": 794.0749269910157,
+   "ref_ms": 789.3266320461407,
+   "gin_ms": 788.8087270548567,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.748294944874942
+  },
+  {
+   "id": "p1-0064",
+   "cat": "wd_fact",
+   "q": "Which studio developed Minecraft?",
+   "reply": "The distributed by of A Minecraft Movie is Warner Bros. Pictures.",
+   "route": "store2",
+   "draft": [
+    "The distributed by of A Minecraft Movie is Warner Bros. Pictures."
+   ],
+   "mat": "Draft: The distributed by of A Minecraft Movie is Warner Bros. Pictures. A Minecraft Movie, distributed by: Warner Bros. Pictures.",
+   "must": [
+    "Warner Bros. Pictures"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 11,
+   "gold": false,
+   "wall_ms": 937.7398660872132,
+   "ref_ms": 935.7817129930481,
+   "gin_ms": 935.4158330243081,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.9581530941650271
+  },
+  {
+   "id": "p1-0066",
+   "cat": "wd_fact",
+   "q": "The Legend of Zelda games are made by which developer?",
+   "reply": "The Legend of Zelda was created by Shigeru Miyamoto.",
+   "route": "store2",
+   "draft": [
+    "The Legend of Zelda was created by Shigeru Miyamoto."
+   ],
+   "mat": "Draft: The Legend of Zelda was created by Shigeru Miyamoto. The Legend of Zelda, creator: Shigeru Miyamoto.",
+   "must": [
+    "Shigeru Miyamoto"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": false,
+   "wall_ms": 1059.0445749694481,
+   "ref_ms": 1055.592044023797,
+   "gin_ms": 1055.1595180295408,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.452530945651233
+  },
+  {
+   "id": "p1-0071",
+   "cat": "wd_fact",
+   "q": "Fallingwater, that house over a waterfall, was designed by which architect?",
+   "reply": "I think it's Fred A. Petersen, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 11,
+   "gold": false,
+   "wall_ms": 2305.9656949480996,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2025.8194420021027,
+   "lat13_ms": 280.1462529459968
+  },
+  {
+   "id": "p1-0072",
+   "cat": "wd_fact",
+   "q": "The Sydney Opera House's architect was who?",
+   "reply": "Sydney Opera House was designed by Peter Hall.",
+   "route": "store2",
+   "draft": [
+    "Sydney Opera House was designed by Peter Hall."
+   ],
+   "mat": "Draft: Sydney Opera House was designed by Peter Hall. Sydney Opera House, architect: Peter Hall.",
+   "must": [
+    "Peter Hall"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": false,
+   "wall_ms": 971.4278440224007,
+   "ref_ms": 964.2524519003928,
+   "gin_ms": 963.6608770815656,
+   "gout_ms": 0.0,
+   "lat13_ms": 7.175392122007906
+  },
+  {
+   "id": "p1-0073",
+   "cat": "wd_fact",
+   "q": "Who discovered penicillin?",
+   "reply": "Penicillin was discovered or invented by Alexander Fleming.",
+   "route": "store2",
+   "draft": [
+    "Penicillin was discovered or invented by Alexander Fleming."
+   ],
+   "mat": "Draft: Penicillin was discovered or invented by Alexander Fleming. penicillin, discoverer or inventor: Alexander Fleming.",
+   "must": [
+    "Alexander Fleming"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 944.865558994934,
+   "ref_ms": 942.6980320131406,
+   "gin_ms": 941.9704299652949,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.167526981793344
+  },
+  {
+   "id": "p1-0076",
+   "cat": "wd_fact",
+   "q": "The Americas got their name from which explorer?",
+   "reply": "Americas is named after Amerigo Vespucci.",
+   "route": "store2",
+   "draft": [
+    "Americas is named after Amerigo Vespucci."
+   ],
+   "mat": "Draft: Americas is named after Amerigo Vespucci. Americas, named after: Amerigo Vespucci.",
+   "must": [
+    "Amerigo Vespucci"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 916.4029600797221,
+   "ref_ms": 910.9245199942961,
+   "gin_ms": 910.479569924064,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.478440085425973
+  },
+  {
+   "id": "p1-0077",
+   "cat": "wd_fact",
+   "q": "Bolivia was named in honor of whom?",
+   "reply": "Bolivia is named after Simon Bolivar.",
+   "route": "store2",
+   "draft": [
+    "Bolivia is named after Simon Bolivar."
+   ],
+   "mat": "Draft: Bolivia is named after Simon Bolivar. Bolivia, named after: Simon Bolivar.",
+   "must": [
+    "Simon Bolivar"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 860.2088959887624,
+   "ref_ms": 856.8246240029112,
+   "gin_ms": 856.2464620918036,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.3842719858512282
+  },
+  {
+   "id": "p1-0078",
+   "cat": "wd_fact",
+   "q": "Einsteinium, the element - who is it named after?",
+   "reply": "Einsteinium is named after Albert Einstein.",
+   "route": "store2",
+   "draft": [
+    "Einsteinium is named after Albert Einstein."
+   ],
+   "mat": "Draft: Einsteinium is named after Albert Einstein. einsteinium, named after: Albert Einstein.",
+   "must": [
+    "Albert Einstein"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 841.9151150155813,
+   "ref_ms": 838.1983150029555,
+   "gin_ms": 837.9129770910367,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.716800012625754
+  },
+  {
+   "id": "p1-0081",
+   "cat": "wd_fact",
+   "q": "lake victoria is on what continent",
+   "reply": "Asia.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 1,
+   "gold": false,
+   "wall_ms": 2066.316193086095,
+   "ref_ms": 1971.8677600612864,
+   "gin_ms": 1971.7799740610644,
+   "gout_ms": 0.0,
+   "lat13_ms": 94.44843302480876
+  },
+  {
+   "id": "p1-0083",
+   "cat": "wd_fact",
+   "q": "Africa's tallest peak is which mountain?",
+   "reply": "The highest point of Africa is Mount Kibo.",
+   "route": "store2",
+   "draft": [
+    "The highest point of Africa is Mount Kibo."
+   ],
+   "mat": "Draft: The highest point of Africa is Mount Kibo. Africa, highest point: Mount Kibo.",
+   "must": [
+    "Mount Kibo"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 867.3129830276594,
+   "ref_ms": 860.9160599298775,
+   "gin_ms": 860.3746381122619,
+   "gout_ms": 0.0,
+   "lat13_ms": 6.396923097781837
+  },
+  {
+   "id": "p1-0084",
+   "cat": "wd_fact",
+   "q": "Name the highest summit in the Alps.",
+   "reply": "The highest point of Alps is Mont Blanc.",
+   "route": "store2",
+   "draft": [
+    "The highest point of Alps is Mont Blanc."
+   ],
+   "mat": "Draft: The highest point of Alps is Mont Blanc. Alps, highest point: Mont Blanc.",
+   "must": [
+    "Mont Blanc"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 797.7812570752576,
+   "ref_ms": 795.7768070045859,
+   "gin_ms": 795.4980710055679,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.004450070671737
+  },
+  {
+   "id": "p1-0085",
+   "cat": "wd_fact",
+   "q": "Into which sea does the Danube flow?",
+   "reply": "Danube flows into Black Sea.",
+   "route": "store2",
+   "draft": [
+    "Danube flows into Black Sea."
+   ],
+   "mat": "Draft: Danube flows into Black Sea. Danube, mouth of the watercourse: Black Sea.",
+   "must": [
+    "Black Sea"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 5,
+   "gold": true,
+   "wall_ms": 787.3909920454025,
+   "ref_ms": 785.7241380261257,
+   "gin_ms": 785.4207770433277,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.6668540192767978
+  },
+  {
+   "id": "p1-0089",
+   "cat": "wd_fact",
+   "q": "Yo-Yo Ma is famous for playing which instrument?",
+   "reply": "Yo-Yo Ma played the cello.",
+   "route": "store2",
+   "draft": [
+    "Yo-Yo Ma played the cello."
+   ],
+   "mat": "Draft: Yo-Yo Ma played the cello. Yo-Yo Ma, instrument: cello.",
+   "must": [
+    "cello"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 5,
+   "gold": true,
+   "wall_ms": 806.4409149810672,
+   "ref_ms": 804.5577729353681,
+   "gin_ms": 804.101663059555,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.88314204569906
+  },
+  {
+   "id": "p1-0092",
+   "cat": "wd_value",
+   "q": "Marie Curie's birthday - what date was it, year included?",
+   "reply": "Marie Curie was born on November 7, 1867.",
+   "route": "store2",
+   "draft": [
+    "Marie Curie was born on November 7, 1867."
+   ],
+   "mat": "Draft: Marie Curie was born on November 7, 1867. Marie Curie, date of birth: November 7, 1867.",
+   "must": [
+    "November 7, 1867",
+    "7",
+    "1867"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 954.7157200286165,
+   "ref_ms": 952.1898459643126,
+   "gin_ms": 951.8092180369422,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.5258740643039346
+  },
+  {
+   "id": "p1-0096",
+   "cat": "wd_value",
+   "q": "MLK Jr. - exact birthdate, please?",
+   "reply": "I think it's MLK Jr. Blvd, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 11,
+   "gold": false,
+   "wall_ms": 1027.6272140908986,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 874.7555570444092,
+   "lat13_ms": 152.87165704648942
+  },
+  {
+   "id": "p1-0097",
+   "cat": "wd_value",
+   "q": "On what date did Lincoln die?",
+   "reply": "I think it's 1856, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": false,
+   "wall_ms": 121.83564796578139,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 121.83564796578139
+  },
+  {
+   "id": "p1-0100",
+   "cat": "wd_value",
+   "q": "charles darwin passed away when (exact date)",
+   "reply": "19 April 1882.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 3,
+   "gold": true,
+   "wall_ms": 2041.4391949307173,
+   "ref_ms": 1912.8700899891555,
+   "gin_ms": 1912.4731810297817,
+   "gout_ms": 0.0,
+   "lat13_ms": 128.56910494156182
+  },
+  {
+   "id": "p1-0102",
+   "cat": "wd_value",
+   "q": "What year was Charles Dickens born?",
+   "reply": "Charles Dickens was born on February 7, 1812.",
+   "route": "store2",
+   "draft": [
+    "Charles Dickens was born on February 7, 1812."
+   ],
+   "mat": "Draft: Charles Dickens was born on February 7, 1812. Charles Dickens, date of birth: February 7, 1812.",
+   "must": [
+    "February 7, 1812",
+    "7",
+    "1812"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 790.6417679041624,
+   "ref_ms": 786.1197110032663,
+   "gin_ms": 785.8338319929317,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.522056900896132
+  },
+  {
+   "id": "p1-0108",
+   "cat": "wd_value",
+   "q": "Founding year for the UN, anyone know?",
+   "reply": "United Nations was founded on October 24, 1945.",
+   "route": "store2",
+   "draft": [
+    "United Nations was founded on October 24, 1945."
+   ],
+   "mat": "Draft: United Nations was founded on October 24, 1945. United Nations, inception: October 24, 1945.",
+   "must": [
+    "October 24, 1945",
+    "24",
+    "1945"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 900.6884220289066,
+   "ref_ms": 898.9145369268954,
+   "gin_ms": 898.3269899617881,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.7738851020112634
+  },
+  {
+   "id": "p1-0110",
+   "cat": "wd_value",
+   "q": "1984, Orwell's dystopia - when was it first published, year only?",
+   "reply": "The Orwells was published on June 15, 2019.",
+   "route": "store2",
+   "draft": [
+    "The Orwells was published on June 15, 2019."
+   ],
+   "mat": "Draft: The Orwells was published on June 15, 2019. The Orwells, publication date: June 15, 2019.",
+   "must": [
+    "June 15, 2019",
+    "15",
+    "2019"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": false,
+   "wall_ms": 923.9196389680728,
+   "ref_ms": 920.5206589540467,
+   "gin_ms": 920.2568611362949,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.398980014026165
+  },
+  {
+   "id": "p1-0113",
+   "cat": "wd_value",
+   "q": "When was The Hobbit published?",
+   "reply": "The Hobbit was published on September 21, 1937.",
+   "route": "store2",
+   "draft": [
+    "The Hobbit was published on September 21, 1937."
+   ],
+   "mat": "Draft: The Hobbit was published on September 21, 1937. The Hobbit, publication date: September 21, 1937.",
+   "must": [
+    "September 21, 1937",
+    "21",
+    "1937"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 768.6865200521424,
+   "ref_ms": 767.1980919549242,
+   "gin_ms": 766.8373220367357,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.488428097218275
+  },
+  {
+   "id": "p1-0114",
+   "cat": "wd_value",
+   "q": "first part of don quixote was published what year",
+   "reply": "1605.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 1,
+   "gold": true,
+   "wall_ms": 2305.854942998849,
+   "ref_ms": 1964.6911210147664,
+   "gin_ms": 1964.5119039341807,
+   "gout_ms": 0.0,
+   "lat13_ms": 341.16382198408246
+  },
+  {
+   "id": "p1-0115",
+   "cat": "wd_value",
+   "q": "Origin of Species by Darwin first hit bookshops when, year-wise?",
+   "reply": "I think it's 1869, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": false,
+   "wall_ms": 254.25278500188142,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 254.25278500188142
+  },
+  {
+   "id": "p1-0116",
+   "cat": "wd_value",
+   "q": "How tall is Mount Everest in meters?",
+   "reply": "The elevation of Mount Everest is 8848.86 metre.",
+   "route": "store2",
+   "draft": [
+    "The elevation of Mount Everest is 8848.86 metre."
+   ],
+   "mat": "Draft: The elevation of Mount Everest is 8848.86 metre. Mount Everest, elevation above sea level: 8848.86 metre.",
+   "must": [
+    "8848.86 metre",
+    "8848.86"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 926.1334020411596,
+   "ref_ms": 924.05431100633,
+   "gin_ms": 923.5557110514492,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.0790910348296165
+  },
+  {
+   "id": "p1-0118",
+   "cat": "wd_value",
+   "q": "How many meters high is Mount Fuji?",
+   "reply": "I think it's somewhere in the hundreds, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 12,
+   "gold": false,
+   "wall_ms": 2440.2946529444307,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2118.4798820177093,
+   "lat13_ms": 321.8147709267214
+  },
+  {
+   "id": "p1-0119",
+   "cat": "wd_value",
+   "q": "Denali rises to what elevation, in meters?",
+   "reply": "The elevation of Denali is 6190 metre.",
+   "route": "store2",
+   "draft": [
+    "The elevation of Denali is 6190 metre."
+   ],
+   "mat": "Draft: The elevation of Denali is 6190 metre. Denali, elevation above sea level: 6190 metre.",
+   "must": [
+    "6190 metre",
+    "6190"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 885.5797889409587,
+   "ref_ms": 883.6928800446913,
+   "gin_ms": 883.2582499599084,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.886908896267414
+  },
+  {
+   "id": "p1-0120",
+   "cat": "wd_value",
+   "q": "Burj Khalifa stands how many meters tall?",
+   "reply": "The height of Burj Khalifa is 828 metre.",
+   "route": "store2",
+   "draft": [
+    "The height of Burj Khalifa is 828 metre."
+   ],
+   "mat": "Draft: The height of Burj Khalifa is 828 metre. Burj Khalifa, height: 828 metre.",
+   "must": [
+    "828 metre",
+    "828"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 884.8654690664262,
+   "ref_ms": 879.7818330349401,
+   "gin_ms": 879.3420839356259,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.083636031486094
+  },
+  {
+   "id": "p1-0121",
+   "cat": "wd_value",
+   "q": "Statue of Liberty, ground to torch tip, is how many metres tall?",
+   "reply": "I think it's somewhere between ten and a hundred, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 14,
+   "gold": false,
+   "wall_ms": 2348.1241420377046,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2181.8966260179877,
+   "lat13_ms": 166.22751601971686
+  },
+  {
+   "id": "p1-0122",
+   "cat": "wd_value",
+   "q": "Gold carries which atomic number?",
+   "reply": "The atomic number of gold is 79.",
+   "route": "store2",
+   "draft": [
+    "The atomic number of gold is 79."
+   ],
+   "mat": "Draft: The atomic number of gold is 79. gold, atomic number: 79.",
+   "must": [
+    "79",
+    "79"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": false,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 685.3211099514738,
+   "ref_ms": 681.8517469801009,
+   "gin_ms": 681.5300910966471,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.4693629713729024
+  },
+  {
+   "id": "p1-0123",
+   "cat": "wd_value",
+   "q": "iron has what atomic number",
+   "reply": "Thanks for sharing that. Tell me more?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 3463.8147549703717,
+   "ref_ms": 3322.875648038462,
+   "gin_ms": 3322.676422074437,
+   "gout_ms": 0.0,
+   "lat13_ms": 140.93910693190992
+  },
+  {
+   "id": "p1-0124",
+   "cat": "wd_value",
+   "q": "How many protons does an oxygen atom have, i.e. its atomic number?",
+   "reply": "The atomic number of oxygen is 8.",
+   "route": "store2",
+   "draft": [
+    "The atomic number of oxygen is 8."
+   ],
+   "mat": "Draft: The atomic number of oxygen is 8. oxygen, atomic number: 8.",
+   "must": [
+    "8",
+    "8"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": false,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 805.2564680110663,
+   "ref_ms": 799.9783860286698,
+   "gin_ms": 799.7404660563916,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.278081982396543
+  },
+  {
+   "id": "p1-0126",
+   "cat": "wd_value",
+   "q": "Uranium's spot in the periodic table, by atomic number?",
+   "reply": "The atomic number of uranium is 92.",
+   "route": "store2",
+   "draft": [
+    "The atomic number of uranium is 92."
+   ],
+   "mat": "Draft: The atomic number of uranium is 92. uranium, atomic number: 92.",
+   "must": [
+    "92",
+    "92"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": false,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 783.6556829279289,
+   "ref_ms": 778.729653917253,
+   "gin_ms": 778.5627689445391,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.9260290106758475
+  },
+  {
+   "id": "p1-0129",
+   "cat": "wd_value",
+   "q": "number of seasons of the sopranos?",
+   "reply": "The number of seasons of The Sopranos is 6 seasons.",
+   "route": "store2",
+   "draft": [
+    "The number of seasons of The Sopranos is 6 seasons."
+   ],
+   "mat": "Draft: The number of seasons of The Sopranos is 6 seasons. The Sopranos, number of seasons: 6 seasons.",
+   "must": [
+    "6 seasons",
+    "6"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": false,
+   "clean": true,
+   "words": 10,
+   "gold": true,
+   "wall_ms": 737.391741015017,
+   "ref_ms": 735.515140928328,
+   "gin_ms": 735.3539881296456,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.8766000866889954
+  },
+  {
+   "id": "p1-0132",
+   "cat": "compute",
+   "q": "if i drive 240 km in 3 hours whats my average speed in km/h",
+   "reply": "I don't know, I donate to your average speed. You haven't told me yet.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 14,
+   "gold": false,
+   "wall_ms": 388.7520449934527,
+   "ref_ms": 386.38081389945,
+   "gin_ms": 386.2524420255795,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.3712310940027237
+  },
+  {
+   "id": "p1-0133",
+   "cat": "compute",
+   "q": "How many minutes are in 7.5 hours?",
+   "reply": "7.5 hours is 450 minutes (7.5 x 60).",
+   "route": "calc",
+   "draft": [
+    "7.5 hours is 450 minutes (7.5 x 60)."
+   ],
+   "mat": "Draft: 7.5 hours is 450 minutes (7.5 x 60). Calculator: 7.5 hours is 450 minutes (7.5 x 60).",
+   "must": [
+    "450",
+    "7.5",
+    "450",
+    "7.5",
+    "60"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.5
+   ],
+   "calls": [
+    1
+   ],
+   "blend": [
+    true
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": true,
+   "wall_ms": 568.9809499308467,
+   "ref_ms": 568.3376259403303,
+   "gin_ms": 568.1296850088984,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.6433239905163646
+  },
+  {
+   "id": "p1-0136",
+   "cat": "compute",
+   "q": "There's a $60 jacket marked down by 25%. How much do I pay now?",
+   "reply": "I'm not sure about that one.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 0,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": false,
+   "wall_ms": 9.369689039885998,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 9.369689039885998
+  },
+  {
+   "id": "p1-0137",
+   "cat": "compute",
+   "q": "what is 17 times 23",
+   "reply": "17 x 23 = 391.",
+   "route": "calc",
+   "draft": [
+    "17 x 23 = 391."
+   ],
+   "mat": "Draft: 17 x 23 = 391. Calculator: 17 x 23 = 391.",
+   "must": [
+    "391",
+    "17",
+    "23",
+    "391"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 5,
+   "gold": true,
+   "wall_ms": 800.5799730308354,
+   "ref_ms": 800.1943459967151,
+   "gin_ms": 799.5807081460953,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.38562703412026167
+  },
+  {
+   "id": "p1-0139",
+   "cat": "compute",
+   "q": "We're splitting a $96 dinner bill evenly between 6 friends - how much each?",
+   "reply": "The answer is 16. Working: start 96; 96 / 6 = 16.",
+   "route": "calc",
+   "draft": [
+    "The answer is 16. Working: start 96; 96 / 6 = 16."
+   ],
+   "mat": "Draft: The answer is 16. Working: start 96; 96 / 6 = 16. Calculator: The answer is 16. Working: start 96; 96 / 6 = 16.",
+   "must": [
+    "16",
+    "16",
+    "96",
+    "96",
+    "6",
+    "16"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 12,
+   "gold": true,
+   "wall_ms": 1205.8975320542231,
+   "ref_ms": 1203.408477944322,
+   "gin_ms": 1202.804239001125,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.48905410990119
+  },
+  {
+   "id": "p1-0144",
+   "cat": "compute",
+   "q": "Convert 5 miles to kilometres, to two decimals.",
+   "reply": "The kilometers are the most draining kind of weather. Do you have a spare shot or something on your phone?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 20,
+   "gold": false,
+   "wall_ms": 514.4735479261726,
+   "ref_ms": 513.5829399805516,
+   "gin_ms": 513.1223510252312,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.8906079456210136
+  },
+  {
+   "id": "p1-0145",
+   "cat": "compute",
+   "q": "A rectangle measures 12 m by 7 m. What's its area in square metres?",
+   "reply": "I think it's International System of Units, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 12,
+   "gold": false,
+   "wall_ms": 1576.3919870369136,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 1270.1843630056828,
+   "lat13_ms": 306.2076240312308
+  },
+  {
+   "id": "p1-0146",
+   "cat": "compute",
+   "q": "I have 3 boxes with 18 apples each and give away 20. How many are left?",
+   "reply": "I'm not sure about that one.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 0,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": false,
+   "wall_ms": 4.88634395878762,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 4.88634395878762
+  },
+  {
+   "id": "p1-0148",
+   "cat": "compute",
+   "q": "An 18% tip on a $45 meal comes to how much?",
+   "reply": "I'm not sure about that one.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 0,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": false,
+   "wall_ms": 0.9425770258530974,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9425770258530974
+  },
+  {
+   "id": "p1-0149",
+   "cat": "compute",
+   "q": "6 weeks adds up to how many days?",
+   "reply": "The answer is seven.",
+   "route": "store2",
+   "draft": [
+    "The answer is seven."
+   ],
+   "mat": "Draft: The answer is seven. ConceptNet 5.7 week HasA seven days",
+   "must": [
+    "seven"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 4,
+   "gold": false,
+   "wall_ms": 644.6055680280551,
+   "ref_ms": 642.3616780666634,
+   "gin_ms": 642.0604990562424,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.2438899613916874
+  },
+  {
+   "id": "p1-0153",
+   "cat": "commonsense",
+   "q": "Give me a word meaning the reverse of 'shallow'.",
+   "reply": "I'm not sure. The passages don't cover that.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": false,
+   "wall_ms": 2408.597053028643,
+   "ref_ms": 2292.4097860231996,
+   "gin_ms": 2292.0368829509243,
+   "gout_ms": 0.0,
+   "lat13_ms": 116.18726700544357
+  },
+  {
+   "id": "p1-0154",
+   "cat": "commonsense",
+   "q": "Kangaroo babies have a special name - which is it?",
+   "reply": "I'm not sure which it that is.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 0,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": false,
+   "wall_ms": 2257.106690085493,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2042.7867028629407,
+   "lat13_ms": 214.3199872225523
+  },
+  {
+   "id": "p1-0155",
+   "cat": "commonsense",
+   "q": "A young goose is called a...?",
+   "reply": "A baby goose is called a gosling.",
+   "route": "store2",
+   "draft": [
+    "A baby goose is called a gosling."
+   ],
+   "mat": "Draft: A baby goose is called a gosling. WordNet gosling.n.01: young goose",
+   "must": [
+    "gosling"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.25
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    true
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": true,
+   "wall_ms": 813.9212699607015,
+   "ref_ms": 810.9753649914637,
+   "gin_ms": 810.6797680957243,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.945904969237745
+  },
+  {
+   "id": "p1-0157",
+   "cat": "commonsense",
+   "q": "What is a group of crows called?",
+   "reply": "I think it's Wraps-Up, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": false,
+   "wall_ms": 1929.6080459607765,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 1733.197492081672,
+   "lat13_ms": 196.41055387910455
+  },
+  {
+   "id": "p1-0159",
+   "cat": "commonsense",
+   "q": "Whales travelling together get called a what?",
+   "reply": "I think it's Northern, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": false,
+   "wall_ms": 1879.8013959312811,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 1655.8166060131043,
+   "lat13_ms": 223.98478991817683
+  },
+  {
+   "id": "p1-0160",
+   "cat": "commonsense",
+   "q": "Glass is mostly made from what?",
+   "reply": "The answer is sand.",
+   "route": "store2",
+   "draft": [
+    "The answer is sand."
+   ],
+   "mat": "Draft: The answer is sand. ConceptNet 5.7 glass MadeOf sand",
+   "must": [
+    "sand"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 4,
+   "gold": true,
+   "wall_ms": 886.688266065903,
+   "ref_ms": 884.2828209744766,
+   "gin_ms": 883.8332130108029,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.4054450914263725
+  },
+  {
+   "id": "p1-0165",
+   "cat": "commonsense",
+   "q": "A compass helps you do what?",
+   "reply": "I don't know. It isn't in the passages.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": false,
+   "wall_ms": 5925.0376200070605,
+   "ref_ms": 3827.599842916243,
+   "gin_ms": 3827.3350331000984,
+   "gout_ms": 1840.8137619262561,
+   "lat13_ms": 256.62401516456157
+  },
+  {
+   "id": "p1-0168",
+   "cat": "commonsense",
+   "q": "What kind of place do camels live in?",
+   "reply": "The answer is desert.",
+   "route": "store2",
+   "draft": [
+    "The answer is desert."
+   ],
+   "mat": "Draft: The answer is desert. ConceptNet 5.7 camel AtLocation desert",
+   "must": [
+    "desert"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 4,
+   "gold": true,
+   "wall_ms": 930.6278560543433,
+   "ref_ms": 925.2831680933014,
+   "gin_ms": 924.8030518647283,
+   "gout_ms": 0.0,
+   "lat13_ms": 5.344687961041927
+  },
+  {
+   "id": "p1-0169",
+   "cat": "commonsense",
+   "q": "What do giant pandas mostly eat?",
+   "reply": "The answer is Bambuseae.",
+   "route": "store2",
+   "draft": [
+    "The answer is Bambuseae."
+   ],
+   "mat": "Draft: The answer is Bambuseae. Wikidata Q33602 P1034",
+   "must": [
+    "Bambuseae"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 4,
+   "gold": false,
+   "wall_ms": 873.1845740694553,
+   "ref_ms": 870.383191970177,
+   "gin_ms": 870.0547439511865,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.801382099278271
+  },
+  {
+   "id": "p1-0170",
+   "cat": "commonsense",
+   "q": "whats a koala's main food",
+   "reply": "I think it's Koala's March, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": false,
+   "wall_ms": 2069.9981109937653,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 1837.7351489616558,
+   "lat13_ms": 232.2629620321095
+  },
+  {
+   "id": "p1-0171",
+   "cat": "commonsense",
+   "q": "Spiders walk around on how many legs?",
+   "reply": "Four.",
+   "route": "know",
+   "draft": [
+    "Four."
+   ],
+   "mat": "Draft: Four. Spider: These tufts, known as scopulae, consist of bristles whose ends are split into as many as 1,000 branches, and enable spiders with scopulae to walk up vertical glass and upside down on ceilings. It appears that scopulae get their grip from contact with extremely thin layers of water on surfaces. Spiders, like most other arachnids, keep at least four legs on the surface while walking or running.",
+   "must": [
+    "Four"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 1,
+   "gold": false,
+   "wall_ms": 2260.670274030417,
+   "ref_ms": 1171.2937300326303,
+   "gin_ms": 1171.0354619426653,
+   "gout_ms": 817.0174640836194,
+   "lat13_ms": 272.3590799141675
+  },
+  {
+   "id": "p1-0174",
+   "cat": "commonsense",
+   "q": "What colour is a ripe lemon?",
+   "reply": "The yellow is a ripe lemon.",
+   "route": "store2",
+   "draft": [
+    "The yellow is a ripe lemon."
+   ],
+   "mat": "Draft: The yellow is a ripe lemon. WordNet lemon.n.01: yellow oval fruit with juicy acidic flesh",
+   "must": [
+    "yellow"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": true,
+   "wall_ms": 747.8581690229475,
+   "ref_ms": 744.2046600626782,
+   "gin_ms": 743.9834740944207,
+   "gout_ms": 0.0,
+   "lat13_ms": 3.6535089602693915
+  },
+  {
+   "id": "p1-0175",
+   "cat": "explain",
+   "q": "How come sunsets look orange and red when the midday sky is blue?",
+   "reply": "The sky can turn a multitude of colors such as red, orange, purple, and yellow when the light must travel a much longer path through the atmosphere.",
+   "route": "explain",
+   "draft": [
+    "The sky can turn a multitude of colors such as red, orange, purple, and yellow when the light must travel a much longer path through the atmosphere."
+   ],
+   "mat": "Draft: The sky can turn a multitude of colors such as red, orange, purple, and yellow when the light must travel a much longer path through the atmosphere. Sky: The sky can turn a multitude of colors such as red, orange, purple, and yellow when the light must travel a much longer path through the atmosphere.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 27,
+   "gold": null,
+   "wall_ms": 1651.8623520387337,
+   "ref_ms": 1459.350169985555,
+   "gin_ms": 1458.7992409942672,
+   "gout_ms": 0.0,
+   "lat13_ms": 192.51218205317855
+  },
+  {
+   "id": "p1-0178",
+   "cat": "explain",
+   "q": "What's the reason ice floats instead of sinking?",
+   "reply": "I think it's May 30, 2018, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 11,
+   "gold": null,
+   "wall_ms": 118.89813095331192,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 118.89813095331192
+  },
+  {
+   "id": "p1-0180",
+   "cat": "explain",
+   "q": "Why do leaves turn red and yellow in autumn?",
+   "reply": "Some cultures regard the autumnal equinox as \"mid-autumn\", while others with a longer temperature lag treat the equinox as the start of autumn.",
+   "route": "explain",
+   "draft": [
+    "Some cultures regard the autumnal equinox as \"mid-autumn\", while others with a longer temperature lag treat the equinox as the start of autumn."
+   ],
+   "mat": "Draft: Some cultures regard the autumnal equinox as \"mid-autumn\", while others with a longer temperature lag treat the equinox as the start of autumn. Autumn: Some cultures regard the autumnal equinox as \"mid-autumn\", while others with a longer temperature lag treat the equinox as the start of autumn.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 23,
+   "gold": null,
+   "wall_ms": 1482.6944030355662,
+   "ref_ms": 1360.1250289939344,
+   "gin_ms": 1359.8038939526305,
+   "gout_ms": 0.0,
+   "lat13_ms": 122.56937404163182
+  },
+  {
+   "id": "p1-0183",
+   "cat": "explain",
+   "q": "Can you explain how noise cancelling headphones block sound?",
+   "reply": "Noise-cancelling headphones is not uncommon to get a pressure-like feeling when using noise-cancelling headphones initially. This is caused by the lack of low-frequency sounds being perceived as a pressure differential between the inner and outer ear.",
+   "route": "explain",
+   "draft": [
+    "Noise-cancelling headphones is not uncommon to get a pressure-like feeling when using noise-cancelling headphones initially. This is caused by the lack of low-frequency sounds being perceived as a pressure differential between the inner and outer ear."
+   ],
+   "mat": "Draft: Noise-cancelling headphones is not uncommon to get a pressure-like feeling when using noise-cancelling headphones initially. This is caused by the lack of low-frequency sounds being perceived as a pressure differential between the inner and outer ear. Noise-cancelling headphones: Noise-cancelling headphones is not uncommon to get a pressure-like feeling when using noise-cancelling headphones initially. This is caused by the lack of low-frequency sounds being perceived as a pressure differential between the inner and outer ear.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 36,
+   "gold": null,
+   "wall_ms": 3285.362115013413,
+   "ref_ms": 3077.6413349667564,
+   "gin_ms": 3077.0339689916,
+   "gout_ms": 0.0,
+   "lat13_ms": 207.72078004665673
+  },
+  {
+   "id": "p1-0185",
+   "cat": "explain",
+   "q": "How does a fridge keep things cold?",
+   "reply": "I think it's Brixton, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": null,
+   "wall_ms": 181.28632090520114,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 0.0,
+   "lat13_ms": 181.28632090520114
+  },
+  {
+   "id": "p1-0187",
+   "cat": "explain",
+   "q": "How do bees turn flower nectar into honey?",
+   "reply": "Flowers that ancestrally produced nectar and had nectaries may have lost their ability to produce nectar due to a lack of nectar consumption by pollinators, such as certain species of bees. Instead they focused on energy allocation to pollen production.",
+   "route": "explain",
+   "draft": [
+    "Flowers that ancestrally produced nectar and had nectaries may have lost their ability to produce nectar due to a lack of nectar consumption by pollinators, such as certain species of bees. Instead they focused on energy allocation to pollen production."
+   ],
+   "mat": "Draft: Flowers that ancestrally produced nectar and had nectaries may have lost their ability to produce nectar due to a lack of nectar consumption by pollinators, such as certain species of bees. Instead they focused on energy allocation to pollen production. Nectar: Flowers that ancestrally produced nectar and had nectaries may have lost their ability to produce nectar due to a lack of nectar consumption by pollinators, such as certain species of bees. Instead they focused on energy allocation to pollen production.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 40,
+   "gold": null,
+   "wall_ms": 1774.26994999405,
+   "ref_ms": 1681.4495340222493,
+   "gin_ms": 1681.1295710504055,
+   "gout_ms": 0.0,
+   "lat13_ms": 92.82041597180068
+  },
+  {
+   "id": "p1-0189",
+   "cat": "explain",
+   "q": "Why do fingertips go pruney after a long bath?",
+   "reply": "Water-immersion wrinkling The wrangles that occur in skin over prolonged exposure to water are often referred to as pruney fingers or water aging.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 23,
+   "gold": null,
+   "wall_ms": 2626.8787019653246,
+   "ref_ms": 2222.3546049790457,
+   "gin_ms": 2222.056361963041,
+   "gout_ms": 0.0,
+   "lat13_ms": 404.5240969862789
+  },
+  {
+   "id": "p1-0190",
+   "cat": "explain",
+   "q": "How does the GPS on my phone figure out where I am?",
+   "reply": "I don't know, I donate a bit of this.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": null,
+   "wall_ms": 270.36193397361785,
+   "ref_ms": 268.3462630957365,
+   "gin_ms": 268.132510012947,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.015670877881348
+  },
+  {
+   "id": "p1-0191",
+   "cat": "explain",
+   "q": "What causes Earth to have seasons?",
+   "reply": "The solstices-the points in the orbit of maximum axial tilt toward or away from the Sun-and the equinoxes, when Earth's rotational axis is aligned with its orbital axis.",
+   "route": "explain",
+   "draft": [
+    "By astronomical convention, the four seasons can be determined by the solstices-the points in the orbit of maximum axial tilt toward or away from the Sun-and the equinoxes, when Earth's rotational axis is aligned with its orbital axis."
+   ],
+   "mat": "Draft: By astronomical convention, the four seasons can be determined by the solstices-the points in the orbit of maximum axial tilt toward or away from the Sun-and the equinoxes, when Earth's rotational axis is aligned with its orbital axis. Earth: By astronomical convention, the four seasons can be determined by the solstices-the points in the orbit of maximum axial tilt toward or away from the Sun-and the equinoxes, when Earth's rotational axis is aligned with its orbital axis.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.5
+   ],
+   "calls": [
+    1
+   ],
+   "blend": [
+    true
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 28,
+   "gold": null,
+   "wall_ms": 1791.1148819839582,
+   "ref_ms": 1630.3171460749581,
+   "gin_ms": 1629.709952045232,
+   "gout_ms": 0.0,
+   "lat13_ms": 160.79773590900004
+  },
+  {
+   "id": "p1-0193",
+   "cat": "explain",
+   "q": "If I rub a balloon on my hair it sticks to the wall. Why?",
+   "reply": "Because the wall is so bad, it's a good sign.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": null,
+   "wall_ms": 405.6116930441931,
+   "ref_ms": 402.9929550597444,
+   "gin_ms": 402.6868270011619,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.6187379844486713
+  },
+  {
+   "id": "p1-0194",
+   "cat": "explain",
+   "q": "How do huge metal airplanes manage to stay in the air?",
+   "reply": "Airbase.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 1,
+   "gold": null,
+   "wall_ms": 2300.0147860730067,
+   "ref_ms": 1985.6448309728876,
+   "gin_ms": 1985.4664150625467,
+   "gout_ms": 0.0,
+   "lat13_ms": 314.3699551001191
+  },
+  {
+   "id": "p1-0196",
+   "cat": "explain",
+   "q": "Why do my ears pop when a plane takes off?",
+   "reply": "That's a lot to get in. Does your ears usually get the blood pumping?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 14,
+   "gold": null,
+   "wall_ms": 344.1064349608496,
+   "ref_ms": 342.552003916353,
+   "gin_ms": 342.40691002923995,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.5544310444965959
+  },
+  {
+   "id": "p1-0197",
+   "cat": "explain",
+   "q": "How does soap actually remove grease from dishes?",
+   "reply": "In ancient times, lubricating greases were made by the addition of lime to olive oil, which would produce calcium soaps.",
+   "route": "explain",
+   "draft": [
+    "In ancient times, lubricating greases were made by the addition of lime to olive oil, which would produce calcium soaps."
+   ],
+   "mat": "Draft: In ancient times, lubricating greases were made by the addition of lime to olive oil, which would produce calcium soaps. Soap: In ancient times, lubricating greases were made by the addition of lime to olive oil, which would produce calcium soaps.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 20,
+   "gold": null,
+   "wall_ms": 1482.7467860886827,
+   "ref_ms": 1405.4142059758306,
+   "gin_ms": 1404.7713129548356,
+   "gout_ms": 0.0,
+   "lat13_ms": 77.33258011285216
+  },
+  {
+   "id": "p1-0199",
+   "cat": "explain",
+   "q": "Why does a metal railing feel colder than a wooden bench even if both sit outside together?",
+   "reply": "The passage doesn't say, so I don't know.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": null,
+   "wall_ms": 1390.2196499984711,
+   "ref_ms": 782.2720439871773,
+   "gin_ms": 781.776529038325,
+   "gout_ms": 0.0,
+   "lat13_ms": 607.9476060112938
+  },
+  {
+   "id": "p1-0204",
+   "cat": "explain",
+   "q": "How does caffeine keep a person awake?",
+   "reply": "In the absence of caffeine and when a person is awake and alert, little adenosine is present in CNS neurons.",
+   "route": "explain",
+   "draft": [
+    "In the absence of caffeine and when a person is awake and alert, little adenosine is present in CNS neurons."
+   ],
+   "mat": "Draft: In the absence of caffeine and when a person is awake and alert, little adenosine is present in CNS neurons. Caffeine: In the absence of caffeine and when a person is awake and alert, little adenosine is present in CNS neurons.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 20,
+   "gold": null,
+   "wall_ms": 1410.9624290140346,
+   "ref_ms": 1320.8166379481554,
+   "gin_ms": 1320.2234889613464,
+   "gout_ms": 0.0,
+   "lat13_ms": 90.14579106587917
+  },
+  {
+   "id": "p1-0205",
+   "cat": "explain",
+   "q": "Explain why hot air rises.",
+   "reply": "The sacred beast Cuadorn is a sleepy beast.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 8,
+   "gold": null,
+   "wall_ms": 2236.386206932366,
+   "ref_ms": 2119.6103029651567,
+   "gin_ms": 2119.4656010484323,
+   "gout_ms": 0.0,
+   "lat13_ms": 116.77590396720916
+  },
+  {
+   "id": "p1-0209",
+   "cat": "explain",
+   "q": "Why does exercise make us sweat?",
+   "reply": "Studies have shown that since heart disease is the leading cause of death in women, regular exercise in aging women leads to healthier cardiovascular profiles. The most beneficial effects of physical activity on cardiovascular disease mortality can be attained through moderate-intensity activity.",
+   "route": "explain",
+   "draft": [
+    "Studies have shown that since heart disease is the leading cause of death in women, regular exercise in aging women leads to healthier cardiovascular profiles. The most beneficial effects of physical activity on cardiovascular disease mortality can be attained through moderate-intensity activity."
+   ],
+   "mat": "Draft: Studies have shown that since heart disease is the leading cause of death in women, regular exercise in aging women leads to healthier cardiovascular profiles. The most beneficial effects of physical activity on cardiovascular disease mortality can be attained through moderate-intensity activity. Exercise: Studies have shown that since heart disease is the leading cause of death in women, regular exercise in aging women leads to healthier cardiovascular profiles. The most beneficial effects of physical activity on cardiovascular disease mortality can be attained through moderate-intensity activity.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 42,
+   "gold": null,
+   "wall_ms": 2154.406122979708,
+   "ref_ms": 2061.9858350837603,
+   "gin_ms": 2061.560463043861,
+   "gout_ms": 0.0,
+   "lat13_ms": 92.4202878959477
+  },
+  {
+   "id": "p1-0212",
+   "cat": "explain",
+   "q": "How are our eyes able to tell colours apart?",
+   "reply": "Heading out to you and your family.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 7,
+   "gold": null,
+   "wall_ms": 472.6848650025204,
+   "ref_ms": 220.88827705010772,
+   "gin_ms": 220.73351498693228,
+   "gout_ms": 0.0,
+   "lat13_ms": 251.79658795241266
+  },
+  {
+   "id": "p1-0214",
+   "cat": "explain",
+   "q": "What drives the ocean's tides up and down each day?",
+   "reply": "I think it's Tasman Sea, but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": null,
+   "wall_ms": 2137.9435069393367,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 1736.66342406068,
+   "lat13_ms": 401.2800828786567
+  },
+  {
+   "id": "p1-0216",
+   "cat": "explain",
+   "q": "So how do fish breath underwater?",
+   "reply": "Oogonia development in teleosts fish varies according to the group, and the determination of oogenesis dynamics allows the understanding of maturation and fertilization processes. Changes in the nucleus, ooplasm, and the surrounding layers characterize the oocyte maturation process.",
+   "route": "explain",
+   "draft": [
+    "Oogonia development in teleosts fish varies according to the group, and the determination of oogenesis dynamics allows the understanding of maturation and fertilization processes. Changes in the nucleus, ooplasm, and the surrounding layers characterize the oocyte maturation process."
+   ],
+   "mat": "Draft: Oogonia development in teleosts fish varies according to the group, and the determination of oogenesis dynamics allows the understanding of maturation and fertilization processes. Changes in the nucleus, ooplasm, and the surrounding layers characterize the oocyte maturation process. Fish: Oogonia development in teleosts fish varies according to the group, and the determination of oogenesis dynamics allows the understanding of maturation and fertilization processes. Changes in the nucleus, ooplasm, and the surrounding layers characterize the oocyte maturation process.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 38,
+   "gold": null,
+   "wall_ms": 2119.8440269799903,
+   "ref_ms": 2031.570118968375,
+   "gin_ms": 2030.8378570480272,
+   "gout_ms": 0.0,
+   "lat13_ms": 88.27390801161528
+  },
+  {
+   "id": "p1-0217",
+   "cat": "explain",
+   "q": "Why does the heart start pounding when you get scared?",
+   "reply": "Get Scared was founded in 2008.",
+   "route": "store2",
+   "draft": [
+    "Get Scared was founded in 2008."
+   ],
+   "mat": "Draft: Get Scared was founded in 2008. Get Scared, inception: 2008.",
+   "must": [
+    "2008",
+    "2008"
+   ],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 0,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": null,
+   "wall_ms": 996.4999969815835,
+   "ref_ms": 884.7255969885737,
+   "gin_ms": 884.2400108696893,
+   "gout_ms": 0.0,
+   "lat13_ms": 111.77439999300987
+  },
+  {
+   "id": "p1-0218",
+   "cat": "explain",
+   "q": "How can a thermos keep coffee hot for hours?",
+   "reply": "During the Age of Sail, seamen aboard ships of the British Royal Navy made substitute coffee by dissolving burnt bread in hot water.",
+   "route": "explain",
+   "draft": [
+    "During the Age of Sail, seamen aboard ships of the British Royal Navy made substitute coffee by dissolving burnt bread in hot water."
+   ],
+   "mat": "Draft: During the Age of Sail, seamen aboard ships of the British Royal Navy made substitute coffee by dissolving burnt bread in hot water. Coffee: During the Age of Sail, seamen aboard ships of the British Royal Navy made substitute coffee by dissolving burnt bread in hot water.",
+   "must": [],
+   "s_req": [
+    0.5
+   ],
+   "s_used": [
+    0.0
+   ],
+   "calls": [
+    2
+   ],
+   "blend": [
+    false
+   ],
+   "ret": 1,
+   "fp": true,
+   "grounded": true,
+   "coh": true,
+   "clean": true,
+   "words": 23,
+   "gold": null,
+   "wall_ms": 1630.41126600001,
+   "ref_ms": 1436.3206420093775,
+   "gin_ms": 1435.8786880038679,
+   "gout_ms": 0.0,
+   "lat13_ms": 194.0906239906326
+  },
+  {
+   "id": "p1-0220",
+   "cat": "chat",
+   "q": "I spent three hours on hold with the internet company and they hung up right when I reached a real person.",
+   "reply": "That's a lot to carry, especially with someone so close. Do you have a spare?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 15,
+   "gold": null,
+   "wall_ms": 407.37270400859416,
+   "ref_ms": 404.8513099551201,
+   "gin_ms": 404.71678599715233,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.5213940534740686
+  },
+  {
+   "id": "p1-0223",
+   "cat": "chat",
+   "q": "my kid's school changed the pickup schedule with zero notice and now my whole week is a mess",
+   "reply": "That's a big change, and the lonely stretch is so common. Do you have something else lined up?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 18,
+   "gold": null,
+   "wall_ms": 485.2570709772408,
+   "ref_ms": 482.8801390249282,
+   "gin_ms": 482.6805720804259,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.3769319523125887
+  },
+  {
+   "id": "p1-0228",
+   "cat": "chat",
+   "q": "Guess what, I got the job offer I was hoping for!",
+   "reply": "That's a lot of unhappiness to carry into every week. What was it about?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 14,
+   "gold": null,
+   "wall_ms": 355.93727708328515,
+   "ref_ms": 355.0246770028025,
+   "gin_ms": 354.8111639684066,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9126000804826617
+  },
+  {
+   "id": "p1-0229",
+   "cat": "chat",
+   "q": "We finally closed on our first house today. Keys in hand!",
+   "reply": "A new hobby is a great feeling. What's your favorite thing about them?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 13,
+   "gold": null,
+   "wall_ms": 328.6213210085407,
+   "ref_ms": 327.6194710051641,
+   "gin_ms": 327.3655330995098,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.0018500033766031
+  },
+  {
+   "id": "p1-0234",
+   "cat": "chat",
+   "q": "Paid off the last of my student loans today. Feels unreal.",
+   "reply": "Real, nobody is waiting for. Do you have anyone you can talk it through with?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 15,
+   "gold": null,
+   "wall_ms": 437.540907994844,
+   "ref_ms": 436.32288998924196,
+   "gin_ms": 436.0672780312598,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.2180180056020617
+  },
+  {
+   "id": "p1-0235",
+   "cat": "chat",
+   "q": "hey there",
+   "reply": "Hey, nice to hear from you! Anything fun happening today?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": null,
+   "wall_ms": 243.61261003650725,
+   "ref_ms": 242.63780191540718,
+   "gin_ms": 242.50140506774187,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9748081211000681
+  },
+  {
+   "id": "p1-0236",
+   "cat": "chat",
+   "q": "Good morning! Hope your day's off to a nice start.",
+   "reply": "Good morning to you too. Any plans while they're away?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 10,
+   "gold": null,
+   "wall_ms": 323.1506949523464,
+   "ref_ms": 322.45147600769997,
+   "gin_ms": 322.28919002227485,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.6992189446464181
+  },
+  {
+   "id": "p1-0238",
+   "cat": "chat",
+   "q": "yo whats up",
+   "reply": "That's a lot for one person, or an adult.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": null,
+   "wall_ms": 219.89343606401235,
+   "ref_ms": 218.9205710310489,
+   "gin_ms": 218.80456199869514,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9728650329634547
+  },
+  {
+   "id": "p1-0239",
+   "cat": "chat",
+   "q": "Evening! Swinging by quickly, nothing in particular, just hi.",
+   "reply": "Sounds like you're a fresh start. Do you know if it's a boy or a girl?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 16,
+   "gold": null,
+   "wall_ms": 422.7477229433134,
+   "ref_ms": 421.9611390726641,
+   "gin_ms": 421.2861459236592,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.7865838706493378
+  },
+  {
+   "id": "p1-0240",
+   "cat": "chat",
+   "q": "hello hello",
+   "reply": "Hello, it's great to hear. How has your day been so far?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 12,
+   "gold": null,
+   "wall_ms": 270.8455090178177,
+   "ref_ms": 269.76009202189744,
+   "gin_ms": 269.6016939589754,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.0854169959202409
+  },
+  {
+   "id": "p1-0241",
+   "cat": "chat",
+   "q": "Hiya, how's it going?",
+   "reply": "I think it's Whitepages', but I couldn't confirm it.",
+   "route": "hedge",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "s_req": [],
+   "s_used": [],
+   "calls": [],
+   "blend": [],
+   "ret": 1,
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 9,
+   "gold": null,
+   "wall_ms": 2202.5269189616665,
+   "ref_ms": 0.0,
+   "gin_ms": 0.0,
+   "gout_ms": 2046.4793699793518,
+   "lat13_ms": 156.04754898231477
+  },
+  {
+   "id": "p1-0243",
+   "cat": "chat",
+   "q": "Cooked up a giant batch of chili, so lunches are sorted till Friday.",
+   "reply": "That's a lot to wade through at once. When did you last see it?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 14,
+   "gold": null,
+   "wall_ms": 549.728189012967,
+   "ref_ms": 394.40259290859103,
+   "gin_ms": 394.24878207501024,
+   "gout_ms": 0.0,
+   "lat13_ms": 155.32559610437602
+  },
+  {
+   "id": "p1-0244",
+   "cat": "chat",
+   "q": "Been rewatching an old sitcom lately, comfort food for the brain.",
+   "reply": "A new favorite for a new cuisine, you're welcome to be kind to yourself. Anything good happen today?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 18,
+   "gold": null,
+   "wall_ms": 452.31976790819317,
+   "ref_ms": 451.4180179685354,
+   "gin_ms": 451.28072903025895,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9017499396577477
+  },
+  {
+   "id": "p1-0245",
+   "cat": "chat",
+   "q": "My cat has decided the laundry basket is her new bed.",
+   "reply": "A new bed is always a good idea. What did you get into?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 13,
+   "gold": null,
+   "wall_ms": 292.0286600710824,
+   "ref_ms": 291.25517094507813,
+   "gin_ms": 291.11924406606704,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.7734891260042787
+  },
+  {
+   "id": "p1-0246",
+   "cat": "chat",
+   "q": "Thinking about repainting the living room a soft green this weekend.",
+   "reply": "A new hobby is a great way to spend a lot of time outside. What's the funniest message they've sent?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 20,
+   "gold": null,
+   "wall_ms": 459.9230339517817,
+   "ref_ms": 459.0116050094366,
+   "gin_ms": 458.86974805034697,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9114289423450828
+  },
+  {
+   "id": "p1-0247",
+   "cat": "chat",
+   "q": "the leaves are finally turning on my street, it looks so pretty",
+   "reply": "Falling a pet leaves you sharp. Have you tried a humidifier?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 11,
+   "gold": null,
+   "wall_ms": 378.45127296168357,
+   "ref_ms": 377.62118910904974,
+   "gin_ms": 377.4799630045891,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.8300838526338339
+  },
+  {
+   "id": "p1-0248",
+   "cat": "chat",
+   "q": "Trying a new coffee place down the road tomorrow, wish me luck.",
+   "reply": "A new coffee spot is such a good feeling. How long has it been?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 14,
+   "gold": null,
+   "wall_ms": 361.11820093356073,
+   "ref_ms": 360.2406670106575,
+   "gin_ms": 359.74940995220095,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.8775339229032397
+  },
+  {
+   "id": "p1-0249",
+   "cat": "chat",
+   "q": "I'm feeling kind of lonely tonight, just wanted someone to talk to.",
+   "reply": "That's a lot to take in all at once. Anything good happen today?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 13,
+   "gold": null,
+   "wall_ms": 406.7904580151662,
+   "ref_ms": 404.57513101864606,
+   "gin_ms": 404.1344600263983,
+   "gout_ms": 0.0,
+   "lat13_ms": 2.2153269965201616
+  },
+  {
+   "id": "p1-0257",
+   "cat": "chat",
+   "q": "appreciate it, you're the best",
+   "reply": "That sounds like a long, rough stretch. Are you stuck somewhere or just at home?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 15,
+   "gold": null,
+   "wall_ms": 367.8365080850199,
+   "ref_ms": 366.1716990172863,
+   "gin_ms": 365.8356349915266,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.6648090677335858
+  },
+  {
+   "id": "p1-0258",
+   "cat": "chat",
+   "q": "Thank you for being patient with all my questions today.",
+   "reply": "Being the one who always reaches out gets tiring. Do you know if they're busy with something?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 17,
+   "gold": null,
+   "wall_ms": 740.7816570485011,
+   "ref_ms": 739.1320370370522,
+   "gin_ms": 738.7938790488988,
+   "gout_ms": 0.0,
+   "lat13_ms": 1.6496200114488602
+  },
+  {
+   "id": "p1-0261",
+   "cat": "chat",
+   "q": "Many thanks - my talk went great because of your tips.",
+   "reply": "Getting up in a new place is such a fun way to spend an evening. How long until the next one?",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 21,
+   "gold": null,
+   "wall_ms": 414.59040506742895,
+   "ref_ms": 413.8789529679343,
+   "gin_ms": 413.6207060655579,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.7114520994946361
+  },
+  {
+   "id": "p1-0262",
+   "cat": "chat",
+   "q": "ty!!",
+   "reply": "Ah, okay, you're in an outdoors.",
+   "route": "chat",
+   "draft": [],
+   "mat": "",
+   "must": [],
+   "fp": null,
+   "grounded": null,
+   "coh": true,
+   "clean": true,
+   "words": 6,
+   "gold": null,
+   "wall_ms": 232.30313998647034,
+   "ref_ms": 231.34748893789947,
+   "gin_ms": 231.2288050306961,
+   "gout_ms": 0.0,
+   "lat13_ms": 0.9556510485708714
+  }
+ ]
+}

@@ -26,6 +26,8 @@ _STW=set(U._STOPW.split())|_WH|_GEN|set(_AUX)|{"i'm","i've",'im','mine','yours'}
 _TA={'age':'num','name':'name','color':'color','birthday':'time'}
 _HON=set('mr mrs ms dr mx miss sir'.split())
 on=lambda:os.environ.get('AMNI_ADAM_T_HARNESS','0')=='1'
+_p1on=lambda:os.environ.get('AMNI_PIPE1','0')=='1'
+_P1=lambda:__import__('amni.serve.pipe1',fromlist=['on'])
 _f=C._f
 _rk=lambda:__import__('amni.compute.rknow',fromlist=['ix'])
 _n=lambda s:' '.join(re.sub(r"[^a-z0-9 ]+",' ',C.asc(s).lower()).split())
@@ -106,7 +108,7 @@ def store(history,user,extra=(),session=None):
     if T.enabled():
         try:b=T.load(key);st=T.Store(b.s.copy(),b.u.copy(),b.head);st.lp,st.lo=b.lp,b.lo
         except (OSError,ValueError):pass
-    B=T.bus(st);F=[x for f in U.latest(U.load(key)) for x in [U.render(f)] if x] if U.enabled() else [];H=[]
+    B=T.bus(st);F=[x for f in U.latest(U.load(key)) for x in [U.render(f)] if x] if U.enabled() else [];H=[];history=_P1().hist(history,user) if _p1on() else history
     [T.ingest(st,x,B) for x in F if not len(st.s)]
     for h in history or []:
         u=str((h or [''])[0] or '').strip()
@@ -192,7 +194,7 @@ def read(cl,R,rq:str,line:str,e:str,mx:int)->dict:
     return dict(t=t,span=z or (S[0] if S else ''),ok=bool(z) and fits(e,z) and _bound(R,line,z,rq) and an,inev=bool(z),fit=bool(z) and fits(e,z),bind=bool(z) and _bound(R,line,z,rq),anchor=an)
 def _wsay(w:dict)->str:
     A,L=C.asc(w['answer']),C.asc(w['label']);p=w['p'];pre='on' if re.search(r"\d{1,2},? \d{3,4}|\d{1,2} [A-Z][a-z]+ \d{3,4}",A) else 'in'
-    return _cap(_WT[p].format(L=L,A=A,p=pre) if p in _WT else f"The {C._PL[p]} of {L} is {A}." if p in C._PL else f"{L}: {A}.")
+    return _cap(_WT[p].format(L=L,A=A,p=pre) if p in _WT else f"The {C._PL[p]} of {L} is {A}." if p in C._PL else f"The {C.asc(w['pl'])} of {L} is {A}." if w.get('pl') else f"{L}: {A}.")
 def _first(t:str,z:str)->str:
     S=[x for x in re.split(r"(?<=[.!?])\s+",t) if x.strip()];return _end(next((x for x in S if _has(z,x)),S[0] if S else z))
 _MAG=[(1e12,'trillions'),(1e11,'hundreds of billions'),(1e10,'tens of billions'),(1e9,'billions'),(1e8,'hundreds of millions'),(1e7,'tens of millions'),(1e6,'millions'),(1e5,'hundreds of thousands'),(1e4,'tens of thousands'),(1e3,'thousands'),(100,'hundreds')]
@@ -218,18 +220,21 @@ def _guess(z:str,e:str)->tuple:
     g=_coarse(z,e) if e in ('time','num') else _lc(z.strip().rstrip('.!?')) if e=='any' else z.strip().rstrip('.')
     return g,e if e in ('time','num') else 'sent' if e=='any' and len(g.split())>4 else 'ent'
 def fill_s1(s:dict,rq:str)->dict:
-    k='store2' if os.environ.get('AMNI_STORE2','0')=='1' else 'store1' if os.environ.get('AMNI_STORE1','0')=='1' else ''
+    k='store2' if os.environ.get('AMNI_STORE2','0')=='1' else 'store1' if os.environ.get('AMNI_STORE1','0')=='1' else '';P=_P1() if _p1on() and k=='store2' else None
     if not k:return {}
-    try:r=__import__('amni.serve.store1',fromlist=['resolve']).resolve(rq)
+    try:r=P.lut(rq) if P else __import__('amni.serve.store1',fromlist=['resolve']).resolve(rq)
     except Exception:return {}
     b=r.get('best')
     if not b or not b.get('answer'):return {}
-    a=C.asc(str(b['answer']));o={**s,'kind':'know','rq':rq,'src':k,'span':a,'conf':float(b['score']),'s1':b['store'],'s1ms':r['ms']}
+    a=C.asc(str(b['answer']));k=b['store'] if P and b['store'] in ('p1u','p1g') else k;o={**s,'kind':'know','rq':rq,'src':k,'span':a,'conf':float(b['score']),'s1':b['store'],'s1ms':r['ms']}
+    if P:
+        tx=P.dtext(b,rq);M=mat(k,[b['line']],tx,[b.get('prov','')],float(b['score']),[a]);lo=b['store']=='wd' and not b.get('sure',True);sup=P.support(rq,b) if lo else []
+        return {**o,'ok':True,'text':tx,'mat':{**M,'lines':M['lines']+sup},'p1ret':1} if sup else {**o,'ok':False,'hedge':True,'guess':a,'gk':'ent','p1ret':1} if lo else {**o,'ok':True,'text':tx,'mat':M}
     return {**o,'ok':False,'hedge':True,'guess':a,'gk':'ent'} if b['store']=='wd' and not b.get('sure',True) else {**o,'ok':True,'text':C.asc(b['line']),'mat':mat(k,[b['line']],C.asc(b['line']),[b.get('prov','')],float(b['score']),[a])}
 def fill_know(s:dict,cl,R,rq:str,mx:int)->dict:
     o=fill_s1(s,rq)
     if o:return o
-    qt=R.RL.qtype(rq);e=expect(rq,qt);ag=os.environ.get('AMNI_ADAM_T_HARNESS_AGREE','1')=='1';w=C._wd(R,rq,True,_forms(R,rq));w=w if w and fits(e,C.asc(w['answer'])) else None;s={**s,'rq':rq,'exp':e};cs=_cs(s,rq,e) if not (w and w['strong']) else {}
+    qt=R.RL.qtype(rq);e=expect(rq,qt);ag=os.environ.get('AMNI_ADAM_T_HARNESS_AGREE','1')=='1' and not _p1on();w=C._wd(R,rq,True,_forms(R,rq));w=w if w and fits(e,C.asc(w['answer'])) else None;s={**s,'rq':rq,'exp':e};cs=_cs(s,rq,e) if not (w and w['strong']) else {}
     if cs.get('ok') and cs.get('cs') not in ('class','sup'):return {**cs,'kind':'know'}
     if not w and e=='any' and _NONF.search(rq):return {**cs,'kind':'know'} if cs else {**s,'kind':'other'}
     P,_=C._know(rq,2,int(_f('AMNI_ADAM_T_HARNESS_PASSAGE_BYTES',420)),None,False) if not w or not w['strong'] or ag else ([],rq);w0=w if w and not w['strong'] else None
@@ -351,7 +356,9 @@ def slot(q:str,prev,history,st,R,cl,mx:int)->dict:
     wn=re.match(r"(?i)\W*which\s+(\w+)",prev['q']) if prev and re.match(r"(?i)\W*which\s+(?:is|are|was|were|one)\b",q) else None;q=re.sub(r"(?i)^(\W*which)(?:\s+one)?\b",r"\1 "+wn[1],q,1) if wn else q
     tp=getattr(split,'topic','');tq=tp and not _pers(R,q,st) and not _ent(R,q)
     q=(_PR.sub(tp,q,1) if _PR.search(q) else q.rstrip(' ?.!')+(' of ' if re.search(r"(?i)\b(?:capital|currency|population|language|anthem|president|leader|flag|symbol)\W*$",q) else ' in ')+tp) if tq and (not prev or _PR.search(q) or True) and not (prev and prev.get('kind')=='know' and _PRK.search(q)) else q
-    s={'q':q,'retry':0};pk=lambda z:{m[0].lower() for m in _PRK.finditer(z)};pr=bool(pk(q)-(pk(prev['q']) if prev else set())) or bool(C._ELL.match(q));sp=prev.get('span') or '' if prev and prev.get('ok') and prev.get('kind')=='mem' else ''
+    s={'q':q,'retry':0};o=_P1().ovslot(s,q) if _p1on() else {}
+    if o:return o
+    pk=lambda z:{m[0].lower() for m in _PRK.finditer(z)};pr=bool(pk(q)-(pk(prev['q']) if prev else set())) or bool(C._ELL.match(q));sp=prev.get('span') or '' if prev and prev.get('ok') and prev.get('kind')=='mem' else ''
     pe=prev.get('exp') if prev else '';kq=re.sub(r"(?i)\b(?:he|she|him|her)\b" if pe=='name' else r"(?i)\b(?:it|that)\b",sp,q,1) if sp and sp.lower() not in st.names and pe in ('name','any') else q;kq=re.sub(r"(?i)\bthere\b",'in '+sp,kq) if sp and pe=='place' and sp[:1].isupper() else kq
     if kq!=q and not _pers(R,kq,st)==2 and R.factq(kq,True):q,pr=kq,False
     elif prev and pr and prev.get('src')=='mem' and prev.get('ent') and _PR.search(q):q=_subp(q,prev['ent'])
@@ -381,7 +388,9 @@ def slot(q:str,prev,history,st,R,cl,mx:int)->dict:
     if not o.get('ok') and len(V)>1:o2=fill_know({**s,'kind':'know','retry':o.get('retry',0)+1},cl,R,V[1],mx);o=o2 if o2.get('ok') or o2.get('kind')!='other' and (o.get('kind')=='other' or not o.get('guess')) else o
     return {**s,'kind':'other','rq':q} if av and not o.get('ok') else {**o,'kind':'mem','src':'mem','hedge':True,'unk':True,'guess':'','text':''} if not o.get('ok') and o.get('kind')!='other' and set(_ct(q))&st.ht and _MEMQ.search(split.msg) and not re.search(r"\s[A-Z]",q) else o
 def _other(s:dict,history,user,session,cl,mx:int)->tuple:
-    c=C.context(s['q'],history,user,session,cl.budget(mx));t=C.asc(c['reply'] or cl.gen(s['q'],mx,C.STOPS,c['hist'],c['pre'],c['rc'])).strip();g=t if c['reply'] else safe(s['q'],t);return g,g!=t
+    c=C.context(s['q'],_P1().hist(history,user) if _p1on() else history,user,session,cl.budget(mx))
+    if _p1on() and not c['reply']:g=_P1().chat(cl,s['q'],c,mx);return g[0],g[1]==0.0
+    t=C.asc(c['reply'] or cl.gen(s['q'],mx,C.STOPS,c['hist'],c['pre'],c['rc'])).strip();g=t if c['reply'] else safe(s['q'],t);return g,g!=t
 _COP={'relate','common','analogy','abstract','deduce','deduce_in','connect'}
 _VB={'type of':'{h} is a type of {b}','subclass of':'{h} is a kind of {b}','instance of':'{h} is a {b}','part of':'{h} is part of {b}','has part':'{h} has {b}','made of':'{h} is made of {b}','opposite of':'{h} is the opposite of {b}','member of':'{h} is a member of {b}','similar to':'{h} is similar to {b}','substance of':'{h} is found in {b}','causes':'{h} causes {b}','entails':'{h} involves {b}','has member':'{h} includes {b}'}
 _cw=lambda s:{w for w in re.findall(r"[a-z0-9]+",C.asc(s).lower()) if w not in _STW and len(w)>2}
@@ -439,11 +448,12 @@ def _bon(r:str)->bool:v=os.environ.get('AMNI_ADAM_T_HARNESS_BLEND','all');return
 def gate(t:str,M:dict,q:str)->bool:
     if not t or _BOIL.search(t) or emtpl(t):return False
     if M['gate']!='para':return M['gate']=='coh' or _grounded(t,M['ctx'][0],M['ctx'][1],q,M['ctx'][2])
-    cv,tr,mw,lr=_BG.get(M['route'],(0.6,0.6,4,0));src=' '.join(M['lines']+[M['extract'],q]);sw={w[:5] for w in _pw(src)};tw=_pw(t);xc=set(_ct(M['extract']));g=lambda z:{tuple(z[i:i+3]) for i in range(len(z)-2)};tg=g(tw)
-    return len(tw)>=mw and (not lr or len(tw)<=max(12,lr*len(_pw(M['extract'])))) and not [w for w in tw if len(w)>3 and w not in _SW and w[:5] not in sw] and not set(re.findall(r"\d+",t))-set(re.findall(r"\d+",src)) and ':' not in t and (not xc or len(set(_ct(t))&xc)>=cv*len(xc)) and (not tr or bool(tg) and len(tg&g(_pw(src)))>=tr*len(tg)) and t.strip()[-1:] in '.!?' and all(_has(x,t) or x in t for x in M['must'])
+    cv,tr,mw,lr=_BG.get(M['route'],(0.6,0.6,4,0));s=M.get('s');z=_P1().th(s) if s is not None else {};cv,tr,lr,nx=(z['cov'],z['tri'],z['cap'],z['nw']) if z else (cv,tr,lr,0.0);src=' '.join(M['lines']+M.get('sup',[])+[M['extract'],q]);sw={w[:5] for w in _pw(src)};tw=_pw(t);xc=set(_ct(M['extract']));g=lambda z:{tuple(z[i:i+3]) for i in range(len(z)-2)};tg=g(tw)
+    return len(tw)>=mw and (not lr or len(tw)<=max(12,lr*len(_pw(M['extract'])))) and len([w for w in tw if len(w)>3 and w not in _SW and w[:5] not in sw])<=nx*len([w for w in tw if len(w)>3 and w not in _SW]) and not (z and _P1().newcap(t,src)) and not set(re.findall(r"\d+",t))-set(re.findall(r"\d+",src)) and ':' not in t and (not xc or len(set(_ct(t))&xc)>=cv*len(xc)) and (not tr or bool(tg) and len(tg&g(_pw(src)))>=tr*len(tg)) and t.strip()[-1:] in '.!?' and all(_has(x,t) or x in t for x in M['must'])
 def blend(cl,q:str,M:dict,mx:int)->tuple:
-    if not M or not M['lines'] or cl is None or not _bon(M['route']):return (M.get('extract','') if M else ''),None
-    try:t=_coh(cl.gen(q,int(M.get('bytes') or min(mx,int(_f('AMNI_ADAM_T_HARNESS_BLEND_BYTES',200)))),C.STOPS,M.get('hist'),(),M['lines'],' '),M.get('echo',q))
+    if not M or not M['lines'] or cl is None or not _bon(M['route']) or M.get('s') is not None and M['s']<=0:return (M.get('extract','') if M else ''),None
+    P=_P1() if M.get('s') is not None else None
+    try:t=_coh(cl.gen(q,int(M.get('bytes') or min(mx,int(_f('AMNI_ADAM_T_HARNESS_BLEND_BYTES',200)))),C.STOPS,M.get('hist'),(),P.plines(M) if P else M['lines'],' ',**({'dec':P.dec(M['s'])} if P else {})),M.get('echo',q))
     except Exception:return M['extract'],None
     S=[x for x in re.split(r"(?<=[.!?])\s+",C.asc(t)) if x];x=next((' '.join(S[:k]) for k in range(len(S),0,-1) if gate(' '.join(S[:k]),M,q)),'');return (x or M['extract']),bool(x)
 def _wp(m:str)->bool:
@@ -454,7 +464,11 @@ def _calc(q:str,s:dict)->dict:
     t,v,r=C._math(q,True);return {**s,'kind':'calc','rq':q,'src':'calc','ok':True,'conf':float(r['conf']),'span':v,'text':t,'mat':mat('calc',['Calculator: '+t],t,['calculator: '+str(r.get('intent') or '')],float(r['conf']),[v],echo='')} if t else {}
 def run(message:str,history,user,session,cl,mx:int)->Optional[dict]:
     m=str(message or '').strip()
-    if not on() or not m or U._fg(m):return None
+    if not on() or not m:return None
+    Q1=_P1() if _p1on() else None;Q1 and Q1.CUR.set((user,session));r=Q1.correct(m,history,user,session) if Q1 else {}
+    if r:return r
+    if U._fg(m):return None
+    m=Q1.imp(m) if Q1 else m
     K=__import__('amni.serve.adam_t_code',fromlist=['want']) if os.environ.get('AMNI_ADAM_T_HARNESS_CODE','1')=='1' else None
     if K and K.want(m):o=K.solve(m);return {'text':K.reply(o),'n':{'hs':1,'hcd':1,'hcv':int(o['ok']),'hms':o['ms']},'slots':[{'kind':'code','src':o['how'],'ok':o['ok'],'hedge':not o['ok'],'q':m,'mroute':'code','blend':None,'prov':o['prov']}]}
     t0=time.perf_counter();w=_wp(m);S=_calc(m,{'q':m,'retry':0}) if w else {};S=[S] if S else []
@@ -473,7 +487,8 @@ def run(message:str,history,user,session,cl,mx:int)->Optional[dict]:
         s.get('kind')=='other' and s.update(zip(('text','guard'),_other(s,history,user,session,cl,mx)),src='adam_t');s.get('unk') and s.update(text="You haven't told me that yet." if len(S)==1 else f"You haven't told me {ind(s['q'])} yet.")
         if s.get('guess') and s.get('hedge'):s['text']=_hedge(s['guess'],s['gk'],k);k+=1
         M=s.pop('mat',None)
-        if M and s.get('ok') and not s.get('hedge'):b=blend(cl,s.get('rq') or s['q'],M,mx);s.update(text=b[0],blend=b[1],mroute=M['route'],prov=s.get('prov') or M['prov'])
+        if M and s.get('ok') and not s.get('hedge') and Q1:M=Q1.assemble(M);b=Q1.refine(cl,s.get('rq') or s['q'],M,mx);s.update(text=b[0],blend=b[1],ps=M.get('s'),pu=b[2],pn=b[3],pmust=M['must'],pdraft=M['extract'],pmat=M['lines']+M.get('sup',[]),mroute=M['route'],prov=s.get('prov') or M['prov'])
+        elif M and s.get('ok') and not s.get('hedge'):b=blend(cl,s.get('rq') or s['q'],M,mx);s.update(text=b[0],blend=b[1],mroute=M['route'],prov=s.get('prov') or M['prov'])
     txt=C.asc(' '.join(_end(s['text']) for s in S if s.get('text'))).strip()
-    n={'hs':len(S),'hm':sum(s.get('kind')=='mem' for s in S),'hk':sum(s.get('kind')=='know' for s in S),'hc':sum(s.get('kind')=='calc' for s in S),'ho':sum(s.get('kind')=='other' for s in S),'hv':sum(bool(s.get('ok')) for s in S),'hh':sum(bool(s.get('hedge')) for s in S),'hgs':sum(bool(s.get('guess')) for s in S),'hsd':sum(bool(s.get('said')) for s in S),'hr':sum(int(s.get('retry') or 0) for s in S),'hx':sum(bool(s.get('conflict')) for s in S),'hxe':sum(s.get('kind')=='explain' for s in S),'hcs':sum(s.get('src')=='cs' for s in S),'htg':sum(bool(s.get('tgate')) for s in S),'hbl':sum(s.get('blend') is not None for s in S),'hbp':sum(bool(s.get('blend')) for s in S),'hgd':sum(bool(s.get('guard')) for s in S),'hms':round((time.perf_counter()-t0)*1000)}
+    n={'hs':len(S),'hm':sum(s.get('kind')=='mem' for s in S),'hk':sum(s.get('kind')=='know' for s in S),'hc':sum(s.get('kind')=='calc' for s in S),'ho':sum(s.get('kind')=='other' for s in S),'hv':sum(bool(s.get('ok')) for s in S),'hh':sum(bool(s.get('hedge')) for s in S),'hgs':sum(bool(s.get('guess')) for s in S),'hsd':sum(bool(s.get('said')) for s in S),'hr':sum(int(s.get('retry') or 0) for s in S),'hx':sum(bool(s.get('conflict')) for s in S),'hxe':sum(s.get('kind')=='explain' for s in S),'hcs':sum(s.get('src')=='cs' for s in S),'htg':sum(bool(s.get('tgate')) for s in S),'hbl':sum(s.get('blend') is not None for s in S),'hbp':sum(bool(s.get('blend')) for s in S),'hgd':sum(bool(s.get('guard')) for s in S),**({'p1':1,'p1r':sum(int(bool(s.get('p1ret')) or s.get('kind')=='explain' or s.get('src') in ('psg','wd+psg')) for s in S)} if Q1 else {}),'hms':round((time.perf_counter()-t0)*1000)}
     return {'text':txt,'n':n,'slots':S} if txt else None
