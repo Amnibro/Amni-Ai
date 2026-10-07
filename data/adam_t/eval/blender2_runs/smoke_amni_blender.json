@@ -1,0 +1,30 @@
+{
+ "bake": "atex:/home/anmire/ai/hybrid1/bakes/granite42_q4g128_gptq",
+ "opts": {
+  "sys": "split4",
+  "stream": true,
+  "head": "cpu",
+  "embed": "cpu",
+  "kv": 8,
+  "chunk": 256
+ },
+ "client_type": "Blender",
+ "same_instance": true,
+ "load_s": 2.9,
+ "status": {
+  "run": "atex:/home/anmire/ai/hybrid1/bakes/granite42_q4g128_gptq",
+  "alive": true,
+  "fails": 0,
+  "model": "granite42_q4g128_gptq",
+  "step": "atex",
+  "fmt": "chat",
+  "ctx": 4096
+ },
+ "replies": {
+  "blend": "Marlowe Bridge is a stone arch bridge over the River Tane in the county of Eastmere. It carries a single lane of traffic.",
+  "chat": "I'm sorry you're feeling wiped out. Take a deep breath and try to relax for a few minutes-maybe just sit quietly and focus on your breathing. You've got this.",
+  "uncovered": "I'm not sure about that."
+ },
+ "proc_vram_GB_after": 0.471,
+ "proc_vram_GB_after_load": 0.233
+}

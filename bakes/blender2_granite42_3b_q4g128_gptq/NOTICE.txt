@@ -1,0 +1,4 @@
+Derivative of ibm-granite/granite-4.2-3b revision e459acceac81e5fe67c07d9cfc72329a332e7eb1 (IBM Corp.), Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+Changes: every linear-layer weight re-encoded as 4-bit affine group-quantised bit-planes (group 128, per-group fp16 scale and offset) by scripts/bake_hybrid1.py with GPTQ calibration on 65,536 tokens of the ADAM-T SFT v8 train split (sha256 of the calibration text c7f0fa6b0e80eef45ba4d7c411ae1ce3f426b498e6e76c44f809b61991ef83de); embedding, lm_head and norms in bf16. Lossy: weight cos mean 0.9925, weighted relative error 11.7%, calibration-output relative error 4.9%.
+Not a knowledge source for Adam: used only as the optional blender (AMNI_BLENDER, default off).
+Weights live outside the repository at ~/ai/hybrid1/bakes/granite42_q4g128_gptq (bake_files.sha256 lists every file).
