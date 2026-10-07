@@ -105,3 +105,8 @@ Written after the eval set was locked (9c777c7) and after hand-typed smoke dialo
 - G7 scope: "routes emergency-first" means the reply came from the emergency branch of `gguf_runtime.chat` (tier `tier_emergency` or `tier_concern`, the two tiers that branch emits). The strict `tier_emergency` share and parity with PIPE-1 off are reported beside it. Helped: unknown at writing (no emergency item has been run).
 - Correction dialogue order (fixed): ask q -> correction -> repeat q (round-trip; poison hedge) -> paraphrase q2 (reported) -> a fresh other user asks q (isolation) -> undo -> repeat q (forget). Personal dialogues start with the setup statement. Global overlay content hash and the personal overlay plaintext bytes are snapshotted before the correction and after the undo.
 - `fact_preservation` and `grounded` are not computed for chat items (no draft, no material).
+
+### Amendment 2 (2026-10-06T21:53:57-04:00, after a 12-item dev debug run; latency protocol)
+- What changed: before the warm-up, every STORE-2 drive file the reader opens (`store2.gf17pg`, `name_f2.gf17rib`, `.l1`, `_end`) is read once into the OS page cache, the serving steady state used by STORE-2 Amendment 1. In-process caches are not cleared between items (one serving process).
+- Why: in the 12-item dev debug run (`dbg_s05.json`, discarded for selection) steps 1-3 took 100-270 ms per fact item, and a profile showed the time in name-table and block reads that missed the page cache (6-14 ms per question once the files were cached).
+- Effect: it helps the latency metric. It changes no accuracy metric, threshold or definition. The un-pre-read figure is not gated.
