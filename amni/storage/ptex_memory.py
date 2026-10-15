@@ -1,6 +1,14 @@
 import os,json,time,hashlib,mmap,re
 from pathlib import Path
+from amni.delve.ptex import cell_coords,_stem
 _MAGIC=b'PTEX_MEM_V1\x00'
+def _extract_word_set(txt):
+    raw=re.findall(r"[a-z0-9]{3,}",(txt or "").lower())
+    out=set(raw)
+    for w in raw:
+        st=_stem(w)
+        if len(st)>=3:out.add(st)
+    return out
 class PtexMemoryAtlas:
     def __init__(self,path):
         self.path=Path(path)
@@ -27,13 +35,17 @@ class PtexMemoryAtlas:
             self._fd=open(self.path,'rb')
             self._mmap=mmap.mmap(self._fd.fileno(),0,access=mmap.ACCESS_READ)
     def append(self,text,meta=None):
+        txt_str=text if isinstance(text,str) else bytes(text).decode('utf-8',errors='replace')
         data=text.encode('utf-8') if isinstance(text,str) else bytes(text)
         pad=(4-len(data)%4)%4
         padded=data+b'\x00'*pad
         offset=self._index['total_bytes']
         with open(self.path,'ab') as f:f.write(padded)
         eid=len(self._index['entries'])
-        entry={'id':eid,'offset':offset,'len':len(data),'sha':hashlib.sha256(data).hexdigest()[:16],'ts':time.time()}
+        subj=(meta or {}).get('subject','') if isinstance(meta,dict) else ''
+        cell,_,_=cell_coords(str(subj),txt_str,48)
+        toks=sorted(_extract_word_set(txt_str))[:64]
+        entry={'id':eid,'offset':offset,'len':len(data),'sha':hashlib.sha256(data).hexdigest()[:16],'ts':time.time(),'cell':cell,'toks':toks}
         if meta:entry['meta']=meta
         self._index['entries'].append(entry)
         self._index['total_bytes']+=len(padded)
@@ -63,20 +75,38 @@ class PtexMemoryAtlas:
             if pred(e):out.append((e['id'],self.read(e['id']),e.get('meta')))
         return out
     def search_words(self,query_words,exclude_meta_subjects=(),max_results=10,min_overlap=2):
-        qw=set(w.lower() for w in query_words if len(w)>2)
+        qw=set()
+        for w in (query_words or ()):
+            wl=str(w).lower()
+            if len(wl)>2:
+                qw.add(wl)
+                st=_stem(wl)
+                if len(st)>=3:qw.add(st)
         if not qw:return []
-        out=[]
+        q_cell,_,_=cell_coords(" ".join(sorted(qw)),"",48)
+        scored=[]
         for e in self._index['entries']:
             m=e.get('meta') or {}
             if m.get('subject') in exclude_meta_subjects:continue
-            txt=self.read(e['id'])
-            if not txt:continue
-            tw=set(re.findall(r"[a-z0-9]{3,}",txt.lower()))
-            overlap=len(qw&tw)
-            if overlap>=min_overlap:
-                out.append((overlap,e['id'],txt,m))
-        out.sort(key=lambda x:-x[0])
-        return out[:max_results]
+            idx_toks=e.get('toks')
+            if idx_toks is not None:
+                tw=set(idx_toks)
+                overlap=len(qw&tw)
+                if overlap<min_overlap:continue
+                txt=self.read(e['id'])
+                if not txt:continue
+            else:
+                txt=self.read(e['id'])
+                if not txt:continue
+                tw=_extract_word_set(txt)
+                overlap=len(qw&tw)
+                if overlap<min_overlap:continue
+            ecell=e.get('cell')
+            l1=sum(abs(a-b) for a,b in zip(q_cell,ecell)) if (isinstance(ecell,list) and len(ecell)==6) else 60
+            spatial_tie=0.25*max(0.0,1.0-l1/120.0)
+            scored.append((overlap+spatial_tie,overlap,e['id'],txt,m))
+        scored.sort(key=lambda x:(-x[1],-x[0]))
+        return [(ov,eid,txt,m) for _,ov,eid,txt,m in scored[:max_results]]
     def __len__(self):return len(self._index['entries'])
     def close(self):self._invalidate_mmap()
     def stats(self):
