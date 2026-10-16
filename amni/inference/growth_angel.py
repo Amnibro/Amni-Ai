@@ -1,4 +1,4 @@
-"""GrowthDaemon — background process that consumes low-confidence questions from a JSONL queue, crawls web sources, distills via Gemma, records lessons to PTEX.
+"""GrowthAngel — background process that consumes low-confidence questions from a JSONL queue, crawls web sources, distills via Gemma, records lessons to PTEX.
 Architecture: Adam.answer() returns immediately with best-guess + queues background work to a JSONL file. Daemon process tails the queue, processes items at its own pace, updates the shared lesson PTEX KB. Adam's next call benefits from accumulated lessons.
 Communication via filesystem: zero shared-memory, robust to crashes, daemon can be restarted.
 """
@@ -32,7 +32,7 @@ class GrowthQueue:
         cur=self.cursor()
         with open(self.path,'r',encoding='utf-8') as f:total=sum(1 for _ in f)
         return {'total':total,'processed':cur,'pending':total-cur}
-class GrowthDaemon:
+class GrowthAngel:
     def __init__(self,adam_loop,queue_path:str,poll_sec:float=5.0,max_per_cycle:int=5):
         self.adam=adam_loop
         self.q=GrowthQueue(queue_path)

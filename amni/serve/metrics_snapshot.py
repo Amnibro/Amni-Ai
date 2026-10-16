@@ -1,5 +1,5 @@
 """metrics_snapshot — daily snapshots of Adam's behavioral metrics for trend tracking (v6.10.60).
-Step 4 of the self-improvement trajectory. Once per ~24h the LearningDaemon writes a snapshot row to
+Step 4 of the self-improvement trajectory. Once per ~24h the LearningAngel writes a snapshot row to
 data/metrics_snapshots.jsonl capturing:
   - skill_calls: total calls, ok_rate, p50/p90, top skills by use
   - daemon: qa_pairs_new + qa_pairs_reinforced, facts/hr, sleep_passes, repetition_passes
@@ -39,7 +39,7 @@ def _collect_skill_stats()->Dict[str,Any]:
     return {'total_calls':total_calls,'total_ok':total_ok,'ok_rate':round(total_ok/total_calls,3) if total_calls else None,'n_skills':len(rows),'top':[{'name':r.get('skill') or r.get('name'),'n_calls':r.get('n_calls'),'ok_rate':r.get('ok_rate'),'p90_ms':r.get('p90_ms') or r.get('p90')} for r in by_calls]}
 def _collect_daemon_stats()->Dict[str,Any]:
     try:
-        import importlib;mod=importlib.import_module('amni.serve.learning_daemon')
+        import importlib;mod=importlib.import_module('amni.serve.learning_angel')
         inst=getattr(mod,'_GLOBAL_DAEMON',None)
         if inst is None:return {'active':False}
         c=getattr(inst,'counters',{}) or {};started=float(c.get('started_at') or time.time())

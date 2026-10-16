@@ -326,11 +326,11 @@ class AmniAgent:
             self.scheduler=AdamScheduler(skill_registry=self.skills,adam=self.adam,start_thread=True)
         except Exception as e:print(f'[AmniAgent] AdamScheduler init failed (autonomous jobs disabled): {e}',flush=True);self.scheduler=None
         try:
-            from amni.serve.learning_daemon import LearningDaemon
+            from amni.serve.learning_angel import LearningAngel
             import os as _os_env
             _ld_disabled=bool(_os_env.environ.get('AMNI_NO_LEARNING_DAEMON'))
-            self.learning_daemon=LearningDaemon(adam=self.adam,skill_registry=self.skills,coach_atlas=self.coach_atlas,start_thread=not _ld_disabled,config={'enabled':not _ld_disabled})
-        except Exception as e:print(f'[AmniAgent] LearningDaemon init failed (24/7 learning disabled): {e}',flush=True);self.learning_daemon=None
+            self.learning_daemon=LearningAngel(adam=self.adam,skill_registry=self.skills,coach_atlas=self.coach_atlas,start_thread=not _ld_disabled,config={'enabled':not _ld_disabled})
+        except Exception as e:print(f'[AmniAgent] LearningAngel init failed (24/7 learning disabled): {e}',flush=True);self.learning_daemon=None
         try:
             from amni.serve.memory_bus import MemoryBus
             _al=getattr(self.adam,'adam',None);_lut=getattr(_al,'lut',None)

@@ -1954,7 +1954,7 @@ def default_registry(workdir:Optional[str]=None,roots:Optional[List[str]]=None,a
         _ingest.register(reg)
     except Exception as _ie:print(f'[skills] ingest skills register failed: {_ie}',flush=True)
     try:
-        from amni.serve.learning_daemon import learning_daemon_skill as _ld_skill
+        from amni.serve.learning_angel import learning_daemon_skill as _ld_skill
         reg.register('learning_daemon',_ld_skill,desc='Inspect/control Adam\'s 24/7 self-improvement daemon AND run user-directed learning missions. Actions: stats | curiosity_tick | sleep_pass | repetition_pass | pause | resume | queue_topic <topic> | atlas_verified | atlas_debated | mission_start (topic=what to master, stop=stop condition, timeframe?) | mission_status | mission_stop | mission_resume. A mission makes Adam autonomously web-crawl to master the topic, decomposing it into subtopics and looping (going deeper each round) until the user stops it or it self-assesses the stop condition is met. Args: {action, topic?, stop?, timeframe?, limit?}',schema={'action':'str','topic':'str?','stop':'str?','stop_condition':'str?','timeframe':'str?','mission':'str?','limit':'int?'})
     except Exception as _le:print(f'[skills] learning_daemon skill register failed: {_le}',flush=True)
     try:

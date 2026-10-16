@@ -1,5 +1,5 @@
 """notifications — proactive toast queue for /jarvis.
-Sources (LearningDaemon, edit_verifier, shell_audit, etc.) call queue_notification(). /jarvis polls
+Sources (LearningAngel, edit_verifier, shell_audit, etc.) call queue_notification(). /jarvis polls
 /notifications every 10s and slides toasts in at bottom-right. In-memory ring buffer (50-entry cap)
 so the queue can never grow unbounded; oldest get evicted. Each notification has a TTL after which
 it auto-disappears from list_active even if unread."""

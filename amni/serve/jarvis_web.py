@@ -2581,7 +2581,7 @@ _initPersonaPill();
 let _ldStats=null,_ldPanelOpen=false,_ldPollTimer=null,_ldLastTopic=null,_ldErrCount=0;
 function _ldHumanDur(s){if(!s||s<60)return Math.round(s||0)+'s';if(s<3600)return Math.round(s/60)+'m';if(s<86400)return (s/3600).toFixed(1)+'h';return (s/86400).toFixed(1)+'d'}
 function _ldHumanRate(r){return (r||0).toFixed(r>=10?0:1)}
-async function _pollLearningDaemon(){
+async function _pollLearningAngel(){
   try{
     const r=await fetch('/memory/daemon');
     if(!r.ok){_ldErrCount++;_ldUpdatePill('error',null);return}
@@ -2600,7 +2600,7 @@ function _ldUpdatePill(state,j){
   else if(state==='paused')txt.textContent='learning paused • '+n+' facts'
   else txt.textContent='idle • '+n+' facts • '+_ldHumanRate(j.facts_per_hour||0)+'/h'
 }
-function toggleLearnPanel(){_ldPanelOpen=!_ldPanelOpen;const p=document.getElementById('learn-panel');p.classList.toggle('show',_ldPanelOpen);const pp=document.getElementById('persona-panel');if(_ldPanelOpen&&pp&&pp.classList.contains('show')){pp.classList.remove('show');_personaPanelOpen=false}if(_ldPanelOpen)_pollLearningDaemon()}
+function toggleLearnPanel(){_ldPanelOpen=!_ldPanelOpen;const p=document.getElementById('learn-panel');p.classList.toggle('show',_ldPanelOpen);const pp=document.getElementById('persona-panel');if(_ldPanelOpen&&pp&&pp.classList.contains('show')){pp.classList.remove('show');_personaPanelOpen=false}if(_ldPanelOpen)_pollLearningAngel()}
 function _renderLearnPanel(){
   const j=_ldStats;if(!j)return;
   const now=document.getElementById('lp-now');const active=!!j.current_topic;
@@ -2619,10 +2619,10 @@ function _renderLearnPanel(){
   if(rt.length===0){recent.innerHTML='<div style="font-size:10px;color:var(--mute);text-align:center;padding:8px;font-style:italic">no completed topics yet</div>'}
   else{recent.innerHTML=rt.slice(0,6).map(t=>'<div class="lp-recent"><div class="t">'+esc(t.topic||'')+'</div><div class="meta">+'+(t.new||0)+' new · '+(t.reinforced||0)+' reinforced · '+_ldHumanDur(t.duration_s||0)+'</div></div>').join('')}
 }
-async function _daemonToggle(){if(!_ldStats)return;const action=_ldStats.enabled?'pause':'resume';try{await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action}})});await _pollLearningDaemon()}catch{}}
-async function _daemonTick(){try{await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'curiosity_tick'}})});setTimeout(_pollLearningDaemon,500)}catch{}}
-async function _daemonQueue(){const inp=document.getElementById('lp-queue-topic');const t=(inp.value||'').trim();if(!t)return;try{const r=await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'queue_topic',topic:t}})});if(r.ok){inp.value='';bubble('bot','Queued **'+esc(t)+'** for autonomous learning','<span class="badge">learn</span>');setTimeout(_pollLearningDaemon,400)}}catch{}}
-function _startLearnPolling(){if(_ldPollTimer)return;_pollLearningDaemon();_ldPollTimer=setInterval(_pollLearningDaemon,8000)}
+async function _daemonToggle(){if(!_ldStats)return;const action=_ldStats.enabled?'pause':'resume';try{await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action}})});await _pollLearningAngel()}catch{}}
+async function _daemonTick(){try{await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'curiosity_tick'}})});setTimeout(_pollLearningAngel,500)}catch{}}
+async function _daemonQueue(){const inp=document.getElementById('lp-queue-topic');const t=(inp.value||'').trim();if(!t)return;try{const r=await fetch('/skills/learning_daemon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({args:{action:'queue_topic',topic:t}})});if(r.ok){inp.value='';bubble('bot','Queued **'+esc(t)+'** for autonomous learning','<span class="badge">learn</span>');setTimeout(_pollLearningAngel,400)}}catch{}}
+function _startLearnPolling(){if(_ldPollTimer)return;_pollLearningAngel();_ldPollTimer=setInterval(_pollLearningAngel,8000)}
 _startLearnPolling();
 let _tpItems=[],_tpPanelOpen=false,_tpPollTimer=null,_tpIncludeDone=false;
 function _tpHumanAge(s){if(!s||s<60)return Math.round(s||0)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';if(s<86400)return (s/3600).toFixed(1)+'h ago';return (s/86400).toFixed(1)+'d ago'}

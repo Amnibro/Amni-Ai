@@ -1,4 +1,4 @@
-"""LearningDaemon — Adam's 24/7 self-improvement engine. Always-on background thread orchestrating five sub-jobs:
+"""LearningAngel — Adam's 24/7 self-improvement engine. Always-on background thread orchestrating five sub-jobs:
   1. Curiosity tick (default every 1800s):     find a knowledge gap, queue ingestion
   2. Ingest workers (N=2 threads default):     pull from queue, fetch URL, extract Q-A, consensus-merge into LUT
   3. Sleep consolidator (default every 4h):    cluster nearby cells, synthesize higher-order summary cells
@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.request,urllib.parse
 _DDG_URL='https://duckduckgo.com/html/?q='
 _DEFAULT_CONFIG={'curiosity_period_s':1800,'sleep_period_s':4*3600,'repetition_period_s':6*3600,'leak_commit_period_s':3600,'federation_pull_period_s':6*3600,'federation_peers':[],'ingest_workers':2,'max_queue':40,'pause_during_user_activity_s':60,'max_sources_per_topic':6,'security_audit_period_s':6*3600,'enabled':True}
-class LearningDaemon:
+class LearningAngel:
     def __init__(self,adam=None,skill_registry=None,coach_atlas=None,learning_atlas=None,config:Optional[Dict[str,Any]]=None,start_thread:bool=True):
         self.adam=adam;self.skills=skill_registry;self.coach_atlas=coach_atlas
         from amni.storage.learning_atlas import LearningAtlas
@@ -32,7 +32,7 @@ class LearningDaemon:
         if start_thread and self.config.get('enabled'):self._start()
     def _start(self):
         if self._loop_thread is not None and self._loop_thread.is_alive():return
-        self._loop_thread=threading.Thread(target=self._loop,name='LearningDaemon',daemon=True)
+        self._loop_thread=threading.Thread(target=self._loop,name='LearningAngel',daemon=True)
         self._loop_thread.start()
     def shutdown(self,timeout:float=2.0):
         self._stop.set()
@@ -58,35 +58,35 @@ class LearningDaemon:
                     try:
                         from amni.serve.leak_ledger import maybe_commit_to_ptex
                         _lr=maybe_commit_to_ptex(adam=self.adam)
-                        if _lr.get('committed',0)>0:print(f'[LearningDaemon] leak ledger -> PTEX: committed={_lr.get("committed")} total={_lr.get("total")}',flush=True)
-                    except Exception as e:print(f'[LearningDaemon] leak commit skipped: {type(e).__name__}: {e}',flush=True)
+                        if _lr.get('committed',0)>0:print(f'[LearningAngel] leak ledger -> PTEX: committed={_lr.get("committed")} total={_lr.get("total")}',flush=True)
+                    except Exception as e:print(f'[LearningAngel] leak commit skipped: {type(e).__name__}: {e}',flush=True)
                     try:
                         from amni.serve.coding_ledger import maybe_commit_to_ptex as _cc
                         _cr=_cc(adam=self.adam)
-                        if _cr.get('committed',0)>0:print(f'[LearningDaemon] coding ledger -> PTEX: committed={_cr.get("committed")} total={_cr.get("total")}',flush=True)
-                    except Exception as e:print(f'[LearningDaemon] coding commit skipped: {type(e).__name__}: {e}',flush=True)
+                        if _cr.get('committed',0)>0:print(f'[LearningAngel] coding ledger -> PTEX: committed={_cr.get("committed")} total={_cr.get("total")}',flush=True)
+                    except Exception as e:print(f'[LearningAngel] coding commit skipped: {type(e).__name__}: {e}',flush=True)
                     self.counters['last_leak_commit_at']=now
                 _peers=self.config.get('federation_peers') or []
                 if _peers and (now-self.counters.get('last_federation_pull_at',0.0))>=self.config.get('federation_pull_period_s',6*3600):
                     try:self._federation_pull(_peers)
-                    except Exception as e:print(f'[LearningDaemon] federation pull skipped: {type(e).__name__}: {e}',flush=True)
+                    except Exception as e:print(f'[LearningAngel] federation pull skipped: {type(e).__name__}: {e}',flush=True)
                     self.counters['last_federation_pull_at']=now
                 if (now-self.counters.get('last_security_audit_at',0.0))>=self.config.get('security_audit_period_s',6*3600):
                     try:self.run_security_audit()
-                    except Exception as e:print(f'[LearningDaemon] security audit skipped: {type(e).__name__}: {e}',flush=True)
+                    except Exception as e:print(f'[LearningAngel] security audit skipped: {type(e).__name__}: {e}',flush=True)
                     self.counters['last_security_audit_at']=now
                 try:
                     from amni.serve.self_reflection import should_run_now,run_cycle
                     if should_run_now():
-                        res=run_cycle();print(f'[LearningDaemon] self-reflection: {res.get("subsystem")} -> {len(res.get("proposed_ids") or [])} proposals',flush=True)
-                except Exception as e:print(f'[LearningDaemon] self-reflection skipped: {type(e).__name__}: {e}',flush=True)
+                        res=run_cycle();print(f'[LearningAngel] self-reflection: {res.get("subsystem")} -> {len(res.get("proposed_ids") or [])} proposals',flush=True)
+                except Exception as e:print(f'[LearningAngel] self-reflection skipped: {type(e).__name__}: {e}',flush=True)
                 try:
                     from amni.serve.metrics_snapshot import should_run_now as _ms_should,snapshot as _ms_snap
                     if _ms_should():
-                        r=_ms_snap();print(f'[LearningDaemon] metrics snapshot: wrote={r.get("wrote")} count={r.get("snapshot_count")}',flush=True)
-                except Exception as e:print(f'[LearningDaemon] metrics snapshot skipped: {type(e).__name__}: {e}',flush=True)
+                        r=_ms_snap();print(f'[LearningAngel] metrics snapshot: wrote={r.get("wrote")} count={r.get("snapshot_count")}',flush=True)
+                except Exception as e:print(f'[LearningAngel] metrics snapshot skipped: {type(e).__name__}: {e}',flush=True)
                 self._drain_queue()
-            except Exception as e:print(f'[LearningDaemon] loop exception: {type(e).__name__}: {e}',flush=True)
+            except Exception as e:print(f'[LearningAngel] loop exception: {type(e).__name__}: {e}',flush=True)
             self._stop.wait(5.0)
     def _drain_queue(self,max_concurrent_submit:int=4):
         submitted=0
@@ -114,12 +114,12 @@ class LearningDaemon:
             peer=url.rstrip('/');peer=peer if peer.endswith('/memory/coding-federation') else peer+'/memory/coding-federation'
             try:
                 from amni.serve.code_safety import safe_urlopen
-                _raw,_ct=safe_urlopen(peer,timeout=8,max_bytes=2000000,headers={'User-Agent':'Amni-Ai LearningDaemon federation-pull'})
+                _raw,_ct=safe_urlopen(peer,timeout=8,max_bytes=2000000,headers={'User-Agent':'Amni-Ai LearningAngel federation-pull'})
                 data=json.loads(_raw.decode('utf-8','ignore'))
-            except Exception as e:print(f'[LearningDaemon] federation peer unreachable/blocked {peer}: {e}',flush=True);continue
+            except Exception as e:print(f'[LearningAngel] federation peer unreachable/blocked {peer}: {e}',flush=True);continue
             res=federation_import(data.get('federable') or [],source=peer)
             n=res.get('imported',0);total+=n
-            if n>0:print(f'[LearningDaemon] federation pull {peer}: imported {n}',flush=True)
+            if n>0:print(f'[LearningAngel] federation pull {peer}: imported {n}',flush=True)
         return {'imported':total,'peers':len(peers)}
     def _ddg_search(self,query:str,n:int=5)->List[str]:
         try:
@@ -128,7 +128,7 @@ class LearningDaemon:
         except Exception:pass
         try:
             from amni.serve.code_safety import safe_urlopen
-            _raw,_ct=safe_urlopen(_DDG_URL+urllib.parse.quote(query),timeout=8,max_bytes=800000,headers={'User-Agent':'Mozilla/5.0 Amni-Ai/6.10 LearningDaemon'})
+            _raw,_ct=safe_urlopen(_DDG_URL+urllib.parse.quote(query),timeout=8,max_bytes=800000,headers={'User-Agent':'Mozilla/5.0 Amni-Ai/6.10 LearningAngel'})
             html=_raw.decode('utf-8',errors='ignore')
         except Exception:return []
         urls=re.findall(r'href=["\'](https?://[^"\'>\s]+)["\']',html)
@@ -182,7 +182,7 @@ class LearningDaemon:
                     self.counters['qa_pairs_reinforced']+=_r
                     self.counters['qa_pairs_debated']+=out['counts'].get('debated',0)
                 self.counters['urls_ingested']+=1
-        except Exception as e:print(f'[LearningDaemon] ingest task exception: {type(e).__name__}: {e}',flush=True);traceback.print_exc()
+        except Exception as e:print(f'[LearningAngel] ingest task exception: {type(e).__name__}: {e}',flush=True);traceback.print_exc()
         finally:
             if topic:
                 self.recent_topics.insert(0,{'topic':topic,'finished_at':time.time(),'duration_s':round(time.time()-self.current_topic_started_at,1) if self.current_topic_started_at else 0.0,'new':new_in_task,'reinforced':reinforced_in_task})
@@ -248,7 +248,7 @@ class LearningDaemon:
                 from amni.serve.notifications import queue_notification
                 queue_notification('warn','security',f'Quarantined {removed} polluted lesson(s)',f'issues: {res.get("by_issue",{})}',ttl_s=600.0)
             except Exception:pass
-            print(f'[LearningDaemon] security audit: quarantined {removed} polluted lesson(s) {res.get("by_issue",{})}',flush=True)
+            print(f'[LearningAngel] security audit: quarantined {removed} polluted lesson(s) {res.get("by_issue",{})}',flush=True)
         try:
             from amni.serve.source_integrity import verify_source_integrity
             _si=verify_source_integrity()
@@ -260,7 +260,7 @@ class LearningDaemon:
                     from amni.serve.notifications import queue_notification
                     queue_notification('warn','security',f'Source-integrity check FAILED on {len(_bad)} protected file(s)',f'tampered/missing: {_bad}',ttl_s=900.0)
                 except Exception:pass
-                print(f'[LearningDaemon] SOURCE-INTEGRITY ALERT — law/security source changed: {_bad}',flush=True)
+                print(f'[LearningAngel] SOURCE-INTEGRITY ALERT — law/security source changed: {_bad}',flush=True)
         except Exception:pass
         return res
     def run_sleep_pass(self)->Dict[str,Any]:
@@ -284,7 +284,7 @@ class LearningDaemon:
         return {'uptime_s':round(uptime,1),'uptime_hours':round(uptime/3600,2),'queue_depth':self._task_queue.qsize(),'user_active_recently':self._user_active_recently(),'enabled':bool(self.config.get('enabled')),'counters':dict(self.counters),'facts_per_hour':round(rate,2),'atlas':self.learning_atlas.stats(),'config':{k:v for k,v in self.config.items() if k!='enabled'},'current_topic':self.current_topic,'current_topic_phase':self.current_topic_phase,'current_topic_age_s':(round(time.time()-self.current_topic_started_at,1) if (self.current_topic and self.current_topic_started_at) else 0.0),'recent_topics':list(self.recent_topics)}
 def learning_daemon_skill(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     daemon=ctx.get('learning_daemon') if ctx else None
-    if daemon is None:return {'error':'LearningDaemon not in skill context (server must instantiate it)'}
+    if daemon is None:return {'error':'LearningAngel not in skill context (server must instantiate it)'}
     action=(args.get('action') or '').strip().lower()
     if action in ('stats','status',''):return daemon.stats()
     if action=='curiosity_tick':return daemon.run_curiosity_tick()

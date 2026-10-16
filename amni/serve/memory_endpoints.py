@@ -5,7 +5,7 @@ mount(app, agent) wires:
   GET  /memory/profile         — PersonalAtlas facts + pending clarifications
   GET  /memory/kg              — KG top subjects/predicates + stats
   GET  /memory/coach           — coach topics + mastery
-  GET  /memory/daemon          — LearningDaemon stats
+  GET  /memory/daemon          — LearningAngel stats
   POST /memory/forget          — atlas-scoped delete {atlas, pattern?, fact?, id?, topic?, confirm:true}
   POST /memory/confirm         — pending clarification confirm {id, is_confidential}"""
 def mount(app,agent):
