@@ -223,6 +223,8 @@ _iftest/
 /MOBILE.md
 scripts/*
 !scripts/amni_serve.py
+!scripts/lane_a_fpa_distill_v0.py
+!scripts/lane_a_fpa_real_prompt_eval_v0.py
 
 # Root-level run/diagnostic output + scratch/runtime dumps (local only, never ship)
 /*.log

@@ -56,7 +56,7 @@ AMNI_BUDGET_MB=11000 python scripts/amni_serve.py --bake <palette_bake_dir> --po
 The complete source for a working Adam install (CC BY-NC 4.0).
 
 - **`amni/serve/`** — FastAPI server, persona system, conversation store, the skill registry, the unified web UI (`unified_web.py`) + Jarvis UI (`jarvis_web.py`), Ollama-compatible `/api/*` and OpenAI-compatible `/v1/*` endpoints, MCP surface, and the **MemoryBus** closed-loop memory substrate (`memory_bus.py`)
-- **`amni/inference/`** — Streaming chat wrapper, semantic LUT (lesson-bank lookup), AnswerLUT (ATEX exact recall), KB retriever, web crawler, debugger harness, tiered streaming loader, block-spec decoder
+- **`amni/inference/`** — Streaming chat wrapper, semantic LUT (lesson-bank lookup), AnswerLUT (ATEX exact recall), KB retriever, web crawler, debugger harness, tiered streaming loader, block-spec decoder. **Lane A FPA bootstrap** (`gf17_fpa.py`, `fpa_linear.py`): `y = U@(Vᵀx)+pq+sparse` without dense W. Distill v0 trains `U, V, U_scale, V_scale, pq_scale` (`trainable_parameters` / `apply_recipe_v0`); codebooks + `pq_idx` + sparse stay frozen. **Not Done. Not near-1.** Lane B freeze-quantize **REFUTED**. Not Gf17Atex `.codes/.scale`. Smoke: `python -m amni.inference.gf17_fpa`. Spec: [`docs/FACTOR_PRODUCT_ATLAS.md`](docs/FACTOR_PRODUCT_ATLAS.md).
 - **`amni/compute/`, `amni/core/`** — GF(17) 4-tier Reffelt decomposition, TMU dispatch, PrismTex codec
 - **`amni/a1/`** — AsimovLayer (5 immutable laws), LawKeeper (file-integrity sealing), semantic intent screening, delta writer
 - **`amni/training/`, `amni/model/`, `amni/learning/`** — training pipeline + model orchestration + GF(17) writer + integrity manifests
@@ -65,6 +65,39 @@ The complete source for a working Adam install (CC BY-NC 4.0).
 - **`amni/seeds/`** — corpus modules — Adam ships smart out of the box (`--seed`)
 - **`tests/`** — public-API probe tests, the memory-spine suites, the CoT-routing + self-consistency suites, and `run_security_suite.py` (46 hardening steps, 259 checks)
 - **`scripts/amni_serve.py`** — server entry point with `--seed --cors --port` flags
+- **`scripts/lane_a_fpa_distill_v0.py`** — Lane A one-Linear distill proof (Qwen3.5-4B L15 `up_proj`)
+- **`scripts/lane_a_fpa_real_prompt_eval_v0.py`** — honest English-prompt KL (freeze-init vs trained vs teacher self-KL)
+
+### Lane A FPA distill v0 (not Done)
+
+One-Linear proof only. Teacher stays dense (GDN / `linear_attn` untouched). Student replaces **only** `model.language_model.layers.15.mlp.up_proj` with `FpaLinear` from the one-tensor probe bake. Forward is `U@(Vᵀx)+pq+sparse` — never a dense `W`. After 5k steps, KL must beat freeze-init by more than ±5% noise or the run is **FAIL**.
+
+```bash
+# Antman HIP (torch.cuda is ROCm)
+python scripts/lane_a_fpa_distill_v0.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --steps 5000 --lr 1e-4 --eval-every 500 \
+  --out logs/lane_a_fpa_distill_v0/qwen35_l15_up
+
+# no 4B weights (CI / smoke)
+python scripts/lane_a_fpa_distill_v0.py --synthetic --steps 8 --eval-every 4 --out /tmp/fpa_v0
+```
+
+Writes `kl_curve.jsonl`, `kl_curve.csv`, `summary.json` under `--out`, plus `freeze_init_trainables.pt`, `trained_trainables.pt`, `trained_fpa.pt`, and `trained_fpa_repacked.pt`. Trainables: U, V, U_scale, V_scale, pq_scale (float scales; U/V are unpacked int4 codes). Frozen: codebooks, pq_idx, sparse.
+
+Honest real-prompt KL (same one-Linear student; **not Done / not near-1**):
+
+```bash
+python scripts/lane_a_fpa_real_prompt_eval_v0.py \
+  --teacher downloaded_models/Qwen3.5-4B \
+  --bake bakes/qwen35_4b_hc_fpa_onetensor_probe \
+  --ckpt-dir logs/lane_a_fpa_distill_v0/qwen35_l15_up \
+  --out logs/lane_a_fpa_real_prompt_eval_v0
+```
+
+Writes `summary.json` with `self_kl_teacher` (dense teacher self-KL(logits,logits)), `kl_freeze_init`, `kl_trained`, `rel_vs_freeze` on ~32 real English prompts. Verdict is plumbing-only (`plumbing_complete`); status is `not Done`. Not a quality PASS.
+
 - **`install.py`, `install.bat`, `install.sh`** — one-shot installers
 
 ---
