@@ -49,6 +49,20 @@ Adam now loads the **palette-GF(17) bake** format (bit-exact, cossim = 1.0, ~1.6
 AMNI_BUDGET_MB=11000 python scripts/amni_serve.py --bake <palette_bake_dir> --port 7700
 ```
 
+### Qwen3-8B Gf17Atex bake (Kimahri → Tidus serve)
+
+Once Kimahri writes `bakes/qwen3_8b_gf17_atex_probe` (`config.json` + `bake_manifest.json` + `*.safetensors` with `q=1` `.codes` + `.scale`, same contract as Granite/Gf17Atex), Adam boots `QwenAtexChatService` instead of Granite:
+
+```bash
+python scripts/amni_serve.py --bake bakes/qwen3_8b_gf17_atex_probe
+# equivalent, tokenizer lives in the bake dir:
+python scripts/amni_serve.py --bake bakes/qwen3_8b_gf17_atex_probe --model bakes/qwen3_8b_gf17_atex_probe
+```
+
+A plain Hugging Face `Qwen/Qwen3-8B` directory still works (int4-group pack at load, same `.chat()` interface). HIP/ROCm uses the existing `.cuda()` calls. This is the serve/loader path only — it does not change the bake recipe.
+
+On a machine with HIP + a real bake, confirm the boot line `[Adam] Qwen3 Gf17Atex/HF path loaded` then `POST /ask` or the chat UI.
+
 ---
 
 ## What's in this repo
