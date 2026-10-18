@@ -29,17 +29,25 @@ class Adam:
             except Exception:_man={}
             _isnv=str(_man.get('format','')).startswith('nvfp4')
             try:
+                from amni.inference.gf17_fpa import is_fpa_manifest as _is_fpa_man
+                _isfpa=_is_fpa_man(_man)
+            except Exception:_isfpa=str(_man.get('format','')).startswith('gf17_fpa') or _man.get('packing')=='factor_product_atlas_v1'
+            try:
                 import torch as _t;_freeg=(_t.cuda.mem_get_info()[0]/1e9) if _t.cuda.is_available() else 0.0
             except Exception:_freeg=0.0
             _atexdir=Path('bakes/granite41_3b_gf17_atex')
-            if (not _isnv) and ('gs' not in _man) and _atexdir.exists() and (_atexdir/'bake_manifest.json').exists() and _freeg>=5.0:
+            if (not _isnv) and (not _isfpa) and ('gs' not in _man) and _atexdir.exists() and (_atexdir/'bake_manifest.json').exists() and _freeg>=5.0:
                 bake=str(_atexdir);model=str(_atexdir)
                 try:_man=json.load(open(_atexdir/'bake_manifest.json'))
                 except Exception:_man={}
-            _isatex=('gs' in _man) and any((t or {}).get('q')==1 for t in (_man.get('tensors',{}) or {}).values())
+            _isatex=(not _isfpa) and ('gs' in _man) and any((t or {}).get('q')==1 for t in (_man.get('tensors',{}) or {}).values())
             if _isnv:
                 from amni.inference.nvfp4_atex_svc import Nvfp4AtexChatService
                 self.svc=Nvfp4AtexChatService(bake=bake,tok_src=model);print(f'[Adam] NVFP4-ATEX server model loaded: {bake}',flush=True)
+            elif _isfpa:
+                self.svc=None
+                self.runtime_error='gf17_fpa bake — Lane A compressed-domain train/serve via amni.inference.fpa_linear (not Gf17Atex .codes/.scale; freeze-quantize REFUTED; not a chat svc yet)'
+                print(f'[Adam] gf17_fpa / factor_product_atlas_v1 detected ({bake}) — use FpaBake/FpaLinear. Not routed through AtexLin.',flush=True)
             elif _isatex:
                 from amni.inference.granite_atex_svc import GraniteAtexChatService
                 self.svc=GraniteAtexChatService(bake=bake,tok_src=model);print(f'[Adam] int4-group ATEX GPU-resident model loaded ({_freeg:.1f}GB free): {bake}',flush=True)
