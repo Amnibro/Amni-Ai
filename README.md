@@ -34,7 +34,29 @@ Windows users: double-click `install.bat` instead of running `python install.py`
 
 Browser → **http://127.0.0.1:7700/** — a loading screen shows while Adam warms the GF(17) weights, then the unified UI appears (chat in the Rikku persona).
 
-**[Full install guide →](docs/INSTALL.md)** · **[Tutorial: first 30 min →](docs/TUTORIAL.md)** · **[Landing page →](https://example.com/amni-ai)**
+**[Landing page →](https://amni-scient.com/amni-ai)**
+
+### Supported base models (v6.21.0)
+
+| Model | Role | Adam bake (int4 ATEX) | GPU VRAM | CPU-only |
+|---|---|---|---|---|
+| **IBM Granite 4.2 3B** (`ibm-granite/granite-4.2-3b`) | **Default small model** — reasoning (`<think>`), tool calling, 128K ctx | `bakes/granite42_3b_gf17_atex` (~2.7 GB) | ~3 GB | yes, ~8 GB RAM |
+| **Qwen 3.8 27B** (`Qwen/Qwen3.8-27B`) | Largest supported — hybrid Gated-DeltaNet, XML tool calls, 256K ctx | `bakes/qwen38_27b_gf17_atex` (~19 GB) | 24 GB card | not practical |
+| Granite 4.1 3B / 8B, Qwen 3.5 9B | Legacy — still load, no longer the default | existing bakes | 3–10 GB | 3B only |
+
+Bake one yourself (packing runs on CPU in well under a minute for the 3B; no GPU needed):
+
+```bash
+python scripts/bake_granite_atex.py                                   # Granite 4.2 3B -> bakes/granite42_3b_gf17_atex
+python scripts/bake_granite_atex.py --hf-id Qwen/Qwen3.8-27B          # Qwen 3.8 27B  -> bakes/qwen38_27b_gf17_atex (~56 GB download)
+amni serve --bake bakes/granite42_3b_gf17_atex
+```
+
+Adam auto-detects `bakes/granite42_3b_gf17_atex` and prefers it over the 4.1 bakes. Reasoning is **off by default** for snappy chat (the template is rendered with `enable_thinking=False`); set `AMNI_THINKING=1` to let the model think first — `<think>…</think>` is always stripped from the reply. The model picker in the chat UI's status bar (`model ▾`) shows what is running, what is installed and what fits your machine. The one-click prebuilt download is still the Granite 4.1 palette bake until a 4.2 bake is published to Hugging Face.
+
+### Offline mode
+
+Once a bake is installed Adam needs **no network**: start it with `amni serve --offline` (or `AMNI_OFFLINE=1`). This also sets `HF_HUB_OFFLINE` / `TRANSFORMERS_OFFLINE`, and the web crawler, web-search/news/weather/quote skills, federation pulls and the update check are skipped with a clear message instead of hanging. Without the flag Adam probes the network once at start (≤ 2 s) and switches to offline mode by itself if there is none. UI assets (KaTeX, Prism) are served locally; only the optional Mermaid diagrams and MediaPipe gesture/pose features still load from a CDN. Run `amni init` once while online so the small lesson-bank embedder (MiniLM, ~90 MB) is cached; without it Adam falls back to a built-in hashed embedder.
 
 ### Faster + RAM-light (v6.12.0): palette-GF(17) bakes & acceleration
 
@@ -103,7 +125,7 @@ Adam is a two-license product. See [`NOTICE`](NOTICE) for the canonical statemen
 
 **Original work by Amnibro** (serve layer, persona system, MemoryBus, semantic intent layer, runtime fetcher, seed corpora, docs, tests) — licensed under **CC BY-NC 4.0**. Free for personal, research, educational, and non-profit use. Commercial license: **the maintainer (via GitHub)**.
 
-**Underlying base model weights** are derived from IBM's **Granite 4.1 3B**, licensed under **Apache License 2.0** ([`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt)). The Granite weights are losslessly re-encoded from fp16 to the Reffelt GF(17) RGBA pixel atlas representation (cosine-similarity 1.0 round-trip; no fine-tuning or lossy compression). The encoded weights are downloaded from HuggingFace (`amnibro/granite41-3b-gf17`) on first run and inherit Apache 2.0. *Granite* is a trademark of IBM; this product is not endorsed by or affiliated with IBM.
+**Underlying base model weights** are derived from IBM's **Granite 4.2 3B** (default) / **Granite 4.1 3B** and, optionally, **Qwen 3.8 27B** — all licensed under **Apache License 2.0** ([`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt)). The Granite weights are losslessly re-encoded from fp16 to the Reffelt GF(17) RGBA pixel atlas representation (cosine-similarity 1.0 round-trip; no fine-tuning or lossy compression). The encoded weights are downloaded from HuggingFace (`amnibro/granite41-3b-gf17`) on first run and inherit Apache 2.0. *Granite* is a trademark of IBM; this product is not endorsed by or affiliated with IBM.
 
 See [`LICENSE`](LICENSE) for the CC BY-NC 4.0 terms and [`LICENSES/apache-2.0.txt`](LICENSES/apache-2.0.txt) for the Apache 2.0 terms.
 
@@ -113,8 +135,9 @@ See [`LICENSE`](LICENSE) for the CC BY-NC 4.0 terms and [`LICENSES/apache-2.0.tx
 
 | | |
 |---|---|
-| Latest version | v6.11.16 (2026-05-30) |
-| Base model | IBM Granite 4.1 3B → `amnibro/granite41-3b-gf17` (GF(17) lossless) |
+| Latest version | v6.21.0 (2026-11-16) |
+| Base model | IBM Granite 4.2 3B (default, `bakes/granite42_3b_gf17_atex`); Qwen 3.8 27B for 24 GB cards; prebuilt download still `amnibro/granite41-3b-palette` |
+| Offline | `amni serve --offline` / `AMNI_OFFLINE=1`, auto-detected when there is no network |
 | Memory spine | Closed-loop MemoryBus (S0–S5) complete + adversarially hardened |
 | Security | 46 hardening steps, 259 checks (`tests/run_security_suite.py`) |
 | UI | Unified UI at `/` with loading screen; Jarvis UI at `/jarvis`; HUD at `/hud` |

@@ -233,7 +233,10 @@ def main():
     ap.add_argument('--persona-bank',default='experiences/personas.json',help='Persona store path (learned personas + per-session map)')
     ap.add_argument('--default-persona',default=None,help='Default persona name (preset or learned). e.g. rikku, yoda, neutral')
     ap.add_argument('--no-persona',action='store_true',help='Disable persona layer entirely (raw Adam responses)')
+    ap.add_argument('--offline',action='store_true',default=False,help='Run with no network: never contact the HF hub, skip web crawler/search/federation/update checks (same as AMNI_OFFLINE=1; auto-enabled when no network is detected)')
     args=ap.parse_args()
+    from amni.utils.offline import init_from_args as _offline_init
+    _offline_init(args.offline)
     if not _bake_usable(args.bake):
         _disc=_discover_bake(args.bake)
         if not _disc:
@@ -278,6 +281,8 @@ def main():
     print(f'[amni_serve] booting Adam with bake={args.bake}',flush=True)
     adam=Adam(bake=args.bake,model=args.model,lessons_path=args.lessons,lut_root=args.lut_root,seed_lessons=SEED_LESSONS if args.seed else None,web_unrestricted=not args.web_restricted)
     print(f'[amni_serve] Adam ready: {adam.stats()}',flush=True)
+    try:model_installer.ACTIVE['bake']=getattr(adam,'served_bake',None) or args.bake
+    except Exception:pass
     try:
         from amni.serve import intent_classifier as _ic
         _enc=adam.sem_lut._ensure_encoder() if hasattr(adam.sem_lut,'_ensure_encoder') else None
@@ -929,7 +934,7 @@ def main():
         if _HUD_PATH.exists():return HTMLResponse(_HUD_PATH.read_text(encoding='utf-8'))
         return HTMLResponse(f'<html><body style="font-family:system-ui;padding:40px;background:#0a0a14;color:#e2e8f0"><h1>Adam</h1><p>HUD file not found at <code>{_HUD_PATH}</code>.</p></body></html>',status_code=200)
     @app.get('/healthz')
-    def health():return {'status':'ok','lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state,'auth_required':bool(_AUTH_TOKEN)}
+    def health():return {'status':'ok','offline':__import__('amni.utils.offline',fromlist=['is_offline']).is_offline(),'lessons_n':len(adam.sem_lut._raw),'skills_n':len(skills.list_skills()),'version':APP_VERSION,'warmup':_warmup_state,'auth_required':bool(_AUTH_TOKEN)}
     @app.get('/manifest.webmanifest')
     def _pwa_manifest():
         from fastapi.responses import JSONResponse as _MJR
@@ -949,6 +954,8 @@ def main():
         head=_git('rev-parse','--abbrev-ref','HEAD')
         if head is None or head.returncode!=0:return {'ok':False,'error':'not a git repo or git unavailable','version':APP_VERSION}
         branch=(head.stdout or '').strip() or 'HEAD'
+        from amni.utils.offline import is_offline as _uoff
+        if _uoff():return {'ok':True,'offline':True,'branch':branch,'behind':0,'ahead':0,'update_available':False,'version':APP_VERSION,'message':'offline - update check skipped'}
         fetch=_git('fetch','--quiet','origin',branch,timeout=45)
         cur=_git('rev-parse','HEAD');rem=_git('rev-parse',f'origin/{branch}')
         cur_sha=(cur.stdout or '').strip()[:9] if cur else '';rem_sha=(rem.stdout or '').strip()[:9] if rem else ''

@@ -102,6 +102,8 @@ class WebCrawler:
             return [r.get('url') for r in (j.get('results') or []) if r.get('url')][:k]
         except Exception as e:print(f'  [crawler] marginalia failed: {e}',flush=True);return []
     def search(self,query:str,k:int=3)->List[str]:
+        from amni.utils.offline import is_offline
+        if is_offline():return []
         try:
             from amni.serve.pii_egress import scrub as _scrub
             query=_scrub(query,atlas=getattr(self,'personal_atlas',None),source='crawler') or query
@@ -115,6 +117,8 @@ class WebCrawler:
                 if u and u not in seen and self._is_allowed(u):seen.add(u);merged.append(u)
         return merged
     def _fetch_raw(self,url:str)->Tuple[Optional[str],Optional[str]]:
+        from amni.utils.offline import is_offline
+        if is_offline():return (None,None)
         if not self._is_allowed(url):return (None,None)
         if not self._can_fetch(url):return (None,None)
         self._wait_rate(url)

@@ -172,6 +172,10 @@ def safe_urlopen(url,timeout=8.0,max_bytes=2_000_000,headers=None,max_redirects=
     `urllib.urlopen` auto-follows redirects unchecked, so a public URL could 302 to an internal one. Returns (bytes,content_type)."""
     import http.client,socket
     from urllib.parse import urlparse,urljoin
+    try:
+        from amni.utils.offline import is_offline
+        if is_offline():raise ConnectionError('offline mode (AMNI_OFFLINE / no network): outbound fetch skipped')
+    except ImportError:pass
     cur=url
     for _hop in range(max_redirects+1):
         ok,why,ip=_ssrf_resolve(cur)

@@ -4,6 +4,10 @@ import time,os,socket,subprocess,json,re,math
 from typing import Dict,Any,Optional,List
 def _safe_get(url:str,timeout:float=4.0,headers:Optional[Dict[str,str]]=None)->Optional[Dict[str,Any]]:
     try:
+        from amni.utils.offline import is_offline
+        if is_offline():return None
+    except ImportError:pass
+    try:
         import urllib.request as _u
         req=_u.Request(url,headers=headers or {'User-Agent':'Amni-Ai/6.9.6'})
         with _u.urlopen(req,timeout=timeout) as r:

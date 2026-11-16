@@ -928,6 +928,17 @@ class AmniAgent:
             except Exception as e:print(f'[AmniAgent] atlas record failed: {e}',flush=True)
         return {'answer':wrapped,'tier':tier,'tokens':tokens,'session_id':conv.session_id,'skill_calls':skill_calls,'wall_s':round(time.time()-t0,3),'persona':persona.name,'category':category,'is_private':is_private}
     def _format_skill_output(self,name:str,out:Any)->str:
+        if name=='goal' and isinstance(out,dict) and 'steps' in out:  # was dumped as raw JSON trace
+            parts=[];last=None
+            for st in out.get('steps') or []:
+                if st.get('parse_error'):parts.append('(the plan could not be parsed)');continue
+                code=((st.get('args') or {}).get('code') if isinstance(st.get('args'),dict) else None)
+                if code and code!=last:parts.append('```python'+chr(10)+code.strip()+chr(10)+'```');last=code
+                res=st.get('result')
+                if isinstance(res,dict) and ('stdout' in res or 'stderr' in res):parts.append('Output:'+chr(10)+'```'+chr(10)+((res.get('stdout') or '')+(res.get('stderr') or '')).strip()+chr(10)+'```')
+                elif res is not None and not code:parts.append(f"{st.get('tool')}: {str(res)[:400]}")
+            if out.get('final'):parts.append(str(out['final']))
+            return (chr(10)+chr(10)).join(parts) or f"(goal stopped: {out.get('stop_reason')})"
         if name=='image_gen':return f"🎨 I couldn't paint that one — {out.get('error')}" if (not isinstance(out,dict) or out.get('error') or not out.get('images')) else (out.get('summary') or f'🎨 generated an image for: {out.get("prompt","your prompt")}')+' — sending it your way!'
         if name=='time':return f'currently {out.get("iso")} local time'
         if name=='calc':return f'{out.get("value")}' if out.get('value') is not None else f'(calc error: {out.get("error")})'

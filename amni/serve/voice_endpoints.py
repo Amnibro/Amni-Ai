@@ -4,6 +4,8 @@ POST /voice/transcribe  {audio_base64, model_size?}     → {text, language?, ba
 GET  /voice/status                                       → {tts:{available, backend, voices?}, stt:{available, backend}}
 The browser falls back to its built-in Web Speech if any endpoint errors. Each call wraps in TaskRegistry so it shows in /jarvis tray for long Whisper transcriptions."""
 import base64,time
+_TTS_NEED='no local TTS engine installed - pip install kokoro (or piper-tts + a voice in the voices dir, or pyttsx3). The browser uses its built-in speech meanwhile.'
+_STT_NEED='no local speech-to-text engine installed - pip install faster-whisper (first use downloads a ~150 MB Whisper model) or vosk + a model under ~/.amni/vosk_models. The browser uses its built-in recognition meanwhile.'
 def mount(app,agent):
     from fastapi import Request,HTTPException
     skills=getattr(agent,'skills',None)
@@ -14,12 +16,17 @@ def mount(app,agent):
         if not _has('tts'):return {'available':False,'reason':'tts skill not registered'}
         try:
             r=skills.call('tts',{'list_voices':True},ctx={'adam':adam})
+            if r.ok and (r.output or {}).get('backend','none')=='none':return {'available':False,'backend':'none','reason':_TTS_NEED}
             if r.ok:return {'available':True,'backend':r.output.get('backend','?'),'voices':(r.output.get('voices') or [])[:20]}
             return {'available':False,'reason':r.error or 'list_voices failed'}
         except Exception as e:return {'available':False,'reason':f'{type(e).__name__}: {e}'}
     def _probe_stt():
         if not _has('stt'):return {'available':False,'reason':'stt skill not registered'}
-        return {'available':True,'backend':'faster_whisper_or_vosk'}
+        try:
+            from amni.voice.stt import available_backend as _sb;b=_sb()
+        except Exception as e:return {'available':False,'reason':f'voice module import failed: {e}'}
+        if b=='none':return {'available':False,'backend':'none','reason':_STT_NEED}
+        return {'available':True,'backend':b}
     @app.get('/voice/status')
     def status():return {'tts':_probe_tts(),'stt':_probe_stt()}
     @app.post('/voice/speak')
@@ -40,7 +47,10 @@ def mount(app,agent):
             if not r.ok:
                 if task_reg and tid:task_reg.fail(tid,r.error or 'tts failed')
                 raise HTTPException(500,f'tts failed: {r.error}')
-            out=r.output
+            out=r.output or {}
+            if out.get('error'):
+                if task_reg and tid:task_reg.fail(tid,out['error'])
+                raise HTTPException(503,f"tts unavailable: {out['error']}"+(f' - {_TTS_NEED}' if out.get('backend','none')=='none' else ''))
             audio_b64=out.get('audio_base64') or out.get('audio_b64')
             if not audio_b64:
                 if task_reg and tid:task_reg.fail(tid,'tts returned no audio')
@@ -72,7 +82,11 @@ def mount(app,agent):
             if not r.ok:
                 if task_reg and tid:task_reg.fail(tid,r.error or 'stt failed')
                 raise HTTPException(500,f'stt failed: {r.error}')
-            out=r.output
+            out=r.output or {}
+            if out.get('error') or out.get('backend') in (None,'none'):
+                msg=out.get('error') or 'no STT backend'
+                if task_reg and tid:task_reg.fail(tid,msg)
+                raise HTTPException(503,f'stt unavailable: {msg}'+(f' - {_STT_NEED}' if out.get('backend') in (None,'none') else ''))
             res={'text':out.get('text',''),'language':out.get('language'),'backend':out.get('backend','?'),'duration_s':out.get('duration_s'),'wall_s':out.get('wall_s')}
             if task_reg and tid:task_reg.complete(tid,outcome={'backend':res['backend'],'chars':len(res['text'])})
             return res

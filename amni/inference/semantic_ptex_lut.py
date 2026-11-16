@@ -43,6 +43,16 @@ def _kmeans(X,K,iters=30,seed=42):
         if np.allclose(centroids,new_centroids):break
         centroids=new_centroids
     return centroids,assignments
+def _hashed_encoder(texts,dim=384):
+    """Network-free fallback embedder (same 384-d shape as MiniLM): signed hashing of word unigrams+bigrams and char trigrams, L2-normalised."""
+    import re as _re,zlib as _z
+    out=np.zeros((len(texts),dim),dtype='float32')
+    for i,t in enumerate(texts):
+        w=_re.findall(r'[a-z0-9]+',str(t).lower());feats=w+[a+'_'+b for a,b in zip(w,w[1:])]+[x[j:j+3] for x in w for j in range(max(1,len(x)-2))]
+        for f in feats:
+            h=_z.crc32(f.encode());out[i,h%dim]+=1.0 if (h>>16)&1 else -1.0
+        n=np.linalg.norm(out[i]);out[i]/=(n+1e-12)
+    return out
 class SemanticPTEXLUT:
     def __init__(self,grid:int=64,pca_dim:int=8,encoder=None,routing:str='flat',k_clusters:int=32):
         self.grid=grid;self.pca_dim=pca_dim;self.encoder=encoder
@@ -54,10 +64,18 @@ class SemanticPTEXLUT:
         if self.encoder is not None:return self.encoder
         import os,torch
         from transformers import AutoTokenizer,AutoModel
-        name='sentence-transformers/all-MiniLM-L6-v2'
+        name=os.environ.get('AMNI_EMBED_MODEL','sentence-transformers/all-MiniLM-L6-v2')
         dev=os.environ.get('AMNI_EMBED_DEVICE','cpu')
-        tok=AutoTokenizer.from_pretrained(name)
-        mdl=AutoModel.from_pretrained(name).eval().to(dev)
+        try:
+            try:tok=AutoTokenizer.from_pretrained(name,local_files_only=True);mdl=AutoModel.from_pretrained(name,local_files_only=True)
+            except Exception:
+                from amni.utils.offline import is_offline
+                if is_offline():raise
+                tok=AutoTokenizer.from_pretrained(name);mdl=AutoModel.from_pretrained(name)
+            mdl=mdl.eval().to(dev)
+        except Exception as _e:
+            print(f'[SemanticPTEXLUT] embedder {name} unavailable ({type(_e).__name__}); using offline hashed n-gram embedder (lesson recall is fuzzier). Fix: run `amni init` once while online to cache it.',flush=True)
+            self.encoder=_hashed_encoder;self.encoder_kind='hashed';return self.encoder
         def enc(texts):
             e=tok(texts,padding=True,truncation=True,max_length=256,return_tensors='pt')
             e={k:v.to(dev) for k,v in e.items()}

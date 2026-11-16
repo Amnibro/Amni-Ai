@@ -18,6 +18,7 @@ _PIP_SAFE_SUB={'list','show','freeze','check'}
 _TEXT_EXT={'.txt','.md','.markdown','.rst','.py','.js','.ts','.tsx','.jsx','.html','.htm','.css','.json','.yaml','.yml','.toml','.ini','.cfg','.csv','.tsv','.log','.sh','.ps1','.bat','.c','.h','.cpp','.hpp','.cs','.go','.rs','.java','.kt','.swift','.rb','.php','.lua','.r','.sql','.tex','.bib','.xml','.svg','.gitignore','.dockerignore','.env','.example'}
 def _enumerate_drives():
     return [Path(f'{d}:/') for d in string.ascii_uppercase if Path(f'{d}:/').exists()] if os.name=='nt' else [Path('/')]
+NETWORK_SKILLS={'web','news','weather','quote','stock','define','translate','federation'}  # fail soft (no hang) when offline
 @dataclass
 class SkillResult:
     ok:bool
@@ -57,6 +58,12 @@ class SkillRegistry:
         if name not in self._skills:
             r=SkillResult(ok=False,error=f'unknown skill: {name}',skill=name,elapsed_ms=int((time.time()-t0)*1000))
             self._audit(name,args,r);return r
+        if name in NETWORK_SKILLS:
+            try:
+                from amni.utils.offline import is_offline,offline_reply
+                if is_offline():
+                    r=SkillResult(ok=False,error=offline_reply(f'The {name} skill'),skill=name,elapsed_ms=int((time.time()-t0)*1000));self._audit(name,args,r);return r
+            except Exception:pass
         s=self._skills[name]
         if s.gate is not None:
             reason=s.gate(args,ctx,self)

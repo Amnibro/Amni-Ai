@@ -10,6 +10,7 @@ from typing import List,Dict,Any,Tuple,Optional
 _FENCE_RE=re.compile(r"```tool_call\s*\n(.*?)\n```",re.DOTALL|re.IGNORECASE)
 _LOOSE_FENCE_RE=re.compile(r"```(?:json|tool_call)?\s*\n?(\{[^`]*?\"name\"\s*:[^`]*?\})\s*\n?```",re.DOTALL|re.IGNORECASE)
 _INLINE_JSON_RE=re.compile(r"\{(?:[^{}]|\{[^{}]*\})*\"name\"\s*:\s*\"([a-zA-Z_][\w]*)\"(?:[^{}]|\{[^{}]*\})*\}",re.DOTALL)
+_NATIVE_TC_RE=re.compile(r"<tool_call>.*?(?:</tool_call>|$)",re.DOTALL)  # Granite 4.2 / Qwen 3.x native wrapper
 def _safe_json(s:str)->Optional[Dict[str,Any]]:
     try:return json.loads(s)
     except Exception:pass
@@ -36,6 +37,9 @@ def parse_tool_calls(text:str)->List[Dict[str,Any]]:
             args=obj.get('arguments') if 'arguments' in obj else obj.get('args',{})
             if isinstance(args,str):args=_safe_json(args) or {}
             out.append({'id':f'call_{uuid.uuid4().hex[:16]}','name':obj['name'],'arguments':args or {}})
+    if not out and '<function=' in text:  # Qwen3.5/3.8 native XML calls: <tool_call><function=NAME><parameter=K>V</parameter></function></tool_call>
+        from amni.utils.base_models import parse_xml_tool_calls
+        for c in parse_xml_tool_calls(text):out.append({'id':f'call_{uuid.uuid4().hex[:16]}','name':c['name'],'arguments':c['arguments'] or {}})
     if not out:
         for m in _INLINE_JSON_RE.finditer(text):
             if any(s<=m.start()<e for s,e in seen_spans):continue
@@ -49,6 +53,7 @@ def strip_tool_calls(text:str)->str:
     if not text:return text
     cleaned=_FENCE_RE.sub('',text)
     cleaned=_LOOSE_FENCE_RE.sub('',cleaned)
+    cleaned=_NATIVE_TC_RE.sub('',cleaned)
     return cleaned.strip()
 def build_system_prompt(tools:List[Dict[str,Any]],cwd:Optional[str]=None,custom:Optional[str]=None,base_persona:Optional[str]=None)->str:
     if not tools:return base_persona or ''

@@ -22,7 +22,7 @@ class Adam:
         from amni.inference.semantic_ptex_lut import SemanticPTEXLUT
         self._SemanticPTEXLUT=SemanticPTEXLUT
         t0=time.time()
-        self.svc=None;self.svc_boot_s=0.0;self.runtime_error=None
+        self.svc=None;self.svc_boot_s=0.0;self.runtime_error=None;self.served_bake=str(bake)
         try:
             _mf=Path(bake)/'bake_manifest.json';_man={}
             try:_man=json.load(open(_mf)) if _mf.exists() else {}
@@ -31,7 +31,7 @@ class Adam:
             try:
                 import torch as _t;_freeg=(_t.cuda.mem_get_info()[0]/1e9) if _t.cuda.is_available() else 0.0
             except Exception:_freeg=0.0
-            _atexdir=Path('bakes/granite41_3b_gf17_atex')
+            _atexdir=next((Path(b) for b in ('bakes/granite42_3b_gf17_atex','bakes/granite41_3b_gf17_atex') if (Path(b)/'bake_manifest.json').exists()),Path('bakes/granite42_3b_gf17_atex'))
             if (not _isnv) and ('gs' not in _man) and _atexdir.exists() and (_atexdir/'bake_manifest.json').exists() and _freeg>=5.0:
                 bake=str(_atexdir);model=str(_atexdir)
                 try:_man=json.load(open(_atexdir/'bake_manifest.json'))
@@ -42,9 +42,9 @@ class Adam:
                 self.svc=Nvfp4AtexChatService(bake=bake,tok_src=model);print(f'[Adam] NVFP4-ATEX server model loaded: {bake}',flush=True)
             elif _isatex:
                 from amni.inference.granite_atex_svc import GraniteAtexChatService
-                self.svc=GraniteAtexChatService(bake=bake,tok_src=model);print(f'[Adam] int4-group ATEX GPU-resident model loaded ({_freeg:.1f}GB free): {bake}',flush=True)
+                self.svc=GraniteAtexChatService(bake=bake,tok_src=model);print(f"[Adam] int4-group ATEX model loaded on {getattr(self.svc,'device','cuda')}"+(f' ({_freeg:.1f}GB VRAM free)' if _freeg else '')+f': {bake}',flush=True)
             else:self.svc=StreamingChatService(bake,model,budget_mb=budget_mb);print(f'[Adam] StreamingChatService (CPU/stream fallback): {bake}',flush=True)
-            self.svc_boot_s=time.time()-t0
+            self.svc_boot_s=time.time()-t0;self.served_bake=str(bake)
         except Exception as e:
             self.runtime_error=str(e)
             print(f'[Adam] WARNING: StreamingChatService unavailable — chat generation will return runtime-error messages. Cached lesson-bank LUT hits, /healthz, /stats still work.\n  Reason: {e}',flush=True)
@@ -187,7 +187,7 @@ class Adam:
         except Exception:pass
         tier='tier_persona_hist' if history else 'tier_persona'
         return {'answer':ans,'tier':tier,'tokens':n,'wall_s':round(time.time()-t0,3),'is_private':is_private}
-_UPGRADE_TIERS=[('bakes/gemma4_12b_nvfp4_atex',13.0,'Gemma-4-12B-NVFP4'),('bakes/granite41_8b_gf17_atex',11.0,'Granite-4.1-8B'),('bakes/qwen3_4b_tilepack',7.0,'Qwen3-4B')]
+_UPGRADE_TIERS=[('bakes/qwen38_27b_gf17_atex',21.0,'Qwen3.8-27B'),('bakes/gemma4_12b_nvfp4_atex',13.0,'Gemma-4-12B-NVFP4'),('bakes/granite41_8b_gf17_atex',11.0,'Granite-4.1-8B'),('bakes/qwen3_4b_tilepack',7.0,'Qwen3-4B')]
 def select_model_bake(prefer='bakes/gemma4_12b_nvfp4_atex',min_free_gb=13.0,tiers=None):
     """VRAM-aware tiered pick. Reads CURRENTLY-FREE VRAM (mem_get_info) so it adapts to whatever else is using the GPU right now, then returns the largest INSTALLED upgrade bake that fits with headroom; (None,reason) means nothing bigger fits so the caller keeps its configured light/CPU default. One server auto-fits both the card AND the moment's GPU load (e.g. busy from another job -> smaller model)."""
     cands=tiers if tiers is not None else (([(prefer,min_free_gb,'preferred')]+_UPGRADE_TIERS) if prefer else list(_UPGRADE_TIERS))

@@ -9,7 +9,8 @@ from typing import List,Dict,Any,Optional,AsyncIterator
 from amni.serve.tool_protocol import parse_tool_calls,strip_tool_calls,build_system_prompt,flatten_history,tools_digest,build_openai_tool_calls,openai_finish_reason,now_unix
 from amni.serve.widget_protocol import parse_widgets,strip_widgets,build_system_prompt_addendum as _widget_sys_addendum
 _MODEL_NAME='adam:granite-gf17'
-_MODEL_ALIASES=['adam','adam:latest','adam:e2b-gf17','adam-e2b-gf17','adam-granite-gf17','amni-a1','amni-ai','adam-gf17','gpt-3.5-turbo','gpt-4','gpt-4o-mini','claude-3-sonnet','llama3.1','qwen2.5']
+from amni.utils.base_models import ollama_tags as _bm_tags
+_MODEL_ALIASES=['adam','adam:latest']+_bm_tags()+['granite-4.2-3b','qwen3.8-27b','adam:e2b-gf17','adam-e2b-gf17','adam-granite-gf17','amni-a1','amni-ai','adam-gf17','gpt-3.5-turbo','gpt-4','gpt-4o-mini','claude-3-sonnet','llama3.1','qwen2.5']
 def _model_card(name:str)->Dict[str,Any]:return {'id':name,'object':'model','created':1715000000,'owned_by':'amnibro','permission':[],'root':_MODEL_NAME,'parent':None}
 def models_list()->Dict[str,Any]:return {'object':'list','data':[_model_card(_MODEL_NAME)]+[_model_card(a) for a in _MODEL_ALIASES]}
 def _completion_id()->str:return f'chatcmpl-{uuid.uuid4().hex[:24]}'

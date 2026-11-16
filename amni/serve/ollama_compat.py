@@ -4,7 +4,8 @@ Adam is exposed as 'adam:granite-gf17' plus aliases for common names so clients 
 import time,json
 from typing import List,Dict,Any,Optional,AsyncIterator
 _DIGEST='sha256:e2b-gf17-reffelt-4tier-asimov-locked-amni-ai-v6-0-0-deployable-surface-2026-05-15'
-_MODEL_NAMES=['adam:granite-gf17','adam:e2b-gf17','adam:latest','llama3:latest','qwen2.5:latest']
+from amni.utils.base_models import ollama_tags as _bm_tags
+_MODEL_NAMES=['adam:granite-gf17']+_bm_tags()+['adam:e2b-gf17','adam:latest','llama3:latest','qwen2.5:latest']
 def _model_record(name:str,adam_stats:Optional[Dict]=None)->Dict[str,Any]:
     n=adam_stats.get('lessons_n',0) if adam_stats else 0
     return {'name':name,'model':name,'modified_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'size':5_000_000_000,'digest':_DIGEST,'details':{'parent_model':'','format':'ptex-gf17','family':'adam','families':['adam','granite','reffelt'],'parameter_size':'2B','quantization_level':'GF17-lossless'},'lessons_n':n}

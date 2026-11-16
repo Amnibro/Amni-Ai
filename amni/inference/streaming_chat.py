@@ -21,6 +21,7 @@ except ImportError as _e:
     _IMPORT_ERROR=f'{type(_e).__name__}: {_e}'
 from accelerate import init_empty_weights
 from transformers import AutoTokenizer,AutoConfig,AutoModelForCausalLM
+from amni.utils.base_models import chat_template_kwargs,strip_thinking
 class _RuntimeBlobMissing(RuntimeError):
     """Raised when StreamingChatService can't import the Reffelt source modules.
     Under iter29 the public clone IS the runtime — this only fires when the source
@@ -47,11 +48,15 @@ class StreamingChatService:
             else:print(f'[StreamingChatService] WARN: tokenizer has no chat_template AND no chat_template.jinja next to it at {model_path}. apply_chat_template() will fail. Re-pull the bake: snapshot_download(repo_id="amnibro/granite41-3b-palette", local_dir="<bake_dir>")',flush=True)
         cfg=AutoConfig.from_pretrained(model_path)
         archs=tuple(getattr(cfg,'architectures',None) or [])
-        is_gdn=any(a in _GDN_ARCHS for a in archs)
-        if is_gdn:
-            from amni.inference import triton_gdn_patch
-            triton_gdn_patch.apply()
         text_cfg=cfg.text_config if hasattr(cfg,'text_config') else cfg
+        # Qwen3.5 / Qwen3.8 checkpoints ship as *ForConditionalGeneration with the hybrid layer list in text_config -> detect by layer types too.
+        is_gdn=any(a in _GDN_ARCHS for a in archs) or (os.environ.get('AMNI_GDN_PATCH','1')!='0' and 'linear_attention' in (getattr(text_cfg,'layer_types',None) or []))  # AMNI_GDN_PATCH=0 restores pre-6.21 behaviour
+        if is_gdn and device!='cpu':
+            try:
+                from amni.inference import triton_gdn_patch
+                triton_gdn_patch.apply()
+            except Exception as _ge:print(f'[StreamingChatService] triton GDN patch unavailable ({_ge}); using transformers reference kernels',flush=True);is_gdn=False
+        elif is_gdn:is_gdn=False  # CPU: transformers' torch reference GDN kernels
         _ai=os.environ.get('AMNI_ATTN','eager')
         try:text_cfg._attn_implementation=_ai
         except Exception:pass
@@ -312,7 +317,7 @@ class StreamingChatService:
             msgs.append({'role':'user','content':u})
             msgs.append({'role':'assistant','content':a})
         msgs.append({'role':'user','content':user_msg})
-        return self.tok.apply_chat_template(msgs,tokenize=False,add_generation_prompt=True)
+        return self.tok.apply_chat_template(msgs,tokenize=False,add_generation_prompt=True,**chat_template_kwargs(self.tok))
     def _next_token_top_prob(self,prompt):
         from amni.inference.gpu_queue import run_on_gpu
         enc_cpu=self.tok(prompt,return_tensors='pt')
@@ -348,4 +353,4 @@ class StreamingChatService:
             if top_prob>=writeback_min_conf:
                 try:self._session_writer.write(user_msg,reply,float(top_prob),meta={'kind':'chat_auto','tokens':n_tok})
                 except Exception:pass
-        return reply,n_tok
+        return strip_thinking(reply),n_tok

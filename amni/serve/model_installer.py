@@ -5,7 +5,7 @@ from typing import Dict,List,Any,Optional
 _ROOT=Path(__file__).resolve().parents[2]
 _LINEAR_ATTN_HINTS=('mamba','ssm','state_space','state-space','linear_attention','linear-attention','gated_delta','gateddelta','gdn','rwkv','retnet','lightning_attn','recurrent_gemma')
 _MOE_HINTS=('"moe"','mixture_of_experts','num_experts','num_local_experts','n_routed_experts','moe_intermediate','expert_used','router_aux')
-_SCHEMES={'rgba4':'scripts/v5_0_3_bake.py','gf17':'scripts/v5_0_3_bake.py','rgba16':'scripts/bake_fp16_to_rgba16.py'}
+_SCHEMES={'atex4':'scripts/bake_granite_atex.py','rgba4':'scripts/v5_0_3_bake.py','gf17':'scripts/v5_0_3_bake.py','rgba16':'scripts/bake_fp16_to_rgba16.py'}
 _JOBS:Dict[str,Dict[str,Any]]={}
 def search_hf(query:str,limit:int=20)->Dict[str,Any]:
     try:from huggingface_hub import HfApi
@@ -48,9 +48,17 @@ def _do_install(job_id,repo,scheme,dest,out,model_name):
         j['phase']='done' if r.returncode==0 else 'failed';j['bake_rc']=r.returncode;j['bake_tail']=(r.stdout or '')[-600:]+(r.stderr or '')[-400:];j['out']=out
     except Exception as e:j['phase']='failed';j['error']=str(e)
 def install(repo:str,scheme:str='rgba4',model_name:Optional[str]=None)->Dict[str,Any]:
+    try:
+        from amni.utils.offline import is_offline
+        if is_offline():return {'error':'offline: installing a model needs the network once (download from Hugging Face). Connect, or copy a bake into bakes/ by hand.'}
+    except ImportError:pass
     if scheme not in _SCHEMES:return {'error':f'unknown scheme {scheme!r}; valid: {list(_SCHEMES.keys())}'}
     safe=repo.replace('/','_').replace('.','_').lower();model_name=model_name or f'{safe}_{scheme}'
     dest=str(_ROOT/'downloaded_models'/safe);out=str(_ROOT/'bakes'/f'{safe}_{scheme}')
+    if scheme=='atex4':
+        from amni.utils.base_models import resolve as _bmr
+        _bm=_bmr(repo)
+        if _bm:out=str(_ROOT/'bakes'/_bm['bake_dir'])  # the dir Adam's loader auto-detects (e.g. bakes/granite42_3b_gf17_atex)
     job_id=f'{safe}_{scheme}_{int(time.time())}'
     _JOBS[job_id]={'job_id':job_id,'repo':repo,'scheme':scheme,'phase':'queued','out':out}
     threading.Thread(target=_do_install,args=(job_id,repo,scheme,dest,out,model_name),daemon=True).start()
@@ -70,9 +78,10 @@ def detect_hardware()->Dict[str,Any]:
     except Exception:pass
     return hw
 _CATALOG=[
+    {'tier':'flagship-xl','name':'Adam · Qwen3.8-27B (GF17 ATEX int4)','params':'27B','min_vram':21.0,'min_ram':32,'quality':'Largest supported: hybrid Gated-DeltaNet reasoning + XML tool calls, 256K ctx; needs a 24GB card','source':'Qwen/Qwen3.8-27B','scheme':'atex4','bake':'bakes/qwen38_27b_gf17_atex'},
     {'tier':'flagship','name':'Adam · Gemma-4-12B (NVFP4 lossless)','params':'12B','min_vram':12.5,'min_ram':16,'quality':'Best — MMLU-Pro 71%, coding 90→100% (self-correct); matches stock Gemma-4-12B','source':'AxionML/Gemma-4-12B-NVFP4','scheme':'nvfp4','bake':'bakes/gemma4_12b_nvfp4_atex'},
     {'tier':'balanced','name':'Adam · Qwen3-4B','params':'4B','min_vram':5.5,'min_ram':10,'quality':'Strong reasoning for its size — great on 8GB cards','source':'Qwen/Qwen3-4B-Instruct-2507','scheme':'rgba4','bake':None},
-    {'tier':'light','name':'Adam · Granite-3B (GF17)','params':'3B','min_vram':3.0,'min_ram':8,'quality':'Solid + very light; fits small GPUs','source':'ibm-granite/granite-3.1-3b-a800m-instruct','scheme':'rgba4','bake':'bakes/granite41_3b_tilepack'},
+    {'tier':'light','name':'Adam · Granite-4.2-3B (GF17 ATEX)','params':'3B','min_vram':3.0,'min_ram':8,'quality':'Default small model: reasoning (<think>), tool calling, 128K ctx; fits small GPUs and runs on CPU','source':'ibm-granite/granite-4.2-3b','scheme':'atex4','bake':'bakes/granite42_3b_gf17_atex'},
     {'tier':'cpu','name':'Adam · Granite-350M','params':'350M','min_vram':0.0,'min_ram':4,'quality':'Runs anywhere (CPU/iGPU); basic but always works','source':'ibm-granite/granite-3.1-1b-a400m-instruct','scheme':'rgba4','bake':None},
 ]
 def advise(hw:Optional[Dict[str,Any]]=None,headroom_gb:float=1.8)->Dict[str,Any]:
@@ -133,6 +142,29 @@ def bake_catalog_view()->Dict[str,Any]:
         fit='green' if (c['min_vram']>0 and hw['vram_gb']>=c['min_vram']) else ('amber' if hw['ram_gb']>=c['min_ram'] else 'red')
         out.append({**c,'fit':fit,'installed':bool(installed),'can_download':bool(c.get('ready')) and fit!='red'})
     return {'hardware':hw,'recommended':(a.get('recommended') or {}).get('name'),'bakes':out}
+ACTIVE={'bake':None}  # set by amni_serve after Adam boots
+def base_models_view()->Dict[str,Any]:
+    """Supported base models for the chat UI's model picker: installed/active state, VRAM fit, offline flag."""
+    from amni.utils.base_models import BASE_MODELS,detect_from_config
+    from amni.utils.offline import is_offline
+    hw=detect_hardware();act=ACTIVE.get('bake') or '';active_key=None
+    try:
+        if act and (Path(act)/'config.json').exists():
+            import json as _js;_m=detect_from_config(_js.loads((Path(act)/'config.json').read_text(encoding='utf-8')));active_key=_m['key'] if _m else None
+    except Exception:pass
+    out=[]
+    for m in BASE_MODELS:
+        roots=[_ROOT/'bakes']
+        try:
+            from amni.bootstrap import CONFIG_DIR as _CD;roots.append(_CD/'bakes')
+        except Exception:pass
+        installed=any((r/m['bake_dir']/'bake_manifest.json').exists() or (r/m['bake_dir']/'manifest.json').exists() for r in roots) or (bool(act) and Path(act).name==m['bake_dir'])
+        need=min(m['vram_gb'].values()) if m.get('vram_gb') else None
+        fit='gpu' if (need and hw['vram_gb']>=need+0.5) else ('cpu' if hw['ram_gb']>=m.get('ram_gb_cpu',8)*0.9 else 'too_big')
+        out.append({'key':m['key'],'hf_id':m['hf_id'],'label':m['hf_id'].split('/')[-1],'params_b':m['params_b'],'status':m['status'],'default':m.get('default',False),'thinking':m.get('thinking',False),
+                    'vram_gb':m.get('vram_gb'),'min_vram_gb':need,'ram_gb_cpu':m.get('ram_gb_cpu'),'bake_dir':f"bakes/{m['bake_dir']}",'installed':installed,'active':m['key']==active_key,'fit':fit,
+                    'serve_cmd':f"amni serve --bake bakes/{m['bake_dir']}",'install':{'repo':m['hf_id'],'scheme':'atex4'}})
+    return {'active_bake':act,'active_key':active_key,'offline':is_offline(),'hardware':hw,'models':out}
 def mount(app):
     from fastapi import Query
     from fastapi.responses import HTMLResponse
@@ -142,6 +174,8 @@ def mount(app):
     def _advise_install():return advise_install()
     @app.get('/install/catalog')
     def _catalog():return bake_catalog_view()
+    @app.get('/models/base')
+    def _base_models():return base_models_view()
     @app.post('/install/bake')
     def _bake(key:str=Query(...)):return download_bake_tier(key)
     @app.get('/picker',response_class=HTMLResponse)

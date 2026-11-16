@@ -157,8 +157,20 @@ def active_model_name()->str:
     if luffy_9b_q4_path():return "Qwen3.5-9B-Claude-4.6-Opus-Uncensored (LuffyTheFox Q4_K_M)"
     if best_2b_path():return "Qwen3.5-2B ({})".format(best_2b_path().stem)
     return "none"
+def base_model_ggufs()->List[Dict]:
+    """GGUF quants of the supported base models (amni.utils.base_models) under models/<repo or name>/*.gguf, e.g. models/granite-4.2-3b-GGUF/granite-4.2-3b-Q4_K_M.gguf."""
+    from amni.utils.base_models import resolve
+    out=[]
+    if not _MODELS_DIR.is_dir():return out
+    for p in sorted(_MODELS_DIR.rglob('*.gguf')):
+        stem=p.stem
+        base=stem.rsplit('-',1)[0] if '-' in stem else stem
+        m=resolve(base) or resolve(p.parent.name)
+        if not m or p.stat().st_size<100_000_000:continue
+        out.append({'id':f"{m['key']}-{stem.rsplit('-',1)[-1].lower()}",'name':f"{m['hf_id'].split('/')[-1]} ({stem.rsplit('-',1)[-1]} GGUF)",'path':str(p),'role':'base','engine':'gguf','size_mb':int(p.stat().st_size/1048576),'available':True,'model':m['key']})
+    return out
 def model_roster()->List[Dict]:
-    roster=[]
+    roster=list(base_model_ggufs())
     checks=[
         ("qwen35-9b-q8","Qwen3.5-9B local Q8_0 (WSL ROCm Railgun)",qwen35_9b_q8_path,"proposer",9500),
         ("qwen35-9b-q4","Qwen3.5-9B local Q4_K_M (WSL ROCm Railgun)",qwen35_9b_q4_path,"proposer",5500),
@@ -168,7 +180,7 @@ def model_roster()->List[Dict]:
     ]
     for mid,name,fn,role,mb in checks:
         p=fn()
-        if p:roster.append({"id":mid,"name":name,"path":str(p),"role":role,"size_mb":mb,"available":True})
+        if p and not any(r['path']==str(p) for r in roster):roster.append({"id":mid,"name":name,"path":str(p),"role":role,"size_mb":mb,"available":True})
     for bp in all_2b_paths():
         roster.append({"id":"2b-{}".format(bp.stem.lower()),"name":"Qwen3.5-2B ({})".format(bp.stem),"path":str(bp),"role":"lightweight","size_mb":int(bp.stat().st_size/1048576),"available":True})
     # PTEX models (custom GF17 texture format — runs via Prismtex engine)
@@ -196,6 +208,7 @@ def status()->Dict:
         "luffy_9b_q8_available":luffy_9b_q8_path() is not None,
         "luffy_9b_q4_available":luffy_9b_q4_path() is not None,
         "best_2b":str(best_2b_path() or ""),
+        "base_models":__import__('amni.utils.base_models',fromlist=['summary']).summary(),
         "models_2b_count":len(all_2b_paths()),
         "local_ready":is_local_ready(),
         "ptex_models":_ptex,

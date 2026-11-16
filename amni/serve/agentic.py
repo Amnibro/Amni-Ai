@@ -510,13 +510,14 @@ def run_goal(adam,skills,goal:str,max_steps:int=5,timeout_s:float=180.0)->Dict[s
         try:
             svc=getattr(getattr(adam,'adam',None),'svc',None)
             if svc is None:reason='no svc';break
-            resp,n=svc.chat(prompt,system='You are a precise planning agent. Output ONLY JSON.',max_new_tokens=120,do_sample=False,kb_top_k=0)
+            resp,n=svc.chat(prompt,system='You are a precise planning agent. Output ONLY JSON.',max_new_tokens=int(os.environ.get('AMNI_PLAN_TOKENS','512')),do_sample=False,kb_top_k=0)  # 120 truncated any plan that carried code (run_python) -> 'unparseable plan'
         except Exception as e:reason=f'plan error: {e}';break
         plan=_parse_step(resp or '')
         if plan is None:
             steps.append({'plan_raw':(resp or '')[:200],'parse_error':True});reason='unparseable plan';break
         if 'final' in plan:final=plan['final'];break
         tname=plan.get('tool','');targs=plan.get('args',{}) or {}
+        if steps and steps[-1].get('tool')==tname and steps[-1].get('args')==targs:reason='repeated step (done)';break  # small models re-issue the finished step instead of emitting final
         if not skills.has(tname):
             steps.append({'tool':tname,'args':targs,'result':f'unknown tool: {tname}'});continue
         try:r=skills.call(tname,targs,ctx={'adam':adam})

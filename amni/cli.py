@@ -11,6 +11,7 @@ def _add_common_adam(p):
     p.add_argument('--model',default=os.environ.get('AMNI_MODEL',default_model))
     p.add_argument('--lessons',default=cfg.get('lessons') or 'experiences/adam_lessons.npz')
     p.add_argument('--lut-root',default=cfg.get('lut_root') or 'experiences/adam_lut')
+    p.add_argument('--offline',action='store_true',default=False,help='No network: never contact HF hub, skip web skills/crawler/update checks (= AMNI_OFFLINE=1)')
 def cmd_init(args):
     cfg=load_config()
     print(f'\nAdam first-run initialization',flush=True)
@@ -27,6 +28,9 @@ def cmd_init(args):
     if cfg.get('bake') and bake_has_runtime_metadata(cfg.get('bake')):
         cfg['model']=str(cfg['bake'])
         print(f'[init] runtime model dir = bake dir ({cfg["bake"]}) — Adam ships as a self-contained GF(17) artifact; no upstream download needed.',flush=True)
+    try:
+        from amni.bootstrap import prefetch_runtime_assets;prefetch_runtime_assets()
+    except Exception as _pe:print(f'[init] embedder prefetch skipped: {_pe}',flush=True)
     ensure_dirs(cfg)
     cfg['first_run_done']=True
     save_config(cfg)
@@ -109,7 +113,8 @@ def _print_serve_banner(host:str,port:int,workdir:str=''):
 def cmd_serve(args):
     pin_discrete_gpu()
     cfg=load_config()
-    if is_first_run() and not (Path(args.bake).exists() or Path(cfg.get('bake') or '').exists()):
+    from amni.utils.offline import is_offline as _is_off
+    if is_first_run() and not _is_off() and not (Path(args.bake).exists() or Path(cfg.get('bake') or '').exists()):
         print('[serve] First run detected — running `amni init` first.',flush=True)
         class _A:non_interactive=True;skip_model=False
         cmd_init(_A())
@@ -133,6 +138,7 @@ def cmd_serve(args):
     if args.seed or not Path(args.lessons).exists():sys.argv.append('--seed')
     if args.cors:sys.argv.append('--cors')
     if args.default_persona:sys.argv+=['--default-persona',args.default_persona]
+    if getattr(args,'offline',False):sys.argv.append('--offline')
     if args.no_persona:sys.argv.append('--no-persona')
     _aw=getattr(args,'app_window',False)
     if getattr(args,'open_browser',False) or _aw:_open_browser_when_ready(f'http://{args.host}:{args.port}/',app_window=_aw)
@@ -927,6 +933,9 @@ def _doctor_workdir(args):
     return {'name':'Workdir','status':'ok','detail':f'{wd} writable'}
 def _doctor_network():
     import urllib.request
+    from amni.utils.offline import is_offline,forced
+    if forced():return {'name':'Network','status':'info','detail':'offline mode (AMNI_OFFLINE=1) - not checked; chat works without network once a bake is installed'}
+    if is_offline(refresh=True):return {'name':'Network','status':'warn','detail':'no network detected - offline mode will be used (chat still works; web skills disabled)'}
     try:
         with urllib.request.urlopen('https://huggingface.co/',timeout=3) as r:code=r.status
         return {'name':'Network (HuggingFace)','status':'ok','detail':f'reachable · HTTP {code}'}
@@ -1187,5 +1196,7 @@ def main():
     pe.add_argument('--persona-bank',default='experiences/personas.json');pe.add_argument('--with-adam',action='store_true',help='Boot Adam for web-learn')
     pe.set_defaults(func=cmd_personas)
     args=p.parse_args()
+    if getattr(args,'offline',False):
+        from amni.utils.offline import apply_offline_env;apply_offline_env('--offline')
     args.func(args)
 if __name__=='__main__':main()

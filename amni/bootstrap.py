@@ -17,7 +17,8 @@ def _resolve_amni_home()->str:
 CONFIG_DIR=Path(_resolve_amni_home())
 CONFIG_FILE=CONFIG_DIR/'config.json'
 DEFAULT_HF_REPO='amnibro/granite41-3b-palette'
-DEFAULT_BASE_REPO='ibm-granite/granite-4.1-3b'
+DEFAULT_BASE_REPO='ibm-granite/granite-4.2-3b'  # new default small base model (2026-08); 4.1-3b remains supported as legacy
+DEFAULT_MODEL_DIRNAME='granite-4.2-3b'
 _LEGACY_BAKE_REPOS=set()
 _LEGACY_BAKE_DIRS=set()
 BAKE_TIERS=[(8.0,'amnibro/granite41-3b-palette','granite41_3b_palette','Granite-4.1-3B (palette, RAM-light)',5.2),(0.0,'amnibro/gemma-4-E2B-it-gf17','gemma4_e2b_it_gf17','Gemma-4-E2B',3.8)]
@@ -61,12 +62,14 @@ def _extra_candidates(var:str):
     raw=os.environ.get(var) or ''
     return [Path(p) for p in raw.replace(';',os.pathsep).split(os.pathsep) if p.strip()]
 def _candidate_bake_paths():
-    return _extra_candidates('AMNI_BAKE_PATHS')+[CONFIG_DIR/'bakes'/'granite41_3b_palette',Path('./bakes/granite41_3b_palette'),Path.home()/'amni-bakes'/'granite41_3b_palette',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_palette',CONFIG_DIR/'bakes'/'granite41_3b_gf17',Path('./bakes/granite41_3b_gf17'),Path.home()/'amni-bakes'/'granite41_3b_gf17',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_gf17']
+    g42=[r/'granite42_3b_gf17_atex' for r in (CONFIG_DIR/'bakes',Path('./bakes'),Path.home()/'amni-bakes',Path.home()/'.amni-ai'/'bakes')]
+    return _extra_candidates('AMNI_BAKE_PATHS')+g42+[CONFIG_DIR/'bakes'/'granite41_3b_palette',Path('./bakes/granite41_3b_palette'),Path.home()/'amni-bakes'/'granite41_3b_palette',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_palette',CONFIG_DIR/'bakes'/'granite41_3b_gf17',Path('./bakes/granite41_3b_gf17'),Path.home()/'amni-bakes'/'granite41_3b_gf17',Path.home()/'.amni-ai'/'bakes'/'granite41_3b_gf17']
 def _candidate_model_paths():
-    return _extra_candidates('AMNI_MODEL_PATHS')+[CONFIG_DIR/'models'/'granite-4.1-3b',Path('./models/granite-4.1-3b'),Path.home()/'amni-models'/'granite-4.1-3b',Path.home()/'.amni-ai'/'models'/'granite-4.1-3b']
+    roots=(CONFIG_DIR/'models',Path('./models'),Path.home()/'amni-models',Path.home()/'.amni-ai'/'models')
+    return _extra_candidates('AMNI_MODEL_PATHS')+[r/n for n in (DEFAULT_MODEL_DIRNAME,'granite-4.1-3b') for r in roots]
 def detect_bake()->Optional[Path]:
     for p in _candidate_bake_paths():
-        if p.exists() and (p/'manifest.json').exists() and (p/'config.json').exists() and (p/'tokenizer.json').exists():return p
+        if p.exists() and ((p/'manifest.json').exists() or (p/'bake_manifest.json').exists()) and (p/'config.json').exists() and (p/'tokenizer.json').exists():return p
     return None
 def detect_model()->Optional[Path]:
     for p in _candidate_model_paths():
@@ -92,7 +95,7 @@ def load_config()->Dict[str,Any]:
             if cfg.get('bake') and Path(cfg['bake']).name in _LEGACY_BAKE_DIRS:cfg['bake']=None
             if cfg.get('model') and Path(cfg['model']).name in _LEGACY_BAKE_DIRS:cfg['model']=None
         except Exception as e:print(f'[bootstrap] config parse failed: {e}',flush=True)
-    if cfg.get('bake') and not (Path(cfg['bake']).exists() and (Path(cfg['bake'])/'manifest.json').exists()):cfg['bake']=None
+    if cfg.get('bake') and not (Path(cfg['bake']).exists() and ((Path(cfg['bake'])/'manifest.json').exists() or (Path(cfg['bake'])/'bake_manifest.json').exists())):cfg['bake']=None
     if cfg.get('model') and not (Path(cfg['model']).exists() and (Path(cfg['model'])/'config.json').exists()):cfg['model']=None
     if not cfg.get('bake'):
         b=detect_bake();cfg['bake']=str(b) if b else None
@@ -169,7 +172,7 @@ def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     if bake and bake_has_runtime_metadata(bake) and not force:
         print(f'[bootstrap] base-model download skipped — prebuilt bake at {bake} already ships tokenizer.json + config.json (sufficient for streaming runtime)',flush=True)
         return Path(bake)
-    target=Path(cfg.get('model') or (CONFIG_DIR/'models'/'granite-4.1-3b'))
+    target=Path(cfg.get('model') or (CONFIG_DIR/'models'/DEFAULT_MODEL_DIRNAME))
     if target.exists() and (target/'config.json').exists() and not force:
         print(f'[bootstrap] base model already at {target}',flush=True);return target
     try:from huggingface_hub import snapshot_download
@@ -177,7 +180,7 @@ def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
     repo=cfg.get('hf_base_repo',DEFAULT_BASE_REPO)
     print(f'[bootstrap] downloading base model from HF "{repo}" -> {target}',flush=True)
     target.mkdir(parents=True,exist_ok=True)
-    try:snapshot_download(repo_id=repo,local_dir=str(target),allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*'])
+    try:snapshot_download(repo_id=repo,local_dir=str(target),allow_patterns=['*.json','*.safetensors','*.txt','*.jinja','tokenizer*'])
     except Exception as e:
         msg=str(e)
         if '401' in msg or 'gated' in msg.lower() or 'restricted' in msg.lower():
@@ -189,6 +192,16 @@ def download_base_model(cfg:Dict[str,Any],force:bool=False)->Optional[Path]:
             print(f'[bootstrap] base model download failed: {e}',flush=True)
         return None
     print(f'[bootstrap] base model ready at {target}',flush=True);return target
+def prefetch_runtime_assets()->bool:
+    """Cache the small helper models the runtime loads besides the bake (lesson-bank embedder, ~90 MB) so later runs work fully offline."""
+    from amni.utils.offline import is_offline
+    if is_offline():print('[bootstrap] offline: skipping embedder prefetch (runtime falls back to a hashed embedder)',flush=True);return False
+    name=os.environ.get('AMNI_EMBED_MODEL','sentence-transformers/all-MiniLM-L6-v2')
+    try:
+        from huggingface_hub import snapshot_download
+        snapshot_download(repo_id=name,allow_patterns=['*.json','*.txt','model.safetensors','tokenizer*'])
+        print(f'[bootstrap] cached embedder {name} for offline use',flush=True);return True
+    except Exception as e:print(f'[bootstrap] embedder prefetch failed ({type(e).__name__}: {str(e)[:120]}); will retry next init',flush=True);return False
 def is_first_run()->bool:
     cfg=load_config()
     return not cfg.get('first_run_done',False)
