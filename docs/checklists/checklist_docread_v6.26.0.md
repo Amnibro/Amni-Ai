@@ -15,7 +15,12 @@ Goal: Adam reads and answers from PDFs, images and other files through a harness
 - [x] image: PNG, JPEG, GIF, WebP, TIFF, BMP, ICO, HEIC, AVIF, SVG metadata, EXIF/XMP/IPTC text, SVG text (19 fixtures vs magick identify)
 - [x] pimage: PDF image extraction for OCR (paint order, shared resources, predictors, RC4/AES), pixel-identical to pdfimages on the supported color spaces
 - [x] pack: gzip, bzip2, tar with caps; extra: Jupyter notebooks, iCalendar, vCard, source code split by definitions
-- [ ] ole: legacy .doc/.xls/.ppt/.msg (agent in progress; until merged they warn)
+- [x] ole: legacy .doc/.xls/.ppt/.msg through the cfb container reader; .xls sheets and .ppt slides carry their number as the locator (units "sheet" and "slide")
+- [x] ofcrypt: password-protected Office files (ECMA-376 Agile with SHA-1/256/384/512 and AES-128/192/256, Standard with AES-128/192/256); RC4 CryptoAPI and extensible encryption are refused with a warning; 11 fixtures checked against msoffcrypto-tool
+- [x] Passwords: `DOCREAD_PASSWORD` opens PDF (user or owner password, R2-R6) and Office files; the empty password and "VelvetSweatshop" are tried too; a decrypted Office file reports its real format (docx, xlsx, pptx) with meta encrypted=yes
+- [x] mbox: a mailbox splits into "Message N" sections (first 1000 messages), each read as an email with its attachments
+- [x] xlsx sheets carry their number as the locator, matching .xls
+- [ ] lzma (.xz, .lzma) and 7z (agent in progress)
 - [x] docread main: sniffing, EPUB, generic XML, ZIP/TAR/GZIP/BZIP2 recursion, md/json/info/chunks/ask/sniff/images, MCP server mode
 - [x] Tests: crypto vectors, office/text/image/archive fixtures with expected output, PDF fixtures (LibreOffice, RC4-40/128, AES-128, AES-256 R6, object streams, PDF 2.0, scanned images), oracle word F1 vs pdftotext on 14 public PDFs
 
@@ -24,6 +29,8 @@ Goal: Adam reads and answers from PDFs, images and other files through a harness
 - [x] amni/serve/docread.py: binary lookup, run with timeout, session document store, OCR sidecars for images and scanned PDF pages, captions through the vision path when the model is cached
 - [x] ingest_file skill (all formats, pypdf fallback kept for ingest_pdf), read_document skill (ask passages)
 - [x] doc endpoints: attach (base64 or allowed path), list, ask, clear
+- [x] attach takes an optional "password": a protected upload without it is refused with a clear error; with it only the decrypted text is kept as a derived sidecar and citations come from it (via "password"); the password goes to docread through one child process's environment and is never stored or logged
+- [x] Real OCR test with tesseract (an invented rendered note PNG and a scanned PDF of it); skipped when tesseract or its language data is missing
 - [x] /chat/stream: documents attached to the session → top passages with citations into user_facts; skip the LUT shortcut when grounded
 - [x] jarvis_web: attach button and drag-and-drop; /code timeline with sandbox, validation and placement
 - [x] code_harness: per-run sandbox copy (reflink when possible), Amni-Code in bubblewrap with the target read-only, docread MCP server seeded, validation in the copy, all-or-nothing placement with conflict detection, new cache/build files never placed, patch kept, sandbox deleted

@@ -1,0 +1,387 @@
+=== 1207b25a6f0a238c
+fn hex(b const byte[:]) byte[>..] {
+	let digits = "0123456789abcdef";
+	var o byte[>..] = [];
+	for x in b {
+		o.push(digits[(x >> 4) as int]);
+		o.push(digits[(x & 15) as int]);
+	}
+	o
+}
+=== 629421772aa177ba
+fn load(name const byte[:], out byte[>..]&) bool {
+	out.clear();
+	var p byte[>..] = [];
+	p.append("tests/fixtures/");
+	p.append(name);
+	return read_file(p, out);
+}
+=== -5f6cc83ff626a16c
+fn junk(out byte[>..]&) {
+	out.clear();
+	out.append("junk");
+}
+=== 7e032277573e178a
+fn inner(d const byte[:], name const byte[:]) int {
+	let h = zip::zp_open(d);
+	if h < 0 { return -1; }
+	let e = zip::zp_find(h, name);
+	var r = -1;
+	if e >= 0 { r = zip::zp_size(h, e); }
+	zip::zp_close(h);
+	r
+}
+=== -2a3c90b1b036a36c
+fn fixture(name const byte[:], pw const byte[:], part const byte[:]) {
+	var d byte[>..] = [];
+	if !load(name, d) {
+		print("missing");
+		return;
+	}
+	let enc = if ofcrypt::oc_is_encrypted(d) { 1 } else { 0 };
+	var out byte[>..] = [];
+	junk(out);
+	let r = ofcrypt::oc_decrypt(d, pw, out);
+	let h = hex(crypto::sha256(out));
+	let z = inner(out, part);
+	var out2 byte[>..] = [];
+	junk(out2);
+	var pw2 byte[>..] = [];
+	pw2.append(pw);
+	pw2.push('x');
+	let r2 = ofcrypt::oc_decrypt(d, pw2, out2);
+	print(name, " enc ", enc, " right ", r, " len ", out.len, " sha ", h, " zip ", z, " wrong ", r2, " ", out2.len);
+}
+=== 47abca735aed99ed
+fn uni() byte[>..] {
+	var o byte[>..] = [];
+	o.append("Laterne7");
+	o.push(0xC3);
+	o.push(0xBC);
+	o.push(0xE2);
+	o.push(0x98);
+	o.push(0x83);
+	o.push(0xF0);
+	o.push(0x9D);
+	o.push(0x84);
+	o.push(0x9E);
+	o
+}
+=== -4dedafed2819f579
+fn w16(tag const byte[:], s const byte[:]) {
+	var o byte[>..] = [];
+	ofcrypt::oc_pw16(s, o);
+	let h = hex(o);
+	print("pw16 ", tag, " ", h);
+}
+=== -615f409ce62f1b21
+fn bad(tag const byte[:], d const byte[:]) {
+	let enc = if ofcrypt::oc_is_encrypted(d) { 1 } else { 0 };
+	var out byte[>..] = [];
+	junk(out);
+	let r = ofcrypt::oc_decrypt(d, "Lantern7", out);
+	print(tag, " enc ", enc, " r ", r, " len ", out.len);
+}
+=== -2ad6ac5c44601da5
+fn locate(d const byte[:], sub const byte[:]) int {
+	let n = sub.len;
+	if n > d.len { return -1; }
+	for i in d.len - n + 1 {
+		if d[i..i + n] == sub { return i; }
+	}
+	return -1;
+}
+fn swap(d byte[>..]&, from const byte[:], to const byte[:]) bool {
+	let i = locate(d, from);
+	if i < 0 { return false; }
+	for j in from.len { d[i + j] = to[j]; }
+	return true;
+}
+=== 2ec68d504014ec8e
+fn put8(d byte[>..]&, v int) {
+	for i in 8 { d[i] = ((v >> (8 * i)) & 255) as! byte; }
+}
+=== 7ab8fc93f4fd728a
+fn mutate(which int, info byte[>..]&, pkg byte[>..]&) {
+	if which == 1 { put8(pkg, 100); }
+	if which == 2 { put8(pkg, 1099511627776); }
+	if which == 3 { put8(pkg, pkg.len - 7); }
+	if which == 4 { if pkg.len >= 100 { pkg.pop_n(100); } }
+	if which == 5 {
+		if pkg.len >= 8 {
+			pkg.pop_n(8);
+			put8(pkg, pkg.len - 8);
+		}
+	}
+	if which == 6 { info[2] = 3; }
+	if which == 7 { if info.len > 6 { info.pop_n(info.len - 6); } }
+	if which == 8 {
+		let keep = info.len / 2;
+		info.pop_n(info.len - keep);
+	}
+	if which == 9 { swap(info, "SHA1", "SHA9"); }
+	if which == 10 { swap(info, "ChainingModeCBC", "ChainingModeCFB"); }
+	if which == 11 { swap(info, "AES", "DES"); }
+	if which == 12 {
+		var a byte[>..] = [];
+		a.append("spinCount=");
+		a.push('"');
+		format(a, 20000);
+		a.push('"');
+		var b byte[>..] = [];
+		b.append("spinCount=");
+		b.push('"');
+		format(b, 20001);
+		b.push('"');
+		swap(info, a, b);
+	}
+	if which == 13 {
+		let p = info.len - 45;
+		info[p] = info[p] ^ 1;
+	}
+	if which == 14 { info[4] = 4; }
+	if which == 15 { if info.len >= 10 { info.pop_n(10); } }
+	if which == 16 { put8(pkg, 0); }
+	if which == 17 { pkg.clear(); }
+	if which == 18 {
+		var key byte[>..] = [];
+		key.append("encryptedKeyValue=");
+		key.push('"');
+		let i = locate(info, key);
+		if i >= 0 { info[i + key.len] = '!'; }
+	}
+}
+=== -49b54e8f4a81ac17
+fn mutant(name const byte[:], which int) {
+	var d byte[>..] = [];
+	if !load(name, d) {
+		print("missing");
+		return;
+	}
+	let h = cfb::cf_open(d);
+	var info byte[>..] = [];
+	var pkg byte[>..] = [];
+	cfb::cf_get(h, "EncryptionInfo", info);
+	cfb::cf_get(h, "EncryptedPackage", pkg);
+	cfb::cf_close(h);
+	mutate(which, info, pkg);
+	var file byte[>..] = [];
+	cfbmk::cm_reset();
+	cfbmk::cm_add("EncryptionInfo", info);
+	cfbmk::cm_add("EncryptedPackage", pkg);
+	cfbmk::cm_build(false, 109, file);
+	var out byte[>..] = [];
+	junk(out);
+	let r = ofcrypt::oc_decrypt(file, "Lantern7", out);
+	let hx = hex(crypto::sha256(out));
+	print("mut ", which, " ", name, " r ", r, " len ", out.len, " sha ", hx[..16]);
+}
+=== -2a9fe8509e9030bf
+fn single(name const byte[:], keep int) {
+	var d byte[>..] = [];
+	if !load(name, d) {
+		print("missing");
+		return;
+	}
+	let h = cfb::cf_open(d);
+	var info byte[>..] = [];
+	var pkg byte[>..] = [];
+	cfb::cf_get(h, "EncryptionInfo", info);
+	cfb::cf_get(h, "EncryptedPackage", pkg);
+	cfb::cf_close(h);
+	var file byte[>..] = [];
+	cfbmk::cm_reset();
+	if keep == 1 { cfbmk::cm_add("EncryptionInfo", info); }
+	if keep == 2 { cfbmk::cm_add("EncryptedPackage", pkg); }
+	cfbmk::cm_build(false, 109, file);
+	var tag byte[>..] = [];
+	tag.append("only");
+	format(tag, keep);
+	bad(tag, file);
+}
+=== -476c4d6462f06a86
+fn fuzz(name const byte[:]) {
+	var d byte[>..] = [];
+	if !load(name, d) {
+		print("missing");
+		return;
+	}
+	let h = cfb::cf_open(d);
+	var info byte[>..] = [];
+	var pkg byte[>..] = [];
+	cfb::cf_get(h, "EncryptionInfo", info);
+	cfb::cf_get(h, "EncryptedPackage", pkg);
+	cfb::cf_close(h);
+	fn run(inf const byte[:], out byte[>..]&) int {
+		var file byte[>..] = [];
+		cfbmk::cm_reset();
+		cfbmk::cm_add("EncryptionInfo", inf);
+		cfbmk::cm_add("EncryptedPackage", pkg);
+		cfbmk::cm_build(false, 109, file);
+		return ofcrypt::oc_decrypt(file, "Lantern7", out);
+	}
+	var ref byte[>..] = [];
+	run(info, ref);
+	var ok = 0;
+	var wrong = 0;
+	var bad = 0;
+	var same = 0;
+	for p in info.len {
+		var c byte[>..] = [];
+		c.append(info);
+		c[p] = c[p] ^ 1;
+		var out byte[>..] = [];
+		let r = run(c, out);
+		if r == 1 {
+			ok += 1;
+			if out == ref { same += 1; }
+		}
+		if r == 0 { wrong += 1; }
+		if r == -1 { bad += 1; }
+	}
+	print("fuzz ", name, " n ", info.len, " ok ", ok, " wrong ", wrong, " bad ", bad, " same ", same);
+}
+=== 446c25633f1f182d
+fn big(name const byte[:]) {
+	var d byte[>..] = [];
+	if !load(name, d) {
+		print("missing");
+		return;
+	}
+	let h = cfb::cf_open(d);
+	var info byte[>..] = [];
+	var pkg byte[>..] = [];
+	cfb::cf_get(h, "EncryptionInfo", info);
+	cfb::cf_get(h, "EncryptedPackage", pkg);
+	cfb::cf_close(h);
+	var file byte[>..] = [];
+	cfbmk::cm_reset();
+	cfbmk::cm_add("EncryptionInfo", info);
+	cfbmk::cm_add("EncryptedPackage", pkg);
+	cfbmk::cm_build(true, 109, file);
+	var out byte[>..] = [];
+	junk(out);
+	let r = ofcrypt::oc_decrypt(file, "Lantern7", out);
+	let hx = hex(crypto::sha256(out));
+	print("v4 ", name, " r ", r, " len ", out.len, " sha ", hx[..16]);
+}
+=== -c74178f83c91604
+fn main() {
+	fixture("oc_garden_std128.docx", "Lantern7", "word/document.xml");
+	fixture("oc_harbor_std128.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_deck_std128.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_harbor_std256.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_harbor_agile512.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_deck_agile512.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_deck_agile384.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_harbor_agile256.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_garden_agile1.docx", "Lantern7", "word/document.xml");
+	fixture("oc_garden_rc4.docx", "Lantern7", "word/document.xml");
+	let u = uni();
+	fixture("oc_deck_agile256_uni.pptx", u, "ppt/presentation.xml");
+	w16("ascii", "Lantern7");
+	w16("mixed", [0x41, 0xC3, 0xA9, 0xE2, 0x98, 0x83, 0xF0, 0x9D, 0x84, 0x9E]);
+	w16("stray", [0x80, 0x41]);
+	w16("cut", [0xE2, 0x98]);
+	w16("overlong", [0xC0, 0x80]);
+	w16("surr", [0xED, 0xA0, 0x80]);
+	w16("big", [0xF4, 0x90, 0x80, 0x80]);
+	var s byte[>..] = [];
+	if load("sample.doc", s) { bad("sample.doc", s); } else { print("missing"); }
+	bad("hello", "hello");
+	var e byte[>..] = [];
+	bad("empty", e);
+	var z byte[>..] = [];
+	z.resize(700, 0);
+	bad("zeros", z);
+	single("oc_garden_agile1.docx", 1);
+	single("oc_garden_agile1.docx", 2);
+	for w in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18] {
+		mutant("oc_garden_agile1.docx", w);
+	}
+	for w in [1, 2, 3, 5, 13, 14, 15, 16] {
+		mutant("oc_garden_std128.docx", w);
+	}
+}
+=== -bfa28066df22fc9
+fn main() {
+	fixture("oc_garden_std128.docx", "Lantern7", "word/document.xml");
+	fixture("oc_harbor_std128.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_deck_std128.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_harbor_std256.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_harbor_agile512.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_deck_agile512.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_deck_agile384.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_harbor_agile256.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_garden_agile1.docx", "Lantern7", "word/document.xml");
+	fixture("oc_garden_rc4.docx", "Lantern7", "word/document.xml");
+	let u = uni();
+	fixture("oc_deck_agile256_uni.pptx", u, "ppt/presentation.xml");
+	w16("ascii", "Lantern7");
+	w16("mixed", [0x41, 0xC3, 0xA9, 0xE2, 0x98, 0x83, 0xF0, 0x9D, 0x84, 0x9E]);
+	w16("stray", [0x80, 0x41]);
+	w16("cut", [0xE2, 0x98]);
+	w16("overlong", [0xC0, 0x80]);
+	w16("surr", [0xED, 0xA0, 0x80]);
+	w16("big", [0xF4, 0x90, 0x80, 0x80]);
+	var s byte[>..] = [];
+	if load("sample.doc", s) { bad("sample.doc", s); } else { print("missing"); }
+	bad("hello", "hello");
+	var e byte[>..] = [];
+	bad("empty", e);
+	var z byte[>..] = [];
+	z.resize(700, 0);
+	bad("zeros", z);
+	single("oc_garden_agile1.docx", 1);
+	single("oc_garden_agile1.docx", 2);
+	for w in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18] {
+		mutant("oc_garden_agile1.docx", w);
+	}
+	for w in [1, 2, 3, 5, 13, 14, 15, 16] {
+		mutant("oc_garden_std128.docx", w);
+	}
+	fuzz("oc_garden_agile1.docx");
+	fuzz("oc_garden_std128.docx");
+}
+=== -16c46b71af5e40f8
+fn main() {
+	fixture("oc_garden_std128.docx", "Lantern7", "word/document.xml");
+	fixture("oc_harbor_std128.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_deck_std128.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_harbor_std256.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_harbor_agile512.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_deck_agile512.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_deck_agile384.pptx", "Lantern7", "ppt/presentation.xml");
+	fixture("oc_harbor_agile256.xlsx", "Lantern7", "xl/workbook.xml");
+	fixture("oc_garden_agile1.docx", "Lantern7", "word/document.xml");
+	fixture("oc_garden_rc4.docx", "Lantern7", "word/document.xml");
+	let u = uni();
+	fixture("oc_deck_agile256_uni.pptx", u, "ppt/presentation.xml");
+	w16("ascii", "Lantern7");
+	w16("mixed", [0x41, 0xC3, 0xA9, 0xE2, 0x98, 0x83, 0xF0, 0x9D, 0x84, 0x9E]);
+	w16("stray", [0x80, 0x41]);
+	w16("cut", [0xE2, 0x98]);
+	w16("overlong", [0xC0, 0x80]);
+	w16("surr", [0xED, 0xA0, 0x80]);
+	w16("big", [0xF4, 0x90, 0x80, 0x80]);
+	var s byte[>..] = [];
+	if load("sample.doc", s) { bad("sample.doc", s); } else { print("missing"); }
+	bad("hello", "hello");
+	var e byte[>..] = [];
+	bad("empty", e);
+	var z byte[>..] = [];
+	z.resize(700, 0);
+	bad("zeros", z);
+	single("oc_garden_agile1.docx", 1);
+	single("oc_garden_agile1.docx", 2);
+	for w in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18] {
+		mutant("oc_garden_agile1.docx", w);
+	}
+	for w in [1, 2, 3, 5, 13, 14, 15, 16] {
+		mutant("oc_garden_std128.docx", w);
+	}
+	fuzz("oc_garden_agile1.docx");
+	fuzz("oc_garden_std128.docx");
+	big("oc_harbor_agile512.xlsx");
+	big("oc_garden_std128.docx");
+}

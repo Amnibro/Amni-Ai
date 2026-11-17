@@ -86,6 +86,8 @@ meta pages=1
 == sample.xlsx
 # Garden Sales
 .
+--- Sales ---
+.
 ## Sales
 .
 | Item | Qty | Price | Date | Paid | Total |  | Note |
@@ -93,6 +95,8 @@ meta pages=1
 | Tulips | 10 | 2.5 | 2026-03-15 | TRUE | 25 |  | café € |
 | Soil | 4 | 12.75 | 2026-03-16 14:30:00 | FALSE | 51 |
 | Total | 14 |
+.
+--- Notes ---
 .
 ## Notes
 .
@@ -246,6 +250,8 @@ meta created=2026-01-02T03:04:05Z
 meta modified=2026-02-03T04:05:06Z
 meta pages=3
 == edge1900.xlsx
+--- Edge ---
+.
 ## Edge
 .
 | Hello | inline | TRUE | #DIV/0! | formula text | café & co |
@@ -257,6 +263,8 @@ meta pages=3
 | p | 7 |
 | FALSE | 5 |
 .
+--- Hid & Den ---
+.
 ## Hid & Den
 .
 | secret |
@@ -264,6 +272,8 @@ meta pages=3
 .
 meta sheets=3
 == edge1904.xlsx
+--- D ---
+.
 ## D
 .
 | 1904-01-01 | 1904-01-02 | 2016-04-02 18:00:00 | -1 | 41000 |
@@ -365,7 +375,7 @@ meta pages=4
 meta sheets=3
 meta title=Odd Sheet
 == bigsheet.xlsx
-len 500019
+len 500032
 warn sheet Big truncated at 50000 rows
 == wrong formats
 sample.odt 0

@@ -6,8 +6,9 @@ import rtf;
 import textfmt;
 import binary;
 namespace ole;
-var ol_h int = -1;
-var ol_enc bool = false;
+var ol_h = -1;
+var ol_enc = false;
+var ol_kind = 0;
 fn ol_sx(v int, bits int) int {
 	let p = 1 << bits;
 	if v >= p - 1 { v - p } else { v }
@@ -1072,9 +1073,12 @@ fn ol_xl_rows(name const byte[:]) {
 	}
 }
 fn ol_xl_sheet(k int) {
-	let name = ol_shn[ol_sha[k]..ol_sha[k] + ol_shl[k]];
-	var p = ol_shp[k];
-	if cfb::cf_le(ol_xb, p, 2) != 0x0809 || cfb::cf_le(ol_xb, p + 6, 2) != 0x0010 {
+	var name byte[>..] = [];
+	name.append(ol_shn[ol_sha[k]..ol_sha[k] + ol_shl[k]]);
+	let off = ol_shp[k];
+	let bid = cfb::cf_le(ol_xb, off, 2);
+	let bty = cfb::cf_le(ol_xb, off + 6, 2);
+	if bid != 0x0809 || bty != 0x0010 {
 		var m byte[>..] = [];
 		m.append("sheet ");
 		m.append(name);
@@ -1082,9 +1086,8 @@ fn ol_xl_sheet(k int) {
 		dm::dm_warn_add(m);
 		return;
 	}
-	var h byte[>..] = [];
-	h.append(name);
-	dm::dm_add(dm::DM_HEAD, 2, h);
+	dm::dm_page(k + 1, name);
+	dm::dm_add(dm::DM_HEAD, 2, name);
 	dm::dm_new_table();
 	ol_cr.clear();
 	ol_cc.clear();
@@ -1092,14 +1095,16 @@ fn ol_xl_sheet(k int) {
 	ol_cl.clear();
 	ol_xp.clear();
 	ol_fpend = -1;
-	p += 4 + max(cfb::cf_le(ol_xb, p + 2, 2), 0);
+	let bn = cfb::cf_le(ol_xb, off + 2, 2);
+	var p = off + 4 + max(bn, 0);
 	var depth = 0;
 	while p + 4 <= ol_xb.len {
 		let id = cfb::cf_le(ol_xb, p, 2);
 		let n = cfb::cf_le(ol_xb, p + 2, 2);
 		if n < 0 || p + 4 + n > ol_xb.len { break; }
 		let d = p + 4;
-		p += 4 + n;
+		let rec = ol_xb[d..d + n];
+		p = d + n;
 		if id == 0x0809 {
 			depth += 1;
 			continue;
@@ -1110,76 +1115,72 @@ fn ol_xl_sheet(k int) {
 			continue;
 		}
 		if depth > 0 { continue; }
-		let row = cfb::cf_le(ol_xb, d, 2);
-		let col = cfb::cf_le(ol_xb, d + 2, 2);
-		let ixfe = cfb::cf_le(ol_xb, d + 4, 2);
+		let row = cfb::cf_le(rec, 0, 2);
+		let col = cfb::cf_le(rec, 2, 2);
+		let ixfe = cfb::cf_le(rec, 4, 2);
 		if id == 0x00FD {
-			let si = cfb::cf_le(ol_xb, d + 6, 4);
-			if si >= 0 && si < ol_ssa.len {
-				ol_xl_put(row, col, ol_sst[ol_ssa[si]..ol_ssa[si] + ol_ssl[si]]);
-			} else {
-				ol_xl_put(row, col, "");
+			let sn = cfb::cf_le(rec, 6, 4);
+			var t byte[>..] = [];
+			if sn >= 0 && sn < ol_ssa.len {
+				t.append(ol_sst[ol_ssa[sn]..ol_ssa[sn] + ol_ssl[sn]]);
 			}
+			ol_xl_put(row, col, t);
 		} else if id == 0x0204 || id == 0x00D6 {
 			var t byte[>..] = [];
-			ol_xl_str(ol_xb[d..d + n], 6, false, t);
+			ol_xl_str(rec, 6, false, t);
 			ol_xl_put(row, col, t);
 		} else if id == 0x0203 {
-			let v, ok = binary::read_f64le(ol_xb, d + 6);
+			let v, ok = binary::read_f64le(rec, 6);
 			if ok { ol_xl_numcell(row, col, ixfe, v); }
 		} else if id == 0x027E {
-			let rk = cfb::cf_le(ol_xb, d + 6, 4);
+			let rk = cfb::cf_le(rec, 6, 4);
 			if rk >= 0 { ol_xl_numcell(row, col, ixfe, ol_xl_rk(rk)); }
 		} else if id == 0x00BD {
-			let first = col;
 			let cnt = (n - 6) / 6;
-			for j in cnt {
-				let o = d + 4 + 6 * j;
-				let x = cfb::cf_le(ol_xb, o, 2);
-				let rk = cfb::cf_le(ol_xb, o + 2, 4);
-				if rk < 0 { break; }
-				ol_xl_numcell(row, first + j, x, ol_xl_rk(rk));
+			for j in max(cnt, 0) {
+				let ix = cfb::cf_le(rec, 4 + 6 * j, 2);
+				let rk = cfb::cf_le(rec, 6 + 6 * j, 4);
+				if rk < 0 { continue; }
+				ol_xl_numcell(row, col + j, ix, ol_xl_rk(rk));
 			}
 		} else if id == 0x0205 {
-			let b = cfb::cf_le(ol_xb, d + 6, 1);
-			let e = cfb::cf_le(ol_xb, d + 7, 1);
-			var t byte[>..] = [];
+			let v = cfb::cf_le(rec, 6, 1);
+			let e = cfb::cf_le(rec, 7, 1);
 			if e == 1 {
-				ol_xl_err(b, t);
-			} else if b != 0 {
-				t.append("TRUE");
+				var t byte[>..] = [];
+				ol_xl_err(v, t);
+				ol_xl_put(row, col, t);
+			} else if v != 0 {
+				ol_xl_put(row, col, "TRUE");
 			} else {
-				t.append("FALSE");
+				ol_xl_put(row, col, "FALSE");
 			}
-			ol_xl_put(row, col, t);
 		} else if id == 0x0006 {
-			let b6 = cfb::cf_le(ol_xb, d + 12, 1);
-			let b7 = cfb::cf_le(ol_xb, d + 13, 1);
-			if b6 == 255 && b7 == 255 {
-				let kind = cfb::cf_le(ol_xb, d + 6, 1);
+			if cfb::cf_le(rec, 12, 1) == 255 && cfb::cf_le(rec, 13, 1) == 255 {
+				let kind = cfb::cf_le(rec, 6, 1);
 				if kind == 0 {
 					ol_fpend = ol_xl_put(row, col, "");
 				} else if kind == 1 {
-					if cfb::cf_le(ol_xb, d + 8, 1) != 0 {
+					if cfb::cf_le(rec, 8, 1) != 0 {
 						ol_xl_put(row, col, "TRUE");
 					} else {
 						ol_xl_put(row, col, "FALSE");
 					}
 				} else if kind == 2 {
 					var t byte[>..] = [];
-					ol_xl_err(cfb::cf_le(ol_xb, d + 8, 1), t);
+					ol_xl_err(cfb::cf_le(rec, 8, 1), t);
 					ol_xl_put(row, col, t);
 				} else if kind == 3 {
 					ol_xl_put(row, col, "");
 				}
 			} else {
-				let v, ok = binary::read_f64le(ol_xb, d + 6);
+				let v, ok = binary::read_f64le(rec, 6);
 				if ok { ol_xl_numcell(row, col, ixfe, v); }
 			}
 		} else if id == 0x0207 {
 			if ol_fpend >= 0 {
 				var t byte[>..] = [];
-				ol_xl_str(ol_xb[d..d + n], 0, false, t);
+				ol_xl_str(rec, 0, false, t);
 				ol_ca[ol_fpend] = ol_xp.len;
 				ol_cl[ol_fpend] = t.len;
 				ol_xp.append(t);
@@ -1829,11 +1830,9 @@ fn ol_msg() bool {
 }
 fn ol_read(data const byte[:]) bool {
 	ol_h = cfb::cf_open(data);
-	if ol_h < 0 {
-		ol_h = -1;
-		return false;
-	}
+	if ol_h < 0 { return false; }
 	ol_enc = false;
+	ol_kind = 0;
 	ol_atts.clear();
 	ol_apool.clear();
 	var r = false;
@@ -1842,12 +1841,16 @@ fn ol_read(data const byte[:]) bool {
 		ol_enc = true;
 		r = false;
 	} else if cfb::cf_find(ol_h, "WordDocument") >= 0 {
+		ol_kind = 1;
 		r = ol_doc();
 	} else if cfb::cf_find(ol_h, "Workbook") >= 0 || cfb::cf_find(ol_h, "Book") >= 0 {
+		ol_kind = 2;
 		r = ol_xls();
 	} else if cfb::cf_find(ol_h, "PowerPoint Document") >= 0 {
+		ol_kind = 3;
 		r = ol_ppt();
 	} else if cfb::cf_find(ol_h, "__properties_version1.0") >= 0 {
+		ol_kind = 4;
 		r = ol_msg();
 	}
 	cfb::cf_close(ol_h);

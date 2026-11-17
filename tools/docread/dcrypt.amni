@@ -176,6 +176,7 @@ var dc_rev = 0;
 var dc_stm = 0;
 var dc_str = 0;
 var dc_scratch byte[>..];
+var dc_pw byte[>..];
 let DC_PAD byte[32] = [0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A];
 fn dc_padpw(pw const byte[:], out byte[>..]&) {
 	out.clear();
@@ -336,41 +337,57 @@ fn dc_key_r6(pw const byte[:], o const byte[:], u const byte[:], oe const byte[:
 	false
 }
 fn dc_setup(rev int, v int, length_bits int, o const byte[:], u const byte[:], oe const byte[:], ue const byte[:], p int, id0 const byte[:], meta bool, stm int, str int) bool {
-	var damaged = false;
-	if rev == 5 || rev == 6 {
-		if o.len < 48 || u.len < 48 || oe.len < 32 || ue.len < 32 { damaged = true; }
+	if rev >= 5 {
+		if o.len < 48 || u.len < 48 || oe.len < 32 || ue.len < 32 {
+			dc_on = false;
+			return false;
+		}
 	} else {
-		if o.len < 32 || u.len < 32 { damaged = true; }
-	}
-	if damaged {
-		dc_on = false;
-		return false;
+		if o.len < 32 || u.len < 32 {
+			dc_on = false;
+			return false;
+		}
 	}
 	dc_rev = rev;
 	dc_stm = stm;
 	dc_str = str;
-	var empty byte[>..] = [];
-	var ok = false;
-	if rev == 5 || rev == 6 {
-		ok = dc_key_r6(empty, o, u, oe, ue, rev, dc_key);
-	} else {
-		var nbytes = 5;
-		if rev != 2 {
-			nbytes = length_bits / 8;
-			if length_bits == 0 { nbytes = 16; }
-			nbytes = min(nbytes, 16);
+	if rev >= 5 {
+		var ok = false;
+		if dc_pw.len > 0 {
+			ok = dc_key_r6(dc_pw, o, u, oe, ue, rev, dc_key);
 		}
-		dc_key_r4(empty, o, p, id0, rev, nbytes, meta, dc_key);
-		ok = dc_check_user_r4(dc_key, u, id0, rev);
 		if !ok {
-			var upw byte[>..] = [];
-			dc_owner_to_user_r4(empty, o, rev, nbytes, upw);
-			dc_key_r4(upw, o, p, id0, rev, nbytes, meta, dc_key);
-			ok = dc_check_user_r4(dc_key, u, id0, rev);
+			var empty byte[>..] = [];
+			ok = dc_key_r6(empty, o, u, oe, ue, rev, dc_key);
+		}
+		dc_on = ok;
+		return ok;
+	}
+	var nbytes = 5;
+	if rev != 2 {
+		nbytes = length_bits / 8;
+		if length_bits == 0 { nbytes = 16; }
+	}
+	var found = false;
+	for c in 2 {
+		if found { continue; }
+		if c == 0 && dc_pw.len == 0 { continue; }
+		var cand byte[>..] = [];
+		if c == 0 { cand.append(dc_pw); }
+		dc_key_r4(cand, o, p, id0, rev, nbytes, meta, dc_key);
+		if dc_check_user_r4(dc_key, u, id0, rev) {
+			found = true;
+			continue;
+		}
+		var upw byte[>..] = [];
+		dc_owner_to_user_r4(cand, o, rev, nbytes, upw);
+		dc_key_r4(upw, o, p, id0, rev, nbytes, meta, dc_key);
+		if dc_check_user_r4(dc_key, u, id0, rev) {
+			found = true;
 		}
 	}
-	dc_on = ok;
-	ok
+	dc_on = found;
+	found
 }
 fn dc_object_key(num int, gen int, aes bool, out byte[>..]&) {
 	var buf byte[>..] = [];

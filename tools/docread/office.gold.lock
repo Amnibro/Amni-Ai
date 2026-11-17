@@ -836,20 +836,21 @@ fn of_xlsx_cell(c int, d1904 bool, out byte[>..]&) {
 	}
 	of_flat(out, start, true);
 }
-=== 79323b4174d563e9
-fn of_xlsx_sheet(path const byte[:], name const byte[:], d1904 bool, h int) {
+=== -22e53f510be8207f
+fn of_xlsx_sheet(path const byte[:], name const byte[:], d1904 bool, h int, n int) {
 	if !of_load(h, path) {
 		var w byte[>..] = [];
 		format(w, "sheet ", name, " missing");
 		dm::dm_warn_add(w);
 		return;
 	}
+	dm::dm_page(n, name);
 	dm::dm_add(dm::DM_HEAD, 2, name);
 	dm::dm_new_table();
-	let n = xml::xm_count();
+	let cnt = xml::xm_count();
 	var rows = 0;
 	var k = 0;
-	while k < n {
+	while k < cnt {
 		if of_isopen(k) && xml::xm_local(k) == "row" {
 			rows += 1;
 			if rows > 50000 {
@@ -865,12 +866,10 @@ fn of_xlsx_sheet(path const byte[:], name const byte[:], d1904 bool, h int) {
 			var c = k + 1;
 			while c < re {
 				if xml::xm_local(c) == "c" {
-					var rf byte[>..] = [];
-					var col = last + 1;
-					if xml::xm_attr(c, "r", rf) {
-						let ci = of_col_index(rf);
-						if ci >= 0 { col = ci; }
-					}
+					var rb byte[>..] = [];
+					xml::xm_attr(c, "r", rb);
+					var col = of_col_index(rb);
+					if col < 0 { col = last + 1; }
 					last = col;
 					if col <= 16383 {
 						while tabs < col {
@@ -890,7 +889,7 @@ fn of_xlsx_sheet(path const byte[:], name const byte[:], d1904 bool, h int) {
 	}
 	dm::dm_end_table();
 }
-=== 7a4abb92373461bb
+=== -5d2fb826967cf8eb
 fn of_xlsx(data const byte[:]) bool {
 	let h = zip::zp_open(data);
 	if h < 0 { return false; }
@@ -911,28 +910,29 @@ fn of_xlsx(data const byte[:]) bool {
 	if wp >= 0 {
 		var dv byte[>..] = [];
 		xml::xm_attr(wp, "date1904", dv);
-		d1904 = dv == "1" || dv == "true";
+		if dv == "1" || dv == "true" { d1904 = true; }
 	}
-	var sp byte[>..] = [];
-	var sat int[>..] = [];
-	var sln int[>..] = [];
-	var rat int[>..] = [];
-	var rln int[>..] = [];
+	var npool byte[>..] = [];
+	var nat int[>..] = [];
+	var nln int[>..] = [];
+	var ipool byte[>..] = [];
+	var iat int[>..] = [];
+	var iln int[>..] = [];
 	for k in n {
 		if of_isopen(k) && xml::xm_local(k) == "sheet" {
-			var b byte[>..] = [];
-			xml::xm_attr(k, "name", b);
-			sat.push(sp.len);
-			sln.push(b.len);
-			sp.append(b);
-			var r byte[>..] = [];
-			xml::xm_attr_pre(k, "id", r);
-			rat.push(sp.len);
-			rln.push(r.len);
-			sp.append(r);
+			var nb byte[>..] = [];
+			xml::xm_attr(k, "name", nb);
+			nat.push(npool.len);
+			nln.push(nb.len);
+			npool.append(nb);
+			var ib byte[>..] = [];
+			xml::xm_attr_pre(k, "id", ib);
+			iat.push(ipool.len);
+			iln.push(ib.len);
+			ipool.append(ib);
 		}
 	}
-	let cnt = sat.len;
+	let count = nat.len;
 	var rp byte[>..] = [];
 	of_rels_path(path, rp);
 	of_rels_load(h, rp);
@@ -941,43 +941,43 @@ fn of_xlsx(data const byte[:]) bool {
 	of_shnlen.clear();
 	of_shpat.clear();
 	of_shplen.clear();
-	for i in cnt {
-		let ri = of_rel_id(sp[rat[i]..rat[i] + rln[i]]);
+	for i in count {
+		let ri = of_rel_id(ipool[iat[i]..iat[i] + iln[i]]);
 		if ri < 0 { continue; }
-		let rr = of_rels[ri];
-		if !ends_with(of_rpool[rr.yat..rr.yat + rr.ylen], "/worksheet") { continue; }
+		let r = of_rels[ri];
+		if !ends_with(of_rpool[r.yat..r.yat + r.ylen], "/worksheet") { continue; }
 		var rs byte[>..] = [];
 		of_resolve(path, of_rel_target(ri), rs);
 		of_shnat.push(of_shpool.len);
-		of_shnlen.push(sln[i]);
-		of_shpool.append(sp[sat[i]..sat[i] + sln[i]]);
+		of_shnlen.push(nln[i]);
+		of_shpool.append(npool[nat[i]..nat[i] + nln[i]]);
 		of_shpat.push(of_shpool.len);
 		of_shplen.push(rs.len);
 		of_shpool.append(rs);
 	}
-	var st byte[>..] = [];
+	var stp byte[>..] = [];
 	let si = of_rel_type("/styles");
 	if si >= 0 {
-		of_resolve(path, of_rel_target(si), st);
+		of_resolve(path, of_rel_target(si), stp);
 	} else {
-		st.append(of_dir(path));
-		st.append("styles.xml");
+		stp.append(of_dir(path));
+		stp.append("styles.xml");
 	}
-	var ss byte[>..] = [];
-	let hi = of_rel_type("/sharedStrings");
-	if hi >= 0 {
-		of_resolve(path, of_rel_target(hi), ss);
+	var ssp byte[>..] = [];
+	let ssi = of_rel_type("/sharedStrings");
+	if ssi >= 0 {
+		of_resolve(path, of_rel_target(ssi), ssp);
 	} else {
-		ss.append(of_dir(path));
-		ss.append("sharedStrings.xml");
+		ssp.append(of_dir(path));
+		ssp.append("sharedStrings.xml");
 	}
-	of_xlsx_styles(h, st);
-	of_xlsx_sst(h, ss);
+	of_xlsx_styles(h, stp);
+	of_xlsx_sst(h, ssp);
 	for i in of_shnat.len {
-		of_xlsx_sheet(of_shpool[of_shpat[i]..of_shpat[i] + of_shplen[i]], of_shpool[of_shnat[i]..of_shnat[i] + of_shnlen[i]], d1904, h);
+		of_xlsx_sheet(of_shpool[of_shpat[i]..of_shpat[i] + of_shplen[i]], of_shpool[of_shnat[i]..of_shnat[i] + of_shnlen[i]], d1904, h, i + 1);
 	}
 	var cs byte[>..] = [];
-	format(cs, cnt);
+	format(cs, count);
 	dm::dm_set_meta("sheets", cs);
 	of_meta_ooxml(h, false);
 	zip::zp_close(h);

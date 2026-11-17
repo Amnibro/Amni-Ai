@@ -68,3 +68,26 @@ def test_scanned_pdf_pages_get_ocr(store,fake_ocr):
     assert i['ok'] and i['count']==1 and any('scanned' in w for w in i['warnings'])
     dr._scan('p1',dst,i['count']);t=(dr._ddir('p1')/'scan.pdf.md').read_text()
     assert t.startswith('# Scanned pages of scan.pdf (OCR)') and '# Page 1' in t and 'Total due 13.50' in t and len(fake_ocr)==1 and not Path(fake_ocr[0]).exists()
+@pytest.mark.skipif(not (dr.ocr_cmd() and dr.ocr_langs()),reason='tesseract with a language pack is not installed')
+def test_real_ocr_image_and_scanned_pdf(store,monkeypatch):
+    monkeypatch.setattr(dr,'caption',lambda d:'')
+    r=dr.attach('r1','note.png',(FX/'ocr_note.png').read_bytes());assert 'error' not in r and r['ocr_words']>=12,r
+    h=dr.ask('r1','how much do the paper lanterns cost?',2);assert h and h[0]['file']=='note.png' and h[0]['via']=='ocr' and '54.00' in h[0]['text'],h
+    d=dr._sdir('r2');d.mkdir(parents=True);dst=d/'scan.pdf';dst.write_bytes((FX/'ocr_scan.pdf').read_bytes());i=dr.info(dst)
+    dr._scan('r2',dst,i['count']);t=(dr._ddir('r2')/'scan.pdf.md').read_text();assert '# Page 1' in t and 'blue crane' in t.lower() and 'LANTERN FUND' in t,t
+def test_password_protected(store):
+    x=(FX/'oc_harbor_std128.xlsx').read_bytes();r=dr.attach('k1','harbor.xlsx',x);assert 'password' in r.get('error','') and dr.listing('k1')==[],r
+    assert dr.attach('k1','harbor.xlsx',x,'wrong').get('error')=='the password did not open this file' and dr.listing('k1')==[]
+    for n in ('oc_harbor_agile512.xlsx','garden-pw-aes256.pdf','oc_deck_agile384.pptx'):r=dr.attach('k1',n,(FX/n).read_bytes(),'Lantern7');assert r.get('decrypted') and 'error' not in r,(n,r)
+    L={o['name']:o for o in dr.listing('k1')};assert len(L)==3 and all(o['derived_text'] for o in L.values()),L
+    h=dr.ask('k1','which vessel carries lantern oil?',3);assert h and h[0]['file']=='oc_harbor_agile512.xlsx' and h[0]['via']=='password' and 'Marigold' in h[0]['text'],h
+    f=dr.cite(h[0]);assert 'image' not in f and '(oc_harbor_agile512.xlsx' in f
+    assert dr.clear('k1','garden-pw-aes256.pdf')['removed']==['garden-pw-aes256.pdf'] and not list(dr._ddir('k1').glob('garden-pw-aes256.pdf.*'))
+    i=dr.info(FX/'oc_deck_agile384.pptx',password='Lantern7');assert i['ok'] and i['format']=='pptx' and i['unit']=='slide' and i['count']==2 and i['meta']['encrypted']=='yes',i
+    assert not dr.info(FX/'oc_garden_rc4.docx',password='Lantern7')['ok']
+def test_mbox_and_legacy_units(store):
+    i=dr.info(FX/'mail3.mbox');assert i['ok'] and i['meta']['messages']=='3',i
+    r=dr.attach('m1','club.mbox',(FX/'mail3.mbox').read_bytes());assert 'error' not in r,r
+    h=dr.ask('m1','who waters the garden on Wednesdays?',2);assert h and 'Bo on Wednesdays' in h[0]['text'] and 'Message 3' in h[0]['head'],h
+    for n,u,c in (('legacy.xls','sheet',3),('legacy.ppt','slide',3),('edge1904.xlsx','sheet',1)):
+        i=dr.info(FX/n);assert i['ok'] and i['unit']==u and i['count']==c,(n,i)

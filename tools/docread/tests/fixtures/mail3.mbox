@@ -1,0 +1,48 @@
+From kite.club@example.org Mon Apr 13 08:15:00 2026
+From: Kite Club <kite.club@example.org>
+To: members@example.org
+Subject: Saturday kite day moved to the east meadow
+Date: Mon, 13 Apr 2026 08:15:00 -0400
+Message-ID: <kite-1@example.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+The Saturday kite day moves to the east meadow because the north field is being reseeded.
+Bring spare line and a ground stake. Tea starts at 10:30.
+
+From harbor.office@example.org Tue Apr 14 17:40:00 2026
+From: Harbor Office <harbor.office@example.org>
+To: members@example.org
+Subject: Lantern order for the harbor walk
+Date: Tue, 14 Apr 2026 17:40:00 -0400
+Message-ID: <harbor-2@example.org>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="b7"
+
+--b7
+Content-Type: text/plain; charset=utf-8
+
+Twelve paper lanterns are on order for the harbor walk; the budget is attached.
+>From the dock, the walk starts at the blue crane.
+
+--b7
+Content-Type: text/csv; name="lantern budget.csv"
+Content-Disposition: attachment; filename="lantern budget.csv"
+
+Item,Qty,Price
+Paper lantern,12,4.50
+Tea lights,48,0.25
+
+--b7--
+
+From garden.group@example.org Wed Apr 15 09:05:00 2026
+From: Garden Group <garden.group@example.org>
+To: members@example.org
+Subject: Watering rota for May
+Date: Wed, 15 Apr 2026 09:05:00 -0400
+Message-ID: <garden-3@example.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+The watering rota for May: Ana on Mondays, Bo on Wednesdays, Cy on Fridays.
+The left compost bin takes green waste only.
