@@ -1,0 +1,756 @@
+=== 5d6c14635767d963
+namespace lzma;
+=== 56d9521269f0db1c
+
+=== 3289e6c8a975ffbd
+var lz_cap = 268435456;
+var lz_capped = false;
+var lz_said = false;
+fn lz_warn(msg const byte[:]) {
+	lz_said = true;
+	dm::dm_warn_add(msg);
+}
+fn lz_over() bool {
+	lz_capped = true;
+	lz_warn("decompressed data passes the limit of 256 MiB");
+	false
+}
+=== -410ddcb7251e2fb8
+fn lz_le(s const byte[:], p int, n int) int {
+	if p < 0 || p + n > s.len { return -1; }
+	if n == 8 && s[p + 7] >= 128 { return -1; }
+	var r = 0;
+	var i = n - 1;
+	while i >= 0 {
+		let b int = s[p + i];
+		r = (r << 8) | b;
+		i--;
+	}
+	r
+}
+=== -2647e30dbf306bf6
+var lz_c64 u64[>..];
+fn lz_crc_init() {
+	if lz_c64.len > 0 { return; }
+	for n in 256 {
+		var c u64 = n as u64;
+		for k in 8 {
+			if (c & 1) != 0 { c = (c >> 1) ^ 0xC96C5795D7870F42; } else { c = c >> 1; }
+		}
+		lz_c64.push(c);
+	}
+}
+fn lz_crc64(s const byte[:], crc u64) u64 {
+	lz_crc_init();
+	var c u64 = crc ^ 0xFFFFFFFFFFFFFFFF;
+	for b in s {
+		let x u64 = b as u64;
+		let idx int = ((c ^ x) & 255) as int;
+		c = lz_c64[idx] ^ (c >> 8);
+	}
+	c ^ 0xFFFFFFFFFFFFFFFF
+}
+fn lz_le64(s const byte[:], p int) u64 {
+	var r u64 = 0;
+	var i = 7;
+	while i >= 0 {
+		let x u64 = s[p + i] as u64;
+		r = (r << 8) | x;
+		i--;
+	}
+	r
+}
+=== -21828345c399f1e
+var lz_pos = 0;
+var lz_lim = 0;
+var lz_rng = 0;
+var lz_code = 0;
+var lz_bad = false;
+var lz_pr int[>..];
+let LZ_ISREP = 192;
+let LZ_REPG0 = 204;
+let LZ_REPG1 = 216;
+let LZ_REPG2 = 228;
+let LZ_REP0L = 240;
+let LZ_SLOT = 432;
+let LZ_SPEC = 688;
+let LZ_ALIGN = 803;
+let LZ_LEN = 819;
+let LZ_RLEN = 1333;
+let LZ_LIT = 1847;
+=== 54046d2a96c445c0
+var lz_lc = 0;
+var lz_lp = 0;
+var lz_pb = 0;
+var lz_st = 0;
+var lz_r0 = 0;
+var lz_r1 = 0;
+var lz_r2 = 0;
+var lz_r3 = 0;
+var lz_dst = 0;
+var lz_dict = 4294967295;
+var lz_used = 0;
+fn lz_dsize(prop int) int {
+	if prop == 40 { return 4294967295; }
+	(2 | (prop & 1)) << ((prop >> 1) + 11)
+}
+=== -4f9c4bbe72db86e1
+fn lz_props(b int) bool {
+	if b >= 225 { return false; }
+	lz_lc = b % 9;
+	lz_lp = (b / 9) % 5;
+	lz_pb = b / 45;
+	true
+}
+=== -1b3a7a96ceb9efd9
+fn lz_reset(lc int, lp int, pb int) {
+	lz_lc = lc;
+	lz_lp = lp;
+	lz_pb = pb;
+	lz_pr.clear();
+	let n = LZ_LIT + (768 << (lc + lp));
+	while lz_pr.len < n { lz_pr.push(1024); }
+	lz_st = 0;
+	lz_r0 = 0;
+	lz_r1 = 0;
+	lz_r2 = 0;
+	lz_r3 = 0;
+}
+=== 05a61dd8e3fde333
+fn lz_be(s const byte[:], p int, n int) int {
+	var r = 0;
+	for i in n {
+		let b int = s[p + i];
+		r = (r << 8) | b;
+	}
+	r
+}
+fn lz_rc_init(src const byte[:], p int, lim int) bool {
+	lz_pos = p + 5;
+	lz_lim = lim;
+	lz_bad = false;
+	lz_rng = 0xFFFFFFFF;
+	lz_code = 0;
+	if p + 5 > lim || p + 5 > src.len { return false; }
+	if src[p] != 0 { return false; }
+	lz_code = lz_be(src, p + 1, 4);
+	if lz_code == lz_rng { return false; }
+	true
+}
+=== 3a3f2b90503b6658
+fn lz_norm(src const byte[:]) {
+	if lz_rng < 16777216 {
+		var nb = 0;
+		if lz_pos < lz_lim && lz_pos < src.len {
+			nb = src[lz_pos];
+			lz_pos += 1;
+		} else {
+			lz_bad = true;
+		}
+		lz_rng = (lz_rng << 8) & 0xFFFFFFFF;
+		lz_code = ((lz_code << 8) | nb) & 0xFFFFFFFF;
+	}
+}
+=== -79e8aacc964de878
+fn lz_bit(src const byte[:], i int) int {
+	let p = lz_pr[i];
+	let bound = (lz_rng >> 11) * p;
+	var bit = 0;
+	if lz_code < bound {
+		lz_rng = bound;
+		lz_pr[i] = p + ((2048 - p) >> 5);
+	} else {
+		lz_rng -= bound;
+		lz_code -= bound;
+		lz_pr[i] = p - (p >> 5);
+		bit = 1;
+	}
+	lz_norm(src);
+	bit
+}
+=== 502944cd162907d6
+fn lz_tree(src const byte[:], base int, n int) int {
+	var m = 1;
+	for i in n { m = (m << 1) | lz_bit(src, base + m); }
+	m - (1 << n)
+}
+fn lz_rtree(src const byte[:], base int, n int) int {
+	var m = 1;
+	var r = 0;
+	for i in n {
+		let bit = lz_bit(src, base + m);
+		m = (m << 1) | bit;
+		r |= bit << i;
+	}
+	r
+}
+fn lz_direct(src const byte[:], n int) int {
+	var r = 0;
+	for i in n {
+		lz_rng = lz_rng >> 1;
+		var bit = 0;
+		if lz_code >= lz_rng {
+			lz_code -= lz_rng;
+			bit = 1;
+		}
+		lz_norm(src);
+		r = (r << 1) | bit;
+	}
+	r
+}
+=== 4b14a5c032eea856
+fn lz_len(src const byte[:], base int, ps int) int {
+	if lz_bit(src, base) == 0 { return lz_tree(src, base + 2 + ps * 8, 3); }
+	if lz_bit(src, base + 1) == 0 { return 8 + lz_tree(src, base + 130 + ps * 8, 3); }
+	16 + lz_tree(src, base + 258, 8)
+}
+=== 2004bed3f8d92852
+fn lz_dist(src const byte[:], len int) int {
+	let ls = min(len, 3);
+	let slot = lz_tree(src, LZ_SLOT + ls * 64, 6);
+	if slot < 4 { return slot; }
+	let nb = (slot >> 1) - 1;
+	let d = (2 | (slot & 1)) << nb;
+	if slot < 14 {
+		let low = lz_rtree(src, LZ_SPEC + d - slot, nb);
+		return d + low;
+	}
+	let hi = lz_direct(src, nb - 4) << 4;
+	let lo = lz_rtree(src, LZ_ALIGN, 4);
+	d + hi + lo
+}
+=== 0cbcb7f1233617cd
+fn lz_lit(src const byte[:], out byte[>..]&) {
+	let n = out.len - lz_dst;
+	var prev int = 0;
+	if n > 0 { prev = out[out.len - 1]; }
+	let b = LZ_LIT + 768 * (((n & ((1 << lz_lp) - 1)) << lz_lc) + (prev >> (8 - lz_lc)));
+	var sym = 1;
+	if lz_st >= 7 {
+		if lz_r0 >= n {
+			lz_bad = true;
+			return;
+		}
+		var mb int = out[out.len - lz_r0 - 1];
+		while sym < 256 {
+			let mbit = (mb >> 7) & 1;
+			mb = (mb << 1) & 255;
+			let bit = lz_bit(src, b + ((1 + mbit) << 8) + sym);
+			sym = (sym << 1) | bit;
+			if mbit != bit { break; }
+		}
+	}
+	while sym < 256 { sym = (sym << 1) | lz_bit(src, b + sym); }
+	out.push((sym - 256) as byte);
+	if lz_st < 4 { lz_st = 0; } else if lz_st < 10 { lz_st -= 3; } else { lz_st -= 6; }
+}
+=== -490529ea47d5bb8c
+fn lz_match(src const byte[:], out byte[>..]&, ps int, rem int) int {
+	let n = out.len - lz_dst;
+	var ln = 0;
+	if lz_bit(src, LZ_ISREP + lz_st) == 0 {
+		lz_r3 = lz_r2;
+		lz_r2 = lz_r1;
+		lz_r1 = lz_r0;
+		ln = lz_len(src, LZ_LEN, ps);
+		lz_st = if lz_st < 7 { 7 } else { 10 };
+		lz_r0 = lz_dist(src, ln);
+		if lz_r0 == 4294967295 { return 1; }
+	} else {
+		if n == 0 { return -1; }
+		if lz_bit(src, LZ_REPG0 + lz_st) == 0 {
+			if lz_bit(src, LZ_REP0L + (lz_st << 4) + ps) == 0 {
+				lz_st = if lz_st < 7 { 9 } else { 11 };
+				if lz_bad || lz_r0 >= n || lz_r0 >= lz_dict { return -1; }
+				if out.len >= lz_cap {
+					lz_over();
+					return -1;
+				}
+				let sb byte = out[out.len - lz_r0 - 1];
+				out.push(sb);
+				return 0;
+			}
+		} else {
+			var d = 0;
+			if lz_bit(src, LZ_REPG1 + lz_st) == 0 {
+				d = lz_r1;
+			} else {
+				if lz_bit(src, LZ_REPG2 + lz_st) == 0 {
+					d = lz_r2;
+				} else {
+					d = lz_r3;
+					lz_r3 = lz_r2;
+				}
+				lz_r2 = lz_r1;
+			}
+			lz_r1 = lz_r0;
+			lz_r0 = d;
+		}
+		ln = lz_len(src, LZ_RLEN, ps);
+		lz_st = if lz_st < 7 { 8 } else { 11 };
+	}
+	let l = ln + 2;
+	if lz_bad || lz_r0 >= n || lz_r0 >= lz_dict || l > rem { return -1; }
+	if out.len + l > lz_cap {
+		lz_over();
+		return -1;
+	}
+	for i in l {
+		let cb byte = out[out.len - lz_r0 - 1];
+		out.push(cb);
+	}
+	0
+}
+=== 45b1287dd27d8918
+fn lz_run(src const byte[:], out byte[>..]&, size int) bool {
+	let base = out.len;
+	if size >= 0 && base + size > lz_cap { return lz_over(); }
+	while true {
+		let done = out.len - base;
+		if size >= 0 && done == size { return true; }
+		let ps = (out.len - lz_dst) & ((1 << lz_pb) - 1);
+		if lz_bit(src, (lz_st << 4) + ps) == 0 {
+			if out.len >= lz_cap { return lz_over(); }
+			lz_lit(src, out);
+		} else {
+			let rem = if size >= 0 { size - done } else { 1099511627776 };
+			let r = lz_match(src, out, ps, rem);
+			if r == 1 { return size < 0 && !lz_bad && lz_code == 0; }
+			if r < 0 { return false; }
+		}
+		if lz_bad { return false; }
+	}
+	false
+}
+=== 5a6f5d6e8139df26
+fn lz_lzma_dec(src const byte[:], props const byte[:], size int, out byte[>..]&) bool {
+	lz_capped = false;
+	lz_said = false;
+	let n = out.len;
+	lz_dst = n;
+	var ok = false;
+	if props.len >= 5 {
+		let pb0 int = props[0];
+		ok = lz_props(pb0);
+	}
+	if ok {
+		lz_dict = max(lz_le(props, 1, 4), 4096);
+		lz_reset(lz_lc, lz_lp, lz_pb);
+		ok = lz_rc_init(src, 0, src.len) && lz_run(src, out, size);
+		if ok && size >= 0 && lz_code != 0 {
+			let ps = (out.len - lz_dst) & ((1 << lz_pb) - 1);
+			ok = lz_bit(src, (lz_st << 4) + ps) == 1 && lz_match(src, out, ps, 1) == 1 && !lz_bad && lz_code == 0;
+		}
+	}
+	if ok {
+		lz_used = lz_pos;
+		return true;
+	}
+	out.pop_n(out.len - n);
+	if !lz_capped { lz_warn("lzma: corrupt or truncated data"); }
+	false
+}
+=== -7a0c66b108f036be
+fn lz_lzma2_run(src const byte[:], start int, eof_ok bool, out byte[>..]&, endp int&) bool {
+	var need_dict = true;
+	var need_props = true;
+	var p = start;
+	while true {
+		if p >= src.len {
+			if eof_ok {
+				endp = src.len;
+				return true;
+			}
+			return false;
+		}
+		let c int = src[p];
+		if c == 0 {
+			endp = p + 1;
+			return true;
+		}
+		if c >= 224 || c == 1 {
+			lz_dst = out.len;
+			need_dict = false;
+			need_props = true;
+		} else if need_dict { return false; }
+		if c >= 128 {
+			if p + 5 > src.len { return false; }
+			let usize = (((c & 31) << 16) | lz_be(src, p + 1, 2)) + 1;
+			let csize = lz_be(src, p + 3, 2) + 1;
+			var q = p + 5;
+			if c >= 192 {
+				if q >= src.len { return false; }
+				let pbyte int = src[q];
+				q += 1;
+				if !lz_props(pbyte) || lz_lc + lz_lp > 4 { return false; }
+				need_props = false;
+				lz_reset(lz_lc, lz_lp, lz_pb);
+			} else {
+				if need_props { return false; }
+				if c >= 160 { lz_reset(lz_lc, lz_lp, lz_pb); }
+			}
+			if q + csize > src.len { return false; }
+			if !lz_rc_init(src, q, q + csize) { return false; }
+			if !lz_run(src, out, usize) { return false; }
+			if lz_pos != q + csize || lz_code != 0 { return false; }
+			p = q + csize;
+		} else if c <= 2 {
+			if p + 3 > src.len { return false; }
+			let usize = lz_be(src, p + 1, 2) + 1;
+			if p + 3 + usize > src.len { return false; }
+			if out.len + usize > lz_cap {
+				lz_over();
+				return false;
+			}
+			out.append(src[p + 3..p + 3 + usize]);
+			p += 3 + usize;
+		} else {
+			return false;
+		}
+	}
+	false
+}
+=== -22fee2081f4db557
+fn lz_lzma2_dec(src const byte[:], prop int, out byte[>..]&) bool {
+	lz_capped = false;
+	lz_said = false;
+	let n = out.len;
+	var ok = prop >= 0 && prop <= 40;
+	var e = 0;
+	if ok {
+		lz_dict = lz_dsize(prop);
+		ok = lz_lzma2_run(src, 0, true, out, e);
+	}
+	if ok {
+		lz_used = e;
+		return true;
+	}
+	out.pop_n(out.len - n);
+	if !lz_capped { lz_warn("lzma2: corrupt or truncated data"); }
+	false
+}
+=== -7a3dd6b8af195c04
+fn lz_x86(buf byte[>..]&, start int, ip int) {
+	let n = buf.len - start;
+	if n < 5 { return; }
+	let allowed bool[8] = [true, true, true, false, true, false, false, false];
+	let bitnum int[8] = [0, 1, 2, 2, 3, 3, 3, 3];
+	var prev_mask = 0;
+	var prev_pos = 4294967291;
+	if ((ip - prev_pos) & 0xFFFFFFFF) > 5 { prev_pos = (ip - 5) & 0xFFFFFFFF; }
+	let limit = n - 5;
+	var i = 0;
+	while i <= limit {
+		var b int = buf[start + i];
+		if b != 0xE8 && b != 0xE9 {
+			i += 1;
+			continue;
+		}
+		let offset = (ip + i - prev_pos) & 0xFFFFFFFF;
+		prev_pos = (ip + i) & 0xFFFFFFFF;
+		if offset > 5 {
+			prev_mask = 0;
+		} else {
+			for rep in offset { prev_mask = (prev_mask & 0x77) << 1; }
+		}
+		b = buf[start + i + 4];
+		if (b == 0 || b == 255) && allowed[(prev_mask >> 1) & 7] && (prev_mask >> 1) < 16 {
+			var src = lz_le(buf, start + i + 1, 4);
+			var dest = 0;
+			while true {
+				dest = (src - (ip + i + 5)) & 0xFFFFFFFF;
+				if prev_mask == 0 { break; }
+				let k = bitnum[(prev_mask >> 1) & 7];
+				b = (dest >> (24 - k * 8)) & 255;
+				if !(b == 0 || b == 255) { break; }
+				src = dest ^ ((1 << (32 - k * 8)) - 1);
+			}
+			buf[start + i + 4] = if (dest & 0x1000000) != 0 { 255 } else { 0 };
+			buf[start + i + 3] = ((dest >> 16) & 255) as byte;
+			buf[start + i + 2] = ((dest >> 8) & 255) as byte;
+			buf[start + i + 1] = (dest & 255) as byte;
+			i += 5;
+			prev_mask = 0;
+		} else {
+			i += 1;
+			prev_mask = prev_mask | 1;
+			if b == 0 || b == 255 { prev_mask = prev_mask | 16; }
+		}
+	}
+}
+=== -39a08ae4ad4283c2
+fn lz_delta(buf byte[>..]&, start int, dist int) {
+	var j = start + dist;
+	while j < buf.len {
+		let a int = buf[j];
+		let c int = buf[j - dist];
+		buf[j] = ((a + c) & 255) as byte;
+		j++;
+	}
+}
+=== -654b1d0162f8e54
+fn lz_is_xz(d const byte[:]) bool {
+	if d.len < 12 { return false; }
+	d[0] == 0xFD && d[1] == 0x37 && d[2] == 0x7A && d[3] == 0x58 && d[4] == 0x5A && d[5] == 0
+}
+=== -43d97cf5c1be8ec
+fn lz_varint(d const byte[:], p int&, lim int) int {
+	var r = 0;
+	var i = 0;
+	while true {
+		if p >= lim || p >= d.len { return -1; }
+		if i >= 9 { return -1; }
+		let b int = d[p];
+		p += 1;
+		r = r | ((b & 127) << (7 * i));
+		if b < 128 {
+			if b == 0 && i > 0 { return -1; }
+			return r;
+		}
+		i += 1;
+	}
+	-1
+}
+=== -51e6494258aa7211
+fn lz_chk_size(t int) int {
+	if t == 0 { return 0; }
+	if t <= 3 { return 4; }
+	if t <= 6 { return 8; }
+	if t <= 9 { return 16; }
+	if t <= 12 { return 32; }
+	if t <= 15 { return 64; }
+	-1
+}
+=== -32b008d4e1706cf6
+fn lz_check(t int, d const byte[:], p int, data const byte[:]) bool {
+	if t == 1 { return lz_le(d, p, 4) == pack::pk_crc32(data, 0); }
+	if t == 4 { return lz_le64(d, p) == lz_crc64(data, 0); }
+	if t == 10 {
+		let h = crypto::sha256(data);
+		for i in 32 {
+			if d[p + i] != h[i] { return false; }
+		}
+		return true;
+	}
+	true
+}
+=== 4c26c194b85d7155
+var lz_recu int[>..];
+var lz_recs int[>..];
+var lz_fid int[>..];
+var lz_fpr int[>..];
+=== -63c8ec02fce4ed31
+fn lz_xz_block(d const byte[:], p int, t int, out byte[>..]&, upad int&, usz int&, endp int&) bool {
+	if p >= d.len { return false; }
+	let hb int = d[p];
+	let hs = (hb + 1) * 4;
+	if p + hs > d.len { return false; }
+	if lz_le(d, p + hs - 4, 4) != pack::pk_crc32(d[p..p + hs - 4], 0) {
+		lz_warn("xz: header CRC mismatch");
+		return false;
+	}
+	let flags int = d[p + 1];
+	let nf = (flags & 3) + 1;
+	if (flags & 0x3C) != 0 { return false; }
+	var q = p + 2;
+	let hend = p + hs - 4;
+	var csz = -1;
+	if (flags & 0x40) != 0 {
+		csz = lz_varint(d, q, hend);
+		if csz < 0 { return false; }
+	}
+	var hus = -1;
+	if (flags & 0x80) != 0 {
+		hus = lz_varint(d, q, hend);
+		if hus < 0 { return false; }
+	}
+	lz_fid.clear();
+	lz_fpr.clear();
+	for i in nf {
+		let id = lz_varint(d, q, hend);
+		let psz = lz_varint(d, q, hend);
+		if id < 0 || psz < 0 || q + psz > hend { return false; }
+		var pv = -1;
+		if psz == 1 {
+			pv = d[q];
+		} else if psz == 4 {
+			pv = lz_le(d, q, 4);
+		}
+		let last = i == nf - 1;
+		if id == 0x21 {
+			if !last || psz != 1 || pv > 40 { return false; }
+		} else if id == 3 {
+			if last || psz != 1 { return false; }
+		} else if id == 4 {
+			if last || (psz != 0 && psz != 4) { return false; }
+		} else {
+			lz_warn("xz: unsupported filter");
+			return false;
+		}
+		lz_fid.push(id);
+		lz_fpr.push(pv);
+		q += psz;
+	}
+	for k in q..hend {
+		if d[k] != 0 { return false; }
+	}
+	if hus >= 0 && out.len + hus > lz_cap {
+		lz_over();
+		return false;
+	}
+	lz_dict = lz_dsize(lz_fpr[nf - 1]);
+	let bstart = out.len;
+	let ds = p + hs;
+	var e = 0;
+	if !lz_lzma2_run(d, ds, false, out, e) { return false; }
+	if csz >= 0 && csz != e - ds { return false; }
+	usz = out.len - bstart;
+	if hus >= 0 && hus != usz { return false; }
+	var fi = nf - 2;
+	while fi >= 0 {
+		let id = lz_fid[fi];
+		let pv = lz_fpr[fi];
+		if id == 3 {
+			lz_delta(out, bstart, pv + 1);
+		} else {
+			lz_x86(out, bstart, if pv == -1 { 0 } else { pv });
+		}
+		fi--;
+	}
+	let npad = (4 - (e - p) % 4) % 4;
+	if e + npad > d.len { return false; }
+	for k in npad {
+		if d[e + k] != 0 { return false; }
+	}
+	let csize = e - ds;
+	e += npad;
+	let cs = lz_chk_size(t);
+	if cs < 0 || e + cs > d.len { return false; }
+	if !lz_check(t, d, e, out[bstart..]) {
+		lz_warn("xz: CRC mismatch");
+		return false;
+	}
+	endp = e + cs;
+	upad = hs + csize + cs;
+	true
+}
+=== -435d392754a0db71
+fn lz_xz_stream(d const byte[:], p int, out byte[>..]&, endp int&) bool {
+	if p + 12 > d.len { return false; }
+	if !lz_is_xz(d[p..]) { return false; }
+	if d[p + 6] != 0 || d[p + 7] >= 16 { return false; }
+	let t int = d[p + 7];
+	if lz_le(d, p + 8, 4) != pack::pk_crc32(d[p + 6..p + 8], 0) {
+		lz_warn("xz: header CRC mismatch");
+		return false;
+	}
+	lz_recu.clear();
+	lz_recs.clear();
+	var q = p + 12;
+	while true {
+		if q >= d.len { return false; }
+		if d[q] == 0 { break; }
+		var up = 0;
+		var us = 0;
+		var e = 0;
+		if !lz_xz_block(d, q, t, out, up, us, e) { return false; }
+		lz_recu.push(up);
+		lz_recs.push(us);
+		q = e;
+	}
+	let i0 = q;
+	var r = q + 1;
+	let cnt = lz_varint(d, r, d.len);
+	if cnt != lz_recu.len { return false; }
+	for k in cnt {
+		let a = lz_varint(d, r, d.len);
+		let b = lz_varint(d, r, d.len);
+		if a != lz_recu[k] || b != lz_recs[k] { return false; }
+	}
+	while (r - i0) % 4 != 0 {
+		if r >= d.len || d[r] != 0 { return false; }
+		r += 1;
+	}
+	if r + 4 > d.len { return false; }
+	if lz_le(d, r, 4) != pack::pk_crc32(d[i0..r], 0) { return false; }
+	q = r + 4;
+	let isz = q - i0;
+	if q + 12 > d.len { return false; }
+	if lz_le(d, q, 4) != pack::pk_crc32(d[q + 4..q + 10], 0) { return false; }
+	if (lz_le(d, q + 4, 4) + 1) * 4 != isz { return false; }
+	if d[q + 8] != d[p + 6] || d[q + 9] != d[p + 7] { return false; }
+	if d[q + 10] != 0x59 || d[q + 11] != 0x5A { return false; }
+	endp = q + 12;
+	true
+}
+=== 41d335326b853862
+fn lz_xz_fail(out byte[>..]&) bool {
+	out.clear();
+	if !lz_capped && !lz_said { lz_warn("xz: corrupt or truncated data"); }
+	false
+}
+fn lz_unxz(d const byte[:], out byte[>..]&) bool {
+	out.clear();
+	lz_capped = false;
+	lz_said = false;
+	if !lz_is_xz(d) {
+		lz_warn("xz: not an xz file");
+		return false;
+	}
+	var p = 0;
+	while true {
+		var e = 0;
+		if !lz_xz_stream(d, p, out, e) { return lz_xz_fail(out); }
+		p = e;
+		let s = p;
+		while p < d.len && d[p] == 0 { p += 1; }
+		if (p - s) % 4 != 0 { return lz_xz_fail(out); }
+		if p >= d.len { break; }
+		if d.len - p >= 12 && lz_is_xz(d[p..]) { continue; }
+		lz_warn("xz: trailing bytes ignored");
+		break;
+	}
+	true
+}
+=== -250fdfbe09e7c7d0
+fn lz_is_lzma(d const byte[:]) bool {
+	if d.len < 18 { return false; }
+	if d[0] >= 225 { return false; }
+	let ds = lz_le(d, 1, 4);
+	var ok = ds == 4294967295;
+	for n in 32 {
+		if ds == (1 << n) { ok = true; }
+		if n < 31 && ds == 3 * (1 << n) { ok = true; }
+	}
+	if !ok { return false; }
+	var allff = true;
+	for i in 8 {
+		if d[5 + i] != 0xFF { allff = false; }
+	}
+	if !allff {
+		let us = lz_le(d, 5, 8);
+		if us < 0 || us >= 274877906944 { return false; }
+	}
+	d[13] == 0
+}
+=== 4fcd0390a3c5a1e9
+fn lz_unlzma(d const byte[:], out byte[>..]&) bool {
+	out.clear();
+	lz_capped = false;
+	lz_said = false;
+	if !lz_is_lzma(d) {
+		lz_warn("lzma: not an lzma file");
+		return false;
+	}
+	var size = -1;
+	var allff = true;
+	for i in 8 {
+		if d[5 + i] != 0xFF { allff = false; }
+	}
+	if !allff { size = lz_le(d, 5, 8); }
+	if !lz_lzma_dec(d[13..], d[0..5], size, out) {
+		out.clear();
+		return false;
+	}
+	true
+}

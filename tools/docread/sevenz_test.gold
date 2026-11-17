@@ -1,0 +1,364 @@
+use std
+into sevenz_test.amni
+
+```amni
+import os;
+import dm;
+import pack;
+import lzma;
+import sevenz;
+import crypto.hash;
+```
+
+`ld(name const byte[:]) byte[>..]` returns the bytes of the file "tests/fixtures/" followed by name read with `os::read_file` (an empty list, after printing "missing " and the name, when it cannot be read).
+
+`p(text const byte[:])` prints text and a newline with `os::write_stdout`.
+
+`warns()` prints "warn " and each line of `dm::dm_warn` (one print per line, splitting at the newline byte 10), then calls `dm::dm_reset("x", "y")` so the next case starts clean.
+
+`hex(b const byte[:]) byte[>..]` returns the bytes of b as lower-case hex digits.
+
+`sha16(b const byte[:]) byte[>..]` returns the first 16 characters of `hex` of `crypto::sha256` of b.
+
+`ok(v bool) int` is 1 when v is true and 0 otherwise.
+
+`cat(a const byte[:], b const byte[:]) byte[>..]` returns a followed by b.
+
+`ids(n int, v int) byte[>..]` returns the n bytes of v, most significant first.
+
+`le(out byte[>..]&, v int, n int)` appends v to out as n little-endian bytes.
+
+`put(m byte[>..]&, at int, v int, n int)` stores v into m at offset at as n little-endian bytes (replacing the bytes there).
+
+`fixs(m byte[>..]&)` calls `put(m, 8, pack::pk_crc32(m[12..32], 0), 4)`, which repairs the CRC of the start header.
+
+`fixh(m byte[>..]&, st int, n int)` calls `put(m, 28, pack::pk_crc32(m[st..st + n], 0), 4)` and then `fixs(m)`, which repairs the CRC of the next header that starts at offset st and has n bytes.
+
+`arc(name const byte[:])` loads the fixture name with `ld` (returning when it is empty), opens it with `sevenz::sz_open` into h and prints name, " open ", h, a space and `sevenz::sz_count(h)`. When h is 0 or more: for each index i from 0 to the count minus 1, with a list out that starts as the four bytes of "junk", it makes r as `ok` of `sevenz::sz_read(h, i, out)` and prints name, a space, i, a space, `sevenz::sz_name(h, i)`, a space, `sevenz::sz_size(h, i)`, a space, "D" when `sevenz::sz_is_dir(h, i)` and "F" otherwise, a space, "E" when `sevenz::sz_encrypted(h, i)` and "-" otherwise, a space, r, a space and `sha16` of out. It then closes h with `sevenz::sz_close`. At the end it calls `warns()`.
+
+`all7(d const byte[:]) int` opens d with `sevenz::sz_open` into h and returns 0 when h is negative; otherwise it reads every entry i from 0 to the count minus 1 with `sevenz::sz_read` into a scratch list, closes h, and returns 1 when every read returned true and 0 otherwise. It calls `dm::dm_reset("x", "y")` before returning.
+
+`zs(name const byte[:], mask int)` loads the fixture name with `ld`, and counts and sums the positions k from 0 to the length minus 1 for which `all7` of a copy of the file with byte k xor-ed with mask returns 1 (the sum adds up those k). It prints "zs ", name, " flip", mask, a space, the count, a space, the file length, a space and the sum.
+
+`zc(name const byte[:])` loads the fixture name with `ld`, and counts the cut lengths n from 0 to the length minus 1 for which `all7` of the first n bytes of the file returns 1. It prints "zs ", name, " cut ", the count, a space and the file length.
+
+`fz(name const byte[:], mask int)` loads the fixture name with `ld` into z, takes noff as `lzma::lz_le(z, 12, 8)` and nsize as `lzma::lz_le(z, 20, 8)`, and st as 32 plus noff. For each k from st to st plus nsize minus 1 it copies z, xors byte k with mask, calls `fixh(copy, st, nsize)` and calls `all7` on the copy; it counts the ones that return 1 and sums k minus st over them. It prints "fz ", name, a space, mask, a space, nsize, a space, the count, a space and the sum.
+
+`mk7(id const byte[:], props const byte[:], packed const byte[:], usize int, crc int) byte[>..]` builds a 7z archive with one file "a.txt" and returns its bytes. The plain header is a list hd of the bytes 1, 4, 6, 0, 1, 9, packed.len, 0, 7, 11, 1, 0, 1; then one coder: a flags byte equal to id.len plus 32 when props is not empty, the bytes of id, and, when props is not empty, props.len followed by the bytes of props; then the bytes 12, usize, 10, 1, crc as 4 little-endian bytes (`le`), 0, 0; then the bytes 5, 1, 17, 13, 0, then the 5 characters of "a.txt" each followed by a 0 byte, then two 0 bytes (the end of the name), then the bytes 0, 0 (the end of the files info and of the header). A list tail holds `le(tail, packed.len, 8)`, `le(tail, hd.len, 8)` and `le(tail, pack::pk_crc32(hd, 0), 4)`. The archive is the bytes 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0, 4, then `le(.., pack::pk_crc32(tail, 0), 4)`, then tail, then packed, then hd.
+
+`xc(label const byte[:], a const byte[:])` opens a with `sevenz::sz_open` into h and prints label, a space, h, a space, `sevenz::sz_count(h)`, a space, `sevenz::sz_name(h, 0)`, a space, `sevenz::sz_size(h, 0)`, a space, `ok` of `sevenz::sz_encrypted(h, 0)`, a space, `ok` of `sevenz::sz_read(h, 0, out)` where out is a list that starts as the four bytes of "junk", a space and `sha16` of out. It then calls `warns()` and closes h with `sevenz::sz_close`.
+
+`main()` runs these cases in order, starting with `dm::dm_reset("x", "y")`; the case paragraphs below follow in the order written. The garden text z is `ld("sz_basic.7z")`.
+
+Case a (listings and reads): call `arc` with each of these names, in order: "sz_basic.7z", "sz_plain.7z", "sz_lzma.7z", "sz_lclp.7z", "sz_copy.7z", "sz_deflate.7z", "sz_bzip2.7z", "sz_delta.7z", "sz_bcj.7z", "sz_bcjdelta.7z", "sz_nosolid.7z", "sz_folders.7z", "sz_empty.7z", "sz_enc.7z", "sz_ppmd.7z", "sz_bcj2.7z", "sz_arm64.7z", "sz_deflate64.7z", "sz_zero.7z".
+
+Case e (encrypted header): print "e1 " and `sevenz::sz_open` of `ld("sz_enche.7z")`, then call `warns()`. Open z, print "e2 ", the handle, a space and its `sevenz::sz_count`, and close it.
+
+Case n (not 7z): print "n1 " followed by `sevenz::sz_open` of each of these, separated by single spaces: `ld("pk_garden.txt")`, an empty list, `ld("pk_garden.txt.gz")`, `ld("lz_garden.xz")`, 32 zero bytes, the first 31 bytes of z, the first 32 bytes of z, the first 40 bytes of z, and a copy of z whose byte 6 is set to 1. Then call `warns()`.
+
+Case h (damaged start and header): print "h1 " followed by `sevenz::sz_open` of a copy of z with byte 8 xor-ed with 1, a space and `sevenz::sz_open` of a copy of z with byte 28 xor-ed with 1; call `warns()`. Print "h2 " followed by `sevenz::sz_open` of a copy of z whose bytes 20 to 27 are all 255 and then `fixs` is applied, a space and `sevenz::sz_open` of a copy of z whose byte 17 is set to 1 and then `fixs` is applied; call `warns()`.
+
+Case l (handles): ha is `sevenz::sz_open(z)` and hb is `sevenz::sz_open(ld("sz_plain.7z"))`; print "l1 ", ha, a space, hb, a space, and `sha16` of entry 4 read from ha, a space and `sha16` of entry 4 read from hb (each read with `sevenz::sz_read` into a scratch list). Close ha with `sevenz::sz_close`; print "l2 ", `sevenz::sz_count(ha)`, a space, `sevenz::sz_count(hb)`, a space, `sevenz::sz_size(ha, 4)` and a space and `sha16` of entry 8 read from hb. Let hc be `sevenz::sz_open(ld("sz_lzma.7z"))` and print "l3 " and hc. Close hc, close hb, close ha again, then close 7 and close -1. Let hz be `sevenz::sz_open(ld("sz_zero.7z"))`; print "l4 ", hz, a space and `sevenz::sz_count(hz)`; close hz twice and print "l5 " and `sevenz::sz_count(hz)`.
+
+Case b (bad handles and indexes): print "b1 " followed by these separated by single spaces: `sevenz::sz_count(7)`, the length of `sevenz::sz_name(7, 0)`, `sevenz::sz_size(7, 0)`, `ok` of `sevenz::sz_is_dir(7, 0)`, `ok` of `sevenz::sz_encrypted(7, 0)`, `sevenz::sz_find(7, "x")`, `ok` of `sevenz::sz_read(7, 0, out)` with out a list that starts as the four bytes of "junk", then the length of out, and `sevenz::sz_count(-1)`. Open z into h and print "b2 " followed by, separated by single spaces: `sevenz::sz_size(h, 12)`, `sevenz::sz_size(h, -1)`, the length of `sevenz::sz_name(h, 99)`, `ok` of `sevenz::sz_read(h, 99, out)` (out again a list that starts as "junk"), the length of out, `ok` of `sevenz::sz_is_dir(h, 2)` and `ok` of `sevenz::sz_is_dir(h, 4)`; close h.
+
+Case f (find): open z into h and print "f1 " followed by `sevenz::sz_find(h, name)` for each of these names, separated by single spaces: "garden/a.txt", the text "garden", the byte 92 and the text "a.txt" joined together (a backslash path), "GARDEN/A.TXT", "./garden/a.txt", "garden/sub/", "garden/café-ñ.txt", "GARDEN/CAFÉ-Ñ.TXT", "nope" and the empty text; close h.
+
+Case c (the 256 MiB limit, lowered): set `sevenz::sz_cap` to 2000. Open z into h; print "c1 ", h, a space, `ok` of reading entry 4 of h with `sevenz::sz_read` into a scratch list, a space and `ok` of reading entry 3; call `warns()`; close h. Open `ld("sz_copy.7z")` into h and print "c2 " followed by `ok` of reading entry 4, a space, `ok` of reading entry 7 and a space and `ok` of reading entry 9; call `warns()`; close h. Set `sevenz::sz_cap` to 500, print "c3 " and `sevenz::sz_open(z)`, call `warns()`. Set `sevenz::sz_cap` back to 268435456, open z into h, print "c4 " and h, and close h.
+
+Case r (the folder cache): open z into h; read entries 8, 4, 8 and 9 with `sevenz::sz_read` (each into a scratch list) and print "r1 " followed by the four `sha16` values separated by single spaces; close h.
+
+Case m (damaged data): m1 is a copy of `ld("sz_copy.7z")` whose byte 40 is set to 127; open it into h and print "m1 ", h, a space, `ok` of reading entry 4 (a scratch list), a space and `ok` of reading entry 5; call `warns()`; close h. m2 is a copy of z whose byte 100 is set to 127; open it into h and print "m2 " followed by `ok` of reading entry 3, a space, `ok` of reading entry 4 and a space and `ok` of reading entry 8; call `warns()`; close h.
+
+Case x (archives built in memory): hw is the text "hello world" and cw is `pack::pk_crc32(hw, 0)`; hl is the text "hello" and cl is `pack::pk_crc32(hl, 0)`. Call `xc` with these labels and archives, in order: "x1" with `mk7(ids(1, 0), "", hw, 11, cw)`; "x2" with `mk7(ids(1, 0), "", hw, 11, cw xor-ed with 1)`; "x3" with `mk7(ids(1, 0), "", hw, 12, cw)`; "x4" with `mk7(ids(4, 0x03030501), "", hw, 11, cw)`; "x6" with `mk7(ids(4, 0x06F10701), ids(1, 1), hw, 11, cw)`; "x7" with `mk7(ids(3, 0x030101), ids(2, 0x5D00), hw, 11, cw)`; "x8" with `mk7(ids(3, 0x040108), "", cat(ids(5, 0x010500FAFF), hl), 5, cl)`; "x9" with `mk7(ids(1, 0x21), ids(1, 24), cat(cat(ids(3, 0x010004), hl), ids(1, 0)), 5, cl)`.
+
+Case s (damage sweeps; the real 7z tool rejects every one of these except the flip of byte 7, the minor version): call `zs` with ("sz_basic.7z", 85), ("sz_plain.7z", 85) and ("sz_copy.7z", 85), then `zc` with "sz_basic.7z", "sz_plain.7z" and "sz_copy.7z".
+
+Case u (header fuzz with repaired CRCs; the real 7z tool gives the same counts): call `fz` with ("sz_plain.7z", 1), ("sz_plain.7z", 85), ("sz_plain.7z", 255), ("sz_basic.7z", 1), ("sz_basic.7z", 85) and ("sz_basic.7z", 255).
+
+expect:
+sz_basic.7z open 0 12
+sz_basic.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_basic.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_basic.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_basic.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_basic.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_basic.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_basic.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_basic.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_basic.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_basic.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_basic.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_basic.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_plain.7z open 0 12
+sz_plain.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_plain.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_plain.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_plain.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_plain.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_plain.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_plain.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_plain.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_plain.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_plain.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_plain.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_plain.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_lzma.7z open 0 12
+sz_lzma.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_lzma.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_lzma.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_lzma.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_lzma.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_lzma.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_lzma.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_lzma.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_lzma.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_lzma.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_lzma.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_lzma.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_lclp.7z open 0 12
+sz_lclp.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_lclp.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_lclp.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_lclp.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_lclp.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_lclp.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_lclp.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_lclp.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_lclp.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_lclp.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_lclp.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_lclp.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_copy.7z open 0 12
+sz_copy.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_copy.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_copy.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_copy.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_copy.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_copy.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_copy.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_copy.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_copy.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_copy.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_copy.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_copy.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_deflate.7z open 0 12
+sz_deflate.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_deflate.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_deflate.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_deflate.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_deflate.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_deflate.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_deflate.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_deflate.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_deflate.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_deflate.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_deflate.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_deflate.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_bzip2.7z open 0 12
+sz_bzip2.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_bzip2.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_bzip2.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_bzip2.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_bzip2.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_bzip2.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_bzip2.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_bzip2.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_bzip2.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_bzip2.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_bzip2.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_bzip2.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_delta.7z open 0 12
+sz_delta.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_delta.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_delta.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_delta.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_delta.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_delta.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_delta.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_delta.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_delta.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_delta.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_delta.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_delta.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_bcj.7z open 0 12
+sz_bcj.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_bcj.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_bcj.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_bcj.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_bcj.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_bcj.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_bcj.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_bcj.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_bcj.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_bcj.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_bcj.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_bcj.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_bcjdelta.7z open 0 12
+sz_bcjdelta.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_bcjdelta.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_bcjdelta.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_bcjdelta.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_bcjdelta.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_bcjdelta.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_bcjdelta.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_bcjdelta.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_bcjdelta.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_bcjdelta.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_bcjdelta.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_bcjdelta.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_nosolid.7z open 0 12
+sz_nosolid.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_nosolid.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_nosolid.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_nosolid.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_nosolid.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_nosolid.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_nosolid.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_nosolid.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_nosolid.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_nosolid.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_nosolid.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_nosolid.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_folders.7z open 0 12
+sz_folders.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_folders.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_folders.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_folders.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_folders.7z 4 garden/a.txt 83 F - 1 35531a30e78dce26
+sz_folders.7z 5 garden/b.txt 58 F - 1 72b64614ab95c02a
+sz_folders.7z 6 garden/café-ñ.txt 39 F - 1 5f2577bdceee205f
+sz_folders.7z 7 garden/code.exe 4000 F - 1 8c004f1fbbebce4a
+sz_folders.7z 8 garden/rows.txt 15270 F - 1 108fc8f72da21870
+sz_folders.7z 9 garden/samples.dat 2000 F - 1 c24eef2182735bec
+sz_folders.7z 10 garden/sub/c.txt 54 F - 1 c7fc3d69561477d4
+sz_folders.7z 11 garden/tulip 🌷.txt 37 F - 1 f79d4f9067528599
+sz_empty.7z open 0 3
+sz_empty.7z 0 e 0 D - 1 e3b0c44298fc1c14
+sz_empty.7z 1 e/d 0 D - 1 e3b0c44298fc1c14
+sz_empty.7z 2 e/z.txt 0 F - 1 e3b0c44298fc1c14
+sz_enc.7z open 0 12
+sz_enc.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_enc.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_enc.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_enc.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_enc.7z 4 garden/a.txt 83 F E 0 e3b0c44298fc1c14
+sz_enc.7z 5 garden/b.txt 58 F E 0 e3b0c44298fc1c14
+sz_enc.7z 6 garden/café-ñ.txt 39 F E 0 e3b0c44298fc1c14
+sz_enc.7z 7 garden/code.exe 4000 F E 0 e3b0c44298fc1c14
+sz_enc.7z 8 garden/rows.txt 15270 F E 0 e3b0c44298fc1c14
+sz_enc.7z 9 garden/samples.dat 2000 F E 0 e3b0c44298fc1c14
+sz_enc.7z 10 garden/sub/c.txt 54 F E 0 e3b0c44298fc1c14
+sz_enc.7z 11 garden/tulip 🌷.txt 37 F E 0 e3b0c44298fc1c14
+warn 7z: encrypted entry
+sz_ppmd.7z open 0 12
+sz_ppmd.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_ppmd.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_ppmd.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_ppmd.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_ppmd.7z 4 garden/a.txt 83 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 5 garden/b.txt 58 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 6 garden/café-ñ.txt 39 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 7 garden/code.exe 4000 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 8 garden/rows.txt 15270 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 9 garden/samples.dat 2000 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 10 garden/sub/c.txt 54 F - 0 e3b0c44298fc1c14
+sz_ppmd.7z 11 garden/tulip 🌷.txt 37 F - 0 e3b0c44298fc1c14
+warn 7z: unsupported method PPMd
+sz_bcj2.7z open 0 12
+sz_bcj2.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_bcj2.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_bcj2.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_bcj2.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_bcj2.7z 4 garden/a.txt 83 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 5 garden/b.txt 58 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 6 garden/café-ñ.txt 39 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 7 garden/code.exe 4000 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 8 garden/rows.txt 15270 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 9 garden/samples.dat 2000 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 10 garden/sub/c.txt 54 F - 0 e3b0c44298fc1c14
+sz_bcj2.7z 11 garden/tulip 🌷.txt 37 F - 0 e3b0c44298fc1c14
+warn 7z: unsupported method BCJ2
+sz_arm64.7z open 0 12
+sz_arm64.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_arm64.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_arm64.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_arm64.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_arm64.7z 4 garden/a.txt 83 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 5 garden/b.txt 58 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 6 garden/café-ñ.txt 39 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 7 garden/code.exe 4000 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 8 garden/rows.txt 15270 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 9 garden/samples.dat 2000 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 10 garden/sub/c.txt 54 F - 0 e3b0c44298fc1c14
+sz_arm64.7z 11 garden/tulip 🌷.txt 37 F - 0 e3b0c44298fc1c14
+warn 7z: unsupported method ARM64
+sz_deflate64.7z open 0 12
+sz_deflate64.7z 0 garden 0 D - 1 e3b0c44298fc1c14
+sz_deflate64.7z 1 garden/emptydir 0 D - 1 e3b0c44298fc1c14
+sz_deflate64.7z 2 garden/sub 0 D - 1 e3b0c44298fc1c14
+sz_deflate64.7z 3 garden/empty.txt 0 F - 1 e3b0c44298fc1c14
+sz_deflate64.7z 4 garden/a.txt 83 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 5 garden/b.txt 58 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 6 garden/café-ñ.txt 39 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 7 garden/code.exe 4000 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 8 garden/rows.txt 15270 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 9 garden/samples.dat 2000 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 10 garden/sub/c.txt 54 F - 0 e3b0c44298fc1c14
+sz_deflate64.7z 11 garden/tulip 🌷.txt 37 F - 0 e3b0c44298fc1c14
+warn 7z: unsupported method Deflate64
+sz_zero.7z open 0 0
+e1 -2
+e2 0 12
+n1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+warn 7z: damaged archive
+h1 -1 -1
+warn 7z: damaged archive
+h2 -1 -1
+warn 7z: damaged archive
+l1 0 1 35531a30e78dce26 35531a30e78dce26
+l2 0 12 -1 108fc8f72da21870
+l3 2
+l4 0 0
+l5 0
+b1 0 0 -1 0 0 -1 0 0 0
+b2 -1 -1 0 0 0 1 0
+f1 4 4 4 4 2 6 -1 -1 -1
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c2 1 0 1
+warn decompressed data passes the limit of 256 MiB
+c3 -1
+warn decompressed data passes the limit of 256 MiB
+c4 0
+r1 108fc8f72da21870 35531a30e78dce26 108fc8f72da21870 c24eef2182735bec
+m1 0 0 1
+warn 7z: CRC mismatch
+m2 1 0 0
+warn lzma2: corrupt or truncated data
+warn 7z: corrupt or truncated data
+x1 0 1 a.txt 11 0 1 b94d27b9934d3e08
+x2 0 1 a.txt 11 0 0 e3b0c44298fc1c14
+warn 7z: CRC mismatch
+x3 0 1 a.txt 12 0 0 e3b0c44298fc1c14
+warn 7z: corrupt or truncated data
+x4 0 1 a.txt 11 0 0 e3b0c44298fc1c14
+warn 7z: unsupported method 03030501
+x6 0 1 a.txt 11 1 0 e3b0c44298fc1c14
+warn 7z: encrypted entry
+x7 0 1 a.txt 11 0 0 e3b0c44298fc1c14
+warn 7z: corrupt or truncated data
+x8 0 1 a.txt 5 0 1 2cf24dba5fb0a30e
+x9 0 1 a.txt 5 0 1 2cf24dba5fb0a30e
+zs sz_basic.7z flip85 1 7632 7
+zs sz_plain.7z flip85 1 7955 7
+zs sz_copy.7z flip85 1 21863 7
+zs sz_basic.7z cut 0 7632
+zs sz_plain.7z cut 0 7955
+zs sz_copy.7z cut 0 21863
+fz sz_plain.7z 1 622 491 175044
+fz sz_plain.7z 85 622 498 177403
+fz sz_plain.7z 255 622 491 175031
+fz sz_basic.7z 1 35 4 86
+fz sz_basic.7z 85 35 5 114
+fz sz_basic.7z 255 35 5 114

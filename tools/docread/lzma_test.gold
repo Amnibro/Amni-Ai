@@ -1,0 +1,193 @@
+use std
+into lzma_test.amni
+
+```amni
+import os;
+import dm;
+import pack;
+import lzma;
+import crypto.hash;
+```
+
+`ld(name const byte[:]) byte[>..]` returns the bytes of the file "tests/fixtures/" followed by name read with `os::read_file` (an empty list, after printing "missing " and the name, when it cannot be read).
+
+`p(text const byte[:])` prints text and a newline with `os::write_stdout`.
+
+`same(a const byte[:], b const byte[:]) int` is 1 when a and b hold the same bytes and 0 otherwise.
+
+`warns()` prints "warn " and each line of `dm::dm_warn` (one print per line, splitting at the newline byte 10), then calls `dm::dm_reset("x", "y")` so the next case starts clean.
+
+`hex(b const byte[:]) byte[>..]` returns the bytes of b as lower-case hex digits.
+
+`sha16(b const byte[:]) byte[>..]` returns the first 16 characters of `hex` of `crypto::sha256` of b.
+
+`cat(a const byte[:], b const byte[:]) byte[>..]` returns a followed by b.
+
+`ba(a int, b int, c int, text const byte[:]) byte[>..]` returns the three bytes a, b and c followed by the bytes of text.
+
+`ok(v bool) int` is 1 when v is true and 0 otherwise.
+
+`xzf(name const byte[:])` loads the fixture name with `ld` (returning when it is empty). A list out starts as the four bytes of "junk". It prints one line: name, a space, `ok` of `lzma::lz_is_xz` of the file, a space, `ok` of `lzma::lz_is_lzma` of the file, a space, `ok` of `lzma::lz_unxz` of the file into out, a space, the length of out, a space and `sha16` of out; then it calls `warns()`.
+
+`lzf(name const byte[:])` loads the fixture name with `ld` (returning when it is empty). A list out starts as the four bytes of "junk". It prints one line: name, a space, `ok` of `lzma::lz_is_xz`, a space, `ok` of `lzma::lz_is_lzma`, a space, `ok` of `lzma::lz_unlzma` of the file into out, a space, the length of out, a space and `sha16` of out; then it calls `warns()`.
+
+`neg(name const byte[:])` loads the fixture name with `ld` (returning when it is empty) and prints one line: name, a space, `ok` of `lzma::lz_is_xz`, a space, `ok` of `lzma::lz_is_lzma`, a space, `ok` of `lzma::lz_unxz` into a scratch list, a space and `ok` of `lzma::lz_unlzma` into a scratch list; then it calls `warns()`.
+
+`dec(z const byte[:], isxz int) int` is 1 when decoding z into a scratch list returns true, using `lzma::lz_unxz` when isxz is 1 and `lzma::lz_unlzma` otherwise, and 0 otherwise; it calls `dm::dm_reset("x", "y")` before returning.
+
+`flips(z const byte[:], isxz int, mask int) int` returns how many positions k from 0 to z.len minus 1 have `dec` returning 1 on a copy of z whose byte k is xor-ed with mask.
+
+`cuts(z const byte[:], isxz int) int` returns how many cut lengths n from 0 to z.len minus 1 have `dec` returning 1 on the first n bytes of z.
+
+`sweep(name const byte[:], isxz int, mask int)` loads the fixture name with `ld` and prints "s ", name, " flip", mask, a space, `flips` of the file with isxz and mask, a space and the file length.
+
+`cutsweep(name const byte[:], isxz int)` loads the fixture name with `ld` and prints "s ", name, " cut ", `cuts` of the file with isxz, a space and the file length.
+
+`l2(label const byte[:], m const byte[:], prop int)` starts a list out as the four bytes of "keep", calls `lzma::lz_lzma2_dec(m, prop, out)` and prints label, a space, `ok` of the result, a space and the bytes of out as text.
+
+`fixhdr(m byte[>..]&)` stores the CRC-32 of the bytes of m from offset 12 up to but not including offset 28, computed with `pack::pk_crc32(m[12..28], 0)`, into m at offsets 28 to 31 as 4 little-endian bytes.
+
+`mut(label const byte[:], z const byte[:], at int, v int, fix int)` copies z into m, sets byte at of m to v, calls `fixhdr(m)` when fix is 1, prints label, a space, `ok` of `lzma::lz_unxz` of m into a scratch list, a space and the length of that list; then it calls `warns()`.
+
+`main()` runs these cases in order, starting with `dm::dm_reset("x", "y")`; the case paragraphs below follow in the order written. The garden text g is `ld("pk_garden.txt")`, z is `ld("lz_garden.xz")` and e is `ld("lz_empty.xz")`.
+
+Case a (xz fixtures): call `xzf` with each of these names, in order: "lz_garden.xz", "lz_garden_crc32.xz", "lz_garden_none.xz", "lz_garden_sha256.xz", "lz_empty.xz", "lz_blocks.xz", "lz_chain.xz", "lz_delta.xz", "lz_x86.xz", "lz_lc0lp4.xz", "lz_lc4pb4.xz", "lz_multi.xz", "lz_pad.xz", "lz_rand.xz", "lz_rows.xz", "lz_big.xz".
+
+Case b (legacy lzma fixtures): call `lzf` with each of these names, in order: "lz_garden.lzma", "lz_garden_known.lzma", "lz_empty.lzma", "lz_rows.lzma".
+
+Case j (against the plain garden text): print "j1 " then how many of seven decodes give exactly g, a space and 7: the `lzma::lz_unxz` results of "lz_garden.xz", "lz_garden_crc32.xz", "lz_garden_none.xz", "lz_garden_sha256.xz" and "lz_lc0lp4.xz", and the `lzma::lz_unlzma` results of "lz_garden.lzma" and "lz_garden_known.lzma" (a decode counts only when it returns true and `same` of its output and g is 1; call `dm::dm_reset("x", "y")` afterwards).
+
+Case c (raw LZMA2 stream with every chunk kind): m is `ld("lz_mixed.lzma2")`. With an empty list out: print "c1 ", `ok` of `lzma::lz_lzma2_dec(m, 28, out)`, a space, the length of out, a space and `sha16` of out. With out holding the four bytes of "keep": print "c2 ", `ok` of `lzma::lz_lzma2_dec(m, 28, out)`, a space, the length of out and a space and the first four bytes of out as text. With out holding "keep" and the first m.len minus 1 bytes of m (the final end byte is cut): print "c3 ", `ok` of the result, a space and the length of out. With out holding "keep" and the first m.len minus 3 bytes of m: print "c4 ", `ok` of the result, a space and the length of out. With out holding "keep" and a copy of m whose first byte is set to 0xA0: print "c5 ", `ok` of the result, a space and the length of out. With out holding "keep" and m, using the property byte 41: print "c6 " and the same three values; then the same with the property byte 40, printing "c7 ". Call `warns()` after each of c3 to c7 (before the next print).
+
+Case d (small LZMA2 streams, each built as a list of bytes): d1 is the bytes 1, 0, 4, then "hello", then the byte 0; d2 is 1, 0, 1, "ab", 2, 0, 1, "cd", 0; d3 is 2, 0, 0, "x", 0; d4 is 3, 0, 0, "x", 0; d5 is 1, 0, 4, "he"; d6 is 1, 0, 0, "z" (no end byte); d7 is the empty list; d8 is 0xE0, 0, 3, 0, 4, 0xE1, 0, 0, 0, 0, 0; d9 is 0xE0, 0, 3, 0, 4, 0x15, 0, 0, 0, 0, 0; d10 is 0x80, 0, 3, 0, 4, 0, 0, 0, 0, 0; d11 is 1, 0, 0, "a", 0xA0, 0, 0, 0, 0, 0. Call `l2` with the label of each ("d1" to "d11"), its list and the property byte 24, in order, and call `warns()` after each (so each failing case also prints its warning).
+
+Case e (delta filter): a list of the bytes 1, 1, 1, 1, 1 after `lzma::lz_delta(buf, 0, 1)`: print "e1 " and `hex` of it. The bytes 1, 2, 1, 1, 1, 1 after `lzma::lz_delta(buf, 0, 2)`: print "e2 " and `hex`. The bytes 9, 9, 1, 1, 1, 1 after `lzma::lz_delta(buf, 2, 1)`: print "e3 " and `hex`. The bytes 250, 10 after `lzma::lz_delta(buf, 0, 1)`: print "e4 " and `hex`. The bytes 0xE8, 0, 0, 0 after `lzma::lz_x86(buf, 0, 0)`: print "e5 " and `hex` (too short to hold an instruction, so unchanged).
+
+Case f (what is not xz or lzma): call `neg` with each of these names, in order: "pk_garden.txt", "pk_garden.txt.gz", "pk_empty.gz", "pk_rand.bin", "lz_garden.xz", "lz_garden.lzma". Then print "f2 " followed by `ok` of `lzma::lz_is_xz` and `ok` of `lzma::lz_is_lzma` for each of: an empty list, and the first 11 bytes of z, each result separated by single spaces.
+
+Case s (damage sweeps; the real xz tool rejects every one of these except one position in each of the two mask 1 and mask 128 sweeps of the file without a check): call `sweep` with these (name, isxz, mask) triples, in order: ("lz_garden_none.xz", 1, 85), ("lz_garden_none.xz", 1, 1), ("lz_garden_none.xz", 1, 128), ("lz_garden_crc32.xz", 1, 85), ("lz_garden.xz", 1, 85), ("lz_garden_sha256.xz", 1, 85), ("lz_garden.lzma", 0, 85), ("lz_garden_known.lzma", 0, 85). Then call `cutsweep` with these (name, isxz) pairs, in order: ("lz_garden_none.xz", 1), ("lz_garden_crc32.xz", 1), ("lz_garden.xz", 1), ("lz_garden_sha256.xz", 1), ("lz_garden.lzma", 0) and ("lz_garden_known.lzma", 0).
+
+Case t (xz container edits on z, the real tool's outcome for each is noted in the expectations): for each of these, copy the given bytes into a list q and print the label, a space, `ok` of `lzma::lz_unxz` of q into a scratch list, a space and the length of that list, then call `warns()`: t1 is z followed by the four bytes of "junk"; t2 is z followed by 3 zero bytes; t3 is z followed by 4 zero bytes; t4 is z followed by e; t5 is e followed by z; t6 is z with byte 9 xor-ed with 1; t7 is z with byte 14 xor-ed with 1; t8 is z with byte 936 xor-ed with 1. Then call `mut` with these (label, z, at, v, fix) tuples, in order: ("t9", z, 18, 7, 1), ("t10", z, 13, 0xC4, 1), ("t11", z, 14, 0x88, 1), ("t12", z, 16, 0xBA, 1), ("t13", z, 13, 0xC1, 1), ("t14", z, 14, 0x88, 0).
+
+Case k (the 256 MiB limit, lowered): set `lzma::lz_cap` to 1000, then for each of these print the label, a space, `ok` of the decode into a scratch list, a space and the length of that list, then call `warns()`: k1 is `lzma::lz_unxz` of z; k2 is `lzma::lz_unlzma` of `ld("lz_garden.lzma")`; k3 is `lzma::lz_unlzma` of `ld("lz_garden_known.lzma")`. Set `lzma::lz_cap` to 2000: k4 is `lzma::lz_lzma2_dec(ld("lz_mixed.lzma2"), 28, scratch)` printed the same way, then `warns()`. Set `lzma::lz_cap` back to 268435456 and print "k5 ", `ok` of `lzma::lz_unxz` of z into a scratch list, a space and the length of that list.
+
+expect:
+lz_garden.xz 1 0 1 1465 2e98230a51e3be1d
+lz_garden_crc32.xz 1 0 1 1465 2e98230a51e3be1d
+lz_garden_none.xz 1 0 1 1465 2e98230a51e3be1d
+lz_garden_sha256.xz 1 0 1 1465 2e98230a51e3be1d
+lz_empty.xz 1 0 1 0 e3b0c44298fc1c14
+lz_blocks.xz 1 0 1 126034 b88467d913a7b583
+lz_chain.xz 1 0 1 12004 69e3d2b073420b06
+lz_delta.xz 1 0 1 24000 291a1d7b02cccd19
+lz_x86.xz 1 0 1 12004 69e3d2b073420b06
+lz_lc0lp4.xz 1 0 1 1465 2e98230a51e3be1d
+lz_lc4pb4.xz 1 0 1 126034 b88467d913a7b583
+lz_multi.xz 1 0 1 127499 0d254412b1e7208d
+lz_pad.xz 1 0 1 127499 0d254412b1e7208d
+lz_rand.xz 1 0 1 3000 09c8ed52f0ee3873
+lz_rows.xz 1 0 1 126034 b88467d913a7b583
+lz_big.xz 1 0 1 7975240 b1857cf6fd2e23c6
+lz_garden.lzma 0 1 1 1465 2e98230a51e3be1d
+lz_garden_known.lzma 0 1 1 1465 2e98230a51e3be1d
+lz_empty.lzma 0 1 1 0 e3b0c44298fc1c14
+lz_rows.lzma 0 1 1 126034 b88467d913a7b583
+j1 7 7
+c1 1 4410 629c622b7cae7d81
+c2 1 4414 keep
+c3 1 4410
+c4 0 4
+warn lzma2: corrupt or truncated data
+c5 0 4
+warn lzma2: corrupt or truncated data
+c6 0 4
+warn lzma2: corrupt or truncated data
+c7 1 4414
+d1 1 keephello
+d2 1 keepabcd
+d3 0 keep
+warn lzma2: corrupt or truncated data
+d4 0 keep
+warn lzma2: corrupt or truncated data
+d5 0 keep
+warn lzma2: corrupt or truncated data
+d6 1 keepz
+d7 1 keep
+d8 0 keep
+warn lzma2: corrupt or truncated data
+d9 0 keep
+warn lzma2: corrupt or truncated data
+d10 0 keep
+warn lzma2: corrupt or truncated data
+d11 0 keep
+warn lzma2: corrupt or truncated data
+e1 0102030405
+e2 010202030304
+e3 090901020304
+e4 fa04
+e5 e8000000
+pk_garden.txt 0 0 0 0
+warn xz: not an xz file
+warn lzma: not an lzma file
+pk_garden.txt.gz 0 0 0 0
+warn xz: not an xz file
+warn lzma: not an lzma file
+pk_empty.gz 0 0 0 0
+warn xz: not an xz file
+warn lzma: not an lzma file
+pk_rand.bin 0 0 0 0
+warn xz: not an xz file
+warn lzma: not an lzma file
+lz_garden.xz 1 0 1 0
+warn lzma: not an lzma file
+lz_garden.lzma 0 1 0 1
+warn xz: not an xz file
+f2 0 0 0 0
+s lz_garden_none.xz flip85 0 960
+s lz_garden_none.xz flip1 1 960
+s lz_garden_none.xz flip128 1 960
+s lz_garden_crc32.xz flip85 0 964
+s lz_garden.xz flip85 0 968
+s lz_garden_sha256.xz flip85 0 992
+s lz_garden.lzma flip85 0 914
+s lz_garden_known.lzma flip85 0 914
+s lz_garden_none.xz cut 0 960
+s lz_garden_crc32.xz cut 0 964
+s lz_garden.xz cut 0 968
+s lz_garden_sha256.xz cut 0 992
+s lz_garden.lzma cut 0 914
+s lz_garden_known.lzma cut 0 914
+t1 1 1465
+warn xz: trailing bytes ignored
+t2 0 0
+warn xz: corrupt or truncated data
+t3 1 1465
+t4 1 1465
+t5 1 1465
+t6 0 0
+warn xz: header CRC mismatch
+t7 0 0
+warn xz: header CRC mismatch
+t8 0 0
+warn xz: CRC mismatch
+t9 0 0
+warn xz: unsupported filter
+t10 0 0
+warn xz: corrupt or truncated data
+t11 0 0
+warn xz: corrupt or truncated data
+t12 0 0
+warn xz: corrupt or truncated data
+t13 0 0
+warn xz: corrupt or truncated data
+t14 0 0
+warn xz: header CRC mismatch
+k1 0 0
+warn decompressed data passes the limit of 256 MiB
+k2 0 0
+warn decompressed data passes the limit of 256 MiB
+k3 0 0
+warn decompressed data passes the limit of 256 MiB
+k4 0 0
+warn decompressed data passes the limit of 256 MiB
+k5 1 1465

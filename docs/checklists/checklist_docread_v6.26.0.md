@@ -20,7 +20,7 @@ Goal: Adam reads and answers from PDFs, images and other files through a harness
 - [x] Passwords: `DOCREAD_PASSWORD` opens PDF (user or owner password, R2-R6) and Office files; the empty password and "VelvetSweatshop" are tried too; a decrypted Office file reports its real format (docx, xlsx, pptx) with meta encrypted=yes
 - [x] mbox: a mailbox splits into "Message N" sections (first 1000 messages), each read as an email with its attachments
 - [x] xlsx sheets carry their number as the locator, matching .xls
-- [ ] lzma (.xz, .lzma) and 7z (agent in progress)
+- [x] lzma and sevenz: .xz (CRC32/CRC64/SHA-256, multi-stream, BCJ x86 and Delta filters), legacy .lzma, and 7z (LZMA, LZMA2, Deflate, BZip2, Copy, BCJ, Delta, solid folders, encoded headers); AES, PPMd, BCJ2 and ARM64 are refused with a warning; 41 fixtures checked against xz and 7z, including truncation and header fuzz sweeps
 - [x] docread main: sniffing, EPUB, generic XML, ZIP/TAR/GZIP/BZIP2 recursion, md/json/info/chunks/ask/sniff/images, MCP server mode
 - [x] Tests: crypto vectors, office/text/image/archive fixtures with expected output, PDF fixtures (LibreOffice, RC4-40/128, AES-128, AES-256 R6, object streams, PDF 2.0, scanned images), oracle word F1 vs pdftotext on 14 public PDFs
 

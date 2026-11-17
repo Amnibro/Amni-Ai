@@ -91,3 +91,12 @@ def test_mbox_and_legacy_units(store):
     h=dr.ask('m1','who waters the garden on Wednesdays?',2);assert h and 'Bo on Wednesdays' in h[0]['text'] and 'Message 3' in h[0]['head'],h
     for n,u,c in (('legacy.xls','sheet',3),('legacy.ppt','slide',3),('edge1904.xlsx','sheet',1)):
         i=dr.info(FX/n);assert i['ok'] and i['unit']==u and i['count']==c,(n,i)
+def test_xz_lzma_7z(store):
+    for n,fm in (('lz_garden.xz','xz'),('lz_garden.lzma','lzma'),('sz_basic.7z','7z'),('lz_ustar.tar.xz','xz')):
+        i=dr.info(FX/n);assert i['ok'] and i['format']==fm and i['chars']>0 and i['warnings']==[],(n,i)
+        r=dr.attach('z1',n,(FX/n).read_bytes());assert 'error' not in r,(n,r)
+    h=dr.ask('z1','how far apart are the onion sets planted?',3);assert h and h[0]['file'] in ('lz_garden.xz','lz_garden.lzma') and 'thirty centimetres' in h[0]['text'],h
+    h=dr.ask('z1','where are the runner beans?',2);assert h and h[0]['file']=='sz_basic.7z' and 'wigwam' in h[0]['text'],h
+    assert dr.info(FX/'sz_enc.7z')['warnings']==['7z: 8 encrypted entries were not read']
+    i=dr.info(FX/'sz_enche.7z');assert not i['ok'] and i['warnings']==['7z archive with an encrypted header'],i
+    assert 'password' not in dr.attach('z2','locked.7z',(FX/'sz_enche.7z').read_bytes()).get('error','password')
