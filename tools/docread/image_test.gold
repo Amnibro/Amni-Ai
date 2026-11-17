@@ -1,0 +1,501 @@
+use std
+into image_test.amni
+
+```amni
+import os;
+import dm;
+import image;
+```
+
+`emit(text const byte[:])` prints text one line at a time with `os::write_stdout`: for each line (split at the newline byte 10, ignoring the empty piece after a final newline) it prints the line itself followed by a newline, except that an empty line is printed as a single dot "." followed by a newline.
+
+`le(out byte[>..]&, v int, n int)` appends v to out as n little-endian bytes. `be(out byte[>..]&, v int, n int)` appends v as n big-endian bytes.
+
+`synth(which int) byte[>..]` builds a small image file in memory, by which: 1, a top-down BMP: "BM", 54 (4 bytes), 0 (4), 54 (4), then the 40-byte header: 40 (4), width 7 (4), height 4294967291 (4, which is minus 5), planes 1 (2), 24 bits (2), 0 (4), 0 (4), 2835 (4), 2835 (4), 0 (4), 0 (4); 2, an OS/2 BMP: "BM", 26 (4), 0 (4), 26 (4), then 12 (4), width 30 (2), height 20 (2), planes 1 (2), 8 bits (2); 3, a cursor file: 0 (2), type 2 (2), count 1 (2), then one entry: width 0, height 0, colors 0, reserved 0 (one byte each), planes 1 (2), 32 bits (2), size 0 (4), offset 22 (4); 4, a GIF: "GIF87a", width 5 (2), height 3 (2), flags 0, background 0, aspect 0 (one byte each), then the comment extension (the bytes 33, 254, 5, "hello", 0), then an image block (the byte 44, then left 0, top 0 (2 each), width 5, height 3 (2 each), flags 0 (1 byte), the LZW size byte 2, a sub-block of 2 bytes 1 and 1 preceded by its length 2, and the terminating 0), then the byte 59; 5, a cut-off PNG: the 8 signature bytes (137, 80, 78, 71, 13, 10, 26, 10), an IHDR chunk (length 13 big endian in 4 bytes, "IHDR", width 20 and height 10 big endian in 4 bytes each, then the bytes 8, 2, 0, 0, 0 and a 4-byte zero CRC), then a tEXt chunk whose length says 1000 (4 bytes big endian) followed by "tEXt" and only "Title", a 0 byte and "abc"; 6, a looping TIFF: "II", 42 (2), 8 (4), then at offset 8 the count 2 (2), the entry 256, type 3, count 1, value 10 (2, 2, 4 and 4 bytes) and the entry 257, type 3, count 1, value 20 (the same sizes), then the next-directory offset 8 (4); 7, a JPEG with a segment longer than the file: the bytes 255, 216, 255, 224, then the length 255 big endian in 2 bytes, then "JFIF", 0, 1, 1; 8, a GIF with a bad block: "GIF89a", width 5 (2), height 3 (2), flags 0, background 0, aspect 0 (one byte each) and then the byte 7; 9, the text `<svg xmlns="http://www.w3.org/2000/svg" width="2in" height="3in"><title>Unit test</title></svg>`; 10, a little endian TIFF with sub-directories: "II", 42 (2 bytes), 8 (4 bytes); at offset 8 the count 4 (2 bytes) and four entries, each written as the tag (2 bytes), the type (2), the count (4) and the value field (4, always written as a 4-byte little endian number): 256, 3, 1, 10; 257, 3, 1, 20; 34665, 4, 1, 62; 34853, 4, 1, 92; then the next-directory offset 0 (4); at offset 62 the count 2 (2) and the entries 33434, 5, 1, 194 and 34855, 3, 1, 400, then the offset 0 (4); at offset 92 the count 4 (2) and the entries 1, 2, 2, 83 (the letter S); 2, 5, 3, 146; 3, 2, 2, 87 (the letter W); 4, 5, 3, 170, then the offset 0 (4); at offset 146 six rationals, each a numerator then a denominator in 4 bytes each: 33 over 1, 52 over 1, 8 over 1, 151 over 1, 12 over 1, 40 over 1; at offset 194 one rational, 1 over 2.
+
+`load(name const byte[:], out byte[>..]&) bool` reads the file "tests/fixtures/" followed by name with `os::read_file` into out and returns whether that worked.
+
+`dump(d const byte[:])` calls `dm::dm_reset("image", "part")`, then `image::im_read` on d, then prints the Markdown from `dm::dm_markdown` (written into a scratch list and printed with `emit`), then one line "meta " plus key, an equals sign and value for each line of `dm::dm_meta` (the key and value are separated by the tab byte 9 there), then one line "warn " plus the line for each line of `dm::dm_warn`, and when the reader returned false one line "reader returned false".
+
+`show(name const byte[:])` loads the fixture (printing "== " and the name first, and "missing" and returning when it cannot be read) and calls `dump` with its bytes.
+
+`main()` calls `show` for these files in this order: "img_photo.jpg", "img_jfif72.jpg", "img_jfifcm.jpg", "img_text.png", "img_exif.png", "img_anim.png", "img_anim.gif", "img_lossy.webp", "img_lossless.webp", "img_anim.webp", "img_meta.webp", "img_meta.tif", "img_pages.tif", "img_icon.ico", "img_plain.bmp", "img_plain.heic", "img_plain.avif", "img_sign.svg", "img_pct.svg". Then it prints a line "== kinds" and for each of those same files in the same order one line: the name, a space and `image::im_kind_name` of `image::im_kind` of its bytes. Then it prints "== wrong" and for each of "table.tsv", "page.html", "sample.docx" and "garden-lo.pdf" one line: the name, a space and `image::im_kind_name` of its kind, and a space and 1 or 0 for whether `image::im_read` (after a fresh `dm::dm_reset("image", "part")`) returned true. Then it prints "== synthetic" and for each of the numbers 1 to 10 prints "-- " and the number and calls `dump` on `synth` of that number. Then it prints "== fuzz" and runs two robustness loops, each of which must finish without crashing. First, for each of the 19 files above and each cut length from 0 up to the file's length in steps of 7 (the file's bytes cut to that length), call `dm::dm_reset("image", "part")` and `image::im_read` on the cut bytes, counting the runs; then for each of those files and each byte position from 0 up to the smaller of its length and 4000 in steps of 7, make a copy of the file with that byte replaced by 255, then another copy with it replaced by 0, and read both the same way, counting the runs. Second, a pseudo random generator with the state starting at 12345, next state = (state times 1103515245 plus 12345) anded with 2147483647, whose byte is the next state shifted right 16 and anded with 255: for each of 12 signature prefixes (the bytes 137 80 78 71 13 10 26 10; 255 216 255 224; "GIF89a"; "RIFF" 0 0 0 0 "WEBPVP8X"; 73 73 42 0 8 0 0 0; 77 77 0 42 0 0 0 8; "BM" followed by 12 zero bytes then 40 0 0 0; 0 0 1 0 3 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 24 "ftypheic"; "<svg width=\"5\" height=\"7\">"; 255 216 255 225 255 255 "Exif" 0 0 77 77 0 42 0 0 0 8; 137 80 78 71 13 10 26 10 0 0 0 13 "IHDR" followed by 8 bytes of 255) and for each of 40 random tails (each tail's length is one generated byte plus another generated byte divided by 2, and its bytes are further generated bytes), read the prefix followed by the tail the same way and count the runs. Print "cuts and flips " and the first count, then "random " and the second count, then "done".
+
+expect:
+== img_photo.jpg
+Format: JPEG
+Width: 160 px
+Height: 120 px
+Title: Kite over the hill
+.
+A red kite hangs above a green hill at noon.
+.
+Keywords: kite, hill, noon
+Author: Jo Example
+Title: Kite at noon
+Headline: Kite above the hill
+Copyright: (c) 2026 Jo Example
+.
+A red kite hangs above a green hill.
+.
+Keywords: kite, hill
+.
+A red kite over a green hill
+.
+Camera: Acme Pocket 7 Camera
+Taken: 2026-03-01 10:15:30
+Date: 2026-03-02 11:00:00
+Orientation: 6 (rotated 90 clockwise)
+Exposure: 1/250 s
+Aperture: f/2.8
+ISO: 200
+Focal length: 35 mm
+Lens: Pocket 7 35mm f/2.8
+Software: Acme Firmware 2.1
+Artist: Jo Example
+Density: 300 x 300 dpi
+Location: 48.85825, 2.29456
+.
+Taken near the old mill
+.
+Comment: Painted with invented colors
+.
+Color: 8-bit, 3 components
+.
+meta format=jpeg
+meta width=160
+meta height=120
+meta frames=1
+meta pages=1
+== img_jfif72.jpg
+Format: JPEG
+Width: 96 px
+Height: 64 px
+Density: 72 x 72 dpi
+Color: 8-bit, 3 components
+.
+meta format=jpeg
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_jfifcm.jpg
+Format: JPEG
+Width: 96 px
+Height: 64 px
+Density: 71.1 x 71.1 dpi
+Color: 8-bit, 3 components
+.
+meta format=jpeg
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_text.png
+Format: PNG
+Width: 160 px
+Height: 120 px
+Color: 8-bit RGB
+Density: 300 x 300 dpi
+Title: Kite at noon
+Author: Jo Example
+.
+A red kite hangs above a green hill.
+.
+Comment: Drawn from invented colors
+.
+Software: Kite Studio 1.2
+Created: 2026-03-01T09:30:00
+Warning: Invented picture, not a real place
+Source: Cerf-volant au-dessus de la colline
+Disclaimer: Démo seulement
+Title: Kite over the hill
+.
+A red kite hangs above a green hill at noon.
+.
+Keywords: kite, hill, noon
+.
+meta format=png
+meta width=160
+meta height=120
+meta frames=1
+meta pages=1
+== img_exif.png
+Format: PNG
+Width: 160 px
+Height: 120 px
+Color: 8-bit RGB
+.
+A red kite over a green hill
+.
+Camera: Acme Pocket 7 Camera
+Taken: 2026-03-01 10:15:30
+Date: 2026-03-02 11:00:00
+Orientation: 6 (rotated 90 clockwise)
+Exposure: 1/250 s
+Aperture: f/2.8
+ISO: 200
+Focal length: 35 mm
+Lens: Pocket 7 35mm f/2.8
+Software: Acme Firmware 2.1
+Artist: Jo Example
+Copyright: (c) 2026 Jo Example
+Density: 300 x 300 dpi
+Location: 48.85825, 2.29456
+.
+Taken near the old mill
+.
+meta format=png
+meta width=160
+meta height=120
+meta frames=1
+meta pages=1
+== img_anim.png
+Format: PNG
+Width: 96 px
+Height: 64 px
+Frames: 3
+Color: 8-bit RGB
+.
+meta format=png
+meta width=96
+meta height=64
+meta frames=3
+meta pages=1
+== img_anim.gif
+Format: GIF
+Width: 96 px
+Height: 64 px
+Frames: 3
+.
+Comment: Three frame demo
+.
+meta format=gif
+meta width=96
+meta height=64
+meta frames=3
+meta pages=1
+== img_lossy.webp
+Format: WEBP
+Width: 96 px
+Height: 64 px
+Encoding: lossy
+.
+meta format=webp
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_lossless.webp
+Format: WEBP
+Width: 96 px
+Height: 64 px
+Encoding: lossless
+.
+meta format=webp
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_anim.webp
+Format: WEBP
+Width: 96 px
+Height: 64 px
+Frames: 3
+Loops: forever
+.
+meta format=webp
+meta width=96
+meta height=64
+meta frames=3
+meta pages=1
+== img_meta.webp
+Format: WEBP
+Width: 120 px
+Height: 90 px
+Encoding: lossy
+.
+A red kite over a green hill
+.
+Camera: Acme Pocket 7 Camera
+Taken: 2026-03-01 10:15:30
+Date: 2026-03-02 11:00:00
+Orientation: 6 (rotated 90 clockwise)
+Exposure: 1/250 s
+Aperture: f/2.8
+ISO: 200
+Focal length: 35 mm
+Lens: Pocket 7 35mm f/2.8
+Software: Acme Firmware 2.1
+Artist: Jo Example
+Copyright: (c) 2026 Jo Example
+Density: 300 x 300 dpi
+Location: 48.85825, 2.29456
+.
+Taken near the old mill
+.
+Title: Kite over the hill
+.
+A red kite hangs above a green hill at noon.
+.
+Keywords: kite, hill, noon
+Author: Jo Example
+.
+meta format=webp
+meta width=120
+meta height=90
+meta frames=1
+meta pages=1
+== img_meta.tif
+Format: TIFF
+Width: 120 px
+Height: 90 px
+.
+A red kite over a green hill
+.
+Camera: Acme Pocket 7 Camera
+Date: 2026-03-02 11:00:00
+Orientation: 6 (rotated 90 clockwise)
+Software: Acme Firmware 2.1
+Artist: Jo Example
+Copyright: (c) 2026 Jo Example
+Density: 300 x 300 dpi
+.
+meta format=tiff
+meta width=120
+meta height=90
+meta frames=1
+meta pages=1
+== img_pages.tif
+Format: TIFF
+Width: 96 px
+Height: 64 px
+Pages: 3
+Page 2: 70 x 40 px
+Page 3: 48 x 32 px
+Orientation: 1 (normal)
+.
+meta format=tiff
+meta width=96
+meta height=64
+meta frames=1
+meta pages=3
+== img_icon.ico
+Format: ICO
+Width: 48 px
+Height: 48 px
+Frames: 3
+Icons: 16x16, 32x32, 48x48
+Kind: icon
+.
+meta format=ico
+meta width=48
+meta height=48
+meta frames=3
+meta pages=1
+== img_plain.bmp
+Format: BMP
+Width: 96 px
+Height: 64 px
+Color: 24-bit
+.
+meta format=bmp
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_plain.heic
+Format: HEIC
+Width: 96 px
+Height: 64 px
+Brand: heic
+.
+meta format=heic
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_plain.avif
+Format: AVIF
+Width: 96 px
+Height: 64 px
+Brand: avif
+.
+meta format=avif
+meta width=96
+meta height=64
+meta frames=1
+meta pages=1
+== img_sign.svg
+Format: SVG
+Width: 320 px
+Height: 200 px
+Viewbox: 0 0 320 200
+Title: Trail sign
+.
+A wooden sign pointing to the lake and the old mill.
+.
+Lake Road & Mill
+.
+North Pier 2 km →
+.
+Title: Hover note
+.
+meta format=svg
+meta width=320
+meta height=200
+meta frames=1
+meta pages=1
+== img_pct.svg
+Format: SVG
+Width: 640 px
+Height: 480 px
+Viewbox: 0 0 640.5 480
+Declared size: 100% x 10cm
+.
+Plain label
+.
+meta format=svg
+meta width=640
+meta height=480
+meta frames=1
+meta pages=1
+== kinds
+img_photo.jpg jpeg
+img_jfif72.jpg jpeg
+img_jfifcm.jpg jpeg
+img_text.png png
+img_exif.png png
+img_anim.png png
+img_anim.gif gif
+img_lossy.webp webp
+img_lossless.webp webp
+img_anim.webp webp
+img_meta.webp webp
+img_meta.tif tiff
+img_pages.tif tiff
+img_icon.ico ico
+img_plain.bmp bmp
+img_plain.heic heic
+img_plain.avif avif
+img_sign.svg svg
+img_pct.svg svg
+== wrong
+table.tsv unknown 0
+page.html unknown 0
+sample.docx unknown 0
+garden-lo.pdf unknown 0
+== synthetic
+-- 1
+Format: BMP
+Width: 7 px
+Height: 5 px
+Color: 24-bit
+Density: 72 x 72 dpi
+.
+meta format=bmp
+meta width=7
+meta height=5
+meta frames=1
+meta pages=1
+-- 2
+Format: BMP
+Width: 30 px
+Height: 20 px
+Color: 8-bit
+.
+meta format=bmp
+meta width=30
+meta height=20
+meta frames=1
+meta pages=1
+-- 3
+Format: ICO
+Width: 256 px
+Height: 256 px
+Icons: 256x256
+Kind: cursor
+.
+meta format=ico
+meta width=256
+meta height=256
+meta frames=1
+meta pages=1
+-- 4
+Format: GIF
+Width: 5 px
+Height: 3 px
+.
+Comment: hello
+.
+meta format=gif
+meta width=5
+meta height=3
+meta frames=1
+meta pages=1
+-- 5
+Format: PNG
+Width: 20 px
+Height: 10 px
+Color: 8-bit RGB
+.
+meta format=png
+meta width=20
+meta height=10
+meta frames=1
+meta pages=1
+warn PNG chunk runs past the end of the file
+-- 6
+Format: TIFF
+Width: 10 px
+Height: 20 px
+.
+meta format=tiff
+meta width=10
+meta height=20
+meta frames=1
+meta pages=1
+warn TIFF directory chain loops
+-- 7
+Format: JPEG
+.
+meta format=jpeg
+meta frames=1
+meta pages=1
+warn JPEG segment runs past the end of the file
+-- 8
+Format: GIF
+Width: 5 px
+Height: 3 px
+.
+meta format=gif
+meta width=5
+meta height=3
+meta frames=1
+meta pages=1
+warn unknown GIF block
+-- 9
+Format: SVG
+Declared size: 2in x 3in
+Title: Unit test
+.
+meta format=svg
+meta frames=1
+meta pages=1
+-- 10
+Format: TIFF
+Width: 10 px
+Height: 20 px
+Exposure: 1/2 s
+ISO: 400
+Location: -33.86889, -151.21111
+.
+meta format=tiff
+meta width=10
+meta height=20
+meta frames=1
+meta pages=1
+== fuzz
+cuts and flips 19074
+random 480
+done

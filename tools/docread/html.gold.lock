@@ -1,0 +1,593 @@
+=== 0c341987627d7fda
+namespace html;
+=== -4b6566b266f58198
+let HT_BLOCKS = " p div section article aside nav header footer main form fieldset figure figcaption dl dt dd address hr details summary center caption legend hgroup menu dir body html ";
+let HT_SKIPS = " script style noscript template svg canvas iframe object ";
+=== -784de0c1ab826cd1
+fn ht_in(list const byte[:], word const byte[:]) bool {
+	if word.len == 0 { return false; }
+	var key byte[>..] = [];
+	key.push(' ');
+	key.append(word);
+	key.push(' ');
+	find(list, key) >= 0
+}
+=== -2a0399d330c1d10d
+fn ht_lower(s const byte[:], out byte[>..]&) {
+	out.clear();
+	for c in s { out.push(dm::dm_lower(c)); }
+}
+=== 1c415adb8b72d043
+fn ht_find_ci(s const byte[:], pat const byte[:], from int) int {
+	var i = if from < 0 { 0 } else { from };
+	let n = pat.len;
+	while i + n <= s.len {
+		var j = 0;
+		while j < n && dm::dm_lower(s[i + j]) == pat[j] { j++; }
+		if j == n { return i; }
+		i++;
+	}
+	-1
+}
+=== -53731afe4bba94d9
+fn ht_alpha(c byte) bool {
+	(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+fn ht_name_byte(c byte) bool {
+	ht_alpha(c) || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == ':'
+}
+fn ht_ws(c byte) bool {
+	c == ' ' || c == 9 || c == 10 || c == 13 || c == 12
+}
+=== 1234e2a891e52f5f
+fn ht_attr(attrs const byte[:], name const byte[:], out byte[>..]&) bool {
+	out.clear();
+	let n = attrs.len;
+	var i = 0;
+	while i < n {
+		while i < n && (ht_ws(attrs[i]) || attrs[i] == '/') { i++; }
+		if i >= n { break; }
+		let ns = i;
+		while i < n && !ht_ws(attrs[i]) && attrs[i] != '=' && attrs[i] != '/' { i++; }
+		let ne = i;
+		while i < n && ht_ws(attrs[i]) { i++; }
+		var vs = i;
+		var ve = i;
+		if i < n && attrs[i] == '=' {
+			i++;
+			while i < n && ht_ws(attrs[i]) { i++; }
+			if i < n && (attrs[i] == 34 || attrs[i] == 39) {
+				let q = attrs[i];
+				i++;
+				vs = i;
+				while i < n && attrs[i] != q { i++; }
+				ve = i;
+				if i < n { i++; }
+			} else {
+				vs = i;
+				while i < n && !ht_ws(attrs[i]) { i++; }
+				ve = i;
+			}
+		}
+		var same = ne - ns == name.len;
+		if same {
+			for k in name.len {
+				if dm::dm_lower(attrs[ns + k]) != name[k] { same = false; }
+			}
+		}
+		if same {
+			out.append(attrs[vs..ve]);
+			return true;
+		}
+	}
+	false
+}
+=== -100fd2f36645d0d8
+var ht_buf byte[>..];
+var ht_bk = 2;
+var ht_bl = 0;
+var ht_lst int[>..];
+var ht_quote = 0;
+var ht_pre = 0;
+var ht_first = false;
+var ht_tdep = 0;
+var ht_incell = false;
+var ht_inrow = false;
+var ht_row byte[>..];
+var ht_head = false;
+var ht_quiet = false;
+var ht_tags = 0;
+var ht_title = false;
+var ht_cells = 0;
+=== 5d85bebcf56f7bb0
+fn ht_reset() {
+	ht_buf.clear();
+	ht_lst.clear();
+	ht_row.clear();
+	ht_bk = dm::DM_PARA;
+	ht_bl = 0;
+	ht_quote = 0;
+	ht_pre = 0;
+	ht_first = false;
+	ht_tdep = 0;
+	ht_incell = false;
+	ht_inrow = false;
+	ht_head = false;
+	ht_quiet = false;
+	ht_tags = 0;
+	ht_title = false;
+	ht_cells = 0;
+}
+=== -7a2d23dfd60373e4
+fn ht_kind() {
+	if ht_quote > 0 {
+		ht_bk = dm::DM_NOTE;
+	} else {
+		ht_bk = dm::DM_PARA;
+	}
+	ht_bl = 0;
+}
+=== -555f75de899e334c
+fn ht_flush() {
+	if ht_incell {
+		if ht_buf.len > 0 {
+			let c = ht_buf[ht_buf.len - 1];
+			if c != ' ' && c != 10 { ht_buf.push(' '); }
+		}
+		return;
+	}
+	dm::dm_add(ht_bk, ht_bl, ht_buf);
+	ht_buf.clear();
+}
+=== -38d56da5be1d35a8
+fn ht_put(s const byte[:]) {
+	if ht_head { return; }
+	var t byte[>..] = [];
+	dm::dm_decode_entities(s, t);
+	if ht_pre > 0 {
+		var st = 0;
+		if ht_first {
+			if t.len >= 1 && t[0] == 10 {
+				st = 1;
+			} else if t.len >= 2 && t[0] == 13 && t[1] == 10 {
+				st = 2;
+			}
+		}
+		ht_first = false;
+		ht_buf.append(t[st..]);
+	} else {
+		for c in t {
+			if ht_ws(c) {
+				if ht_buf.len > 0 {
+					let l = ht_buf[ht_buf.len - 1];
+					if l != ' ' && l != 10 { ht_buf.push(' '); }
+				}
+			} else {
+				ht_buf.push(c);
+			}
+		}
+	}
+}
+=== -d8f1eb9764023e7
+fn ht_cell_end() {
+	if !ht_incell { return; }
+	if ht_cells > 0 { ht_row.push(9); }
+	ht_row.append(ht_buf);
+	ht_cells += 1;
+	ht_buf.clear();
+	ht_incell = false;
+}
+=== 2ec89dba105173e2
+fn ht_row_end() {
+	if !ht_inrow { return; }
+	ht_cell_end();
+	dm::dm_add(dm::DM_ROW, 0, ht_row);
+	ht_row.clear();
+	ht_cells = 0;
+	ht_inrow = false;
+}
+=== 7473ac45577e7be7
+fn ht_open_cell() {
+	ht_cell_end();
+	if !ht_inrow { ht_inrow = true; }
+	ht_buf.clear();
+	ht_incell = true;
+}
+=== 2be301cf9b45f57c
+fn ht_start_table() {
+	if ht_tdep == 0 {
+		ht_flush();
+		dm::dm_new_table();
+		ht_tdep = 1;
+	} else {
+		ht_tdep += 1;
+		ht_buf.push(' ');
+	}
+}
+=== -60bbca8ecd6ef345
+fn ht_end_table() {
+	if ht_tdep == 0 { return; }
+	if ht_tdep == 1 {
+		ht_row_end();
+		dm::dm_end_table();
+		ht_tdep = 0;
+		ht_kind();
+	} else {
+		ht_tdep -= 1;
+		ht_buf.push(' ');
+	}
+}
+=== 2456e7503e12126f
+fn ht_meta(attrs const byte[:]) {
+	if ht_quiet { return; }
+	var nm byte[>..] = [];
+	if !ht_attr(attrs, "name", nm) { return; }
+	var l byte[>..] = [];
+	ht_lower(nm, l);
+	if l == "description" || l == "author" || l == "keywords" {
+		var c byte[>..] = [];
+		if !ht_attr(attrs, "content", c) { return; }
+		var v byte[>..] = [];
+		dm::dm_decode_entities(c, v);
+		dm::dm_set_meta(l, v);
+	}
+}
+=== 3bce3e65c588b187
+fn ht_img(attrs const byte[:]) {
+	if ht_head { return; }
+	var alt byte[>..] = [];
+	ht_attr(attrs, "alt", alt);
+	var t byte[>..] = [];
+	dm::dm_decode_entities(alt, t);
+	var r byte[>..] = [];
+	for c in t {
+		if ht_ws(c) {
+			if r.len > 0 {
+				let l = r[r.len - 1];
+				if l != ' ' && l != 10 { r.push(' '); }
+			}
+		} else {
+			r.push(c);
+		}
+	}
+	if r.len > 0 {
+		ht_buf.append("[image: ");
+		ht_buf.append(r);
+		ht_buf.append("]");
+	}
+}
+=== 3be165aa2fa53846
+fn ht_open(name const byte[:], attrs const byte[:]) {
+	ht_tags += 1;
+	if name == "head" { ht_head = true; return; }
+	if name == "body" { ht_head = false; return; }
+	if name == "meta" { ht_meta(attrs); return; }
+	if name == "img" { ht_img(attrs); return; }
+	if name == "br" {
+		if ht_buf.len > 0 || ht_pre > 0 { ht_buf.push(10); }
+		return;
+	}
+	if name == "pre" {
+		if ht_incell {
+			ht_pre += 1;
+			ht_buf.push(' ');
+		} else {
+			ht_flush();
+			ht_pre += 1;
+			ht_first = true;
+			ht_bk = dm::DM_CODE;
+			ht_bl = 0;
+		}
+		return;
+	}
+	if name.len == 2 && name[0] == 'h' && name[1] >= '1' && name[1] <= '6' {
+		ht_flush();
+		ht_bk = dm::DM_HEAD;
+		ht_bl = name[1] - '0';
+		return;
+	}
+	if name == "blockquote" {
+		ht_flush();
+		ht_quote += 1;
+		ht_kind();
+		return;
+	}
+	if name == "ul" || name == "ol" {
+		ht_flush();
+		if name == "ul" { ht_lst.push(-1); } else { ht_lst.push(0); }
+		ht_kind();
+		return;
+	}
+	if name == "li" {
+		ht_flush();
+		if ht_incell {
+			ht_buf.push(' ');
+			return;
+		}
+		ht_bk = dm::DM_ITEM;
+		ht_bl = max(ht_lst.len, 1);
+		if ht_lst.len > 0 && ht_lst[ht_lst.len - 1] >= 0 {
+			ht_lst[ht_lst.len - 1] += 1;
+			format(ht_buf, ht_lst[ht_lst.len - 1], ". ");
+		}
+		return;
+	}
+	if name == "table" { ht_start_table(); return; }
+	if name == "tr" {
+		if ht_tdep == 1 {
+			ht_row_end();
+			ht_flush();
+			ht_inrow = true;
+		} else if ht_tdep > 1 {
+			ht_buf.push(' ');
+		}
+		return;
+	}
+	if name == "td" || name == "th" {
+		if ht_tdep == 1 {
+			if !ht_incell { ht_flush(); }
+			ht_open_cell();
+		} else if ht_tdep > 1 {
+			ht_buf.push(' ');
+		}
+		return;
+	}
+	if ht_in(HT_BLOCKS, name) { ht_flush(); }
+}
+=== 4901bcf42ff3a207
+fn ht_close(name const byte[:]) {
+	if name == "head" { ht_head = false; return; }
+	if name.len == 2 && name[0] == 'h' && name[1] >= '1' && name[1] <= '6' {
+		ht_flush();
+		ht_kind();
+		return;
+	}
+	if name == "pre" {
+		if ht_pre > 0 { ht_pre -= 1; }
+		if ht_pre == 0 {
+			if ht_incell {
+				ht_buf.push(' ');
+			} else {
+				ht_flush();
+				ht_kind();
+			}
+		}
+		return;
+	}
+	if name == "blockquote" {
+		ht_flush();
+		if ht_quote > 0 { ht_quote -= 1; }
+		ht_kind();
+		return;
+	}
+	if name == "ul" || name == "ol" {
+		ht_flush();
+		if ht_lst.len > 0 { ht_lst.pop(); }
+		ht_kind();
+		return;
+	}
+	if name == "li" {
+		ht_flush();
+		ht_kind();
+		return;
+	}
+	if name == "td" || name == "th" {
+		if ht_tdep == 1 {
+			ht_cell_end();
+		} else if ht_tdep > 1 {
+			ht_buf.push(' ');
+		}
+		return;
+	}
+	if name == "tr" {
+		if ht_tdep == 1 { ht_row_end(); }
+		return;
+	}
+	if name == "table" { ht_end_table(); return; }
+	if ht_in(HT_BLOCKS, name) { ht_flush(); }
+}
+=== -798e7d784c2c3a33
+fn ht_tag_end(s const byte[:], from int) int {
+	var i = from;
+	while i < s.len {
+		let c = s[i];
+		if c == '>' { return i; }
+		if c == 34 || c == 39 {
+			var j = i - 1;
+			while j >= from && ht_ws(s[j]) { j--; }
+			if j >= from && s[j] == '=' {
+				i++;
+				while i < s.len && s[i] != c { i++; }
+			}
+		}
+		i++;
+	}
+	s.len
+}
+=== -6a6ef99d7ec095fc
+fn ht_scan(s const byte[:]) {
+	let n = s.len;
+	var i = 0;
+	while i < n {
+		if s[i] != '<' {
+			var e = i;
+			while e < n && s[e] != '<' { e++; }
+			ht_put(s[i..e]);
+			i = e;
+			continue;
+		}
+		if starts_with(s[i + 1..], "!--") {
+			let k = find(s[i + 4..], "-->");
+			if k < 0 { i = n; } else { i = i + 4 + k + 3; }
+			continue;
+		}
+		if starts_with(s[i + 1..], "![CDATA[") {
+			let st = i + 9;
+			let k = find(s[st..], "]]>");
+			if k < 0 {
+				ht_put(s[st..]);
+				i = n;
+			} else {
+				ht_put(s[st..st + k]);
+				i = st + k + 3;
+			}
+			continue;
+		}
+		var c1 int = 0;
+		if i + 1 < n { c1 = s[i + 1]; }
+		if c1 == '!' || c1 == '?' {
+			let k = find(s[i + 1..], ">");
+			if k < 0 { i = n; } else { i = i + 1 + k + 1; }
+			continue;
+		}
+		let closing = c1 == '/';
+		let ns = if closing { i + 2 } else { i + 1 };
+		if ns < n && ht_alpha(s[ns]) {
+			var ne = ns;
+			while ne < n && ht_name_byte(s[ne]) { ne++; }
+			var nm byte[>..] = [];
+			ht_lower(s[ns..ne], nm);
+			let te = ht_tag_end(s, ne);
+			let slash = te > ne && s[te - 1] == '/';
+			let ae = if slash { te - 1 } else { te };
+			let attrs = s[ne..ae];
+			if closing {
+				ht_close(nm);
+				i = te + 1;
+				continue;
+			}
+			ht_open(nm, attrs);
+			if nm == "title" {
+				let st = min(te + 1, n);
+				let k = ht_find_ci(s, "</title", st);
+				if k < 0 {
+					var v byte[>..] = [];
+					dm::dm_decode_entities(s[st..], v);
+					if !ht_quiet { dm::dm_set_meta("title", v); }
+					ht_title = true;
+					i = n;
+				} else {
+					var v byte[>..] = [];
+					dm::dm_decode_entities(s[st..k], v);
+					if !ht_quiet { dm::dm_set_meta("title", v); }
+					ht_title = true;
+					let g = find(s[k..], ">");
+					if g < 0 { i = n; } else { i = k + g + 1; }
+				}
+				continue;
+			}
+			if ht_in(HT_SKIPS, nm) && !slash {
+				var pat byte[>..] = [];
+				pat.append("</");
+				pat.append(nm);
+				let k = ht_find_ci(s, pat, te + 1);
+				if k < 0 {
+					i = n;
+				} else {
+					let g = find(s[k..], ">");
+					if g < 0 { i = n; } else { i = k + g + 1; }
+				}
+				continue;
+			}
+			i = te + 1;
+			continue;
+		}
+		ht_put("<");
+		i++;
+	}
+	ht_row_end();
+	while ht_tdep > 0 { ht_end_table(); }
+	ht_flush();
+}
+=== 61ed7c80463dedb4
+fn ht_charset(data const byte[:], out byte[>..]&) {
+	out.clear();
+	let lim = min(data.len, 4096);
+	let d = data[..lim];
+	let k = ht_find_ci(d, "charset", 0);
+	if k < 0 { return; }
+	var i = k + 7;
+	while i < lim && ht_ws(d[i]) { i++; }
+	if i < lim && d[i] == '=' { i++; }
+	while i < lim && ht_ws(d[i]) { i++; }
+	if i < lim && (d[i] == 34 || d[i] == 39) { i++; }
+	while i < lim && d[i] != 34 && d[i] != 39 && d[i] != ';' && d[i] != ' ' && d[i] != '>' && d[i] != '/' {
+		out.push(dm::dm_lower(d[i]));
+		i++;
+	}
+}
+=== 63be63f11779e8e5
+fn ht_decode(data const byte[:], out byte[>..]&) {
+	let bom = (data.len >= 3 && data[0] == 239 && data[1] == 187 && data[2] == 191) || (data.len >= 2 && data[0] == 255 && data[1] == 254) || (data.len >= 2 && data[0] == 254 && data[1] == 255);
+	if bom {
+		dm::dm_to_utf8(data, out);
+		return;
+	}
+	var cs byte[>..] = [];
+	ht_charset(data, cs);
+	let list = " windows-1252 cp1252 iso-8859-1 iso8859-1 latin1 latin-1 l1 iso-8859-15 us-ascii ascii ";
+	if ht_in(list, cs) {
+		for b in data { dm::dm_put_cp(out, dm::dm_cp1252(b)); }
+	} else {
+		dm::dm_to_utf8(data, out);
+	}
+}
+=== -38dbf38fef7d4094
+fn ht_read_utf8(text const byte[:]) bool {
+	ht_reset();
+	ht_scan(text);
+	ht_tags > 0
+}
+=== 332ae02573f1c509
+fn ht_read(data const byte[:]) bool {
+	var t byte[>..] = [];
+	ht_decode(data, t);
+	ht_read_utf8(t)
+}
+=== -243722f821ec5499
+fn ht_text_utf8(text const byte[:], out byte[>..]&) {
+	let base = out.len;
+	let nb = dm::dm_blocks.len;
+	let np = dm::dm_pool.len;
+	let tb = dm::dm_table;
+	ht_reset();
+	ht_quiet = true;
+	ht_scan(text);
+	let total = dm::dm_blocks.len;
+	for i in nb..total {
+		let kind = dm::dm_blocks[i].kind;
+		let lvl = dm::dm_blocks[i].level;
+		let t = dm::dm_text_of(dm::dm_blocks[i]);
+		let has_next = i + 1 < total;
+		if kind == dm::DM_ITEM {
+			for k in max(lvl - 1, 0) { out.append("  "); }
+			var j = 0;
+			while j < t.len && t[j] >= '0' && t[j] <= '9' { j++; }
+			let numbered = j > 0 && j + 1 < t.len && t[j] == '.' && t[j + 1] == ' ';
+			if !numbered { out.append("- "); }
+			out.append(t);
+			out.push(10);
+			if has_next && dm::dm_blocks[i + 1].kind != dm::DM_ITEM { out.push(10); }
+		} else if kind == dm::DM_ROW {
+			out.append(t);
+			out.push(10);
+			if has_next {
+				if dm::dm_blocks[i + 1].kind != dm::DM_ROW || dm::dm_blocks[i + 1].level != lvl { out.push(10); }
+			}
+		} else {
+			out.append(t);
+			out.push(10);
+			out.push(10);
+		}
+	}
+	dm::dm_blocks.pop_n(total - nb);
+	dm::dm_pool.pop_n(dm::dm_pool.len - np);
+	dm::dm_table = tb;
+	while out.len > base && ht_ws(out[out.len - 1]) { out.pop(); }
+}
+=== 206b8d8c966fe0b7
+fn ht_text_only(data const byte[:], out byte[>..]&) {
+	var t byte[>..] = [];
+	ht_decode(data, t);
+	ht_text_utf8(t, out);
+}

@@ -1,0 +1,67 @@
+use std
+into xml.amni
+
+This file is a module with no main (namespace xml). It is a tolerant XML tokenizer that never fails on bad input: it turns a document into a flat list of events (element open, element close, text) in document order, each open event knowing its matching close event, its parent and its depth. One document is held at a time: parsing a second one replaces the first. Namespaces are not resolved; the prefix is just part of the qualified name. Every module-level name starts with `xm_` or `XM_`.
+
+```amni
+import dm;
+```
+
+Event kinds are module constants: `XM_OPEN = 1`, `XM_CLOSE = 2`, `XM_TEXT = 3`.
+
+`struct XmEv` has `kind int`, `at int`, `len int`, `aat int`, `alen int`, `parent int`, `mate int` and `depth int`. For an open event `at` and `len` locate the qualified name in `xm_src`, `aat` and `alen` the raw attribute text (everything after the name up to the closing angle bracket, without a trailing slash) in `xm_src`, `mate` is the index of its close event, `parent` the index of the enclosing open event (-1 at the top) and `depth` the number of open elements around it (0 at the top). A close event has the same `at` and `len` as its open event, `mate` the index of its open event, the same `parent` and `depth`. A text event has its already entity-decoded text in `xm_pool` at `at` with `len` bytes, `parent` the enclosing open event and `depth` the number of open elements around it.
+
+Module state: `var xm_src byte[>..]` (the document as UTF-8), `var xm_pool byte[>..]` (decoded text), `var xm_ev XmEv[>..]`, `var xm_stk int[>..]` (the event indexes of the elements that are open right now while parsing).
+
+`xm_clear()` empties `xm_src`, `xm_pool`, `xm_ev` and `xm_stk`.
+
+`xm_ws(c byte) bool` is true for space, tab, newline and carriage return. `xm_name_start(c byte) bool` is true for ASCII letters, underscore, colon and every byte from 128 up.
+
+`xm_text_add(raw const byte[:], decode bool)` appends text to the event list: remember the length of `xm_pool`, append raw to `xm_pool` (through `dm::dm_decode_entities` when decode is true, as is otherwise); when nothing was appended do nothing; when the last event is a text event whose text ends exactly at the remembered length, grow its `len` by the added bytes (this merges text, CDATA and text split by comments); otherwise push a new text event whose `parent` is the top of `xm_stk` (-1 when empty) and whose `depth` is `xm_stk.len`.
+
+`xm_open(at int, len int, aat int, alen int, empty bool)` pushes an open event (kind `XM_OPEN`) with those fields, `parent` the top of `xm_stk` (or -1), `depth` equal to `xm_stk.len`, `mate` -1, and pushes its index on `xm_stk`; when empty is true it then calls `xm_close_top()`.
+
+`xm_close_top()` pops the top index o of `xm_stk` and pushes a close event (kind `XM_CLOSE`) with the open event's `at`, `len`, its `parent` and `depth`, and `mate` o; the open event's `mate` becomes the index of the new close event.
+
+`xm_end_tag(at int, len int)` handles an end tag with that name (in `xm_src`): search `xm_stk` from the top down for an open event whose name bytes equal that name exactly; when found at stack position k, call `xm_close_top()` until `xm_stk.len` equals k (so unclosed elements above it are closed first); when not found do nothing.
+
+`xm_find_from(p int, marker const byte[:]) int` returns the index in `xm_src` where marker first occurs at or after p, or the source length when it does not occur.
+
+`xm_tag_end(p int) int` returns the index of the closing angle bracket of the tag whose attribute text starts at p: scan forward remembering whether we are inside a quoted value (a single or double quote opens a quoted value and the same quote closes it) and return the first ">" outside quotes; when the end of the source is reached without finding one, scan again from p ignoring quotes and return the first ">" or the source length.
+
+`xm_parse(data const byte[:])` replaces the current document: call `xm_clear()`, convert data to UTF-8 into `xm_src` with `dm::dm_to_utf8`, then walk `xm_src` with an index i until the end:
+- when the byte at i is not "<", the text runs up to the next "<" (or the end); when `xm_stk` is empty ignore it, otherwise `xm_text_add(run, true)`;
+- "<!--" starts a comment: skip past the next "-->" (or to the end);
+- "<![CDATA[" starts a character data section: the text up to the next "]]>" (or the end) is added with `xm_text_add(run, false)` when `xm_stk` is not empty; continue after the "]]>";
+- "<?" starts a processing instruction: skip past the next "?>";
+- "<!" (a DOCTYPE or anything else) is skipped to its closing ">", where a "[" opens an internal subset that continues to the matching "]" first (ignore any ">" inside it);
+- "</" is an end tag: its name is the bytes after "</" up to the first whitespace or ">"; skip to the ">" (or the end) and call `xm_end_tag`;
+- "<" followed by a name start byte is a start tag: the name is the bytes up to the first whitespace, "/" or ">"; find the closing ">" with `xm_tag_end` from the end of the name; the tag is empty when the last non-whitespace byte before that ">" is a slash and then the attribute text excludes that slash and trailing whitespace; call `xm_open` with the name, the attribute text and whether it is empty; continue after the ">";
+- any other "<" is a literal character: add "<" as text with `xm_text_add` (only when `xm_stk` is not empty) and move one byte on.
+At the end of the source call `xm_close_top()` until `xm_stk` is empty.
+
+`xm_count() int` is the number of events. `xm_kind(i int) int` is the kind of event i, or 0 when i is out of range.
+
+`xm_name(i int) const byte[:]` is the qualified name of an open or close event (a slice of `xm_src`) and empty for a text event or an index out of range.
+
+`xm_local(i int) const byte[:]` is the part of `xm_name(i)` after the last colon (the whole name when there is no colon).
+
+`xm_is(i int, name const byte[:]) bool` is true when i is an open event whose `xm_local` equals name exactly. `xm_isq(i int, qname const byte[:]) bool` is true when i is an open event whose full qualified name equals qname exactly.
+
+`xm_attr_next(s const byte[:], p int&, nat int&, nlen int&, vat int&, vlen int&) bool` reads the next attribute from the raw attribute text s starting at p: skip whitespace and slashes; return false at the end; the name runs up to whitespace or "="; when the name would be empty (a stray "=") skip that byte and continue; skip whitespace; when "=" follows, skip it and whitespace, then a value starting with a single or double quote runs to the next same quote (or the end) and p moves past that quote, any other value runs up to the next whitespace (or the end); without "=" the value is empty. Set nat and nlen to the name's position and length in s, vat and vlen to the value's, and return true.
+
+`xm_attr_get(i int, mode int, name const byte[:], out byte[>..]&) bool` clears out and looks for an attribute of open event i (its attribute text is the slice of `xm_src`) and, when found, appends its value decoded with `dm::dm_decode_entities` and returns true. Mode 0 matches by local name (the attribute name after its last colon): an attribute without a prefix whose name equals name wins, otherwise the first attribute whose local name equals name. Mode 1 matches the full attribute name exactly. Mode 2 matches only attributes that have a prefix and whose local name equals name. Return false when i is not an open event or nothing matches.
+
+`xm_attr(i int, local const byte[:], out byte[>..]&) bool` is mode 0 of `xm_attr_get`. `xm_attrq(i int, qname const byte[:], out byte[>..]&) bool` is mode 1. `xm_attr_pre(i int, local const byte[:], out byte[>..]&) bool` is mode 2.
+
+`xm_text(i int, out byte[>..]&)` appends the text of text event i to out (nothing for other kinds).
+
+`xm_close_of(i int) int` is, for an open event, the index of its close event, and i itself for any other event. `xm_open_of(i int) int` is the index of the matching open event of a close event, and i itself for any other event. `xm_parent(i int) int` and `xm_depth(i int) int` return those fields (-1 and 0 when i is out of range).
+
+`xm_next(i int) int` is the index of the first event after element i: for an open event its close index plus 1, otherwise i plus 1.
+
+`xm_gather(i int, out byte[>..]&)` appends to out all the text of the descendants of open event i in document order (for a text event its own text).
+
+`xm_find(from int, to int, local const byte[:]) int` returns the index of the first open event with index from up to but not including to (to is limited to the event count) whose local name equals local, or -1.
+
+`xm_child(i int, local const byte[:]) int` returns the index of the first direct child element of open event i whose local name equals local (visit children by jumping from one child's open event to the event after its close with `xm_next`), or -1.

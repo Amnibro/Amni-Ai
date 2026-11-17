@@ -462,6 +462,15 @@ def _wp(m:str)->bool:
     return 'word' in c['intents'] and n>=2 and bool(re.search(r"(?i)\bhow (?:many|much|far|old|long)\b|\bwhat(?:'s| is| was| will)\b|\?\s*$",m))
 def _calc(q:str,s:dict)->dict:
     t,v,r=C._math(q,True);return {**s,'kind':'calc','rq':q,'src':'calc','ok':True,'conf':float(r['conf']),'span':v,'text':t,'mat':mat('calc',['Calculator: '+t],t,['calculator: '+str(r.get('intent') or '')],float(r['conf']),[v],echo='')} if t else {}
+_PERS=re.compile(r"(?i)\b(?:my|me|mine|i)\b")
+def _doc(m:str,session,cl,mx:int)->Optional[dict]:
+    H=C.docs(m,session,3);qw=_cw(m);D=__import__('amni.serve.docread',fromlist=['about'])
+    if not H or not (D.about(m) or any(qw&_cw(h.get('text') or '') for h in H) and not _PERS.search(m)):return None
+    L=[x for h in H for x in re.split(r"(?<=[.!?])\s+",C.asc(h.get('text'))) if len(x)>20];R=sorted(range(len(L)),key=lambda i:(-len(qw&_cw(L[i])),i));cap=int(_f('AMNI_ADAM_T_HARNESS_DOC_BYTES',640));K=[]
+    for i in R:K=K+[i] if sum(len(L[j])+1 for j in K)+len(L[i])<=cap else K
+    if not K:return None
+    E=' '.join(L[i] for i in sorted(K[:2]));M=mat('doc',[L[i] for i in sorted(K)],E,prov=C.doclines(H,160));b=blend(cl,m,M,mx);src=', '.join(x for x in (H[0].get('file'),D._loc(H[0])) if x);t=C.asc(b[0] or E).strip()+(f' ({src})' if src else '')
+    return {'text':t,'n':{'hs':1,'hdoc':1,'hv':1,'hb':int(bool(b[1]))},'slots':[{'kind':'doc','q':m,'ok':True,'text':t,'mroute':'doc','blend':b[1],'prov':M['prov']}]}
 def run(message:str,history,user,session,cl,mx:int)->Optional[dict]:
     m=str(message or '').strip()
     if not on() or not m:return None
@@ -470,6 +479,8 @@ def run(message:str,history,user,session,cl,mx:int)->Optional[dict]:
     if U._fg(m):return None
     m=Q1.imp(m) if Q1 else m
     K=__import__('amni.serve.adam_t_code',fromlist=['want']) if os.environ.get('AMNI_ADAM_T_HARNESS_CODE','1')=='1' else None
+    Dz=_doc(m,session,cl,mx) if os.environ.get('AMNI_ADAM_T_HARNESS_DOCS','1')=='1' else None
+    if Dz:return Dz
     if K and K.want(m):o=K.solve(m);return {'text':K.reply(o),'n':{'hs':1,'hcd':1,'hcv':int(o['ok']),'hms':o['ms']},'slots':[{'kind':'code','src':o['how'],'ok':o['ok'],'hedge':not o['ok'],'q':m,'mroute':'code','blend':None,'prov':o['prov']}]}
     t0=time.perf_counter();w=_wp(m);S=_calc(m,{'q':m,'retry':0}) if w else {};S=[S] if S else []
     g=cog(m,history,user,cl,mx) if not S else None

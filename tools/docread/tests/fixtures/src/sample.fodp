@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.presentation">
+<office:meta>
+<dc:title>Spring Plan Deck</dc:title>
+<meta:initial-creator>Jordan Lee</meta:initial-creator>
+<meta:creation-date>2026-03-01T10:00:00</meta:creation-date>
+<dc:date>2026-03-20T12:30:00</dc:date>
+</office:meta>
+<office:styles>
+<style:style style:name="Default" style:family="graphic"><style:graphic-properties draw:stroke="none" draw:fill="none"/></style:style>
+<style:style style:name="Title" style:family="presentation"><style:text-properties fo:font-size="32pt"/></style:style>
+<style:style style:name="Outline" style:family="presentation"><style:text-properties fo:font-size="24pt"/></style:style>
+<text:list-style style:name="Lst"><text:list-level-style-bullet text:level="1" text:bullet-char="•"><style:list-level-properties text:min-label-width="0.25in"/></text:list-level-style-bullet><text:list-level-style-bullet text:level="2" text:bullet-char="–"><style:list-level-properties text:space-before="0.25in" text:min-label-width="0.25in"/></text:list-level-style-bullet></text:list-style>
+</office:styles>
+<office:automatic-styles>
+<style:page-layout style:name="PM1"><style:page-layout-properties fo:page-width="11in" fo:page-height="8.25in" style:print-orientation="landscape"/></style:page-layout>
+<style:style style:name="dp1" style:family="drawing-page"/>
+</office:automatic-styles>
+<office:master-styles>
+<style:master-page style:name="Default" style:page-layout-name="PM1"/>
+</office:master-styles>
+<office:body>
+<office:presentation>
+<draw:page draw:name="Spring Plan" draw:style-name="dp1" draw:master-page-name="Default">
+<draw:frame presentation:style-name="Title" draw:layer="layout" svg:width="9in" svg:height="1.2in" svg:x="1in" svg:y="0.5in" presentation:class="title" presentation:user-transformed="true"><draw:text-box><text:p>Spring Plan</text:p></draw:text-box></draw:frame>
+<draw:frame presentation:style-name="Outline" draw:layer="layout" svg:width="9in" svg:height="4.5in" svg:x="1in" svg:y="2in" presentation:class="outline" presentation:user-transformed="true"><draw:text-box><text:list text:style-name="Lst"><text:list-item><text:p>Plant tulips</text:p></text:list-item><text:list-item><text:p>Order soil</text:p><text:list><text:list-item><text:p>Peat moss</text:p></text:list-item></text:list></text:list-item><text:list-item><text:p>Caf&#233; menu &#8364;5</text:p></text:list-item></text:list></draw:text-box></draw:frame>
+<presentation:notes draw:style-name="dp1"><draw:page-thumbnail draw:layer="layout" svg:width="5in" svg:height="3.75in" svg:x="1in" svg:y="1in" presentation:class="page"/><draw:frame presentation:style-name="Outline" draw:layer="layout" svg:width="5in" svg:height="4in" svg:x="1in" svg:y="5in" presentation:class="notes" presentation:user-transformed="true"><draw:text-box><text:p>Open with the tulip photo.</text:p><text:p>Mention the soil delivery date.</text:p></draw:text-box></draw:frame></presentation:notes>
+</draw:page>
+<draw:page draw:name="Costs" draw:style-name="dp1" draw:master-page-name="Default">
+<draw:frame presentation:style-name="Title" draw:layer="layout" svg:width="9in" svg:height="1.2in" svg:x="1in" svg:y="0.5in" presentation:class="title" presentation:user-transformed="true"><draw:text-box><text:p>Costs</text:p></draw:text-box></draw:frame>
+<draw:frame draw:layer="layout" svg:width="9in" svg:height="2in" svg:x="1in" svg:y="2in"><table:table table:name="costs"><table:table-column table:number-columns-repeated="3"/>
+<table:table-row><table:table-cell office:value-type="string"><text:p>Item</text:p></table:table-cell><table:table-cell office:value-type="string"><text:p>Qty</text:p></table:table-cell><table:table-cell office:value-type="string"><text:p>Price</text:p></table:table-cell></table:table-row>
+<table:table-row><table:table-cell office:value-type="string"><text:p>Tulips</text:p></table:table-cell><table:table-cell office:value-type="string"><text:p>10</text:p></table:table-cell><table:table-cell office:value-type="string"><text:p>5</text:p></table:table-cell></table:table-row>
+<table:table-row><table:table-cell office:value-type="string"><text:p>Soil</text:p></table:table-cell><table:table-cell office:value-type="string"><text:p>4</text:p></table:table-cell><table:table-cell office:value-type="string"><text:p>12</text:p></table:table-cell></table:table-row>
+</table:table></draw:frame>
+<presentation:notes draw:style-name="dp1"><draw:page-thumbnail draw:layer="layout" svg:width="5in" svg:height="3.75in" svg:x="1in" svg:y="1in" presentation:class="page"/><draw:frame presentation:style-name="Outline" draw:layer="layout" svg:width="5in" svg:height="4in" svg:x="1in" svg:y="5in" presentation:class="notes" presentation:user-transformed="true"><draw:text-box><text:p>Prices include delivery.</text:p></draw:text-box></draw:frame></presentation:notes>
+</draw:page>
+</office:presentation>
+</office:body>
+</office:document>

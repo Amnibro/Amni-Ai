@@ -1,0 +1,1415 @@
+=== 00ed2b7acbafd8f9
+namespace image;
+=== 5a84de4c0386b657
+let IM_NONE = 0;
+let IM_PNG = 1;
+let IM_JPEG = 2;
+let IM_GIF = 3;
+let IM_WEBP = 4;
+let IM_TIFF = 5;
+let IM_BMP = 6;
+let IM_ICO = 7;
+let IM_HEIC = 8;
+let IM_AVIF = 9;
+let IM_SVG = 10;
+let IM_LIMIT = 20000;
+=== 0210b8d1abc8cc5c
+var im_w = 0;
+var im_h = 0;
+var im_frames = 1;
+var im_pages = 1;
+var im_pass = 0;
+var im_seen byte[>..];
+var im_tmp byte[>..];
+var im_tmp2 byte[>..];
+var im_ifds int[>..];
+var im_boxn = 0;
+var im_hw = 0;
+var im_hh = 0;
+=== -51257c8733f79f4c
+fn im_u8(d const byte[:], p int) int {
+	if p < 0 || p >= d.len { return -1; }
+	return d[p] as int;
+}
+fn im_u16(d const byte[:], p int, big bool) int {
+	if p < 0 || p + 2 > d.len { return -1; }
+	let a = d[p] as int;
+	let b = d[p + 1] as int;
+	if big { return (a << 8) | b; }
+	return (b << 8) | a;
+}
+fn im_u32(d const byte[:], p int, big bool) int {
+	if p < 0 || p + 4 > d.len { return -1; }
+	var v = 0;
+	for i in 4 {
+		let k = if big { i } else { 3 - i };
+		let b = d[p + k] as int;
+		v = (v << 8) | b;
+	}
+	return v;
+}
+=== -6c6b89e0dc08bc89
+fn im_starts(d const byte[:], p int, s const byte[:]) bool {
+	if p < 0 || p + s.len > d.len { return false; }
+	for i in s.len {
+		if d[p + i] != s[i] { return false; }
+	}
+	return true;
+}
+=== -4051f1d67b65f6ff
+fn im_find(d const byte[:], s const byte[:], from int, to int) int {
+	let hi = min(to, d.len);
+	var i = max(from, 0);
+	while i < hi {
+		if im_starts(d, i, s) { return i; }
+		i++;
+	}
+	return -1;
+}
+=== -566caa7e1178f407
+fn im_lc(c int) int {
+	if c >= 65 && c <= 90 { return c + 32; }
+	return c;
+}
+fn im_ieq(a const byte[:], b const byte[:]) bool {
+	if a.len != b.len { return false; }
+	for i in a.len {
+		if im_lc(a[i]) != im_lc(b[i]) { return false; }
+	}
+	return true;
+}
+=== -2c2ac260fe926df3
+fn im_dec(v int, out byte[>..]&) {
+	if v < 0 { out.push('-'); }
+	var u uint = 0;
+	if v < 0 {
+		u = ((0 - (v + 1)) as! uint) + 1;
+	} else {
+		u = v as! uint;
+	}
+	var tmp byte[..24] = [];
+	if u == 0 { tmp.push('0'); }
+	while u > 0 {
+		tmp.push((48 + u % 10) as! byte);
+		u /= 10;
+	}
+	var i = tmp.len;
+	while i > 0 {
+		i--;
+		out.push(tmp[i]);
+	}
+}
+=== -6bd1ffda391bc0ee
+import math;
+fn im_num(v real, maxdec int, out byte[>..]&) {
+	var a = v;
+	if a < 0.0 { a = -a; }
+	var pw = 1;
+	for i in maxdec { pw *= 10; }
+	let r = floor(a * pw + 0.5) as int;
+	let whole = r / pw;
+	let frac = r % pw;
+	if v < 0.0 && r != 0 { out.push('-'); }
+	im_dec(whole, out);
+	if maxdec > 0 {
+		var digs byte[..24] = [];
+		var f = frac;
+		for i in maxdec {
+			digs.push((48 + f % 10) as! byte);
+			f /= 10;
+		}
+		var start = 0;
+		while start < digs.len && digs[start] == 48 { start++; }
+		if start < digs.len {
+			out.push('.');
+			var j = digs.len;
+			while j > start {
+				j--;
+				out.push(digs[j]);
+			}
+		}
+	}
+}
+=== -5d4d38aedab4f00b
+fn im_zlen(s const byte[:]) int {
+	var i = 0;
+	while i < s.len && s[i] != 0 { i++; }
+	return i;
+}
+fn im_text(s const byte[:], out byte[>..]&) {
+	dm::dm_to_utf8(s[..im_zlen(s)], out);
+}
+=== -419f357a055ed971
+fn im_add(kind int, text const byte[:]) {
+	if im_pass != 2 { return; }
+	im_tmp.clear();
+	dm::dm_clean(text, false, im_tmp);
+	if im_tmp.len == 0 { return; }
+	if im_tmp.len > IM_LIMIT {
+		var cut = IM_LIMIT;
+		while cut > 0 && im_tmp[cut] >= 128 && im_tmp[cut] <= 191 { cut--; }
+		im_tmp.resize(cut, 0);
+		dm::dm_warn_add("text truncated");
+	}
+	im_tmp2.clear();
+	im_tmp2.push((48 + kind) as! byte);
+	im_tmp2.append(im_tmp);
+	im_tmp2.push(10);
+	var pat byte[>..] = [];
+	pat.push(10);
+	pat.append(im_tmp2);
+	if im_starts(im_seen, 0, im_tmp2) { return; }
+	if im_find(im_seen, pat, 0, im_seen.len) >= 0 { return; }
+	im_seen.append(im_tmp2);
+	dm::dm_add(kind, 0, im_tmp);
+}
+=== -247ccdee5f81ed14
+fn im_field(name const byte[:], value const byte[:]) {
+	if trim(value).len == 0 { return; }
+	var s byte[>..] = [];
+	s.append(name);
+	s.append(": ");
+	s.append(value);
+	im_add(dm::DM_FIELD, s);
+}
+=== 4e7016af79c6630e
+fn im_field_px(name const byte[:], v int) {
+	if v <= 0 { return; }
+	var s byte[>..] = [];
+	im_dec(v, s);
+	s.append(" px");
+	im_field(name, s);
+}
+=== 24b908cc0b38e881
+fn im_dims(w int, h int) {
+	if w > 0 && h > 0 && im_w == 0 {
+		im_w = w;
+		im_h = h;
+	}
+}
+=== -6c16e25d21939e91
+fn im_isdig(c int) bool {
+	return c >= 48 && c <= 57;
+}
+fn im_date(s const byte[:], out byte[>..]&) {
+	let n = im_zlen(s);
+	if n < 4 { return; }
+	for i in 4 {
+		if !im_isdig(s[i]) { return; }
+	}
+	let ok = n >= 10 && s[4] == ':' && im_isdig(s[5]) && im_isdig(s[6]) && s[7] == ':' && im_isdig(s[8]) && im_isdig(s[9]) && !im_starts(s, 0, "0000");
+	if ok {
+		out.append(s[0..4]);
+		out.push('-');
+		out.append(s[5..7]);
+		out.push('-');
+		out.append(s[8..n]);
+	} else {
+		out.append(s[..n]);
+	}
+}
+=== -639b0adc73bdc0ed
+fn im_density(x real, y real) {
+	if !(x > 0.0 && y > 0.0) { return; }
+	var s byte[>..] = [];
+	im_num(x, 1, s);
+	s.append(" x ");
+	im_num(y, 1, s);
+	s.append(" dpi");
+	im_field("Density", s);
+}
+=== -7d94cfb30fef8f1f
+
+=== -5d6786fea423322b
+fn im_tsize(ty int) int {
+	match ty {
+		1, 2, 6, 7 => 1,
+		3, 8 => 2,
+		4, 9, 11, 13 => 4,
+		5, 10, 12, 16 => 8,
+		_ => 0,
+	}
+}
+=== 73ed1eea579e89d3
+fn im_e_pos(t const byte[:], e int, big bool) int {
+	let ty = im_u16(t, e + 2, big);
+	let cnt = im_u32(t, e + 4, big);
+	if ty < 0 || cnt < 0 { return -1; }
+	let size = im_tsize(ty) * cnt;
+	if size <= 0 || size > t.len { return -1; }
+	var pos = e + 8;
+	if size > 4 { pos = im_u32(t, e + 8, big); }
+	if pos < 0 || pos + size > t.len { return -1; }
+	return pos;
+}
+=== -29a915cc49034184
+fn im_s16(v int) int {
+	if v >= 32768 { return v - 65536; }
+	return v;
+}
+fn im_s32(v int) int {
+	if v >= 2147483648 { return v - 4294967296; }
+	return v;
+}
+fn im_e_real(t const byte[:], e int, big bool, i int) real {
+	let pos = im_e_pos(t, e, big);
+	let cnt = im_u32(t, e + 4, big);
+	if pos < 0 || i < 0 || i >= cnt { return 0.0; }
+	let ty = im_u16(t, e + 2, big);
+	if ty == 1 || ty == 7 { return im_u8(t, pos + i) as real; }
+	if ty == 3 { return im_u16(t, pos + 2 * i, big) as real; }
+	if ty == 4 { return im_u32(t, pos + 4 * i, big) as real; }
+	if ty == 8 { return im_s16(im_u16(t, pos + 2 * i, big)) as real; }
+	if ty == 9 { return im_s32(im_u32(t, pos + 4 * i, big)) as real; }
+	if ty == 5 || ty == 10 {
+		var a = im_u32(t, pos + 8 * i, big);
+		var b = im_u32(t, pos + 8 * i + 4, big);
+		if ty == 10 {
+			a = im_s32(a);
+			b = im_s32(b);
+		}
+		if b == 0 { return 0.0; }
+		return (a as real) / (b as real);
+	}
+	return 0.0;
+}
+=== 5537a30ebb53ba58
+fn im_e_text(t const byte[:], e int, big bool, out byte[>..]&) {
+	let pos = im_e_pos(t, e, big);
+	if pos < 0 { return; }
+	let ty = im_u16(t, e + 2, big);
+	let cnt = im_u32(t, e + 4, big);
+	im_text(t[pos..pos + im_tsize(ty) * cnt], out);
+}
+=== 11a823c4076090d9
+var im_x_desc byte[>..];
+var im_x_make byte[>..];
+var im_x_model byte[>..];
+var im_x_taken byte[>..];
+var im_x_date byte[>..];
+var im_x_soft byte[>..];
+var im_x_artist byte[>..];
+var im_x_copy byte[>..];
+var im_x_lens byte[>..];
+var im_x_ucom byte[>..];
+var im_x_orient = 0;
+var im_x_exp = 0.0;
+var im_x_fnum = 0.0;
+var im_x_iso = 0;
+var im_x_focal = 0.0;
+var im_x_xres = 0.0;
+var im_x_yres = 0.0;
+var im_x_runit = 2;
+var im_x_lat = -1.0;
+var im_x_lon = -1.0;
+var im_x_latref = 0;
+var im_x_lonref = 0;
+fn im_x_clear() {
+	im_x_desc.clear();
+	im_x_make.clear();
+	im_x_model.clear();
+	im_x_taken.clear();
+	im_x_date.clear();
+	im_x_soft.clear();
+	im_x_artist.clear();
+	im_x_copy.clear();
+	im_x_lens.clear();
+	im_x_ucom.clear();
+	im_x_orient = 0;
+	im_x_exp = 0.0;
+	im_x_fnum = 0.0;
+	im_x_iso = 0;
+	im_x_focal = 0.0;
+	im_x_xres = 0.0;
+	im_x_yres = 0.0;
+	im_x_runit = 2;
+	im_x_lat = -1.0;
+	im_x_lon = -1.0;
+	im_x_latref = 0;
+	im_x_lonref = 0;
+}
+=== -41090bc01e34264c
+fn im_gps(t const byte[:], e int, big bool) real {
+	let cnt = im_u32(t, e + 4, big);
+	if cnt < 3 || im_e_pos(t, e, big) < 0 { return -1.0; }
+	let d = im_e_real(t, e, big, 0);
+	let m = im_e_real(t, e, big, 1);
+	let s = im_e_real(t, e, big, 2);
+	if d > 180.0 { return -1.0; }
+	return d + m / 60.0 + s / 3600.0;
+}
+=== -3ca183c95c8a1969
+fn im_ifd(t const byte[:], off int, big bool, kind int, page int) int {
+	if off < 8 { return 0; }
+	let n = im_u16(t, off, big);
+	if n < 0 || off + 2 + 12 * n > t.len { return 0; }
+	var exif = 0;
+	var gps = 0;
+	var pw = 0;
+	var ph = 0;
+	let lim = min(n, 500);
+	for i in lim {
+		let e = off + 2 + 12 * i;
+		let tag = im_u16(t, e, big);
+		let ty = im_u16(t, e + 2, big);
+		if tag < 0 || ty < 0 { break; }
+		if kind <= 1 {
+			if tag == 256 || tag == 257 {
+				if kind == 0 && (ty == 3 || ty == 4) {
+					let v = im_e_real(t, e, big, 0) as int;
+					if tag == 256 {
+						pw = v;
+					} else {
+						ph = v;
+					}
+				}
+			} else if page == 0 {
+				match tag {
+					270 => { im_e_text(t, e, big, im_x_desc); },
+					271 => { im_e_text(t, e, big, im_x_make); },
+					272 => { im_e_text(t, e, big, im_x_model); },
+					274 => { im_x_orient = im_e_real(t, e, big, 0) as int; },
+					282 => { im_x_xres = im_e_real(t, e, big, 0); },
+					283 => { im_x_yres = im_e_real(t, e, big, 0); },
+					296 => { im_x_runit = im_e_real(t, e, big, 0) as int; },
+					305 => { im_e_text(t, e, big, im_x_soft); },
+					306 => {
+						let pos = im_e_pos(t, e, big);
+						if pos >= 0 {
+							let cnt = im_u32(t, e + 4, big);
+							im_date(t[pos..pos + im_tsize(ty) * cnt], im_x_date);
+						}
+					},
+					315 => { im_e_text(t, e, big, im_x_artist); },
+					33432 => { im_e_text(t, e, big, im_x_copy); },
+					700 => {
+						let pos = im_e_pos(t, e, big);
+						let cnt = im_u32(t, e + 4, big);
+						if pos >= 0 && cnt >= 0 && pos + cnt <= t.len { im_xmp(t[pos..pos + cnt]); }
+					},
+					33723 => {
+						let pos = im_e_pos(t, e, big);
+						let cnt = im_u32(t, e + 4, big);
+						if pos >= 0 && cnt >= 0 && pos + cnt <= t.len { im_iptc(t[pos..pos + cnt]); }
+					},
+					34665 => { exif = im_u32(t, e + 8, big); },
+					34853 => { gps = im_u32(t, e + 8, big); },
+					_ => {},
+				}
+			}
+		} else if kind == 2 {
+			match tag {
+				33434 => { im_x_exp = im_e_real(t, e, big, 0); },
+				33437 => { im_x_fnum = im_e_real(t, e, big, 0); },
+				34855 => { im_x_iso = im_e_real(t, e, big, 0) as int; },
+				36867 => {
+					let pos = im_e_pos(t, e, big);
+					if pos >= 0 {
+						let cnt = im_u32(t, e + 4, big);
+						im_date(t[pos..pos + im_tsize(ty) * cnt], im_x_taken);
+					}
+				},
+				37386 => { im_x_focal = im_e_real(t, e, big, 0); },
+				42036 => { im_e_text(t, e, big, im_x_lens); },
+				37510 => {
+					let pos = im_e_pos(t, e, big);
+					if pos >= 0 {
+						let cnt = im_u32(t, e + 4, big);
+						let v = t[pos..pos + im_tsize(ty) * cnt];
+						im_x_ucom.clear();
+						var zeros = v.len >= 8;
+						if zeros {
+							for k in 8 {
+								if v[k] != 0 { zeros = false; }
+							}
+						}
+						let ascii = v.len >= 8 && im_starts(v, 0, "ASCII") && v[5] == 0 && v[6] == 0 && v[7] == 0;
+						let uni = v.len >= 8 && im_starts(v, 0, "UNICODE") && v[7] == 0;
+						let jis = v.len >= 8 && im_starts(v, 0, "JIS") && v[3] == 0 && v[4] == 0 && v[5] == 0 && v[6] == 0 && v[7] == 0;
+						if uni {
+							dm::dm_utf16(v[8..], big, im_x_ucom);
+						} else if ascii || jis || zeros {
+							im_text(v[8..], im_x_ucom);
+						} else {
+							im_text(v, im_x_ucom);
+						}
+					}
+				},
+				_ => {},
+			}
+		} else if kind == 3 {
+			match tag {
+				1 => {
+					let pos = im_e_pos(t, e, big);
+					if pos >= 0 { im_x_latref = im_u8(t, pos); }
+				},
+				3 => {
+					let pos = im_e_pos(t, e, big);
+					if pos >= 0 { im_x_lonref = im_u8(t, pos); }
+				},
+				2 => { im_x_lat = im_gps(t, e, big); },
+				4 => { im_x_lon = im_gps(t, e, big); },
+				_ => {},
+			}
+		}
+	}
+	if kind == 0 {
+		if page == 0 {
+			im_dims(pw, ph);
+		} else if pw > 0 && ph > 0 {
+			var s byte[>..] = [];
+			var nm byte[>..] = [];
+			nm.append("Page ");
+			im_dec(page + 1, nm);
+			im_dec(pw, s);
+			s.append(" x ");
+			im_dec(ph, s);
+			s.append(" px");
+			im_field(nm, s);
+		}
+	}
+	if kind <= 1 {
+		if exif > 0 && exif != off { im_ifd(t, exif, big, 2, page); }
+		if gps > 0 && gps != off { im_ifd(t, gps, big, 3, page); }
+	}
+	let nxt = im_u32(t, off + 2 + 12 * n, big);
+	if nxt < 0 { return 0; }
+	return nxt;
+}
+=== -3e4835b5983c5f7b
+fn im_orient_name(v int) const byte[:] {
+	match v {
+		1 => "normal",
+		2 => "mirrored",
+		3 => "rotated 180",
+		4 => "flipped vertically",
+		5 => "transposed",
+		6 => "rotated 90 clockwise",
+		7 => "transversed",
+		8 => "rotated 270 clockwise",
+		_ => "",
+	}
+}
+fn im_x_flush() {
+	var s byte[>..] = [];
+	im_add(dm::DM_PARA, im_x_desc);
+	let mk = im_x_make.len;
+	if mk > 0 && im_x_model.len >= mk && im_ieq(im_x_model[..mk], im_x_make) {
+		im_field("Camera", im_x_model);
+	} else {
+		s.append(im_x_make);
+		if im_x_make.len > 0 && im_x_model.len > 0 { s.push(' '); }
+		s.append(im_x_model);
+		im_field("Camera", s);
+	}
+	im_field("Taken", im_x_taken);
+	im_field("Date", im_x_date);
+	if im_x_orient != 0 {
+		s.clear();
+		im_dec(im_x_orient, s);
+		let nm = im_orient_name(im_x_orient);
+		if nm.len > 0 {
+			s.append(" (");
+			s.append(nm);
+			s.push(')');
+		}
+		im_field("Orientation", s);
+	}
+	if im_x_exp > 0.0 {
+		s.clear();
+		if im_x_exp >= 1.0 {
+			im_num(im_x_exp, 1, s);
+		} else {
+			s.append("1/");
+			im_dec(floor(1.0 / im_x_exp + 0.5) as int, s);
+		}
+		s.append(" s");
+		im_field("Exposure", s);
+	}
+	if im_x_fnum > 0.0 {
+		s.clear();
+		s.append("f/");
+		im_num(im_x_fnum, 2, s);
+		im_field("Aperture", s);
+	}
+	if im_x_iso > 0 {
+		s.clear();
+		im_dec(im_x_iso, s);
+		im_field("ISO", s);
+	}
+	if im_x_focal > 0.0 {
+		s.clear();
+		im_num(im_x_focal, 2, s);
+		s.append(" mm");
+		im_field("Focal length", s);
+	}
+	im_field("Lens", im_x_lens);
+	im_field("Software", im_x_soft);
+	im_field("Artist", im_x_artist);
+	im_field("Copyright", im_x_copy);
+	var k = 1.0;
+	if im_x_runit == 3 { k = 2.54; }
+	im_density(im_x_xres * k, im_x_yres * k);
+	if im_x_lat >= 0.0 && im_x_lon >= 0.0 {
+		s.clear();
+		let la = if im_x_latref == 83 { -im_x_lat } else { im_x_lat };
+		let lo = if im_x_lonref == 87 { -im_x_lon } else { im_x_lon };
+		im_num(la, 5, s);
+		s.append(", ");
+		im_num(lo, 5, s);
+		im_field("Location", s);
+	}
+	im_add(dm::DM_PARA, im_x_ucom);
+}
+=== 3cbc58c94fb9e557
+fn im_thead(t const byte[:]) int {
+	if t.len < 8 { return 0; }
+	if t[0] == 73 && t[1] == 73 && t[2] == 42 && t[3] == 0 { return 1; }
+	if t[0] == 77 && t[1] == 77 && t[2] == 0 && t[3] == 42 { return 2; }
+	return 0;
+}
+fn im_exif(t0 const byte[:]) {
+	var start = 0;
+	if im_starts(t0, 0, "Exif") && im_u8(t0, 4) == 0 && im_u8(t0, 5) == 0 { start = 6; }
+	let t = t0[start..];
+	let h = im_thead(t);
+	if h == 0 { return; }
+	let big = h == 2;
+	im_x_clear();
+	im_ifd(t, im_u32(t, 4, big), big, 1, 0);
+	im_x_flush();
+}
+=== 37aa4c1483f3ff0b
+fn im_tiff(d const byte[:]) {
+	let h = im_thead(d);
+	if h == 0 { return; }
+	let big = h == 2;
+	im_ifds.clear();
+	im_x_clear();
+	var off = im_u32(d, 4, big);
+	var count = 0;
+	while off >= 8 && off < d.len {
+		if count >= 500 {
+			dm::dm_warn_add("TIFF directory chain cut at 500 pages");
+			break;
+		}
+		if contains(im_ifds, off) {
+			dm::dm_warn_add("TIFF directory chain loops");
+			break;
+		}
+		im_ifds.push(off);
+		let nxt = im_ifd(d, off, big, 0, count);
+		count++;
+		off = nxt;
+	}
+	im_pages = max(count, 1);
+	im_x_flush();
+}
+=== 0655071a07d04248
+fn im_xclose(i int, n int) int {
+	var depth = 0;
+	var j = i;
+	while j < n {
+		let k = xml::xm_kind(j);
+		if k == xml::XM_OPEN {
+			depth += 1;
+		} else if k == xml::XM_CLOSE {
+			depth -= 1;
+			if depth <= 0 { return j; }
+		}
+		j += 1;
+	}
+	return n - 1;
+}
+fn im_xmp_pick(n int, name const byte[:]) int {
+	var i = 0;
+	while i < n && i < 200000 {
+		if xml::xm_isq(i, name) { return i; }
+		i++;
+	}
+	return -1;
+}
+fn im_xmp_li(i int, n int, out byte[>..]&, all bool) {
+	let close = im_xclose(i, n);
+	var j = xml::xm_find(i, close + 1, "li");
+	var cnt = 0;
+	while j >= 0 && cnt < 1000 {
+		if cnt > 0 { out.append(", "); }
+		xml::xm_gather(j, out);
+		cnt++;
+		if !all { break; }
+		j = xml::xm_find(j + 1, close + 1, "li");
+	}
+}
+fn im_xmp(x const byte[:]) {
+	if x.len == 0 || x.len > 1000000 { return; }
+	xml::xm_parse(x);
+	let n = xml::xm_count();
+	var s byte[>..] = [];
+	let ti = im_xmp_pick(n, "dc:title");
+	if ti >= 0 {
+		s.clear();
+		im_xmp_li(ti, n, s, false);
+		im_field("Title", s);
+	}
+	let de = im_xmp_pick(n, "dc:description");
+	if de >= 0 {
+		s.clear();
+		im_xmp_li(de, n, s, false);
+		im_add(dm::DM_PARA, s);
+	}
+	let su = im_xmp_pick(n, "dc:subject");
+	if su >= 0 {
+		s.clear();
+		im_xmp_li(su, n, s, true);
+		im_field("Keywords", s);
+	}
+	let cr = im_xmp_pick(n, "dc:creator");
+	if cr >= 0 {
+		s.clear();
+		im_xmp_li(cr, n, s, true);
+		im_field("Author", s);
+	}
+}
+=== -3297cdc25d04177e
+fn im_iptc(d const byte[:]) {
+	var p = 0;
+	var cnt = 0;
+	var kw byte[>..] = [];
+	var v byte[>..] = [];
+	while p + 5 <= d.len && d[p] == 28 && cnt < 2000 {
+		cnt++;
+		let rec = d[p + 1] as int;
+		let ds = d[p + 2] as int;
+		let l = im_u16(d, p + 3, true);
+		if l < 0 || (l & 32768) != 0 || p + 5 + l > d.len { break; }
+		if rec == 2 {
+			v.clear();
+			im_text(d[p + 5..p + 5 + l], v);
+			match ds {
+				5 => { im_field("Title", v); },
+				105 => { im_field("Headline", v); },
+				80 => { im_field("Author", v); },
+				116 => { im_field("Copyright", v); },
+				120 => { im_add(dm::DM_PARA, v); },
+				25 => {
+					if v.len > 0 {
+						if kw.len > 0 { kw.append(", "); }
+						kw.append(v);
+					}
+				},
+				_ => {},
+			}
+		}
+		p += 5 + l;
+	}
+	im_field("Keywords", kw);
+}
+=== 5c61d26f1bff56d3
+fn im_photoshop(d const byte[:]) {
+	var p = 0;
+	var cnt = 0;
+	while im_starts(d, p, "8BIM") && cnt < 500 {
+		cnt++;
+		let id = im_u16(d, p + 4, true);
+		let nl = im_u8(d, p + 6);
+		if id < 0 || nl < 0 { break; }
+		var q = p + 7 + nl;
+		if (1 + nl) % 2 == 1 { q += 1; }
+		let size = im_u32(d, q, true);
+		if size < 0 { break; }
+		q += 4;
+		if q + size > d.len { break; }
+		if id == 1028 { im_iptc(d[q..q + size]); }
+		p = q + size + (size % 2);
+	}
+}
+=== -7934feef7df4791
+fn im_ipre(k const byte[:], pre const byte[:]) bool {
+	return k.len >= pre.len && im_ieq(k[..pre.len], pre);
+}
+fn im_kv(key const byte[:], value const byte[:]) {
+	var k byte[>..] = [];
+	var v byte[>..] = [];
+	im_text(key, k);
+	im_text(value, v);
+	if im_ipre(k, "date:") || im_ipre(k, "Raw profile type") { return; }
+	var s byte[>..] = [];
+	if im_ieq(k, "XML:com.adobe.xmp") {
+		im_xmp(v);
+	} else if im_ieq(k, "Description") {
+		im_add(dm::DM_PARA, v);
+	} else if im_ieq(k, "Comment") {
+		s.append("Comment: ");
+		s.append(v);
+		im_add(dm::DM_PARA, s);
+	} else if im_ieq(k, "Creation Time") {
+		im_field("Created", v);
+	} else if im_ieq(k, "Title") {
+		im_field("Title", v);
+	} else if im_ieq(k, "Author") {
+		im_field("Author", v);
+	} else if im_ieq(k, "Copyright") {
+		im_field("Copyright", v);
+	} else if im_ieq(k, "Software") {
+		im_field("Software", v);
+	} else if im_ieq(k, "Source") {
+		im_field("Source", v);
+	} else if v.len <= 200 {
+		im_field(k, v);
+	} else {
+		s.append(k);
+		s.append(": ");
+		s.append(v);
+		im_add(dm::DM_PARA, s);
+	}
+}
+=== 70181d0470256d2a
+fn im_zero(d const byte[:], from int) int {
+	var i = max(from, 0);
+	while i < d.len {
+		if d[i] == 0 { return i; }
+		i++;
+	}
+	return -1;
+}
+fn im_png_color(c int) const byte[:] {
+	match c {
+		0 => "gray",
+		2 => "RGB",
+		3 => "palette",
+		4 => "gray with alpha",
+		6 => "RGBA",
+		_ => "unknown",
+	}
+}
+fn im_png(d const byte[:]) {
+	if d.len < 8 { return; }
+	var p = 8;
+	var n = 0;
+	var inf byte[>..] = [];
+	while n < 5000 && p < d.len {
+		n += 1;
+		let len = im_u32(d, p, true);
+		if len < 0 || p + 12 + len > d.len {
+			dm::dm_warn_add("PNG chunk runs past the end of the file");
+			break;
+		}
+		let c = d[p + 8..p + 8 + len];
+		if im_starts(d, p + 4, "IEND") { break; }
+		if im_starts(d, p + 4, "IHDR") {
+			im_dims(im_u32(c, 0, true), im_u32(c, 4, true));
+			let depth = im_u8(c, 8);
+			let ct = im_u8(c, 9);
+			let il = im_u8(c, 12);
+			if depth >= 0 && ct >= 0 && il >= 0 {
+				var s byte[>..] = [];
+				im_dec(depth, s);
+				s.append("-bit ");
+				s.append(im_png_color(ct));
+				if il == 1 { s.append(", interlaced"); }
+				im_field("Color", s);
+			}
+		} else if im_starts(d, p + 4, "acTL") {
+			im_frames = max(im_u32(c, 0, true), 1);
+		} else if im_starts(d, p + 4, "pHYs") {
+			let x = im_u32(c, 0, true);
+			let y = im_u32(c, 4, true);
+			if im_u8(c, 8) == 1 { im_density(x * 0.0254, y * 0.0254); }
+		} else if im_starts(d, p + 4, "tEXt") {
+			let z = im_zero(c, 0);
+			if z >= 0 { im_kv(c[..z], c[z + 1..]); }
+		} else if im_starts(d, p + 4, "zTXt") {
+			let z = im_zero(c, 0);
+			if z >= 0 && z + 2 <= c.len {
+				let zd = c[z + 2..];
+				if zd.len <= 70000 {
+					inf.clear();
+					if zlib::inflate(zd, inf) { im_kv(c[..z], inf); }
+				}
+			}
+		} else if im_starts(d, p + 4, "iTXt") {
+			let z = im_zero(c, 0);
+			if z >= 0 && z + 3 <= c.len {
+				let flag = c[z + 1] as int;
+				let z2 = im_zero(c, z + 3);
+				if z2 >= 0 {
+					let z3 = im_zero(c, z2 + 1);
+					if z3 >= 0 {
+						let tx = c[z3 + 1..];
+						if flag == 1 {
+							if tx.len <= 70000 {
+								inf.clear();
+								if zlib::inflate(tx, inf) { im_kv(c[..z], inf); }
+							}
+						} else {
+							im_kv(c[..z], tx);
+						}
+					}
+				}
+			}
+		} else if im_starts(d, p + 4, "eXIf") {
+			im_exif(c);
+		}
+		p += 12 + len;
+	}
+}
+=== -42630a02423efe2d
+fn im_sof(m int) bool {
+	return m >= 192 && m <= 207 && m != 196 && m != 200 && m != 204;
+}
+fn im_jpeg(d const byte[:]) {
+	if !(im_u8(d, 0) == 255 && im_u8(d, 1) == 216) { return; }
+	var p = 2;
+	var n = 0;
+	while n < 2000 {
+		n += 1;
+		while p < d.len && d[p] != 255 { p++; }
+		if p >= d.len { break; }
+		while p < d.len && d[p] == 255 { p++; }
+		if p >= d.len { break; }
+		let m = d[p] as int;
+		p++;
+		if m == 0 || m == 1 || (m >= 208 && m <= 216) { continue; }
+		if m == 217 || m == 218 { break; }
+		let l = im_u16(d, p, true);
+		if l < 2 || p + l > d.len {
+			dm::dm_warn_add("JPEG segment runs past the end of the file");
+			break;
+		}
+		let s = d[p + 2..p + l];
+		p += l;
+		if im_sof(m) {
+			let prec = im_u8(s, 0);
+			let h = im_u16(s, 1, true);
+			let w = im_u16(s, 3, true);
+			let comps = im_u8(s, 5);
+			if prec >= 0 && h >= 0 && w >= 0 && comps >= 0 {
+				im_dims(w, h);
+				var t byte[>..] = [];
+				im_dec(prec, t);
+				t.append("-bit, ");
+				im_dec(comps, t);
+				t.append(" components");
+				if m == 194 || m == 198 || m == 202 || m == 206 { t.append(", progressive"); }
+				im_field("Color", t);
+			}
+		} else if m == 224 {
+			if im_starts(s, 0, "JFIF") && im_u8(s, 4) == 0 {
+				let units = im_u8(s, 7);
+				let x = im_u16(s, 8, true);
+				let y = im_u16(s, 10, true);
+				if units == 1 { im_density(x, y); }
+				if units == 2 { im_density(x * 2.54, y * 2.54); }
+			}
+		} else if m == 225 {
+			if im_starts(s, 0, "Exif") && im_u8(s, 4) == 0 && im_u8(s, 5) == 0 {
+				im_exif(s[6..]);
+			} else if im_starts(s, 0, "http://ns.adobe.com/xap/1.0/") && im_u8(s, 28) == 0 {
+				im_xmp(s[29..]);
+			}
+		} else if m == 237 {
+			if im_starts(s, 0, "Photoshop 3.0") && im_u8(s, 13) == 0 { im_photoshop(s[14..]); }
+		} else if m == 254 {
+			var t byte[>..] = [];
+			var u byte[>..] = [];
+			im_text(s, u);
+			t.append("Comment: ");
+			t.append(u);
+			im_add(dm::DM_PARA, t);
+		}
+	}
+}
+=== 7b80dadccec8c58f
+fn im_sub(d const byte[:], p int, out byte[>..]&) int {
+	if p < 0 { return d.len; }
+	var q = p;
+	while q < d.len {
+		let l = d[q] as int;
+		q++;
+		if l == 0 { return q; }
+		let e = min(q + l, d.len);
+		out.append(d[q..e]);
+		q = e;
+	}
+	return d.len;
+}
+=== 53cc75a23240e369
+fn im_gif(d const byte[:]) {
+	if !(im_starts(d, 0, "GIF87a") || im_starts(d, 0, "GIF89a")) { return; }
+	im_dims(im_u16(d, 6, false), im_u16(d, 8, false));
+	let fl = im_u8(d, 10);
+	if fl < 0 { return; }
+	var p = 13;
+	if (fl & 128) != 0 { p += 3 * (1 << ((fl & 7) + 1)); }
+	var frames = 0;
+	var n = 0;
+	var scratch byte[>..] = [];
+	while n < 100000 && p < d.len {
+		n += 1;
+		let b = d[p] as int;
+		if b == 44 {
+			let f2 = im_u8(d, p + 9);
+			if f2 < 0 { break; }
+			p += 10;
+			if (f2 & 128) != 0 { p += 3 * (1 << ((f2 & 7) + 1)); }
+			p += 1;
+			scratch.clear();
+			p = im_sub(d, p, scratch);
+			frames += 1;
+		} else if b == 33 {
+			let lab = im_u8(d, p + 1);
+			p += 2;
+			scratch.clear();
+			p = im_sub(d, p, scratch);
+			if lab == 254 {
+				var u byte[>..] = [];
+				var t byte[>..] = [];
+				im_text(scratch, u);
+				t.append("Comment: ");
+				t.append(u);
+				im_add(dm::DM_PARA, t);
+			}
+		} else if b == 59 {
+			break;
+		} else {
+			dm::dm_warn_add("unknown GIF block");
+			break;
+		}
+	}
+	im_frames = max(frames, 1);
+}
+=== -59f4c7301e63115f
+fn im_u24(d const byte[:], p int) int {
+	let a = im_u8(d, p);
+	let b = im_u8(d, p + 1);
+	let c = im_u8(d, p + 2);
+	if a < 0 || b < 0 || c < 0 { return -1; }
+	return a | (b << 8) | (c << 16);
+}
+fn im_webp(d const byte[:]) {
+	if !(im_starts(d, 0, "RIFF") && im_starts(d, 8, "WEBP")) { return; }
+	var p = 12;
+	var n = 0;
+	var anmf = 0;
+	while n < 5000 && p + 8 <= d.len {
+		n += 1;
+		let size = im_u32(d, p + 4, false);
+		if size < 0 { break; }
+		let q = p + 8;
+		if im_starts(d, p, "VP8X") {
+			let w = im_u24(d, q + 4);
+			let h = im_u24(d, q + 7);
+			if w >= 0 && h >= 0 { im_dims(w + 1, h + 1); }
+		} else if im_starts(d, p, "VP8 ") {
+			if im_u8(d, q + 3) == 157 && im_u8(d, q + 4) == 1 && im_u8(d, q + 5) == 42 {
+				let w = im_u16(d, q + 6, false);
+				let h = im_u16(d, q + 8, false);
+				if w >= 0 && h >= 0 {
+					im_dims(w & 16383, h & 16383);
+					im_field("Encoding", "lossy");
+				}
+			}
+		} else if im_starts(d, p, "VP8L") {
+			if im_u8(d, q) == 47 {
+				let bits = im_u32(d, q + 1, false);
+				if bits >= 0 {
+					im_dims((bits & 16383) + 1, ((bits >> 14) & 16383) + 1);
+					im_field("Encoding", "lossless");
+				}
+			}
+		} else if im_starts(d, p, "ANIM") {
+			let lp = im_u16(d, q + 4, false);
+			if lp == 0 {
+				im_field("Loops", "forever");
+			} else if lp > 0 {
+				var s byte[>..] = [];
+				im_dec(lp, s);
+				im_field("Loops", s);
+			}
+		} else if im_starts(d, p, "ANMF") {
+			anmf += 1;
+		} else if im_starts(d, p, "EXIF") {
+			if q + size <= d.len { im_exif(d[q..q + size]); }
+		} else if im_starts(d, p, "XMP ") {
+			if q + size <= d.len { im_xmp(d[q..q + size]); }
+		}
+		p += 8 + size + (size % 2);
+	}
+	if anmf > 0 { im_frames = anmf; }
+}
+=== -4143bfe9d275f96e
+fn im_bmp(d const byte[:]) {
+	let hs = im_u32(d, 14, false);
+	if hs < 0 { return; }
+	var w = 0;
+	var h = 0;
+	var bits = 0;
+	if hs == 12 {
+		w = im_u16(d, 18, false);
+		h = im_u16(d, 20, false);
+		bits = im_u16(d, 24, false);
+	} else {
+		let rw = im_u32(d, 18, false);
+		let rh = im_u32(d, 22, false);
+		bits = im_u16(d, 28, false);
+		if rw < 0 || rh < 0 { return; }
+		w = im_s32(rw);
+		h = im_s32(rh);
+	}
+	if w < 0 && hs == 12 { return; }
+	if h < 0 && hs == 12 { return; }
+	im_dims(abs(w), abs(h));
+	if bits >= 0 {
+		var s byte[>..] = [];
+		im_dec(bits, s);
+		s.append("-bit");
+		im_field("Color", s);
+	}
+	if hs >= 40 {
+		let rx = im_u32(d, 38, false);
+		let ry = im_u32(d, 42, false);
+		if rx >= 0 && ry >= 0 {
+			let x = im_s32(rx);
+			let y = im_s32(ry);
+			if x > 0 && y > 0 { im_density(x * 0.0254, y * 0.0254); }
+		}
+	}
+}
+=== -6813a7b945a5d517
+fn im_ico(d const byte[:]) {
+	let count = im_u16(d, 4, false);
+	if count < 0 { return; }
+	let n = min(count, 256);
+	var bw = 0;
+	var bh = 0;
+	var used = 0;
+	var list byte[>..] = [];
+	for i in n {
+		let e = 6 + 16 * i;
+		if e + 16 > d.len { break; }
+		var w = d[e] as int;
+		var h = d[e + 1] as int;
+		if w == 0 { w = 256; }
+		if h == 0 { h = 256; }
+		if w * h > bw * bh {
+			bw = w;
+			bh = h;
+		}
+		if used > 0 { list.append(", "); }
+		im_dec(w, list);
+		list.push('x');
+		im_dec(h, list);
+		used += 1;
+	}
+	im_dims(bw, bh);
+	im_frames = used;
+	im_field("Icons", list);
+	let ty = im_u16(d, 2, false);
+	if ty == 1 { im_field("Kind", "icon"); }
+	if ty == 2 { im_field("Kind", "cursor"); }
+}
+=== -75d6bbdfeadd5339
+recursive fn im_heif_walk(d const byte[:], p int, end int, depth int) {
+	if depth > 7 { return; }
+	let lim = min(end, d.len);
+	var q = p;
+	while q >= 0 && q + 8 <= lim {
+		if im_boxn >= 10000 { return; }
+		im_boxn += 1;
+		var sz = im_u32(d, q, true);
+		var hdr = 8;
+		if sz == 1 {
+			if im_u32(d, q + 8, true) != 0 { return; }
+			sz = im_u32(d, q + 12, true);
+			hdr = 16;
+		} else if sz == 0 {
+			sz = lim - q;
+		}
+		if sz < hdr || q + sz > lim { return; }
+		if im_starts(d, q + 4, "meta") {
+			im_heif_walk(d, q + hdr + 4, q + sz, depth + 1);
+		} else if im_starts(d, q + 4, "iprp") || im_starts(d, q + 4, "ipco") {
+			im_heif_walk(d, q + hdr, q + sz, depth + 1);
+		} else if im_starts(d, q + 4, "ispe") {
+			let w = im_u32(d, q + hdr + 4, true);
+			let h = im_u32(d, q + hdr + 8, true);
+			if w >= 0 && h >= 0 && w * h > im_hw * im_hh {
+				im_hw = w;
+				im_hh = h;
+			}
+		}
+		q += sz;
+	}
+}
+=== -1f0b02f20b3f5b66
+fn im_heif(d const byte[:]) {
+	im_boxn = 0;
+	im_hw = 0;
+	im_hh = 0;
+	im_heif_walk(d, 0, d.len, 0);
+	im_dims(im_hw, im_hh);
+	if d.len >= 12 { im_field("Brand", d[8..12]); }
+}
+=== -59e84b473c0d1951
+fn im_svg_size(s const byte[:], px bool&) int {
+	var i = 0;
+	while i < s.len && s[i] == ' ' { i++; }
+	var v = 0;
+	while i < s.len && s[i] >= 48 && s[i] <= 57 {
+		if v < 100000000000 { v = v * 10 + (s[i] as int - 48); }
+		i++;
+	}
+	if i < s.len && s[i] == '.' {
+		i++;
+		while i < s.len && s[i] >= 48 && s[i] <= 57 { i++; }
+	}
+	let rest = trim_end(s[i..]);
+	px = rest.len == 0 || im_ieq(rest, "px");
+	return v;
+}
+=== -5fb95fb9d7c76dca
+fn im_svg_sep(c int) bool {
+	return c == ' ' || c == ',' || c == 9 || c == 10 || c == 13;
+}
+fn im_svg(d const byte[:]) {
+	xml::xm_parse(d);
+	let n = xml::xm_count();
+	let s = xml::xm_find(0, n, "svg");
+	if s < 0 {
+		dm::dm_warn_add("no svg element");
+		return;
+	}
+	var wt byte[>..] = [];
+	var ht byte[>..] = [];
+	var vb byte[>..] = [];
+	let hasw = xml::xm_attr(s, "width", wt);
+	let hash = xml::xm_attr(s, "height", ht);
+	let hasv = xml::xm_attr(s, "viewBox", vb);
+	var wpx = false;
+	var hpx = false;
+	var wv = 0;
+	var hv = 0;
+	if hasw { wv = im_svg_size(wt, wpx); }
+	if hash { hv = im_svg_size(ht, hpx); }
+	if wv > 0 && wpx && hv > 0 && hpx {
+		im_dims(wv, hv);
+	} else if hasv {
+		var nums int[4] = [0; 4];
+		var k = 0;
+		var i = 0;
+		while i < vb.len && k < 4 {
+			while i < vb.len && im_svg_sep(vb[i]) { i++; }
+			if i >= vb.len { break; }
+			var neg = false;
+			if vb[i] == '-' {
+				neg = true;
+				i++;
+			} else if vb[i] == '+' {
+				i++;
+			}
+			var v = 0;
+			while i < vb.len && vb[i] >= 48 && vb[i] <= 57 {
+				if v < 100000000000 { v = v * 10 + (vb[i] as int - 48); }
+				i++;
+			}
+			while i < vb.len && !im_svg_sep(vb[i]) { i++; }
+			nums[k] = if neg { 0 - v } else { v };
+			k += 1;
+		}
+		if k == 4 { im_dims(nums[2], nums[3]); }
+	}
+	if hasv { im_field("Viewbox", vb); }
+	if (hasw && !wpx) || (hash && !hpx) {
+		var t byte[>..] = [];
+		t.append(wt);
+		t.append(" x ");
+		t.append(ht);
+		im_field("Declared size", t);
+	}
+	var tx byte[>..] = [];
+	var i = s;
+	var texts = 0;
+	while i < n {
+		if xml::xm_kind(i) == xml::XM_OPEN {
+			let nm = xml::xm_local(i);
+			if nm == "title" {
+				tx.clear();
+				xml::xm_gather(i, tx);
+				im_field("Title", tx);
+			} else if nm == "desc" {
+				tx.clear();
+				xml::xm_gather(i, tx);
+				im_add(dm::DM_PARA, tx);
+			} else if nm == "text" {
+				if texts >= 5000 {
+					dm::dm_warn_add("SVG text truncated");
+					break;
+				}
+				texts += 1;
+				let c = im_xclose(i, n);
+				tx.clear();
+				let a = i + 1;
+				for j in a..c {
+					let kd = xml::xm_kind(j);
+					if kd == xml::XM_TEXT {
+						xml::xm_text(j, tx);
+					} else if kd == xml::XM_CLOSE && xml::xm_local(j) == "tspan" {
+						tx.push(' ');
+					}
+				}
+				im_add(dm::DM_PARA, tx);
+				if c > i { i = c; }
+			}
+		}
+		i += 1;
+	}
+}
+=== 378f10de45ee64e2
+fn im_brand(d const byte[:], p int) int {
+	if im_starts(d, p, "avif") || im_starts(d, p, "avis") { return 2; }
+	if im_starts(d, p, "heic") || im_starts(d, p, "heix") || im_starts(d, p, "hevc") || im_starts(d, p, "hevx") || im_starts(d, p, "heim") || im_starts(d, p, "heis") || im_starts(d, p, "mif1") || im_starts(d, p, "msf1") { return 1; }
+	return 0;
+}
+fn im_kind(d const byte[:]) int {
+	if im_u8(d, 0) == 137 && im_u8(d, 1) == 80 && im_u8(d, 2) == 78 && im_u8(d, 3) == 71 && im_u8(d, 4) == 13 && im_u8(d, 5) == 10 && im_u8(d, 6) == 26 && im_u8(d, 7) == 10 { return IM_PNG; }
+	if im_u8(d, 0) == 255 && im_u8(d, 1) == 216 && im_u8(d, 2) == 255 { return IM_JPEG; }
+	if im_starts(d, 0, "GIF87a") || im_starts(d, 0, "GIF89a") { return IM_GIF; }
+	if im_starts(d, 0, "RIFF") && im_starts(d, 8, "WEBP") { return IM_WEBP; }
+	if im_thead(d) != 0 { return IM_TIFF; }
+	if im_starts(d, 0, "BM") {
+		let hs = im_u32(d, 14, false);
+		if hs == 12 || hs == 40 || hs == 52 || hs == 56 || hs == 64 || hs == 108 || hs == 124 { return IM_BMP; }
+	}
+	if im_u8(d, 0) == 0 && im_u8(d, 1) == 0 && (im_u8(d, 2) == 1 || im_u8(d, 2) == 2) && im_u8(d, 3) == 0 {
+		let cnt = im_u16(d, 4, false);
+		if cnt >= 1 && cnt <= 256 && d.len >= 6 + 16 * cnt && im_u8(d, 9) == 0 { return IM_ICO; }
+	}
+	if im_starts(d, 4, "ftyp") {
+		var found = im_brand(d, 8);
+		var i = 16;
+		var c = 0;
+		let bs = min(im_u32(d, 0, true), d.len);
+		while i + 4 <= bs && c < 32 {
+			let b = im_brand(d, i);
+			if b == 2 { found = 2; }
+			if b == 1 && found == 0 { found = 1; }
+			i += 4;
+			c += 1;
+		}
+		if found == 2 { return IM_AVIF; }
+		if found == 1 { return IM_HEIC; }
+	}
+	var p = 0;
+	if im_starts(d, 0, "\xEF\xBB\xBF") { p = 3; }
+	while p < d.len && (d[p] == ' ' || d[p] == 9 || d[p] == 10 || d[p] == 13) { p++; }
+	if p < d.len && d[p] == '<' {
+		let a = min(p + 14, d.len);
+		let b = min(p + 5, d.len);
+		if im_ieq(d[p..a], "<!doctype html") || im_ieq(d[p..b], "<html") { return IM_NONE; }
+		var i = im_find(d, "<svg", p, 4096);
+		var c = 0;
+		while i >= 0 && c < 4096 {
+			let ch = im_u8(d, i + 4);
+			if ch == ' ' || ch == 9 || ch == 10 || ch == 13 || ch == '/' || ch == '>' { return IM_SVG; }
+			i = im_find(d, "<svg", i + 1, 4096);
+			c += 1;
+		}
+	}
+	return IM_NONE;
+}
+=== -5457e315d1ac084e
+fn im_kind_name(k int) const byte[:] {
+	match k {
+		1 => "png",
+		2 => "jpeg",
+		3 => "gif",
+		4 => "webp",
+		5 => "tiff",
+		6 => "bmp",
+		7 => "ico",
+		8 => "heic",
+		9 => "avif",
+		10 => "svg",
+		_ => "unknown",
+	}
+}
+=== 53d05cfc29a22814
+fn im_run(d const byte[:], k int) {
+	match k {
+		1 => { im_png(d); },
+		2 => { im_jpeg(d); },
+		3 => { im_gif(d); },
+		4 => { im_webp(d); },
+		5 => { im_tiff(d); },
+		6 => { im_bmp(d); },
+		7 => { im_ico(d); },
+		8, 9 => { im_heif(d); },
+		10 => { im_svg(d); },
+		_ => {},
+	}
+}
+=== 180946518468c81b
+fn im_read(data const byte[:]) bool {
+	im_pass = 1;
+	im_w = 0;
+	im_h = 0;
+	im_frames = 1;
+	im_pages = 1;
+	im_seen.clear();
+	let k = im_kind(data);
+	if k == IM_NONE {
+		dm::dm_warn_add("not a recognized image format");
+		im_pass = 0;
+		return false;
+	}
+	im_run(data, k);
+	im_pass = 2;
+	let name = im_kind_name(k);
+	var up byte[>..] = [];
+	for i in name.len {
+		let c = name[i] as int;
+		if c >= 97 && c <= 122 {
+			up.push((c - 32) as! byte);
+		} else {
+			up.push(c as! byte);
+		}
+	}
+	im_field("Format", up);
+	im_field_px("Width", im_w);
+	im_field_px("Height", im_h);
+	var s byte[>..] = [];
+	if im_frames > 1 {
+		im_dec(im_frames, s);
+		im_field("Frames", s);
+	}
+	if im_pages > 1 {
+		s.clear();
+		im_dec(im_pages, s);
+		im_field("Pages", s);
+	}
+	dm::dm_set_meta("format", name);
+	if im_w > 0 {
+		s.clear();
+		im_dec(im_w, s);
+		dm::dm_set_meta("width", s);
+	}
+	if im_h > 0 {
+		s.clear();
+		im_dec(im_h, s);
+		dm::dm_set_meta("height", s);
+	}
+	s.clear();
+	im_dec(im_frames, s);
+	dm::dm_set_meta("frames", s);
+	s.clear();
+	im_dec(im_pages, s);
+	dm::dm_set_meta("pages", s);
+	im_w = 0;
+	im_h = 0;
+	im_frames = 1;
+	im_pages = 1;
+	im_run(data, k);
+	im_pass = 0;
+	return true;
+}

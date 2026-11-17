@@ -236,7 +236,7 @@ def main():
     ap.add_argument('--persona-bank',default='experiences/personas.json',help='Persona store path (learned personas + per-session map)')
     ap.add_argument('--default-persona',default=None,help='Default persona name (preset or learned). e.g. rikku, yoda, neutral')
     ap.add_argument('--no-persona',action='store_true',help='Disable persona layer entirely (raw Adam responses)')
-    args=ap.parse_args()
+    args=ap.parse_args();os.environ.setdefault('AMNI_SELF_URL',f'http://127.0.0.1:{args.port}')
     _ray=os.environ.get('AMNI_GEN_BACKEND','').lower()=='ray';args.bake=args.bake or ('bakes/_ray_none' if _ray else None);args.model=args.model or (args.bake if _ray else None)
     if not _bake_usable(args.bake) and os.environ.get('AMNI_GEN_BACKEND','').lower()!='ray':
         _disc=_discover_bake(args.bake)
@@ -536,6 +536,11 @@ def main():
             else:
                 user_facts=['The current local date and time is '+time.strftime('%A, %B %d, %Y at %I:%M %p',time.localtime())+'. Use this exact value for any date, time, "today", "now", or current-year reasoning — never guess or invent a date. For live system stats (CPU/memory/disk) or weather, rely on the tool widgets, never fabricate numbers.']+user_facts
             is_private=_dp(req.message) or conv.has_personal(n=20) or any(r.get('is_personal') for r in atlas_recall);_egress_private=is_private or _dp(req.message,'egress')
+            try:_doc_facts=__import__('amni.serve.docread',fromlist=['facts']).facts(conv.session_id,req.message)
+            except Exception as _dre:_doc_facts=[];print(f'[serve] docread skipped: {_dre}',flush=True)
+            if _doc_facts:
+                user_facts=user_facts[:1]+_doc_facts+user_facts[1:];is_private=True
+                yield f'event: doc_grounding\ndata: {_json.dumps({"passages":len(_doc_facts)})}\n\n'
             sl=getattr(adam,'sem_lut',None)
             _has_correction=False
             _persona_query=bool(persona and persona.name and persona.name.lower() in req.message.lower() and len(req.message.split())>=3)
@@ -1371,6 +1376,10 @@ def main():
     try:delve_endpoints.mount(app,agent,adam)
     except Exception as _de:print(f'[amni_serve] Amni-Delve mount failed (non-fatal): {_de}',flush=True)
     vision_endpoints.mount(app,agent)
+    try:__import__('amni.serve.docread',fromlist=['mount']).mount(app,agent,skills)
+    except Exception as _dme:print(f'[amni_serve] document endpoints mount failed (non-fatal): {_dme}',flush=True)
+    try:__import__('amni.serve.code_harness',fromlist=['mount']).mount(app,agent,skills)
+    except Exception as _chm:print(f'[amni_serve] Amni-Code harness mount failed (non-fatal): {_chm}',flush=True)
     voice_endpoints.mount(app,agent)
     amni_chat_bridge.mount(app,agent)
     model_installer.mount(app)

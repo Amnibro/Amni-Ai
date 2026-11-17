@@ -1,0 +1,52 @@
+import os;
+import dm;
+import pdf;
+import dcrypt;
+
+fn main() {
+	let argv = args();
+	if argv.len < 2 { print("usage: pdfprobe FILE"); return; }
+	var data byte[>..] = [];
+	if !read_file(argv[1], data) { print("usage: pdfprobe FILE"); return; }
+	dm::dm_reset("pdf", "page");
+	let ok = pdf::pf_open(data);
+	print("open ", ok);
+	print("rebuilt ", pdf::pf_rebuilt);
+	print("xref ", pdf::pf_xref.len);
+	print("pages ", pdf::pf_pages.len);
+	print("encrypted ", dcrypt::dc_on);
+	pdf::pf_info_meta();
+	print(dm::dm_meta);
+	pdf::pf_outline(true);
+	let n = pdf::pf_ol_level.len;
+	print("outline ", n);
+	for i in min(n, 5) {
+		print("  ", pdf::pf_ol_level[i], " ", pdf::pf_ol_page[i], " ", pdf::pf_ol_text[i]);
+	}
+	var content byte[>..] = [];
+	if pdf::pf_pages.len > 0 {
+		let node = pdf::pf_pages[0].node;
+		let c = pdf::pf_dget(node, "Contents");
+		if pdf::pf_len(c) > 0 {
+			for i in pdf::pf_len(c) {
+				var part byte[>..] = [];
+				pdf::pf_decode(pdf::pf_at(c, i), part);
+				content.append(part);
+			}
+		} else {
+			var part byte[>..] = [];
+			pdf::pf_decode(c, part);
+			content.append(part);
+		}
+	}
+	print("contents ", content.len);
+	var shown byte[>..] = [];
+	for i in min(content.len, 400) {
+		let ch = content[i];
+		if ch >= 32 && ch <= 126 { shown.push(ch); } else { shown.push('.'); }
+	}
+	print(shown);
+	for line in split(dm::dm_warn, '\n') {
+		if line.len > 0 { print("warn ", line); }
+	}
+}

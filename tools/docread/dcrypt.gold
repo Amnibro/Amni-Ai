@@ -1,0 +1,45 @@
+use std
+into dcrypt.amni
+
+This file is a module with no main (namespace dcrypt). It has the ciphers and digests PDF decryption needs that the standard library lacks (MD5, RC4, the AES inverse cipher with CBC decryption) and the PDF Standard security handler's key derivation for revisions 2 to 6. Every module-level name starts with `dc_` or `DC_`.
+
+```amni
+import crypto.aead;
+import crypto.hash;
+```
+
+`dc_md5(d const byte[:]) byte[>..]` returns the 16-byte MD5 digest of d exactly as RFC 1321 defines it (little-endian words, the 64 sine-derived constants and the per-round shift amounts 7 12 17 22, 5 9 14 20, 4 11 16 23, 6 10 15 21, padding with a 128 byte then zeros to 56 mod 64, then the bit length as 8 little-endian bytes). Keep the 64 constants in a module `let` array of u32.
+
+`dc_rc4(key const byte[:], d const byte[:], out byte[>..]&)` clears out and appends d enciphered with RC4 under key (the standard key-scheduling and output loops over a 256-byte state).
+
+`DC_ISBOX` is the AES inverse S-box (the inverse permutation of `crypto::SBOX`), built once into a module `var byte[256]` by `dc_init()` which sets `DC_ISBOX[crypto::SBOX[i]] = i` for every i; `dc_init` runs only once (guarded by a module `var dc_ready = false`).
+
+`dc_mul(a byte, b byte) byte` multiplies two bytes in GF(2^8) with the AES polynomial (shift-and-add using `crypto::xt`).
+
+`dc_aes_dec(a const crypto::Aes&, inp const byte[:], o byte[16]&)` decrypts one 16-byte block with the AES inverse cipher of FIPS-197 using the round keys in `a.rk` (16 bytes per round, `a.nr` rounds, the state laid out column by column like `crypto::aes_block`): add round key nr, then for rounds nr minus 1 down to 1 apply inverse shift rows (row r of column c takes the byte from column c minus r mod 4), inverse sub bytes with `DC_ISBOX`, add that round's key and inverse mix columns (the matrix 14 11 13 9), and finish with inverse shift rows, inverse sub bytes and round key 0. Its very first statement is the call `dc_init()`, because `DC_ISBOX` is all zeros until then.
+
+`dc_aes_cbc_dec(key const byte[:], d const byte[:], out byte[>..]&) bool` clears out and decrypts d with AES-CBC (128 or 256-bit key by its length, through `crypto::aes_key`), where the first 16 bytes of d are the IV. Fewer than 16 bytes gives an empty out and true. A length that is not a multiple of 16 decrypts the whole blocks and ignores the rest. After decrypting, remove PKCS#7 padding when the last byte is between 1 and 16 and that many trailing bytes all equal it; otherwise leave the data as is. Return true.
+
+`dc_aes_cbc_enc_nopad(key const byte[:], iv const byte[:], d const byte[:], out byte[>..]&)` clears out and encrypts d (a multiple of 16 bytes) with AES-CBC under key and the 16-byte iv using `crypto::aes_block`, without padding.
+
+The handler's state lives in module variables: `var dc_on = false` (the document is encrypted and a key was found), `var dc_key byte[>..]` (the file key), `var dc_rev = 0`, `var dc_stm = 0` and `var dc_str = 0` (the method for streams and for strings: 0 none, 1 RC4, 2 AES-128, 3 AES-256), `var dc_scratch byte[>..]`.
+
+`DC_PAD` is the 32-byte password padding string of the PDF specification (0x28 0xBF 0x4E 0x5E 0x4E 0x75 0x8A 0x41 0x64 0x00 0x4E 0x56 0xFF 0xFA 0x01 0x08 0x2E 0x2E 0x00 0xB6 0xD0 0x68 0x3E 0x80 0x2F 0x0C 0xA9 0xFE 0x64 0x53 0x69 0x7A) in a module `let byte[32]`.
+
+`dc_padpw(pw const byte[:], out byte[>..]&)` clears out and appends the first 32 bytes of pw followed by as many bytes of `DC_PAD` as needed to make 32.
+
+`dc_key_r4(pw const byte[:], o const byte[:], p int, id0 const byte[:], rev int, nbytes int, meta bool, out byte[>..]&)` computes the file key of Algorithm 2 for revisions 2 to 4: MD5 of the padded password, the first 32 bytes of the O string, p as 4 little-endian bytes (p is a signed 32-bit value), id0, and when rev is at least 4 and meta is false the bytes 255 255 255 255; when rev is at least 3, replace the digest 50 times by the MD5 of its first nbytes bytes; out is the first nbytes bytes (nbytes is 5 for revision 2).
+
+`dc_check_user_r4(key const byte[:], u const byte[:], id0 const byte[:], rev int) bool` checks a candidate key against the U string: for revision 2, RC4 of `DC_PAD` under key must equal the first 32 bytes of u; for revisions 3 and 4, take MD5 of `DC_PAD` followed by id0, RC4 it under key, then 19 more times under the key with every byte XORed with i for i from 1 to 19, and the 16 bytes must equal the first 16 bytes of u.
+
+`dc_owner_to_user_r4(opw const byte[:], o const byte[:], rev int, nbytes int, out byte[>..]&)` recovers the padded user password from an owner password (Algorithm 7): the RC4 key is MD5 of the padded owner password (for revision 3 and up, replaced 50 times by MD5 of itself) cut to nbytes; for revision 2 decrypt the first 32 bytes of o once with RC4 under that key; for revision 3 and up decrypt it 20 times with the key XORed with i for i from 19 down to 0. out is the 32 result bytes.
+
+`dc_hash_r6(pw const byte[:], salt const byte[:], udata const byte[:], rev int, out byte[>..]&)` computes the revision 5 or 6 password hash into out (32 bytes). For revision 5 it is SHA-256 of the password (at most 127 bytes), the 8-byte salt and udata (udata is empty for user checks and the 48-byte U string for owner checks). For revision 6 it is Algorithm 2.B: k = SHA-256 of the same input; then loop rounds i from 0: k1 is 64 repetitions of (password, k, udata); e = AES-128-CBC encryption without padding of k1 with key the first 16 bytes of k and iv the next 16 bytes of k (`dc_aes_cbc_enc_nopad`); take the sum of the first 16 bytes of e modulo 3: 0 means k = SHA-256 of e, 1 means SHA-384 of e, 2 means SHA-512 of e (`crypto::sha256`, `crypto::sha384`, `crypto::sha512`); stop after a round i of at least 63 in which the last byte of e is at most i minus 32; out is the first 32 bytes of k.
+
+`dc_key_r6(pw const byte[:], o const byte[:], u const byte[:], oe const byte[:], ue const byte[:], rev int, out byte[>..]&) bool` finds the AES-256 file key for revisions 5 and 6. User check: when `dc_hash_r6(pw, u[32..40], empty, rev)` equals the first 32 bytes of u, the intermediate key is `dc_hash_r6(pw, u[40..48], empty, rev)` and the file key is the AES-256 decryption of the 32-byte ue with that key, no IV (CBC with a zero IV and no padding removal, which you get by decrypting the two blocks with `dc_aes_dec` and XORing the second with the first ciphertext block). Owner check, tried when the user check fails: the hash of (pw, o[32..40], the first 48 bytes of u) must equal the first 32 bytes of o; then the intermediate key is the hash of (pw, o[40..48], the first 48 bytes of u) and the file key is the same decryption of oe. Return whether either check passed.
+
+`dc_setup(rev int, v int, length_bits int, o const byte[:], u const byte[:], oe const byte[:], ue const byte[:], p int, id0 const byte[:], meta bool, stm int, str int) bool` prepares decryption for a document's Standard security handler and returns whether a key was found with an empty password. First, when rev is 5 or 6 and o or u is shorter than 48 bytes or oe or ue shorter than 32, or rev is below 5 and o or u is shorter than 32 bytes, the encryption dictionary is damaged: set `dc_on` to false and return false without deriving anything. Store rev, stm and str (the caller has already mapped the crypt filters: for V 1 and 2 both are RC4, for V 4 they come from the crypt filters, for V 5 they are AES-256). For revisions 5 and 6 call `dc_key_r6` with an empty password into `dc_key`. Otherwise nbytes is 5 for revision 2 and length_bits / 8 (default 16 when zero) for the rest; try the empty user password with `dc_key_r4` and `dc_check_user_r4`; when that fails, recover the user password from an empty owner password with `dc_owner_to_user_r4`, derive the key from it and check it the same way. Set `dc_on` to the result.
+
+`dc_object_key(num int, gen int, aes bool, out byte[>..]&)` computes the per-object key of Algorithm 1 for revisions up to 4: MD5 of `dc_key`, num as 3 little-endian bytes, gen as 2 little-endian bytes and, for AES, the bytes "sAlT"; out is the first min(len(dc_key) + 5, 16) bytes.
+
+`dc_decrypt(d const byte[:], num int, gen int, is_str bool, out byte[>..]&)` clears out and decrypts a string or stream of object num and generation gen with the method for strings or streams: method 0 copies d; method 3 is `dc_aes_cbc_dec` with `dc_key`; method 1 is RC4 and method 2 is `dc_aes_cbc_dec`, both under `dc_object_key`. When `dc_on` is false, copy d.

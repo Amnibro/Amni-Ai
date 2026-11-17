@@ -1,0 +1,373 @@
+=== -28e0e45191dc695a
+namespace xml;
+=== 4e4e599a9f6b9af6
+let XM_OPEN = 1;
+let XM_CLOSE = 2;
+let XM_TEXT = 3;
+=== 65c90fef835bdb39
+struct XmEv { kind int, at int, len int, aat int, alen int, parent int, mate int, depth int }
+=== 6a67ff5050fb61c0
+var xm_src byte[>..];
+var xm_pool byte[>..];
+var xm_ev XmEv[>..];
+var xm_stk int[>..];
+=== -32021a3a6e82934c
+fn xm_clear() {
+	xm_src.clear();
+	xm_pool.clear();
+	xm_ev.clear();
+	xm_stk.clear();
+}
+=== 69c4ffd62bb64636
+fn xm_ws(c byte) bool {
+	c == 32 || c == 9 || c == 10 || c == 13
+}
+fn xm_name_start(c byte) bool {
+	(c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95 || c == 58 || c >= 128
+}
+=== -09fc0ccfb4500ad
+fn xm_text_add(raw const byte[:], decode bool) {
+	let before = xm_pool.len;
+	if decode { dm::dm_decode_entities(raw, xm_pool); } else { xm_pool.append(raw); }
+	let added = xm_pool.len - before;
+	if added == 0 { return; }
+	let n = xm_ev.len;
+	if n > 0 {
+		let last .= xm_ev[n - 1];
+		if last.kind == XM_TEXT && last.at + last.len == before {
+			last.len += added;
+			return;
+		}
+	}
+	let par = if xm_stk.len > 0 { xm_stk[xm_stk.len - 1] } else { -1 };
+	xm_ev.push(XmEv { kind: XM_TEXT, at: before, len: added, aat: 0, alen: 0, parent: par, mate: -1, depth: xm_stk.len });
+}
+=== -149c436d529525be
+fn xm_open(at int, len int, aat int, alen int, empty bool) {
+	let par = if xm_stk.len > 0 { xm_stk[xm_stk.len - 1] } else { -1 };
+	let idx = xm_ev.len;
+	xm_ev.push(XmEv { kind: XM_OPEN, at: at, len: len, aat: aat, alen: alen, parent: par, mate: -1, depth: xm_stk.len });
+	xm_stk.push(idx);
+	if empty { xm_close_top(); }
+}
+=== -7750071e0331c4b8
+fn xm_close_top() {
+	if xm_stk.len == 0 { return; }
+	let o = xm_stk.pop();
+	let oe = xm_ev[o];
+	let ci = xm_ev.len;
+	xm_ev.push(XmEv { kind: XM_CLOSE, at: oe.at, len: oe.len, aat: 0, alen: 0, parent: oe.parent, mate: o, depth: oe.depth });
+	xm_ev[o].mate = ci;
+}
+=== -2187153cbc3d1fc8
+fn xm_end_tag(at int, len int) {
+	var k = xm_stk.len - 1;
+	while k >= 0 {
+		let e = xm_ev[xm_stk[k]];
+		if e.len == len && xm_src[e.at..e.at + len] == xm_src[at..at + len] {
+			while xm_stk.len > k { xm_close_top(); }
+			return;
+		}
+		k--;
+	}
+}
+=== -7a9752d18233fbc
+fn xm_find_from(p int, marker const byte[:]) int {
+	let n = xm_src.len;
+	let m = marker.len;
+	var i = p;
+	while i + m <= n {
+		if xm_src[i..i + m] == marker { return i; }
+		i++;
+	}
+	return n;
+}
+=== -64bf643b51071544
+fn xm_tag_end(p int) int {
+	let n = xm_src.len;
+	var q = 0;
+	var i = p;
+	while i < n {
+		let c = xm_src[i];
+		if q != 0 {
+			if c == q { q = 0; }
+		} else if c == 34 || c == 39 {
+			q = c;
+		} else if c == 62 {
+			return i;
+		}
+		i++;
+	}
+	i = p;
+	while i < n {
+		if xm_src[i] == 62 { return i; }
+		i++;
+	}
+	return n;
+}
+=== -1ae2299aff2f899f
+fn xm_parse(data const byte[:]) {
+	xm_clear();
+	dm::dm_to_utf8(data, xm_src);
+	let n = xm_src.len;
+	var i = 0;
+	while i < n {
+		if xm_src[i] != 60 {
+			var j = i;
+			while j < n && xm_src[j] != 60 { j++; }
+			if xm_stk.len > 0 { xm_text_add(xm_src[i..j], true); }
+			i = j;
+			continue;
+		}
+		if starts_with(xm_src[i..], "<!--") {
+			let e = xm_find_from(i + 4, "-->");
+			i = min(e + 3, n);
+			continue;
+		}
+		if starts_with(xm_src[i..], "<![CDATA[") {
+			let e = xm_find_from(i + 9, "]]>");
+			if xm_stk.len > 0 { xm_text_add(xm_src[i + 9..e], false); }
+			i = min(e + 3, n);
+			continue;
+		}
+		if starts_with(xm_src[i..], "<?") {
+			let e = xm_find_from(i + 2, "?>");
+			i = min(e + 2, n);
+			continue;
+		}
+		if starts_with(xm_src[i..], "<!") {
+			var j = i + 2;
+			while j < n && xm_src[j] != 62 {
+				if xm_src[j] == 91 {
+					while j < n && xm_src[j] != 93 { j++; }
+				}
+				j++;
+			}
+			i = min(j + 1, n);
+			continue;
+		}
+		if starts_with(xm_src[i..], "</") {
+			var j = i + 2;
+			while j < n && !xm_ws(xm_src[j]) && xm_src[j] != 62 { j++; }
+			let nat = i + 2;
+			let nlen = j - nat;
+			var e = j;
+			while e < n && xm_src[e] != 62 { e++; }
+			xm_end_tag(nat, nlen);
+			i = min(e + 1, n);
+			continue;
+		}
+		if i + 1 < n && xm_name_start(xm_src[i + 1]) {
+			var j = i + 1;
+			while j < n && !xm_ws(xm_src[j]) && xm_src[j] != 47 && xm_src[j] != 62 { j++; }
+			let e = xm_tag_end(j);
+			var k = e;
+			while k > j && xm_ws(xm_src[k - 1]) { k--; }
+			var empty = false;
+			var aend = e;
+			if k > j && xm_src[k - 1] == 47 {
+				empty = true;
+				aend = k - 1;
+				while aend > j && xm_ws(xm_src[aend - 1]) { aend--; }
+			}
+			xm_open(i + 1, j - (i + 1), j, aend - j, empty);
+			i = min(e + 1, n);
+			continue;
+		}
+		if xm_stk.len > 0 { xm_text_add(xm_src[i..i + 1], true); }
+		i++;
+	}
+	while xm_stk.len > 0 { xm_close_top(); }
+}
+=== 13ad120b4cdd1251
+fn xm_count() int {
+	xm_ev.len
+}
+fn xm_kind(i int) int {
+	if i < 0 || i >= xm_ev.len { return 0; }
+	xm_ev[i].kind
+}
+=== 1ddb598cb0f4cfc8
+fn xm_name(i int) const byte[:] {
+	if i < 0 || i >= xm_ev.len { return xm_src[0..0]; }
+	let e = xm_ev[i];
+	if e.kind == XM_TEXT { return xm_src[0..0]; }
+	xm_src[e.at..e.at + e.len]
+}
+=== -3e1479f508521bd1
+fn xm_local(i int) const byte[:] {
+	let nm = xm_name(i);
+	var k = nm.len;
+	while k > 0 {
+		if nm[k - 1] == 58 { return nm[k..]; }
+		k--;
+	}
+	nm
+}
+=== -279677d5d8b09487
+fn xm_is(i int, name const byte[:]) bool {
+	if xm_kind(i) != XM_OPEN { return false; }
+	xm_local(i) == name
+}
+fn xm_isq(i int, qname const byte[:]) bool {
+	if xm_kind(i) != XM_OPEN { return false; }
+	xm_name(i) == qname
+}
+=== -78dfac4c7d1f1e65
+fn xm_attr_next(s const byte[:], p int&, nat int&, nlen int&, vat int&, vlen int&) bool {
+	let n = s.len;
+	while true {
+		while p < n && (xm_ws(s[p]) || s[p] == 47) { p++; }
+		if p >= n { return false; }
+		let st = p;
+		while p < n && !xm_ws(s[p]) && s[p] != 61 { p++; }
+		if p == st {
+			p++;
+			continue;
+		}
+		nat = st;
+		nlen = p - st;
+		while p < n && xm_ws(s[p]) { p++; }
+		vat = p;
+		vlen = 0;
+		if p < n && s[p] == 61 {
+			p++;
+			while p < n && xm_ws(s[p]) { p++; }
+			if p < n && (s[p] == 34 || s[p] == 39) {
+				let q = s[p];
+				p++;
+				vat = p;
+				while p < n && s[p] != q { p++; }
+				vlen = p - vat;
+				if p < n { p++; }
+			} else {
+				vat = p;
+				while p < n && !xm_ws(s[p]) { p++; }
+				vlen = p - vat;
+			}
+		}
+		return true;
+	}
+	return false;
+}
+=== -732253289d96e86a
+fn xm_attr_get(i int, mode int, name const byte[:], out byte[>..]&) bool {
+	out.clear();
+	if i < 0 || i >= xm_ev.len { return false; }
+	let e = xm_ev[i];
+	if e.kind != XM_OPEN { return false; }
+	let s = xm_src[e.aat..e.aat + e.alen];
+	var p = 0;
+	var nat = 0;
+	var nlen = 0;
+	var vat = 0;
+	var vlen = 0;
+	var best_at = -1;
+	var best_len = 0;
+	while xm_attr_next(s, p, nat, nlen, vat, vlen) {
+		let an = s[nat..nat + nlen];
+		var k = an.len;
+		while k > 0 && an[k - 1] != 58 { k--; }
+		let loc = an[k..];
+		if mode == 1 {
+			if an == name {
+				best_at = vat;
+				best_len = vlen;
+				break;
+			}
+		} else if mode == 2 {
+			if k > 0 && loc == name {
+				best_at = vat;
+				best_len = vlen;
+				break;
+			}
+		} else if loc == name {
+			if k == 0 {
+				best_at = vat;
+				best_len = vlen;
+				break;
+			}
+			if best_at < 0 {
+				best_at = vat;
+				best_len = vlen;
+			}
+		}
+	}
+	if best_at < 0 { return false; }
+	dm::dm_decode_entities(s[best_at..best_at + best_len], out);
+	return true;
+}
+=== 1254215d7c113056
+fn xm_attr(i int, local const byte[:], out byte[>..]&) bool {
+	xm_attr_get(i, 0, local, out)
+}
+fn xm_attrq(i int, qname const byte[:], out byte[>..]&) bool {
+	xm_attr_get(i, 1, qname, out)
+}
+fn xm_attr_pre(i int, local const byte[:], out byte[>..]&) bool {
+	xm_attr_get(i, 2, local, out)
+}
+=== 64f7bbc737d7973b
+fn xm_text(i int, out byte[>..]&) {
+	if xm_kind(i) != XM_TEXT { return; }
+	let e = xm_ev[i];
+	out.append(xm_pool[e.at..e.at + e.len]);
+}
+=== -10193a289bdda1f2
+fn xm_close_of(i int) int {
+	if xm_kind(i) == XM_OPEN { return xm_ev[i].mate; }
+	i
+}
+fn xm_open_of(i int) int {
+	if xm_kind(i) == XM_CLOSE { return xm_ev[i].mate; }
+	i
+}
+fn xm_parent(i int) int {
+	if i < 0 || i >= xm_ev.len { return -1; }
+	xm_ev[i].parent
+}
+fn xm_depth(i int) int {
+	if i < 0 || i >= xm_ev.len { return 0; }
+	xm_ev[i].depth
+}
+=== -3964127b33f46ccc
+fn xm_next(i int) int {
+	if xm_kind(i) == XM_OPEN { return xm_ev[i].mate + 1; }
+	i + 1
+}
+=== 5635cf031317ef1b
+fn xm_gather(i int, out byte[>..]&) {
+	let k = xm_kind(i);
+	if k == XM_TEXT {
+		xm_text(i, out);
+		return;
+	}
+	if k != XM_OPEN { return; }
+	let end = xm_ev[i].mate;
+	var j = i + 1;
+	while j < end {
+		if xm_ev[j].kind == XM_TEXT { xm_text(j, out); }
+		j++;
+	}
+}
+=== 106d182d0e23fb1b
+fn xm_find(from int, to int, local const byte[:]) int {
+	let lim = min(to, xm_ev.len);
+	var k = max(from, 0);
+	while k < lim {
+		if xm_is(k, local) { return k; }
+		k++;
+	}
+	return -1;
+}
+=== 69523209ed8383b3
+fn xm_child(i int, local const byte[:]) int {
+	if xm_kind(i) != XM_OPEN { return -1; }
+	let end = xm_ev[i].mate;
+	var k = i + 1;
+	while k < end {
+		if xm_is(k, local) { return k; }
+		k = xm_next(k);
+	}
+	return -1;
+}

@@ -1,0 +1,16 @@
+use std
+into pdfprobe.amni
+
+This standalone program checks the PDF object layer on one file. Every module-level name starts with `pp_`.
+
+```amni
+import os;
+import dm;
+import pdf;
+import dcrypt;
+```
+
+`main()` takes a file path from `os::args()[1]` (element 0 is the program name; print "usage: pdfprobe FILE" and stop when missing or unreadable). Read it with `os::read_file`, call `dm::dm_reset("pdf", "page")` and `pdf::pf_open` on the bytes and print "open " and true or false. Then print "rebuilt " and `pdf::pf_rebuilt`, "xref " and the length of `pdf::pf_xref`, "pages " and the length of `pdf::pf_pages`, "encrypted " and `dcrypt::dc_on`. Call `pdf::pf_info_meta()` and print the `dm::dm_meta` buffer as it is. Call `pdf::pf_outline(true)` and print "outline " and the number of entries in `pdf::pf_ol_level`, then the first 5 entries as "  level page title". Then for the first page print "contents " followed by the byte length of its decoded content (the page dict node is `pdf::pf_pages[0].node`; its /Contents is `pdf::pf_dget(node, "Contents")`, an array when `pdf::pf_len` of it is above 0, its elements from `pdf::pf_at`: a stream, or an array of streams decoded one after the other with `pdf::pf_decode`), and the first 400 bytes of that content with bytes outside 32..126 shown as ".", on one line. Finally print each line of `dm::dm_warn` prefixed with "warn ".
+
+expect:
+usage: pdfprobe FILE

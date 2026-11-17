@@ -1,0 +1,5 @@
+[
+ {"id": 1, "city": "Oslo", "pop": 709000},
+ {"id": 2, "city": "Rome", "pop": 2870000},
+ {"id": 3, "city": "Lima", "pop": null}
+]

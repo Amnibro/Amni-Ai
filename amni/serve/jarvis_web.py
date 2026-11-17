@@ -330,6 +330,8 @@ header{display:flex;align-items:center;gap:14px;font-size:13px}
 #input-shell::before{content:'>';color:var(--cyan);font-size:14px;padding-left:14px;text-shadow:0 0 4px var(--cyan)}
 #input{flex:1;background:transparent;border:0;color:var(--fg);padding:13px 14px;font-family:inherit;font-size:13px;resize:none;outline:none;line-height:1.4;min-height:46px;max-height:160px}
 #input::placeholder{color:var(--mute);font-style:italic}
+.code-tl{font:12px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:7px 0;padding:7px 10px;border-left:2px solid rgba(var(--c-rgb),.35);background:rgba(var(--c-rgb),.04);max-height:280px;overflow:auto;white-space:pre-wrap;word-break:break-word}.code-step.run{opacity:.7}.code-step.ok{color:var(--ok)}.code-step.bad{color:var(--err)}
+#attach-btn{width:46px;height:46px;border:1px solid rgba(var(--c-rgb),.4);border-radius:50%;background:rgba(var(--c-rgb),.05);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--cyan);flex-shrink:0;transition:all .2s}#attach-btn:hover{background:rgba(var(--c-rgb),.14);box-shadow:0 0 10px rgba(var(--c-rgb),.25)}@media(max-width:760px){#attach-btn{order:3;width:42px;height:42px;font-size:15px}}
 #send{padding:0 22px;height:46px;border:1px solid var(--cyan);background:rgba(var(--c-rgb),.1);color:var(--cyan);font-family:inherit;font-size:11px;letter-spacing:.25em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all .2s;text-shadow:0 0 4px var(--cyan)}
 #send:hover:not(:disabled){background:var(--cyan);color:var(--bg);box-shadow:0 0 18px var(--cyan)}
 #send.stop-mode{border-color:#ff5577;color:#ff8aa2;background:rgba(255,85,119,.1);text-shadow:0 0 4px rgba(255,85,119,.6);animation:stopPulse 1.6s ease-in-out infinite}
@@ -1027,6 +1029,7 @@ body.theme-min #adam-core{opacity:.6}
   </div>
   <div id="composer">
     <button id="mic-shell" type="button" onclick="toggleMic()" title="Voice input">⏵</button>
+    <button id="attach-btn" type="button" onclick="document.getElementById('doc-file').click()" title="Attach documents: PDF, Word, Excel, PowerPoint, OpenDocument, EPUB, HTML, RTF, email, CSV, Markdown, text, ZIP">📎</button><input type="file" id="doc-file" multiple accept=".pdf,.docx,.xlsx,.pptx,.odt,.ods,.odp,.epub,.rtf,.eml,.mbox,.msg,.doc,.xls,.ppt,.zip,.gz,.tgz,.tar,.bz2,.html,.htm,.xhtml,.csv,.tsv,.md,.markdown,.txt,.json,.xml,.yaml,.yml,.ipynb,.ics,.vcf,.svg,image/*" style="display:none" onchange="_docPicked(event)">
     <div id="input-shell"><textarea id="input" placeholder="Speak or type… (/help for commands)" autofocus></textarea></div>
     <button id="jarvis-toggle" type="button" onclick="toggleJarvisMode()" title="Engage hands-free mode — convo + wake + gesture + voice all on">HANDS FREE</button>
     <button id="tools-toggle" type="button" onclick="toggleToolsDrawer()" title="Open tools drawer (voice, gesture, coach, export, etc)">TOOLS</button>
@@ -1298,7 +1301,7 @@ body.theme-min #adam-core{opacity:.6}
 <div id="cmd-menu" onclick="if(event.target===this)toggleCmdMenu(false)"><div class="cm-box"><div class="cm-head"><span>◆ MENU — modes &amp; commands</span><span class="cm-close" onclick="toggleCmdMenu(false)">CLOSE</span></div><div id="cmd-menu-list" class="cm-list"></div></div></div>
 <canvas id="adam-core" width="120" height="120" title="Adam core — click to collapse"></canvas>
 <div id="toast-stack"></div>
-<div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP IMAGE OR TEXT FILE FOR ADAM</div></div>
+<div id="drop-overlay" class="drop-overlay"><div class="label">◆ DROP AN IMAGE, DOCUMENT OR TEXT FILE FOR ADAM</div></div>
 <div id="gesture-flash" class="gesture-flash"></div>
 <div class="sidehint">Adam • Amni-Ai • Local • GF(17)</div>
 <span id="wd-pill" onclick="_wdToggle()" oncontextmenu="event.preventDefault();_wdCopy();return false" title="Click to browse · Right-click to copy path"><span class="wd-lbl">WORKDIR</span><span id="wd-path">—</span></span>
@@ -1921,6 +1924,8 @@ const _SLASH_COMMANDS=[
   {cmd:'perms',hint:'location/mic/camera/notification permissions'},
   {cmd:'pclog',hint:'PC action audit log (proposed/ran/refused)'},
   {cmd:'se',hint:'software-engineer dashboard (code map + attempts)'},
+  {cmd:'code',hint:'agentic coding via Amni-Code: /code [plan] [in <folder>] <task> · /code stop'},
+  {cmd:'docs',hint:'list attached documents · /docs clear'},
   {cmd:'delve',hint:'multi-AI roundtable — /delve <q>, @agent <q>, debate <topic>, stop'},
 ];
 let _slashAcOpen=false;let _slashAcIdx=0;let _slashAcMatches=[];
@@ -2007,7 +2012,45 @@ async function _runWebSearch(query){
   }catch(e){botB.classList.remove('thinking');botB.textContent='Search request failed: '+e.message}
   log.scrollTop=log.scrollHeight;
 }
+const CODE_DIR_KEY='amni.code.dir';
+function _codeCmd(arg){
+  const B='<span class="badge">code</span>';
+  if(!arg||arg==='help'){bubble('bot','`/code <task>` lets Adam read, edit and test code through the Amni-Code harness: it works on a sandbox copy of the folder, runs the project tests there, places the changed files back only when they pass, then deletes the sandbox (a patch is kept) · `/code plan <task>` only reads · `/code in <folder> <task>` picks the folder and remembers it · `/code dir <folder>` sets the folder · `/code stop` stops the run.',B);return}
+  if(arg==='stop'){fetch('/code/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid||''})}).catch(()=>{});bubble('bot','Asked the coding run to stop.',B);return}
+  const dm=arg.match(/^dir\s+(.+)$/i);if(dm){try{localStorage.setItem(CODE_DIR_KEY,dm[1].trim())}catch{}bubble('bot','Code folder set to `'+dm[1].trim()+'`.',B);return}
+  let mode='agent',t=arg,wd='';const pm=t.match(/^plan\s+([\s\S]+)$/i);if(pm){mode='plan';t=pm[1]}
+  const im=t.match(/^in\s+(?:"([^"]+)"|(\S+))\s+([\s\S]+)$/i);if(im){wd=im[1]||im[2];t=im[3];try{localStorage.setItem(CODE_DIR_KEY,wd)}catch{}}
+  if(!wd){try{wd=localStorage.getItem(CODE_DIR_KEY)||''}catch{}}
+  _runCode(t,wd,mode);
+}
+async function _runCode(task,wd,mode){
+  const w=document.querySelector('.welcome');if(w)w.remove();
+  const uMsg=document.createElement('div');uMsg.className='msg user';const uB=document.createElement('div');uB.className='bubble';uB.textContent='/code '+(mode==='plan'?'plan ':'')+task;uMsg.appendChild(uB);log.appendChild(uMsg);
+  const botMsg=document.createElement('div');botMsg.className='msg bot';const botB=document.createElement('div');botB.className='bubble thinking';botB.textContent='starting the Amni-Code harness…';botMsg.appendChild(botB);log.appendChild(botMsg);log.scrollTop=log.scrollHeight;
+  const tl=[],st={head:'',final:'',tail:''};
+  const paint=()=>{botB.innerHTML=(st.head?md(st.head):'')+(tl.length?'<div class="code-tl">'+tl.map(x=>'<div class="code-step '+x.c+'">'+esc(x.s)+'</div>').join('')+'</div>':'')+(st.final?md(st.final):'')+(st.tail?md(st.tail):'');log.scrollTop=log.scrollHeight};
+  try{
+    const r=await fetch('/code/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid||'',task,working_dir:wd,mode})});
+    botB.classList.remove('thinking');
+    if(!r.ok){const j=await r.json().catch(()=>({}));botB.innerHTML=md('Could not start coding: '+(j.detail||('HTTP '+r.status))+(wd?'':'\n\nSet a folder first: `/code dir <folder>`.'));return}
+    const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+    for(;;){const {value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf('\n\n'))>=0){const blk=buf.slice(0,i);buf=buf.slice(i+2);const l=blk.split('\n').find(x=>x.startsWith('data:'));if(!l)continue;let e;try{e=JSON.parse(l.slice(5))}catch{continue}
+        if(e.type==='sandbox')tl.push({s:'✓ copied '+e.files+' files into a sandbox ('+e.copy+')',c:'ok'});
+        else if(e.type==='start')st.head='Working on a sandbox copy of `'+e.working_dir+'` · '+(e.mode==='plan'?'read-only plan':'edit mode')+(e.isolation==='bwrap'?' · bubblewrap':'')+' · brain: '+e.provider;
+        else if(e.type==='validate'){if(e.status==='running')tl.push({s:'▸ validate: '+e.cmd,c:'run'});else{const x=[...tl].reverse().find(y=>y.c==='run'&&y.s.startsWith('▸ validate'));const ok=e.status==='passed';if(x){x.s=(ok?'✓':'✗')+x.s.slice(1)+' ('+(ok?'passed':'exit '+e.exit)+', '+e.seconds+' s)';x.c=ok?'ok':'bad'}if(!ok&&e.output)st.tail+='\n\n```\n'+e.output.split('\n').slice(-15).join('\n')+'\n```'}}
+        else if(e.type==='apply')st.tail+='\n\n'+(e.applied.length||e.deleted.length?'**Placed in the folder:** '+e.applied.slice(0,20).map(f=>'`'+f+'`').join(', ')+(e.deleted.length?' · removed '+e.deleted.slice(0,20).map(f=>'`'+f+'`').join(', '):''):'**Not placed** ('+e.proposed+' proposed changes): '+esc(e.skipped||'nothing to place'))+(e.patch?'\n\nPatch kept at `'+e.patch+'`':'');
+        else if(e.type==='tool_start')tl.push({s:'▸ '+e.tool+' '+String(e.input||'').slice(0,140),c:'run'});
+        else if(e.type==='tool_result'){const ok=!/err|fail|denied|gated|refus/i.test(e.status||''),x=[...tl].reverse().find(y=>y.c==='run'&&y.s.startsWith('▸ '+e.tool));if(x){x.s=(ok?'✓':'✗')+x.s.slice(1);x.c=ok?'ok':'bad'}else tl.push({s:(ok?'✓ ':'✗ ')+e.tool,c:ok?'ok':'bad'})}
+        else if(e.type==='message')st.final=e.message||st.final;
+        else if(e.type==='error'||e.type==='timeout')st.tail+='\n\n⚠ '+(e.error||e.type);
+        else if(e.type==='summary')st.tail+=(e.applied&&e.applied.length||e.patch?'':'\n\nNo files changed.')+'\n\n_Sandbox '+(e.sandbox==='deleted'?'deleted':'kept at `'+e.sandbox+'`')+'._';
+        paint()}}
+  }catch(e){botB.classList.remove('thinking');st.tail+='\n\n⚠ '+e.message;paint()}
+  const metaEl=document.createElement('div');metaEl.className='meta';metaEl.innerHTML='<span class="badge">code</span><span class="badge">'+tl.length+' tool calls</span>';botMsg.appendChild(metaEl);
+}
 function _handleSlashCommand(text){
+  const cm=text.match(/^\/code\b([\s\S]*)$/i);if(cm){_codeCmd(cm[1].trim());return true}
   const m=text.match(/^\/(\w[\w-]*)(?:\s+(.*))?$/);
   if(!m)return false;
   const cmd=m[1].toLowerCase();const arg=(m[2]||'').trim();
@@ -2017,6 +2060,7 @@ function _handleSlashCommand(text){
     bubble('bot',cmd==='new'?'Started a fresh session.':'Chat cleared (session kept).','<span class="badge">cmd</span>');
     return true;
   }
+  if(cmd==='docs'){(async()=>{if(arg==='clear'){await fetch('/docs/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid||''})}).catch(()=>{});bubble('bot','Removed the attached documents from this session.','<span class="badge">cmd</span>');return}const j=await fetch('/docs/list?session_id='+encodeURIComponent(sid||'')).then(r=>r.json()).catch(()=>({documents:[]})),d=j.documents||[];bubble('bot',d.length?'Attached: '+d.map(x=>'**'+x.name+'**').join(', ')+'. Say `/docs clear` to remove them.':'No documents attached. Drop a file here or press 📎.','<span class="badge">cmd</span>')})();return true}
   if(cmd==='help'){const fn=window.toggleKbdOverlay||null;if(fn)try{fn()}catch{}else bubble('bot','Press `?` to open keyboard shortcuts.','<span class="badge">cmd</span>');return true}
   if(cmd==='persona'){
     if(!arg){bubble('bot','Usage: `/persona <name>` — e.g. `/persona rikku`. Use the panel for new persona learning.','<span class="badge">cmd</span>');return true}
@@ -3832,7 +3876,16 @@ async function handleImageBlob(blob){
     else{const cap=j.caption||'(no caption)';botB.innerHTML=md('**Image:** '+cap+'\n\n_'+j.width+'×'+j.height+' · '+(j.wall_s||'?')+'s_\n\nAsk me about it — I\'ll route follow-ups through /vision/ask.')}
     const metaEl=document.createElement('div');metaEl.className='meta';metaEl.innerHTML='<span class="badge">vision</span>'+(j.caption?'<span class="badge">'+esc(j.caption.slice(0,40))+'</span>':'');botMsg.appendChild(metaEl);
   }catch(e){botB.classList.remove('thinking');botB.textContent='Vision request failed: '+e.message}
+  await _attachImageDoc(blob,botMsg);
   log.scrollTop=log.scrollHeight;
+}
+async function _attachImageDoc(blob,botMsg){
+  try{
+    const data=await _readAsDataURL(blob),ty=(blob&&blob.type)||'image/png',nm=(blob&&blob.name)||('image.'+((ty.split('/')[1]||'png').replace('jpeg','jpg').replace('svg+xml','svg')));
+    const r=await fetch('/docs/attach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid||'',name:nm,data_base64:data})}),j=await r.json().catch(()=>({}));
+    if(j.session_id&&j.session_id!==sid){sid=j.session_id;try{localStorage.setItem(SKEY,sid)}catch{}}
+    if(r.ok&&!j.error){if(_lastImage)_lastImage.text=(j.ocr_words||0)>0;const n=document.createElement('div');n.className='meta';n.innerHTML='<span class="badge">doc</span><span class="badge">'+((j.ocr_words||0)>0?'read '+j.ocr_words+' words of text':'no text found')+'</span>';botMsg.appendChild(n)}
+  }catch{}
 }
 async function askAboutLastImage(question){
   if(!_lastImage)return false;
@@ -3853,7 +3906,7 @@ const _origSend=send;
 window.send=async function(){
   const t=input.value.trim();
   if(!t)return;
-  if(_lastImage && /\b(this|that|the image|the picture|in it|show |describe |what is|what's|color|shape)/i.test(t)){
+  if(_lastImage && !(_lastImage.text && /\b(text|says?|read|words?|written|quote|numbers?|dates?|total|names?|title|label|sign)\b/i.test(t)) && /\b(this|that|the image|the picture|in it|show |describe |what is|what's|color|shape)/i.test(t)){
     input.value='';input.style.height='auto';
     const uMsg=document.createElement('div');uMsg.className='msg user';
     const uB=document.createElement('div');uB.className='bubble';uB.textContent=t;uMsg.appendChild(uB);
@@ -4277,9 +4330,26 @@ function _isTextDrop(f){
   if(f.type&&(f.type.startsWith('text/')||f.type==='application/json'||f.type==='application/x-yaml'||f.type==='application/xml'))return true;
   return false;
 }
+const _DOC_DROP_EXT=new Set(['pdf','docx','xlsx','pptx','odt','ods','odp','epub','rtf','eml','mbox','msg','doc','xls','ppt','zip','gz','tgz','tar','bz2','tbz2','html','htm','xhtml','csv','tsv','md','markdown','txt','ipynb','ics','vcf','svg']);
+function _isDocDrop(f){return !!(f&&f.name)&&_DOC_DROP_EXT.has((f.name.split('.').pop()||'').toLowerCase())}
+async function handleDocFile(f){
+  bubble('user','Attached '+f.name+' ('+f.size+' bytes)','<span class="badge">doc</span>');
+  try{
+    const data=await _readAsDataURL(f);
+    const r=await fetch('/docs/attach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid||'',name:f.name,data_base64:data})});
+    const j=await r.json().catch(()=>({}));
+    if(j.session_id&&j.session_id!==sid){sid=j.session_id;try{localStorage.setItem(SKEY,sid)}catch{}}
+    if(!r.ok||j.error){bubble('bot','Could not read **'+f.name+'**: '+(j.error||j.detail||('HTTP '+r.status)),'<span class="badge err">doc</span>');return}
+    const i=j.info||{},u=i.unit||'part',n=i.count?i.count+' '+u+(i.count>1?'s':''):(i.blocks||0)+' blocks',t=i.meta&&i.meta.title?', “'+i.meta.title+'”':'',wn=(i.warnings||[]).slice(0,3);
+    bubble('bot','Read **'+j.name+'** ('+(i.format||'?')+', '+n+t+'). Ask me anything about it: I answer from its text and cite the '+u+'.'+(wn.length?'\n\n⚠ '+wn.join(' · '):''),'<span class="badge">doc</span>');
+  }catch(e){bubble('bot','Could not attach **'+f.name+'**: '+e.message,'<span class="badge err">doc</span>')}
+}
+function _docPicked(e){const fs=[...(e.target.files||[])];e.target.value='';(async()=>{for(const f of fs)await (f.type&&f.type.startsWith('image/')&&!_isDocDrop(f)?handleImageBlob(f):handleDocFile(f))})()}
 document.addEventListener('drop',async e=>{
   _dragDepth=0;_dropOverlay.classList.remove('show');
   if(!e.dataTransfer)return;
+  const _docs=[...(e.dataTransfer.files||[])].filter(_isDocDrop);
+  if(_docs.length){e.preventDefault();for(const f of _docs)await handleDocFile(f);return}
   for(const f of e.dataTransfer.files||[]){
     if(f.type&&f.type.startsWith('image/')){e.preventDefault();await handleImageBlob(f);return}
     if(_isTextDrop(f)){e.preventDefault();await handleTextFileBlob(f);return}

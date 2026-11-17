@@ -1,0 +1,78 @@
+import os;
+import xml;
+let D1 = "<?xml version=\"1.0\"?><!DOCTYPE r [<!ENTITY x \"y\">]><!-- c --><r a='1' b=\"2\" c=3><w:p w:val=\"x&amp;y\">Hi &lt;there&gt; &#233;&#x20AC;<![CDATA[ <raw> & ]]>end</w:p><e/><e2 x=\"1\" />tail</r>";
+let D2 = "<s id=\"256\" r:id=\"rId2\" x:val=\"q\"/>";
+let D3 = "<a><b>x<c>y</b>z</a>w</q>";
+let D4 = "<a>1 < 2 and 3<b attr=\"x";
+let D6 = "<r><a><b>one</b><c>two</c></a><d>three</d></r>";
+fn dump() {
+	var t byte[>..] = [];
+	let n = xml::xm_count();
+	for i in n {
+		let k = xml::xm_kind(i);
+		t.clear();
+		if k == xml::XM_OPEN {
+			print("O", xml::xm_depth(i), " ", xml::xm_name(i), " c", xml::xm_close_of(i));
+		} else if k == xml::XM_CLOSE {
+			print("C ", xml::xm_name(i));
+		} else {
+			xml::xm_text(i, t);
+			print("T ", t);
+		}
+	}
+}
+fn at(i int, n const byte[:]) byte[>..] {
+	var out byte[>..] = [];
+	let ok = xml::xm_attr(i, n, out);
+	if !ok { out.clear(); out.append("-"); }
+	out
+}
+fn atp(i int, n const byte[:]) byte[>..] {
+	var out byte[>..] = [];
+	let ok = xml::xm_attr_pre(i, n, out);
+	if !ok { out.clear(); out.append("-"); }
+	out
+}
+fn atq(i int, n const byte[:]) byte[>..] {
+	var out byte[>..] = [];
+	let ok = xml::xm_attrq(i, n, out);
+	if !ok { out.clear(); out.append("-"); }
+	out
+}
+fn b(x bool) int { if x { 1 } else { 0 } }
+fn main() {
+	xml::xm_parse(D1);
+	dump();
+	print("attr ", at(0, "a"), " ", at(0, "b"), " ", at(0, "c"), " ", at(1, "val"));
+	print("local ", xml::xm_local(1), " ", b(xml::xm_is(1, "p")), " ", b(xml::xm_is(1, "w:p")), " ", b(xml::xm_isq(1, "w:p")));
+	xml::xm_parse(D2);
+	print("attr2 ", at(0, "id"), " ", atp(0, "id"), " ", atq(0, "r:id"), " ", at(0, "val"), " ", atp(0, "val"), " ", at(0, "zzz"));
+	xml::xm_parse(D3);
+	dump();
+	xml::xm_parse(D4);
+	dump();
+	print("attr4 ", at(2, "attr"));
+	var u byte[>..] = [];
+	for x in [255, 254, 60, 0, 97, 0, 62, 0, 233, 0, 60, 0, 47, 0, 97, 0, 62, 0] { u.push(x as byte); }
+	xml::xm_parse(u);
+	dump();
+	var l byte[>..] = [];
+	l.append("<a>");
+	l.push(233);
+	l.append("</a>");
+	xml::xm_parse(l);
+	dump();
+	var m byte[>..] = [];
+	m.push(239);
+	m.push(187);
+	m.push(191);
+	m.append("<a>x</a>");
+	xml::xm_parse(m);
+	dump();
+	xml::xm_parse(D6);
+	var g byte[>..] = [];
+	xml::xm_gather(1, g);
+	print("gather ", g, " ", xml::xm_find(0, xml::xm_count(), "c"), " ", xml::xm_find(2, 5, "c"), " ", xml::xm_child(0, "d"), " ", xml::xm_child(0, "b"), " ", xml::xm_child(1, "c"), " ", b(xml::xm_is(10, "d")), " ", xml::xm_parent(10), " ", xml::xm_depth(10), " ", xml::xm_close_of(1), " ", xml::xm_open_of(8), " ", xml::xm_next(1), " ", xml::xm_count());
+	xml::xm_parse(D3);
+	print("count ", xml::xm_count());
+}

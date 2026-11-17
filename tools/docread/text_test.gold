@@ -1,0 +1,318 @@
+use std
+into text_test.amni
+
+```amni
+import os;
+import dm;
+import html;
+import rtf;
+import textfmt;
+import eml;
+```
+
+`put(text const byte[:])` writes text with `os::write_stdout` line by line: a carriage byte (13) at the end of a line is not written, every line that is empty (after that) is written as a single period instead, and every line ends with a newline (a last line without a newline gets one; an empty text writes nothing). Every multi-line print of this program goes through `put`, so the expected output below has no empty lines.
+
+`show(name const byte[:], which int)` reads the file "tests/fixtures/" followed by name with `os::read_file` (printing "missing" and returning when it cannot be read), calls `dm::dm_reset(kind, unit)` where kind and unit are "html" and "section" for which 1, "rtf" and "section" for 2, "text" and "section" for 3, "csv" and "sheet" for 4, 5 and 6 (and 8), "json" and "section" for 7, "eml" and "part" for 9, then calls the reader chosen by which: 1 `html::ht_read`, 2 `rtf::rt_read`, 3 `textfmt::tx_text`, 4 `textfmt::tx_csv` with delimiter 0, 5 `textfmt::tx_csv` with delimiter 9, 6 is unused, 7 `textfmt::tx_json`, 9 `eml::em_read`. It prints a line "== " and the name, then the Markdown from `dm::dm_markdown` (written with `put`), then one line "meta " plus key, an equals sign and value for each line of `dm::dm_meta` (the key and value are separated by the tab byte 9 there), then one line "warn " plus the line for each line of `dm::dm_warn`, and when the reader returned false one line "reader returned false".
+
+`main()` calls `show` for these files in this order: "page.html" with 1, "memo.rtf" with 2, "escapes.rtf" with 2, "notes.md" with 3, "quoted.csv" with 4, "semi.csv" with 4, "table.tsv" with 5, "data.json" with 7, "records.json" with 7, "lines.jsonl" with 7, "mail.eml" with 9, "fwd.eml" with 9, "nested.eml" with 9. Then it prints a line "== page.html text-only", reads "tests/fixtures/page.html" and prints `html::ht_text_only` of it with `put`. Then it prints a line "== mail.eml attachments" and for every attachment i of `eml::em_att_count` (after reading mail.eml again with `dm::dm_reset("eml", "part")` and `eml::em_read`) prints "att ", i, a space, the name from `eml::em_att_name`, a space, the type from `eml::em_att_type`, a space, the byte length of `eml::em_att_data` and then the data itself on the following lines with `put`. Finally it calls `negatives`.
+
+`negatives()` prints a line "== negatives" and then, for each of these pairs of reader and file, one line made of the reader name, " on ", the file name, ": " and the word "true" or "false" for what the reader returned (the file under "tests/fixtures/" is read with `os::read_file` and `dm::dm_reset("text", "section")` is called before each reader): `html::ht_read` on "notes.md", `rtf::rt_read` on "notes.md", `eml::em_read` on "notes.md", `eml::em_read` on "page.html", `textfmt::tx_json` on "notes.md".
+
+expect:
+== page.html
+# Quarterly Notes & Plans
+.
+# Plans & Prices
+.
+Café revenue grew to €1,200 in March, and tea sales stayed flat. Second line <ok>.
+.
+## Lists
+.
+- Apples
+  - Granny Smith
+  - Fuji
+- Pears
+- 1. First step
+- 2. Second step
+.
+## Numbers
+.
+| Item | Price |
+|---|---|
+| Tea | 3.50 |
+| Coffee | 4.25 |
+.
+> Quoted wisdom.
+.
+```
+line one
+ indented <two>
+line three
+```
+.
+Logo: [image: Company logo] end.
+.
+meta title=Quarterly Notes & Plans
+meta description=Notes on the "spring" plan
+meta author=Rae Fenwick
+== memo.rtf
+# Field Memo
+.
+# Field Memo
+.
+The café crew met on Tuesday and agreed on the “spring” plan — costs stay under €500.
+.
+## Tasks
+.
+- Order beans
+- Fix the grinder
+- Open doors
+- Count the till
+.
+## Budget
+.
+| Item | Cost |
+|---|---|
+| Beans | 120 |
+| Milk | 80 |
+.
+End of memo.
+.
+meta title=Field Memo
+== escapes.rtf
+# Escape Test
+.
+# Unicode € and café
+.
+Smile 😀 done, bullet • after next tabbed —–{braces}
+.
+## Tables
+.
+| Name | Qty |
+|---|---|
+| Apple | 3 |
+.
+After the table. End.
+.
+> Footnote text here.
+.
+- First bullet
+  - Nested bullet
+.
+Done visible linked text.
+.
+meta title=Escape Test
+meta author=R. Fenwick
+meta keywords=rtf, test
+== notes.md
+# Release Notes
+.
+Intro paragraph that wraps over two lines and has a trailing backslash break end of it.
+.
+# Setext Heading
+.
+## Sub heading
+.
+- apples
+  - green apples
+  - red apples
+- pears continuing on the next line
+- star item
+- 1. first
+- 2. second
+.
+> quoted line one
+> quoted line two
+.
+| Name | Qty |
+|---|---|
+| Tea | 3 |
+| Jam \| honey | 12 |
+.
+```
+code line 1
+ code line 2
+```
+.
+```
+tilde fence
+```
+.
+Closing paragraph.
+.
+== quoted.csv
+| id | name | notes |
+|---|---|---|
+| 1 | Smith, Jane | said "hello" |
+| 2 | Lee, Bo | two lines |
+| 3 | Plain |
+.
+meta rows=4
+meta columns=3
+== semi.csv
+| name | price | qty |
+|---|---|---|
+| Tea | 3,50 | 10 |
+| Coffee | 4,25 | 7 |
+.
+meta rows=3
+meta columns=3
+== table.tsv
+| sku | label | stock |
+|---|---|---|
+| A-1 | Bolt | 120 |
+| A-2 | Nut "M5" | 80 |
+.
+meta rows=3
+meta columns=3
+== data.json
+name: Widget
+version: 2.1.0
+tags[0]: a
+tags[1]: b
+dims.w: 10.50
+dims.h: 7
+dims.unit: cm
+items[0].id: 1
+items[0].ok: true
+items[1].id: 2
+items[1].extra: null
+items[1].ok: false
+empty: {}
+list: []
+note: line1
+line2 é 😀
+== records.json
+| id | city | pop |
+|---|---|---|
+| 1 | Oslo | 709000 |
+| 2 | Rome | 2870000 |
+| 3 | Lima | null |
+.
+== lines.jsonl
+| t | n |
+|---|---|
+| a | 1 |
+| b | 2 |
+.
+== mail.eml
+From: Renée Fenwick <renee@example.org>
+To: Sam Parker <sam@example.com>, "Lee, Bo" <bo@example.net>
+Cc: team@example.org
+Date: Mon, 03 Nov 2025 09:15:00 +0000
+Subject: Quarterly plan - café budget ok
+Hi Sam,
+.
+The café budget is attached. We agreed to keep the total under €500 and review it next week.
+.
+- check the totals
+- send the final copy
+.
+Thanks, Renée
+.
+> Attachment: budget café.csv (text/csv, 21 bytes)
+.
+> Attachment: field notes.txt (text/plain, 24 bytes)
+.
+meta from=Renée Fenwick <renee@example.org>
+meta to=Sam Parker <sam@example.com>, "Lee, Bo" <bo@example.net>
+meta cc=team@example.org
+meta date=Mon, 03 Nov 2025 09:15:00 +0000
+meta subject=Quarterly plan - café budget ok
+meta attachments=2
+== fwd.eml
+From: Rae Fenwick <rae@example.org>
+To: sam@example.com
+Date: Tue, 04 Nov 2025 08:00:00 +0000
+Subject: Fwd: Pricing café update
+See the forwarded note below, café crew.
+.
+- Item one
+- Item two
+.
+> Attached message:
+.
+> From: Lee Bo <bo@example.net>
+.
+> Date: Mon, 03 Nov 2025 10:00:00 +0000
+.
+> Subject: Original note
+.
+> Prices hold until Friday. Call me if that changes.
+.
+> Attachment: dot.png (image/png, 8 bytes)
+.
+meta from=Rae Fenwick <rae@example.org>
+meta to=sam@example.com
+meta date=Tue, 04 Nov 2025 08:00:00 +0000
+meta subject=Fwd: Pricing café update
+meta attachments=1
+== nested.eml
+From: Ana Fenwick <ana@example.org>
+To: sam@example.com
+Subject: Fwd: Fwd: Schedule
+Please see below.
+.
+> Attached message:
+.
+> From: Lee Bo <bo@example.net>
+.
+> Subject: Fwd: Schedule
+.
+> Passing this on.
+.
+> Attached message:
+.
+> From: Rae Fenwick <rae@example.org>
+.
+> Subject: Schedule
+.
+> Shift starts at nine.
+.
+> Sent from my phone.
+.
+Regards, Ana
+.
+meta from=Ana Fenwick <ana@example.org>
+meta to=sam@example.com
+meta subject=Fwd: Fwd: Schedule
+== page.html text-only
+Plans & Prices
+.
+Café revenue grew to €1,200 in March, and tea sales stayed flat. Second line <ok>.
+.
+Lists
+.
+- Apples
+  - Granny Smith
+  - Fuji
+- Pears
+1. First step
+2. Second step
+.
+Numbers
+.
+Item	Price
+Tea	3.50
+Coffee	4.25
+.
+Quoted wisdom.
+.
+line one
+ indented <two>
+line three
+.
+Logo: [image: Company logo] end.
+== mail.eml attachments
+att 0 budget café.csv text/csv 21
+Item,Cost
+Tea,3.50
+att 1 field notes.txt text/plain 24
+Plain notes
+second line
+== negatives
+html::ht_read on notes.md: false
+rtf::rt_read on notes.md: false
+eml::em_read on notes.md: false
+eml::em_read on page.html: false
+textfmt::tx_json on notes.md: false

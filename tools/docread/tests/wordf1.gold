@@ -1,0 +1,19 @@
+use std
+into wordf1.amni
+
+This standalone program scores how closely a text extraction matches a reference extraction of the same document. Every module-level name starts with `wf_`.
+
+```amni
+import os;
+```
+
+`wf_tokens(s const byte[:], out int[>..]&)` clears out and appends an FNV-1a 32-bit hash for every token of s: a token is a maximal run of ASCII letters and digits and bytes from 128 up, lower-cased; markdown syntax disappears naturally because punctuation is not part of tokens.
+
+`wf_f1(a const int[:], b const int[:]) real` is the multiset F1 of two token lists: sort copies of both, count matches by walking both sorted lists, precision = matches / len(a), recall = matches / len(b), F1 = 2pr/(p+r) (0 when either list is empty).
+
+`wf_pairs(t const int[:], out int[>..]&)` clears out and appends one hash per pair of consecutive tokens (FNV-1a of the two values' eight bytes).
+
+`main()` takes two file paths from `os::args()`: elements 1 and 2 (element 0 is the program name), the extraction to score, then the reference; prints one line "words F1 P R bigramF1 n_test n_ref" with the unigram F1, its precision and recall, the bigram F1 (all with 4 decimals) and both token counts. Print "usage: wordf1 TEST REF" and nothing else when fewer than two paths are given or a file cannot be read.
+
+expect:
+usage: wordf1 TEST REF

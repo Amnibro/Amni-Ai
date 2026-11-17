@@ -1,0 +1,47 @@
+import os;
+import dcrypt;
+fn hex(b const byte[:]) byte[>..] {
+	let digits const byte[:] = "0123456789abcdef";
+	var out byte[>..] = [];
+	for x in b {
+		out.push(digits[(x as int) >> 4]);
+		out.push(digits[(x as int) & 15]);
+	}
+	out
+}
+fn unhex(s const byte[:]) byte[>..] {
+	var out byte[>..] = [];
+	hex_decode(s, out);
+	out
+}
+fn main() {
+	print("md5-empty ", hex(dcrypt::dc_md5("")));
+	print("md5-abc ", hex(dcrypt::dc_md5("abc")));
+	print("md5-msg ", hex(dcrypt::dc_md5("message digest")));
+	print("md5-long ", hex(dcrypt::dc_md5("12345678901234567890123456789012345678901234567890123456789012345678901234567890")));
+	var rc byte[>..] = [];
+	dcrypt::dc_rc4("Key", "Plaintext", rc);
+	print("rc4 ", hex(rc));
+	let k128 = unhex("000102030405060708090a0b0c0d0e0f");
+	let ks128 = crypto::aes_key(k128);
+	let b128 = unhex("69c4e0d86a7b0430d8cdb78070b4c55a");
+	var o128 byte[16] = [0; 16];
+	dcrypt::dc_aes_dec(ks128, b128, o128);
+	print("aes128 ", hex(o128));
+	let k256 = unhex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+	let ks256 = crypto::aes_key(k256);
+	let b256 = unhex("8ea2b7ca516745bfeafc49904b496089");
+	var o256 byte[16] = [0; 16];
+	dcrypt::dc_aes_dec(ks256, b256, o256);
+	print("aes256 ", hex(o256));
+	let kc = unhex("2b7e151628aed2a6abf7158809cf4f3c");
+	let iv = unhex("000102030405060708090a0b0c0d0e0f");
+	let ct = unhex("000102030405060708090a0b0c0d0e0f7649abac8119b246cee98e9b12e9197d");
+	var dec byte[>..] = [];
+	dcrypt::dc_aes_cbc_dec(kc, ct, dec);
+	print("cbc ", hex(dec));
+	let pt = unhex("6bc1bee22e409f96e93d7e117393172a");
+	var enc byte[>..] = [];
+	dcrypt::dc_aes_cbc_enc_nopad(kc, iv, pt, enc);
+	print("cbcenc ", hex(enc));
+}

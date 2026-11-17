@@ -1,0 +1,855 @@
+=== 76a636b5234cbadf
+fn put_line(line const byte[:]) {
+	if line.len == 0 { print("."); } else { print(line); }
+}
+fn emit(text const byte[:]) {
+	var start = 0;
+	for i in text.len {
+		if text[i] == 10 {
+			put_line(text[start..i]);
+			start = i + 1;
+		}
+	}
+	if start < text.len { put_line(text[start..]); }
+}
+=== 33ca71fa6dde435b
+fn put_prefixed(line const byte[:], prefix const byte[:], tabbed bool) {
+	if tabbed {
+		var t = -1;
+		for i in line.len {
+			if t < 0 && line[i] == 9 { t = i; }
+		}
+		if t < 0 {
+			print(prefix, line, "=");
+		} else {
+			print(prefix, line[..t], "=", line[t + 1..]);
+		}
+	} else {
+		print(prefix, line);
+	}
+}
+fn each_prefixed(text const byte[:], prefix const byte[:], tabbed bool) {
+	var start = 0;
+	for i in text.len {
+		if text[i] == 10 {
+			put_prefixed(text[start..i], prefix, tabbed);
+			start = i + 1;
+		}
+	}
+	if start < text.len { put_prefixed(text[start..], prefix, tabbed); }
+}
+fn dump(name const byte[:], ok bool) {
+	print("== ", name);
+	var md byte[>..] = [];
+	dm::dm_markdown(md);
+	emit(md);
+	each_prefixed(dm::dm_meta, "meta ", true);
+	each_prefixed(dm::dm_warn, "warn ", false);
+	if !ok { print("reader returned false"); }
+}
+=== 578b51b5624966a2
+fn show(name const byte[:], kind const byte[:], unit const byte[:]) {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var data byte[>..] = [];
+	if !read_file(path, data) {
+		print("missing");
+		return;
+	}
+	dm::dm_reset(kind, unit);
+	dump(name, ole::ol_read(data));
+}
+=== 280cbaa898d70db7
+fn le(out byte[>..]&, v int, n int) {
+	for i in n { out.push(((v >> (8 * i)) & 255) as byte); }
+}
+=== -1f71fa905329d362
+fn txt(out byte[>..]&, s const byte[:], wide bool) {
+	for i in s.len {
+		out.push(s[i]);
+		if wide { out.push(0); }
+	}
+}
+=== -696c9957b8105007
+fn rec(out byte[>..]&, id int, data const byte[:]) {
+	le(out, id, 2);
+	le(out, data.len, 2);
+	out.append(data);
+}
+=== 3a3db105f24e4849
+fn zeros(out byte[>..]&, n int) {
+	for i in n { out.push(0); }
+}
+fn endrec(out byte[>..]&) {
+	var e byte[>..] = [];
+	rec(out, 0x000A, e);
+}
+fn bof(out byte[>..]&, ver int, ty int) {
+	var d byte[>..] = [];
+	le(d, ver, 2);
+	le(d, ty, 2);
+	zeros(d, 12);
+	rec(out, 0x0809, d);
+}
+=== 1bb5d5eb543fde06
+fn cell(out byte[>..]&, id int, row int, col int, ixfe int, tail const byte[:]) {
+	var d byte[>..] = [];
+	le(d, row, 2);
+	le(d, col, 2);
+	le(d, ixfe, 2);
+	d.append(tail);
+	rec(out, id, d);
+}
+=== 23127f5aacb87b54
+fn numc(out byte[>..]&, row int, col int, ixfe int, hi int, lo int) {
+	var t byte[>..] = [];
+	le(t, lo, 4);
+	le(t, hi, 4);
+	cell(out, 0x0203, row, col, ixfe, t);
+}
+=== 577f31c70ab7bfc0
+fn rkc(out byte[>..]&, row int, col int, ixfe int, rk int) {
+	var t byte[>..] = [];
+	le(t, rk, 4);
+	cell(out, 0x027E, row, col, ixfe, t);
+}
+=== 174c0e938990b488
+fn labc(out byte[>..]&, row int, col int, s const byte[:]) {
+	var t byte[>..] = [];
+	le(t, s.len, 2);
+	t.push(0);
+	t.append(s);
+	cell(out, 0x0204, row, col, 0, t);
+}
+=== -369e030f0783fae4
+fn sstc(out byte[>..]&, row int, col int, n int) {
+	var t byte[>..] = [];
+	le(t, n, 4);
+	cell(out, 0x00FD, row, col, 0, t);
+}
+=== 60aaec7016130947
+fn xf(out byte[>..]&, ifmt int) {
+	var d byte[>..] = [];
+	zeros(d, 2);
+	le(d, ifmt, 2);
+	zeros(d, 16);
+	rec(out, 0x00E0, d);
+}
+=== -777c7ae3a55bdee5
+fn fmt(out byte[>..]&, id int, code const byte[:]) {
+	var d byte[>..] = [];
+	le(d, id, 2);
+	le(d, code.len, 2);
+	d.push(0);
+	d.append(code);
+	rec(out, 0x041E, d);
+}
+=== -5f8b234d50f22f17
+fn bsheet(out byte[>..]&, off int, state int, ty int, name const byte[:]) {
+	var d byte[>..] = [];
+	le(d, off, 4);
+	d.push(state as byte);
+	d.push(ty as byte);
+	d.push(name.len as byte);
+	d.push(0);
+	d.append(name);
+	rec(out, 0x0085, d);
+}
+=== 2ee266dd0b44b577
+fn sstblock(out byte[>..]&) {
+	var d1 byte[>..] = [];
+	le(d1, 7, 4);
+	le(d1, 7, 4);
+	le(d1, 5, 2);
+	d1.push(0);
+	d1.append("plain");
+	le(d1, 16, 2);
+	d1.push(0);
+	d1.append("alpha ");
+	rec(out, 0x00FC, d1);
+	var d2 byte[>..] = [];
+	d2.push(0);
+	d2.append("beta gamma");
+	le(d2, 11, 2);
+	d2.push(0);
+	d2.append("caf");
+	rec(out, 0x003C, d2);
+	var d3 byte[>..] = [];
+	d3.push(1);
+	let units int[8] = [0xE9, 0x20, 0x41F, 0x440, 0x438, 0x432, 0x435, 0x442];
+	for u in units { le(d3, u, 2); }
+	le(d3, 4, 2);
+	d3.push(8);
+	le(d3, 1, 2);
+	d3.append("rich");
+	zeros(d3, 4);
+	le(d3, 3, 2);
+	d3.push(4);
+	le(d3, 3, 4);
+	d3.append("ext");
+	zeros(d3, 3);
+	rec(out, 0x003C, d3);
+	var d4 byte[>..] = [];
+	le(d4, 5, 2);
+	d4.push(0);
+	d4.append("after");
+	rec(out, 0x003C, d4);
+}
+=== 1ff68d95912b9046
+fn berr(out byte[>..]&, row int, col int, v int, e int) {
+	var t byte[>..] = [];
+	t.push(v as byte);
+	t.push(e as byte);
+	cell(out, 0x0205, row, col, 0, t);
+}
+fn cellsa(out byte[>..]&) {
+	for c in 6 { sstc(out, 0, c, c); }
+	rkc(out, 1, 0, 1, 10);
+	rkc(out, 1, 1, 2, 16400303);
+	rkc(out, 1, 2, 3, 10);
+	numc(out, 1, 3, 4, 0x3FF00000, 0);
+	numc(out, 1, 4, 4, 0, 0);
+	numc(out, 1, 5, 0, 0x401C0000, 0);
+	var m byte[>..] = [];
+	le(m, 2, 2);
+	le(m, 0, 2);
+	let rks int[3] = [22, 5003, 0x3FE00000];
+	for rk in rks {
+		le(m, 0, 2);
+		le(m, rk, 4);
+	}
+	le(m, 2, 2);
+	rec(out, 0x00BD, m);
+	rkc(out, 2, 3, 0, 0xFFFFFFF6);
+	berr(out, 3, 0, 1, 0);
+	berr(out, 3, 1, 0, 0);
+	berr(out, 3, 2, 0x2A, 1);
+	berr(out, 3, 3, 0x24, 1);
+}
+=== -6cf1a8bca93bea18
+fn fml(out byte[>..]&, row int, col int, res const byte[:]) {
+	var t byte[>..] = [];
+	t.append(res);
+	le(t, 0, 2);
+	le(t, 0, 4);
+	le(t, 0, 2);
+	cell(out, 0x0006, row, col, 0, t);
+}
+fn cellsb(out byte[>..]&) {
+	var r0 byte[>..] = [];
+	le(r0, 0, 4);
+	le(r0, 0x401C0000, 4);
+	fml(out, 4, 0, r0);
+	var r1 byte[>..] = [0, 0, 0, 0, 0, 0, 255, 255];
+	fml(out, 4, 1, r1);
+	var s byte[>..] = [];
+	le(s, 3, 2);
+	s.push(0);
+	s.append("str");
+	rec(out, 0x0207, s);
+	var r2 byte[>..] = [1, 0, 1, 0, 0, 0, 255, 255];
+	fml(out, 4, 2, r2);
+	var r3 byte[>..] = [2, 0, 0x17, 0, 0, 0, 255, 255];
+	fml(out, 4, 3, r3);
+	var r4 byte[>..] = [3, 0, 0, 0, 0, 0, 255, 255];
+	fml(out, 4, 4, r4);
+	var tx byte[>..] = [];
+	tx.append("t");
+	tx.push(9);
+	tx.append("x");
+	labc(out, 4, 5, tx);
+	bof(out, 0x600, 0x20);
+	sstc(out, 4, 6, 0);
+	endrec(out);
+	labc(out, 6, 2, "c");
+	labc(out, 6, 0, "a");
+	labc(out, 6, 0, "dup");
+	labc(out, 8, 0, "eight");
+	labc(out, 7, 0, "seven");
+	var e byte[>..] = [];
+	cell(out, 0x0201, 9, 0, 0, e);
+	labc(out, 9, 1, "z");
+}
+=== -55b5c3fcbd997c48
+fn wbglobals(out byte[>..]&, d1904 bool, o1 int, o2 int) {
+	bof(out, 0x600, 5);
+	var dm1 byte[>..] = [];
+	le(dm1, if d1904 { 1 } else { 0 }, 2);
+	rec(out, 0x0022, dm1);
+	fmt(out, 164, "yyyy-mm-dd hh:mm");
+	fmt(out, 165, "0.00");
+	var code byte[>..] = [];
+	code.push(34);
+	code.append("TRUE");
+	code.push(34);
+	code.push(59);
+	code.push(34);
+	code.append("TRUE");
+	code.push(34);
+	code.push(59);
+	code.push(34);
+	code.append("FALSE");
+	code.push(34);
+	fmt(out, 166, code);
+	xf(out, 0);
+	xf(out, 14);
+	xf(out, 164);
+	xf(out, 165);
+	xf(out, 166);
+	bsheet(out, o1, 0, 0, "Data");
+	bsheet(out, o2, 1, 0, "Hid & Den");
+	bsheet(out, 0, 0, 2, "Chart");
+	sstblock(out);
+	endrec(out);
+}
+=== -04a4ea5cc59502c
+fn wbbuild(d1904 bool, out byte[>..]&) {
+	out.clear();
+	var a byte[>..] = [];
+	bof(a, 0x600, 0x10);
+	cellsa(a);
+	cellsb(a);
+	endrec(a);
+	var b byte[>..] = [];
+	bof(b, 0x600, 0x10);
+	sstc(b, 0, 0, 0);
+	endrec(b);
+	var g byte[>..] = [];
+	wbglobals(g, d1904, 0, 0);
+	let n = g.len;
+	g.clear();
+	wbglobals(g, d1904, n, n + a.len);
+	out.append(g);
+	out.append(a);
+	out.append(b);
+}
+=== 4b2a0f44c6d75a69
+fn cfile(name const byte[:], stream const byte[:], out byte[>..]&) {
+	out.clear();
+	cfbmk::cm_reset();
+	cfbmk::cm_add(name, stream);
+	cfbmk::cm_build(false, 109, out);
+}
+=== -6e5fa7693823a544
+fn runx(label const byte[:], name const byte[:], stream const byte[:]) {
+	var file byte[>..] = [];
+	cfile(name, stream, file);
+	dm::dm_reset("xls", "sheet");
+	dump(label, ole::ol_read(file));
+}
+=== -4601b2af9481bf5a
+fn bigbook(out byte[>..]&) {
+	out.clear();
+	var a byte[>..] = [];
+	bof(a, 0x600, 0x10);
+	for r in 50001 { numc(a, r, 0, 0, 0x401C0000, 0); }
+	endrec(a);
+	var g1 byte[>..] = [];
+	bof(g1, 0x600, 5);
+	bsheet(g1, 0, 0, 0, "Big");
+	endrec(g1);
+	let n = g1.len;
+	var g byte[>..] = [];
+	bof(g, 0x600, 5);
+	bsheet(g, n, 0, 0, "Big");
+	endrec(g);
+	out.append(g);
+	out.append(a);
+}
+=== -4ed5aa3221bb1207
+fn lockedbook(out byte[>..]&) {
+	out.clear();
+	bof(out, 0x600, 5);
+	var fp byte[>..] = [];
+	le(fp, 1, 2);
+	zeros(fp, 4);
+	rec(out, 0x002F, fp);
+	bsheet(out, 0, 0, 0, "Secret");
+	endrec(out);
+}
+=== 3b2ef2b27c85b3f7
+fn oldxf(out byte[>..]&, ifmt int) {
+	var d byte[>..] = [];
+	zeros(d, 2);
+	le(d, ifmt, 2);
+	zeros(d, 12);
+	rec(out, 0x00E0, d);
+}
+fn oldglobals(g byte[>..]&, off int) {
+	bof(g, 0x500, 5);
+	var f byte[>..] = [];
+	le(f, 164, 2);
+	f.push(10);
+	f.append("yyyy-mm-dd");
+	rec(g, 0x041E, f);
+	oldxf(g, 0);
+	oldxf(g, 164);
+	var b byte[>..] = [];
+	le(b, off, 4);
+	b.push(0);
+	b.push(0);
+	b.push(3);
+	b.append("Old");
+	rec(g, 0x0085, b);
+	endrec(g);
+}
+fn oldbook(out byte[>..]&) {
+	out.clear();
+	var g1 byte[>..] = [];
+	oldglobals(g1, 0);
+	let n = g1.len;
+	var g byte[>..] = [];
+	oldglobals(g, n);
+	var a byte[>..] = [];
+	bof(a, 0x500, 0x10);
+	var t byte[>..] = [];
+	le(t, 4, 2);
+	t.append("caf");
+	t.push(0xE9);
+	cell(a, 0x0204, 0, 0, 0, t);
+	rkc(a, 0, 1, 1, 10);
+	numc(a, 1, 0, 0, 0x40040000, 0);
+	endrec(a);
+	out.append(g);
+	out.append(a);
+}
+=== 1ec6392bd4825407
+fn padto(w byte[>..]&, n int) {
+	while w.len < n { w.push(0); }
+}
+fn wdbuild(nfib int, flags int, tabname const byte[:], out byte[>..]&) {
+	out.clear();
+	var pt byte[>..] = [];
+	le(pt, 0, 4);
+	le(pt, 19, 4);
+	le(pt, 70, 4);
+	le(pt, 0, 2);
+	le(pt, 0x40001000, 4);
+	le(pt, 0, 2);
+	le(pt, 0, 2);
+	le(pt, 0x900, 4);
+	le(pt, 0, 2);
+	var t byte[>..] = [];
+	t.push(2);
+	le(t, pt.len, 4);
+	t.append(pt);
+	var w byte[>..] = [];
+	le(w, 0xA5EC, 2);
+	le(w, nfib, 2);
+	zeros(w, 6);
+	le(w, flags, 2);
+	padto(w, 0x4C);
+	le(w, 70, 4);
+	padto(w, 0x98);
+	le(w, 80, 2);
+	padto(w, 0x1A2);
+	le(w, 0, 4);
+	le(w, t.len, 4);
+	padto(w, 0x800);
+	w.append("Caf");
+	w.push(0xE9);
+	w.push(32);
+	w.push(0x93);
+	w.append("q");
+	w.push(0x94);
+	w.push(32);
+	w.push(0x80);
+	w.append(" 5");
+	w.push(13);
+	w.append("Hello ");
+	padto(w, 0x900);
+	txt(w, "world", true);
+	le(w, 13, 2);
+	let cyr int[6] = [0x41F, 0x440, 0x438, 0x432, 0x435, 0x442];
+	for u in cyr { le(w, u, 2); }
+	le(w, 13, 2);
+	le(w, 0x13, 2);
+	txt(w, " HYPERLINK ", true);
+	le(w, 0x14, 2);
+	txt(w, "link", true);
+	le(w, 0x15, 2);
+	txt(w, " end", true);
+	le(w, 13, 2);
+	let cells int[10] = [65, 7, 66, 7, 7, 67, 7, 68, 7, 7];
+	for u in cells { le(w, u, 2); }
+	txt(w, "Last", true);
+	le(w, 13, 2);
+	cfbmk::cm_reset();
+	cfbmk::cm_add("WordDocument", w);
+	cfbmk::cm_add(tabname, t);
+	cfbmk::cm_build(false, 109, out);
+}
+=== -4bc92bad7d31958f
+fn prc(out byte[>..]&, ver int, inst int, ty int, data const byte[:]) {
+	le(out, ver + 16 * inst, 2);
+	le(out, ty, 2);
+	le(out, data.len, 4);
+	out.append(data);
+}
+=== -1361a7f91857ecd6
+fn ptext(out byte[>..]&, kind int, wide bool, s const byte[:]) {
+	var h byte[>..] = [];
+	le(h, kind, 4);
+	prc(out, 0, 0, 0x0F9F, h);
+	var t byte[>..] = [];
+	txt(t, s, wide);
+	prc(out, 0, 0, if wide { 0x0FA0 } else { 0x0FA8 }, t);
+}
+=== -6df6e87f37ede69c
+fn pbox(out byte[>..]&, ph int, body const byte[:]) {
+	var inner byte[>..] = [];
+	if ph > 0 {
+		var a byte[>..] = [];
+		le(a, 0, 4);
+		a.push(ph as byte);
+		zeros(a, 3);
+		var r byte[>..] = [];
+		prc(r, 0, 0, 0x0BC3, a);
+		prc(inner, 15, 0, 0xF011, r);
+	}
+	prc(inner, 15, 0, 0xF00D, body);
+	prc(out, 15, 0, 0xF004, inner);
+}
+=== -257fc86a0909803a
+fn pdraw(out byte[>..]&, shapes const byte[:]) {
+	var a byte[>..] = [];
+	prc(a, 15, 0, 0xF003, shapes);
+	var b byte[>..] = [];
+	prc(b, 15, 0, 0xF002, a);
+	prc(out, 15, 0, 0x040C, b);
+}
+=== -7499e93e3ad60106
+fn patom(out byte[>..]&, a int, d int) {
+	var p byte[>..] = [];
+	le(p, a, 4);
+	le(p, 0, 4);
+	le(p, 0, 4);
+	le(p, d, 4);
+	zeros(p, 4);
+	prc(out, 0, 0, 0x03F3, p);
+}
+fn tbox(sh byte[>..]&, ph int, text const byte[:]) {
+	var b byte[>..] = [];
+	ptext(b, 4, true, text);
+	pbox(sh, ph, b);
+}
+fn slidewith(out byte[>..]&, shapes const byte[:]) {
+	var inner byte[>..] = [];
+	var z byte[>..] = [];
+	zeros(z, 24);
+	prc(inner, 0, 0, 0x03EF, z);
+	pdraw(inner, shapes);
+	prc(out, 15, 0, 0x03EE, inner);
+}
+fn slide2(out byte[>..]&, text const byte[:]) {
+	var sh byte[>..] = [];
+	tbox(sh, 0, text);
+	slidewith(out, sh);
+}
+fn notes(out byte[>..]&, id int, shapes const byte[:]) {
+	var inner byte[>..] = [];
+	var a byte[>..] = [];
+	le(a, id, 4);
+	zeros(a, 4);
+	prc(inner, 0, 0, 0x03F1, a);
+	pdraw(inner, shapes);
+	prc(out, 15, 0, 0x03F0, inner);
+}
+fn editrec(out byte[>..]&, prev int, dir int) {
+	var e byte[>..] = [];
+	le(e, 256, 4);
+	zeros(e, 4);
+	le(e, prev, 4);
+	le(e, dir, 4);
+	le(e, 1, 4);
+	le(e, 7, 4);
+	zeros(e, 4);
+	prc(out, 0, 0, 0x0FF5, e);
+}
+fn ppbuild(token int, out byte[>..]&) {
+	out.clear();
+	var d byte[>..] = [];
+	var l1 byte[>..] = [];
+	patom(l1, 2, 256);
+	ptext(l1, 0, true, "Title one");
+	var pts byte[>..] = [];
+	pts.append("First point");
+	pts.push(13);
+	pts.append("Second");
+	pts.push(0xE9);
+	pts.append(" point");
+	ptext(l1, 1, false, pts);
+	var st byte[>..] = [];
+	le(st, 12, 4);
+	le(st, 0, 2);
+	le(st, 0, 4);
+	le(st, 13, 4);
+	le(st, 1, 2);
+	le(st, 0, 4);
+	le(st, 25, 4);
+	le(st, 0, 4);
+	prc(l1, 0, 0, 0x0FA1, st);
+	patom(l1, 3, 257);
+	ptext(l1, 0, true, "Second slide");
+	var l2 byte[>..] = [];
+	patom(l2, 4, 257);
+	patom(l2, 5, 256);
+	ptext(l2, 2, true, "Remember the demo");
+	var doc byte[>..] = [];
+	prc(doc, 15, 0, 0x0FF0, l1);
+	prc(doc, 15, 2, 0x0FF0, l2);
+	prc(d, 15, 0, 0x03E8, doc);
+	let s1 = d.len;
+	var sh1 byte[>..] = [];
+	var four byte[>..] = [];
+	le(four, 0, 4);
+	var b0 byte[>..] = [];
+	prc(b0, 0, 0, 0x0F9E, four);
+	pbox(sh1, 0, b0);
+	tbox(sh1, 0, "Free box");
+	tbox(sh1, 9, "Footer text");
+	tbox(sh1, 7, "Date text");
+	slidewith(d, sh1);
+	let s2 = d.len;
+	slide2(d, "Old text");
+	let n2 = d.len;
+	var nsh byte[>..] = [];
+	var nb byte[>..] = [];
+	ptext(nb, 2, true, "Second notes");
+	pbox(nsh, 0, nb);
+	notes(d, 257, nsh);
+	let n1 = d.len;
+	var none byte[>..] = [];
+	notes(d, 256, none);
+	let pa = d.len;
+	var pd byte[>..] = [];
+	le(pd, 1 + 5 * 1048576, 4);
+	le(pd, 0, 4);
+	le(pd, s1, 4);
+	le(pd, s2, 4);
+	le(pd, n2, 4);
+	le(pd, n1, 4);
+	prc(d, 0, 0, 0x1772, pd);
+	let ea = d.len;
+	editrec(d, 0, pa);
+	let s2b = d.len;
+	slide2(d, "Edited later");
+	let pb = d.len;
+	var pe byte[>..] = [];
+	le(pe, 3 + 1048576, 4);
+	le(pe, s2b, 4);
+	prc(d, 0, 0, 0x1772, pe);
+	let eb = d.len;
+	editrec(d, ea, pb);
+	var u byte[>..] = [];
+	le(u, 0, 2);
+	le(u, 0x0FF6, 2);
+	le(u, 20, 4);
+	le(u, 20, 4);
+	le(u, token, 4);
+	le(u, eb, 4);
+	zeros(u, 4);
+	cfbmk::cm_reset();
+	cfbmk::cm_add("Current User", u);
+	cfbmk::cm_add("PowerPoint Document", d);
+	cfbmk::cm_build(false, 109, out);
+}
+=== 2e84e070428a3e9d
+fn putps(out byte[>..]&, id int, ty int, data const byte[:]) {
+	le(out, ty, 2);
+	le(out, id, 2);
+	le(out, 0, 4);
+	out.append(data);
+	var k = data.len;
+	while k < 8 {
+		out.push(0);
+		k += 1;
+	}
+}
+=== -6de457dae131471f
+fn msgprops(natt int, out byte[>..]&) {
+	out.clear();
+	zeros(out, 8);
+	le(out, 0, 4);
+	le(out, natt, 4);
+	le(out, 0, 4);
+	le(out, natt, 4);
+	zeros(out, 8);
+	var d byte[>..] = [];
+	le(d, 134168328000000000, 8);
+	putps(out, 0x0039, 0x0040, d);
+}
+=== -3dd4c97757ec4396
+fn ustream(name const byte[:], s const byte[:]) {
+	var t byte[>..] = [];
+	txt(t, s, true);
+	cfbmk::cm_add(name, t);
+}
+=== 382dea8032a94134
+fn msgbuild(kind int, out byte[>..]&) {
+	out.clear();
+	cfbmk::cm_reset();
+	var p byte[>..] = [];
+	if kind == 1 {
+		msgprops(2, p);
+		cfbmk::cm_add("__properties_version1.0", p);
+		ustream("__substg1.0_0037001F", "Invented subject");
+		ustream("__substg1.0_0C1A001F", "Ada Example");
+		ustream("__substg1.0_5D01001F", "ada@example.invalid");
+		ustream("__substg1.0_0E04001F", "Ben Sample; Cy Test");
+		ustream("__substg1.0_0E03001F", "Di Copy");
+		var body byte[>..] = [];
+		txt(body, "Hello team.", true);
+		le(body, 13, 2);
+		le(body, 10, 2);
+		txt(body, "Second line.", true);
+		cfbmk::cm_add("__substg1.0_1000001F", body);
+		ustream("__attach_version1.0_#00000000/__substg1.0_3707001F", "report.txt");
+		ustream("__attach_version1.0_#00000000/__substg1.0_370E001F", "TEXT/Plain");
+		cfbmk::cm_add("__attach_version1.0_#00000000/__substg1.0_37010102", "abc123");
+		cfbmk::cm_add("__attach_version1.0_#00000001/__substg1.0_3704001E", "pic.png");
+		ustream("__attach_version1.0_#00000001/__substg1.0_370E001F", "image/png");
+		var png byte[>..] = [];
+		png.push(137);
+		png.push(80);
+		png.push(78);
+		png.push(71);
+		cfbmk::cm_add("__attach_version1.0_#00000001/__substg1.0_37010102", png);
+	} else if kind == 2 {
+		msgprops(0, p);
+		cfbmk::cm_add("__properties_version1.0", p);
+		ustream("__substg1.0_0037001F", "Page");
+		ustream("__substg1.0_0C1A001F", "Eve Only");
+		cfbmk::cm_add("__substg1.0_10130102", "<html><body><p>Hi <b>there</b></p></body></html>");
+	} else if kind == 3 {
+		msgprops(0, p);
+		cfbmk::cm_add("__properties_version1.0", p);
+		ustream("__substg1.0_0037001F", "Rich");
+		cfbmk::cm_add("__substg1.0_10090102", "xxxx");
+	} else {
+		msgprops(0, p);
+		cfbmk::cm_add("__properties_version1.0", p);
+		ustream("__substg1.0_0037001F", "Bare");
+	}
+	cfbmk::cm_build(false, 109, out);
+}
+=== 6ec08f9ab3f73e81
+fn attsum() {
+	for i in ole::ol_att_count() {
+		var name byte[>..] = [];
+		var ty byte[>..] = [];
+		var data byte[>..] = [];
+		ole::ol_att_name(i, name);
+		ole::ol_att_type(i, ty);
+		ole::ol_att_data(i, data);
+		var line byte[>..] = [];
+		format(line, "att ", i, " ", name, " ", ty, " ", data.len, " ");
+		for k in min(4, data.len) {
+			if k > 0 { line.push(32); }
+			format(line, data[k] as int);
+		}
+		print(line);
+	}
+}
+=== 25b82ed661736595
+fn runm(label const byte[:], file const byte[:]) {
+	dm::dm_reset("msg", "part");
+	dump(label, ole::ol_read(file));
+	attsum();
+}
+=== 2529353aa5312430
+fn runw(label const byte[:], file const byte[:], kind const byte[:], unit const byte[:]) {
+	dm::dm_reset(kind, unit);
+	dump(label, ole::ol_read(file));
+}
+=== -52cfc7abec193359
+fn wrong(label const byte[:], data const byte[:]) {
+	dm::dm_reset("x", "y");
+	let ok = ole::ol_read(data);
+	print(label, " ", if ok { 1 } else { 0 });
+	each_prefixed(dm::dm_warn, "warn ", false);
+}
+=== 13ae670e10fa900c
+fn main() {
+	show("sample.doc", "doc", "section");
+	show("legacy.doc", "doc", "section");
+	show("edge.doc", "doc", "section");
+	show("boxes.doc", "doc", "section");
+	show("sample.xls", "xls", "sheet");
+	show("legacy.xls", "xls", "sheet");
+	show("edge1900.xls", "xls", "sheet");
+	show("edge1904.xls", "xls", "sheet");
+	show("sample.ppt", "ppt", "slide");
+	show("legacy.ppt", "ppt", "slide");
+	var x1 byte[>..] = [];
+	wbbuild(false, x1);
+	runx("synth1900", "Workbook", x1);
+	var x2 byte[>..] = [];
+	wbbuild(true, x2);
+	runx("synth1904", "Workbook", x2);
+	var x3 byte[>..] = [];
+	oldbook(x3);
+	runx("biff5", "Book", x3);
+	var x4 byte[>..] = [];
+	lockedbook(x4);
+	runx("locked", "Workbook", x4);
+	var bb byte[>..] = [];
+	bigbook(bb);
+	var bf byte[>..] = [];
+	cfile("Workbook", bb, bf);
+	dm::dm_reset("xls", "sheet");
+	let bok = ole::ol_read(bf);
+	var bmd byte[>..] = [];
+	dm::dm_markdown(bmd);
+	print("== big");
+	print("len ", bmd.len);
+	print("ok ", if bok { 1 } else { 0 });
+	each_prefixed(dm::dm_warn, "warn ", false);
+	var w1 byte[>..] = [];
+	wdbuild(0xC1, 0x200, "1Table", w1);
+	runw("synthdoc", w1, "doc", "section");
+	var w2 byte[>..] = [];
+	wdbuild(0xC1, 0, "0Table", w2);
+	runw("synthdoc0", w2, "doc", "section");
+	var w3 byte[>..] = [];
+	wdbuild(0xC1, 0x300, "1Table", w3);
+	runw("lockeddoc", w3, "doc", "section");
+	var w4 byte[>..] = [];
+	wdbuild(0x65, 0x200, "1Table", w4);
+	runw("olddoc", w4, "doc", "section");
+	var p1 byte[>..] = [];
+	ppbuild(0xE391C05F, p1);
+	runw("synthppt", p1, "ppt", "slide");
+	var p2 byte[>..] = [];
+	ppbuild(0xF3D1C4DF, p2);
+	runw("lockedppt", p2, "ppt", "slide");
+	var m1 byte[>..] = [];
+	msgbuild(1, m1);
+	runm("msg1", m1);
+	var m2 byte[>..] = [];
+	msgbuild(2, m2);
+	runm("msg2", m2);
+	var m3 byte[>..] = [];
+	msgbuild(3, m3);
+	runm("msg3", m3);
+	var m4 byte[>..] = [];
+	msgbuild(4, m4);
+	runm("msg4", m4);
+	var ep byte[>..] = [];
+	cfile("EncryptedPackage", "data", ep);
+	runw("encpkg", ep, "x", "y");
+	print("== wrong formats");
+	var empty byte[>..] = [];
+	wrong("empty", empty);
+	wrong("text", "hello world");
+	var unk byte[>..] = [];
+	cfile("Foo", "bar", unk);
+	wrong("unknown", unk);
+	var docd byte[>..] = [];
+	read_file("tests/fixtures/sample.doc", docd);
+	wrong("cut", docd[..min(3000, docd.len)]);
+	var zipd byte[>..] = [];
+	read_file("tests/fixtures/edge.docx", zipd);
+	wrong("zip", zipd);
+}

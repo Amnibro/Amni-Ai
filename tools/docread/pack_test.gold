@@ -1,0 +1,203 @@
+use std
+into pack_test.amni
+
+```amni
+import os;
+import dm;
+import pack;
+```
+
+`ld(name const byte[:]) byte[>..]` returns the bytes of the file "tests/fixtures/" followed by name read with `os::read_file` (an empty list, after printing "missing " and the name, when it cannot be read).
+
+`p(text const byte[:])` prints text and a newline with `os::write_stdout`.
+
+`same(a const byte[:], b const byte[:]) int` is 1 when a and b hold the same bytes and 0 otherwise.
+
+`warns()` prints "warn " and each line of `dm::dm_warn` (one print per line, splitting at the newline byte 10), then calls `dm::dm_reset("x", "y")` so the next case starts clean.
+
+`rows() byte[>..]` returns the text made of the 4000 lines "row ", i, ": ", i times 7 modulo 1000, " tulips, ", i modulo 97, " spades" and a newline, for i from 1 to 4000.
+
+`runs() byte[>..]` returns the bytes: "a" 1000 times, "b" 4 times, "c" 5 times, "d" 255 times, "e" 259 times, "f" 3 times, then "end" and a newline.
+
+`tail() byte[>..]` returns the text "Second member: the tail of the log." followed by a newline.
+
+`le(out byte[>..]&, v int, n int)` appends v to out as n little-endian bytes.
+
+`mkgz(out byte[>..]&, flags int, name const byte[:], extra const byte[:], comment const byte[:], body const byte[:], crc int, size int, hbad int)` clears out and writes one gzip member: the bytes 0x1F, 0x8B, 8, the flags byte, 4 zero bytes (time), a zero byte, the byte 3; then when bit 2 (4) of flags is set the extra length in 2 bytes and extra; when bit 3 (8) is set name and a zero byte; when bit 4 (16) is set comment and a zero byte; when bit 1 (2) is set the lowest 16 bits of `pack::pk_crc32` of the header bytes written so far (starting at 0), plus hbad, as 2 bytes; then body, then crc in 4 bytes and size in 4 bytes.
+
+`gzcase(label const byte[:], name const byte[:], want const byte[:])` reads the fixture name, calls `dm::dm_reset("x", "y")` and `pack::pk_gunzip` into a scratch list and prints label, a space, 1 or 0 for what it returned, a space, `same` of the scratch list with want, a space, its length, a space, an opening bracket, `pack::pk_gz_name()` and a closing bracket. Then it calls `warns()`.
+
+`bzcase(label const byte[:], name const byte[:], want const byte[:])` is the same with `pack::pk_bunzip` and without the stored file name (it prints the label, the 1 or 0, `same` and the length), then `warns()`.
+
+`main()` runs these cases in order, starting with `dm::dm_reset("x", "y")`; the case paragraphs below follow in the order written, ending with cases h1 and t9 which run last; the garden text g is `ld("pk_garden.txt")`, plain text r is `rows()`, runs text u is `runs()`, random data d is `ld("pk_rand.bin")`, and gt is g followed by `tail()`.
+
+Magic: print "m1 " then `pack::pk_is_gz` and `pack::pk_is_bz2` of each of `ld("pk_garden.txt.gz")`, `ld("pk_garden.txt.bz2")`, `ld("pk_garden.txt")`, `ld("pk_empty.gz")` and `ld("pk_empty.bz2")` as 1 or 0 pairs separated by single spaces (one pair per file, the two digits written together like "10").
+
+Gzip: `gzcase("g1", "pk_garden.txt.gz", g)`, `gzcase("g2", "pk_multi.gz", gt)`, `gzcase("g3", "pk_rows.gz", r)`, `gzcase("g4", "pk_rand.bin.gz", d)`, `gzcase("g5", "pk_runs.gz", u)`, `gzcase("g6", "pk_empty.gz", "")`.
+
+Gzip header fields (case g7): z is `ld("pk_garden.txt.gz")`; its deflate data b is z from byte 24 (the 10-byte header and the 14-byte stored name) up to 8 bytes before its end; crc is `pack::pk_crc32(g, 0)`; print "g7 crc " and crc. Then for each of the flag sets 30 (extra, name, comment and header checksum), 4, 8, 16, 2 and 0: `mkgz(m, flags, "orig.txt", "XY", "a comment", b, crc, g.len, 0)`, call `pack::pk_gunzip(m, out)` and print "g7 flags ", flags, a space, the 1 or 0 returned, a space, `same` of out with g, a space, an opening bracket, `pack::pk_gz_name()` and a closing bracket. Then the bad header checksum: `mkgz(m, 2, "", "", "", b, crc, g.len, 1)` and print "g7 hcrc " and the 1 or 0 returned, then `warns()`. Then a reserved flag bit: `mkgz(m, 32, "", "", "", b, crc, g.len, 0)` and print "g7 reserved " and the returned 1 or 0.
+
+Gzip damage (case g8): z is `ld("pk_garden.txt.gz")`. "g8 trunc " then the number of cut lengths n from 0 to z.len minus 1 for which `pack::pk_gunzip` of the first n bytes of z returns false, a space and z.len (then `dm::dm_reset("x", "y")`). "g8 flips " then the number of positions k from 24 to z.len minus 9 for which `pack::pk_gunzip` of a copy of z with the byte k xor-ed with 85 returns false, a space and the number of positions tried (call `dm::dm_reset("x", "y")` after each of the two sweeps). A copy of z with its CRC byte (z.len minus 8) xor-ed with 1: print "g8 crc " and the returned 1 or 0, then `warns()`. A copy with its last byte xor-ed with 1: print "g8 size " and the returned 1 or 0, then `warns()`. `pack::pk_gunzip` of the text "this is not a gzip file at all, sorry": print "g8 notgz " and the returned 1 or 0, then `warns()`. z followed by the bytes "junk": print "g8 junk " and the returned 1 or 0, a space and `same` of the output with g, then `warns()`. z followed by 5 zero bytes: print "g8 pad " and the returned 1 or 0, a space and `same` of the output with g, then `warns()`. The first member of `ld("pk_multi.gz")` followed by 20 bytes where the first two are 0x1F 0x8B and the rest are zero: print "g8 badnext " and the returned 1 or 0, then `warns()`. A randomised sweep: for k from 0 to 400, the stream of the 3000 random bytes d with its first two bytes set to 0x1F 0x8B and its third byte to 8 must return false from `pack::pk_gunzip` when its byte k plus 3 is d's byte xor-ed with k (a different garbage each time); print "g8 garbage " and how many of the 401 returned false.
+
+Bzip2: `bzcase("b1", "pk_garden.txt.bz2", g)`, `bzcase("b2", "pk_multi.bz2", gt)`, `bzcase("b3", "pk_rows.bz2", r)`, `bzcase("b4", "pk_rand.bin.bz2", d)`, `bzcase("b5", "pk_runs.bz2", u)`, `bzcase("b6", "pk_empty.bz2", "")`.
+
+Bzip2 damage (case b7): z is `ld("pk_garden.txt.bz2")`. "b7 trunc " then the number of cut lengths n from 0 to z.len minus 1 for which `pack::pk_bunzip` of the first n bytes of z returns false, a space and z.len (then `dm::dm_reset("x", "y")`). "b7 flips " then the number of positions k from 10 to z.len minus 7 for which `pack::pk_bunzip` of a copy of z with the byte k xor-ed with 85 returns false, a space and the number of positions tried, then " accepted" and, for each position for which it returned true, a space and k (the real bzip2 tool also accepts a flip at those positions, they hit unused code length bits), then `dm::dm_reset("x", "y")`. A copy of z with byte z.len minus 3 xor-ed with 1 (inside the stream CRC): print "b7 crc " and the returned 1 or 0, then `warns()`. `pack::pk_bunzip` of the text "this is not a bzip2 file at all, sorry": print "b7 notbz " and the returned 1 or 0, then `warns()`. z followed by "junk": print "b7 junk " and the returned 1 or 0, a space and `same` of the output with g, then `warns()`. z followed by 5 zero bytes: print "b7 pad " and the returned 1 or 0, then `warns()`. z followed by the first 10 bytes of z: print "b7 badnext " and the returned 1 or 0, then `warns()`. The same sweep on `ld("pk_rows.bz2")` (two blocks): for every 97th position k from 10 to its length minus 7, `pack::pk_bunzip` of a copy with byte k xor-ed with 85 must return false; print "b7 rowsflips " and how many of the positions returned false, a space and how many were tried (then `dm::dm_reset("x", "y")`).
+
+Gzip sweep on a bigger stream (case g9): z is `ld("pk_rows.gz")`; for every 97th position k from 24 to z.len minus 9, `pack::pk_gunzip` of a copy of z with byte k xor-ed with 85 must return false; print "g9 rowsflips " and how many returned false, a space and how many were tried (then `dm::dm_reset("x", "y")`).
+
+Output cap (case c1): set `pack::pk_cap` to 1000. Then for each of `ld("pk_garden.txt.gz")`, `ld("pk_rand.bin.gz")`, `ld("pk_rows.gz")` with `pack::pk_gunzip` and `ld("pk_garden.txt.bz2")`, `ld("pk_runs.bz2")`, `ld("pk_rows.bz2")` with `pack::pk_bunzip`: reset `dm`, run it and print "c1 " followed by the returned 1 or 0, a space, the length of the output and a space and `pack::pk_capped` as 1 or 0, then `warns()`. Then set `pack::pk_cap` to 1465 and gunzip `ld("pk_garden.txt.gz")` and bunzip `ld("pk_garden.txt.bz2")`, printing "c1 edge " and the 1 or 0 of each with a space between. Then set `pack::pk_cap` to 1464 and do the same, printing "c1 over " and the two 1 or 0 values. Then restore `pack::pk_cap` to 268435456 and print "c1 cap " and `pack::pk_cap`.
+
+Tar content lister `tarlist(label const byte[:], h int)` prints, for each entry i of handle h, a line made of label, a space, i, a space, the name (`pack::pk_tar_name`), a space, `pack::pk_tar_size`, a space, `pack::pk_tar_is_dir` as 1 or 0, a space, `pack::pk_tar_readable` as 1 or 0 and, when it is readable, a space, an opening bracket, the content (`pack::pk_tar_read` into a scratch list) with each newline byte shown as the two characters backslash and n, and a closing bracket.
+
+Tar (cases t1 to t4): open `ld("pk_ustar.tar")` as h and print "t1 " and h and `pack::pk_tar_count(h)`; `tarlist("t1", h)`. Then print "t1 find " followed by the results of `pack::pk_tar_find` for "docs/a.txt", "./docs/a.txt", "DOCS/A.TXT", the name made of "docs", the byte 92 and "a.txt", "/docs/sub", "docs/sub/", "docs/nope.txt" and "" separated by single spaces. Print "t1 deep " followed by what `pack::pk_tar_read` returns for the entry found with the long name "docs/a_rather_long_directory_name_for_prefix/another_quite_long_directory_name_here/third_long_directory_name_abcdefgh/leaf.txt" (as text, newline shown as backslash n, or "none"). Close it. Then the same for `ld("pk_gnu.tar")` as t2 (print "t2 " and the handle and count, `tarlist("t2", h)`, and the length of the name of entry 1), for `ld("pk_pax.tar")` as t3 (print "t3 " and the handle and count, `tarlist("t3", h)`, and the length of the name of entry 2). Then t4: gunzip `ld("pk_ustar.tar.gz")` into x and bunzip `ld("pk_ustar.tar.bz2")` into y and print "t4 " then `same` of x with `ld("pk_ustar.tar")`, a space and the same for y, a space and `pack::pk_tar_open` of x as a handle h, a space and `pack::pk_tar_count(h)`; close it.
+
+Tar built in memory. `th(out byte[>..]&, name const byte[:], size int, kind int, prefix const byte[:], binsize int)` appends a 512-byte tar header: the name at 0 (zero padded to 100), the mode field "0000644" and a zero byte at 100, "0000000" and a zero at 108 and again at 116, the size at 124 as 11 octal digits (zero padded) and a zero byte, or, when binsize is 1, as the byte 0x80 followed by 11 bytes holding size big-endian; "00000000000" and a zero at 136; 8 spaces at 148; the kind byte at 156; "ustar" and a zero byte at 257 and "00" at 263; the prefix at 345; everything else zero; then the checksum (the sum of all 512 bytes) written at 148 as 6 octal digits, a zero byte and a space.
+
+`tpad(out byte[>..]&, body const byte[:])` appends body and then zero bytes up to the next multiple of 512 (nothing when the length already is one).
+
+`pax(key const byte[:], value const byte[:]) byte[>..]` returns the pax record: the decimal length of the whole record (the length digits, a space, key, "=", value and a newline, counting the length digits themselves), a space, key, an equals sign, value and a newline.
+
+Case t5: build in a list m: `th(m, "a.txt", 3, 0x30, "", 0)` and `tpad(m, "abcdefg")` (the header says 3 bytes, the data is longer on purpose; padding follows), then a pax entry: `r` is `pax("path", "dir/override.txt")` followed by `pax("size", "7")`; `th(m, "PaxHeaders", r.len, 0x78, "", 0)`, `tpad(m, r)`, `th(m, "ignored.txt", 3, 0x30, "", 0)`, `tpad(m, "uvwxyz1")`; then a global pax header: `th(m, "g", len, 0x67, "", 0)` and `tpad` of `pax("comment", "hello")` (nothing to apply), then `th(m, "after.txt", 5, 0x30, "", 0)` and `tpad(m, "hijkl")`; then a GNU long name entry: `th(m, "././@LongLink", 17, 0x4C, "", 0)` with `tpad(m, "long/gnu/name.txt")` plus a zero byte as the data (the size field is 18 then, so use 18), then `th(m, "short", 4, 0x30, "", 0)` and `tpad(m, "data")`; then a prefixed ustar name: `th(m, "leaf.bin", 5, 0x30, "some/prefix/dir", 0)` and `tpad(m, "12345")`; then a base-256 size: `th(m, "bin.dat", 3, 0x37, "", 1)` and `tpad(m, "xyz")` (kind 0x37 is a contiguous file); then two zero blocks (1024 zero bytes). Open m and print "t5 " and the handle and count, then `tarlist("t5", h)`; close it. Case t5b: build in a list m2: a global pax header `th(m2, "g", len, 0x67, "", 0)` with `tpad` of `pax("size", "2")`; `th(m2, "first.txt", 5, 0x30, "", 0)` and `tpad(m2, "hijkl")` (the global size 2 wins over the header's 5); a pax entry `th(m2, "PaxHeaders", len, 0x78, "", 0)` with `tpad` of `pax("size", "4")`; `th(m2, "second.txt", 5, 0x30, "", 0)` and `tpad(m2, "mnopq")` (the per-entry size beats the global one); then 1024 zero bytes. Open m2 and print "t5b " and the handle and count, then `tarlist("t5b", h)`; close it.
+
+Case t6 (bad tars): print "t6 " followed by `pack::pk_tar_open` of: the garden text g, `ld("pk_empty.gz")`, 1024 zero bytes, the first 511 bytes of `ld("pk_ustar.tar")`, a copy of the first 1024 bytes of `ld("pk_ustar.tar")` whose byte 100 is xor-ed with 1, and a tar whose header has a wrong checksum (m from case t5 with the byte at offset 153 (the checksum's last digit) changed to 0x39), separated by single spaces. Each opened handle that is 0 or more must be closed at once. Then the cut sweep: for the cut lengths 512, 1023, 1024, 1026, 1030, 1031 and 1537: open the first n bytes of `ld("pk_ustar.tar")`, print "t6 cut " and n, a space, the handle and count, and, when the count is at least 2, a space, `pack::pk_tar_name(h, 1)`, a space and the 1 or 0 of `pack::pk_tar_read(h, 1, out)`; close it. Then the damaged middle header: copy `ld("pk_ustar.tar")`, xor byte 1537 (a byte inside the third header, which starts at 1536) with 1 and open it (after `dm::dm_reset("x", "y")`); print "t6 dmg " and the handle and count, then `warns()`; close it.
+
+Case t7 (several handles): open `ld("pk_ustar.tar")` as ha and `ld("pk_gnu.tar")` as hb; print "t7 " and ha and hb and `pack::pk_tar_count(hb)` and the name of entry 2 of hb. Close ha; print "t7 " and `pack::pk_tar_count(ha)`, a space, `pack::pk_tar_count(hb)`, a space and the 1 or 0 of `pack::pk_tar_read(hb, 2, out)`, a space and `pack::pk_tar_find(hb, "g/short.txt")`. Close hb; open `ld("pk_ustar.tar")` as hc and print "t7 " and hc; close it. Print "t7 bad " followed by `pack::pk_tar_count(7)`, `pack::pk_tar_find(7, "a")`, `pack::pk_tar_size(7, 0)`, the 1 or 0 of `pack::pk_tar_read(7, 0, out)` and the length of `pack::pk_tar_name(7, 0)`, separated by spaces; and `pack::pk_tar_close(7)`.
+
+Case t8 (fuzz): for each of `ld("pk_pax.tar")`, `ld("pk_gnu.tar")` and `ld("pk_ustar.tar")`, for every position k from 0 to its length minus 1 with k a multiple of 3, make a copy with byte k xor-ed with 0x41, open it, read every entry with `pack::pk_tar_read` and close it; print "t8 fuzz " and how many copies were tried in total.
+
+
+
+
+Header sweeps (case h1): z is `ld("pk_garden.txt.gz")`, and `b`, `crc` and `g` are as in case g7. For k from 0 to 23, call `pack::pk_gunzip` on a copy of z with byte k xor-ed with 0xFF; print "h1 gz " and how many returned true, a space and 24; then `dm::dm_reset("x", "y")`. With `mkgz(m, 30, "orig.txt", "XY", "a comment", b, crc, g.len, 0)`: count the cut lengths n from 0 to m.len minus 1 for which `pack::pk_gunzip` of the first n bytes of m returns false; print "h1 trunc30 ", that count, a space and m.len; then `dm::dm_reset("x", "y")`. z2 is `ld("pk_garden.txt.bz2")`: for k from 0 to 9 call `pack::pk_bunzip` on a copy of z2 with byte k xor-ed with 0xFF; print "h1 bz " and how many returned true, a space and 10; then `dm::dm_reset("x", "y")`.
+
+Case t9 (huge sizes): `th` and `tpad` are as in case t5, with `h` standing for the largest int, 0x7FFFFFFFFFFFFFFF. In a list m: `th(m, "huge.bin", h, 0x30, "", 1)` followed by 1024 zero bytes; print "t9 first " and `pack::pk_tar_open(m)` (close the handle at once when it is 0 or more). In a list m: `th(m, "ok.txt", 2, 0x30, "", 0)`, `tpad(m, "ok")`, `th(m, "huge.bin", h, 0x30, "", 1)` and 1024 zero bytes; call `dm::dm_reset("x", "y")`, open it and print "t9 second " and the handle, the count and the name of entry 0, then `warns()`; close it. In a list m: r is `pax("size", "99999999999999999999999999")`; `th(m, "PaxHeaders", r.len, 0x78, "", 0)`, `tpad(m, r)`, `th(m, "pax.txt", 3, 0x30, "", 0)`, `tpad(m, "abc")` and 1024 zero bytes; open it and print "t9 pax " and the handle and the count, then `tarlist("t9", h)`; close it.
+
+
+expect:
+m1 10 01 00 10 01
+g1 1 1 1465 [pk_garden.txt]
+g2 1 1 1501 [pk_garden.txt]
+g3 1 1 126034 []
+g4 1 1 3000 []
+g5 1 1 1530 []
+g6 1 1 0 []
+g7 crc 583998534
+g7 flags 30 1 1 [orig.txt]
+g7 flags 4 1 1 []
+g7 flags 8 1 1 [orig.txt]
+g7 flags 16 1 1 []
+g7 flags 2 1 1 []
+g7 flags 0 1 1 []
+g7 hcrc 0
+warn gzip: corrupt or truncated data
+g7 reserved 0
+g8 trunc 878 878
+g8 flips 846 846
+g8 crc 0
+warn gzip: CRC mismatch
+g8 size 0
+warn gzip: length mismatch
+g8 notgz 0
+warn gzip: not a gzip file
+g8 junk 1 1
+warn gzip: trailing bytes ignored
+g8 pad 1 1
+g8 badnext 0
+warn gzip: corrupt or truncated data
+g8 garbage 401
+b1 1 1 1465
+b2 1 1 1501
+b3 1 1 126034
+b4 1 1 3000
+b5 1 1 1530
+b6 1 1 0
+b7 trunc 905 905
+b7 flips 888 889 accepted 112
+b7 crc 0
+warn bzip2: CRC mismatch
+b7 notbz 0
+warn bzip2: not a bzip2 stream
+b7 junk 1 1
+warn bzip2: trailing bytes ignored
+b7 pad 1
+b7 badnext 0
+warn bzip2: corrupt or truncated data
+b7 rowsflips 139 139
+g9 rowsflips 201 201
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c1 0 0 1
+warn decompressed data passes the limit of 256 MiB
+c1 edge 1 1
+c1 over 0 0
+c1 cap 268435456
+t1 0 14
+t1 0 docs/ 0 1 0
+t1 1 docs/a.txt 6 0 1 [alpha\n]
+t1 2 docs/a_rather_long_directory_name_for_prefix/ 0 1 0
+t1 3 docs/a_rather_long_directory_name_for_prefix/another_quite_long_directory_name_here/ 0 1 0
+t1 4 docs/a_rather_long_directory_name_for_prefix/another_quite_long_directory_name_here/third_long_directory_name_abcdefgh/ 0 1 0
+t1 5 docs/a_rather_long_directory_name_for_prefix/another_quite_long_directory_name_here/third_long_directory_name_abcdefgh/leaf.txt 25 0 1 [deep file in a long path\n]
+t1 6 docs/b.txt 12 0 1 [bravo bravo\n]
+t1 7 docs/empty.txt 0 0 1 []
+t1 8 docs/hard 0 0 0
+t1 9 docs/link 0 0 0
+t1 10 docs/pipe 0 0 0
+t1 11 docs/sub/ 0 1 0
+t1 12 docs/sub/c.txt 15 0 1 [charlie in sub\n]
+t1 13 dev/null 0 0 0
+t1 find 1 1 1 1 11 11 -1 -1
+t1 deep deep file in a long path\n
+t2 0 3
+t2 0 g/ 0 1 0
+t2 1 g/long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_name.txt 19 0 1 [gnu long name body\n]
+t2 2 g/short.txt 10 0 1 [short one\n]
+t2 235
+t3 0 4
+t3 0 p/ 0 1 0
+t3 1 p/café-ñ.txt 18 0 1 [unicode name body\n]
+t3 2 p/long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_long_name.txt 19 0 1 [pax long name body\n]
+t3 3 p/plain.txt 6 0 1 [plain\n]
+t3 235
+t4 1 1 0 14
+t5 0 6
+t5 0 a.txt 3 0 1 [abc]
+t5 1 dir/override.txt 7 0 1 [uvwxyz1]
+t5 2 after.txt 5 0 1 [hijkl]
+t5 3 long/gnu/name.txt 4 0 1 [data]
+t5 4 some/prefix/dir/leaf.bin 5 0 1 [12345]
+t5 5 bin.dat 3 0 1 [xyz]
+t5b 0 2
+t5b 0 first.txt 2 0 1 [hi]
+t5b 1 second.txt 4 0 1 [mnop]
+t6 -1 -1 -1 -1 -1 -1
+t6 cut 512 0 1
+t6 cut 1023 0 1
+t6 cut 1024 0 2 docs/a.txt 0
+t6 cut 1026 0 2 docs/a.txt 0
+t6 cut 1030 0 2 docs/a.txt 1
+t6 cut 1031 0 2 docs/a.txt 1
+t6 cut 1537 0 2 docs/a.txt 1
+t6 dmg 0 2
+warn tar: damaged header, listing stops
+t7 0 1 3 g/short.txt
+t7 0 3 1 2
+t7 0
+t7 bad 0 -1 -1 0 0
+t8 fuzz 7852
+h1 gz 19 24
+h1 trunc30 889 889
+h1 bz 0 10
+t9 first -1
+t9 second 0 1 ok.txt
+warn tar: damaged header, listing stops
+t9 pax 0 1
+t9 0 pax.txt 3 0 1 [abc]

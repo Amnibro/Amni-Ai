@@ -1,0 +1,61 @@
+use std
+into xml_test.amni
+
+```amni
+import os;
+import xml;
+let D1 = "<?xml version=\"1.0\"?><!DOCTYPE r [<!ENTITY x \"y\">]><!-- c --><r a='1' b=\"2\" c=3><w:p w:val=\"x&amp;y\">Hi &lt;there&gt; &#233;&#x20AC;<![CDATA[ <raw> & ]]>end</w:p><e/><e2 x=\"1\" />tail</r>";
+let D2 = "<s id=\"256\" r:id=\"rId2\" x:val=\"q\"/>";
+let D3 = "<a><b>x<c>y</b>z</a>w</q>";
+let D4 = "<a>1 < 2 and 3<b attr=\"x";
+let D6 = "<r><a><b>one</b><c>two</c></a><d>three</d></r>";
+```
+
+`dump()` prints one line per event of the current document: for an open event "O", its depth, a space, its qualified name, " c" and its close index (`xml::xm_close_of`); for a close event "C " and its name; for a text event "T " and its text (`xml::xm_text` into a scratch list).
+
+`at(i int, n const byte[:]) byte[>..]` returns the value of attribute n of event i by `xml::xm_attr` as text, or "-" when it is not found. `atp(i int, n const byte[:]) byte[>..]` does the same with `xml::xm_attr_pre`, and `atq(i int, n const byte[:]) byte[>..]` with `xml::xm_attrq`.
+
+`b(x bool) int` is 1 for true and 0 for false.
+
+`main()` does these steps in order. Parse D1 with `xml::xm_parse` and `dump()`; then print "attr " followed by `at(0, "a")`, `at(0, "b")`, `at(0, "c")` and `at(1, "val")` separated by single spaces; then print "local " followed by `xml::xm_local(1)`, `b(xml::xm_is(1, "p"))`, `b(xml::xm_is(1, "w:p"))`, `b(xml::xm_isq(1, "w:p"))` separated by single spaces. Parse D2 and print "attr2 " followed by `at(0, "id")`, `atp(0, "id")`, `atq(0, "r:id")`, `at(0, "val")`, `atp(0, "val")`, `at(0, "zzz")` separated by single spaces. Parse D3 and `dump()`. Parse D4 and `dump()` and print "attr4 " and `at(2, "attr")`. Parse a list holding the 18 bytes 255, 254, 60, 0, 97, 0, 62, 0, 233, 0, 60, 0, 47, 0, 97, 0, 62, 0 (UTF-16 little endian with a byte order mark, the document "<a>é</a>") and `dump()`. Parse a list holding the bytes of "<a>" followed by the single byte 233, then "</a>" (Latin-1) and `dump()`. Parse a list holding the bytes 239, 187, 191 followed by "<a>x</a>" and `dump()`. Parse D6 and print "gather " then `xml::xm_gather(1, ...)` into a scratch list, a space, then `xml::xm_find(0, xml::xm_count(), "c")`, `xml::xm_find(2, 5, "c")`, `xml::xm_child(0, "d")`, `xml::xm_child(0, "b")`, `xml::xm_child(1, "c")`, `b(xml::xm_is(10, "d"))`, `xml::xm_parent(10)`, `xml::xm_depth(10)`, `xml::xm_close_of(1)`, `xml::xm_open_of(8)`, `xml::xm_next(1)`, `xml::xm_count()` separated by single spaces. Parse D3 again and print "count " and `xml::xm_count()`.
+
+expect:
+O0 r c9
+O1 w:p c3
+T Hi <there> é€ <raw> & end
+C w:p
+O1 e c5
+C e
+O1 e2 c7
+C e2
+T tail
+C r
+attr 1 2 3 x&y
+local p 1 0 1
+attr2 256 rId2 rId2 q q -
+O0 a c8
+O1 b c6
+T x
+O2 c c5
+T y
+C c
+C b
+T z
+C a
+O0 a c4
+T 1 < 2 and 3
+O1 b c3
+C b
+C a
+attr4 x
+O0 a c2
+T é
+C a
+O0 a c2
+T é
+C a
+O0 a c2
+T x
+C a
+gather onetwo 5 -1 9 -1 5 0 9 2 8 1 9 13
+count 9

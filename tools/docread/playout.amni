@@ -1,0 +1,1111 @@
+import math;
+import pdf;
+import dcrypt;
+import pfont;
+import pcontent;
+import dm;
+namespace playout;
+struct PlSpan { u0 real, u1 real, v real, size real, at int, len int, nb int, n int, line int, used bool, blk int, w0 int, wn int }
+struct PlWord { u0 real, u1 real, at int, len int }
+struct PlLine { u0 real, u1 real, v real, size real, at int, len int, bold bool }
+struct PlBox { u0 real, u1 real, top real, bot real, first int, count int, table bool }
+struct PlOut { page int, kind int, level int, at int, len int, size real, bold bool, lines int, ftop real, fbot real, drop bool }
+var pl_spans PlSpan[>..];
+var pl_txt byte[>..];
+var pl_words PlWord[>..];
+var pl_lines PlLine[>..];
+var pl_ltxt byte[>..];
+var pl_boxes PlBox[>..];
+var pl_tmp_out PlOut[>..];
+var pl_out PlOut[>..];
+var pl_otxt byte[>..];
+var pl_parent int[>..];
+var pl_idx int[>..];
+var pl_tmp byte[>..];
+var pl_tmp2 byte[>..];
+var pl_scanned = 0;
+var pl_pages = 0;
+var pl_dir = 0;
+var pl_width = 1.0;
+var pl_height = 1.0;
+fn pl_frame(x real, y real, u real&, v real&) {
+	if pl_dir == 0 { u = x; v = y; }
+	else if pl_dir == 1 { u = y; v = 0.0 - x; }
+	else if pl_dir == 2 { u = 0.0 - x; v = 0.0 - y; }
+	else { u = 0.0 - y; v = x; }
+}
+fn pl_before(a int, b int, k1 const real[:], k2 const real[:]) bool {
+	if k1[a] != k1[b] { return k1[a] > k1[b]; }
+	k2[a] < k2[b]
+}
+fn pl_sort(idx int[>..]&, key1 const real[:], key2 const real[:]) {
+	let n = idx.len;
+	var buf int[>..] = [];
+	buf.resize(n, 0);
+	var w = 1;
+	while w < n {
+		var lo = 0;
+		while lo < n {
+			let mid = min(lo + w, n);
+			let hi = min(lo + 2 * w, n);
+			var i = lo;
+			var j = mid;
+			var k = lo;
+			while i < mid && j < hi {
+				if pl_before(idx[j], idx[i], key1, key2) { buf[k] = idx[j]; j++; } else { buf[k] = idx[i]; i++; }
+				k++;
+			}
+			while i < mid { buf[k] = idx[i]; i++; k++; }
+			while j < hi { buf[k] = idx[j]; j++; k++; }
+			lo += 2 * w;
+		}
+		for i in n { idx[i] = buf[i]; }
+		w *= 2;
+	}
+}
+fn pl_ends_space(b const byte[:]) bool { b.len > 0 && b[b.len - 1] == ' ' }
+fn pl_starts_space(b const byte[:]) bool { b.len > 0 && b[0] == ' ' }
+fn pl_lc(c int) int { if c >= 'A' && c <= 'Z' { c + 32 } else { c } }
+fn pl_is_lower(c int) bool { c >= 'a' && c <= 'z' }
+fn pl_is_alpha(c int) bool { let l = pl_lc(c); l >= 'a' && l <= 'z' }
+fn pl_is_roman(c int) bool {
+	let l = pl_lc(c);
+	l == 'i' || l == 'v' || l == 'x' || l == 'l' || l == 'c' || l == 'd' || l == 'm'
+}
+fn pl_expand(t const byte[:], out byte[>..]&) {
+	out.clear();
+	var i = 0;
+	while i < t.len {
+		if i + 2 < t.len && t[i] == 239 && t[i + 1] == 172 && t[i + 2] >= 128 && t[i + 2] <= 134 {
+			let c = t[i + 2];
+			if c == 128 { out.append("ff"); }
+			else if c == 129 { out.append("fi"); }
+			else if c == 130 { out.append("fl"); }
+			else if c == 131 { out.append("ffi"); }
+			else if c == 132 { out.append("ffl"); }
+			else { out.append("st"); }
+			i += 3;
+		} else {
+			out.push(t[i]);
+			i++;
+		}
+	}
+}
+fn pl_build_spans() {
+	pl_spans.clear();
+	pl_txt.clear();
+	pl_words.clear();
+	var tb byte[>..] = [];
+	var tu real[>..] = [];
+	var tv real[>..] = [];
+	var tat int[>..] = [];
+	var tlen int[>..] = [];
+	var open = false;
+	var cur PlSpan = PlSpan { u0: 0.0, u1: 0.0, v: 0.0, size: 0.0, at: 0, len: 0, nb: 0, n: 0, line: 0, used: false, blk: 0, w0: 0, wn: 0 };
+	var pending = -1.0;
+	var has_pending = false;
+	fn close() {
+		if !open { return; }
+		open = false;
+		cur.len = pl_txt.len - cur.at;
+		var keep = false;
+		for k in cur.len { if pl_txt[cur.at + k] != ' ' { keep = true; } }
+		if keep {
+			while cur.len > 0 && pl_txt[cur.at + cur.len - 1] == ' ' {
+				pl_txt.pop_n(1);
+				cur.len--;
+			}
+			pl_spans.push(cur);
+		} else {
+			pl_txt.resize(cur.at, 0);
+			pl_words.resize(cur.w0, PlWord { u0: 0.0, u1: 0.0, at: 0, len: 0 });
+		}
+	}
+	for gi in pcontent::pc_g.len {
+		let g = pcontent::pc_g[gi];
+		if g.dir != pl_dir { continue; }
+		var u0 = 0.0;
+		var v = 0.0;
+		var u1 = 0.0;
+		var v1 = 0.0;
+		pl_frame(g.x0, g.y0, u0, v);
+		pl_frame(g.x1, g.y1, u1, v1);
+		if u1 < u0 { u1 = u0; }
+		pl_expand(pcontent::pc_txt[g.at..g.at + g.len], pl_tmp);
+		let nt = tu.len;
+		var dup = false;
+		for k in max(0, nt - 4)..nt {
+			if abs(tu[k] - u0) <= 0.15 * g.size && abs(tv[k] - v) <= 0.15 * g.size && tb[tat[k]..tat[k] + tlen[k]] == pl_tmp[..] { dup = true; }
+		}
+		if dup { continue; }
+		tu.push(u0);
+		tv.push(v);
+		tat.push(tb.len);
+		tlen.push(pl_tmp.len);
+		tb.append(pl_tmp);
+		var lead = 0;
+		while lead < pl_tmp.len && pl_tmp[lead] == ' ' { lead++; }
+		if lead == pl_tmp.len {
+			if open && !has_pending {
+				pending = u0;
+				has_pending = true;
+			}
+			continue;
+		}
+		var trail = 0;
+		while pl_tmp[pl_tmp.len - 1 - trail] == ' ' { trail++; }
+		if open {
+			let s = max(cur.size, g.size);
+			if !(abs(v - cur.v) <= 0.35 * s && u0 >= cur.u1 - 0.6 * s && u0 - cur.u1 <= 1.0 * s) { close(); }
+		}
+		var fresh = false;
+		if !open {
+			open = true;
+			fresh = true;
+			has_pending = false;
+			cur = PlSpan { u0: u0, u1: u1, v: v, size: g.size, at: pl_txt.len, len: 0, nb: 0, n: 0, line: 0, used: false, blk: 0, w0: pl_words.len, wn: 0 };
+		} else {
+			let s = max(cur.size, g.size);
+			let ends = pl_txt.len > cur.at && pl_txt[pl_txt.len - 1] == ' ';
+			if !ends && lead == 0 {
+				if (has_pending && u0 - pending >= 0.1 * g.size) || u0 - cur.u1 > 0.13 * s { pl_txt.push(' '); }
+			}
+			has_pending = false;
+		}
+		let endsp = pl_txt.len > cur.at && pl_txt[pl_txt.len - 1] == ' ';
+		let base = pl_txt.len;
+		pl_txt.append(pl_tmp);
+		let wl = pl_tmp.len - lead - trail;
+		if fresh || endsp || lead > 0 {
+			pl_words.push(PlWord { u0: u0, u1: u1, at: base + lead, len: wl });
+			cur.wn++;
+		} else {
+			let wi = pl_words.len - 1;
+			pl_words[wi].u1 = max(pl_words[wi].u1, u1);
+			pl_words[wi].len += wl;
+		}
+		cur.u1 = max(cur.u1, u1);
+		cur.size = max(cur.size, g.size);
+		cur.n++;
+		if pfont::fo_is_bold(g.font) { cur.nb++; }
+	}
+	close();
+}
+fn pl_assign_lines() {
+	let n = pl_spans.len;
+	if n == 0 { return; }
+	var kv real[>..] = [];
+	var ku real[>..] = [];
+	var idx int[>..] = [];
+	for i in n {
+		kv.push(pl_spans[i].v);
+		ku.push(pl_spans[i].u0);
+		idx.push(i);
+	}
+	pl_sort(idx, kv, ku);
+	var line = -1;
+	var lv = 0.0;
+	var lsz = 0.0;
+	for k in n {
+		let i = idx[k];
+		let s = pl_spans[i];
+		if line < 0 || abs(s.v - lv) > 0.35 * max(s.size, lsz) {
+			line++;
+			lv = s.v;
+			lsz = s.size;
+		}
+		pl_spans[i].line = line;
+	}
+	var kl real[>..] = [];
+	var idx2 int[>..] = [];
+	for i in n {
+		kl.push(0.0 - pl_spans[i].line);
+		idx2.push(i);
+	}
+	pl_sort(idx2, kl, ku);
+	var ns PlSpan[>..] = [];
+	var cur = pl_spans[idx2[0]];
+	for k in 1..n {
+		let s = pl_spans[idx2[k]];
+		let sz = max(cur.size, s.size);
+		let gap = s.u0 - cur.u1;
+		if cur.line == s.line && gap >= -0.3 * sz && gap <= 1.0 * sz {
+			pl_tmp.clear();
+			pl_tmp.append(pl_txt[cur.at..cur.at + cur.len]);
+			var sp = 0;
+			if gap > 0.13 * sz && !pl_ends_space(pl_txt[cur.at..cur.at + cur.len]) && !pl_starts_space(pl_txt[s.at..s.at + s.len]) {
+				pl_tmp.push(' ');
+				sp = 1;
+			}
+			pl_tmp.append(pl_txt[s.at..s.at + s.len]);
+			let nat = pl_txt.len;
+			pl_txt.append(pl_tmp);
+			let w0 = pl_words.len;
+			for m in cur.wn {
+				var w = pl_words[cur.w0 + m];
+				w.at += nat - cur.at;
+				pl_words.push(w);
+			}
+			for m in s.wn {
+				var w = pl_words[s.w0 + m];
+				w.at += nat + cur.len + sp - s.at;
+				pl_words.push(w);
+			}
+			cur.u0 = min(cur.u0, s.u0);
+			cur.u1 = max(cur.u1, s.u1);
+			cur.size = max(cur.size, s.size);
+			cur.nb += s.nb;
+			cur.n += s.n;
+			cur.at = nat;
+			cur.len = pl_tmp.len;
+			cur.w0 = w0;
+			cur.wn += s.wn;
+			continue;
+		}
+		ns.push(cur);
+		cur = s;
+	}
+	ns.push(cur);
+	pl_spans.clear();
+	for s in ns { pl_spans.push(s); }
+}
+fn pl_prose(sp int) bool {
+	pl_spans[sp].len >= 25 && (pl_spans[sp].u1 - pl_spans[sp].u0) > 0.22 * pl_width
+}
+fn pl_push_rec(kind int, level int, size real, bold bool, lines int, text const byte[:], ftop real, fbot real) {
+	let at = pl_otxt.len;
+	pl_otxt.append(text);
+	pl_tmp_out.push(PlOut { page: 0, kind: kind, level: level, at: at, len: text.len, size: size, bold: bold, lines: lines, ftop: ftop, fbot: fbot, drop: false });
+}
+fn pl_row_ok(a int, b int) bool {
+	if b - a < 2 { return false; }
+	var c = 0;
+	for k in a..b { if pl_prose(k) { c++; } }
+	c <= 1
+}
+fn pl_line_size(a int, b int) real {
+	var s = 0.0;
+	for k in a..b { s = max(s, pl_spans[k].size); }
+	s
+}
+fn pl_span_bold(k int) bool { pl_spans[k].nb * 2 > pl_spans[k].n }
+fn pl_line_bold(a int, b int) bool {
+	var c = 0;
+	for k in a..b { if pl_span_bold(k) { c++; } }
+	c * 2 > b - a
+}
+fn pl_col_of(u real, cu0 const real[:], cu1 const real[:]) int {
+	var best = 0;
+	var bd = 1e30;
+	for c in cu0.len {
+		var d = 0.0;
+		if u < cu0[c] { d = cu0[c] - u; } else if u > cu1[c] { d = u - cu1[c]; }
+		if d < bd { bd = d; best = c; }
+	}
+	best
+}
+fn pl_tables() {
+	let n = pl_spans.len;
+	var ls int[>..] = [];
+	var le int[>..] = [];
+	var a = 0;
+	while a < n {
+		var b = a + 1;
+		while b < n && pl_spans[b].line == pl_spans[a].line { b++; }
+		ls.push(a);
+		le.push(b);
+		a = b;
+	}
+	let nl = ls.len;
+	var i = 0;
+	while i < nl {
+		if !pl_row_ok(ls[i], le[i]) { i++; continue; }
+		var run int[>..] = [i];
+		var runmax = pl_line_size(ls[i], le[i]);
+		var prev = i;
+		var j = i + 1;
+		while j < nl {
+			let sz = max(runmax, pl_line_size(ls[j], le[j]));
+			let psize = pl_line_size(ls[prev], le[prev]);
+			let dv = pl_spans[ls[prev]].v - pl_spans[ls[j]].v;
+			if dv > 3.0 * sz { break; }
+			var ok = pl_row_ok(ls[j], le[j]);
+			if !ok && le[j] - ls[j] == 1 {
+				let k = ls[j];
+				if !pl_prose(k) && abs(pl_spans[k].size - psize) <= 0.15 * psize && pl_span_bold(k) == pl_line_bold(ls[prev], le[prev]) && dv < 1.6 * psize { ok = true; }
+			}
+			if !ok { break; }
+			run.push(j);
+			runmax = sz;
+			prev = j;
+			j++;
+		}
+		var qn = 0;
+		var all3 = true;
+		for r in run {
+			if pl_row_ok(ls[r], le[r]) {
+				qn++;
+				if le[r] - ls[r] < 3 { all3 = false; }
+			}
+		}
+		if !(qn >= 3 || (qn >= 2 && all3)) { i++; continue; }
+		var wi int[>..] = [];
+		var wr int[>..] = [];
+		var wsz real[>..] = [];
+		var rsz real[>..] = [];
+		for r in run {
+			if !pl_row_ok(ls[r], le[r]) { continue; }
+			let q = rsz.len;
+			rsz.push(pl_line_size(ls[r], le[r]));
+			for k in ls[r]..le[r] {
+				let sp = pl_spans[k];
+				for m in sp.wn {
+					wi.push(sp.w0 + m);
+					wr.push(q);
+					wsz.push(sp.size);
+				}
+			}
+		}
+		let nq = rsz.len;
+		var ord int[>..] = [];
+		var k1 real[>..] = [];
+		var k2 real[>..] = [];
+		for w in wi.len {
+			ord.push(w);
+			k1.push(0.0 - pl_words[wi[w]].u0);
+			k2.push(0.0);
+		}
+		pl_sort(ord, k1, k2);
+		var wseg int[>..] = [];
+		wseg.resize(wi.len, 0);
+		var su1 real[>..] = [];
+		var ns = 0;
+		for o in ord {
+			let w = pl_words[wi[o]];
+			if ns > 0 && w.u0 <= su1[ns - 1] + 0.1 * wsz[o] {
+				su1[ns - 1] = max(su1[ns - 1], w.u1);
+			} else {
+				su1.push(w.u1);
+				ns++;
+			}
+			wseg[o] = ns - 1;
+		}
+		var colof int[>..] = [];
+		colof.resize(ns, 0);
+		var nc = 1;
+		for s in 1..ns {
+			let c = nc - 1;
+			var hl byte[>..] = [];
+			var hr byte[>..] = [];
+			var lastend real[>..] = [];
+			var firstst real[>..] = [];
+			hl.resize(nq, 0);
+			hr.resize(nq, 0);
+			lastend.resize(nq, 0.0);
+			firstst.resize(nq, 0.0);
+			for o in ord {
+				let w = pl_words[wi[o]];
+				let r = wr[o];
+				if wseg[o] < s && colof[wseg[o]] == c {
+					hl[r] = 1;
+					lastend[r] = w.u1;
+				} else if wseg[o] == s && hr[r] == 0 {
+					hr[r] = 1;
+					firstst[r] = w.u0;
+				}
+			}
+			var any = false;
+			var all = true;
+			for r in nq {
+				if hl[r] == 1 && hr[r] == 1 {
+					any = true;
+					if firstst[r] - lastend[r] >= rsz[r] { all = false; }
+				}
+			}
+			if any && all {
+				colof[s] = c;
+			} else {
+				colof[s] = nc;
+				nc++;
+			}
+		}
+		var cu0 real[>..] = [];
+		var cu1 real[>..] = [];
+		for c in nc {
+			cu0.push(1e30);
+			cu1.push(-1e30);
+		}
+		for o in ord {
+			let c = colof[wseg[o]];
+			let w = pl_words[wi[o]];
+			cu0[c] = min(cu0[c], w.u0);
+			cu1[c] = max(cu1[c], w.u1);
+		}
+		var colok = nc >= 2;
+		if colok {
+			for r in nq {
+				var seen byte[>..] = [];
+				seen.resize(nc, 0);
+				for o in ord { if wr[o] == r { seen[colof[wseg[o]]] = 1; } }
+				var cnt = 0;
+				for c in nc { if seen[c] == 1 { cnt++; } }
+				if cnt < 2 { colok = false; }
+			}
+		}
+		if !colok { i++; continue; }
+		var er int[>..] = [];
+		var ec int[>..] = [];
+		var ew int[>..] = [];
+		for o in ord {
+			er.push(wr[o]);
+			ec.push(colof[wseg[o]]);
+			ew.push(wi[o]);
+		}
+		var qq = -1;
+		for r in run {
+			let la = ls[r];
+			let lb = le[r];
+			if pl_row_ok(la, lb) { qq++; continue; }
+			let sp = pl_spans[la];
+			for m in sp.wn {
+				let wd = pl_words[sp.w0 + m];
+				er.push(qq);
+				ec.push(pl_col_of(wd.u0, cu0, cu1));
+				ew.push(sp.w0 + m);
+			}
+		}
+		var bu0 = 1e30;
+		var bu1 = -1e30;
+		var btop = -1e30;
+		var bbot = 1e30;
+		for r in run {
+			for k in ls[r]..le[r] {
+				let sp = pl_spans[k];
+				bu0 = min(bu0, sp.u0);
+				bu1 = max(bu1, sp.u1);
+				btop = max(btop, sp.v + sp.size);
+				bbot = min(bbot, sp.v - 0.3 * sp.size);
+				pl_spans[k].used = true;
+			}
+		}
+		let first = pl_tmp_out.len;
+		pl_push_rec(100, 0, runmax, false, 0, "", 0.5, 0.5);
+		for t in nq {
+			pl_tmp.clear();
+			for c in nc {
+				if c > 0 { pl_tmp.push(9); }
+				var firstw = true;
+				for e in er.len {
+					if er[e] == t && ec[e] == c {
+						if !firstw { pl_tmp.push(' '); }
+						let w = pl_words[ew[e]];
+						pl_tmp.append(pl_txt[w.at..w.at + w.len]);
+						firstw = false;
+					}
+				}
+			}
+			pl_push_rec(dm::DM_ROW, 0, rsz[t], false, 1, pl_tmp, 0.5, 0.5);
+		}
+		pl_push_rec(101, 0, runmax, false, 0, "", 0.5, 0.5);
+		pl_boxes.push(PlBox { u0: bu0, u1: bu1, top: btop, bot: bbot, first: first, count: pl_tmp_out.len - first, table: true });
+		i = j;
+	}
+}
+fn pl_find(i int) int {
+	var x = i;
+	while pl_parent[x] != x {
+		pl_parent[x] = pl_parent[pl_parent[x]];
+		x = pl_parent[x];
+	}
+	x
+}
+fn pl_union(a int, b int) {
+	let ra = pl_find(a);
+	let rb = pl_find(b);
+	if ra != rb { pl_parent[rb] = ra; }
+}
+fn pl_blocks() {
+	let n = pl_spans.len;
+	pl_parent.clear();
+	for i in n { pl_parent.push(i); }
+	for a in n {
+		if pl_spans[a].used { continue; }
+		for b in (a + 1)..n {
+			if pl_spans[b].used { continue; }
+			let sa = pl_spans[a];
+			let sb = pl_spans[b];
+			let s = max(sa.size, sb.size);
+			if sa.v - sb.v > 2.0 * s { break; }
+			var jn = false;
+			if sa.line == sb.line {
+				let gap = max(sb.u0 - sa.u1, sa.u0 - sb.u1);
+				if gap < 1.2 * s { jn = true; }
+			} else {
+				let dv = sa.v - sb.v;
+				let ov = min(sa.u1, sb.u1) - max(sa.u0, sb.u0);
+				if dv > 0.35 * s && dv <= 1.75 * s && ov > 0.5 && s <= 1.3 * min(sa.size, sb.size) && ((sa.nb * 2 > sa.n) == (sb.nb * 2 > sb.n)) { jn = true; }
+			}
+			if jn { pl_union(a, b); }
+		}
+	}
+	var kr real[>..] = [];
+	var kz real[>..] = [];
+	pl_idx.clear();
+	for i in n {
+		kr.push(pl_find(i));
+		kz.push(0.0);
+		if !pl_spans[i].used { pl_idx.push(i); }
+	}
+	pl_sort(pl_idx, kr, kz);
+	var a = 0;
+	while a < pl_idx.len {
+		var b = a + 1;
+		while b < pl_idx.len && kr[pl_idx[b]] == kr[pl_idx[a]] { b++; }
+		var mem int[>..] = [];
+		for k in a..b { mem.push(pl_idx[k]); }
+		pl_block_paragraphs(mem);
+		a = b;
+	}
+}
+fn pl_bullet_len(t const byte[:]) int {
+	if starts_with(t, "•") || starts_with(t, "◦") || starts_with(t, "▪") || starts_with(t, "‣") || starts_with(t, "●") || starts_with(t, "○") || starts_with(t, "■") || starts_with(t, "□") || starts_with(t, "–") || starts_with(t, "—") { return 3; }
+	if starts_with(t, "·") { return 2; }
+	if starts_with(t, "-") || starts_with(t, "*") { return 1; }
+	0
+}
+fn pl_item_start(t const byte[:], strip int&) bool {
+	strip = 0;
+	let bl = pl_bullet_len(t);
+	if bl > 0 {
+		if bl == t.len || t[bl] == ' ' || t[bl] == 9 {
+			var p = bl;
+			while p < t.len && (t[p] == ' ' || t[p] == 9) { p++; }
+			strip = p;
+			return true;
+		}
+		return false;
+	}
+	var p = 0;
+	var paren = false;
+	if t.len > 0 && t[0] == '(' { paren = true; p = 1; }
+	let s = p;
+	while p < t.len && t[p] >= '0' && t[p] <= '9' { p++; }
+	var ok = false;
+	if p > s {
+		ok = p - s <= 3;
+	} else {
+		var roman = true;
+		while p < t.len && pl_is_alpha(t[p]) {
+			if !pl_is_roman(t[p]) { roman = false; }
+			p++;
+		}
+		let r = p - s;
+		ok = r == 1 || (r >= 1 && r <= 5 && roman);
+	}
+	if !ok { return false; }
+	if p >= t.len { return false; }
+	if paren {
+		if t[p] != ')' { return false; }
+	} else if t[p] != '.' && t[p] != ')' {
+		return false;
+	}
+	p++;
+	p < t.len && t[p] == ' '
+}
+fn pl_join_line(out byte[>..]&, line const byte[:]) {
+	if out.len == 0 {
+		out.append(line);
+		return;
+	}
+	let n = out.len;
+	var hy = 0;
+	if out[n - 1] == '-' { hy = 1; } else if n >= 2 && out[n - 2] == 194 && out[n - 1] == 173 { hy = 2; }
+	if hy > 0 && line.len > 0 && pl_is_lower(line[0]) && n > hy && pl_is_lower(out[n - hy - 1]) {
+		out.pop_n(hy);
+		out.append(line);
+		return;
+	}
+	out.push(' ');
+	out.append(line);
+}
+fn pl_sentence_end(t const byte[:]) bool {
+	let n = t.len;
+	if n == 0 { return false; }
+	let c = t[n - 1];
+	if c == '.' || c == '!' || c == '?' || c == ':' || c == '"' || c == ')' { return true; }
+	n >= 3 && t[n - 3] == 226 && t[n - 2] == 128 && t[n - 1] == 157
+}
+fn pl_block_paragraphs(members const int[:]) {
+	if members.len == 0 { return; }
+	pl_lines.clear();
+	pl_ltxt.clear();
+	var i = 0;
+	while i < members.len {
+		let ln = pl_spans[members[i]].line;
+		pl_tmp.clear();
+		let u0 = pl_spans[members[i]].u0;
+		var u1 = u0;
+		let v = pl_spans[members[i]].v;
+		var size = 0.0;
+		var bold = true;
+		var prev_u1 = 0.0;
+		var prev_size = 0.0;
+		var k = i;
+		while k < members.len && pl_spans[members[k]].line == ln {
+			let s = pl_spans[members[k]];
+			if k > i {
+				if s.u0 - prev_u1 > 0.13 * max(s.size, prev_size) { pl_tmp.push(' '); }
+			}
+			pl_tmp.append(pl_txt[s.at..s.at + s.len]);
+			u1 = s.u1;
+			prev_u1 = s.u1;
+			prev_size = s.size;
+			size = max(size, s.size);
+			if s.nb * 2 <= s.n { bold = false; }
+			k++;
+		}
+		pl_lines.push(PlLine { u0: u0, u1: u1, v: v, size: size, at: pl_ltxt.len, len: pl_tmp.len, bold: bold });
+		pl_ltxt.append(pl_tmp);
+		i = k;
+	}
+	let nl = pl_lines.len;
+	var left = pl_lines[0].u0;
+	var right = pl_lines[0].u1;
+	var maxsz = 0.0;
+	var btop = -1e30;
+	var bbot = 1e30;
+	for l in pl_lines {
+		left = min(left, l.u0);
+		right = max(right, l.u1);
+		maxsz = max(maxsz, l.size);
+		btop = max(btop, l.v + l.size);
+		bbot = min(bbot, l.v - 0.25 * l.size);
+	}
+	var spacing = 1.2 * maxsz;
+	if nl >= 3 {
+		var ds real[>..] = [];
+		for j in 1..nl { ds.push(pl_lines[j - 1].v - pl_lines[j].v); }
+		sort(ds) { a, b => a < b };
+		spacing = ds[ds.len / 2];
+	}
+	var imin = 1e30;
+	var dummy = 0;
+	for j in nl {
+		let l = pl_lines[j];
+		if pl_item_start(pl_ltxt[l.at..l.at + l.len], dummy) { imin = min(imin, l.u0); }
+	}
+	var pn = 0;
+	var pitem = false;
+	var psize = 0.0;
+	var pbold = true;
+	var ptop = -1e30;
+	var pbot = 1e30;
+	var pfirst_u0 = 0.0;
+	let first_rec = pl_tmp_out.len;
+	fn flush() {
+		if pn > 0 {
+			var kind = dm::DM_PARA;
+			var level = 0;
+			if pitem {
+				kind = dm::DM_ITEM;
+				level = min(4, 1 + (floor((pfirst_u0 - imin) / (1.5 * psize) + 0.5) as int));
+			}
+			var ft = 0.5;
+			var fb = 0.5;
+			if pl_dir == 0 {
+				ft = clamp((pl_height - ptop) / pl_height, 0.0, 1.0);
+				fb = clamp((pl_height - pbot) / pl_height, 0.0, 1.0);
+			}
+			pl_push_rec(kind, level, psize, pbold, pn, pl_tmp, ft, fb);
+			pl_tmp.clear();
+			pn = 0;
+		}
+	}
+	pl_tmp.clear();
+	for j in nl {
+		let ln = pl_lines[j];
+		let t = pl_ltxt[ln.at..ln.at + ln.len];
+		var strip = 0;
+		let item = pl_item_start(t, strip);
+		var brk = false;
+		if pn > 0 {
+			let pr = pl_lines[j - 1];
+			let pt = pl_ltxt[pr.at..pr.at + pr.len];
+			if item { brk = true; }
+			if ln.bold != pr.bold { brk = true; }
+			if abs(ln.size - pr.size) > 0.15 * max(ln.size, pr.size) { brk = true; }
+			if pr.v - ln.v > 1.5 * spacing { brk = true; }
+			if ln.u0 - left > 0.8 * ln.size && pr.u0 - left <= 0.5 * ln.size && !pitem { brk = true; }
+			if right - pr.u1 > 4.0 * pr.size && pl_sentence_end(pt) { brk = true; }
+		}
+		if brk { flush(); }
+		var from = 0;
+		if pn == 0 {
+			pitem = item;
+			pfirst_u0 = ln.u0;
+			psize = 0.0;
+			pbold = true;
+			ptop = -1e30;
+			pbot = 1e30;
+			pl_tmp.clear();
+			if item { from = strip; }
+		}
+		pl_join_line(pl_tmp, pl_ltxt[ln.at + from..ln.at + ln.len]);
+		pn++;
+		psize = max(psize, ln.size);
+		if !ln.bold { pbold = false; }
+		ptop = max(ptop, ln.v + ln.size);
+		pbot = min(pbot, ln.v - 0.25 * ln.size);
+	}
+	flush();
+	pl_boxes.push(PlBox { u0: left, u1: right, top: btop, bot: bbot, first: first_rec, count: pl_tmp_out.len - first_rec, table: false });
+}
+fn pl_vmid(b int) real { (pl_boxes[b].top + pl_boxes[b].bot) / 2.0 }
+fn pl_ov(a int, b int) real { min(pl_boxes[a].u1, pl_boxes[b].u1) - max(pl_boxes[a].u0, pl_boxes[b].u0) }
+fn pl_better(c int, d int) bool {
+	if pl_boxes[c].top != pl_boxes[d].top { return pl_boxes[c].top > pl_boxes[d].top; }
+	pl_boxes[c].u0 < pl_boxes[d].u0
+}
+fn pl_emit_box(b int) {
+	let f = pl_boxes[b].first;
+	for r in f..f + pl_boxes[b].count { pl_out.push(pl_tmp_out[r]); }
+}
+fn pl_order() {
+	let n = pl_boxes.len;
+	if n == 0 { return; }
+	if n > 200 {
+		var kt real[>..] = [];
+		var ku real[>..] = [];
+		pl_idx.clear();
+		for i in n {
+			kt.push(pl_boxes[i].top);
+			ku.push(pl_boxes[i].u0);
+			pl_idx.push(i);
+		}
+		pl_sort(pl_idx, kt, ku);
+		for k in n { pl_emit_box(pl_idx[k]); }
+		return;
+	}
+	var edge byte[>..] = [];
+	edge.resize(n * n, 0);
+	for a in n {
+		for b in n {
+			if a == b { continue; }
+			var e = false;
+			if pl_ov(a, b) > 0.5 && pl_vmid(a) > pl_vmid(b) {
+				e = true;
+			} else if pl_boxes[a].u1 < pl_boxes[b].u0 + 1.0 {
+				var blocked = false;
+				let lo = min(pl_vmid(a), pl_vmid(b));
+				let hi = max(pl_vmid(a), pl_vmid(b));
+				for c in n {
+					if c != a && c != b {
+						let m = pl_vmid(c);
+						if m > lo && m < hi && pl_ov(c, a) > 0.5 && pl_ov(c, b) > 0.5 { blocked = true; }
+					}
+				}
+				if !blocked { e = true; }
+			}
+			if e { edge[a * n + b] = 1; }
+		}
+	}
+	var indeg int[>..] = [];
+	indeg.resize(n, 0);
+	for a in n {
+		for b in n { if edge[a * n + b] == 1 { indeg[b] += 1; } }
+	}
+	var placed byte[>..] = [];
+	placed.resize(n, 0);
+	for step in n {
+		var best = -1;
+		var bestfree = -1;
+		for c in n {
+			if placed[c] == 1 { continue; }
+			if best < 0 || pl_better(c, best) { best = c; }
+			if indeg[c] == 0 && (bestfree < 0 || pl_better(c, bestfree)) { bestfree = c; }
+		}
+		let pick = if bestfree >= 0 { bestfree } else { best };
+		placed[pick] = 1;
+		pl_emit_box(pick);
+		for c in n { if edge[pick * n + c] == 1 { indeg[c] -= 1; } }
+	}
+}
+fn pl_layout_page(p int) {
+	for d in [0, 3, 1, 2] {
+		pl_dir = d;
+		if d == 1 || d == 3 {
+			pl_width = pcontent::pc_ph;
+			pl_height = pcontent::pc_pw;
+		} else {
+			pl_width = pcontent::pc_pw;
+			pl_height = pcontent::pc_ph;
+		}
+		pl_boxes.clear();
+		pl_tmp_out.clear();
+		pl_build_spans();
+		pl_assign_lines();
+		pl_tables();
+		pl_blocks();
+		let start = pl_out.len;
+		pl_order();
+		for r in start..pl_out.len { pl_out[r].page = p; }
+	}
+}
+fn pl_norm_key(t const byte[:]) int {
+	var h = 2166136261;
+	for c in t {
+		if c == ' ' { continue; }
+		var x int = c;
+		if x >= 'A' && x <= 'Z' { x += 32; }
+		if x >= '0' && x <= '9' { x = '#'; }
+		h = h ^ x;
+		h = (h * 16777619) & 4294967295;
+	}
+	h
+}
+fn pl_ci_at(s const byte[:], p int, w const byte[:]) bool {
+	if p + w.len > s.len { return false; }
+	for i in w.len { if pl_lc(s[p + i]) != w[i] { return false; } }
+	true
+}
+fn pl_digits_end(s const byte[:], p int) int {
+	var q = p;
+	while q < s.len && s[q] >= '0' && s[q] <= '9' { q++; }
+	q
+}
+fn pl_skip_sp(s const byte[:], p int) int {
+	var q = p;
+	while q < s.len && s[q] == ' ' { q++; }
+	q
+}
+fn pl_page_number_like(t const byte[:]) bool {
+	let s = trim(t);
+	let n = s.len;
+	if n == 0 { return false; }
+	let d = pl_digits_end(s, 0);
+	if d == n { return true; }
+	var roman = n <= 7;
+	for c in s { if !pl_is_roman(c) { roman = false; } }
+	if roman { return true; }
+	if pl_ci_at(s, 0, "page") {
+		var p = pl_skip_sp(s, 4);
+		let e = pl_digits_end(s, p);
+		if e == p { return false; }
+		if e == n { return true; }
+		p = pl_skip_sp(s, e);
+		if !pl_ci_at(s, p, "of") { return false; }
+		p = pl_skip_sp(s, p + 2);
+		let e2 = pl_digits_end(s, p);
+		return e2 > p && e2 == n;
+	}
+	if d > 0 {
+		var p = pl_skip_sp(s, d);
+		if p < n && s[p] == '/' {
+			p += 1;
+		} else if pl_ci_at(s, p, "of") {
+			p += 2;
+		} else {
+			return false;
+		}
+		p = pl_skip_sp(s, p);
+		let e = pl_digits_end(s, p);
+		return e > p && e == n;
+	}
+	if n >= 3 && s[0] == '-' && s[n - 1] == '-' {
+		let inner = trim(s[1..n - 1]);
+		return inner.len > 0 && pl_digits_end(inner, 0) == inner.len;
+	}
+	false
+}
+fn pl_alnum(t const byte[:], out byte[>..]&) {
+	out.clear();
+	for c in t {
+		let l = pl_lc(c);
+		if (l >= 'a' && l <= 'z') || (c >= '0' && c <= '9') { out.push(l as byte); }
+	}
+}
+fn pl_ends_punct(t const byte[:]) bool {
+	if t.len == 0 { return false; }
+	let c = t[t.len - 1];
+	c == '.' || c == ',' || c == ';' || c == ':'
+}
+fn pl_is_text(k int) bool { k == dm::DM_PARA || k == dm::DM_ITEM }
+fn pl_warn(text const byte[:]) {
+	dm::dm_warn.append(text);
+	dm::dm_warn.push(10);
+}
+fn pl_finish() {
+	let nr = pl_out.len;
+	var bsz real[>..] = [];
+	var blen int[>..] = [];
+	for i in nr {
+		let r = pl_out[i];
+		if pl_is_text(r.kind) {
+			let s = floor(r.size * 2.0 + 0.5) / 2.0;
+			var f = -1;
+			for j in bsz.len { if bsz[j] == s { f = j; } }
+			if f < 0 { bsz.push(s); blen.push(r.len); } else { blen[f] += r.len; }
+		}
+	}
+	var body = 10.0;
+	var bb = -1;
+	for j in bsz.len {
+		if blen[j] > bb { bb = blen[j]; body = bsz[j]; }
+	}
+	var cand int[>..] = [];
+	var ckey real[>..] = [];
+	for i in nr {
+		let r = pl_out[i];
+		if pl_is_text(r.kind) && (r.ftop < 0.08 || r.fbot > 0.92) {
+			let t = pl_otxt[r.at..r.at + r.len];
+			if pl_page_number_like(t) {
+				pl_out[i].drop = true;
+			} else {
+				cand.push(i);
+				ckey.push(pl_norm_key(t));
+			}
+		}
+	}
+	var ord int[>..] = [];
+	var kz real[>..] = [];
+	for k in cand.len {
+		ord.push(k);
+		kz.push(0.0);
+	}
+	pl_sort(ord, ckey, kz);
+	var ga = 0;
+	while ga < ord.len {
+		var gb = ga;
+		var pages = 0;
+		var lastp = -1;
+		while gb < ord.len && ckey[ord[gb]] == ckey[ord[ga]] {
+			let pg = pl_out[cand[ord[gb]]].page;
+			if pg != lastp { pages++; lastp = pg; }
+			gb++;
+		}
+		if pages >= 3 && pages * 10 >= pl_pages * 4 {
+			for k in ga..gb { pl_out[cand[ord[k]]].drop = true; }
+		}
+		ga = gb;
+	}
+	var tot = 0;
+	for i in nr {
+		let r = pl_out[i];
+		if !r.drop && pl_is_text(r.kind) { tot += r.len; }
+	}
+	var hl int[>..] = [];
+	hl.resize(nr, 0);
+	var hk int[>..] = [];
+	hk.resize(nr, 0);
+	let no = pdf::pf_ol_level.len;
+	var ot byte[>..] = [];
+	var oat int[>..] = [];
+	var olen int[>..] = [];
+	var olev int[>..] = [];
+	var opg int[>..] = [];
+	for j in no {
+		let ta = pdf::pf_ol_at[j];
+		pl_alnum(pdf::pf_ol_text[ta..ta + pdf::pf_ol_len[j]], pl_tmp2);
+		oat.push(ot.len);
+		olen.push(pl_tmp2.len);
+		ot.append(pl_tmp2);
+		olev.push(pdf::pf_ol_level[j]);
+		opg.push(pdf::pf_ol_page[j]);
+	}
+	for i in nr {
+		let r = pl_out[i];
+		if r.drop || r.kind != dm::DM_PARA { continue; }
+		let t = pl_otxt[r.at..r.at + r.len];
+		if no > 0 {
+			pl_alnum(t, pl_tmp2);
+			let rl = pl_tmp2.len;
+			for j in no {
+				if hl[i] == 0 && opg[j] == r.page && olen[j] > 0 && rl >= olen[j] && rl * 10 <= olen[j] * 13 && pl_tmp2[..olen[j]] == ot[oat[j]..oat[j] + olen[j]] {
+					hl[i] = max(1, olev[j]);
+				}
+			}
+		}
+		if hl[i] != 0 { continue; }
+		if r.lines > 3 || r.len > 200 { continue; }
+		if r.size >= 1.15 * body {
+			hk[i] = 1;
+		} else if r.bold && abs(r.size - body) <= 0.1 * body && r.lines == 1 && r.len <= 120 && !pl_ends_punct(t) {
+			hk[i] = 2;
+		}
+	}
+	var rs real[>..] = [];
+	for i in nr {
+		if hk[i] == 1 {
+			let s = floor(pl_out[i].size * 2.0 + 0.5) / 2.0;
+			var have = false;
+			for j in rs.len { if rs[j] == s { have = true; } }
+			if !have { rs.push(s); }
+		}
+	}
+	sort(rs) { a, b => a > b };
+	var ranked real[>..] = [];
+	for j in rs.len {
+		var text = 0;
+		for i in nr {
+			let r = pl_out[i];
+			if !r.drop && pl_is_text(r.kind) && floor(r.size * 2.0 + 0.5) / 2.0 == rs[j] { text += r.len; }
+		}
+		if !(text * 10 > tot * 4) { ranked.push(rs[j]); }
+	}
+	for i in nr {
+		if hk[i] == 1 {
+			let s = floor(pl_out[i].size * 2.0 + 0.5) / 2.0;
+			for j in ranked.len { if ranked[j] == s { hl[i] = min(j + 1, 4); } }
+		} else if hk[i] == 2 {
+			hl[i] = min(ranked.len + 1, 6);
+		}
+	}
+	var ri = 0;
+	for pg in pl_pages {
+		dm::dm_page(pg + 1, "");
+		while ri < nr && pl_out[ri].page < pg { ri++; }
+		while ri < nr && pl_out[ri].page == pg {
+			let r = pl_out[ri];
+			let t = pl_otxt[r.at..r.at + r.len];
+			if r.kind == 100 {
+				dm::dm_new_table();
+			} else if r.kind == 101 {
+				dm::dm_end_table();
+			} else if r.kind == dm::DM_ROW {
+				dm::dm_add(dm::DM_ROW, 0, t);
+			} else if !r.drop {
+				if hl[ri] > 0 { dm::dm_add(dm::DM_HEAD, hl[ri], t); } else { dm::dm_add(r.kind, r.level, t); }
+			}
+			ri++;
+		}
+		pdf::pf_annots(pg);
+	}
+	pdf::pf_fields();
+	if pl_scanned > 0 {
+		pl_warn(str(pl_scanned, " of ", pl_pages, " pages are scanned images without a text layer; OCR is needed to read them"));
+		dm::dm_set_meta("scanned_pages", str(pl_scanned));
+	}
+	if pfont::fo_unmapped > 0 {
+		pl_warn(str(pfont::fo_unmapped, " characters had no Unicode mapping and were skipped"));
+	}
+}
+fn pl_read_pdf(data const byte[:]) bool {
+	if !pdf::pf_open(data) { return false; }
+	pl_out.clear();
+	pl_otxt.clear();
+	pl_scanned = 0;
+	pfont::fo_reset();
+	pdf::pf_info_meta();
+	pdf::pf_outline(true);
+	if pdf::pf_dhas(pdf::pf_trailer, "Encrypt") && !dcrypt::dc_on { return true; }
+	let np = pdf::pf_pages.len;
+	pl_pages = min(np, 5000);
+	if np > 5000 { pl_warn("only the first 5000 pages were read"); }
+	for p in pl_pages {
+		pcontent::pc_run_page(p);
+		if pcontent::pc_g.len == 0 && pcontent::pc_img >= 0.4 { pl_scanned++; }
+		pl_layout_page(p);
+	}
+	pl_finish();
+	true
+}

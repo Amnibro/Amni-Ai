@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" height="10cm" viewBox="0 0 640.5 480">
+<style>text { font-family: serif }</style>
+<text>Plain label</text>
+<script><![CDATA[ var x = "not text"; ]]></script>
+</svg>

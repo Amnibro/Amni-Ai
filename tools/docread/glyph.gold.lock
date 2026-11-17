@@ -1,0 +1,131 @@
+=== -0343b7d419c5b72
+namespace glyph;
+=== 6e5ce70cc3e53a53
+
+=== 5d16a33a451f3e46
+var gl_index int[>..];
+var gl_len int[>..];
+fn gl_build() {
+	if gl_index.len > 0 { return; }
+	let s = GL_NAMES;
+	var i = 0;
+	while i < s.len {
+		while i < s.len && s[i] == ' ' { i++; }
+		let st = i;
+		while i < s.len && s[i] != ' ' { i++; }
+		if i > st {
+			gl_index.push(st);
+			gl_len.push(i - st);
+		}
+	}
+}
+=== -3e545bdc0e600e79
+fn gl_hexval(c int) int {
+	if c >= '0' && c <= '9' { c - '0' }
+	else if c >= 'a' && c <= 'f' { c - 'a' + 10 }
+	else if c >= 'A' && c <= 'F' { c - 'A' + 10 }
+	else { -1 }
+}
+fn gl_hex(s const byte[:], out int[>..]&) bool {
+	out.clear();
+	if s.len == 0 || s.len % 4 != 0 { return false; }
+	var i = 0;
+	while i < s.len {
+		var v = 0;
+		for k in 4 {
+			let h = gl_hexval(s[i + k]);
+			if h < 0 { return false; }
+			v = v * 16 + h;
+		}
+		out.push(v);
+		i += 4;
+	}
+	true
+}
+=== -19a18708299b9dbe
+fn gl_part(name const byte[:], out byte[>..]&) bool {
+	if name.len == 0 { return false; }
+	if name.len >= 3 && starts_with(name, "uni") {
+		var cps int[>..] = [];
+		if gl_hex(name[3..], cps) {
+			for c in cps { dm::dm_put_cp(out, c); }
+			return true;
+		}
+	}
+	if name.len >= 5 && name.len <= 7 && name[0] == 'u' {
+		var v = 0;
+		var good = true;
+		for k in 1..name.len {
+			let h = gl_hexval(name[k]);
+			if h < 0 { good = false; } else { v = v * 16 + h; }
+		}
+		if good {
+			dm::dm_put_cp(out, v);
+			return true;
+		}
+	}
+	if name.len == 1 {
+		let c = name[0];
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			dm::dm_put_cp(out, c);
+			return true;
+		}
+	}
+	gl_build();
+	for n in gl_index.len {
+		if gl_len[n] == name.len && n < GL_CPS.len {
+			let st = gl_index[n];
+			if GL_NAMES[st..st + gl_len[n]] == name {
+				dm::dm_put_cp(out, GL_CPS[n]);
+				return true;
+			}
+		}
+	}
+	false
+}
+fn gl_name_to_text(name const byte[:], out byte[>..]&) bool {
+	var p = 0;
+	while p < name.len && name[p] != '.' { p++; }
+	let base = name[..p];
+	if base.len == 0 { return false; }
+	let start = out.len;
+	var i = 0;
+	while i <= base.len {
+		let st = i;
+		while i < base.len && base[i] != '_' { i++; }
+		if !gl_part(base[st..i], out) {
+			out.resize(start, 0);
+			return false;
+		}
+		i++;
+	}
+	true
+}
+=== -6a2a06c1c48539d0
+fn gl_std(code int) int {
+	if code == 39 { return 0x2019; }
+	if code == 96 { return 0x2018; }
+	if code >= 32 && code <= 126 { return code; }
+	if code >= 160 && code <= 255 { return GL_STD_HI[code - 160]; }
+	0
+}
+=== 647af98df9e6aaa6
+fn gl_has(s const byte[:], sub const byte[:]) bool {
+	if sub.len > s.len { return false; }
+	for i in s.len - sub.len + 1 {
+		if s[i..i + sub.len] == sub { return true; }
+	}
+	false
+}
+fn gl_base_width(font const byte[:], code int) real {
+	if gl_has(font, "Courier") { return 600.0; }
+	let times = gl_has(font, "Times") || gl_has(font, "Roman") || gl_has(font, "Serif") || gl_has(font, "Georgia") || gl_has(font, "Garamond") || gl_has(font, "Cambria") || gl_has(font, "Book");
+	var w real = 0.0;
+	if code >= 32 && code <= 126 {
+		if times { w = GL_TIMES[code - 32]; } else { w = GL_HELV[code - 32]; }
+	} else {
+		if times { w = 500.0; } else { w = 556.0; }
+	}
+	if gl_has(font, "Bold") { w = w * 1.05; }
+	w
+}

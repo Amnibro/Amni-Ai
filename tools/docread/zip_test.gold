@@ -1,0 +1,57 @@
+use std
+into zip_test.amni
+
+```amni
+import os;
+import zip;
+```
+
+`le(out byte[>..]&, v int, n int)` appends v to out as n little-endian bytes.
+
+`local(out byte[>..]&, name const byte[:], body const byte[:], usize int, flags int, method int) int` appends a ZIP local file header to out (the bytes 0x50 0x4B 0x03 0x04, version 20 in 2 bytes, flags in 2, method in 2, time 0 in 2, date 0 in 2, crc 0 in 4, the body length in 4 as the compressed size, usize in 4, the name length in 2, extra length 0 in 2), then the name, then the body, and returns the offset in out where the header started.
+
+`central(out byte[>..]&, name const byte[:], body const byte[:], usize int, flags int, method int, lho int, extra const byte[:])` appends a central directory entry to out (0x50 0x4B 0x01 0x02, version made 20 in 2 bytes, version needed 20 in 2, flags in 2, method in 2, time 0 in 2, date 0 in 2, crc 0 in 4, the body length in 4, usize in 4, the name length in 2, the extra length in 2, comment length 0 in 2, disk 0 in 2, internal attributes 0 in 2, external attributes 0 in 4, then the local header offset in 4 bytes, which is 4294967295 when extra is not empty and lho otherwise), then the name, then extra.
+
+`eocd(out byte[>..]&, count int, size int, off int, comment const byte[:])` appends an end of central directory record (0x50 0x4B 0x05 0x06, disk 0 in 2 bytes, central directory disk 0 in 2, count in 2, count in 2, size in 4, off in 4, the comment length in 2, then the comment).
+
+`mkzip(out byte[>..]&, cd bool, comment const byte[:], flags int)` clears out and writes a ZIP of two stored entries: "a.txt" holding "hello" and "dir/b.txt" holding "world!", both with the given flags. Local entries come first; when cd is true a central directory with both entries (usize equal to the body lengths, method 0, empty extra) and an end record with the given comment follow; when cd is false nothing follows the local entries.
+
+`rd(h int, i int) byte[>..]` returns what `zip::zp_read` gives for entry i of handle h (an empty list when it returns false).
+
+`main()` prints these lines, each fully spelled out. Use a scratch list z from `mkzip` for the cases.
+
+Case 1: `mkzip(z, true, "cmt", 0)`, handle h from `zip::zp_open(z)`. Print "t1 " then `zip::zp_count(h)`, a space, `zip::zp_name(h, 0)`, a space, `zip::zp_size(h, 0)`, a space, `zip::zp_name(h, 1)`, a space, `zip::zp_size(h, 1)`. Print "t1 read " then `rd(h, 0)`, a space, `rd(h, 1)`. Print "t1 find " then the results of `zip::zp_find` on "a.txt", "A.TXT", "/dir/b.txt", "./DIR/B.TXT", then on the name made of "dir", the single byte 92 (a backslash) and "b.txt", then on "nope", separated by single spaces. Then `zip::zp_close(h)`.
+
+Case 2: `mkzip(z, false, "", 0)` (no central directory), open it, print "t2 " then the count, a space, `rd(h, 0)`, a space, `rd(h, 1)`; close it.
+
+Case 3: build z with `mkzip(z, true, "", 0)`, then make a second list p holding 100 bytes of the letter x followed by all of z; open p and print "t3 " then the count, a space, `rd(h, 0)`, a space, `rd(h, 1)`; close it.
+
+Case 4: `mkzip(z, true, "", 1)` (encrypted flag); open it and print "t4 " then 1 when `zip::zp_read` of entry 0 returns false and otherwise 0, a space, then `zip::zp_encrypted(h, 0)` as 1 or 0; close it.
+
+Case 5: a list q built by `local(q, "d.bin", body, 5, 0, 8)` where body is the 10 bytes 1, 5, 0, 250, 255 followed by "hello" (a deflate stream with one stored block), then `central(q, "d.bin", body, 5, 0, 8, 0, "")` with the local header offset it returned, remembering the central directory's start and size, then `eocd(q, 1, size, start, "")`; open it and print "t5 " then `rd(h, 0)`; close it.
+
+Case 6 (ZIP64): a list r: `local(r, "e.txt", "hello", 5, 0, 0)` gives lho (0); the central directory starts there after it: `central(r, "e.txt", "hello", 5, 0, 0, 0, x)` where x is the 12 bytes of one ZIP64 extra record (id 1 in 2 bytes, size 8 in 2 bytes, then lho as 8 little-endian bytes); note the central directory start and size; then append a ZIP64 end record (0x50 0x4B 0x06 0x06, record size 44 in 8 bytes, version made 45 in 2, version needed 45 in 2, disk 0 in 4, central directory disk 0 in 4, entries on this disk 1 in 8, total entries 1 in 8, central directory size in 8, central directory start in 8) remembering where it started, then a ZIP64 locator (0x50 0x4B 0x06 0x07, disk 0 in 4, the offset of the ZIP64 end record in 8, total disks 1 in 4), then `eocd(r, 65535, 4294967295, 4294967295, "")`. Open r and print "t6 " then the count, a space, `rd(h, 0)`; close it.
+
+Case 7: build z as in case 1 (no comment) and a second archive y holding one stored entry "b.txt" with "second" (local header, central directory, end record). Open z as ha and y as hb; print "t7 " then ha, a space, hb, a space, `rd(ha, 0)`, a space, `rd(hb, 0)`. Close ha; print "t7 " then `zip::zp_count(ha)`, a space, `rd(hb, 0)`. Close hb; open z again as hc and print "t7 " then hc; close it.
+
+Case 8: print "t8 " then `zip::zp_open` of "this is not a zip archive at all, sorry".
+
+Case 9: a list e holding only `eocd(e, 0, 0, 0, "")`; open it and print "t9 " then the handle, a space, `zip::zp_count` of it; close it.
+
+Case 10 (a stale index and a bad handle): print "t10 " then `zip::zp_count(7)`, a space, `zip::zp_find(7, "a")`.
+
+expect:
+t1 2 a.txt 5 dir/b.txt 6
+t1 read hello world!
+t1 find 0 0 1 1 1 -1
+t2 2 hello world!
+t3 2 hello world!
+t4 1 1
+t5 hello
+t6 1 hello
+t7 0 1 hello second
+t7 0 second
+t7 0
+t8 -1
+t9 0 0
+t10 0 -1

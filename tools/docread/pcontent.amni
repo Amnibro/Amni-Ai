@@ -1,0 +1,654 @@
+import math;
+import pdf;
+import pfont;
+import dm;
+namespace pcontent;
+struct PcGlyph { x0 real, y0 real, x1 real, y1 real, size real, dir int, at int, len int, font int, space bool }
+struct PcGs { m real[6], font int, fs real, tc real, tw real, th real, tl real, rise real }
+struct PcOp { t int, v real, at int, len int }
+var pc_g PcGlyph[>..];
+var pc_txt byte[>..];
+var pc_ops PcOp[>..];
+var pc_sbuf byte[>..];
+var pc_gs PcGs[>..];
+var pc_ctm real[6];
+var pc_tm real[6];
+var pc_tlm real[6];
+var pc_font = -1;
+var pc_fs = 0.0;
+var pc_tc = 0.0;
+var pc_tw = 0.0;
+var pc_th = 1.0;
+var pc_tl = 0.0;
+var pc_rise = 0.0;
+var pc_rot = 0;
+var pc_bx real[4];
+var pc_pw = 0.0;
+var pc_ph = 0.0;
+var pc_img = 0.0;
+var pc_steps = 0;
+var pc_forms int[>..];
+var pc_at_on = false;
+var pc_at_depth = 0;
+var pc_at_text byte[>..];
+var pc_at_seen = false;
+var pc_at_g PcGlyph;
+var pc_mc_depth = 0;
+var pc_tmp byte[>..];
+fn pc_ident(m real[6]&) {
+	m[0] = 1.0;
+	m[1] = 0.0;
+	m[2] = 0.0;
+	m[3] = 1.0;
+	m[4] = 0.0;
+	m[5] = 0.0;
+}
+fn pc_mul(a const real[6]&, b const real[6]&, o real[6]&) {
+	let o0 = a[0] * b[0] + a[1] * b[2];
+	let o1 = a[0] * b[1] + a[1] * b[3];
+	let o2 = a[2] * b[0] + a[3] * b[2];
+	let o3 = a[2] * b[1] + a[3] * b[3];
+	let o4 = a[4] * b[0] + a[5] * b[2] + b[4];
+	let o5 = a[4] * b[1] + a[5] * b[3] + b[5];
+	o[0] = o0;
+	o[1] = o1;
+	o[2] = o2;
+	o[3] = o3;
+	o[4] = o4;
+	o[5] = o5;
+}
+fn pc_upright(x real, y real, ox real&, oy real&) {
+	if pc_rot == 90 {
+		ox = y - pc_bx[1];
+		oy = pc_bx[2] - x;
+	} else if pc_rot == 180 {
+		ox = pc_bx[2] - x;
+		oy = pc_bx[3] - y;
+	} else if pc_rot == 270 {
+		ox = pc_bx[3] - y;
+		oy = x - pc_bx[0];
+	} else {
+		ox = x - pc_bx[0];
+		oy = y - pc_bx[1];
+	}
+}
+fn pc_box_from(n int, key const byte[:]) bool {
+	var d = n;
+	var hops = 0;
+	while d >= 0 && hops < 32 {
+		let b = pdf::pf_dget(d, key);
+		if pdf::pf_kind(b) == pdf::PF_ARR && pdf::pf_len(b) >= 4 {
+			var v real[4] = [0.0; 4];
+			for i in 4 { v[i] = pdf::pf_real(pdf::pf_at(b, i), 0.0); }
+			pc_bx[0] = min(v[0], v[2]);
+			pc_bx[1] = min(v[1], v[3]);
+			pc_bx[2] = max(v[0], v[2]);
+			pc_bx[3] = max(v[1], v[3]);
+			return true;
+		}
+		d = pdf::pf_dget(d, "Parent");
+		hops++;
+	}
+	false
+}
+fn pc_reset_page(p int) {
+	pc_g.clear();
+	pc_txt.clear();
+	pc_ops.clear();
+	pc_sbuf.clear();
+	pc_gs.clear();
+	pc_forms.clear();
+	pc_tmp.clear();
+	pc_at_on = false;
+	pc_at_depth = 0;
+	pc_at_text.clear();
+	pc_at_seen = false;
+	pc_mc_depth = 0;
+	pc_ident(pc_ctm);
+	pc_ident(pc_tm);
+	pc_ident(pc_tlm);
+	pc_font = -1;
+	pc_fs = 0.0;
+	pc_tc = 0.0;
+	pc_tw = 0.0;
+	pc_th = 1.0;
+	pc_tl = 0.0;
+	pc_rise = 0.0;
+	pc_img = 0.0;
+	pc_steps = 0;
+	pc_rot = 0;
+	pc_pw = 1.0;
+	pc_ph = 1.0;
+	pc_bx[0] = 0.0;
+	pc_bx[1] = 0.0;
+	pc_bx[2] = 612.0;
+	pc_bx[3] = 792.0;
+	guard p >= 0 && p < pdf::pf_pages.len else { return; }
+	let pg .= pdf::pf_pages[p];
+	if !pc_box_from(pg.node, "CropBox") { pc_box_from(pg.node, "MediaBox"); }
+	pc_rot = pg.rot % 360;
+	let w = pc_bx[2] - pc_bx[0];
+	let h = pc_bx[3] - pc_bx[1];
+	if pc_rot == 90 || pc_rot == 270 {
+		pc_pw = max(h, 1.0);
+		pc_ph = max(w, 1.0);
+	} else {
+		pc_pw = max(w, 1.0);
+		pc_ph = max(h, 1.0);
+	}
+}
+fn pc_emit(code_text_at int, code_text_len int, w0 real, vertical bool, is_space bool) {
+	var a real[6] = [pc_fs * pc_th, 0.0, 0.0, pc_fs, 0.0, pc_rise];
+	var b real[6] = [0.0; 6];
+	var t real[6] = [0.0; 6];
+	pc_mul(a, pc_tm, b);
+	pc_mul(b, pc_ctm, t);
+	let ox = t[4];
+	let oy = t[5];
+	var ex = ox + w0 * t[0];
+	var ey = oy + w0 * t[1];
+	if vertical {
+		ex = ox - t[2];
+		ey = oy - t[3];
+	}
+	var ux0 = 0.0;
+	var uy0 = 0.0;
+	var ux1 = 0.0;
+	var uy1 = 0.0;
+	pc_upright(ox, oy, ux0, uy0);
+	pc_upright(ex, ey, ux1, uy1);
+	var size = sqrt(t[2] * t[2] + t[3] * t[3]);
+	if vertical { size = sqrt(t[0] * t[0] + t[1] * t[1]); }
+	if size < 0.5 || size > 2000.0 { return; }
+	var dx = ux1 - ux0;
+	var dy = uy1 - uy0;
+	if sqrt(dx * dx + dy * dy) < 0.0001 {
+		var vx = 0.0;
+		var vy = 0.0;
+		pc_upright(ox + t[0], oy + t[1], vx, vy);
+		dx = vx - ux0;
+		dy = vy - uy0;
+	}
+	var dir = 0;
+	if abs(dx) >= abs(dy) {
+		dir = if dx >= 0.0 { 0 } else { 2 };
+	} else {
+		dir = if dy >= 0.0 { 1 } else { 3 };
+	}
+	if vertical { dir = 3; }
+	if pc_at_on {
+		if !pc_at_seen {
+			pc_at_g = PcGlyph { ux0, uy0, ux1, uy1, size, dir, 0, 0, pc_font, false };
+		}
+		pc_at_g.x1 = ux1;
+		pc_at_g.y1 = uy1;
+		pc_at_seen = true;
+		return;
+	}
+	if pc_g.len < 1000000 {
+		pc_g.push(PcGlyph { ux0, uy0, ux1, uy1, size, dir, code_text_at, code_text_len, pc_font, is_space });
+	}
+}
+fn pc_move(tx real, ty real) {
+	var t real[6] = [1.0, 0.0, 0.0, 1.0, tx, ty];
+	pc_mul(t, pc_tm, pc_tm);
+}
+fn pc_vertical() bool {
+	false
+}
+fn pc_show(s const byte[:]) {
+	if pc_font < 0 || pc_fs == 0.0 { return; }
+	let vertical = pc_vertical();
+	var at = 0;
+	while at < s.len {
+		let start = at;
+		let code = pfont::fo_next(pc_font, s, at);
+		if code < 0 { break; }
+		if at <= start { at = start + 1; }
+		let taken = at - start;
+		let tat = pc_txt.len;
+		pfont::fo_text(pc_font, code, taken, pc_txt);
+		let tlen = pc_txt.len - tat;
+		let w0 = pfont::fo_width(pc_font, code);
+		let is_space = taken == 1 && code == 32 && tlen == 1 && pc_txt[tat] == 32;
+		if tlen > 0 || pc_at_on {
+			pc_emit(tat, tlen, w0, vertical, is_space);
+		}
+		if vertical {
+			var ty = -pc_fs + pc_tc;
+			if is_space { ty += pc_tw; }
+			pc_move(0.0, ty);
+		} else {
+			var tx = w0 * pc_fs + pc_tc;
+			if is_space { tx += pc_tw; }
+			pc_move(tx * pc_th, 0.0);
+		}
+	}
+}
+fn pc_tj_adjust(n real) {
+	if pc_vertical() {
+		pc_move(0.0, -n / 1000.0 * pc_fs);
+	} else {
+		pc_move(-n / 1000.0 * pc_fs * pc_th, 0.0);
+	}
+}
+fn pc_set_font(res int, name const byte[:]) {
+	let fonts = pdf::pf_dget(res, "Font");
+	let f = pdf::pf_dget(fonts, name);
+	if f < 0 {
+		pc_font = -1;
+	} else {
+		pc_font = pfont::fo_load(f);
+	}
+}
+fn pc_image_cover(m const real[6]&) {
+	var x0 = 1.0e30;
+	var y0 = 1.0e30;
+	var x1 = -1.0e30;
+	var y1 = -1.0e30;
+	for i in 4 {
+		let x = if i % 2 == 1 { 1.0 } else { 0.0 };
+		let y = if i / 2 == 1 { 1.0 } else { 0.0 };
+		let px = x * m[0] + y * m[2] + m[4];
+		let py = x * m[1] + y * m[3] + m[5];
+		var qx = 0.0;
+		var qy = 0.0;
+		pc_upright(px, py, qx, qy);
+		x0 = min(x0, qx);
+		y0 = min(y0, qy);
+		x1 = max(x1, qx);
+		y1 = max(y1, qy);
+	}
+	x0 = max(x0, 0.0);
+	y0 = max(y0, 0.0);
+	x1 = min(x1, pc_pw);
+	y1 = min(y1, pc_ph);
+	if x1 > x0 && y1 > y0 {
+		let f = (x1 - x0) * (y1 - y0) / (pc_pw * pc_ph);
+		if f > pc_img { pc_img = f; }
+	}
+}
+fn pc_ws(c byte) bool {
+	c == 32 || c == 10 || c == 13 || c == 9 || c == 12 || c == 0
+}
+fn pc_delim(c byte) bool {
+	c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' || c == '{' || c == '}' || c == '/' || c == '%'
+}
+fn pc_regular(c byte) bool {
+	!pc_ws(c) && !pc_delim(c)
+}
+fn pc_inline_image(s const byte[:], at int&) {
+	var found = false;
+	while at < s.len {
+		pdf::pf_skip(s, at);
+		if at >= s.len { break; }
+		var p = at;
+		while p < s.len && pc_regular(s[p]) { p++; }
+		if p - at == 2 && s[at] == 'I' && s[at + 1] == 'D' {
+			at = p;
+			found = true;
+			break;
+		}
+		let before = at;
+		pdf::pf_parse(s, at);
+		if at <= before { at = before + 1; }
+	}
+	if found {
+		if at < s.len { at += 1; }
+		var p = at;
+		var end = s.len;
+		while p + 1 < s.len {
+			if s[p] == 'E' && s[p + 1] == 'I' && p >= 1 && pc_ws(s[p - 1]) && (p + 2 >= s.len || pc_ws(s[p + 2]) || pc_delim(s[p + 2])) {
+				end = p + 2;
+				break;
+			}
+			p++;
+		}
+		at = end;
+	}
+	pc_image_cover(pc_ctm);
+}
+fn pc_actual_text(res int, prop int) int {
+	var d = -1;
+	let k = pdf::pf_kind(prop);
+	if k == pdf::PF_DICT {
+		d = prop;
+	} else if k == pdf::PF_NAME {
+		let props = pdf::pf_dget(res, "Properties");
+		d = pdf::pf_dget(props, pdf::pf_bytes(prop));
+	}
+	if d < 0 { return -1; }
+	return pdf::pf_dget(d, "ActualText");
+}
+fn pc_nums(k int) bool {
+	let n = pc_ops.len;
+	if n < k { return false; }
+	for i in k {
+		if pc_ops[n - k + i].t != 1 { return false; }
+	}
+	true
+}
+fn pc_a(k int, j int) real {
+	pc_ops[pc_ops.len - k + j].v
+}
+fn pc_push() {
+	let g = PcGs { m: pc_ctm, font: pc_font, fs: pc_fs, tc: pc_tc, tw: pc_tw, th: pc_th, tl: pc_tl, rise: pc_rise };
+	pc_gs.push(g);
+}
+fn pc_pop() {
+	if pc_gs.len == 0 { return; }
+	let g = pc_gs.pop();
+	pc_ctm = g.m;
+	pc_font = g.font;
+	pc_fs = g.fs;
+	pc_tc = g.tc;
+	pc_tw = g.tw;
+	pc_th = g.th;
+	pc_tl = g.tl;
+	pc_rise = g.rise;
+}
+fn pc_td(tx real, ty real) {
+	var t real[6] = [1.0, 0.0, 0.0, 1.0, tx, ty];
+	pc_mul(t, pc_tlm, pc_tlm);
+	pc_tm = pc_tlm;
+}
+fn pc_end_at() {
+	if pc_at_seen {
+		let st = pc_txt.len;
+		pc_txt.append(pc_at_text);
+		var g = pc_at_g;
+		g.at = st;
+		g.len = pc_at_text.len;
+		g.space = false;
+		if pc_g.len < 1000000 { pc_g.push(g); }
+	}
+	pc_at_on = false;
+}
+fn pc_form_data(n int) int, int, bool {
+	var buf byte[>..] = [];
+	if !pdf::pf_decode(n, buf) { return 0, 0, false; }
+	let st = pc_tmp.len;
+	pc_tmp.append(buf);
+	return st, pc_tmp.len, true;
+}
+fn pc_do(res int, depth int) int, int, int, int {
+	let n = pc_ops.len;
+	if n < 1 || pc_ops[n - 1].t != 3 { return -1, 0, 0, 0; }
+	let o = pc_ops[n - 1];
+	let xo = pdf::pf_dget(res, "XObject");
+	let x = pdf::pf_dget(xo, pc_sbuf[o.at..o.at + o.len]);
+	if x < 0 { return -1, 0, 0, 0; }
+	let sub = pdf::pf_dget(x, "Subtype");
+	if pdf::pf_name_is(sub, "Image") {
+		pc_image_cover(pc_ctm);
+		return -1, 0, 0, 0;
+	}
+	if !pdf::pf_name_is(sub, "Form") || depth >= 12 || pc_gs.len >= 256 { return -1, 0, 0, 0; }
+	for f in pc_forms {
+		if f == x { return -1, 0, 0, 0; }
+	}
+	if pc_tmp.len > 67108864 { return -1, 0, 0, 0; }
+	let fa, fb, ok = pc_form_data(x);
+	if !ok { return -1, 0, 0, 0; }
+	pc_push();
+	var m real[6] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+	let mx = pdf::pf_dget(x, "Matrix");
+	if pdf::pf_kind(mx) == pdf::PF_ARR && pdf::pf_len(mx) >= 6 {
+		for i in 6 { m[i] = pdf::pf_real(pdf::pf_at(mx, i), m[i]); }
+	}
+	pc_mul(m, pc_ctm, pc_ctm);
+	var r = pdf::pf_dget(x, "Resources");
+	if r < 0 { r = res; }
+	return x, fa, fb, r;
+}
+fn pc_op(kw const byte[:], s const byte[:], at int&, res int, depth int) int, int, int, int {
+	let n = pc_ops.len;
+	if kw == "Tj" {
+		if n >= 1 && pc_ops[n - 1].t == 2 {
+			let o = pc_ops[n - 1];
+			pc_show(pc_sbuf[o.at..o.at + o.len]);
+		}
+	} else if kw == "TJ" {
+		var k = n - 1;
+		while k >= 0 && pc_ops[k].t != 4 { k--; }
+		if k >= 0 {
+			for i in k + 1..n {
+				let o = pc_ops[i];
+				if o.t == 2 {
+					pc_show(pc_sbuf[o.at..o.at + o.len]);
+				} else if o.t == 1 {
+					pc_tj_adjust(o.v);
+				}
+			}
+		}
+	} else if kw == "Td" {
+		if pc_nums(2) { pc_td(pc_a(2, 0), pc_a(2, 1)); }
+	} else if kw == "TD" {
+		if pc_nums(2) {
+			pc_td(pc_a(2, 0), pc_a(2, 1));
+			pc_tl = -pc_a(2, 1);
+		}
+	} else if kw == "Tm" {
+		if pc_nums(6) {
+			for i in 6 { pc_tlm[i] = pc_a(6, i); }
+			pc_tm = pc_tlm;
+		}
+	} else if kw == "T*" {
+		pc_td(0.0, -pc_tl);
+	} else if kw == "Tf" {
+		if n >= 2 && pc_ops[n - 2].t == 3 && pc_ops[n - 1].t == 1 {
+			let o = pc_ops[n - 2];
+			pc_set_font(res, pc_sbuf[o.at..o.at + o.len]);
+			pc_fs = pc_ops[n - 1].v;
+		}
+	} else if kw == "q" {
+		if pc_gs.len < 256 { pc_push(); }
+	} else if kw == "Q" {
+		pc_pop();
+	} else if kw == "cm" {
+		if pc_nums(6) {
+			var m real[6] = [0.0; 6];
+			for i in 6 { m[i] = pc_a(6, i); }
+			pc_mul(m, pc_ctm, pc_ctm);
+		}
+	} else if kw == "BT" {
+		pc_ident(pc_tm);
+		pc_ident(pc_tlm);
+	} else if kw == "Tc" {
+		if pc_nums(1) { pc_tc = pc_a(1, 0); }
+	} else if kw == "Tw" {
+		if pc_nums(1) { pc_tw = pc_a(1, 0); }
+	} else if kw == "TL" {
+		if pc_nums(1) { pc_tl = pc_a(1, 0); }
+	} else if kw == "Ts" {
+		if pc_nums(1) { pc_rise = pc_a(1, 0); }
+	} else if kw == "Tz" {
+		if pc_nums(1) { pc_th = pc_a(1, 0) / 100.0; }
+	} else if kw == "'" {
+		if n >= 1 && pc_ops[n - 1].t == 2 {
+			let o = pc_ops[n - 1];
+			pc_td(0.0, -pc_tl);
+			pc_show(pc_sbuf[o.at..o.at + o.len]);
+		}
+	} else if kw == "\"" {
+		if n >= 3 && pc_ops[n - 3].t == 1 && pc_ops[n - 2].t == 1 && pc_ops[n - 1].t == 2 {
+			let o = pc_ops[n - 1];
+			pc_tw = pc_ops[n - 3].v;
+			pc_tc = pc_ops[n - 2].v;
+			pc_td(0.0, -pc_tl);
+			pc_show(pc_sbuf[o.at..o.at + o.len]);
+		}
+	} else if kw == "Do" {
+		let a, b, c, d = pc_do(res, depth);
+		return a, b, c, d;
+	} else if kw == "BI" {
+		pc_inline_image(s, at);
+	} else if kw == "BMC" {
+		pc_mc_depth++;
+	} else if kw == "BDC" {
+		pc_mc_depth++;
+		if !pc_at_on && n >= 1 {
+			let o = pc_ops[n - 1];
+			var d = -1;
+			if o.t == 6 {
+				d = o.at;
+			} else if o.t == 3 {
+				let props = pdf::pf_dget(res, "Properties");
+				d = pdf::pf_dget(props, pc_sbuf[o.at..o.at + o.len]);
+			}
+			if d >= 0 {
+				let an = pc_actual_text(res, d);
+				if an >= 0 {
+					pc_at_text.clear();
+					pdf::pf_text(an, pc_at_text);
+					if pc_at_text.len > 0 {
+						pc_at_on = true;
+						pc_at_depth = pc_mc_depth;
+						pc_at_seen = false;
+					}
+				}
+			}
+		}
+	} else if kw == "EMC" {
+		if pc_at_on && pc_mc_depth == pc_at_depth { pc_end_at(); }
+		if pc_mc_depth > 0 { pc_mc_depth--; }
+	}
+	return -1, 0, 0, 0;
+}
+recursive fn pc_exec(s const byte[:], res int, depth int) {
+	let saved = pdf::pf_cur_num;
+	pdf::pf_cur_num = -1;
+	var at = 0;
+	while at < s.len && pc_steps <= 5000000 {
+		pdf::pf_skip(s, at);
+		if at >= s.len { break; }
+		let c = s[at];
+		let start = at;
+		if (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.' {
+			var p = at;
+			var neg = false;
+			if s[p] == '-' {
+				neg = true;
+				p++;
+			} else if s[p] == '+' {
+				p++;
+			}
+			var v = 0.0;
+			var scale = 0.1;
+			var dot = false;
+			while p < s.len {
+				let d = s[p];
+				if d >= '0' && d <= '9' {
+					let dv real = d - 48;
+					if dot {
+						v += dv * scale;
+						scale /= 10.0;
+					} else {
+						v = v * 10.0 + dv;
+					}
+					p++;
+				} else if d == '.' {
+					if dot { break; }
+					dot = true;
+					p++;
+				} else {
+					break;
+				}
+			}
+			if p <= at { p = at + 1; }
+			pc_ops.push(PcOp { t: 1, v: if neg { -v } else { v }, at: 0, len: 0 });
+			at = p;
+		} else if c == '(' {
+			let o = pc_sbuf.len;
+			pdf::pf_lit_string(s, at, pc_sbuf);
+			if at <= start { at = start + 1; }
+			pc_ops.push(PcOp { t: 2, v: 0.0, at: o, len: pc_sbuf.len - o });
+		} else if c == '<' {
+			if at + 1 < s.len && s[at + 1] == '<' {
+				let node = pdf::pf_parse(s, at);
+				if at <= start { at = start + 1; }
+				pc_ops.push(PcOp { t: 6, v: 0.0, at: node, len: 0 });
+			} else {
+				let o = pc_sbuf.len;
+				pdf::pf_hex_string(s, at, pc_sbuf);
+				if at <= start { at = start + 1; }
+				pc_ops.push(PcOp { t: 2, v: 0.0, at: o, len: pc_sbuf.len - o });
+			}
+		} else if c == '/' {
+			let o = pc_sbuf.len;
+			pdf::pf_name(s, at, pc_sbuf);
+			if at <= start { at = start + 1; }
+			pc_ops.push(PcOp { t: 3, v: 0.0, at: o, len: pc_sbuf.len - o });
+		} else if c == '[' {
+			pc_ops.push(PcOp { t: 4, v: 0.0, at: 0, len: 0 });
+			at++;
+		} else if c == ']' {
+			pc_ops.push(PcOp { t: 5, v: 0.0, at: 0, len: 0 });
+			at++;
+		} else if c == '{' || c == '}' {
+			at++;
+		} else if pc_regular(c) {
+			var p = at;
+			while p < s.len && pc_regular(s[p]) { p++; }
+			let kw = s[at..p];
+			at = p;
+			if kw == "true" || kw == "false" || kw == "null" {
+				pc_ops.push(PcOp { t: 7, v: 0.0, at: 0, len: 0 });
+			} else {
+				pc_steps++;
+				let fnode, fa, fb, fres = pc_op(kw, s, at, res, depth);
+				pc_ops.clear();
+				pc_sbuf.clear();
+				if fnode >= 0 {
+					pc_forms.push(fnode);
+					pc_exec(pc_tmp[fa..fb], fres, depth + 1);
+					pc_forms.pop();
+					pc_pop();
+				}
+			}
+		} else {
+			at++;
+		}
+	}
+	pdf::pf_cur_num = saved;
+}
+fn pc_run_page(p int) bool {
+	pc_reset_page(p);
+	guard p >= 0 && p < pdf::pf_pages.len else { return false; }
+	let pg .= pdf::pf_pages[p];
+	let c = pdf::pf_dget(pg.node, "Contents");
+	var buf byte[>..] = [];
+	var part byte[>..] = [];
+	var any = false;
+	let k = pdf::pf_kind(c);
+	if k == pdf::PF_STREAM {
+		part.clear();
+		if pdf::pf_decode(c, part) {
+			buf.append(part);
+			buf.push('\n');
+			any = true;
+		}
+	} else if k == pdf::PF_ARR {
+		for i in pdf::pf_len(c) {
+			let e = pdf::pf_at(c, i);
+			part.clear();
+			if pdf::pf_decode(e, part) {
+				buf.append(part);
+				buf.push('\n');
+				any = true;
+			}
+		}
+	}
+	if !any { return false; }
+	pc_exec(buf, pg.res, 0);
+	if pc_at_on { pc_end_at(); }
+	return true;
+}
+fn pc_count() int {
+	pc_g.len
+}
+fn pc_text(i int) const byte[:] {
+	if i < 0 || i >= pc_g.len { return pc_txt[0..0]; }
+	let g = pc_g[i];
+	pc_txt[g.at..g.at + g.len]
+}

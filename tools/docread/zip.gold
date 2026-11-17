@@ -1,0 +1,44 @@
+use std
+into zip.amni
+
+This file is a module with no main (namespace zip). It reads ZIP archives held in memory: several can be open at once, each named by an integer handle. It finds the central directory (ZIP64 included), falls back to scanning local file headers when there is none, and extracts stored and deflated entries. Every module-level name starts with `zp_` or `ZP_`.
+
+```amni
+import gfx.zlib;
+```
+
+`ZP_MAX` is 536870912, the most bytes one entry may produce.
+
+`struct ZpArc` has `base int` (where the archive's bytes start in `zp_data`), `len int`, `first int` (the index of its first entry in `zp_ents`), `nbase int` (where its names start in `zp_names`), `cnt int` (its entry count) and `live bool`.
+
+`struct ZpEnt` has `nat int` and `nlen int` (the raw name bytes in `zp_names`), `method int`, `flags int`, `csize int`, `usize int` (-1 when unknown) and `lho int` (the offset of the local header from the start of its archive, already corrected for bytes prepended to the archive).
+
+Module state: `var zp_data byte[>..]` (the bytes of every open archive one after another), `var zp_names byte[>..]`, `var zp_arcs ZpArc[>..]` and `var zp_ents ZpEnt[>..]`. A handle is an index into `zp_arcs`.
+
+`zp_rd(a int, p int, n int) int` reads an unsigned little-endian number of n bytes (1, 2, 4 or 8) at offset p from the start of archive a, meaning the byte `zp_data[zp_arcs[a].base + p]`. It returns -1 when p is negative, when p plus n passes the archive's length, or when an 8-byte value is 2 to the power 63 or more. Build the value in an int one byte at a time, lowest byte first.
+
+`zp_sig(a int, p int, b2 int, b3 int) bool` is true when the four bytes at offset p of archive a are 0x50, 0x4B, b2, b3 (every byte must lie inside the archive).
+
+`zp_eocd(a int) int` finds the end of central directory record: scan p downward from the archive length minus 22 to the larger of 0 and length minus 22 minus 65535, and return the first p where `zp_sig(a, p, 5, 6)` holds and p plus 22 plus the comment length (`zp_rd(a, p + 20, 2)`) does not pass the archive's length. Return -1 when there is none.
+
+`zp_x64(a int, p int, m int, usize int&, csize int&, lho int&)` reads a ZIP64 extra field: the extra data is the m bytes at offset p; walk its records (a 2-byte id, a 2-byte size, then that many bytes, stopping when a record would pass the end). In the record whose id is 1 the 8-byte values follow in the order uncompressed size, compressed size, local header offset, and each one is present only when the matching argument currently equals 4294967295; each present one replaces that argument (read with `zp_rd(a, q, 8)`).
+
+`zp_cd_walk(a int, p int, limit int, delta int) int` reads central directory entries starting at offset p, as long as p plus 46 is not past limit and `zp_sig(a, p, 1, 2)` holds. For an entry let n be the name length (2 bytes at p + 28), m the extra length (p + 30) and k the comment length (p + 32); stop when p + 46 + n + m + k passes the archive length. The flags are 2 bytes at p + 8, the method 2 bytes at p + 10, the compressed size 4 bytes at p + 20, the uncompressed size 4 bytes at p + 24, the local header offset 4 bytes at p + 42. When any of the last three equals 4294967295 call `zp_x64` on the extra bytes at p + 46 + n. Append the n name bytes (at p + 46) to `zp_names` and push a `ZpEnt` whose lho is the local header offset plus delta. Move p forward by 46 + n + m + k. Stop after 4000000 entries. Return how many entries were pushed.
+
+`zp_scan(a int) int` is the fallback for archives with no usable central directory: it walks the local file headers and pushes entries, returning how many. Start with p at 0 and repeat while `zp_sig(a, p, 3, 4)`, or after skipping forward byte by byte to the next place where it holds; stop at the end of the archive or when `zp_sig(a, p, 1, 2)` holds there (the central directory starts). At a header: flags are 2 bytes at p + 6, method 2 bytes at p + 8, compressed size 4 bytes at p + 18, uncompressed size 4 bytes at p + 22, n the name length (2 bytes at p + 26), m the extra length (p + 28); the data starts at p + 30 + n + m; stop when that passes the archive's length. When a size equals 4294967295 call `zp_x64` on the extra bytes at p + 30 + n with a dummy local header offset. Append the name to `zp_names`, push a `ZpEnt` with lho p. When bit 3 (value 8) of the flags is set and both sizes are 0, the sizes are unknown: for method 8 set the compressed size to the bytes remaining from the data start to the end of the archive and the uncompressed size to -1 and continue scanning after the data start plus 1 (the next header is found by the byte-by-byte skip); for other methods find the next place after the data start where `zp_sig(a, q, 7, 8)`, `zp_sig(a, q, 3, 4)` or `zp_sig(a, q, 1, 2)` holds and use q minus the data start as both sizes. Otherwise continue at the data start plus the compressed size. Stop after 4000000 entries.
+
+`zp_open(data const byte[:]) int` returns a handle of 0 or more, or -1 when data is not a ZIP archive (fewer than 22 bytes, or no entries found at all by any method and no end of central directory record). Steps: remember `zp_names.len`; append data to `zp_data` after recording the base; push a `ZpArc` with first equal to `zp_ents.len`, live true; call `zp_eocd`. When found: the central directory size is `zp_rd(a, e + 12, 4)`, its offset `zp_rd(a, e + 16, 4)`, and limit is e. When `zp_sig(a, e - 20, 6, 7)` holds (the ZIP64 locator), take the 8-byte offset at e - 16 as o64 and when `zp_sig(a, o64, 6, 6)` is false and `zp_sig(a, e - 76, 6, 6)` is true use e - 76 as o64; when `zp_sig(a, o64, 6, 6)` holds, then the size is the 8 bytes at o64 + 40, the offset the 8 bytes at o64 + 48 and limit is o64. Then compute delta: 0 when `zp_sig(a, offset, 1, 2)` holds; otherwise when limit minus size minus offset is not negative and `zp_sig(a, offset + that, 1, 2)` holds then that difference; otherwise 0. Call `zp_cd_walk(a, offset + delta, limit, delta)`. When it pushed nothing and the record's entry count (2 bytes at e + 10) is 0 and the size is 0, the archive is a valid empty ZIP. When there is no end record or the walk pushed nothing (and the archive is not a valid empty one), reset the entries pushed so far (truncate `zp_ents` to its length at the start) and use `zp_scan`. When still nothing was found, undo everything: truncate `zp_ents`, `zp_names` and `zp_data` to their lengths at the start, pop the `ZpArc`, and return -1. On success set the archive's cnt to the number of entries pushed and return its index.
+
+`zp_count(h int) int` is the entry count of handle h, or 0 for a bad or closed handle.
+
+`zp_name(h int, i int) const byte[:]` is the raw name bytes of entry i of handle h (a slice of `zp_names`), empty for a bad handle or index.
+
+`zp_size(h int, i int) int` is the uncompressed size of entry i, -1 when unknown or the handle or index is bad. `zp_encrypted(h int, i int) bool` is true when bit 0 of the entry's flags is set. `zp_is_dir(h int, i int) bool` is true when the name ends in "/".
+
+`zp_norm_eq(a const byte[:], b const byte[:], ci bool) bool` compares two entry names after normalising each: a backslash counts as a slash, and any number of leading "/" or "./" prefixes are ignored; when ci is true ASCII letters compare without regard to case.
+
+`zp_find(h int, name const byte[:]) int` returns the index of the first entry of handle h whose name equals name byte for byte; failing that the first one for which `zp_norm_eq(entry name, name, false)` holds; failing that the first one for which `zp_norm_eq(entry name, name, true)` holds; -1 when none or the handle is bad.
+
+`zp_read(h int, i int, out byte[>..]&) bool` clears out and appends the contents of entry i of handle h. It returns false (leaving out empty) for a bad handle or index, when the entry is encrypted (bit 0 of its flags), when its method is not 0 or 8, when its known uncompressed size is more than `ZP_MAX`, when the local header at the entry's lho does not have the signature 0x50 0x4B 0x03 0x04 or the data would pass the end of the archive, or when inflating fails. The data starts at lho + 30 + the name length (2 bytes at lho + 26) + the extra length (2 bytes at lho + 28). Method 0 copies the compressed size bytes (or the uncompressed size when the compressed size is unknown). Method 8 calls `zlib::inflate_raw` on the slice from the data start for the compressed size bytes of `zp_data` (to the end of the archive when the compressed size is unknown, and never past the end of the archive); afterwards, when out is longer than `ZP_MAX`, clear it and return false. Slice `zp_data` directly with the archive's base added.
+
+`zp_close(h int)` marks handle h not live; then, while the last `ZpArc` in `zp_arcs` is not live, truncate `zp_data` to its base, `zp_ents` to its first, `zp_names` to its nbase and pop it. A bad or already closed handle does nothing.

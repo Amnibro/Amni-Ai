@@ -1,0 +1,40 @@
+From: Ana Fenwick <ana@example.org>
+To: sam@example.com
+Subject: Fwd: Fwd: Schedule
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="o1"
+
+--o1
+Content-Type: text/plain
+
+Please see below.
+--o1
+Content-Type: message/rfc822
+
+From: Lee Bo <bo@example.net>
+Subject: Fwd: Schedule
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="o2"
+
+--o2
+Content-Type: text/plain
+
+Passing this on.
+--o2
+Content-Type: message/rfc822
+
+From: Rae Fenwick <rae@example.org>
+Subject: Schedule
+Content-Type: text/plain
+
+Shift starts at nine.
+--o2
+Content-Type: text/plain
+
+Sent from my phone.
+--o2--
+--o1
+Content-Type: text/plain
+
+Regards, Ana
+--o1--

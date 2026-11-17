@@ -1,0 +1,232 @@
+namespace cfbmk;
+let CM_NO = 0xFFFFFFFF;
+let CM_END = 0xFFFFFFFE;
+let CM_FAT = 0xFFFFFFFD;
+let CM_DIF = 0xFFFFFFFC;
+struct CmEnt { nat int, nlen int, pat int, plen int, parent int, kind int, dat int, dlen int, left int, right int, child int, start int }
+var cm_pool byte[>..];
+var cm_ents CmEnt[>..];
+var cm_sib int[>..];
+fn cm_le(out byte[>..]&, v int, n int) {
+	for i in n { out.push(((v >> (8 * i)) & 255) as byte); }
+}
+fn cm_reset() {
+	cm_pool.clear();
+	cm_ents.clear();
+	let nat = cm_pool.len;
+	cm_pool.append("Root Entry");
+	cm_ents.push(CmEnt { nat: nat, nlen: 10, pat: cm_pool.len, plen: 0, parent: -1, kind: 5, dat: 0, dlen: 0, left: CM_NO, right: CM_NO, child: CM_NO, start: 0 });
+}
+fn cm_find(path const byte[:]) int {
+	for i in cm_ents.len {
+		let e = cm_ents[i];
+		if e.plen == path.len {
+			if cm_pool[e.pat..e.pat + e.plen] == path { return i; }
+		}
+	}
+	return -1;
+}
+fn cm_add(path const byte[:], data const byte[:]) {
+	var parent = 0;
+	var st = 0;
+	for i in path.len {
+		if path[i] == '/' {
+			let pre = path[..i];
+			var f = cm_find(pre);
+			if f < 0 {
+				let nat = cm_pool.len;
+				cm_pool.append(path[st..i]);
+				let pat = cm_pool.len;
+				cm_pool.append(pre);
+				cm_ents.push(CmEnt { nat: nat, nlen: i - st, pat: pat, plen: i, parent: parent, kind: 1, dat: 0, dlen: 0, left: CM_NO, right: CM_NO, child: CM_NO, start: 0 });
+				f = cm_ents.len - 1;
+			}
+			parent = f;
+			st = i + 1;
+		}
+	}
+	let nat = cm_pool.len;
+	cm_pool.append(path[st..]);
+	let pat = cm_pool.len;
+	cm_pool.append(path);
+	let dat = cm_pool.len;
+	cm_pool.append(data);
+	cm_ents.push(CmEnt { nat: nat, nlen: path.len - st, pat: pat, plen: path.len, parent: parent, kind: 2, dat: dat, dlen: data.len, left: CM_NO, right: CM_NO, child: CM_NO, start: 0 });
+}
+fn cm_up(c int) int {
+	if c >= 'a' && c <= 'z' { c - 32 } else { c }
+}
+fn cm_before(a int, b int) bool {
+	let x = cm_ents[a];
+	let y = cm_ents[b];
+	if x.nlen != y.nlen { return x.nlen < y.nlen; }
+	for k in x.nlen {
+		let p = cm_up(cm_pool[x.nat + k] as int);
+		let q = cm_up(cm_pool[y.nat + k] as int);
+		if p != q { return p < q; }
+	}
+	return false;
+}
+recursive fn cm_tree(lo int, hi int) int {
+	if lo > hi { return CM_NO; }
+	let m = (lo + hi) / 2;
+	let e = cm_sib[m];
+	let l = cm_tree(lo, m - 1);
+	let r = cm_tree(m + 1, hi);
+	cm_ents[e].left = l;
+	cm_ents[e].right = r;
+	return e;
+}
+fn cm_link() {
+	for i in cm_ents.len {
+		let kind = cm_ents[i].kind;
+		if kind == 1 || kind == 5 {
+			cm_sib.clear();
+			for j in cm_ents.len {
+				if j != i && cm_ents[j].parent == i { cm_sib.push(j); }
+			}
+			for a in 1..cm_sib.len {
+				var k = a;
+				while k > 0 && cm_before(cm_sib[k], cm_sib[k - 1]) {
+					let t = cm_sib[k];
+					cm_sib[k] = cm_sib[k - 1];
+					cm_sib[k - 1] = t;
+					k -= 1;
+				}
+			}
+			let top = if cm_sib.len == 0 { CM_NO } else { cm_tree(0, cm_sib.len - 1) };
+			cm_ents[i].child = top;
+		}
+	}
+}
+fn cm_build(v4 bool, hdr int, out byte[>..]&) {
+	out.clear();
+	let ssz = if v4 { 4096 } else { 512 };
+	let epf = ssz / 4;
+	cm_link();
+	let ne = cm_ents.len;
+	var nmini = 0;
+	var nlarge = 0;
+	for i in ne {
+		let e = cm_ents[i];
+		if e.kind == 2 {
+			if e.dlen == 0 {
+				cm_ents[i].start = CM_END;
+			} else if e.dlen < 4096 {
+				cm_ents[i].start = nmini;
+				nmini += (e.dlen + 63) / 64;
+			} else {
+				cm_ents[i].start = nlarge;
+				nlarge += (e.dlen + ssz - 1) / ssz;
+			}
+		}
+	}
+	let ms = (nmini * 64 + ssz - 1) / ssz;
+	let mfs = (nmini * 4 + ssz - 1) / ssz;
+	let ds = (ne * 128 + ssz - 1) / ssz;
+	let other = nlarge + ms + mfs + ds;
+	var n = 1;
+	var nd = 0;
+	while true {
+		nd = if n > hdr { (n - hdr + epf - 2) / (epf - 1) } else { 0 };
+		if n * epf >= other + nd + n { break; }
+		n++;
+	}
+	cm_ents[0].start = if ms > 0 { nlarge } else { CM_END };
+	let mfstart = if mfs > 0 { nlarge + ms } else { CM_END };
+	let dirstart = nlarge + ms + mfs;
+	let difstart = if nd > 0 { other } else { CM_END };
+	var fat int[>..] = [];
+	fat.resize(n * epf, CM_NO);
+	fn chain(s int, c int) {
+		for k in c { fat[s + k] = if k == c - 1 { CM_END } else { s + k + 1 }; }
+	}
+	var mf int[>..] = [];
+	mf.resize(mfs * epf, CM_NO);
+	for i in ne {
+		let e = cm_ents[i];
+		if e.kind == 2 && e.dlen >= 4096 {
+			chain(e.start, (e.dlen + ssz - 1) / ssz);
+		} else if e.kind == 2 && e.dlen > 0 {
+			let cnt = (e.dlen + 63) / 64;
+			for k in cnt { mf[e.start + k] = if k == cnt - 1 { CM_END } else { e.start + k + 1 }; }
+		}
+	}
+	chain(nlarge, ms);
+	chain(nlarge + ms, mfs);
+	chain(dirstart, ds);
+	for k in nd { fat[other + k] = CM_DIF; }
+	for k in n { fat[other + nd + k] = CM_FAT; }
+	let sig int[8] = [208, 207, 17, 224, 161, 177, 26, 225];
+	for b in sig { out.push(b as byte); }
+	cm_le(out, 0, 16);
+	cm_le(out, 0x3E, 2);
+	cm_le(out, if v4 { 4 } else { 3 }, 2);
+	cm_le(out, 0xFFFE, 2);
+	cm_le(out, if v4 { 12 } else { 9 }, 2);
+	cm_le(out, 6, 2);
+	cm_le(out, 0, 6);
+	cm_le(out, if v4 { ds } else { 0 }, 4);
+	cm_le(out, n, 4);
+	cm_le(out, dirstart, 4);
+	cm_le(out, 0, 4);
+	cm_le(out, 4096, 4);
+	cm_le(out, mfstart, 4);
+	cm_le(out, mfs, 4);
+	cm_le(out, difstart, 4);
+	cm_le(out, nd, 4);
+	let hn = min(hdr, n);
+	for i in 109 { cm_le(out, if i < hn { other + nd + i } else { CM_NO }, 4); }
+	while out.len < ssz { out.push(0); }
+	for i in ne {
+		let e = cm_ents[i];
+		if e.kind == 2 && e.dlen >= 4096 {
+			out.append(cm_pool[e.dat..e.dat + e.dlen]);
+			while out.len % ssz != 0 { out.push(0); }
+		}
+	}
+	for i in ne {
+		let e = cm_ents[i];
+		if e.kind == 2 && e.dlen > 0 && e.dlen < 4096 {
+			out.append(cm_pool[e.dat..e.dat + e.dlen]);
+			for k in (e.dlen + 63) / 64 * 64 - e.dlen { out.push(0); }
+		}
+	}
+	while out.len % ssz != 0 { out.push(0); }
+	for v in mf { cm_le(out, v, 4); }
+	for i in ne {
+		let e = cm_ents[i];
+		for k in e.nlen {
+			out.push(cm_pool[e.nat + k]);
+			out.push(0);
+		}
+		for k in 64 - 2 * e.nlen { out.push(0); }
+		cm_le(out, (e.nlen + 1) * 2, 2);
+		out.push(e.kind as byte);
+		out.push(1);
+		cm_le(out, e.left, 4);
+		cm_le(out, e.right, 4);
+		cm_le(out, e.child, 4);
+		cm_le(out, 0, 36);
+		let st = if e.kind == 1 { 0 } else { e.start };
+		cm_le(out, st, 4);
+		let sz = if e.kind == 5 { nmini * 64 } else if e.kind == 2 { e.dlen } else { 0 };
+		cm_le(out, sz, 4);
+		cm_le(out, 0, 4);
+	}
+	for i in ds * ssz / 128 - ne {
+		cm_le(out, 0, 68);
+		cm_le(out, CM_NO, 4);
+		cm_le(out, CM_NO, 4);
+		cm_le(out, CM_NO, 4);
+		cm_le(out, 0, 48);
+	}
+	for d in nd {
+		for k in epf - 1 {
+			let idx = hdr + d * (epf - 1) + k;
+			cm_le(out, if idx < n { other + nd + idx } else { CM_NO }, 4);
+		}
+		cm_le(out, if d == nd - 1 { CM_END } else { other + d + 1 }, 4);
+	}
+	for v in fat { cm_le(out, v, 4); }
+}

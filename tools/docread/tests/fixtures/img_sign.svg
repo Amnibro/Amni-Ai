@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
+<title>Trail sign</title>
+<desc>A wooden sign pointing to the lake and the old mill.</desc>
+<rect width="320" height="200" fill="#e8dcc0"/>
+<text x="20" y="60" font-size="28">Lake Road &amp; Mill</text>
+<text x="20" y="110"><tspan>North Pier</tspan><tspan x="20" dy="28">2 km &#8594;</tspan></text>
+<g><title>Hover note</title><circle cx="260" cy="140" r="30"/></g>
+</svg>

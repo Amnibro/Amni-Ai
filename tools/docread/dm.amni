@@ -1,0 +1,904 @@
+import os;
+import math;
+namespace dm;
+let DM_HEAD = 1;
+let DM_PARA = 2;
+let DM_ITEM = 3;
+let DM_ROW = 4;
+let DM_PAGE = 5;
+let DM_NOTE = 6;
+let DM_FIELD = 7;
+let DM_CODE = 8;
+struct DmBlock { kind int, level int, loc int, at int, len int }
+struct DmChunk { at int, len int, hat int, hlen int, loc0 int, loc1 int, ntok int }
+var dm_pool byte[>..];
+var dm_blocks DmBlock[>..];
+var dm_loc = 0;
+var dm_table = 0;
+var dm_meta byte[>..];
+var dm_warn byte[>..];
+var dm_kind byte[>..];
+var dm_unit byte[>..];
+var dm_locs = 0;
+var dm_ctext byte[>..];
+var dm_chunks DmChunk[>..];
+var dm_tmp byte[>..];
+var dm_shift = 0;
+fn dm_reset(kind const byte[:], unit const byte[:]) {
+	dm_pool.clear();
+	dm_blocks.clear();
+	dm_loc = 0;
+	dm_table = 0;
+	dm_meta.clear();
+	dm_warn.clear();
+	dm_kind.clear();
+	dm_unit.clear();
+	dm_locs = 0;
+	dm_ctext.clear();
+	dm_chunks.clear();
+	dm_tmp.clear();
+	dm_shift = 0;
+	dm_kind.append(kind);
+	dm_unit.append(unit);
+}
+fn dm_space(c byte) bool {
+	c == 32 || c == 9 || c == 10 || c == 13 || c == 12 || c == 11
+}
+fn dm_put_cp(out byte[>..]&, cp int) {
+	if cp == 0 { return; }
+	var c = cp;
+	if c < 0 || c > 0x10FFFF || (c >= 0xD800 && c <= 0xDFFF) { c = 0xFFFD; }
+	if c < 0x80 {
+		out.push(c as byte);
+	} else if c < 0x800 {
+		out.push((0xC0 | (c >> 6)) as byte);
+		out.push((0x80 | (c & 63)) as byte);
+	} else if c < 0x10000 {
+		out.push((0xE0 | (c >> 12)) as byte);
+		out.push((0x80 | ((c >> 6) & 63)) as byte);
+		out.push((0x80 | (c & 63)) as byte);
+	} else {
+		out.push((0xF0 | (c >> 18)) as byte);
+		out.push((0x80 | ((c >> 12) & 63)) as byte);
+		out.push((0x80 | ((c >> 6) & 63)) as byte);
+		out.push((0x80 | (c & 63)) as byte);
+	}
+}
+let DM_W1252 int[32] = [0x20AC, 129, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 141, 0x017D, 143, 144, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 157, 0x017E, 0x0178];
+fn dm_cp1252(b int) int {
+	if b >= 128 && b < 160 { return DM_W1252[b - 128]; }
+	b
+}
+let DM_MACROMAN int[128] = [0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1, 0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8, 0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3, 0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC, 0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022, 0x00B6, 0x00DF, 0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8, 0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211, 0x220F, 0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8, 0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB, 0x00BB, 0x2026, 0x00A0, 0x00C0, 0x00C3, 0x00D5, 0x0152, 0x0153, 0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA, 0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01, 0xFB02, 0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1, 0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4, 0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC, 0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7];
+fn dm_macroman(b int) int {
+	if b >= 128 && b < 256 { return DM_MACROMAN[b - 128]; }
+	b
+}
+fn dm_utf8_ok(s const byte[:]) bool {
+	var i = 0;
+	let n = s.len;
+	while i < n {
+		let c = s[i] as int;
+		if c < 0x80 { i += 1; continue; }
+		var need = 0;
+		var lo = 0;
+		var cp = 0;
+		if c >= 0xC2 && c <= 0xDF {
+			need = 1; lo = 0x80; cp = c & 0x1F;
+		} else if c >= 0xE0 && c <= 0xEF {
+			need = 2; lo = 0x800; cp = c & 0x0F;
+		} else if c >= 0xF0 && c <= 0xF4 {
+			need = 3; lo = 0x10000; cp = c & 7;
+		} else {
+			return false;
+		}
+		if i + need >= n { return false; }
+		for j in 1..need + 1 {
+			let d = s[i + j] as int;
+			if (d & 0xC0) != 0x80 { return false; }
+			cp = (cp << 6) | (d & 63);
+		}
+		if cp < lo || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF) { return false; }
+		i += need + 1;
+	}
+	true
+}
+fn dm_utf8_next(s const byte[:], at int&) int {
+	if at >= s.len { return -1; }
+	let c = s[at] as int;
+	if c < 0x80 { at += 1; return c; }
+	var need = 0;
+	var lo = 0;
+	var cp = 0;
+	if c >= 0xC2 && c <= 0xDF {
+		need = 1; lo = 0x80; cp = c & 0x1F;
+	} else if c >= 0xE0 && c <= 0xEF {
+		need = 2; lo = 0x800; cp = c & 0x0F;
+	} else if c >= 0xF0 && c <= 0xF4 {
+		need = 3; lo = 0x10000; cp = c & 7;
+	}
+	if need > 0 && at + need < s.len {
+		var ok = true;
+		for j in 1..need + 1 {
+			let d = s[at + j] as int;
+			if (d & 0xC0) != 0x80 { ok = false; }
+			cp = (cp << 6) | (d & 63);
+		}
+		if ok && cp >= lo && cp <= 0x10FFFF && !(cp >= 0xD800 && cp <= 0xDFFF) {
+			at += need + 1;
+			return cp;
+		}
+	}
+	at += 1;
+	dm_cp1252(c)
+}
+fn dm_u16(s const byte[:], at int, big bool) int {
+	let a = s[at] as int;
+	let b = s[at + 1] as int;
+	if big { a * 256 + b } else { b * 256 + a }
+}
+fn dm_utf16(s const byte[:], big bool, out byte[>..]&) {
+	var i = 0;
+	let n = s.len;
+	while i + 1 < n {
+		let u = dm_u16(s, i, big);
+		i += 2;
+		if u >= 0xD800 && u <= 0xDBFF {
+			if i + 1 < n {
+				let v = dm_u16(s, i, big);
+				if v >= 0xDC00 && v <= 0xDFFF {
+					dm_put_cp(out, 0x10000 + ((u - 0xD800) << 10) + (v - 0xDC00));
+					i += 2;
+					continue;
+				}
+			}
+			dm_put_cp(out, 0xFFFD);
+		} else if u >= 0xDC00 && u <= 0xDFFF {
+			dm_put_cp(out, 0xFFFD);
+		} else {
+			dm_put_cp(out, u);
+		}
+	}
+}
+fn dm_to_utf8(s const byte[:], out byte[>..]&) {
+	let n = s.len;
+	if n >= 3 && s[0] == 239 && s[1] == 187 && s[2] == 191 {
+		out.append(s[3..n]);
+		return;
+	}
+	if n >= 2 && s[0] == 255 && s[1] == 254 {
+		dm_utf16(s[2..n], false, out);
+		return;
+	}
+	if n >= 2 && s[0] == 254 && s[1] == 255 {
+		dm_utf16(s[2..n], true, out);
+		return;
+	}
+	if n > 0 && n % 2 == 0 {
+		let m = min(n, 512);
+		var odd = 0;
+		var even = 0;
+		for i in m {
+			if s[i] == 0 {
+				if i % 2 == 1 { odd += 1; } else { even += 1; }
+			}
+		}
+		if odd * 4 >= m {
+			dm_utf16(s, false, out);
+			return;
+		}
+		if even * 4 >= m {
+			dm_utf16(s, true, out);
+			return;
+		}
+	}
+	if dm_utf8_ok(s) {
+		out.append(s);
+	} else {
+		for b in s { dm_put_cp(out, dm_cp1252(b as int)); }
+	}
+}
+let DM_ENT_A = "amp:38 lt:60 gt:62 quot:34 apos:39 nbsp:160 iexcl:161 cent:162 pound:163 curren:164 yen:165 brvbar:166 sect:167 uml:168 copy:169 ordf:170 laquo:171 not:172 shy:173 reg:174 macr:175 deg:176 plusmn:177 sup2:178 sup3:179 acute:180 micro:181 para:182 middot:183 cedil:184 sup1:185 ordm:186 raquo:187 frac14:188 frac12:189 frac34:190 iquest:191 Agrave:192 Aacute:193 Acirc:194 Atilde:195 Auml:196 Aring:197 AElig:198 Ccedil:199 Egrave:200 Eacute:201 Ecirc:202 Euml:203 Igrave:204 Iacute:205 Icirc:206 Iuml:207 ETH:208 Ntilde:209 Ograve:210 Oacute:211 Ocirc:212 Otilde:213 Ouml:214 times:215 Oslash:216 Ugrave:217 Uacute:218 Ucirc:219 Uuml:220 Yacute:221 THORN:222 szlig:223 agrave:224 aacute:225 acirc:226 atilde:227 auml:228 aring:229 aelig:230 ccedil:231 egrave:232 eacute:233 ecirc:234 euml:235 igrave:236 iacute:237 icirc:238 iuml:239 eth:240 ntilde:241 ograve:242 oacute:243 ocirc:244 otilde:245 ouml:246 divide:247 oslash:248 ugrave:249 uacute:250 ucirc:251 uuml:252 yacute:253 thorn:254 yuml:255 ";
+let DM_ENT_B = "OElig:338 oelig:339 Scaron:352 scaron:353 Yuml:376 fnof:402 circ:710 tilde:732 Alpha:913 Beta:914 Gamma:915 Delta:916 Epsilon:917 Zeta:918 Eta:919 Theta:920 Iota:921 Kappa:922 Lambda:923 Mu:924 Nu:925 Xi:926 Omicron:927 Pi:928 Rho:929 Sigma:931 Tau:932 Upsilon:933 Phi:934 Chi:935 Psi:936 Omega:937 alpha:945 beta:946 gamma:947 delta:948 epsilon:949 zeta:950 eta:951 theta:952 iota:953 kappa:954 lambda:955 mu:956 nu:957 xi:958 omicron:959 pi:960 rho:961 sigmaf:962 sigma:963 tau:964 upsilon:965 phi:966 chi:967 psi:968 omega:969 thetasym:977 upsih:978 piv:982 ";
+let DM_ENT_C = "ensp:8194 emsp:8195 emsp13:8196 emsp14:8197 numsp:8199 puncsp:8200 thinsp:8201 hairsp:8202 ZeroWidthSpace:8203 zwnj:8204 zwj:8205 lrm:8206 rlm:8207 hyphen:8208 ndash:8211 mdash:8212 dash:8212 lsquo:8216 rsquo:8217 sbquo:8218 ldquo:8220 rdquo:8221 bdquo:8222 dagger:8224 Dagger:8225 bull:8226 hellip:8230 permil:8240 prime:8242 Prime:8243 lsaquo:8249 rsaquo:8250 oline:8254 frasl:8260 MediumSpace:8287 NoBreak:8288 euro:8364 image:8465 weierp:8472 real:8476 trade:8482 alefsym:8501 larr:8592 uarr:8593 rarr:8594 darr:8595 harr:8596 crarr:8629 lArr:8656 uArr:8657 rArr:8658 dArr:8659 hArr:8660 forall:8704 part:8706 exist:8707 empty:8709 nabla:8711 isin:8712 notin:8713 ni:8715 prod:8719 sum:8721 minus:8722 lowast:8727 radic:8730 prop:8733 infin:8734 ang:8736 and:8743 or:8744 cap:8745 cup:8746 int:8747 there4:8756 sim:8764 cong:8773 asymp:8776 ne:8800 equiv:8801 le:8804 ge:8805 sub:8834 sup:8835 nsub:8836 sube:8838 supe:8839 oplus:8853 otimes:8855 perp:8869 sdot:8901 lceil:8968 rceil:8969 lfloor:8970 rfloor:8971 lang:9001 rang:9002 loz:9674 star:9733 spades:9824 clubs:9827 hearts:9829 diams:9830 check:10003 cross:10007 ";
+fn dm_ent_find(tab const byte[:], name const byte[:]) int {
+	var i = 0;
+	let n = tab.len;
+	while i < n {
+		var j = i;
+		while j < n && tab[j] != ':' { j += 1; }
+		var k = j + 1;
+		var v = 0;
+		while k < n && tab[k] != ' ' {
+			v = v * 10 + (tab[k] as int) - 48;
+			k += 1;
+		}
+		if tab[i..j] == name { return v; }
+		i = k + 1;
+	}
+	-1
+}
+fn dm_entity(name const byte[:]) int {
+	let a = dm_ent_find(DM_ENT_A, name);
+	if a >= 0 { return a; }
+	let b = dm_ent_find(DM_ENT_B, name);
+	if b >= 0 { return b; }
+	dm_ent_find(DM_ENT_C, name)
+}
+fn dm_hexval(c byte) int {
+	if c >= '0' && c <= '9' { return (c as int) - 48; }
+	if c >= 'a' && c <= 'f' { return (c as int) - 87; }
+	if c >= 'A' && c <= 'F' { return (c as int) - 55; }
+	-1
+}
+fn dm_alnum(c byte) bool {
+	(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+}
+fn dm_decode_entities(s const byte[:], out byte[>..]&) {
+	let n = s.len;
+	var i = 0;
+	while i < n {
+		let c = s[i];
+		if c != '&' {
+			out.push(c);
+			i += 1;
+			continue;
+		}
+		var j = i + 1;
+		if j < n && s[j] == '#' {
+			j += 1;
+			var base = 10;
+			if j < n && (s[j] == 'x' || s[j] == 'X') { base = 16; j += 1; }
+			var v = 0;
+			var cnt = 0;
+			while j < n {
+				let d = dm_hexval(s[j]);
+				if d < 0 || d >= base { break; }
+				v = v * base + d;
+				if v > 0x10FFFF { v = 0x110000; }
+				cnt += 1;
+				j += 1;
+			}
+			if cnt > 0 {
+				if j < n && s[j] == ';' { j += 1; }
+				if v == 160 { out.push(32); } else { dm_put_cp(out, v); }
+				i = j;
+				continue;
+			}
+		} else {
+			var e = j;
+			while e < n && e - j < 40 && dm_alnum(s[e]) { e += 1; }
+			if e > j {
+				let name = s[j..e];
+				let cp = dm_entity(name);
+				if cp >= 0 {
+					var ok = false;
+					if e < n && s[e] == ';' {
+						ok = true;
+						e += 1;
+					} else if name == "amp" || name == "lt" || name == "gt" || name == "quot" || name == "nbsp" {
+						ok = true;
+					}
+					if ok {
+						if cp == 160 { out.push(32); } else { dm_put_cp(out, cp); }
+						i = e;
+						continue;
+					}
+				}
+			}
+		}
+		out.push('&');
+		i += 1;
+	}
+}
+fn dm_clean(s const byte[:], keep_lines bool, out byte[>..]&) {
+	var t byte[>..<] = [];
+	let n = s.len;
+	var i = 0;
+	while i < n {
+		var c = s[i] as int;
+		var step = 1;
+		if c == 194 && i + 1 < n && s[i + 1] == 160 {
+			c = 32; step = 2;
+		} else if c == 194 && i + 1 < n && s[i + 1] == 173 {
+			c = 0; step = 2;
+		} else if c == 226 && i + 2 < n && s[i + 1] == 128 && (s[i + 2] == 139 || s[i + 2] == 140 || s[i + 2] == 141) {
+			c = 0; step = 3;
+		} else if c == 239 && i + 2 < n && s[i + 1] == 187 && s[i + 2] == 191 {
+			c = 0; step = 3;
+		}
+		i += step;
+		if c == 13 { c = 10; }
+		if c == 10 && !keep_lines { c = 32; }
+		if c == 9 && !keep_lines { c = 32; }
+		if c == 11 || c == 12 { c = 32; }
+		if c == 0 || (c < 32 && c != 9 && c != 10) { continue; }
+		if c == 32 {
+			if t.len > 0 && t[t.len - 1] != 32 { t.push(32); }
+		} else if c == 10 {
+			while t.len > 0 && t[t.len - 1] == 32 { t.pop(); }
+			if t.len > 0 {
+				if !(t.len >= 2 && t[t.len - 1] == 10 && t[t.len - 2] == 10) { t.push(10); }
+			}
+		} else if c == 9 {
+			if t.len > 0 { t.push(9); }
+		} else {
+			t.push(c as byte);
+		}
+	}
+	while t.len > 0 && dm_space(t[t.len - 1]) { t.pop(); }
+	out.append(t);
+}
+fn dm_add(kind int, level int, text const byte[:]) {
+	dm_tmp.clear();
+	if kind == DM_CODE {
+		var t byte[>..] = [];
+		for ch in text {
+			var c = ch;
+			if c == 13 { c = 10; }
+			if c < 32 && c != 9 && c != 10 { continue; }
+			if c == 10 {
+				while t.len > 0 && (t[t.len - 1] == 32 || t[t.len - 1] == 9) { t.pop(); }
+			}
+			t.push(c);
+		}
+		var ls = 0;
+		var i = 0;
+		while i < t.len && (t[i] == 32 || t[i] == 9 || t[i] == 10) {
+			if t[i] == 10 { ls = i + 1; }
+			i += 1;
+		}
+		var e = t.len;
+		while e > ls && dm_space(t[e - 1]) { e -= 1; }
+		if e > ls { dm_tmp.append(t[ls..e]); }
+	} else if kind == DM_ROW {
+		var cell byte[>..] = [];
+		var st = 0;
+		for j in 0..text.len + 1 {
+			if j == text.len || text[j] == 9 {
+				cell.clear();
+				dm_clean(text[st..j], false, cell);
+				dm_tmp.append(cell);
+				if j < text.len { dm_tmp.push(9); }
+				st = j + 1;
+			}
+		}
+		while dm_tmp.len > 0 && dm_tmp[dm_tmp.len - 1] == 9 { dm_tmp.pop(); }
+	} else {
+		dm_clean(text, kind == DM_NOTE || kind == DM_FIELD, dm_tmp);
+	}
+	if dm_tmp.len == 0 { return; }
+	var lv = level;
+	if kind == DM_HEAD { lv = min(level + dm_shift, 6); }
+	if kind == DM_ROW && level == 0 { lv = dm_table; }
+	let at = dm_pool.len;
+	dm_pool.append(dm_tmp);
+	dm_blocks.push(DmBlock { kind: kind, level: lv, loc: dm_loc, at: at, len: dm_tmp.len });
+}
+fn dm_page(n int, label const byte[:]) {
+	dm_loc = n;
+	if n > dm_locs { dm_locs = n; }
+	var t byte[>..] = [];
+	if label.len > 0 {
+		t.append(label);
+	} else {
+		if dm_unit.len > 0 {
+			var f = dm_unit[0];
+			if f >= 'a' && f <= 'z' { f = f - 32; }
+			t.push(f);
+			t.append(dm_unit[1..dm_unit.len]);
+		}
+		t.push(' ');
+		format(t, n);
+	}
+	let at = dm_pool.len;
+	dm_pool.append(t);
+	dm_blocks.push(DmBlock { kind: DM_PAGE, level: 0, loc: dm_loc, at: at, len: t.len });
+}
+fn dm_new_table() { dm_table += 1; }
+fn dm_end_table() { dm_table = 0; }
+fn dm_meta_find(key const byte[:]) int, int {
+	var i = 0;
+	let n = dm_meta.len;
+	while i < n {
+		var e = i;
+		while e < n && dm_meta[e] != 10 { e += 1; }
+		var t = i;
+		while t < e && dm_meta[t] != 9 { t += 1; }
+		if t < e && dm_meta[i..t] == key { return t + 1, e; }
+		i = e + 1;
+	}
+	return -1, -1;
+}
+fn dm_set_meta(key const byte[:], value const byte[:]) {
+	var t byte[>..] = [];
+	dm_clean(value, false, t);
+	if t.len == 0 { return; }
+	let a, b = dm_meta_find(key);
+	if a >= 0 { return; }
+	dm_meta.append(key);
+	dm_meta.push(9);
+	dm_meta.append(t);
+	dm_meta.push(10);
+}
+fn dm_get_meta(key const byte[:], out byte[>..]&) bool {
+	out.clear();
+	let a, b = dm_meta_find(key);
+	if a < 0 { return false; }
+	out.append(dm_meta[a..b]);
+	true
+}
+fn dm_warn_add(msg const byte[:]) {
+	var i = 0;
+	var lines = 0;
+	let n = dm_warn.len;
+	while i < n {
+		var e = i;
+		while e < n && dm_warn[e] != 10 { e += 1; }
+		if dm_warn[i..e] == msg { return; }
+		lines += 1;
+		i = e + 1;
+	}
+	if lines >= 50 { return; }
+	dm_warn.append(msg);
+	dm_warn.push(10);
+}
+fn dm_text_of(b DmBlock) const byte[:] {
+	dm_pool[b.at..b.at + b.len]
+}
+fn dm_md_blank(out byte[>..]&) {
+	if out.len == 0 { return; }
+	if out[out.len - 1] != 10 { out.push(10); }
+	if out.len < 2 || out[out.len - 2] != 10 { out.push(10); }
+}
+fn dm_markdown(out byte[>..]&) {
+	var title byte[>..] = [];
+	if dm_get_meta("title", title) {
+		out.append("# ");
+		out.append(title);
+		out.push(10);
+		dm_md_blank(out);
+	}
+	let n = dm_blocks.len;
+	for i in n {
+		let b = dm_blocks[i];
+		let tx = dm_text_of(b);
+		let has_next = i + 1 < n;
+		if b.kind == DM_HEAD {
+			dm_md_blank(out);
+			for l in clamp(b.level, 1, 6) { out.push('#'); }
+			out.push(' ');
+			out.append(tx);
+			out.push(10);
+			dm_md_blank(out);
+		} else if b.kind == DM_PARA {
+			out.append(tx);
+			out.push(10);
+			dm_md_blank(out);
+		} else if b.kind == DM_ITEM {
+			for l in 1..b.level { out.append("  "); }
+			out.append("- ");
+			out.append(tx);
+			out.push(10);
+			if !(has_next && dm_blocks[i + 1].kind == DM_ITEM) { dm_md_blank(out); }
+		} else if b.kind == DM_ROW {
+			out.append("| ");
+			var cells = 1;
+			for c in tx {
+				if c == 9 {
+					out.append(" | ");
+					cells += 1;
+				} else if c == '|' {
+					out.push(92);
+					out.push('|');
+				} else {
+					out.push(c);
+				}
+			}
+			out.append(" |");
+			out.push(10);
+			let prev_row = i > 0 && dm_blocks[i - 1].kind == DM_ROW && dm_blocks[i - 1].level == b.level;
+			if !prev_row {
+				out.push('|');
+				for c in cells { out.append("---|"); }
+				out.push(10);
+			}
+			let next_row = has_next && dm_blocks[i + 1].kind == DM_ROW && dm_blocks[i + 1].level == b.level;
+			if !next_row { dm_md_blank(out); }
+		} else if b.kind == DM_PAGE {
+			dm_md_blank(out);
+			out.append("--- ");
+			out.append(tx);
+			out.append(" ---");
+			out.push(10);
+			dm_md_blank(out);
+		} else if b.kind == DM_NOTE {
+			var st = 0;
+			for j in 0..tx.len + 1 {
+				if j == tx.len || tx[j] == 10 {
+					out.append("> ");
+					out.append(tx[st..j]);
+					out.push(10);
+					st = j + 1;
+				}
+			}
+			dm_md_blank(out);
+		} else if b.kind == DM_FIELD {
+			out.append(tx);
+			out.push(10);
+			if !(has_next && dm_blocks[i + 1].kind == DM_FIELD) { dm_md_blank(out); }
+		} else if b.kind == DM_CODE {
+			out.append("```\n");
+			out.append(tx);
+			out.append("\n```\n");
+			dm_md_blank(out);
+		}
+	}
+}
+fn dm_hexch(v int) byte {
+	if v < 10 { (48 + v) as byte } else { (87 + v) as byte }
+}
+fn dm_json_str(out byte[>..]&, s const byte[:]) {
+	out.push(34);
+	for c in s {
+		if c == 34 || c == 92 {
+			out.push(92);
+			out.push(c);
+		} else if c == 10 {
+			out.push(92);
+			out.push('n');
+		} else if c == 9 {
+			out.push(92);
+			out.push('t');
+		} else if c == 13 {
+			out.push(92);
+			out.push('r');
+		} else if c < 32 {
+			out.push(92);
+			out.push('u');
+			out.push('0');
+			out.push('0');
+			out.push(dm_hexch((c as int) >> 4));
+			out.push(dm_hexch((c as int) & 15));
+		} else {
+			out.push(c);
+		}
+	}
+	out.push(34);
+}
+fn dm_tname(k int) const byte[:] {
+	match k {
+		1 => "h",
+		2 => "p",
+		3 => "li",
+		4 => "tr",
+		5 => "pg",
+		6 => "note",
+		7 => "field",
+		8 => "code",
+		_ => "p",
+	}
+}
+fn dm_json(out byte[>..]&) {
+	out.append("{\"kind\":");
+	dm_json_str(out, dm_kind);
+	out.append(",\"unit\":");
+	dm_json_str(out, dm_unit);
+	format(out, ",\"count\":", dm_locs);
+	out.append(",\"meta\":{");
+	var first = true;
+	var i = 0;
+	let n = dm_meta.len;
+	while i < n {
+		var e = i;
+		while e < n && dm_meta[e] != 10 { e += 1; }
+		var t = i;
+		while t < e && dm_meta[t] != 9 { t += 1; }
+		if !first { out.push(','); }
+		first = false;
+		dm_json_str(out, dm_meta[i..t]);
+		out.push(':');
+		if t < e { dm_json_str(out, dm_meta[t + 1..e]); } else { dm_json_str(out, ""); }
+		i = e + 1;
+	}
+	out.append("},\"warnings\":[");
+	first = true;
+	i = 0;
+	let wn = dm_warn.len;
+	while i < wn {
+		var e = i;
+		while e < wn && dm_warn[e] != 10 { e += 1; }
+		if !first { out.push(','); }
+		first = false;
+		dm_json_str(out, dm_warn[i..e]);
+		i = e + 1;
+	}
+	out.append("],\"blocks\":[");
+	first = true;
+	for b in dm_blocks {
+		if !first { out.push(','); }
+		first = false;
+		out.append("{\"t\":");
+		dm_json_str(out, dm_tname(b.kind));
+		format(out, ",\"lv\":", b.level, ",\"loc\":", b.loc);
+		let tx = dm_text_of(b);
+		if b.kind == DM_ROW {
+			out.append(",\"cells\":[");
+			var fc = true;
+			var st = 0;
+			for j in 0..tx.len + 1 {
+				if j == tx.len || tx[j] == 9 {
+					if !fc { out.push(','); }
+					fc = false;
+					dm_json_str(out, tx[st..j]);
+					st = j + 1;
+				}
+			}
+			out.push(']');
+		} else {
+			out.append(",\"text\":");
+			dm_json_str(out, tx);
+		}
+		out.push('}');
+	}
+	out.append("]}");
+}
+var dm_cat int = -1;
+var dm_cl0 int = 0;
+var dm_cl1 int = 0;
+var dm_hat int[6];
+var dm_hlen int[6];
+var dm_toks int[>..];
+fn dm_path(out byte[>..]&) {
+	var first = true;
+	for l in 6 {
+		if dm_hlen[l] > 0 {
+			if !first { out.append(" > "); }
+			first = false;
+			out.append(dm_pool[dm_hat[l]..dm_hat[l] + dm_hlen[l]]);
+		}
+	}
+}
+fn dm_ch_flush() {
+	if dm_cat < 0 { return; }
+	let cat = dm_cat;
+	dm_cat = -1;
+	var tl = dm_ctext.len - cat;
+	while tl > 0 && dm_space(dm_ctext[cat + tl - 1]) { tl -= 1; }
+	dm_ctext.pop_n(dm_ctext.len - cat - tl);
+	if tl == 0 { return; }
+	dm_tokens(dm_ctext[cat..cat + tl], dm_toks);
+	let ntok = dm_toks.len;
+	let hat = dm_ctext.len;
+	dm_path(dm_ctext);
+	dm_chunks.push(DmChunk { at: cat, len: tl, hat: hat, hlen: dm_ctext.len - hat, loc0: dm_cl0, loc1: dm_cl1, ntok: ntok });
+}
+fn dm_ch_open(loc int) {
+	if dm_cat < 0 {
+		dm_cat = dm_ctext.len;
+		dm_cl0 = loc;
+	}
+	dm_cl1 = loc;
+}
+fn dm_ch_add(p const byte[:], loc int, mx int) {
+	if dm_cat >= 0 && dm_ctext.len - dm_cat + p.len > mx { dm_ch_flush(); }
+	dm_ch_open(loc);
+	dm_ctext.append(p);
+	dm_ctext.push(10);
+}
+fn dm_ch_split(p const byte[:], loc int, mx int) {
+	dm_ch_flush();
+	let n = p.len;
+	var pos = 0;
+	while pos < n {
+		var cut = n;
+		if n - pos > mx {
+			cut = -1;
+			for i in pos..pos + mx {
+				if p[i] == '.' && i + 2 < n && p[i + 1] == ' ' && ((p[i + 2] >= 'A' && p[i + 2] <= 'Z') || (p[i + 2] >= '0' && p[i + 2] <= '9')) {
+					cut = i + 1;
+				}
+			}
+			if cut < 0 {
+				for i in pos + 1..pos + mx + 1 {
+					if p[i] == ' ' { cut = i; }
+				}
+			}
+			if cut < 0 { cut = pos + mx; }
+		}
+		dm_ch_open(loc);
+		dm_ctext.append(p[pos..cut]);
+		dm_ctext.push(10);
+		dm_ch_flush();
+		pos = cut;
+		while pos < n && p[pos] == ' ' { pos += 1; }
+	}
+}
+fn dm_chunk(max int) {
+	dm_ctext.clear();
+	dm_chunks.clear();
+	dm_cat = -1;
+	for l in 6 {
+		dm_hat[l] = 0;
+		dm_hlen[l] = 0;
+	}
+	let mx = if max < 1 { 1 } else { max };
+	var pc byte[>..] = [];
+	for b in dm_blocks {
+		if b.kind == DM_PAGE { continue; }
+		let tx = dm_text_of(b);
+		if b.kind == DM_HEAD {
+			dm_ch_flush();
+			let lv = clamp(b.level, 1, 6);
+			dm_hat[lv - 1] = b.at;
+			dm_hlen[lv - 1] = b.len;
+			for l in lv..6 { dm_hlen[l] = 0; }
+		}
+		pc.clear();
+		if b.kind == DM_ROW {
+			for c in tx {
+				if c == 9 { pc.append(" | "); } else { pc.push(c); }
+			}
+		} else {
+			pc.append(tx);
+		}
+		if pc.len > mx { dm_ch_split(pc, b.loc, mx); } else { dm_ch_add(pc, b.loc, mx); }
+	}
+	dm_ch_flush();
+}
+fn dm_lower(c byte) byte {
+	if c >= 'A' && c <= 'Z' { c + 32 } else { c }
+}
+fn dm_tok_byte(c byte) bool {
+	(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c >= 128
+}
+fn dm_stem(t byte[>..]&) {
+	if t.len <= 3 { return; }
+	if ends_with(t, "ies") {
+		t.pop_n(3);
+		t.push('y');
+	} else if ends_with(t, "sses") {
+		t.pop_n(2);
+	} else if t[t.len - 1] == 's' && !(ends_with(t, "ss") || ends_with(t, "us") || ends_with(t, "is")) {
+		t.pop_n(1);
+	}
+	if ends_with(t, "ing") && t.len - 3 >= 3 {
+		t.pop_n(3);
+	} else if ends_with(t, "ed") && t.len - 2 >= 3 {
+		t.pop_n(2);
+	}
+	if t.len >= 1 && t[t.len - 1] == 'e' && t.len - 1 >= 4 {
+		t.pop_n(1);
+	}
+}
+let DM_STOP = " a an the and or but of to in on at by for with from as is are was were be been being it its this that these those there here what which who whom whose when where why how do does did has have had can could would should will shall may might must i me my we our you your he she they them their his her him not no so if then than too very about into over under up down out all any some each also just only tell show give please document file pdf page says say mention mentioned ";
+fn dm_stop(t const byte[:]) bool {
+	let n = DM_STOP.len;
+	var i = 0;
+	while i < n {
+		var e = i;
+		while e < n && DM_STOP[e] != ' ' { e += 1; }
+		if e > i && DM_STOP[i..e] == t { return true; }
+		i = e + 1;
+	}
+	false
+}
+fn dm_tokens(s const byte[:], out int[>..]&) {
+	out.clear();
+	var tok byte[>..] = [];
+	let n = s.len;
+	var i = 0;
+	while i < n {
+		if !dm_tok_byte(s[i]) {
+			i += 1;
+			continue;
+		}
+		var j = i;
+		tok.clear();
+		while j < n && dm_tok_byte(s[j]) {
+			tok.push(dm_lower(s[j]));
+			j += 1;
+		}
+		i = j;
+		if tok.len == 1 && tok[0] >= 'a' && tok[0] <= 'z' { continue; }
+		if dm_stop(tok) { continue; }
+		dm_stem(tok);
+		var h = 2166136261;
+		for b in tok {
+			h = h ^ (b as int);
+			h = (h * 16777619) & 0xFFFFFFFF;
+		}
+		out.push(h);
+	}
+}
+fn dm_ask(q const byte[:], k int, out byte[>..]&) {
+	if k <= 0 || dm_chunks.len == 0 { return; }
+	var tmp int[>..] = [];
+	var qd int[>..] = [];
+	dm_tokens(q, tmp);
+	for h in tmp {
+		if !contains(qd, h) { qd.push(h); }
+	}
+	let nq = qd.len;
+	if nq == 0 { return; }
+	let N = dm_chunks.len;
+	var flat int[>..] = [];
+	var off int[>..] = [];
+	var tfs int[>..] = [];
+	var dfs int[>..] = [];
+	for j in nq { dfs.push(0); }
+	for ch in dm_chunks {
+		off.push(flat.len);
+		dm_tokens(dm_ctext[ch.at..ch.at + ch.len], tmp);
+		flat.append(tmp);
+		let base = tfs.len;
+		for j in nq { tfs.push(0); }
+		for t in tmp {
+			for j in nq {
+				if t == qd[j] { tfs[base + j] += 1; }
+			}
+		}
+		dm_tokens(dm_ctext[ch.hat..ch.hat + ch.hlen], tmp);
+		for t in tmp {
+			for j in nq {
+				if t == qd[j] { tfs[base + j] += 2; }
+			}
+		}
+		for j in nq {
+			if tfs[base + j] > 0 { dfs[j] += 1; }
+		}
+	}
+	off.push(flat.len);
+	let nr real = N;
+	var idf real[>..] = [];
+	for j in nq {
+		let d real = dfs[j];
+		idf.push(log(1.0 + (nr - d + 0.5) / (d + 0.5)));
+	}
+	var total = 0;
+	for ch in dm_chunks { total += ch.ntok; }
+	let tr real = total;
+	let avg = if total > 0 { tr / nr } else { 1.0 };
+	var scores real[>..] = [];
+	var order int[>..] = [];
+	for ci in N {
+		let ch = dm_chunks[ci];
+		let dl real = ch.ntok;
+		var sc = 0.0;
+		for j in nq {
+			let tf real = tfs[ci * nq + j];
+			if tf > 0.0 {
+				sc += idf[j] * tf * 2.2 / (tf + 1.2 * (0.25 + 0.75 * dl / avg));
+			}
+		}
+		for j in nq - 1 {
+			var found = false;
+			var p = off[ci];
+			let e = off[ci + 1];
+			while p + 1 < e && !found {
+				if flat[p] == qd[j] && flat[p + 1] == qd[j + 1] { found = true; }
+				p += 1;
+			}
+			if found { sc += 0.5 * idf[j + 1]; }
+		}
+		scores.push(sc);
+		if sc > 0.0 { order.push(ci); }
+	}
+	sort(order) { a, b => scores[a] > scores[b] || (scores[a] == scores[b] && a < b) };
+	let cnt = min(k, order.len);
+	for i in cnt {
+		let ci = order[i];
+		let ch = dm_chunks[ci];
+		out.append("{\"score\":");
+		format_flt(out, scores[ci], 3);
+		format(out, ",\"loc0\":", ch.loc0, ",\"loc1\":", ch.loc1);
+		out.append(",\"unit\":");
+		dm_json_str(out, dm_unit);
+		out.append(",\"head\":");
+		dm_json_str(out, dm_ctext[ch.hat..ch.hat + ch.hlen]);
+		out.append(",\"text\":");
+		dm_json_str(out, dm_ctext[ch.at..ch.at + ch.len]);
+		out.push('}');
+		out.push(10);
+	}
+}

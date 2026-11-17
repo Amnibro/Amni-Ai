@@ -177,6 +177,13 @@ def _know(message:str,n:int,cap:int,history=None,w=None)->Tuple[list,str]:
         S=[z for z in re.split(r'(?<=[.!?])\s+',x) if z];seen.add(g);out.append(re.sub(r'\s*\x01\s*',' ',f'{t}: '+_trim(S,[sum(v for q,v in W.items() if q in set(R.toks(z)))/tot+K['scs']*cs(set(R.toks(z)))+(K['stf'] if _tfit(R,qt,z,qa) else 0)+(K['swa'] if wa and wa<=set(R.toks(z)) else 0)-('\x01' in z) for z in S],cap-len(t)-2)).strip())
         if len(out)>=(1 if w else n)+bool(w):break
     return out,rq
+def docs(message:str,session=None,n:int=2)->list:
+    if os.environ.get('AMNI_ADAM_T_DOCS','1')!='1':return []
+    try:
+        dr=__import__('amni.serve.docread',fromlist=['ask']);sid=session or __import__('amni.serve.user_memory',fromlist=['_CV'])._CV.get()[1]
+        return dr.passages(sid,message,n) if sid else []
+    except Exception:return []
+def doclines(H:list,cap:int)->list:return [clip(asc(', '.join(x for x in (h.get('file'),__import__('amni.serve.docread',fromlist=['_loc'])._loc(h),h.get('head')) if x)+': '+str(h.get('text') or '')),cap) for h in H]
 def context(message:str,history=None,user=None,session=None,budget:int=0)->dict:
     t0=time.perf_counter();c={'reply':None,'hist':list(history or []),'pre':[],'rc':[],'n':{}}
     if os.environ.get('AMNI_ADAM_T_CONTEXT','1')!='1':return {**c,'ms':0.0}
@@ -188,7 +195,8 @@ def context(message:str,history=None,user=None,session=None,budget:int=0)->dict:
     try:ma=(lambda r,n:clip('Calculator: '+r,n) if r and n>=32 else '')(_math(message),min(ab,B()-1)) if ab>0 and not c['reply'] and not tl else '';c['rc']=[ma] if ma else []
     except Exception as e:c['n']['math_err']=type(e).__name__
     kq=min(kb,B()-np_)
-    try:K,c['rq']=_know(message,np_,min(pb,kq//max(1,np_)),history) if kq>=64 and np_>0 and not (c['reply'] or c['rc'] or tl) else ([],'');K=_fit(K[::-1],0,kq)[0][::-1] if not m['route'] or c['rq'] not in ('',message) else []
+    D=doclines(docs(message,session,max(1,np_)),min(pb,kq//max(1,np_))) if kq>=64 and not c['reply'] else [];c['n']['doc']=len(D)
+    try:K,c['rq']=(D,'') if D else _know(message,np_,min(pb,kq//max(1,np_)),history) if kq>=64 and np_>0 and not (c['reply'] or c['rc'] or tl) else ([],'');K=_fit(K[::-1],0,kq)[0][::-1] if not m['route'] or c['rq'] not in ('',message) else []
     except Exception as e:c['n']['know_err']=type(e).__name__
     c['rc']+=K+tl;q=min(mb,B());c['pre']=_fit(m['pre'],0,q)[0] if m['route'] and q>0 and not (tl and os.environ.get('AMNI_UMEM_TOROID_PRE','0')!='1') else []
     c['n'].update(mem=len(c['pre']),know=len(K),math=int(len(c['rc'])>len(K)+len(tl)),tor=len(tl));c['ms']=(time.perf_counter()-t0)*1000;return c

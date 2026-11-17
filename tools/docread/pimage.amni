@@ -1,0 +1,494 @@
+import os;
+import dm;
+import pdf;
+namespace pimage;
+let PI_JPG = 1;
+let PI_JP2 = 2;
+let PI_PGM = 3;
+let PI_PPM = 4;
+let PI_PBM = 5;
+let PI_MIN = 32;
+let PI_DEPTH = 12;
+let PI_MAXPX = 100000000;
+var pi_ipage int[>..];
+var pi_ipool byte[>..];
+var pi_iat int[>..];
+var pi_ilen int[>..];
+var pi_iw int[>..];
+var pi_ih int[>..];
+var pi_ik int[>..];
+var pi_skip = 0;
+var pi_seen int[>..];
+var pi_dir byte[>..];
+var pi_buf byte[>..];
+var pi_s byte[>..];
+var pi_out byte[>..];
+var pi_pal byte[>..];
+var pi_idx = false;
+var pi_base = 0;
+var pi_hival = 0;
+var pi_tmp byte[>..];
+fn pi_reset() {
+	pi_ipage.clear();
+	pi_ipool.clear();
+	pi_iat.clear();
+	pi_ilen.clear();
+	pi_iw.clear();
+	pi_ih.clear();
+	pi_ik.clear();
+	pi_skip = 0;
+	pi_seen.clear();
+	pi_dir.clear();
+	pi_buf.clear();
+	pi_s.clear();
+	pi_out.clear();
+	pi_pal.clear();
+	pi_idx = false;
+	pi_base = 0;
+	pi_hival = 0;
+	pi_tmp.clear();
+}
+fn pi_count() int { pi_ipage.len }
+fn pi_page(i int) int {
+	if i < 0 || i >= pi_ipage.len { return 0; }
+	pi_ipage[i]
+}
+fn pi_path(i int) const byte[:] {
+	if i < 0 || i >= pi_ipage.len { return ""; }
+	let a = pi_iat[i];
+	let n = pi_ilen[i];
+	pi_ipool[a..a + n]
+}
+fn pi_width(i int) int {
+	if i < 0 || i >= pi_ipage.len { return 0; }
+	pi_iw[i]
+}
+fn pi_height(i int) int {
+	if i < 0 || i >= pi_ipage.len { return 0; }
+	pi_ih[i]
+}
+fn pi_kind(i int) int {
+	if i < 0 || i >= pi_ipage.len { return 0; }
+	pi_ik[i]
+}
+fn pi_kind_name(k int) const byte[:] {
+	match k {
+		1 => "jpg",
+		2 => "jp2",
+		3 => "pgm",
+		4 => "ppm",
+		5 => "pbm",
+		_ => "",
+	}
+}
+fn pi_skipped() int { pi_skip }
+fn pi_num(v int, digits int, out byte[>..]&) {
+	var x = v;
+	var d = 1;
+	while x >= 10 { x /= 10; d++; }
+	var k = digits - d;
+	while k > 0 { out.push('0'); k--; }
+	format(out, v);
+}
+fn pi_filter(v int) int {
+	var f = pdf::pf_dget(v, "Filter");
+	if f < 0 { return 1; }
+	if pdf::pf_kind(f) != pdf::PF_NAME {
+		let n = pdf::pf_len(f);
+		if n <= 0 { return 1; }
+		f = pdf::pf_at(f, n - 1);
+		if f < 0 { return 1; }
+	}
+	if pdf::pf_name_is(f, "DCTDecode") || pdf::pf_name_is(f, "DCT") { return 2; }
+	if pdf::pf_name_is(f, "JPXDecode") { return 3; }
+	if pdf::pf_name_is(f, "CCITTFaxDecode") || pdf::pf_name_is(f, "CCF") { return 4; }
+	if pdf::pf_name_is(f, "JBIG2Decode") { return 5; }
+	1
+}
+recursive fn pi_space(cs int, depth int) int {
+	pi_idx = false;
+	if cs < 0 || depth > 3 { return 0; }
+	let k = pdf::pf_kind(cs);
+	if k == pdf::PF_NAME {
+		if pdf::pf_name_is(cs, "DeviceGray") || pdf::pf_name_is(cs, "G") || pdf::pf_name_is(cs, "CalGray") { return 1; }
+		if pdf::pf_name_is(cs, "DeviceRGB") || pdf::pf_name_is(cs, "RGB") || pdf::pf_name_is(cs, "CalRGB") { return 3; }
+		if pdf::pf_name_is(cs, "DeviceCMYK") || pdf::pf_name_is(cs, "CMYK") { return 4; }
+		return 0;
+	}
+	if k == pdf::PF_STREAM || k == pdf::PF_DICT || pdf::pf_len(cs) < 1 { return 0; }
+	let f = pdf::pf_at(cs, 0);
+	if f < 0 || pdf::pf_kind(f) != pdf::PF_NAME { return 0; }
+	if pdf::pf_name_is(f, "CalGray") { return 1; }
+	if pdf::pf_name_is(f, "CalRGB") { return 3; }
+	if pdf::pf_name_is(f, "ICCBased") {
+		if pdf::pf_len(cs) < 2 { return 0; }
+		let s = pdf::pf_at(cs, 1);
+		if s < 0 { return 0; }
+		let nn = pdf::pf_dget(s, "N");
+		if nn < 0 { return 0; }
+		let n = pdf::pf_int(nn, 0);
+		if n == 1 || n == 3 || n == 4 { return n; }
+		return 0;
+	}
+	if pdf::pf_name_is(f, "Indexed") || pdf::pf_name_is(f, "I") {
+		if pdf::pf_len(cs) < 4 { return 0; }
+		let b = pi_space(pdf::pf_at(cs, 1), depth + 1);
+		if pi_idx { return 0; }
+		if b != 1 && b != 3 && b != 4 { return 0; }
+		let hv = clamp(pdf::pf_int(pdf::pf_at(cs, 2), 0), 0, 255);
+		pi_hival = hv;
+		pi_base = b;
+		pi_pal.clear();
+		let p = pdf::pf_at(cs, 3);
+		if p >= 0 {
+			let pk = pdf::pf_kind(p);
+			if pk == pdf::PF_STREAM {
+				pdf::pf_decode(p, pi_pal);
+			} else if pk != pdf::PF_NAME && pk != pdf::PF_DICT {
+				pi_pal.append(pdf::pf_bytes(p));
+			}
+		}
+		pi_idx = true;
+		return 1;
+	}
+	0
+}
+fn pi_hdr(magic const byte[:], w int, h int, maxval int, out byte[>..]&) {
+	out.clear();
+	out.append(magic);
+	out.push(10);
+	format(out, w, " ", h);
+	out.push(10);
+	if maxval > 0 {
+		format(out, maxval);
+		out.push(10);
+	}
+}
+fn pi_cmyk(c int, m int, y int, k int) {
+	pi_out.push(((255 - c) * (255 - k) / 255) as byte);
+	pi_out.push(((255 - m) * (255 - k) / 255) as byte);
+	pi_out.push(((255 - y) * (255 - k) / 255) as byte);
+}
+fn pi_raw(v int, w int, h int) int {
+	let bn = pdf::pf_dget(v, "BitsPerComponent");
+	var bpc = 8;
+	if bn >= 0 { bpc = pdf::pf_int(bn, 8); }
+	if bpc != 1 && bpc != 2 && bpc != 4 && bpc != 8 && bpc != 16 { return 0; }
+	let n = pi_space(pdf::pf_dget(v, "ColorSpace"), 0);
+	if n == 0 { return 0; }
+	let rowb = (w * n * bpc + 7) / 8;
+	let need = rowb * h;
+	if pi_buf.len < need / 4 { return 0; }
+	if pi_buf.len < need { pi_buf.resize(need, 0); }
+	let dec = pdf::pf_dget(v, "Decode");
+	var has = false;
+	if !pi_idx && dec >= 0 {
+		let dk = pdf::pf_kind(dec);
+		if dk != pdf::PF_NAME && dk != pdf::PF_DICT && dk != pdf::PF_STREAM && dk != pdf::PF_BOOL && pdf::pf_len(dec) >= 2 * n { has = true; }
+	}
+	var d real[8] = [0.0; 8];
+	var inverted = false;
+	var ident = true;
+	if has {
+		for i in 2 * n { d[i] = pdf::pf_real(pdf::pf_at(dec, i), 0.0); }
+		inverted = d[0] > d[1];
+		for c in n { if d[2 * c] != 0.0 || d[2 * c + 1] != 1.0 { ident = false; } }
+	}
+	if n == 1 && bpc == 1 && !pi_idx {
+		pi_hdr("P4", w, h, 0, pi_out);
+		for i in need {
+			if inverted { pi_out.push(pi_buf[i]); } else { pi_out.push(255 - pi_buf[i]); }
+		}
+		return PI_PBM;
+	}
+	if bpc == 8 && (n == 1 || n == 3) && !pi_idx && !has {
+		if n == 1 { pi_hdr("P5", w, h, 255, pi_out); } else { pi_hdr("P6", w, h, 255, pi_out); }
+		pi_out.append(pi_buf[..w * n * h]);
+		if n == 1 { return PI_PGM; }
+		return PI_PPM;
+	}
+	pi_s.clear();
+	let mask = (1 << bpc) - 1;
+	for y in h {
+		for j in w * n {
+			var val int = 0;
+			if bpc == 8 {
+				val = pi_buf[y * rowb + j];
+			} else if bpc == 16 {
+				val = pi_buf[y * rowb + 2 * j];
+			} else {
+				let bit = j * bpc;
+				let bv int = pi_buf[y * rowb + bit / 8];
+				let sh = 8 - bpc - bit % 8;
+				val = (bv >> sh) & mask;
+				if !pi_idx { val = val * 255 / mask; }
+			}
+			pi_s.push(val as byte);
+		}
+	}
+	if has && !ident {
+		for i in pi_s.len {
+			let c = i % n;
+			let d0 = d[2 * c];
+			let d1 = d[2 * c + 1];
+			let sv int = pi_s[i];
+			let x = 255.0 * (d0 + (d1 - d0) * (sv as real) / 255.0);
+			pi_s[i] = clamp((x + 0.5) as int, 0, 255) as byte;
+		}
+	}
+	let px = w * h;
+	if pi_idx {
+		if pi_base == 1 { pi_hdr("P5", w, h, 255, pi_out); } else { pi_hdr("P6", w, h, 255, pi_out); }
+		var q int[4] = [0; 4];
+		for p in px {
+			let sv int = pi_s[p];
+			let ix = min(sv, pi_hival);
+			for t in pi_base {
+				let at = ix * pi_base + t;
+				var x int = 0;
+				if at < pi_pal.len { x = pi_pal[at]; }
+				q[t] = x;
+			}
+			if pi_base == 1 {
+				pi_out.push(q[0] as byte);
+			} else if pi_base == 3 {
+				pi_out.push(q[0] as byte);
+				pi_out.push(q[1] as byte);
+				pi_out.push(q[2] as byte);
+			} else {
+				pi_cmyk(q[0], q[1], q[2], q[3]);
+			}
+		}
+		if pi_base == 1 { return PI_PGM; }
+		return PI_PPM;
+	}
+	if n == 1 {
+		pi_hdr("P5", w, h, 255, pi_out);
+		pi_out.append(pi_s);
+		return PI_PGM;
+	}
+	pi_hdr("P6", w, h, 255, pi_out);
+	if n == 3 {
+		pi_out.append(pi_s);
+		return PI_PPM;
+	}
+	for p in px {
+		let c int = pi_s[4 * p];
+		let m int = pi_s[4 * p + 1];
+		let y int = pi_s[4 * p + 2];
+		let k int = pi_s[4 * p + 3];
+		pi_cmyk(c, m, y, k);
+	}
+	PI_PPM
+}
+fn pi_save(page int, w int, h int, kind int, data const byte[:]) bool {
+	pi_tmp.clear();
+	pi_tmp.append(pi_dir);
+	pi_tmp.append("img-");
+	pi_num(pi_count(), 3, pi_tmp);
+	pi_tmp.push('.');
+	pi_tmp.append(pi_kind_name(kind));
+	if !write_file(pi_tmp, data) { return false; }
+	pi_iat.push(pi_ipool.len);
+	pi_ilen.push(pi_tmp.len);
+	pi_ipool.append(pi_tmp);
+	pi_ipage.push(page);
+	pi_iw.push(w);
+	pi_ih.push(h);
+	pi_ik.push(kind);
+	true
+}
+fn pi_image(v int, page int) {
+	let w = pdf::pf_int(pdf::pf_dget(v, "Width"), 0);
+	let h = pdf::pf_int(pdf::pf_dget(v, "Height"), 0);
+	let m = pdf::pf_dget(v, "ImageMask");
+	if m >= 0 && pdf::pf_kind(m) == pdf::PF_BOOL && pdf::pf_nodes[m].a == 1 { return; }
+	if w < PI_MIN || h < PI_MIN { return; }
+	if w * h > PI_MAXPX { pi_skip += 1; return; }
+	let f = pi_filter(v);
+	if f == 4 || f == 5 { pi_skip += 1; return; }
+	if f == 2 {
+		pdf::pf_decode(v, pi_buf);
+		if pi_buf.len >= 2 && pi_buf[0] == 255 && pi_buf[1] == 216 {
+			if !pi_save(page, w, h, PI_JPG, pi_buf) { pi_skip += 1; }
+		} else {
+			pi_skip += 1;
+		}
+		return;
+	}
+	if f == 3 {
+		pdf::pf_decode(v, pi_buf);
+		let a = pi_buf.len >= 4 && pi_buf[0] == 0 && pi_buf[1] == 0 && pi_buf[2] == 0 && pi_buf[3] == 12;
+		let b = pi_buf.len >= 2 && pi_buf[0] == 255 && pi_buf[1] == 79;
+		if a || b {
+			if !pi_save(page, w, h, PI_JP2, pi_buf) { pi_skip += 1; }
+		} else {
+			pi_skip += 1;
+		}
+		return;
+	}
+	if !pdf::pf_decode(v, pi_buf) { pi_skip += 1; return; }
+	let kind = pi_raw(v, w, h);
+	if kind == 0 { pi_skip += 1; return; }
+	if !pi_save(page, w, h, kind, pi_out) { pi_skip += 1; }
+}
+recursive fn pi_res(res int, page int, depth int) {
+	if res < 0 { return; }
+	let xo = pdf::pf_dget(res, "XObject");
+	if xo < 0 || pdf::pf_kind(xo) != pdf::PF_DICT { return; }
+	let first = pdf::pf_nodes[xo].a;
+	let cnt = min(pdf::pf_nodes[xo].b, 100000);
+	for i in cnt {
+		let val = pdf::pf_deref(pdf::pf_kids[first + 2 * i + 1]);
+		if val < 0 || pdf::pf_kind(val) != pdf::PF_STREAM { continue; }
+		let si = pdf::pf_nodes[val].b;
+		if pi_seen.contains(si) { continue; }
+		pi_seen.push(si);
+		let st = pdf::pf_dget(val, "Subtype");
+		if st < 0 { continue; }
+		if pdf::pf_name_is(st, "Image") {
+			pi_image(val, page);
+		} else if pdf::pf_name_is(st, "Form") && depth < PI_DEPTH {
+			var fr = pdf::pf_dget(val, "Resources");
+			if fr < 0 { fr = res; }
+			pi_res(fr, page, depth + 1);
+		}
+	}
+}
+recursive fn pi_do(name const byte[:], res int, page int, depth int) {
+	if res < 0 { return; }
+	let xo = pdf::pf_dget(res, "XObject");
+	if xo < 0 || pdf::pf_kind(xo) != pdf::PF_DICT { return; }
+	let val = pdf::pf_dget(xo, name);
+	if val < 0 || pdf::pf_kind(val) != pdf::PF_STREAM { return; }
+	let si = pdf::pf_nodes[val].b;
+	if pi_seen.contains(si) { return; }
+	pi_seen.push(si);
+	let st = pdf::pf_dget(val, "Subtype");
+	if st < 0 { return; }
+	if pdf::pf_name_is(st, "Image") {
+		pi_image(val, page);
+	} else if pdf::pf_name_is(st, "Form") && depth < PI_DEPTH {
+		var fr = pdf::pf_dget(val, "Resources");
+		if fr < 0 { fr = res; }
+		var body byte[>..] = [];
+		pdf::pf_decode(val, body);
+		pi_scan(body[0..body.len], fr, page, depth + 1);
+	}
+}
+fn pi_ws(b int) bool {
+	b == 0 || b == 9 || b == 10 || b == 12 || b == 13 || b == 32
+}
+fn pi_reg(b int) bool {
+	if pi_ws(b) { return false; }
+	!(b == '(' || b == ')' || b == '<' || b == '>' || b == '[' || b == ']' || b == '{' || b == '}' || b == '/' || b == '%')
+}
+recursive fn pi_scan(s const byte[:], res int, page int, depth int) {
+	let n = s.len;
+	var i = 0;
+	var ns = 0;
+	var nl = -1;
+	while i < n {
+		let c int = s[i];
+		if pi_ws(c) {
+			i++;
+			continue;
+		}
+		if c == '%' {
+			while i < n && s[i] != 10 && s[i] != 13 { i++; }
+			continue;
+		}
+		if c == '(' {
+			var d = 1;
+			i++;
+			while i < n && d > 0 {
+				let b int = s[i];
+				if b == '\\' {
+					i += 2;
+					continue;
+				}
+				if b == '(' { d++; } else if b == ')' { d--; }
+				i++;
+			}
+			nl = -1;
+			continue;
+		}
+		if c == '/' {
+			i++;
+			let st = i;
+			while i < n && pi_reg(s[i]) { i++; }
+			ns = st;
+			nl = i - st;
+			continue;
+		}
+		if !pi_reg(c) {
+			i++;
+			nl = -1;
+			continue;
+		}
+		let st = i;
+		while i < n && pi_reg(s[i]) { i++; }
+		let tl = i - st;
+		if tl == 2 && s[st] == 'D' && s[st + 1] == 'o' {
+			if nl >= 0 { pi_do(s[ns..ns + nl], res, page, depth); }
+		} else if tl == 2 && s[st] == 'B' && s[st + 1] == 'I' {
+			var j = i;
+			var found = false;
+			while j + 1 < n {
+				if s[j] == 'E' && s[j + 1] == 'I' && pi_ws(s[j - 1]) && (j + 2 >= n || pi_ws(s[j + 2])) {
+					i = j + 2;
+					found = true;
+					break;
+				}
+				j++;
+			}
+			if !found { i = n; }
+		}
+		nl = -1;
+	}
+}
+fn pi_pagerun(p int, num int) {
+	let node = pdf::pf_pages[p].node;
+	let c = pdf::pf_dget(node, "Contents");
+	var a byte[>..] = [];
+	if c >= 0 {
+		let k = pdf::pf_kind(c);
+		if k == pdf::PF_STREAM {
+			pdf::pf_decode(c, a);
+		} else if k == pdf::PF_ARR {
+			var b byte[>..] = [];
+			let cnt = min(pdf::pf_len(c), 10000);
+			for i in cnt {
+				let e = pdf::pf_at(c, i);
+				if e >= 0 && pdf::pf_kind(e) == pdf::PF_STREAM {
+					b.clear();
+					pdf::pf_decode(e, b);
+					a.append(b);
+					a.push(10);
+				}
+			}
+		}
+	}
+	let res = pdf::pf_pages[p].res;
+	if a.len == 0 {
+		pi_res(res, num, 0);
+	} else {
+		pi_scan(a[0..a.len], res, num, 0);
+	}
+}
+fn pi_extract(data const byte[:], dir const byte[:]) int {
+	pi_reset();
+	pi_dir.append(dir);
+	if dir.len > 0 && dir[dir.len - 1] != '/' { pi_dir.push('/'); }
+	if dir.len > 0 && !is_dir(dir) { make_dir(dir); }
+	if !pdf::pf_open(data) { return 0; }
+	for p in pdf::pf_pages.len {
+		pi_pagerun(p, p + 1);
+	}
+	if pi_skip > 0 {
+		var m byte[>..] = [];
+		format(m, pi_skip, " image(s) skipped (CCITTFax, JBIG2, undecodable or unsupported color space)");
+		dm::dm_warn_add(m);
+	}
+	pi_count()
+}

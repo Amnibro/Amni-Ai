@@ -1,0 +1,60 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Greenhollow Allotment//Fixture 1.0//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:Greenhollow Calendar
+BEGIN:VTIMEZONE
+TZID:Europe/Paris
+BEGIN:STANDARD
+DTSTART:19701025T030000
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:evt-001@greenhollow.example
+DTSTAMP:20260301T080000Z
+DTSTART;TZID=Europe/Paris:20260314T093000
+DTEND;TZID=Europe/Paris:20260314T113000
+SUMMARY:Spring planting day\, north terrace
+LOCATION:Plot 12\, Greenhollow Allotment
+ORGANIZER;CN="Jordan Lee":mailto:jordan@greenhollow.example
+ATTENDEE;CN=Sam Rivera;ROLE=REQ-PARTICIPANT:mailto:sam@greenhollow.example
+ATTENDEE;ROLE=OPT-PARTICIPANT:mailto:casey@greenhollow.example
+STATUS:CONFIRMED
+DESCRIPTION:Bring gloves and a trowel.\nWe will sow beans\, peas\; then tul
+ ips along the east fence.\nTea afterwards in the shed.
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Reminder: planting day tomorrow
+TRIGGER:-P1D
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:evt-002@greenhollow.example
+DTSTART:20260502T180000Z
+DTEND:20260502T200000Z
+SUMMARY:Committee meeting
+STATUS:TENTATIVE
+END:VEVENT
+BEGIN:VEVENT
+UID:evt-003@greenhollow.example
+DTSTART;VALUE=DATE:20260720
+DTEND;VALUE=DATE:20260721
+SUMMARY:Open day
+DESCRIPTION:Gates open to the public all day.
+END:VEVENT
+BEGIN:VTODO
+UID:todo-001@greenhollow.example
+DTSTAMP:20260301T080000Z
+DUE:20260401T120000Z
+SUMMARY:Order seed potatoes
+STATUS:NEEDS-ACTION
+DESCRIPTION:Check the catalogue for first early varieties.
+END:VTODO
+BEGIN:VEVENT
+UID:evt-004@greenhollow.example
+DTSTART:20260710T100000
+SUMMARY:
+END:VEVENT
+END:VCALENDAR
