@@ -23,10 +23,10 @@ def binary()->Optional[str]:
 def _json(s:str)->Optional[Dict[str,Any]]:
     try:return json.loads(s)
     except Exception:return None
-def run(mode:str,files:List[Any],*extra:Any,timeout:float=0.0)->Dict[str,Any]:
+def run(mode:str,files:List[Any],*extra:Any,timeout:float=0.0,password:str='')->Dict[str,Any]:
     b=binary()
     if not b:return {'ok':False,'out':'','warnings':['docread binary not available: build tools/docread/docread.amni with hc']}
-    try:r=subprocess.run([b,mode,*map(str,extra),*map(str,files)],capture_output=True,timeout=timeout or float(os.environ.get('AMNI_DOCREAD_TIMEOUT','90')))
+    try:r=subprocess.run([b,mode,*map(str,extra),*map(str,files)],capture_output=True,timeout=timeout or float(os.environ.get('AMNI_DOCREAD_TIMEOUT','90')),env={**{k:v for k,v in os.environ.items() if k!='DOCREAD_PASSWORD'},**({'DOCREAD_PASSWORD':password} if password else {})})
     except subprocess.TimeoutExpired:return {'ok':False,'out':'','warnings':['docread timed out']}
     return {'ok':r.returncode==0,'out':r.stdout.decode('utf-8','replace'),'warnings':[l.removeprefix('docread: ') for l in r.stderr.decode('utf-8','replace').splitlines() if l.strip()]}
 def rows(out:str)->List[Dict[str,Any]]:return [j for j in map(_json,out.splitlines()) if isinstance(j,dict)]
@@ -40,8 +40,8 @@ def files(sid:str)->List[Path]:
 def derived(sid:str,fs:Optional[List[Path]]=None)->List[Path]:
     d=_ddir(sid);names={p.name for p in (fs if fs is not None else files(sid))}
     return [p for p in sorted(d.glob('*.md')) if p.name[:-3] in names] if sid and d.is_dir() else []
-def info(path:Any)->Dict[str,Any]:
-    r=run('info',[path]);j=next(iter(rows(r['out'])),{})
+def info(path:Any,password:str='')->Dict[str,Any]:
+    r=run('info',[path],password=password);j=next(iter(rows(r['out'])),{})
     return {**j,'ok':r['ok'],'warnings':j.get('warnings') or r['warnings']}
 def ocr_cmd()->Optional[str]:return os.environ.get('AMNI_OCR_CMD') or shutil.which('tesseract')
 def ocr_langs()->str:
@@ -85,27 +85,32 @@ def derive(sid:str,dst:Path,i:Dict[str,Any])->Dict[str,Any]:
     if i.get('ok') and i.get('format')=='pdf' and int(i.get('count') or 0)>0 and int(i.get('chars') or 0)<200*int(i.get('count') or 0) and ocr_cmd():
         threading.Thread(target=_scan,args=(sid,dst,int(i['count'])),name='docread-ocr',daemon=True).start();return {'ocr':'scanning pages without a text layer'}
     return {}
-def attach(sid:Optional[str],name:str,data:bytes)->Dict[str,Any]:
+def unlock(sid:str,dst:Path,password:str)->Dict[str,Any]:
+    m=run('md',[dst],password=password);t=m['out'].strip() if m['ok'] else ''
+    if not t:return {}
+    _write_derived(sid,dst,[f'# {dst.name} (opened with its password)\n\n{t}']);(_ddir(sid)/(dst.name+'.pw')).touch();return {'decrypted':True}
+def attach(sid:Optional[str],name:str,data:bytes,password:str='')->Dict[str,Any]:
     if len(data)>_cap():return {'error':f'file too large (limit {_cap()//1048576} MiB)'}
     sid=sid or uuid.uuid4().hex[:12];d=_sdir(sid);d.mkdir(parents=True,exist_ok=True);dst=d/_name(name);dst.write_bytes(data);i=info(dst)
-    x=derive(sid,dst,i) if i['ok'] or _img(dst) else {};keep=i['ok'] or bool(x.get('ocr_words') or x.get('caption'))
+    lock=any('password' in w.lower() for w in i['warnings'])
+    x=(unlock(sid,dst,password) if password else {}) if lock else derive(sid,dst,i) if i['ok'] or _img(dst) else {};keep=bool(x.get('decrypted')) if lock else i['ok'] or bool(x.get('ocr_words') or x.get('caption'))
     keep or dst.unlink(missing_ok=True)
-    return {'session_id':sid,'name':dst.name,'info':i,**x} if keep else {'session_id':sid,'name':dst.name,'error':'; '.join(i['warnings']) or 'unreadable document'}
-def attach_path(sid:Optional[str],path:str,allowed=None)->Dict[str,Any]:
+    return {'session_id':sid,'name':dst.name,'info':i,**x} if keep else {'session_id':sid,'name':dst.name,'error':('the password did not open this file' if password else 'this file is password-protected; attach it again with "password"') if lock else '; '.join(i['warnings']) or 'unreadable document'}
+def attach_path(sid:Optional[str],path:str,allowed=None,password:str='')->Dict[str,Any]:
     p=Path(os.path.expanduser(str(path or ''))).resolve()
-    return {'error':'path outside allowed roots'} if not (allowed and allowed(str(p))) else {'error':f'not found: {path}'} if not p.is_file() else {'error':'file too large'} if p.stat().st_size>_cap() else attach(sid,p.name,p.read_bytes())
+    return {'error':'path outside allowed roots'} if not (allowed and allowed(str(p))) else {'error':f'not found: {path}'} if not p.is_file() else {'error':'file too large'} if p.stat().st_size>_cap() else attach(sid,p.name,p.read_bytes(),password)
 def listing(sid:str)->List[Dict[str,Any]]:
     dn={p.name[:-3] for p in derived(sid)};return [{'name':p.name,'bytes':p.stat().st_size,'derived_text':p.name in dn} for p in files(sid)]
 def clear(sid:str,name:Optional[str]=None)->Dict[str,Any]:
     gone=[p for p in files(sid) if not name or p.name==_name(name)]
-    for p in gone:p.unlink(missing_ok=True);(_ddir(sid)/(p.name+'.md')).unlink(missing_ok=True)
+    for p in gone:p.unlink(missing_ok=True);(_ddir(sid)/(p.name+'.md')).unlink(missing_ok=True);(_ddir(sid)/(p.name+'.pw')).unlink(missing_ok=True)
     return {'removed':[p.name for p in gone]}
 def _file_of(h:Dict[str,Any],fs:List[Path])->str:
     top=str(h.get('head') or '').split(' > ')[0]
     return fs[0].name if len(fs)==1 else next((p.name for p in fs if p.name==top),'')
 def _src(h:Dict[str,Any],al:List[Path])->Dict[str,Any]:
-    f=_file_of(h,al);hs=str(h.get('head') or '').split(' > ');hd=' > '.join(hs[1:] if len(al)>1 and hs and hs[0]==f else hs)
-    return {**h,'file':f[:-3],'head':hd,'unit':'','loc0':0,'loc1':0,'via':'ocr'} if any(p.name==f and p.parent.name=='.derived' for p in al) else {**h,'file':f,'head':hd}
+    f=_file_of(h,al);hs=str(h.get('head') or '').split(' > ');hd=' > '.join(hs[1:] if len(al)>1 and hs and hs[0]==f else hs);dp=next((p for p in al if p.name==f and p.parent.name=='.derived'),None)
+    return {**h,'file':f[:-3],'head':hd,'unit':'','loc0':0,'loc1':0,'via':'password' if (dp.parent/(f[:-3]+'.pw')).exists() else 'ocr'} if dp else {**h,'file':f,'head':hd}
 def _all(sid:str,paths:Optional[List[Any]]=None)->List[Path]:
     fs=[Path(p) for p in paths] if paths else files(sid);return fs+([] if paths else derived(sid,fs))
 def ask(sid:str,q:str,k:int=4,paths:Optional[List[Any]]=None)->List[Dict[str,Any]]:
@@ -130,12 +135,13 @@ def mount(app,agent=None,skills=None):
     @app.post('/docs/attach')
     async def docs_attach(req:Request):
         b=await req.json();sid=b.get('session_id') or None;b64=b.get('data_base64') or ''
-        if b.get('path'):return attach_path(sid,b['path'],allowed)
+        pw=str(b.get('password') or '')
+        if b.get('path'):return attach_path(sid,b['path'],allowed,pw)
         if not b64:raise HTTPException(400,'need data_base64 or path')
         if len(b64)*3//4>_cap():raise HTTPException(413,'file too large')
         try:data=base64.b64decode(b64.split(',',1)[-1])
         except Exception as e:raise HTTPException(400,f'base64 decode: {e}')
-        return attach(sid,b.get('name') or 'document',data)
+        return attach(sid,b.get('name') or 'document',data,pw)
     @app.get('/docs/list')
     def docs_list(session_id:str=''):return {'session_id':session_id,'documents':listing(session_id)}
     @app.post('/docs/ask')

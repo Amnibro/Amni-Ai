@@ -228,6 +228,8 @@ Second box line
 == sample.xls
 # Garden Sales
 .
+--- Sales ---
+.
 ## Sales
 .
 | Item | Qty | Price | Date | Paid | Total |  | Note |
@@ -235,6 +237,8 @@ Second box line
 | Tulips | 10 | 2.5 | 2026-03-15 | TRUE | 25 |  | café € |
 | Soil | 4 | 12.75 | 2026-03-16 14:30:00 | FALSE | 51 |
 | Total | 14 |
+.
+--- Notes ---
 .
 ## Notes
 .
@@ -253,6 +257,8 @@ meta modified=2026-03-20T17:30:00Z
 == legacy.xls
 # Harbor Orders
 .
+--- Orders ---
+.
 ## Orders
 .
 | Item | Qty | Price | Ordered | Paid | Total |  | Note |
@@ -265,12 +271,16 @@ meta modified=2026-03-20T17:30:00Z
 | left |  | right |
 |  | after gap |
 .
+--- Notes & Terms ---
+.
 ## Notes & Terms
 .
 | Terms |
 |---|
 | Net thirty days. Orders ship after the committee signs off on the proposed budget and the harbor board has confirmed the schedule in writing, including the Friday parade route and the Saturday market layout near the lighthouse pier. |
 | Tab inside and second line |
+.
+--- Hid ---
 .
 ## Hid
 .
@@ -285,6 +295,8 @@ meta keywords=orders
 meta created=2026-04-02T14:15:00Z
 meta modified=2026-04-10T21:45:00Z
 == edge1900.xls
+--- Edge ---
+.
 ## Edge
 .
 | Hello | inline | TRUE | #DIV/0! | Hello! | café & co |
@@ -296,7 +308,11 @@ meta modified=2026-04-10T21:45:00Z
 | p | 7 |
 | FALSE | 5 |
 .
+--- Chart ---
+.
 ## Chart
+.
+--- Hid & Den ---
 .
 ## Hid & Den
 .
@@ -305,6 +321,8 @@ meta modified=2026-04-10T21:45:00Z
 .
 meta sheets=3
 == edge1904.xls
+--- D ---
+.
 ## D
 .
 | 1904-01-01 | 1904-01-02 | 2016-04-02 18:00:00 | -1 | 41000 |
@@ -392,6 +410,8 @@ meta author=Riley Park
 meta created=2026-04-02T14:15:00Z
 meta modified=2026-04-10T21:45:00Z
 == synth1900
+--- Data ---
+.
 ## Data
 .
 | plain | alpha beta gamma | café Привет | rich | ext | after |
@@ -405,6 +425,8 @@ meta modified=2026-04-10T21:45:00Z
 | eight |
 |  | z |
 .
+--- Hid & Den ---
+.
 ## Hid & Den
 .
 | plain |
@@ -412,6 +434,8 @@ meta modified=2026-04-10T21:45:00Z
 .
 meta sheets=2
 == synth1904
+--- Data ---
+.
 ## Data
 .
 | plain | alpha beta gamma | café Привет | rich | ext | after |
@@ -425,6 +449,8 @@ meta sheets=2
 | eight |
 |  | z |
 .
+--- Hid & Den ---
+.
 ## Hid & Den
 .
 | plain |
@@ -432,6 +458,8 @@ meta sheets=2
 .
 meta sheets=2
 == biff5
+--- Old ---
+.
 ## Old
 .
 | café | 1900-01-02 |
@@ -443,7 +471,7 @@ meta sheets=1
 warn encrypted Excel workbook: it needs its password
 reader returned false
 == big
-len 300015
+len 300028
 ok 1
 warn sheet Big truncated at 50000 rows
 == synthdoc

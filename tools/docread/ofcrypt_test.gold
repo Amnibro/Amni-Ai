@@ -1,0 +1,107 @@
+use std
+into ofcrypt_test.amni
+
+```amni
+import os;
+import cfb;
+import cfbmk;
+import zip;
+import ofcrypt;
+import crypto.hash;
+```
+
+`hex(b const byte[:]) byte[>..]` returns the bytes of b as lower-case hex digits.
+
+`load(name const byte[:], out byte[>..]&) bool` clears out and reads the file "tests/fixtures/" followed by name into it with `os::read_file`, returning whether that worked.
+
+`junk(out byte[>..]&)` clears out and appends the four bytes of "junk", so that a later decryption into out shows that out gets cleared.
+
+`inner(d const byte[:], name const byte[:]) int` opens d as a ZIP with `zip::zp_open` and returns the uncompressed size `zip::zp_size` of the entry `zip::zp_find` finds for name, or -1 when d does not open or the entry is missing; it closes the archive.
+
+`fixture(name const byte[:], pw const byte[:], part const byte[:])` loads the fixture name (printing "missing" and returning when that fails) and prints one line: name, " enc " and 1 or 0 for `ofcrypt::oc_is_encrypted`, then with a list out made by `junk`: " right " and `ofcrypt::oc_decrypt` of the file with pw into out, " len " and the length of out, " sha " and `hex` of `crypto::sha256` of out, " zip " and `inner` of out and part, then with another `junk` list the word " wrong " followed by the result of `ofcrypt::oc_decrypt` with pw followed by the letter x, a space, and the length of that list.
+
+`uni() byte[>..]` returns the password bytes of the text "Laterne7" followed by the bytes 0xC3 0xBC 0xE2 0x98 0x83 0xF0 0x9D 0x84 0x9E.
+
+`w16(tag const byte[:], s const byte[:])` prints "pw16 ", the tag, a space and `hex` of what `ofcrypt::oc_pw16` makes of s.
+
+`bad(tag const byte[:], d const byte[:])` prints tag, " enc " and 1 or 0 for `ofcrypt::oc_is_encrypted` of d, then with a `junk` list out " r " and `ofcrypt::oc_decrypt` of d with the password "Lantern7" into out, " len " and the length of out.
+
+`swap(d byte[>..]&, from const byte[:], to const byte[:]) bool` finds the first place where from occurs in d and overwrites those bytes with to (the same length as from), returning true; it returns false when from does not occur.
+
+`put8(d byte[>..]&, v int)` overwrites the first 8 bytes of d with v as 8 little-endian bytes.
+
+`mutate(which int, info byte[>..]&, pkg byte[>..]&)` damages a copy of the two streams according to which: 1 `put8` of pkg with 100; 2 `put8` of pkg with 1099511627776; 3 `put8` of pkg with its length minus 7; 4 removes the last 100 bytes of pkg; 5 removes the last 8 bytes of pkg and then `put8` of pkg with its new length minus 8; 6 sets byte 2 of info to 3; 7 cuts info down to its first 6 bytes; 8 cuts info down to its first half (length divided by 2); 9 `swap` of info from "SHA1" to "SHA9"; 10 `swap` of info from "ChainingModeCBC" to "ChainingModeCFB"; 11 `swap` of info from "AES" to "DES"; 12 `swap` of info from "spinCount=" followed by a quote, 20000 and a quote to "spinCount=" followed by a quote, 20001 and a quote; 13 sets byte (length of info minus 45) of info to its value XOR 1; 14 sets byte 4 of info to 4; 15 removes the last 10 bytes of info; 16 `put8` of pkg with 0; 17 empties pkg; 18 finds "encryptedKeyValue=" followed by a quote in info and sets the byte after it to the character "!". Any other value changes nothing.
+
+`mutant(name const byte[:], which int)` loads the fixture name (printing "missing" and returning when that fails), opens it with `cfb::cf_open`, reads the streams "EncryptionInfo" and "EncryptedPackage" into two lists with `cfb::cf_get`, closes the handle, calls `mutate` with which, and builds a new compound file with `cfbmk::cm_reset`, `cfbmk::cm_add` of "EncryptionInfo" with the info, `cfbmk::cm_add` of "EncryptedPackage" with the package and `cfbmk::cm_build(false, 109, file)`. Then with a `junk` list out it prints "mut ", which, a space, name, " r " and `ofcrypt::oc_decrypt` of the file with the password "Lantern7" into out, " len " and the length of out, " sha " and the first 16 characters of `hex` of `crypto::sha256` of out.
+
+`single(name const byte[:], keep int)` loads the fixture name (printing "missing" and returning when that fails), opens it with `cfb::cf_open`, reads the streams "EncryptionInfo" and "EncryptedPackage" into two lists, closes the handle, builds a compound file with `cfbmk::cm_reset`, then `cfbmk::cm_add` of only the info stream when keep is 1 or only the package stream when keep is 2, and `cfbmk::cm_build(false, 109, file)`, and calls `bad` with the tag "only" followed by keep and that file.
+
+`fuzz(name const byte[:])` loads the fixture name (printing "missing" and returning when that fails), opens it with `cfb::cf_open`, reads the streams "EncryptionInfo" and "EncryptedPackage" into two lists with `cfb::cf_get`, closes the handle, and builds a compound file from them with `cfbmk::cm_reset`, two `cfbmk::cm_add` calls and `cfbmk::cm_build(false, 109, file)`; `ofcrypt::oc_decrypt` of that file with the password "Lantern7" gives the reference output. Then for every position p of the info stream, from 0 to its length minus 1, it flips the lowest bit of byte p (XOR 1) in a copy of the info, builds a compound file from that copy and the package the same way, runs `ofcrypt::oc_decrypt` with "Lantern7" and counts the result: ok when it is 1, wrong when it is 0, bad when it is -1, and same when it is 1 and the output is byte for byte the reference output. It prints "fuzz ", name, " n ", the number of positions, " ok ", ok, " wrong ", wrong, " bad ", bad, " same ", same.
+
+`big(name const byte[:])` loads the fixture name (printing "missing" and returning when that fails), opens it with `cfb::cf_open`, reads the streams "EncryptionInfo" and "EncryptedPackage" into two lists with `cfb::cf_get`, closes the handle, and builds a version 4 compound file (4096-byte sectors) from them with `cfbmk::cm_reset`, two `cfbmk::cm_add` calls and `cfbmk::cm_build(true, 109, file)`. Then with a `junk` list out it prints "v4 ", name, " r " and `ofcrypt::oc_decrypt` of the file with the password "Lantern7" into out, " len " and the length of out, " sha " and the first 16 characters of `hex` of `crypto::sha256` of out.
+
+`main()` runs these steps in order:
+1. `fixture` with the password "Lantern7" for "oc_garden_std128.docx" (part "word/document.xml"), "oc_harbor_std128.xlsx" ("xl/workbook.xml"), "oc_deck_std128.pptx" ("ppt/presentation.xml"), "oc_harbor_std256.xlsx" ("xl/workbook.xml"), "oc_harbor_agile512.xlsx" ("xl/workbook.xml"), "oc_deck_agile512.pptx" ("ppt/presentation.xml"), "oc_deck_agile384.pptx" ("ppt/presentation.xml"), "oc_harbor_agile256.xlsx" ("xl/workbook.xml"), "oc_garden_agile1.docx" ("word/document.xml"), and "oc_garden_rc4.docx" ("word/document.xml"); then "oc_deck_agile256_uni.pptx" ("ppt/presentation.xml") with the password `uni()`.
+2. `w16` of these texts, tag first: "ascii" "Lantern7"; "mixed" the bytes 0x41 0xC3 0xA9 0xE2 0x98 0x83 0xF0 0x9D 0x84 0x9E; "stray" the bytes 0x80 0x41; "cut" the bytes 0xE2 0x98; "overlong" the bytes 0xC0 0x80; "surr" the bytes 0xED 0xA0 0x80; "big" the bytes 0xF4 0x90 0x80 0x80.
+3. `bad` of "sample.doc" (loaded with `load`), of "hello" with the bytes of the text "hello", of "empty" with no bytes and of "zeros" with 700 zero bytes.
+4. `single` of "oc_garden_agile1.docx" with 1 and with 2.
+5. `mutant` of "oc_garden_agile1.docx" for which 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17 and 18, in that order.
+6. `mutant` of "oc_garden_std128.docx" for which 1, 2, 3, 5, 13, 14, 15 and 16, in that order.
+
+7. `main` itself calls `fuzz` with "oc_garden_agile1.docx" and then `fuzz` with "oc_garden_std128.docx" (no extra helper function around them).
+
+8. `main` itself calls `big` with "oc_harbor_agile512.xlsx" and then `big` with "oc_garden_std128.docx" (no extra helper function around them).
+
+
+expect:
+oc_garden_std128.docx enc 1 right 1 len 6361 sha 29eb58e8c144b603a4936686ab3b6eb644b0b4f3768d2af753493933f6b82a49 zip 3128 wrong 0 0
+oc_harbor_std128.xlsx enc 1 right 1 len 5695 sha 121edb00a32aeb05b42ac41cecb92a45f166c5913ad93e86468bf7deeccca3cd zip 1349 wrong 0 0
+oc_deck_std128.pptx enc 1 right 1 len 10412 sha 520f1b8708833b3e09e52b2d2b48241fdd5f2ec7496e162a0c7914028f05cc32 zip 753 wrong 0 0
+oc_harbor_std256.xlsx enc 1 right 1 len 5826 sha becc4b8ae31236862bea9563286dd7a2fa3592c36485d2a48b51b1d6842fe0ed zip 1332 wrong 0 0
+oc_harbor_agile512.xlsx enc 1 right 1 len 5826 sha becc4b8ae31236862bea9563286dd7a2fa3592c36485d2a48b51b1d6842fe0ed zip 1332 wrong 0 0
+oc_deck_agile512.pptx enc 1 right 1 len 10675 sha 10887b1396ca41f367af4f8781c83a283397fe88113d9592cd1929b8766c25f2 zip 753 wrong 0 0
+oc_deck_agile384.pptx enc 1 right 1 len 10675 sha 10887b1396ca41f367af4f8781c83a283397fe88113d9592cd1929b8766c25f2 zip 753 wrong 0 0
+oc_harbor_agile256.xlsx enc 1 right 1 len 5826 sha becc4b8ae31236862bea9563286dd7a2fa3592c36485d2a48b51b1d6842fe0ed zip 1332 wrong 0 0
+oc_garden_agile1.docx enc 1 right 1 len 6537 sha 9c244428e8f29f364110ee3b6990e7d079b839e2902006d1950d2d3cd2dc038e zip 3128 wrong 0 0
+oc_garden_rc4.docx enc 1 right -1 len 0 sha e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 zip -1 wrong -1 0
+oc_deck_agile256_uni.pptx enc 1 right 1 len 10675 sha 10887b1396ca41f367af4f8781c83a283397fe88113d9592cd1929b8766c25f2 zip 753 wrong 0 0
+pw16 ascii 4c0061006e007400650072006e003700
+pw16 mixed 4100e900032634d81edd
+pw16 stray fdff4100
+pw16 cut fdfffdff
+pw16 overlong fdfffdff
+pw16 surr fdfffdfffdff
+pw16 big fdfffdfffdfffdff
+sample.doc enc 0 r -1 len 0
+hello enc 0 r -1 len 0
+empty enc 0 r -1 len 0
+zeros enc 0 r -1 len 0
+only1 enc 0 r -1 len 0
+only2 enc 0 r -1 len 0
+mut 1 oc_garden_agile1.docx r 1 len 100 sha 98842d5a92e77ab5
+mut 2 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 3 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 4 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 5 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 6 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 7 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 8 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 9 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 10 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 11 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 12 oc_garden_agile1.docx r 0 len 0 sha e3b0c44298fc1c14
+mut 16 oc_garden_agile1.docx r 1 len 0 sha e3b0c44298fc1c14
+mut 17 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 18 oc_garden_agile1.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 1 oc_garden_std128.docx r 1 len 100 sha 437a644a0d55bb2f
+mut 2 oc_garden_std128.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 3 oc_garden_std128.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 5 oc_garden_std128.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 13 oc_garden_std128.docx r 0 len 0 sha e3b0c44298fc1c14
+mut 14 oc_garden_std128.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 15 oc_garden_std128.docx r -1 len 0 sha e3b0c44298fc1c14
+mut 16 oc_garden_std128.docx r 1 len 0 sha e3b0c44298fc1c14
+fuzz oc_garden_agile1.docx n 1284 ok 731 wrong 86 bad 467 same 691
+fuzz oc_garden_std128.docx n 224 ok 133 wrong 64 bad 27 same 133
+v4 oc_harbor_agile512.xlsx r 1 len 5826 sha becc4b8ae3123686
+v4 oc_garden_std128.docx r 1 len 6361 sha 29eb58e8c144b603

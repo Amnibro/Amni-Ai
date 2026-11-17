@@ -14,6 +14,8 @@ import pimage;
 import pack;
 import extra;
 import ole;
+import dcrypt;
+import ofcrypt;
 
 let DR_UNKNOWN = 0;
 let DR_PDF = 1;
@@ -103,6 +105,7 @@ fn dr_lower_eq(a const byte[:], b const byte[:]) bool {
 	}
 	return true;
 }
+var dr_pw byte[>..];
 let DR_OLE_MAGIC = [208, 207, 17, 224, 161, 177, 26, 225];
 let DR_EML_HDRS = ["From:", "To:", "Subject:", "Date:", "Received:", "Return-Path:", "Message-ID:", "MIME-Version:", "Delivered-To:"];
 let DR_HTML_EXT = ["html", "htm", "xhtml", "xht"];
@@ -414,155 +417,42 @@ fn dr_xml(d const byte[:]) bool {
 	}
 	return found;
 }
-var dr_arena byte[>..];
-var dr_atts int[>..];
-var dr_kinds int[>..];
-fn dr_dm2(kind int, level int, pre const byte[:], text const byte[:]) {
-	var s byte[>..] = [];
-	s.append(pre);
-	s.append(text);
-	dm::dm_add(kind, level, s);
-}
-fn dr_unreadable(name const byte[:], d const byte[:]) {
-	var s byte[>..] = [];
-	s.append("(not readable: ");
-	s.append(dr_kind_names[dr_sniff(name, d)]);
-	s.append(")");
-	dm::dm_add(dm::DM_NOTE, 0, s);
-}
-fn dr_entry_name(tar bool, h int, i int, out byte[>..]&) {
-	if tar {
-		out.append(pack::pk_tar_name(h, i));
-	} else {
-		out.append(zip::zp_name(h, i));
-	}
-}
-fn dr_plan(tar bool, h int) int {
-	var n = 0;
-	if tar {
-		n = pack::pk_tar_count(h);
-	} else {
-		n = zip::zp_count(h);
-	}
-	n = min(n, 500);
-	var total = 0;
-	var nm byte[>..] = [];
-	var data byte[>..] = [];
-	for i in n {
-		nm.clear();
-		dr_entry_name(tar, h, i, nm);
-		var isdir = false;
-		var sz = 0;
-		if tar {
-			isdir = pack::pk_tar_is_dir(h, i);
-			sz = pack::pk_tar_size(h, i);
-		} else {
-			isdir = zip::zp_is_dir(h, i);
-			sz = zip::zp_size(h, i);
-		}
-		var kd = -1;
-		if isdir || dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store") {
-			kd = -1;
-		} else if total + sz > 268435456 {
-			kd = -1;
-		} else if tar && !pack::pk_tar_readable(h, i) {
-			total += sz;
-			kd = -2;
-		} else if !tar && zip::zp_encrypted(h, i) {
-			total += sz;
-			kd = -2;
-		} else {
-			total += sz;
-			data.clear();
-			var ok = false;
-			if tar {
-				ok = pack::pk_tar_read(h, i, data);
-			} else {
-				ok = zip::zp_read(h, i, data);
-			}
-			if !ok {
-				kd = -2;
-			} else {
-				let k = dr_sniff(nm, data);
-				if k == DR_BINARY || k == DR_UNKNOWN {
-					kd = -2;
-				} else {
-					kd = k;
-				}
+fn dr_mbox_split(d const byte[:], starts int[>..]&) int {
+	starts.clear();
+	if !dr_starts(d, 0, "From ") || d.len <= 5 || d[5] == ':' { return 0; }
+	starts.push(0);
+	var p = 2;
+	while p < d.len {
+		if d[p] == 'F' && dr_starts(d, p, "From ") && d[p - 1] == 10 {
+			if d[p - 2] == 10 || (p >= 3 && d[p - 2] == 13 && d[p - 3] == 10) {
+				starts.push(p);
 			}
 		}
-		dr_kinds.push(kd);
+		p++;
 	}
-	return n;
+	if starts.len < 2 {
+		starts.clear();
+		return 0;
+	}
+	return starts.len;
 }
-fn dr_stash_entry(tar bool, h int, i int) int, int, int, int, bool {
-	var data byte[>..] = [];
-	var nm byte[>..] = [];
-	dr_entry_name(tar, h, i, nm);
-	var ok = false;
-	if tar {
-		ok = pack::pk_tar_read(h, i, data);
-	} else {
-		ok = zip::zp_read(h, i, data);
+fn dr_inner_name(name const byte[:], gz bool, out byte[>..]&) {
+	out.clear();
+	if gz && dr_ends(name, ".tgz") {
+		out.append(name[0..name.len - 4]);
+		out.append(".tar");
+		return;
 	}
-	let nat = dr_arena.len;
-	dr_arena.append(nm);
-	let at = dr_arena.len;
-	dr_arena.append(data);
-	return at, data.len, nat, nm.len, ok;
-}
-fn dr_others_note(tar bool, h int, base int, cnt int) {
-	var t byte[>..] = [];
-	var nm byte[>..] = [];
-	var n = 0;
-	for i in cnt {
-		if dr_kinds[base + i] != -2 { continue; }
-		if n >= 50 { break; }
-		if n > 0 { t.append(", "); }
-		nm.clear();
-		dr_entry_name(tar, h, i, nm);
-		t.append(nm);
-		n++;
+	if !gz && dr_ends(name, ".tbz2") {
+		out.append(name[0..name.len - 5]);
+		out.append(".tar");
+		return;
 	}
-	if n > 0 { dr_dm2(dm::DM_NOTE, 0, "Other files: ", t); }
-}
-fn dr_att_stash(ole bool) int {
-	var cnt = 0;
-	if ole {
-		cnt = ole::ol_att_count();
-	} else {
-		cnt = eml::em_att_count();
+	if !gz && dr_ends(name, ".tbz") {
+		out.append(name[0..name.len - 4]);
+		out.append(".tar");
+		return;
 	}
-	var tmp byte[>..] = [];
-	for i in cnt {
-		if ole {
-			ole::ol_att_name(i, tmp);
-		} else {
-			eml::em_att_name(i, tmp);
-		}
-		dr_atts.push(dr_arena.len);
-		dr_atts.push(tmp.len);
-		dr_arena.append(tmp);
-		if ole {
-			ole::ol_att_type(i, tmp);
-		} else {
-			eml::em_att_type(i, tmp);
-		}
-		dr_atts.push(dr_arena.len);
-		dr_atts.push(tmp.len);
-		dr_arena.append(tmp);
-		if ole {
-			ole::ol_att_data(i, tmp);
-		} else {
-			eml::em_att_data(i, tmp);
-		}
-		dr_atts.push(dr_arena.len);
-		dr_atts.push(tmp.len);
-		dr_arena.append(tmp);
-	}
-	return cnt;
-}
-fn dr_inner_name(name const byte[:], bz bool, out byte[>..]&) {
 	var dot = -1;
 	for i in name.len {
 		if name[i] == '/' {
@@ -573,180 +463,346 @@ fn dr_inner_name(name const byte[:], bz bool, out byte[>..]&) {
 	}
 	if dot < 0 {
 		out.append(name);
-		return;
-	}
-	let ext = name[(dot + 1)..name.len];
-	out.append(name[0..dot]);
-	if (!bz && dr_lower_eq(ext, "tgz")) || (bz && (dr_lower_eq(ext, "tbz2") || dr_lower_eq(ext, "tbz"))) {
-		out.append(".tar");
-	}
-}
-fn dr_unpack_stash(bz bool, name const byte[:], d const byte[:]) int, int, int, int, bool {
-	var out byte[>..] = [];
-	var ok = false;
-	if bz {
-		ok = pack::pk_bunzip(d, out);
 	} else {
-		ok = pack::pk_gunzip(d, out);
+		out.append(name[0..dot]);
 	}
-	var nm byte[>..] = [];
-	if ok {
-		if !bz && pack::pk_gz_name().len > 0 { nm.append(pack::pk_gz_name()); }
-		if nm.len == 0 { dr_inner_name(name, bz, nm); }
-	}
-	let nat = dr_arena.len;
-	dr_arena.append(nm);
-	let at = dr_arena.len;
-	dr_arena.append(out);
-	return at, out.len, nat, nm.len, ok;
 }
-fn dr_code(name const byte[:], d const byte[:]) bool {
-	var ext byte[>..] = [];
-	dr_ext(name, ext);
-	if extra::ex_code(d, ext) { return true; }
-	return textfmt::tx_text(d);
-}
-fn dr_flat(kind int, name const byte[:], d const byte[:]) bool {
-	if kind == DR_PDF { return playout::pl_read_pdf(d); }
-	if kind == DR_DOCX { return office::of_docx(d); }
-	if kind == DR_XLSX { return office::of_xlsx(d); }
-	if kind == DR_PPTX { return office::of_pptx(d); }
-	if kind == DR_ODF { return office::of_odf(d); }
-	if kind == DR_EPUB { return dr_epub(d); }
-	if kind == DR_HTML { return html::ht_read(d); }
-	if kind == DR_RTF { return rtf::rt_read(d); }
-	if kind == DR_CSV { return textfmt::tx_csv(d, 0); }
-	if kind == DR_TSV { return textfmt::tx_csv(d, 9); }
-	if kind == DR_JSON { return textfmt::tx_json(d); }
-	if kind == DR_XML { return dr_xml(d); }
-	if kind == DR_TEXT { return textfmt::tx_text(d); }
-	if kind == DR_IPYNB {
-		if extra::ex_ipynb(d) { return true; }
-		return textfmt::tx_json(d);
+recursive fn dr_atts(isole bool, depth int) {
+	var blob byte[>..] = [];
+	var offs int[>..] = [];
+	var tmp byte[>..] = [];
+	var cnt = 0;
+	if isole {
+		cnt = ole::ol_att_count();
+	} else {
+		cnt = eml::em_att_count();
 	}
-	if kind == DR_ICS {
-		if extra::ex_ics(d) { return true; }
-		return textfmt::tx_text(d);
-	}
-	if kind == DR_VCF {
-		if extra::ex_vcf(d) { return true; }
-		return textfmt::tx_text(d);
-	}
-	if kind == DR_CODE { return dr_code(name, d); }
-	if kind == DR_IMAGE { return image::im_read(d); }
-	dm::dm_warn_add("unsupported binary format");
-	return false;
-}
-recursive fn dr_container(tar bool, h int, depth int) bool {
-	let base = dr_kinds.len;
-	let cnt = dr_plan(tar, h);
 	for i in cnt {
-		let kd = dr_kinds[base + i];
-		if kd < 0 { continue; }
-		let at, len, nat, nlen, ok = dr_stash_entry(tar, h, i);
-		if !ok { continue; }
-		let en = dr_arena[nat..nat + nlen];
-		let ed = dr_arena[at..at + len];
-		dm::dm_add(dm::DM_HEAD, 1, en);
-		let sh = dm::dm_shift;
-		dm::dm_shift = sh + 1;
-		dr_read(en, ed, depth + 1);
-		dm::dm_shift = sh;
+		if isole {
+			ole::ol_att_name(i, tmp);
+		} else {
+			eml::em_att_name(i, tmp);
+		}
+		offs.push(blob.len);
+		offs.push(tmp.len);
+		blob.append(tmp);
+		if isole {
+			ole::ol_att_type(i, tmp);
+		} else {
+			eml::em_att_type(i, tmp);
+		}
+		offs.push(blob.len);
+		offs.push(tmp.len);
+		blob.append(tmp);
+		if isole {
+			ole::ol_att_data(i, tmp);
+		} else {
+			eml::em_att_data(i, tmp);
+		}
+		offs.push(blob.len);
+		offs.push(tmp.len);
+		blob.append(tmp);
 	}
-	dr_others_note(tar, h, base, cnt);
-	if tar {
-		pack::pk_tar_close(h);
-	} else {
-		zip::zp_close(h);
+	if depth >= 4 { return; }
+	for i in cnt {
+		let k = i * 6;
+		let name = blob[offs[k]..offs[k] + offs[k + 1]];
+		let data = blob[offs[k + 4]..offs[k + 4] + offs[k + 5]];
+		var h byte[>..] = [];
+		h.append("Attachment: ");
+		h.append(name);
+		dm::dm_add(dm::DM_HEAD, 2, h);
+		let f = dr_sniff(name, data);
+		let old = dm::dm_shift;
+		dm::dm_shift = old + 2;
+		let ok = dr_read(name, data, depth + 1);
+		dm::dm_shift = old;
+		if !ok {
+			var n byte[>..] = [];
+			n.append("(not readable: ");
+			n.append(dr_kind_names[f]);
+			n.append(")");
+			dm::dm_add(dm::DM_NOTE, 0, n);
+		}
+	}
+}
+recursive fn dr_mbox_read(d const byte[:], depth int) int {
+	var st int[>..] = [];
+	let count = dr_mbox_split(d, st);
+	if count <= 1 { return -1; }
+	var read = 0;
+	for i in min(count, 1000) {
+		var e = d.len;
+		if i + 1 < count { e = st[i + 1]; }
+		var h byte[>..] = [];
+		h.append("Message ");
+		format(h, i + 1);
+		dm::dm_add(dm::DM_HEAD, 1, h);
+		let old = dm::dm_shift;
+		dm::dm_shift = old + 1;
+		let ok = dr_read("message.eml", d[st[i]..e], depth + 1);
+		dm::dm_shift = old;
+		if ok { read++; }
+	}
+	if count > 1000 {
+		var w byte[>..] = [];
+		w.append("mailbox holds ");
+		format(w, count);
+		w.append(" messages; only the first 1000 were read");
+		dm::dm_warn_add(w);
+	}
+	let cs = str(read);
+	dm::dm_set_meta("messages", cs);
+	return read;
+}
+recursive fn dr_entry(name const byte[:], data const byte[:], depth int) bool {
+	let f = dr_sniff(name, data);
+	if f == DR_BINARY || f == DR_UNKNOWN { return false; }
+	dm::dm_add(dm::DM_HEAD, 1, name);
+	let old = dm::dm_shift;
+	dm::dm_shift = old + 1;
+	dr_read(name, data, depth + 1);
+	dm::dm_shift = old;
+	return true;
+}
+recursive fn dr_zip_read(d const byte[:], depth int) bool {
+	let h = zip::zp_open(d);
+	if h < 0 { return false; }
+	var oth byte[>..] = [];
+	var nother = 0;
+	var total = 0;
+	var buf byte[>..] = [];
+	var nm byte[>..] = [];
+	let cnt = min(zip::zp_count(h), 500);
+	for i in cnt {
+		if zip::zp_is_dir(h, i) { continue; }
+		nm.clear();
+		nm.append(zip::zp_name(h, i));
+		if dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store") { continue; }
+		var readable = false;
+		if !zip::zp_encrypted(h, i) {
+			if total + zip::zp_size(h, i) > 268435456 { break; }
+			buf.clear();
+			if zip::zp_read(h, i, buf) {
+				total += buf.len;
+				readable = dr_entry(nm, buf, depth);
+			}
+		}
+		if !readable && nother < 50 {
+			if nother > 0 { oth.append(", "); }
+			oth.append(nm);
+			nother++;
+		}
+	}
+	zip::zp_close(h);
+	if nother > 0 {
+		var n byte[>..] = [];
+		n.append("Other files: ");
+		n.append(oth);
+		dm::dm_add(dm::DM_NOTE, 0, n);
 	}
 	return true;
 }
-recursive fn dr_read(name const byte[:], d const byte[:], depth int) bool {
-	let kind = dr_sniff(name, d);
-	if kind == DR_EML || kind == DR_OLE {
-		let isole = kind == DR_OLE;
-		var r = false;
-		if isole {
-			r = ole::ol_read(d);
-		} else {
-			r = eml::em_read(d);
-		}
-		if !r { return false; }
-		let base = dr_atts.len;
-		let cnt = dr_att_stash(isole);
-		if depth < 4 {
-			for k in cnt {
-				let o = base + k * 6;
-				let nat = dr_atts[o];
-				let nlen = dr_atts[o + 1];
-				let dat = dr_atts[o + 4];
-				let dlen = dr_atts[o + 5];
-				let an = dr_arena[nat..nat + nlen];
-				let ad = dr_arena[dat..dat + dlen];
-				dr_dm2(dm::DM_HEAD, 2, "Attachment: ", an);
-				let sh = dm::dm_shift;
-				dm::dm_shift = sh + 2;
-				let ok = dr_read(an, ad, depth + 1);
-				dm::dm_shift = sh;
-				if !ok { dr_unreadable(an, ad); }
+recursive fn dr_tar_read(d const byte[:], depth int) bool {
+	let h = pack::pk_tar_open(d);
+	if h < 0 { return false; }
+	var oth byte[>..] = [];
+	var nother = 0;
+	var total = 0;
+	var buf byte[>..] = [];
+	var nm byte[>..] = [];
+	let cnt = min(pack::pk_tar_count(h), 500);
+	for i in cnt {
+		if pack::pk_tar_is_dir(h, i) { continue; }
+		nm.clear();
+		nm.append(pack::pk_tar_name(h, i));
+		if dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store") { continue; }
+		var readable = false;
+		if pack::pk_tar_readable(h, i) {
+			if total + pack::pk_tar_size(h, i) > 268435456 { break; }
+			buf.clear();
+			if pack::pk_tar_read(h, i, buf) {
+				total += buf.len;
+				readable = dr_entry(nm, buf, depth);
 			}
 		}
-		return r;
+		if !readable && nother < 50 {
+			if nother > 0 { oth.append(", "); }
+			oth.append(nm);
+			nother++;
+		}
 	}
-	if kind == DR_ZIP {
-		if depth >= 4 { return false; }
-		let h = zip::zp_open(d);
-		if h < 0 { return false; }
-		return dr_container(false, h, depth);
+	pack::pk_tar_close(h);
+	if nother > 0 {
+		var n byte[>..] = [];
+		n.append("Other files: ");
+		n.append(oth);
+		dm::dm_add(dm::DM_NOTE, 0, n);
 	}
-	if kind == DR_TAR {
+	return true;
+}
+recursive fn dr_unpack(name const byte[:], d const byte[:], depth int, gz bool) bool {
+	if depth >= 4 {
+		dm::dm_warn_add("archive nested too deeply");
+		return false;
+	}
+	var buf byte[>..] = [];
+	var ok = false;
+	if gz {
+		ok = pack::pk_gunzip(d, buf);
+	} else {
+		ok = pack::pk_bunzip(d, buf);
+	}
+	if !ok { return false; }
+	var inner byte[>..] = [];
+	if gz && pack::pk_gz_name().len > 0 {
+		inner.append(pack::pk_gz_name());
+	} else {
+		dr_inner_name(name, gz, inner);
+	}
+	return dr_read(inner, buf, depth + 1);
+}
+recursive fn dr_ole_read(name const byte[:], d const byte[:], depth int) bool {
+	if ofcrypt::oc_is_encrypted(d) {
+		var buf byte[>..] = [];
+		var r = 0;
+		if dr_pw.len > 0 {
+			buf.clear();
+			r = ofcrypt::oc_decrypt(d, dr_pw, buf);
+		}
+		if r == 0 {
+			buf.clear();
+			r = ofcrypt::oc_decrypt(d, "", buf);
+		}
+		if r == 0 {
+			buf.clear();
+			r = ofcrypt::oc_decrypt(d, "VelvetSweatshop", buf);
+		}
+		if r == 1 {
+			if depth == 0 {
+				let f = dr_sniff(name, buf);
+				dm::dm_kind.clear();
+				dm::dm_unit.clear();
+				dm::dm_kind.append(dr_kind_names[f]);
+				dm::dm_unit.append(dr_units[f]);
+			}
+			let ok = dr_read(name, buf, depth + 1);
+			dm::dm_set_meta("encrypted", "yes");
+			return ok;
+		}
+		if r == -1 {
+			dm::dm_warn_add("encrypted with an unsupported method");
+			return false;
+		}
+		if dr_pw.len == 0 {
+			dm::dm_warn_add("encrypted with a password; set DOCREAD_PASSWORD to read it");
+		} else {
+			dm::dm_warn_add("the password in DOCREAD_PASSWORD does not open this file");
+		}
+		return false;
+	}
+	let ok = ole::ol_read(d);
+	if ok {
+		dr_atts(true, depth);
+		if depth == 0 && dm::dm_unit == "part" {
+			if ole::ol_kind == 2 {
+				dm::dm_unit.clear();
+				dm::dm_unit.append("sheet");
+			} else if ole::ol_kind == 3 {
+				dm::dm_unit.clear();
+				dm::dm_unit.append("slide");
+			}
+		}
+	}
+	return ok;
+}
+recursive fn dr_read(name const byte[:], d const byte[:], depth int) bool {
+	let f = dr_sniff(name, d);
+	if f == DR_PDF { return playout::pl_read_pdf(d); }
+	if f == DR_DOCX { return office::of_docx(d); }
+	if f == DR_XLSX { return office::of_xlsx(d); }
+	if f == DR_PPTX { return office::of_pptx(d); }
+	if f == DR_ODF { return office::of_odf(d); }
+	if f == DR_EPUB { return dr_epub(d); }
+	if f == DR_HTML { return html::ht_read(d); }
+	if f == DR_RTF { return rtf::rt_read(d); }
+	if f == DR_CSV { return textfmt::tx_csv(d, 0); }
+	if f == DR_TSV { return textfmt::tx_csv(d, 9); }
+	if f == DR_JSON { return textfmt::tx_json(d); }
+	if f == DR_XML { return dr_xml(d); }
+	if f == DR_TEXT { return textfmt::tx_text(d); }
+	if f == DR_EML {
+		let r = dr_mbox_read(d, depth);
+		if r >= 0 { return r > 0; }
+		let ok = eml::em_read(d);
+		if ok { dr_atts(false, depth); }
+		return ok;
+	}
+	if f == DR_ZIP {
 		if depth >= 4 {
 			dm::dm_warn_add("archive nested too deeply");
 			return false;
 		}
-		let h = pack::pk_tar_open(d);
-		if h < 0 { return false; }
-		return dr_container(true, h, depth);
+		return dr_zip_read(d, depth);
 	}
-	if kind == DR_GZIP || kind == DR_BZIP2 {
+	if f == DR_GZIP { return dr_unpack(name, d, depth, true); }
+	if f == DR_BZIP2 { return dr_unpack(name, d, depth, false); }
+	if f == DR_TAR {
 		if depth >= 4 {
 			dm::dm_warn_add("archive nested too deeply");
 			return false;
 		}
-		let at, len, nat, nlen, ok = dr_unpack_stash(kind == DR_BZIP2, name, d);
-		if !ok { return false; }
-		let inner = dr_arena[nat..nat + nlen];
-		let data = dr_arena[at..at + len];
-		return dr_read(inner, data, depth + 1);
+		return dr_tar_read(d, depth);
 	}
-	return dr_flat(kind, name, d);
+	if f == DR_IPYNB {
+		if extra::ex_ipynb(d) { return true; }
+		return textfmt::tx_json(d);
+	}
+	if f == DR_ICS {
+		if extra::ex_ics(d) { return true; }
+		return textfmt::tx_text(d);
+	}
+	if f == DR_VCF {
+		if extra::ex_vcf(d) { return true; }
+		return textfmt::tx_text(d);
+	}
+	if f == DR_CODE {
+		var ext byte[>..] = [];
+		dr_ext(name, ext);
+		if extra::ex_code(d, ext) { return true; }
+		return textfmt::tx_text(d);
+	}
+	if f == DR_IMAGE { return image::im_read(d); }
+	if f == DR_OLE { return dr_ole_read(name, d, depth); }
+	dm::dm_warn_add("unsupported binary format");
+	return false;
 }
 fn dr_usage() {
-	write_stderr("usage: docread md|json|info FILE...\n       docread chunks MAXBYTES FILE...\n       docread ask K QUESTION FILE...\n       docread sniff FILE...\n       docread images OUTDIR FILE...\n       docread mcp\n");
+	write_stderr("usage: docread md|json|info FILE...\n       docread chunks MAXBYTES FILE...\n       docread ask K QUESTION FILE...\n       docread sniff FILE...\n       docread images OUTDIR FILE...\n       docread mcp\nDOCREAD_PASSWORD in the environment opens password-protected PDF and Office files\n");
 	exit(2);
 }
 fn dr_load(files const byte[:][:]) int {
-	var okn = 0;
 	var data byte[>..] = [];
+	var f0 = DR_UNKNOWN;
+	if files.len > 0 && read_file(files[0], data) {
+		f0 = dr_sniff(files[0], data);
+	}
+	dm::dm_reset(dr_kind_names[f0], dr_units[f0]);
+	dm::dm_shift = 0;
+	if files.len > 0 { dm::dm_set_meta("file", files[0]); }
+	if f0 != DR_OLE { dm::dm_set_meta("format", dr_kind_names[f0]); }
+	var count = 0;
 	for i in files.len {
 		let f = files[i];
 		data.clear();
-		let rd = read_file(f, data);
-		var kind = DR_UNKNOWN;
-		if rd { kind = dr_sniff(f, data); }
-		if i == 0 {
-			dm::dm_reset(dr_kind_names[kind], dr_units[kind]);
-			dm::dm_shift = 0;
-			dm::dm_set_meta("file", f);
-			dm::dm_set_meta("format", dr_kind_names[kind]);
-		}
-		if !rd {
-			dr_tmp.clear();
-			dr_tmp.append("cannot read ");
-			dr_tmp.append(f);
-			dm::dm_warn_add(dr_tmp);
+		if !read_file(f, data) {
+			var w byte[>..] = [];
+			w.append("cannot read ");
+			w.append(f);
+			dm::dm_warn_add(w);
 			continue;
 		}
+		var ok = false;
 		if files.len > 1 {
 			var bs = 0;
 			for k in f.len {
@@ -755,12 +811,25 @@ fn dr_load(files const byte[:][:]) int {
 			dm::dm_shift = 0;
 			dm::dm_add(dm::DM_HEAD, 1, f[bs..f.len]);
 			dm::dm_shift = 1;
+			ok = dr_read(f, data, 0);
+			dm::dm_shift = 0;
+		} else {
+			ok = dr_read(f, data, 0);
 		}
-		let r = dr_read(f, data, 0);
-		dm::dm_shift = 0;
-		if r { okn++; }
+		if ok { count++; }
 	}
-	return okn;
+	if f0 == DR_OLE {
+		var enc byte[>..] = [];
+		let has = dm::dm_get_meta("encrypted", enc);
+		if has && enc == "yes" {
+			var kn byte[>..] = [];
+			kn.append(dm::dm_kind);
+			dm::dm_set_meta("format", kn);
+		} else {
+			dm::dm_set_meta("format", "ole");
+		}
+	}
+	return count;
 }
 fn dr_info_json(out byte[>..]&) {
 	var v byte[>..] = [];
@@ -998,120 +1067,158 @@ fn dr_mcp() {
 		}
 	}
 }
-fn dr_warn_stderr() {
+fn dr_warn_out() {
 	let ws = split(dm::dm_warn, '\n');
 	for w in ws {
 		if w.len == 0 { continue; }
-		write_stderr("docread: ");
-		write_stderr(w);
-		write_stderr("\n");
+		var t byte[>..] = [];
+		t.append("docread: ");
+		t.append(w);
+		t.push('\n');
+		write_stderr(t);
+	}
+}
+fn dr_images(outdir const byte[:], files const byte[:][:]) {
+	dm::dm_reset("pdf", "page");
+	let nfiles = files.len;
+	var any = false;
+	var data byte[>..] = [];
+	for i in nfiles {
+		let f = files[i];
+		data.clear();
+		if !read_file(f, data) {
+			var w byte[>..] = [];
+			w.append("cannot read ");
+			w.append(f);
+			dm::dm_warn_add(w);
+			continue;
+		}
+		any = true;
+		if dr_sniff(f, data) != DR_PDF { continue; }
+		var dir byte[>..] = [];
+		dir.append(outdir);
+		if nfiles > 1 {
+			dir.push('/');
+			format(dir, i);
+		}
+		let n = pimage::pi_extract(data, dir);
+		for j in pimage::pi_count() {
+			var line byte[>..] = [];
+			line.append("{\"file\": ");
+			dm::dm_json_str(line, f);
+			line.append(", \"page\": ");
+			format(line, pimage::pi_page(j));
+			line.append(", \"path\": ");
+			dm::dm_json_str(line, pimage::pi_path(j));
+			line.append(", \"w\": ");
+			format(line, pimage::pi_width(j));
+			line.append(", \"h\": ");
+			format(line, pimage::pi_height(j));
+			line.append(", \"kind\": ");
+			dm::dm_json_str(line, pimage::pi_kind_name(pimage::pi_kind(j)));
+			line.append("}\n");
+			write_stdout(line);
+		}
+	}
+	dr_warn_out();
+	if any {
+		exit(0);
+	} else {
+		exit(1);
 	}
 }
 fn main() {
-	let a = args();
-	if a.len < 2 { dr_usage(); }
-	let mode = a[1];
+	var x byte[>..] = [];
+	if env("DOCREAD_PASSWORD", x) {
+		dr_pw.clear();
+		dr_pw.append(x);
+		dcrypt::dc_pw.clear();
+		dcrypt::dc_pw.append(x);
+	}
+	let av = args();
+	if av.len < 2 {
+		dr_usage();
+		return;
+	}
+	let mode = av[1];
 	if mode == "mcp" {
 		dr_mcp();
 		exit(0);
+		return;
 	}
-	var first = 2;
-	if mode == "chunks" || mode == "images" {
-		first = 3;
+	var fs = 2;
+	if mode == "md" || mode == "json" || mode == "info" || mode == "sniff" {
+		fs = 2;
+	} else if mode == "chunks" || mode == "images" {
+		fs = 3;
 	} else if mode == "ask" {
-		first = 4;
+		fs = 4;
+	} else {
+		dr_usage();
+		return;
 	}
-	let known = mode == "md" || mode == "json" || mode == "info" || mode == "chunks" || mode == "ask" || mode == "sniff" || mode == "images";
-	if !known || a.len <= first { dr_usage(); }
+	if av.len <= fs {
+		dr_usage();
+		return;
+	}
 	var fl const byte[:][>..] = [];
-	for i in first..a.len {
-		let s = a[i];
-		fl.push(s[0..s.len]);
+	for i in fs..av.len {
+		fl.push(av[i][0..av[i].len]);
+	}
+	if mode == "images" {
+		dr_images(av[2][0..av[2].len], fl);
+		return;
 	}
 	if mode == "sniff" {
 		var data byte[>..] = [];
 		for f in fl {
 			data.clear();
-			var kind = DR_UNKNOWN;
-			if read_file(f, data) { kind = dr_sniff(f, data); }
-			dr_out.clear();
-			dr_out.append(f);
-			dr_out.push(9);
-			dr_out.append(dr_kind_names[kind]);
-			dr_out.push('\n');
-			write_stdout(dr_out);
+			var line byte[>..] = [];
+			line.append(f);
+			line.push(9);
+			if read_file(f, data) {
+				line.append(dr_kind_names[dr_sniff(f, data)]);
+			} else {
+				line.append(dr_kind_names[DR_UNKNOWN]);
+			}
+			line.push('\n');
+			write_stdout(line);
 		}
 		exit(0);
-	}
-	if mode == "images" {
-		let outdir = a[2];
-		dm::dm_reset("pdf", "page");
-		var okn = 0;
-		let one = fl.len == 1;
-		var data byte[>..] = [];
-		for i in fl.len {
-			let f = fl[i];
-			data.clear();
-			if !read_file(f, data) {
-				dr_tmp.clear();
-				dr_tmp.append("cannot read ");
-				dr_tmp.append(f);
-				dm::dm_warn_add(dr_tmp);
-				continue;
-			}
-			okn++;
-			if dr_sniff(f, data) != DR_PDF { continue; }
-			dr_tmp.clear();
-			dr_tmp.append(outdir);
-			if !one {
-				dr_tmp.push('/');
-				format(dr_tmp, i);
-			}
-			let made = pimage::pi_extract(data, dr_tmp);
-			for j in pimage::pi_count() {
-				dr_out.clear();
-				dr_out.append("{\"file\": ");
-				dm::dm_json_str(dr_out, f);
-				dr_out.append(", \"page\": ");
-				format(dr_out, pimage::pi_page(j));
-				dr_out.append(", \"path\": ");
-				dm::dm_json_str(dr_out, pimage::pi_path(j));
-				dr_out.append(", \"w\": ");
-				format(dr_out, pimage::pi_width(j));
-				dr_out.append(", \"h\": ");
-				format(dr_out, pimage::pi_height(j));
-				dr_out.append(", \"kind\": ");
-				dm::dm_json_str(dr_out, pimage::pi_kind_name(pimage::pi_kind(j)));
-				dr_out.append("}\n");
-				write_stdout(dr_out);
-			}
-		}
-		dr_warn_stderr();
-		exit(if okn > 0 { 0 } else { 1 });
+		return;
 	}
 	let n = dr_load(fl);
-	dr_out.clear();
-	if mode == "md" {
-		dm::dm_markdown(dr_out);
-	} else if mode == "json" {
-		dm::dm_json(dr_out);
-		dr_out.push('\n');
-	} else if mode == "info" {
-		dr_info_json(dr_out);
-		dr_out.push('\n');
-	} else if mode == "chunks" {
-		var mx = 1200;
-		let mv, mok = parse_int(trim(a[2]));
-		if mok { mx = clamp(mv, 200, 20000); }
-		dr_chunks_json(mx, dr_out);
-	} else {
-		var k = 5;
-		let kv, kok = parse_int(trim(a[2]));
-		if kok { k = clamp(kv, 1, 50); }
-		dm::dm_chunk(1200);
-		dm::dm_ask(a[3], k, dr_out);
+	if n == 0 {
+		dr_warn_out();
+		exit(1);
+		return;
 	}
-	write_stdout(dr_out);
-	if mode == "md" || n == 0 { dr_warn_stderr(); }
-	if n == 0 { exit(1); }
+	var out byte[>..] = [];
+	if mode == "md" {
+		dm::dm_markdown(out);
+		write_stdout(out);
+		dr_warn_out();
+	} else if mode == "json" {
+		dm::dm_json(out);
+		out.push('\n');
+		write_stdout(out);
+	} else if mode == "info" {
+		dr_info_json(out);
+		out.push('\n');
+		write_stdout(out);
+	} else if mode == "chunks" {
+		let m, ok = parse_int(av[2]);
+		var mx = 1200;
+		if ok { mx = m; }
+		dr_chunks_json(clamp(mx, 200, 20000), out);
+		write_stdout(out);
+	} else if mode == "ask" {
+		let kv, ok = parse_int(av[2]);
+		var k = 5;
+		if ok { k = kv; }
+		dm::dm_chunk(1200);
+		dm::dm_ask(av[3], clamp(k, 1, 50), out);
+		write_stdout(out);
+	}
+	exit(0);
 }

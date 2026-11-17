@@ -1,0 +1,421 @@
+=== -717635095fd9dff7
+namespace ofcrypt;
+=== 74afbdf6695891c8
+
+=== -12e725dc3623b28b
+let OC_URI = "http://schemas.microsoft.com/office/2006/keyEncryptor/password";
+let OC_BK_VIN byte[8] = [0xFE, 0xA7, 0xD2, 0x76, 0x3B, 0x4B, 0x9E, 0x79];
+let OC_BK_VHASH byte[8] = [0xD7, 0xAA, 0x0F, 0x6D, 0x30, 0x61, 0x34, 0x4E];
+let OC_BK_KEY byte[8] = [0x14, 0x6E, 0x0B, 0xE7, 0xAB, 0xAC, 0xD0, 0xD6];
+=== 297f3f3a34a593b7
+var oc_dh = 0;
+var oc_dbits = 0;
+var oc_dsalt byte[>..];
+var oc_kh = 0;
+var oc_kbits = 0;
+var oc_spin_n = 0;
+var oc_ksalt byte[>..];
+var oc_vin byte[>..];
+var oc_vhash byte[>..];
+var oc_kval byte[>..];
+=== 46a5b871aa3c553b
+fn oc_fit(d const byte[:], n int, out byte[>..]&) {
+	out.clear();
+	for i in n {
+		if i < d.len { out.push(d[i]); } else { out.push(0x36); }
+	}
+}
+=== -6e5c69c3b8cfd63e
+fn oc_pw16(pw const byte[:], out byte[>..]&) {
+	out.clear();
+	fn put(u int) {
+		out.push((u & 0xFF) as byte);
+		out.push(((u >> 8) & 0xFF) as byte);
+	}
+	var i = 0;
+	while i < pw.len {
+		let b = pw[i] as int;
+		var need = 0;
+		var lo = 0;
+		var c = 0;
+		if b < 0x80 { c = b; }
+		else if b >= 0xC0 && b < 0xE0 { need = 1; lo = 0x80; c = b & 0x1F; }
+		else if b >= 0xE0 && b < 0xF0 { need = 2; lo = 0x800; c = b & 0x0F; }
+		else if b >= 0xF0 && b < 0xF8 { need = 3; lo = 0x10000; c = b & 0x07; }
+		else { need = -1; }
+		var cp = 0xFFFD;
+		var n = 1;
+		if need >= 0 && i + need < pw.len {
+			var good = true;
+			for k in 1..need + 1 {
+				let x = pw[i + k] as int;
+				if (x & 0xC0) != 0x80 { good = false; } else { c = (c << 6) | (x & 0x3F); }
+			}
+			if good && c >= lo && c <= 0x10FFFF && !(c >= 0xD800 && c <= 0xDFFF) {
+				cp = c;
+				n = 1 + need;
+			}
+		}
+		if cp >= 0x10000 {
+			let v = cp - 0x10000;
+			put(0xD800 + (v >> 10));
+			put(0xDC00 + (v & 0x3FF));
+		} else {
+			put(cp);
+		}
+		i += n;
+	}
+}
+=== -84ff62b7f3ea21d
+fn oc_num(s const byte[:]) int {
+	if s.len == 0 || s.len > 9 { return -1; }
+	var v = 0;
+	for c in s {
+		let x = c as int;
+		if x < 48 || x > 57 { return -1; }
+		v = v * 10 + (x - 48);
+	}
+	v
+}
+=== 1d025e40921846f3
+fn oc_hkind(name const byte[:]) int {
+	if name == "SHA1" { return crypto::SHA1; }
+	if name == "SHA256" { return crypto::SHA256; }
+	if name == "SHA384" { return crypto::SHA384; }
+	if name == "SHA512" { return crypto::SHA512; }
+	0
+}
+=== 6c8facc44ed6e23f
+fn oc_aeq(i int, name const byte[:], want const byte[:]) bool {
+	var v byte[>..] = [];
+	if !xml::xm_attr(i, name, v) { return false; }
+	v == want
+}
+=== -456804d01f7bddb2
+fn oc_an(i int, name const byte[:]) int {
+	var v byte[>..] = [];
+	if !xml::xm_attr(i, name, v) { return -1; }
+	oc_num(v)
+}
+=== -f3a7301f6430496
+fn oc_ab(i int, name const byte[:], out byte[>..]&) bool {
+	out.clear();
+	var t byte[>..] = [];
+	if !xml::xm_attr(i, name, t) { return false; }
+	if !base64::decode(out, t) {
+		out.clear();
+		return false;
+	}
+	true
+}
+=== 0d135d9009bdb799
+fn oc_hk(i int) int {
+	var v byte[>..] = [];
+	if !xml::xm_attr(i, "hashAlgorithm", v) { return 0; }
+	oc_hkind(v)
+}
+=== 27dc6ea5b0989b8b
+fn oc_cbc(a const crypto::Aes&, iv const byte[:], d const byte[:], out byte[>..]&) {
+	var prev byte[16] = [0; 16];
+	for k in 16 {
+		if k < iv.len { prev[k] = iv[k]; }
+	}
+	var o byte[16] = [0; 16];
+	var p = 0;
+	while p + 16 <= d.len {
+		dcrypt::dc_aes_dec(a, d[p..p + 16], o);
+		for k in 16 {
+			out.push(o[k] ^ prev[k]);
+			prev[k] = d[p + k];
+		}
+		p += 16;
+	}
+}
+=== -3fefd4eb5ffc503c
+fn oc_ecb(a const crypto::Aes&, d const byte[:], out byte[>..]&) {
+	var o byte[16] = [0; 16];
+	var p = 0;
+	while p + 16 <= d.len {
+		dcrypt::dc_aes_dec(a, d[p..p + 16], o);
+		for k in 16 { out.push(o[k]); }
+		p += 16;
+	}
+}
+=== 0f8cc85b65ff3a62
+fn oc_spin(kind int, salt const byte[:], pw16 const byte[:], count int) byte[>..] {
+	var buf byte[>..] = [];
+	buf.append(salt);
+	buf.append(pw16);
+	var h = crypto::digest(kind, buf);
+	for i in count {
+		buf.clear();
+		buf.push((i & 0xFF) as byte);
+		buf.push(((i >> 8) & 0xFF) as byte);
+		buf.push(((i >> 16) & 0xFF) as byte);
+		buf.push(((i >> 24) & 0xFF) as byte);
+		buf.append(h);
+		h = crypto::digest(kind, buf);
+	}
+	h
+}
+=== -3fe3d73f328160f
+fn oc_bkey(kind int, h const byte[:], blk const byte[:], n int, out byte[>..]&) {
+	var buf byte[>..] = [];
+	buf.append(h);
+	buf.append(blk);
+	let dg = crypto::digest(kind, buf);
+	oc_fit(dg, n, out);
+}
+=== -2a9f05ff2ef1a2dd
+fn oc_size(pkg const byte[:]) int {
+	if pkg.len < 8 { return -1; }
+	let n = cfb::cf_le(pkg, 0, 8);
+	if n < 0 || n > 2147483647 || n > pkg.len - 8 { return -1; }
+	n
+}
+=== 10ee685ff57686ea
+fn oc_cut(out byte[>..]&, sz int) bool {
+	if out.len < sz {
+		out.clear();
+		return false;
+	}
+	out.resize(sz, 0);
+	true
+}
+=== 249a33fd3c9a3f44
+fn oc_elem(i int, kind int&, bits int&, salt byte[>..]&) bool {
+	if !oc_aeq(i, "cipherAlgorithm", "AES") { return false; }
+	if !oc_aeq(i, "cipherChaining", "ChainingModeCBC") { return false; }
+	if oc_an(i, "blockSize") != 16 { return false; }
+	let kb = oc_an(i, "keyBits");
+	if kb != 128 && kb != 192 && kb != 256 { return false; }
+	let hk = oc_hk(i);
+	if hk == 0 { return false; }
+	if !oc_ab(i, "saltValue", salt) { return false; }
+	if salt.len < 1 || salt.len > 1024 { return false; }
+	kind = hk;
+	bits = kb;
+	true
+}
+fn oc_params(info const byte[:]) bool {
+	if info.len < 9 { return false; }
+	xml::xm_parse(info[8..]);
+	let cnt = xml::xm_count();
+	let kd = xml::xm_find(0, cnt, "keyData");
+	if kd < 0 { return false; }
+	var ek = -1;
+	var from = 0;
+	while from < cnt {
+		let ke = xml::xm_find(from, cnt, "keyEncryptor");
+		if ke < 0 { break; }
+		if oc_aeq(ke, "uri", OC_URI) {
+			ek = xml::xm_child(ke, "encryptedKey");
+			break;
+		}
+		from = ke + 1;
+	}
+	if ek < 0 { return false; }
+	var dh = 0;
+	var db = 0;
+	var ds byte[>..] = [];
+	if !oc_elem(kd, dh, db, ds) { return false; }
+	var kh = 0;
+	var kb = 0;
+	var ks byte[>..] = [];
+	if !oc_elem(ek, kh, kb, ks) { return false; }
+	let sp = oc_an(ek, "spinCount");
+	if sp < 0 || sp > 10000000 { return false; }
+	var vin byte[>..] = [];
+	var vh byte[>..] = [];
+	var kv byte[>..] = [];
+	if !oc_ab(ek, "encryptedVerifierHashInput", vin) { return false; }
+	if vin.len == 0 || vin.len % 16 != 0 { return false; }
+	if !oc_ab(ek, "encryptedVerifierHashValue", vh) { return false; }
+	if vh.len == 0 || vh.len % 16 != 0 { return false; }
+	if !oc_ab(ek, "encryptedKeyValue", kv) { return false; }
+	if kv.len == 0 || kv.len % 16 != 0 { return false; }
+	oc_dh = dh;
+	oc_dbits = db;
+	oc_dsalt.clear();
+	oc_dsalt.append(ds);
+	oc_kh = kh;
+	oc_kbits = kb;
+	oc_spin_n = sp;
+	oc_ksalt.clear();
+	oc_ksalt.append(ks);
+	oc_vin.clear();
+	oc_vin.append(vin);
+	oc_vhash.clear();
+	oc_vhash.append(vh);
+	oc_kval.clear();
+	oc_kval.append(kv);
+	true
+}
+=== 0efba97278a845c8
+fn oc_ag_key(pw16 const byte[:], key byte[>..]&) int {
+	key.clear();
+	let h = oc_spin(oc_kh, oc_ksalt, pw16, oc_spin_n);
+	var iv byte[>..] = [];
+	oc_fit(oc_ksalt, 16, iv);
+	let n = oc_kbits / 8;
+	var kb byte[>..] = [];
+	oc_bkey(oc_kh, h, OC_BK_VIN, n, kb);
+	let a1 = crypto::aes_key(kb);
+	var vi byte[>..] = [];
+	oc_cbc(a1, iv, oc_vin, vi);
+	if vi.len < oc_ksalt.len { return -1; }
+	oc_bkey(oc_kh, h, OC_BK_VHASH, n, kb);
+	let a2 = crypto::aes_key(kb);
+	var vh byte[>..] = [];
+	oc_cbc(a2, iv, oc_vhash, vh);
+	let dg = crypto::digest(oc_kh, vi[..oc_ksalt.len]);
+	if vh.len < dg.len { return -1; }
+	if !(dg == vh[..dg.len]) { return 0; }
+	oc_bkey(oc_kh, h, OC_BK_KEY, n, kb);
+	let a3 = crypto::aes_key(kb);
+	var kv byte[>..] = [];
+	oc_cbc(a3, iv, oc_kval, kv);
+	let nb = oc_dbits / 8;
+	if kv.len < nb { return -1; }
+	key.append(kv[..nb]);
+	1
+}
+=== -4ab6d81049c9befc
+fn oc_ag_data(key const byte[:], pkg const byte[:], out byte[>..]&) int {
+	out.clear();
+	let sz = oc_size(pkg);
+	if sz < 0 { return -1; }
+	let a = crypto::aes_key(key);
+	let data = pkg[8..];
+	var buf byte[>..] = [];
+	var iv byte[>..] = [];
+	var p = 0;
+	var s = 0;
+	while p < data.len {
+		let e = min(p + 4096, data.len);
+		buf.clear();
+		buf.append(oc_dsalt);
+		buf.push((s & 0xFF) as byte);
+		buf.push(((s >> 8) & 0xFF) as byte);
+		buf.push(((s >> 16) & 0xFF) as byte);
+		buf.push(((s >> 24) & 0xFF) as byte);
+		let dg = crypto::digest(oc_dh, buf);
+		oc_fit(dg, 16, iv);
+		oc_cbc(a, iv, data[p..e], out);
+		p += 4096;
+		s += 1;
+	}
+	if !oc_cut(out, sz) { return -1; }
+	1
+}
+=== 291cc509813153b2
+fn oc_agile(info const byte[:], pkg const byte[:], pw16 const byte[:], out byte[>..]&) int {
+	if !oc_params(info) { return -1; }
+	var key byte[>..] = [];
+	let r = oc_ag_key(pw16, key);
+	if r != 1 { return r; }
+	oc_ag_data(key, pkg, out)
+}
+=== 36f8c6605670b408
+fn oc_std(info const byte[:], pkg const byte[:], pw16 const byte[:], out byte[>..]&) int {
+	out.clear();
+	let flags = cfb::cf_le(info, 4, 4);
+	let hs = cfb::cf_le(info, 8, 4);
+	let alg = cfb::cf_le(info, 20, 4);
+	let hid = cfb::cf_le(info, 24, 4);
+	let ksz = cfb::cf_le(info, 28, 4);
+	if flags < 0 || hs < 0 || alg < 0 || hid < 0 || ksz < 0 { return -1; }
+	if (flags & 0x04) == 0 || (flags & 0x20) == 0 || (flags & 0x10) != 0 { return -1; }
+	if hs < 32 || hs > 65536 { return -1; }
+	let okalg = (alg == 0x660E && ksz == 128) || (alg == 0x660F && ksz == 192) || (alg == 0x6610 && ksz == 256);
+	if !okalg { return -1; }
+	if hid != 0x8004 && hid != 0 { return -1; }
+	let v = 12 + hs;
+	let ssz = cfb::cf_le(info, v, 4);
+	let vhs = cfb::cf_le(info, v + 36, 4);
+	if ssz != 16 || vhs != 20 { return -1; }
+	if v + 72 > info.len { return -1; }
+	let salt = info[v + 4..v + 20];
+	let ev = info[v + 20..v + 36];
+	let evh = info[v + 40..v + 72];
+	var buf byte[>..] = [];
+	buf.append(salt);
+	buf.append(pw16);
+	var h = crypto::digest(crypto::SHA1, buf);
+	for i in 50000 {
+		buf.clear();
+		buf.push((i & 0xFF) as byte);
+		buf.push(((i >> 8) & 0xFF) as byte);
+		buf.push(((i >> 16) & 0xFF) as byte);
+		buf.push(((i >> 24) & 0xFF) as byte);
+		buf.append(h);
+		h = crypto::digest(crypto::SHA1, buf);
+	}
+	buf.clear();
+	buf.append(h);
+	for k in 4 { buf.push(0); }
+	h = crypto::digest(crypto::SHA1, buf);
+	var b1 byte[>..] = [];
+	var b2 byte[>..] = [];
+	for k in 64 {
+		b1.push(0x36);
+		b2.push(0x5C);
+	}
+	for k in 20 {
+		b1[k] = b1[k] ^ h[k];
+		b2[k] = b2[k] ^ h[k];
+	}
+	let d1 = crypto::digest(crypto::SHA1, b1);
+	let d2 = crypto::digest(crypto::SHA1, b2);
+	var full byte[>..] = [];
+	full.append(d1);
+	full.append(d2);
+	let a = crypto::aes_key(full[..ksz / 8]);
+	var ver byte[>..] = [];
+	oc_ecb(a, ev, ver);
+	var vh byte[>..] = [];
+	oc_ecb(a, evh, vh);
+	if ver.len < 16 || vh.len < 20 { return -1; }
+	let dg = crypto::digest(crypto::SHA1, ver);
+	if !(dg == vh[..20]) { return 0; }
+	let sz = oc_size(pkg);
+	if sz < 0 { return -1; }
+	oc_ecb(a, pkg[8..], out);
+	if !oc_cut(out, sz) { return -1; }
+	1
+}
+=== 4a87390e1836644c
+fn oc_is_encrypted(d const byte[:]) bool {
+	let h = cfb::cf_open(d);
+	if h < 0 { return false; }
+	let i = cfb::cf_find(h, "EncryptionInfo");
+	let p = cfb::cf_find(h, "EncryptedPackage");
+	let ok = i >= 0 && p >= 0 && cfb::cf_is_stream(h, i) && cfb::cf_is_stream(h, p);
+	cfb::cf_close(h);
+	ok
+}
+=== 202dc0b5d285a3e4
+fn oc_decrypt(d const byte[:], pw const byte[:], out byte[>..]&) int {
+	out.clear();
+	let h = cfb::cf_open(d);
+	if h < 0 { return -1; }
+	var info byte[>..] = [];
+	var pkg byte[>..] = [];
+	let a = cfb::cf_get(h, "EncryptionInfo", info);
+	let b = a && cfb::cf_get(h, "EncryptedPackage", pkg);
+	cfb::cf_close(h);
+	if !b { return -1; }
+	if info.len < 8 { return -1; }
+	let major = cfb::cf_le(info, 0, 2);
+	let minor = cfb::cf_le(info, 2, 2);
+	var pw16 byte[>..] = [];
+	oc_pw16(pw, pw16);
+	var r = -1;
+	if major == 4 && minor == 4 {
+		r = oc_agile(info, pkg, pw16, out);
+	} else if (major == 2 || major == 3 || major == 4) && minor == 2 {
+		r = oc_std(info, pkg, pw16, out);
+	}
+	if r != 1 { out.clear(); }
+	r
+}
