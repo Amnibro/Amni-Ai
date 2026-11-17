@@ -1,0 +1,931 @@
+=== -3eeae163ef5202bc
+namespace sevenz;
+=== 09d9eb37101f858e
+
+=== -68e779e674614e80
+var sz_cap = 268435456;
+var sz_said = false;
+fn sz_warn(msg const byte[:]) {
+	sz_said = true;
+	dm::dm_warn_add(msg);
+}
+fn sz_over() bool {
+	sz_warn("decompressed data passes the limit of 256 MiB");
+	return false;
+}
+=== -5ca7b5faab5ba9f4
+struct SzArc { base int, len int, e0 int, n0 int, f0 int, c0 int, p0 int, o0 int, r0 int, cnt int, live bool }
+=== 5ae37f5613142d75
+struct SzCoder { id int, nin int, nout int, pat int, plen int, usize int }
+struct SzFold { arc int, c0 int, nc int, o0 int, no int, pk int, npk int, main int, usize int, crc int }
+struct SzPack { off int, size int }
+struct SzEnt { nat int, nlen int, size int, dir bool, fold int, off int, crc int, enc bool }
+=== -7ac963ebdfaf2d32
+var sz_data byte[>..];
+var sz_names byte[>..];
+var sz_arcs SzArc[>..];
+var sz_ents SzEnt[>..];
+var sz_folds SzFold[>..];
+var sz_coders SzCoder[>..];
+var sz_props byte[>..];
+var sz_ord int[>..];
+var sz_packs SzPack[>..];
+var sz_hb byte[>..];
+var sz_hp = 0;
+var sz_hbad = false;
+var sz_ssz int[>..];
+var sz_scr int[>..];
+var sz_sfo int[>..];
+var sz_sof int[>..];
+var sz_bi int[>..];
+var sz_bo int[>..];
+var sz_tmp int[>..];
+var sz_pk0 = 0;
+var sz_fo0 = 0;
+var sz_hsub = false;
+var sz_cf = -1;
+var sz_cbuf byte[>..];
+=== 6cfbc3da700d8d26
+fn sz_hbyte() int {
+	if sz_hp >= sz_hb.len {
+		sz_hbad = true;
+		return 0;
+	}
+	let v int = sz_hb[sz_hp];
+	sz_hp++;
+	return v;
+}
+=== -73e8b3d28ecece5d
+fn sz_hnum() int {
+	let first = sz_hbyte();
+	var mask = 0x80;
+	var value = 0;
+	for i in 8 {
+		if (first & mask) == 0 {
+			let r = value + ((first & (mask - 1)) << (8 * i));
+			if sz_hbad { return 0; }
+			if r < 0 || r >= 281474976710656 {
+				sz_hbad = true;
+				return 0;
+			}
+			return r;
+		}
+		value = value | (sz_hbyte() << (8 * i));
+		mask = mask >> 1;
+	}
+	if sz_hbad || value < 0 || value >= 281474976710656 {
+		sz_hbad = true;
+		return 0;
+	}
+	return value;
+}
+=== 3331e29aca73dba4
+fn sz_hu32() int {
+	var v = 0;
+	for i in 4 {
+		v = v | (sz_hbyte() << (8 * i));
+	}
+	return v;
+}
+fn sz_hskip(n int) {
+	if n < 0 || n > sz_hb.len - sz_hp {
+		sz_hbad = true;
+		return;
+	}
+	sz_hp += n;
+}
+=== 241ce963bb68b329
+fn sz_hvec(n int, v int[>..]&) {
+	v.clear();
+	if n < 0 || (n + 7) / 8 > sz_hb.len - sz_hp {
+		sz_hbad = true;
+		return;
+	}
+	for i in n {
+		let b int = sz_hb[sz_hp + i / 8];
+		v.push((b >> (7 - i % 8)) & 1);
+	}
+	sz_hp += (n + 7) / 8;
+}
+=== 4879c4bcf4a95170
+fn sz_hdig(n int, v int[>..]&) {
+	v.clear();
+	let all = sz_hbyte();
+	var fl int[>..] = [];
+	if all == 0 {
+		sz_hvec(n, fl);
+	}
+	if sz_hbad { return; }
+	for i in n {
+		var defined = all != 0;
+		if all == 0 && i < fl.len && fl[i] == 1 { defined = true; }
+		if defined {
+			v.push(sz_hu32());
+		} else {
+			v.push(-1);
+		}
+	}
+}
+=== -1c12bdf73cb6fe43
+fn sz_packinfo(a int) bool {
+	sz_pk0 = sz_packs.len;
+	let pos = sz_hnum();
+	let n = sz_hnum();
+	if n > sz_hb.len - sz_hp { sz_hbad = true; }
+	if sz_hbad { return false; }
+	loop {
+		let id = sz_hnum();
+		if sz_hbad { return false; }
+		if id == 0 { break; }
+		if id == 9 {
+			var off = 32 + pos;
+			for i in n {
+				let s = sz_hnum();
+				if sz_hbad { return false; }
+				sz_packs.push(SzPack { off: off, size: s });
+				off += s;
+			}
+		} else if id == 10 {
+			sz_hdig(n, sz_tmp);
+		} else {
+			return false;
+		}
+	}
+	if sz_hbad { return false; }
+	if sz_packs.len - sz_pk0 < n { return false; }
+	for i in sz_pk0..sz_packs.len {
+		let p = sz_packs[i];
+		if p.off + p.size > sz_arcs[a].len { return false; }
+	}
+	return true;
+}
+=== 6b51dbb319269be7
+fn sz_folder(pk int&) bool {
+	let nc = sz_hnum();
+	if sz_hbad || nc < 1 || nc > 32 { return false; }
+	let c0 = sz_coders.len;
+	let o0 = sz_ord.len;
+	var tin = 0;
+	var tout = 0;
+	for k in nc {
+		let flags = sz_hbyte();
+		if sz_hbad || (flags & 0x80) != 0 { return false; }
+		let idn = flags & 15;
+		if idn > 8 { return false; }
+		var id = 0;
+		for j in idn {
+			id = (id << 8) | sz_hbyte();
+		}
+		var nin = 1;
+		var nout = 1;
+		if (flags & 0x10) != 0 {
+			nin = sz_hnum();
+			nout = sz_hnum();
+			if sz_hbad || nin > 32 || nout > 32 { return false; }
+		}
+		let pat = sz_props.len;
+		var plen = 0;
+		if (flags & 0x20) != 0 {
+			plen = sz_hnum();
+			if sz_hbad || plen < 0 || plen > sz_hb.len - sz_hp { return false; }
+			for j in plen {
+				sz_props.push(sz_hb[sz_hp + j]);
+			}
+			sz_hp += plen;
+		}
+		if sz_hbad { return false; }
+		sz_coders.push(SzCoder { id: id, nin: nin, nout: nout, pat: pat, plen: plen, usize: -1 });
+		tin += nin;
+		tout += nout;
+	}
+	let nb = tout - 1;
+	if nb < 0 { return false; }
+	sz_bi.clear();
+	sz_bo.clear();
+	for k in nb {
+		let bi = sz_hnum();
+		let bo = sz_hnum();
+		if sz_hbad || bi >= tin || bo >= tout { return false; }
+		sz_bi.push(bi);
+		sz_bo.push(bo);
+	}
+	let npk = tin - nb;
+	if npk < 1 { return false; }
+	if npk > 1 {
+		for k in npk {
+			let skip = sz_hnum();
+		}
+	}
+	if sz_hbad { return false; }
+	var simple = npk == 1;
+	for k in nc {
+		let c = sz_coders[c0 + k];
+		if c.nin != 1 || c.nout != 1 { simple = false; }
+	}
+	var unb = -1;
+	for k in nc {
+		var inb = false;
+		for b in sz_bo {
+			if b == k { inb = true; }
+		}
+		if !inb && unb < 0 { unb = k; }
+	}
+	var no = 0;
+	if simple && unb >= 0 {
+		var lst int[>..] = [];
+		lst.push(unb);
+		var cur = unb;
+		var bad = false;
+		loop {
+			var nxt = -1;
+			for j in sz_bi.len {
+				if nxt < 0 && sz_bi[j] == cur { nxt = sz_bo[j]; }
+			}
+			if nxt < 0 { break; }
+			if lst.len >= nc {
+				bad = true;
+				break;
+			}
+			lst.push(nxt);
+			cur = nxt;
+		}
+		if !bad && lst.len == nc {
+			var j = lst.len - 1;
+			while j >= 0 {
+				sz_ord.push(lst[j]);
+				j--;
+			}
+			no = nc;
+		}
+	}
+	var mn = -1;
+	if tout == nc && unb >= 0 { mn = unb; }
+	sz_folds.push(SzFold { arc: sz_arcs.len - 1, c0: c0, nc: nc, o0: o0, no: no, pk: pk, npk: npk, main: mn, usize: -1, crc: -1 });
+	pk += npk;
+	return !sz_hbad;
+}
+=== -60b95b25eee56da2
+fn sz_unpackinfo(a int) bool {
+	if sz_hnum() != 11 { return false; }
+	let nf = sz_hnum();
+	if sz_hbad || nf < 0 || nf > sz_hb.len - sz_hp { return false; }
+	if sz_hbyte() != 0 { return false; }
+	var pk = sz_pk0;
+	let f0 = sz_folds.len;
+	for i in nf {
+		if !sz_folder(pk) { return false; }
+	}
+	if sz_hnum() != 12 { return false; }
+	for i in nf {
+		let f = sz_folds[f0 + i];
+		for k in f.nc {
+			let c = sz_coders[f.c0 + k];
+			for j in c.nout {
+				let u = sz_hnum();
+				if j == 0 { sz_coders[f.c0 + k].usize = u; }
+			}
+		}
+	}
+	if sz_hbad { return false; }
+	loop {
+		let id = sz_hnum();
+		if sz_hbad { return false; }
+		if id == 0 { break; }
+		if id != 10 { return false; }
+		sz_hdig(nf, sz_tmp);
+		if sz_hbad || sz_tmp.len != nf { return false; }
+		for i in nf {
+			sz_folds[f0 + i].crc = sz_tmp[i];
+		}
+	}
+	for i in nf {
+		let f = sz_folds[f0 + i];
+		if f.main >= 0 {
+			sz_folds[f0 + i].usize = sz_coders[f.c0 + f.main].usize;
+		}
+	}
+	return !sz_hbad;
+}
+=== 2476d91aeac79929
+fn sz_substreams() bool {
+	sz_ssz.clear();
+	sz_scr.clear();
+	sz_sfo.clear();
+	sz_sof.clear();
+	sz_hsub = true;
+	let f0 = sz_fo0;
+	let nf = sz_folds.len - f0;
+	var cnt int[>..] = [];
+	for i in nf {
+		cnt.push(1);
+	}
+	var id = sz_hnum();
+	if id == 13 {
+		for i in nf {
+			let c = sz_hnum();
+			if sz_hbad || c < 0 || c > sz_hb.len - sz_hp + 1 { return false; }
+			cnt[i] = c;
+		}
+		id = sz_hnum();
+	}
+	if id == 9 {
+		for i in nf {
+			if cnt[i] > 0 {
+				let f = sz_folds[f0 + i];
+				var sum = 0;
+				var off = 0;
+				let m = cnt[i] - 1;
+				for k in m {
+					let s = sz_hnum();
+					if sz_hbad { return false; }
+					sz_ssz.push(s);
+					sz_sfo.push(f0 + i);
+					sz_sof.push(off);
+					off += s;
+					sum += s;
+				}
+				let last = f.usize - sum;
+				if last < 0 { return false; }
+				sz_ssz.push(last);
+				sz_sfo.push(f0 + i);
+				sz_sof.push(off);
+			}
+		}
+		id = sz_hnum();
+	} else {
+		for i in nf {
+			if cnt[i] == 1 {
+				sz_ssz.push(sz_folds[f0 + i].usize);
+				sz_sfo.push(f0 + i);
+				sz_sof.push(0);
+			} else if cnt[i] > 1 {
+				return false;
+			}
+		}
+	}
+	var need = 0;
+	for i in nf {
+		let f = sz_folds[f0 + i];
+		if !(cnt[i] == 1 && f.crc != -1) { need += cnt[i]; }
+	}
+	var have = false;
+	sz_tmp.clear();
+	while id != 0 {
+		if sz_hbad { return false; }
+		if id != 10 { return false; }
+		sz_hdig(need, sz_tmp);
+		have = true;
+		id = sz_hnum();
+	}
+	if sz_hbad { return false; }
+	var di = 0;
+	for i in nf {
+		let f = sz_folds[f0 + i];
+		for k in cnt[i] {
+			if cnt[i] == 1 && f.crc != -1 {
+				sz_scr.push(f.crc);
+			} else {
+				if have && di < sz_tmp.len {
+					sz_scr.push(sz_tmp[di]);
+				} else {
+					sz_scr.push(-1);
+				}
+				di++;
+			}
+		}
+	}
+	return !sz_hbad;
+}
+=== 65e21d1c052bc680
+fn sz_streams(a int) bool {
+	sz_pk0 = sz_packs.len;
+	sz_fo0 = sz_folds.len;
+	sz_ssz.clear();
+	sz_scr.clear();
+	sz_sfo.clear();
+	sz_sof.clear();
+	sz_hsub = false;
+	loop {
+		let id = sz_hnum();
+		if sz_hbad { return false; }
+		if id == 0 { break; }
+		if id == 6 {
+			if !sz_packinfo(a) { return false; }
+		} else if id == 7 {
+			if !sz_unpackinfo(a) { return false; }
+		} else if id == 8 {
+			if !sz_substreams() { return false; }
+		} else {
+			return false;
+		}
+	}
+	if !sz_hsub {
+		for i in sz_fo0..sz_folds.len {
+			let f = sz_folds[i];
+			if f.usize == -1 { return false; }
+			sz_ssz.push(f.usize);
+			sz_scr.push(f.crc);
+			sz_sfo.push(i);
+			sz_sof.push(0);
+		}
+	}
+	return !sz_hbad;
+}
+=== -31b662000c8fe9d0
+fn sz_enc_fold(f int) bool {
+	let fo = sz_folds[f];
+	for k in fo.nc {
+		if sz_coders[fo.c0 + k].id == 0x06F10701 { return true; }
+	}
+	return false;
+}
+=== 6f30d76c298550ab
+fn sz_files(a int) bool {
+	let n = sz_hnum();
+	if sz_hbad || n < 0 || n > 4000000 || n > sz_hb.len - sz_hp { return false; }
+	var es int[>..] = [];
+	var ef int[>..] = [];
+	var tmp int[>..] = [];
+	var nm_at int[>..] = [];
+	var nm_len int[>..] = [];
+	var named = false;
+	loop {
+		let id = sz_hnum();
+		if sz_hbad { return false; }
+		if id == 0 { break; }
+		let size = sz_hnum();
+		if sz_hbad || size < 0 || size > sz_hb.len - sz_hp { return false; }
+		let end = sz_hp + size;
+		if id == 0x0E {
+			sz_hvec(n, es);
+		} else if id == 0x0F || id == 0x10 {
+			var ne = 0;
+			for v in es {
+				if v == 1 { ne++; }
+			}
+			if id == 0x0F {
+				sz_hvec(ne, ef);
+			} else {
+				sz_hvec(ne, tmp);
+			}
+		} else if id == 0x11 {
+			if sz_hbyte() != 0 { return false; }
+			named = true;
+			nm_at.clear();
+			nm_len.clear();
+			for i in n {
+				var units byte[>..] = [];
+				loop {
+					if sz_hp + 2 > end { return false; }
+					let lo = sz_hb[sz_hp];
+					let hi = sz_hb[sz_hp + 1];
+					sz_hp += 2;
+					if lo == 0 && hi == 0 { break; }
+					units.push(lo);
+					units.push(hi);
+				}
+				let start = sz_names.len;
+				dm::dm_utf16(units, false, sz_names);
+				nm_at.push(start);
+				nm_len.push(sz_names.len - start);
+			}
+		} else if id == 0x12 || id == 0x13 || id == 0x14 || id == 0x18 || id == 0x15 {
+			let all = sz_hbyte();
+			var d = n;
+			if all == 0 {
+				sz_hvec(n, tmp);
+				d = 0;
+				for v in tmp {
+					if v == 1 { d++; }
+				}
+			}
+			if sz_hbyte() != 0 { return false; }
+			if sz_hbad { return false; }
+			if id == 0x15 {
+				sz_hskip(d * 4);
+			} else {
+				sz_hskip(d * 8);
+			}
+		} else if id == 0x19 {
+			for j in size {
+				if sz_hb[sz_hp + j] != 0 { return false; }
+			}
+			sz_hp += size;
+		}
+		if sz_hbad { return false; }
+		if (id >= 0x0E && id <= 0x15) || id == 0x18 || id == 0x19 {
+			if sz_hp != end { return false; }
+		}
+		sz_hp = end;
+	}
+	if sz_hbad { return false; }
+	var si = 0;
+	var ei = 0;
+	for i in n {
+		var nat = 0;
+		var nlen = 0;
+		if named {
+			nat = nm_at[i];
+			nlen = nm_len[i];
+		}
+		let empty = i < es.len && es[i] == 1;
+		if empty {
+			var isdir = true;
+			if ei < ef.len && ef[ei] == 1 { isdir = false; }
+			ei++;
+			sz_ents.push(SzEnt { nat: nat, nlen: nlen, size: 0, dir: isdir, fold: -1, off: 0, crc: -1, enc: false });
+		} else {
+			if si >= sz_ssz.len { return false; }
+			let fo = sz_sfo[si];
+			sz_ents.push(SzEnt { nat: nat, nlen: nlen, size: sz_ssz[si], dir: false, fold: fo, off: sz_sof[si], crc: sz_scr[si], enc: sz_enc_fold(fo) });
+			si++;
+		}
+	}
+	if si != sz_ssz.len { return false; }
+	return true;
+}
+=== 1b1d76c6b9ad333f
+fn sz_header(a int) bool {
+	sz_ssz.clear();
+	sz_scr.clear();
+	sz_sfo.clear();
+	sz_sof.clear();
+	sz_hsub = false;
+	var id = sz_hnum();
+	if sz_hbad { return false; }
+	if id == 2 {
+		loop {
+			let pid = sz_hnum();
+			if sz_hbad { return false; }
+			if pid == 0 { break; }
+			let psize = sz_hnum();
+			if sz_hbad { return false; }
+			sz_hskip(psize);
+			if sz_hbad { return false; }
+		}
+		id = sz_hnum();
+		if sz_hbad { return false; }
+	}
+	if id == 3 { return false; }
+	if id == 4 {
+		if !sz_streams(a) { return false; }
+		id = sz_hnum();
+		if sz_hbad { return false; }
+	}
+	if id == 5 {
+		if !sz_files(a) { return false; }
+		let last = sz_hnum();
+	} else if id != 0 {
+		return false;
+	}
+	if sz_hbad { return false; }
+	return sz_hp == sz_hb.len;
+}
+=== 28c17ae9adc54c1c
+fn sz_unsup(id int) {
+	var msg byte[>..] = [];
+	msg.append("7z: unsupported method ");
+	if id == 0x030401 {
+		msg.append("PPMd");
+	} else if id == 0x0303011B {
+		msg.append("BCJ2");
+	} else if id == 0x0A {
+		msg.append("ARM64");
+	} else if id == 0x040109 {
+		msg.append("Deflate64");
+	} else {
+		var n = 1;
+		var t = id >> 4;
+		while t > 0 {
+			n++;
+			t = t >> 4;
+		}
+		if n % 2 == 1 { n++; }
+		for i in n {
+			let d = (id >> (4 * (n - 1 - i))) & 15;
+			if d < 10 {
+				msg.push((d + 48) as byte);
+			} else {
+				msg.push((d + 55) as byte);
+			}
+		}
+	}
+	sz_warn(msg);
+}
+=== 7da58cf7e53940ca
+fn sz_coder(c int, src const byte[:], dst byte[>..]&) bool {
+	let co = sz_coders[c];
+	let u = co.usize;
+	if u > sz_cap { return sz_over(); }
+	if u < 0 { return false; }
+	var ok = false;
+	var lz = false;
+	if co.id == 0 {
+		dst.append(src);
+		ok = true;
+	} else if co.id == 0x21 {
+		if co.plen != 1 { return false; }
+		let pb int = sz_props[co.pat];
+		ok = lzma::lz_lzma2_dec(src, pb, dst);
+		lz = true;
+	} else if co.id == 0x030101 {
+		if co.plen < 5 { return false; }
+		ok = lzma::lz_lzma_dec(src, sz_props[co.pat..co.pat + 5], u, dst);
+		lz = true;
+	} else if co.id == 0x040108 {
+		var e = 0;
+		ok = pack::pk_inflate(src, 0, dst, e);
+	} else if co.id == 0x040202 {
+		ok = pack::pk_bunzip(src, dst);
+	} else {
+		sz_unsup(co.id);
+		return false;
+	}
+	if !ok || dst.len != u || (lz && lzma::lz_used != src.len) {
+		sz_warn("7z: corrupt or truncated data");
+		return false;
+	}
+	return true;
+}
+=== 16eef1a04d07ab85
+fn sz_filter(c int, buf byte[>..]&) bool {
+	let co = sz_coders[c];
+	if co.id == 3 {
+		var d = 1;
+		if co.plen > 0 {
+			let pb int = sz_props[co.pat];
+			d = 1 + pb;
+		}
+		lzma::lz_delta(buf, 0, d);
+	} else if co.id == 4 || co.id == 0x03030103 {
+		lzma::lz_x86(buf, 0, 0);
+	}
+	return true;
+}
+fn sz_is_filter(id int) bool {
+	return id == 3 || id == 4 || id == 0x03030103;
+}
+=== 22d095612e6d257c
+fn sz_fold_run(f int, out byte[>..]&) bool {
+	let fo = sz_folds[f];
+	if sz_enc_fold(f) {
+		sz_warn("7z: encrypted data");
+		return false;
+	}
+	if fo.no == 0 {
+		for k in fo.nc {
+			let id = sz_coders[fo.c0 + k].id;
+			if id != 0 && id != 3 && id != 4 && id != 0x03030103 && id != 0x21 && id != 0x030101 && id != 0x040108 && id != 0x040202 {
+				sz_unsup(id);
+				return false;
+			}
+		}
+		sz_warn("7z: unsupported coder layout");
+		return false;
+	}
+	if fo.usize > sz_cap { return sz_over(); }
+	if fo.pk < 0 || fo.pk >= sz_packs.len { return false; }
+	let p = sz_packs[fo.pk];
+	let arc = sz_arcs[fo.arc];
+	if p.off < 0 || p.size < 0 || p.off + p.size > arc.len {
+		sz_warn("7z: corrupt or truncated data");
+		return false;
+	}
+	let src = sz_data[arc.base + p.off..arc.base + p.off + p.size];
+	var x byte[>..] = [];
+	var y byte[>..] = [];
+	var cur = 0;
+	for step in fo.no {
+		let c = fo.c0 + sz_ord[fo.o0 + step];
+		if sz_is_filter(sz_coders[c].id) {
+			if cur == 0 {
+				x.append(src);
+				cur = 1;
+			}
+			if cur == 1 {
+				if !sz_filter(c, x) { return false; }
+			} else {
+				if !sz_filter(c, y) { return false; }
+			}
+		} else if cur == 0 {
+			if !sz_coder(c, src, x) { return false; }
+			cur = 1;
+		} else if cur == 1 {
+			y.clear();
+			if !sz_coder(c, x, y) { return false; }
+			x.clear();
+			cur = 2;
+		} else {
+			x.clear();
+			if !sz_coder(c, y, x) { return false; }
+			y.clear();
+			cur = 1;
+		}
+	}
+	if cur == 0 {
+		out.append(src);
+	} else if cur == 1 {
+		out.append(x);
+	} else {
+		out.append(y);
+	}
+	if fo.crc != -1 && pack::pk_crc32(out, 0) != fo.crc {
+		out.clear();
+		sz_warn("7z: CRC mismatch");
+		return false;
+	}
+	return true;
+}
+fn sz_fold_dec(f int, out byte[>..]&) bool {
+	out.clear();
+	let old = sz_said;
+	sz_said = false;
+	let ok = sz_fold_run(f, out);
+	if !ok {
+		out.clear();
+		if !sz_said { sz_warn("7z: corrupt or truncated data"); }
+	}
+	sz_said = sz_said || old;
+	return ok;
+}
+=== -1b27a8650597c3e0
+fn sz_undo(ra int, re int, rn int, rf int, rc int, rp int, ro int, rr int, rd int) {
+	if sz_arcs.len > ra { sz_arcs.pop_n(sz_arcs.len - ra); }
+	if sz_ents.len > re { sz_ents.pop_n(sz_ents.len - re); }
+	if sz_names.len > rn { sz_names.pop_n(sz_names.len - rn); }
+	if sz_folds.len > rf { sz_folds.pop_n(sz_folds.len - rf); }
+	if sz_coders.len > rc { sz_coders.pop_n(sz_coders.len - rc); }
+	if sz_packs.len > rp { sz_packs.pop_n(sz_packs.len - rp); }
+	if sz_ord.len > ro { sz_ord.pop_n(sz_ord.len - ro); }
+	if sz_props.len > rr { sz_props.pop_n(sz_props.len - rr); }
+	if sz_data.len > rd { sz_data.pop_n(sz_data.len - rd); }
+	if sz_cf >= rf {
+		sz_cf = -1;
+		sz_cbuf.clear();
+	}
+}
+=== -4932357b1f76a6d3
+fn sz_open(data const byte[:]) int {
+	if data.len < 32 { return -1; }
+	let sig = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
+	for i in 6 {
+		if data[i] != sig[i] { return -1; }
+	}
+	if data[6] != 0 { return -1; }
+	let scrc = lzma::lz_le(data, 8, 4);
+	let noff = lzma::lz_le(data, 12, 8);
+	let nsize = lzma::lz_le(data, 20, 8);
+	let ncrc = lzma::lz_le(data, 28, 4);
+	if pack::pk_crc32(data[12..32], 0) != scrc || noff < 0 || nsize < 0 || noff > data.len || nsize > data.len || 32 + noff + nsize > data.len {
+		sz_warn("7z: damaged archive");
+		return -1;
+	}
+	if nsize > 0 && pack::pk_crc32(data[32 + noff..32 + noff + nsize], 0) != ncrc {
+		sz_warn("7z: damaged archive");
+		return -1;
+	}
+	sz_said = false;
+	let ra = sz_arcs.len;
+	let re = sz_ents.len;
+	let rn = sz_names.len;
+	let rf = sz_folds.len;
+	let rc = sz_coders.len;
+	let rp = sz_packs.len;
+	let ro = sz_ord.len;
+	let rr = sz_props.len;
+	let rd = sz_data.len;
+	fn fail() int {
+		sz_undo(ra, re, rn, rf, rc, rp, ro, rr, rd);
+		if !sz_said { sz_warn("7z: damaged archive"); }
+		return -1;
+	}
+	sz_data.append(data);
+	sz_arcs.push(SzArc { base: rd, len: data.len, e0: re, n0: rn, f0: rf, c0: rc, p0: rp, o0: ro, r0: rr, cnt: 0, live: true });
+	let a = sz_arcs.len - 1;
+	if nsize == 0 { return a; }
+	sz_hb.clear();
+	sz_hb.append(data[32 + noff..32 + noff + nsize]);
+	var round = 0;
+	while round < 4 {
+		round++;
+		sz_hp = 0;
+		sz_hbad = false;
+		let id = sz_hbyte();
+		if id == 0x17 {
+			let qf = sz_folds.len;
+			let qc = sz_coders.len;
+			let qp = sz_packs.len;
+			let qo = sz_ord.len;
+			let qr = sz_props.len;
+			if !sz_streams(a) { return fail(); }
+			if sz_folds.len <= qf { return fail(); }
+			if sz_enc_fold(qf) {
+				sz_undo(ra, re, rn, rf, rc, rp, ro, rr, rd);
+				return -2;
+			}
+			var scr byte[>..] = [];
+			if !sz_fold_dec(qf, scr) { return fail(); }
+			if sz_folds.len > qf { sz_folds.pop_n(sz_folds.len - qf); }
+			if sz_coders.len > qc { sz_coders.pop_n(sz_coders.len - qc); }
+			if sz_packs.len > qp { sz_packs.pop_n(sz_packs.len - qp); }
+			if sz_ord.len > qo { sz_ord.pop_n(sz_ord.len - qo); }
+			if sz_props.len > qr { sz_props.pop_n(sz_props.len - qr); }
+			sz_hb.clear();
+			sz_hb.append(scr);
+		} else if id == 1 {
+			if !sz_header(a) { return fail(); }
+			sz_arcs[a].cnt = sz_ents.len - re;
+			return a;
+		} else {
+			return fail();
+		}
+	}
+	return fail();
+}
+=== 4a06fb2d6b3bb280
+fn sz_ok(h int, i int) bool {
+	if h < 0 || h >= sz_arcs.len { return false; }
+	let ar = sz_arcs[h];
+	return ar.live && i >= 0 && i < ar.cnt;
+}
+fn sz_count(h int) int {
+	if h < 0 || h >= sz_arcs.len { return 0; }
+	let ar = sz_arcs[h];
+	if !ar.live { return 0; }
+	return ar.cnt;
+}
+fn sz_name(h int, i int) const byte[:] {
+	if !sz_ok(h, i) { return ""; }
+	let e = sz_ents[sz_arcs[h].e0 + i];
+	return sz_names[e.nat..e.nat + e.nlen];
+}
+fn sz_size(h int, i int) int {
+	if !sz_ok(h, i) { return -1; }
+	return sz_ents[sz_arcs[h].e0 + i].size;
+}
+fn sz_is_dir(h int, i int) bool {
+	if !sz_ok(h, i) { return false; }
+	return sz_ents[sz_arcs[h].e0 + i].dir;
+}
+fn sz_encrypted(h int, i int) bool {
+	if !sz_ok(h, i) { return false; }
+	return sz_ents[sz_arcs[h].e0 + i].enc;
+}
+=== 61e08200faa43588
+fn sz_find(h int, name const byte[:]) int {
+	let n = sz_count(h);
+	for i in n {
+		if sz_name(h, i) == name { return i; }
+	}
+	for i in n {
+		if pack::pk_norm_eq(sz_name(h, i), name, false) { return i; }
+	}
+	for i in n {
+		if pack::pk_norm_eq(sz_name(h, i), name, true) { return i; }
+	}
+	return -1;
+}
+=== -183aed52cee14969
+fn sz_read(h int, i int, out byte[>..]&) bool {
+	out.clear();
+	sz_said = false;
+	if !sz_ok(h, i) { return false; }
+	let e = sz_ents[sz_arcs[h].e0 + i];
+	if e.fold < 0 { return true; }
+	if e.enc {
+		sz_warn("7z: encrypted entry");
+		return false;
+	}
+	if sz_cf != e.fold {
+		if !sz_fold_dec(e.fold, sz_cbuf) {
+			sz_cf = -1;
+			return false;
+		}
+		sz_cf = e.fold;
+	}
+	if e.off < 0 || e.size < 0 || e.off + e.size > sz_cbuf.len {
+		sz_warn("7z: corrupt or truncated data");
+		return false;
+	}
+	out.append(sz_cbuf[e.off..e.off + e.size]);
+	if e.crc != -1 && pack::pk_crc32(out, 0) != e.crc {
+		out.clear();
+		sz_warn("7z: CRC mismatch");
+		return false;
+	}
+	return true;
+}
+=== 2b162b42061a154d
+fn sz_close(h int) {
+	if h < 0 || h >= sz_arcs.len { return; }
+	if !sz_arcs[h].live { return; }
+	sz_arcs[h].live = false;
+	if sz_cf >= 0 && sz_cf < sz_folds.len && sz_folds[sz_cf].arc == h {
+		sz_cf = -1;
+		sz_cbuf.clear();
+	}
+	while sz_arcs.len > 0 && !sz_arcs[sz_arcs.len - 1].live {
+		let ar = sz_arcs[sz_arcs.len - 1];
+		sz_undo(sz_arcs.len - 1, ar.e0, ar.n0, ar.f0, ar.c0, ar.p0, ar.o0, ar.r0, ar.base);
+	}
+}

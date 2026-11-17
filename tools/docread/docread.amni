@@ -16,6 +16,8 @@ import extra;
 import ole;
 import dcrypt;
 import ofcrypt;
+import lzma;
+import sevenz;
 
 let DR_UNKNOWN = 0;
 let DR_PDF = 1;
@@ -43,8 +45,11 @@ let DR_IPYNB = 22;
 let DR_ICS = 23;
 let DR_VCF = 24;
 let DR_CODE = 25;
-let dr_kind_names = ["unknown", "pdf", "docx", "xlsx", "pptx", "odf", "epub", "zip", "html", "rtf", "eml", "csv", "tsv", "json", "xml", "text", "ole", "image", "binary", "gzip", "bzip2", "tar", "ipynb", "ics", "vcf", "code"];
-let dr_units = ["part", "page", "section", "sheet", "slide", "part", "chapter", "part", "section", "section", "part", "part", "part", "part", "part", "section", "part", "part", "part", "part", "part", "part", "part", "part", "part", "line"];
+let DR_XZ = 26;
+let DR_LZMA = 27;
+let DR_7Z = 28;
+let dr_kind_names = ["unknown", "pdf", "docx", "xlsx", "pptx", "odf", "epub", "zip", "html", "rtf", "eml", "csv", "tsv", "json", "xml", "text", "ole", "image", "binary", "gzip", "bzip2", "tar", "ipynb", "ics", "vcf", "code", "xz", "lzma", "7z"];
+let dr_units = ["part", "page", "section", "sheet", "slide", "part", "chapter", "part", "section", "section", "part", "part", "part", "part", "part", "section", "part", "part", "part", "part", "part", "part", "part", "part", "part", "line", "part", "part", "part"];
 var dr_tmp byte[>..];
 var dr_out byte[>..];
 fn dr_ext(path const byte[:], out byte[>..]&) {
@@ -106,14 +111,12 @@ fn dr_lower_eq(a const byte[:], b const byte[:]) bool {
 	return true;
 }
 var dr_pw byte[>..];
-let DR_OLE_MAGIC = [208, 207, 17, 224, 161, 177, 26, 225];
 let DR_EML_HDRS = ["From:", "To:", "Subject:", "Date:", "Received:", "Return-Path:", "Message-ID:", "MIME-Version:", "Delivered-To:"];
-let DR_HTML_EXT = ["html", "htm", "xhtml", "xht"];
-let DR_JSON_EXT = ["json", "geojson", "jsonl", "ndjson"];
-let DR_TEXT_EXT = ["md", "markdown", "txt", "text", "log", "rst", "org", "ini", "cfg", "conf", "yaml", "yml", "toml", "tex", "srt", "vtt"];
-fn dr_ext_in(ext const byte[:], list const byte[:][:]) bool {
+let DR_TEXT_EXTS = ["md", "markdown", "txt", "text", "log", "rst", "org", "ini", "cfg", "conf", "yaml", "yml", "toml", "tex", "srt", "vtt"];
+let DR_JSON_EXTS = ["json", "geojson", "jsonl", "ndjson"];
+fn dr_in(s const byte[:], list) bool {
 	for x in list {
-		if ext == x { return true; }
+		if x == s { return true; }
 	}
 	return false;
 }
@@ -123,7 +126,7 @@ fn dr_text_ok(d const byte[:]) bool {
 	var bad = 0;
 	for i in n {
 		let c = d[i];
-		if c == 0 || (c < 32 && c != 9 && c != 10 && c != 13 && c != 12) { bad++; }
+		if c < 32 && c != 9 && c != 10 && c != 13 && c != 12 { bad++; }
 	}
 	return bad * 100 < n;
 }
@@ -136,93 +139,99 @@ fn dr_find_ci(d const byte[:], s const byte[:], limit int) int {
 	}
 	return -1;
 }
-fn dr_eml_headers(s const byte[:]) bool {
+fn dr_eml_head(d const byte[:], p int) bool {
+	if dr_starts(d, p, "From ") { return true; }
 	var count = 0;
-	var at = 0;
-	for ln in 30 {
-		if at >= s.len { break; }
-		var e = at;
-		while e < s.len && s[e] != 10 { e++; }
+	var lines = 0;
+	var i = p;
+	while i < d.len && lines < 30 {
+		var e = i;
+		while e < d.len && d[e] != 10 { e++; }
 		var le = e;
-		if le > at && s[le - 1] == 13 { le--; }
-		if le == at { break; }
-		for h in DR_EML_HDRS {
-			if at + h.len <= le && dr_starts_ci(s, at, h) {
+		if le > i && d[le - 1] == 13 { le--; }
+		let ln = d[i..le];
+		if ln.len == 0 {
+			if count < 2 { return false; }
+			break;
+		}
+		for k in 9 {
+			if dr_starts_ci(ln, 0, DR_EML_HDRS[k]) {
 				count++;
 				break;
 			}
 		}
-		at = e + 1;
+		i = e + 1;
+		lines++;
 	}
 	return count >= 2;
 }
-fn dr_json_ok(s const byte[:]) bool {
-	var jd json::Doc;
-	let root, err = json::parse(s, jd);
-	return err.len == 0;
+fn dr_zip_refine(name const byte[:], d const byte[:]) int {
+	let h = zip::zp_open(d);
+	if h < 0 { return DR_ZIP; }
+	var r = DR_ZIP;
+	var t byte[>..] = [];
+	if zip::zp_find(h, "word/document.xml") >= 0 {
+		r = DR_DOCX;
+	} else if zip::zp_find(h, "xl/workbook.xml") >= 0 {
+		r = DR_XLSX;
+	} else if zip::zp_find(h, "ppt/presentation.xml") >= 0 {
+		r = DR_PPTX;
+	} else {
+		if dr_zip_text(h, "mimetype", t) {
+			if dr_starts(t, 0, "application/epub+zip") {
+				r = DR_EPUB;
+			} else if dr_starts(t, 0, "application/vnd.oasis.opendocument.") {
+				r = DR_ODF;
+			}
+		}
+		if r == DR_ZIP && zip::zp_find(h, "META-INF/container.xml") >= 0 && dr_ends(name, ".epub") { r = DR_EPUB; }
+	}
+	zip::zp_close(h);
+	return r;
 }
 fn dr_sniff(name const byte[:], d const byte[:]) int {
 	if dr_find(d, "%PDF", 1024) >= 0 { return DR_PDF; }
-	if d.len >= 8 {
-		var ole = true;
-		for i in 8 {
-			if d[i] != DR_OLE_MAGIC[i] { ole = false; }
-		}
-		if ole { return DR_OLE; }
-	}
+	if d.len >= 8 && d[0] == 208 && d[1] == 207 && d[2] == 17 && d[3] == 224 && d[4] == 161 && d[5] == 177 && d[6] == 26 && d[7] == 225 { return DR_OLE; }
 	if image::im_kind(d) != 0 { return DR_IMAGE; }
 	if d.len >= 4 && d[0] == 'P' && d[1] == 'K' && ((d[2] == 3 && d[3] == 4) || (d[2] == 5 && d[3] == 6)) {
-		let h = zip::zp_open(d);
-		if h < 0 { return DR_ZIP; }
-		var res = DR_ZIP;
-		if zip::zp_find(h, "word/document.xml") >= 0 {
-			res = DR_DOCX;
-		} else if zip::zp_find(h, "xl/workbook.xml") >= 0 {
-			res = DR_XLSX;
-		} else if zip::zp_find(h, "ppt/presentation.xml") >= 0 {
-			res = DR_PPTX;
-		} else {
-			var mt byte[>..] = [];
-			let hasmt = dr_zip_text(h, "mimetype", mt);
-			if hasmt && dr_starts(mt, 0, "application/epub+zip") {
-				res = DR_EPUB;
-			} else if zip::zp_find(h, "META-INF/container.xml") >= 0 && dr_ends(name, ".epub") {
-				res = DR_EPUB;
-			} else if hasmt && dr_starts(mt, 0, "application/vnd.oasis.opendocument.") {
-				res = DR_ODF;
-			}
-		}
-		zip::zp_close(h);
-		return res;
+		return dr_zip_refine(name, d);
 	}
+	var ext byte[>..] = [];
+	dr_ext(name, ext);
 	if pack::pk_is_gz(d) { return DR_GZIP; }
 	if pack::pk_is_bz2(d) { return DR_BZIP2; }
+	if lzma::lz_is_xz(d) { return DR_XZ; }
+	if d.len >= 6 && d[0] == 55 && d[1] == 122 && d[2] == 188 && d[3] == 175 && d[4] == 39 && d[5] == 28 { return DR_7Z; }
+	if (ext == "lzma" || ext == "tlz") && lzma::lz_is_lzma(d) { return DR_LZMA; }
 	let th = pack::pk_tar_open(d);
 	if th >= 0 {
 		pack::pk_tar_close(th);
 		return DR_TAR;
 	}
-	var ext byte[>..] = [];
-	dr_ext(name, ext);
-	var st = 0;
-	if d.len >= 3 && d[0] == 239 && d[1] == 187 && d[2] == 191 { st = 3; }
-	while st < d.len && (d[st] == 32 || d[st] == 9 || d[st] == 10 || d[st] == 13 || d[st] == 12) { st++; }
-	let s = d[st..d.len];
-	if dr_starts(s, 0, "{\\rtf") { return DR_RTF; }
-	if ((ext == "eml" || ext == "mbox" || ext == "") && dr_starts(s, 0, "From ")) || dr_eml_headers(s) { return DR_EML; }
-	if dr_starts_ci(s, 0, "BEGIN:VCALENDAR") || ext == "ics" || ext == "ical" || ext == "ifb" { return DR_ICS; }
-	if dr_starts_ci(s, 0, "BEGIN:VCARD") || ext == "vcf" || ext == "vcard" { return DR_VCF; }
+	var p = 0;
+	if d.len >= 3 && d[0] == 239 && d[1] == 187 && d[2] == 191 { p = 3; }
+	while p < d.len && d[p] <= 32 { p++; }
+	if dr_starts(d, p, "{\\rtf") { return DR_RTF; }
+	if ext != "msg" {
+		if dr_eml_head(d, p) { return DR_EML; }
+	}
+	if dr_starts_ci(d, p, "BEGIN:VCALENDAR") || ext == "ics" || ext == "ical" || ext == "ifb" { return DR_ICS; }
+	if dr_starts_ci(d, p, "BEGIN:VCARD") || ext == "vcf" || ext == "vcard" { return DR_VCF; }
 	if ext == "ipynb" { return DR_IPYNB; }
-	if dr_find_ci(d, "<!doctype html", 4096) >= 0 || dr_find_ci(d, "<html", 4096) >= 0 || dr_find_ci(d, "<head", 4096) >= 0 || dr_find_ci(d, "<body", 4096) >= 0 || dr_ext_in(ext, DR_HTML_EXT) { return DR_HTML; }
-	let texty = dr_text_ok(d);
-	if extra::ex_is_code_ext(ext) && texty { return DR_CODE; }
-	if dr_starts(s, 0, "<?xml") { return DR_XML; }
-	if s.len > 1 && s[0] == '<' && ((s[1] >= 'a' && s[1] <= 'z') || (s[1] >= 'A' && s[1] <= 'Z')) { return DR_XML; }
-	if s.len > 0 && (s[0] == '{' || s[0] == '[') && (ext == "json" || ext == "jsonl") { return DR_JSON; }
-	if dr_ext_in(ext, DR_JSON_EXT) && dr_json_ok(s) { return DR_JSON; }
+	let is_html_ext = ext == "html" || ext == "htm" || ext == "xhtml" || ext == "xht";
+	if is_html_ext || dr_find_ci(d, "<!doctype html", 4096) >= 0 || dr_find_ci(d, "<html", 4096) >= 0 || dr_find_ci(d, "<head", 4096) >= 0 || dr_find_ci(d, "<body", 4096) >= 0 { return DR_HTML; }
+	let textual = dr_text_ok(d);
+	if extra::ex_is_code_ext(ext) && textual { return DR_CODE; }
+	if p < d.len && (dr_starts(d, p, "<?xml") || (p + 1 < d.len && d[p] == '<' && dr_lc(d[p + 1]) >= 'a' && dr_lc(d[p + 1]) <= 'z')) { return DR_XML; }
+	if p < d.len && (d[p] == '{' || d[p] == '[') && (ext == "json" || ext == "jsonl") { return DR_JSON; }
+	if dr_in(ext, DR_JSON_EXTS) {
+		var jd json::Doc;
+		let root, err = json::parse(d, jd);
+		if err.len == 0 { return DR_JSON; }
+	}
 	if ext == "csv" { return DR_CSV; }
 	if ext == "tsv" || ext == "tab" { return DR_TSV; }
-	if dr_ext_in(ext, DR_TEXT_EXT) || texty { return DR_TEXT; }
+	if dr_in(ext, DR_TEXT_EXTS) || textual { return DR_TEXT; }
 	return DR_BINARY;
 }
 fn dr_zip_text(h int, name const byte[:], out byte[>..]&) bool {
@@ -436,23 +445,232 @@ fn dr_mbox_split(d const byte[:], starts int[>..]&) int {
 	}
 	return starts.len;
 }
-fn dr_inner_name(name const byte[:], gz bool, out byte[>..]&) {
+fn dr_nested(lvl int, nm const byte[:], d const byte[:], depth int) bool {
+	let old = dm::dm_shift;
+	dm::dm_shift = old + lvl;
+	let r = dr_read(nm, d, depth + 1);
+	dm::dm_shift = old;
+	return r;
+}
+fn dr_copy_eml(nb byte[>..]&, db byte[>..]&, offs int[>..]&) {
+	let n = eml::em_att_count();
+	var tmp byte[>..] = [];
+	for i in n {
+		eml::em_att_name(i, tmp);
+		let a = nb.len;
+		nb.append(tmp);
+		eml::em_att_data(i, tmp);
+		let b = db.len;
+		db.append(tmp);
+		offs.push(a);
+		offs.push(nb.len - a);
+		offs.push(b);
+		offs.push(db.len - b);
+	}
+}
+fn dr_copy_ole(nb byte[>..]&, db byte[>..]&, offs int[>..]&) {
+	let n = ole::ol_att_count();
+	var tmp byte[>..] = [];
+	for i in n {
+		ole::ol_att_name(i, tmp);
+		let a = nb.len;
+		nb.append(tmp);
+		ole::ol_att_data(i, tmp);
+		let b = db.len;
+		db.append(tmp);
+		offs.push(a);
+		offs.push(nb.len - a);
+		offs.push(b);
+		offs.push(db.len - b);
+	}
+}
+recursive fn dr_atts(depth int, nb const byte[:], db const byte[:], offs const int[:]) {
+	if depth >= 4 { return; }
+	var k = 0;
+	while k + 4 <= offs.len {
+		let nm = nb[offs[k]..(offs[k] + offs[k + 1])];
+		let dt = db[offs[k + 2]..(offs[k + 2] + offs[k + 3])];
+		k += 4;
+		var h byte[>..] = [];
+		h.append("Attachment: ");
+		h.append(nm);
+		dm::dm_add(dm::DM_HEAD, 2, h);
+		if !dr_nested(2, nm, dt, depth) {
+			var t byte[>..] = [];
+			t.append("(not readable: ");
+			t.append(dr_kind_names[dr_sniff(nm, dt)]);
+			t.push(')');
+			dm::dm_add(dm::DM_NOTE, 0, t);
+		}
+	}
+}
+recursive fn dr_mbox(d const byte[:], starts const int[:], cnt int, depth int) bool {
+	let m = min(cnt, 1000);
+	for i in m {
+		let s = starts[i];
+		let e = if i + 1 < starts.len { starts[i + 1] } else { d.len };
+		var h byte[>..] = [];
+		h.append("Message ");
+		format(h, i + 1);
+		dm::dm_add(dm::DM_HEAD, 1, h);
+		dr_nested(1, "message.eml", d[s..e], depth);
+	}
+	if cnt > 1000 {
+		var w byte[>..] = [];
+		w.append("mailbox holds ");
+		format(w, cnt);
+		w.append(" messages; only the first 1000 were read");
+		dm::dm_warn_add(w);
+	}
+	let ms = str(m);
+	dm::dm_set_meta("messages", ms);
+	return m > 0;
+}
+recursive fn dr_eml(d const byte[:], depth int) bool {
+	var starts int[>..] = [];
+	let cnt = dr_mbox_split(d, starts);
+	if cnt > 1 { return dr_mbox(d, starts, cnt, depth); }
+	let ok = eml::em_read(d);
+	var nb byte[>..] = [];
+	var db byte[>..] = [];
+	var offs int[>..] = [];
+	dr_copy_eml(nb, db, offs);
+	dr_atts(depth, nb, db, offs);
+	return ok;
+}
+fn dr_other(nm const byte[:], others byte[>..]&, cnt int&) {
+	if cnt < 50 {
+		if others.len > 0 { others.append(", "); }
+		others.append(nm);
+	}
+	cnt += 1;
+}
+fn dr_others_note(others const byte[:]) {
+	if others.len > 0 {
+		var t byte[>..] = [];
+		t.append("Other files: ");
+		t.append(others);
+		dm::dm_add(dm::DM_NOTE, 0, t);
+	}
+}
+fn dr_skip_name(nm const byte[:]) bool {
+	return dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store");
+}
+recursive fn dr_entry(nm const byte[:], data const byte[:], depth int, others byte[>..]&, nother int&) {
+	let f = dr_sniff(nm, data);
+	if f == DR_BINARY || f == DR_UNKNOWN {
+		dr_other(nm, others, nother);
+		return;
+	}
+	dm::dm_add(dm::DM_HEAD, 1, nm);
+	dr_nested(1, nm, data, depth);
+}
+recursive fn dr_zip(d const byte[:], depth int) bool {
+	let h = zip::zp_open(d);
+	if h < 0 { return false; }
+	var others byte[>..] = [];
+	var nother = 0;
+	var total = 0;
+	var seen = 0;
+	var buf byte[>..] = [];
+	var nm byte[>..] = [];
+	for i in zip::zp_count(h) {
+		if seen >= 500 { break; }
+		if zip::zp_is_dir(h, i) { continue; }
+		nm.clear();
+		nm.append(zip::zp_name(h, i));
+		if dr_skip_name(nm) { continue; }
+		seen++;
+		total += zip::zp_size(h, i);
+		if total > 268435456 { break; }
+		buf.clear();
+		if zip::zp_encrypted(h, i) || !zip::zp_read(h, i, buf) {
+			dr_other(nm, others, nother);
+			continue;
+		}
+		dr_entry(nm, buf, depth, others, nother);
+	}
+	zip::zp_close(h);
+	dr_others_note(others);
+	return true;
+}
+recursive fn dr_sz(d const byte[:], depth int) bool {
+	let h = sevenz::sz_open(d);
+	if h == -2 {
+		dm::dm_warn_add("7z archive with an encrypted header");
+		return false;
+	}
+	if h < 0 { return false; }
+	var others byte[>..] = [];
+	var nother = 0;
+	var total = 0;
+	var seen = 0;
+	var enc = 0;
+	var buf byte[>..] = [];
+	var nm byte[>..] = [];
+	for i in sevenz::sz_count(h) {
+		if seen >= 500 { break; }
+		if sevenz::sz_is_dir(h, i) { continue; }
+		nm.clear();
+		nm.append(sevenz::sz_name(h, i));
+		if dr_skip_name(nm) { continue; }
+		seen++;
+		total += sevenz::sz_size(h, i);
+		if total > 268435456 { break; }
+		if sevenz::sz_encrypted(h, i) {
+			enc++;
+			dr_other(nm, others, nother);
+			continue;
+		}
+		buf.clear();
+		if !sevenz::sz_read(h, i, buf) {
+			dr_other(nm, others, nother);
+			continue;
+		}
+		dr_entry(nm, buf, depth, others, nother);
+	}
+	sevenz::sz_close(h);
+	dr_others_note(others);
+	if enc > 0 {
+		var w byte[>..] = [];
+		w.append("7z: ");
+		format(w, enc);
+		w.append(" encrypted entries were not read");
+		dm::dm_warn_add(w);
+	}
+	return true;
+}
+recursive fn dr_tar(d const byte[:], depth int) bool {
+	let h = pack::pk_tar_open(d);
+	if h < 0 { return false; }
+	var others byte[>..] = [];
+	var nother = 0;
+	var total = 0;
+	var seen = 0;
+	var buf byte[>..] = [];
+	var nm byte[>..] = [];
+	for i in pack::pk_tar_count(h) {
+		if seen >= 500 { break; }
+		if pack::pk_tar_is_dir(h, i) { continue; }
+		nm.clear();
+		nm.append(pack::pk_tar_name(h, i));
+		if dr_skip_name(nm) { continue; }
+		seen++;
+		total += pack::pk_tar_size(h, i);
+		if total > 268435456 { break; }
+		buf.clear();
+		if !pack::pk_tar_readable(h, i) || !pack::pk_tar_read(h, i, buf) {
+			dr_other(nm, others, nother);
+			continue;
+		}
+		dr_entry(nm, buf, depth, others, nother);
+	}
+	pack::pk_tar_close(h);
+	dr_others_note(others);
+	return true;
+}
+fn dr_inner_name(name const byte[:], tar1 const byte[:], tar2 const byte[:], out byte[>..]&) {
 	out.clear();
-	if gz && dr_ends(name, ".tgz") {
-		out.append(name[0..name.len - 4]);
-		out.append(".tar");
-		return;
-	}
-	if !gz && dr_ends(name, ".tbz2") {
-		out.append(name[0..name.len - 5]);
-		out.append(".tar");
-		return;
-	}
-	if !gz && dr_ends(name, ".tbz") {
-		out.append(name[0..name.len - 4]);
-		out.append(".tar");
-		return;
-	}
 	var dot = -1;
 	for i in name.len {
 		if name[i] == '/' {
@@ -463,261 +681,100 @@ fn dr_inner_name(name const byte[:], gz bool, out byte[>..]&) {
 	}
 	if dot < 0 {
 		out.append(name);
-	} else {
-		out.append(name[0..dot]);
+		return;
 	}
+	out.append(name[0..dot]);
+	var e byte[>..] = [];
+	dr_ext(name, e);
+	if e == tar1 || e == tar2 { out.append(".tar"); }
 }
-recursive fn dr_atts(isole bool, depth int) {
-	var blob byte[>..] = [];
-	var offs int[>..] = [];
-	var tmp byte[>..] = [];
-	var cnt = 0;
-	if isole {
-		cnt = ole::ol_att_count();
-	} else {
-		cnt = eml::em_att_count();
-	}
-	for i in cnt {
-		if isole {
-			ole::ol_att_name(i, tmp);
-		} else {
-			eml::em_att_name(i, tmp);
-		}
-		offs.push(blob.len);
-		offs.push(tmp.len);
-		blob.append(tmp);
-		if isole {
-			ole::ol_att_type(i, tmp);
-		} else {
-			eml::em_att_type(i, tmp);
-		}
-		offs.push(blob.len);
-		offs.push(tmp.len);
-		blob.append(tmp);
-		if isole {
-			ole::ol_att_data(i, tmp);
-		} else {
-			eml::em_att_data(i, tmp);
-		}
-		offs.push(blob.len);
-		offs.push(tmp.len);
-		blob.append(tmp);
-	}
-	if depth >= 4 { return; }
-	for i in cnt {
-		let k = i * 6;
-		let name = blob[offs[k]..offs[k] + offs[k + 1]];
-		let data = blob[offs[k + 4]..offs[k + 4] + offs[k + 5]];
-		var h byte[>..] = [];
-		h.append("Attachment: ");
-		h.append(name);
-		dm::dm_add(dm::DM_HEAD, 2, h);
-		let f = dr_sniff(name, data);
-		let old = dm::dm_shift;
-		dm::dm_shift = old + 2;
-		let ok = dr_read(name, data, depth + 1);
-		dm::dm_shift = old;
-		if !ok {
-			var n byte[>..] = [];
-			n.append("(not readable: ");
-			n.append(dr_kind_names[f]);
-			n.append(")");
-			dm::dm_add(dm::DM_NOTE, 0, n);
-		}
-	}
-}
-recursive fn dr_mbox_read(d const byte[:], depth int) int {
-	var st int[>..] = [];
-	let count = dr_mbox_split(d, st);
-	if count <= 1 { return -1; }
-	var read = 0;
-	for i in min(count, 1000) {
-		var e = d.len;
-		if i + 1 < count { e = st[i + 1]; }
-		var h byte[>..] = [];
-		h.append("Message ");
-		format(h, i + 1);
-		dm::dm_add(dm::DM_HEAD, 1, h);
-		let old = dm::dm_shift;
-		dm::dm_shift = old + 1;
-		let ok = dr_read("message.eml", d[st[i]..e], depth + 1);
-		dm::dm_shift = old;
-		if ok { read++; }
-	}
-	if count > 1000 {
-		var w byte[>..] = [];
-		w.append("mailbox holds ");
-		format(w, count);
-		w.append(" messages; only the first 1000 were read");
-		dm::dm_warn_add(w);
-	}
-	let cs = str(read);
-	dm::dm_set_meta("messages", cs);
-	return read;
-}
-recursive fn dr_entry(name const byte[:], data const byte[:], depth int) bool {
-	let f = dr_sniff(name, data);
-	if f == DR_BINARY || f == DR_UNKNOWN { return false; }
-	dm::dm_add(dm::DM_HEAD, 1, name);
-	let old = dm::dm_shift;
-	dm::dm_shift = old + 1;
-	dr_read(name, data, depth + 1);
-	dm::dm_shift = old;
-	return true;
-}
-recursive fn dr_zip_read(d const byte[:], depth int) bool {
-	let h = zip::zp_open(d);
-	if h < 0 { return false; }
-	var oth byte[>..] = [];
-	var nother = 0;
-	var total = 0;
+recursive fn dr_decomp(kind int, name const byte[:], d const byte[:], depth int) bool {
 	var buf byte[>..] = [];
-	var nm byte[>..] = [];
-	let cnt = min(zip::zp_count(h), 500);
-	for i in cnt {
-		if zip::zp_is_dir(h, i) { continue; }
-		nm.clear();
-		nm.append(zip::zp_name(h, i));
-		if dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store") { continue; }
-		var readable = false;
-		if !zip::zp_encrypted(h, i) {
-			if total + zip::zp_size(h, i) > 268435456 { break; }
-			buf.clear();
-			if zip::zp_read(h, i, buf) {
-				total += buf.len;
-				readable = dr_entry(nm, buf, depth);
-			}
-		}
-		if !readable && nother < 50 {
-			if nother > 0 { oth.append(", "); }
-			oth.append(nm);
-			nother++;
-		}
-	}
-	zip::zp_close(h);
-	if nother > 0 {
-		var n byte[>..] = [];
-		n.append("Other files: ");
-		n.append(oth);
-		dm::dm_add(dm::DM_NOTE, 0, n);
-	}
-	return true;
-}
-recursive fn dr_tar_read(d const byte[:], depth int) bool {
-	let h = pack::pk_tar_open(d);
-	if h < 0 { return false; }
-	var oth byte[>..] = [];
-	var nother = 0;
-	var total = 0;
-	var buf byte[>..] = [];
-	var nm byte[>..] = [];
-	let cnt = min(pack::pk_tar_count(h), 500);
-	for i in cnt {
-		if pack::pk_tar_is_dir(h, i) { continue; }
-		nm.clear();
-		nm.append(pack::pk_tar_name(h, i));
-		if dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store") { continue; }
-		var readable = false;
-		if pack::pk_tar_readable(h, i) {
-			if total + pack::pk_tar_size(h, i) > 268435456 { break; }
-			buf.clear();
-			if pack::pk_tar_read(h, i, buf) {
-				total += buf.len;
-				readable = dr_entry(nm, buf, depth);
-			}
-		}
-		if !readable && nother < 50 {
-			if nother > 0 { oth.append(", "); }
-			oth.append(nm);
-			nother++;
-		}
-	}
-	pack::pk_tar_close(h);
-	if nother > 0 {
-		var n byte[>..] = [];
-		n.append("Other files: ");
-		n.append(oth);
-		dm::dm_add(dm::DM_NOTE, 0, n);
-	}
-	return true;
-}
-recursive fn dr_unpack(name const byte[:], d const byte[:], depth int, gz bool) bool {
-	if depth >= 4 {
-		dm::dm_warn_add("archive nested too deeply");
-		return false;
-	}
-	var buf byte[>..] = [];
-	var ok = false;
-	if gz {
-		ok = pack::pk_gunzip(d, buf);
-	} else {
-		ok = pack::pk_bunzip(d, buf);
-	}
-	if !ok { return false; }
 	var inner byte[>..] = [];
-	if gz && pack::pk_gz_name().len > 0 {
-		inner.append(pack::pk_gz_name());
+	if kind == DR_GZIP {
+		if !pack::pk_gunzip(d, buf) { return false; }
+		let gn = pack::pk_gz_name();
+		if gn.len > 0 {
+			inner.append(gn);
+		} else {
+			dr_inner_name(name, "tgz", "tgz", inner);
+		}
+	} else if kind == DR_BZIP2 {
+		if !pack::pk_bunzip(d, buf) { return false; }
+		dr_inner_name(name, "tbz2", "tbz", inner);
+	} else if kind == DR_XZ {
+		if !lzma::lz_unxz(d, buf) { return false; }
+		dr_inner_name(name, "txz", "tlz", inner);
 	} else {
-		dr_inner_name(name, gz, inner);
+		if !lzma::lz_unlzma(d, buf) { return false; }
+		dr_inner_name(name, "txz", "tlz", inner);
 	}
 	return dr_read(inner, buf, depth + 1);
 }
-recursive fn dr_ole_read(name const byte[:], d const byte[:], depth int) bool {
-	if ofcrypt::oc_is_encrypted(d) {
-		var buf byte[>..] = [];
-		var r = 0;
-		if dr_pw.len > 0 {
-			buf.clear();
-			r = ofcrypt::oc_decrypt(d, dr_pw, buf);
+recursive fn dr_ole_enc(name const byte[:], d const byte[:], depth int) bool {
+	var buf byte[>..] = [];
+	var r = 0;
+	if dr_pw.len > 0 {
+		buf.clear();
+		r = ofcrypt::oc_decrypt(d, dr_pw, buf);
+	}
+	if r == 0 {
+		buf.clear();
+		r = ofcrypt::oc_decrypt(d, "", buf);
+	}
+	if r == 0 {
+		buf.clear();
+		r = ofcrypt::oc_decrypt(d, "VelvetSweatshop", buf);
+	}
+	if r == 1 {
+		if depth == 0 {
+			let f2 = dr_sniff(name, buf);
+			dm::dm_kind.clear();
+			dm::dm_kind.append(dr_kind_names[f2]);
+			dm::dm_unit.clear();
+			dm::dm_unit.append(dr_units[f2]);
 		}
-		if r == 0 {
-			buf.clear();
-			r = ofcrypt::oc_decrypt(d, "", buf);
-		}
-		if r == 0 {
-			buf.clear();
-			r = ofcrypt::oc_decrypt(d, "VelvetSweatshop", buf);
-		}
-		if r == 1 {
-			if depth == 0 {
-				let f = dr_sniff(name, buf);
-				dm::dm_kind.clear();
-				dm::dm_unit.clear();
-				dm::dm_kind.append(dr_kind_names[f]);
-				dm::dm_unit.append(dr_units[f]);
-			}
-			let ok = dr_read(name, buf, depth + 1);
-			dm::dm_set_meta("encrypted", "yes");
-			return ok;
-		}
-		if r == -1 {
-			dm::dm_warn_add("encrypted with an unsupported method");
-			return false;
-		}
-		if dr_pw.len == 0 {
-			dm::dm_warn_add("encrypted with a password; set DOCREAD_PASSWORD to read it");
-		} else {
-			dm::dm_warn_add("the password in DOCREAD_PASSWORD does not open this file");
-		}
+		let ok = dr_read(name, buf, depth + 1);
+		dm::dm_set_meta("encrypted", "yes");
+		return ok;
+	}
+	if r == -1 {
+		dm::dm_warn_add("encrypted with an unsupported method");
 		return false;
 	}
+	if dr_pw.len == 0 {
+		dm::dm_warn_add("encrypted with a password; set DOCREAD_PASSWORD to read it");
+	} else {
+		dm::dm_warn_add("the password in DOCREAD_PASSWORD does not open this file");
+	}
+	return false;
+}
+recursive fn dr_ole(name const byte[:], d const byte[:], depth int) bool {
+	if ofcrypt::oc_is_encrypted(d) { return dr_ole_enc(name, d, depth); }
 	let ok = ole::ol_read(d);
-	if ok {
-		dr_atts(true, depth);
-		if depth == 0 && dm::dm_unit == "part" {
-			if ole::ol_kind == 2 {
-				dm::dm_unit.clear();
-				dm::dm_unit.append("sheet");
-			} else if ole::ol_kind == 3 {
-				dm::dm_unit.clear();
-				dm::dm_unit.append("slide");
-			}
+	var nb byte[>..] = [];
+	var db byte[>..] = [];
+	var offs int[>..] = [];
+	dr_copy_ole(nb, db, offs);
+	dr_atts(depth, nb, db, offs);
+	if depth == 0 && dm::dm_unit == "part" {
+		if ole::ol_kind == 2 {
+			dm::dm_unit.clear();
+			dm::dm_unit.append("sheet");
+		} else if ole::ol_kind == 3 {
+			dm::dm_unit.clear();
+			dm::dm_unit.append("slide");
 		}
 	}
 	return ok;
 }
 recursive fn dr_read(name const byte[:], d const byte[:], depth int) bool {
 	let f = dr_sniff(name, d);
+	let archive = f == DR_ZIP || f == DR_GZIP || f == DR_BZIP2 || f == DR_XZ || f == DR_LZMA || f == DR_7Z || f == DR_TAR;
+	if archive && depth >= 4 {
+		dm::dm_warn_add("archive nested too deeply");
+		return false;
+	}
 	if f == DR_PDF { return playout::pl_read_pdf(d); }
 	if f == DR_DOCX { return office::of_docx(d); }
 	if f == DR_XLSX { return office::of_xlsx(d); }
@@ -731,29 +788,11 @@ recursive fn dr_read(name const byte[:], d const byte[:], depth int) bool {
 	if f == DR_JSON { return textfmt::tx_json(d); }
 	if f == DR_XML { return dr_xml(d); }
 	if f == DR_TEXT { return textfmt::tx_text(d); }
-	if f == DR_EML {
-		let r = dr_mbox_read(d, depth);
-		if r >= 0 { return r > 0; }
-		let ok = eml::em_read(d);
-		if ok { dr_atts(false, depth); }
-		return ok;
-	}
-	if f == DR_ZIP {
-		if depth >= 4 {
-			dm::dm_warn_add("archive nested too deeply");
-			return false;
-		}
-		return dr_zip_read(d, depth);
-	}
-	if f == DR_GZIP { return dr_unpack(name, d, depth, true); }
-	if f == DR_BZIP2 { return dr_unpack(name, d, depth, false); }
-	if f == DR_TAR {
-		if depth >= 4 {
-			dm::dm_warn_add("archive nested too deeply");
-			return false;
-		}
-		return dr_tar_read(d, depth);
-	}
+	if f == DR_EML { return dr_eml(d, depth); }
+	if f == DR_ZIP { return dr_zip(d, depth); }
+	if f == DR_7Z { return dr_sz(d, depth); }
+	if f == DR_TAR { return dr_tar(d, depth); }
+	if f == DR_GZIP || f == DR_BZIP2 || f == DR_XZ || f == DR_LZMA { return dr_decomp(f, name, d, depth); }
 	if f == DR_IPYNB {
 		if extra::ex_ipynb(d) { return true; }
 		return textfmt::tx_json(d);
@@ -773,7 +812,7 @@ recursive fn dr_read(name const byte[:], d const byte[:], depth int) bool {
 		return textfmt::tx_text(d);
 	}
 	if f == DR_IMAGE { return image::im_read(d); }
-	if f == DR_OLE { return dr_ole_read(name, d, depth); }
+	if f == DR_OLE { return dr_ole(name, d, depth); }
 	dm::dm_warn_add("unsupported binary format");
 	return false;
 }

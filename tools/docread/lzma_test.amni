@@ -1,0 +1,438 @@
+import os;
+import dm;
+import pack;
+import lzma;
+import crypto.hash;
+fn ld(name const byte[:]) byte[>..] {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var out byte[>..] = [];
+	if !read_file(path, out) {
+		var m byte[>..] = [];
+		format(m, "missing ", name);
+		p(m);
+		out.clear();
+	}
+	out
+}
+fn p(text const byte[:]) {
+	print(text);
+}
+fn same(a const byte[:], b const byte[:]) int {
+	if a == b { 1 } else { 0 }
+}
+fn warns() {
+	for ln in split(dm::dm_warn, 10) {
+		if ln.len > 0 {
+			var s byte[>..] = [];
+			s.append("warn ");
+			s.append(ln);
+			p(s);
+		}
+	}
+	dm::dm_reset("x", "y");
+}
+fn hex(b const byte[:]) byte[>..] {
+	let d = "0123456789abcdef";
+	var out byte[>..] = [];
+	for x in b {
+		let v = x as int;
+		out.push(d[v >> 4]);
+		out.push(d[v & 15]);
+	}
+	out
+}
+fn sha16(b const byte[:]) byte[>..] {
+	let h = hex(crypto::sha256(b));
+	var o byte[>..] = [];
+	o.append(h[..16]);
+	o
+}
+fn cat(a const byte[:], b const byte[:]) byte[>..] {
+	var o byte[>..] = [];
+	o.append(a);
+	o.append(b);
+	o
+}
+fn ba(a int, b int, c int, text const byte[:]) byte[>..] {
+	var o byte[>..] = [];
+	o.push(a as byte);
+	o.push(b as byte);
+	o.push(c as byte);
+	o.append(text);
+	o
+}
+fn ok(v bool) int {
+	if v { 1 } else { 0 }
+}
+fn xzf(name const byte[:]) {
+	let f = ld(name);
+	if f.len == 0 { return; }
+	var out byte[>..] = [];
+	out.append("junk");
+	let a = ok(lzma::lz_is_xz(f));
+	let b = ok(lzma::lz_is_lzma(f));
+	let c = ok(lzma::lz_unxz(f, out));
+	let h = sha16(out);
+	var s byte[>..] = [];
+	format(s, name, " ", a, " ", b, " ", c, " ", out.len, " ", h);
+	p(s);
+	warns();
+}
+fn lzf(name const byte[:]) {
+	let f = ld(name);
+	if f.len == 0 { return; }
+	var out byte[>..] = [];
+	out.append("junk");
+	let a = ok(lzma::lz_is_xz(f));
+	let b = ok(lzma::lz_is_lzma(f));
+	let c = ok(lzma::lz_unlzma(f, out));
+	let h = sha16(out);
+	var s byte[>..] = [];
+	format(s, name, " ", a, " ", b, " ", c, " ", out.len, " ", h);
+	p(s);
+	warns();
+}
+fn neg(name const byte[:]) {
+	let f = ld(name);
+	if f.len == 0 { return; }
+	var s1 byte[>..] = [];
+	var s2 byte[>..] = [];
+	let a = ok(lzma::lz_is_xz(f));
+	let b = ok(lzma::lz_is_lzma(f));
+	let c = ok(lzma::lz_unxz(f, s1));
+	let d = ok(lzma::lz_unlzma(f, s2));
+	var s byte[>..] = [];
+	format(s, name, " ", a, " ", b, " ", c, " ", d);
+	p(s);
+	warns();
+}
+fn dec(z const byte[:], isxz int) int {
+	var s byte[>..] = [];
+	var r = false;
+	if isxz == 1 {
+		r = lzma::lz_unxz(z, s);
+	} else {
+		r = lzma::lz_unlzma(z, s);
+	}
+	dm::dm_reset("x", "y");
+	ok(r)
+}
+fn flips(z const byte[:], isxz int, mask int) int {
+	var c = 0;
+	for k in z.len {
+		var m byte[>..] = [];
+		m.append(z);
+		m[k] = (m[k] as int ^ mask) as! byte;
+		if dec(m, isxz) == 1 { c += 1; }
+	}
+	c
+}
+fn cuts(z const byte[:], isxz int) int {
+	var c = 0;
+	for n in z.len {
+		if dec(z[..n], isxz) == 1 { c += 1; }
+	}
+	c
+}
+fn sweep(name const byte[:], isxz int, mask int) {
+	let f = ld(name);
+	let n = flips(f, isxz, mask);
+	var s byte[>..] = [];
+	format(s, "s ", name, " flip", mask, " ", n, " ", f.len);
+	p(s);
+}
+fn cutsweep(name const byte[:], isxz int) {
+	let f = ld(name);
+	let n = cuts(f, isxz);
+	var s byte[>..] = [];
+	format(s, "s ", name, " cut ", n, " ", f.len);
+	p(s);
+}
+fn l2(label const byte[:], m const byte[:], prop int) {
+	var out byte[>..] = [];
+	out.append("keep");
+	let r = ok(lzma::lz_lzma2_dec(m, prop, out));
+	var s byte[>..] = [];
+	format(s, label, " ", r, " ", out);
+	p(s);
+}
+fn fixhdr(m byte[>..]&) {
+	let c int = pack::pk_crc32(m[12..28], 0);
+	for i in 4 {
+		m[28 + i] = ((c >> (8 * i)) & 255) as! byte;
+	}
+}
+fn mut(label const byte[:], z const byte[:], at int, v int, fix int) {
+	var m byte[>..] = [];
+	m.append(z);
+	m[at] = v as! byte;
+	if fix == 1 { fixhdr(m); }
+	var scratch byte[>..] = [];
+	let r = ok(lzma::lz_unxz(m, scratch));
+	var s byte[>..] = [];
+	format(s, label, " ", r, " ", scratch.len);
+	p(s);
+	warns();
+}
+fn main() {
+	dm::dm_reset("x", "y");
+	case_a();
+	case_b();
+	case_j();
+	case_c();
+	case_d();
+	case_e();
+	case_f();
+	case_s();
+	case_t();
+	case_k();
+}
+fn case_a() {
+	xzf("lz_garden.xz");
+	xzf("lz_garden_crc32.xz");
+	xzf("lz_garden_none.xz");
+	xzf("lz_garden_sha256.xz");
+	xzf("lz_empty.xz");
+	xzf("lz_blocks.xz");
+	xzf("lz_chain.xz");
+	xzf("lz_delta.xz");
+	xzf("lz_x86.xz");
+	xzf("lz_lc0lp4.xz");
+	xzf("lz_lc4pb4.xz");
+	xzf("lz_multi.xz");
+	xzf("lz_pad.xz");
+	xzf("lz_rand.xz");
+	xzf("lz_rows.xz");
+	xzf("lz_big.xz");
+}
+fn case_b() {
+	lzf("lz_garden.lzma");
+	lzf("lz_garden_known.lzma");
+	lzf("lz_empty.lzma");
+	lzf("lz_rows.lzma");
+}
+fn jd(name const byte[:], isxz int, g const byte[:]) int {
+	let z = ld(name);
+	var s byte[>..] = [];
+	var r = false;
+	if isxz == 1 {
+		r = lzma::lz_unxz(z, s);
+	} else {
+		r = lzma::lz_unlzma(z, s);
+	}
+	var res = 0;
+	if r && same(s, g) == 1 { res = 1; }
+	dm::dm_reset("x", "y");
+	res
+}
+fn case_j() {
+	let g = ld("pk_garden.txt");
+	var n = 0;
+	n += jd("lz_garden.xz", 1, g);
+	n += jd("lz_garden_crc32.xz", 1, g);
+	n += jd("lz_garden_none.xz", 1, g);
+	n += jd("lz_garden_sha256.xz", 1, g);
+	n += jd("lz_lc0lp4.xz", 1, g);
+	n += jd("lz_garden.lzma", 0, g);
+	n += jd("lz_garden_known.lzma", 0, g);
+	var s byte[>..] = [];
+	format(s, "j1 ", n, " 7");
+	p(s);
+}
+fn runc(label const byte[:], m const byte[:], prop int, keep bool) {
+	var out byte[>..] = [];
+	if keep { out.append("keep"); }
+	let r = ok(lzma::lz_lzma2_dec(m, prop, out));
+	var s byte[>..] = [];
+	format(s, label, " ", r, " ", out.len);
+	p(s);
+}
+fn case_c() {
+	let m = ld("lz_mixed.lzma2");
+	var o1 byte[>..] = [];
+	let r1 = ok(lzma::lz_lzma2_dec(m, 28, o1));
+	let h1 = sha16(o1);
+	var s1 byte[>..] = [];
+	format(s1, "c1 ", r1, " ", o1.len, " ", h1);
+	p(s1);
+	var o2 byte[>..] = [];
+	o2.append("keep");
+	let r2 = ok(lzma::lz_lzma2_dec(m, 28, o2));
+	var s2 byte[>..] = [];
+	format(s2, "c2 ", r2, " ", o2.len, " ", o2[..4]);
+	p(s2);
+	runc("c3", m[..m.len - 1], 28, false);
+	warns();
+	runc("c4", m[..m.len - 3], 28, true);
+	warns();
+	var m5 byte[>..] = [];
+	m5.append(m);
+	m5[0] = 0xA0 as! byte;
+	runc("c5", m5, 28, true);
+	warns();
+	runc("c6", m, 41, true);
+	warns();
+	runc("c7", m, 40, true);
+	warns();
+}
+fn bl(xs const int[:]) byte[>..] {
+	var o byte[>..] = [];
+	for x in xs { o.push(x as byte); }
+	o
+}
+fn l2d(label const byte[:], z const byte[:]) {
+	l2(label, z, 24);
+	warns();
+}
+fn case_d() {
+	var d1 = ba(1, 0, 4, "hello");
+	d1.push(0);
+	var d2 = ba(1, 0, 1, "ab");
+	d2.push(2);
+	d2.push(0);
+	d2.push(1);
+	d2.append("cd");
+	d2.push(0);
+	var d3 = ba(2, 0, 0, "x");
+	d3.push(0);
+	var d4 = ba(3, 0, 0, "x");
+	d4.push(0);
+	let d5 = ba(1, 0, 4, "he");
+	let d6 = ba(1, 0, 0, "z");
+	var d7 byte[>..] = [];
+	let d8 = bl([0xE0, 0, 3, 0, 4, 0xE1, 0, 0, 0, 0, 0]);
+	let d9 = bl([0xE0, 0, 3, 0, 4, 0x15, 0, 0, 0, 0, 0]);
+	let d10 = bl([0x80, 0, 3, 0, 4, 0, 0, 0, 0, 0]);
+	var d11 = ba(1, 0, 0, "a");
+	d11.append(bl([0xA0, 0, 0, 0, 0, 0]));
+	l2d("d1", d1);
+	l2d("d2", d2);
+	l2d("d3", d3);
+	l2d("d4", d4);
+	l2d("d5", d5);
+	l2d("d6", d6);
+	l2d("d7", d7);
+	l2d("d8", d8);
+	l2d("d9", d9);
+	l2d("d10", d10);
+	l2d("d11", d11);
+}
+fn pe(label const byte[:], buf const byte[:]) {
+	var s byte[>..] = [];
+	format(s, label, " ", hex(buf));
+	p(s);
+}
+fn case_e() {
+	var b1 = bl([1, 1, 1, 1, 1]);
+	lzma::lz_delta(b1, 0, 1);
+	pe("e1", b1);
+	var b2 = bl([1, 2, 1, 1, 1, 1]);
+	lzma::lz_delta(b2, 0, 2);
+	pe("e2", b2);
+	var b3 = bl([9, 9, 1, 1, 1, 1]);
+	lzma::lz_delta(b3, 2, 1);
+	pe("e3", b3);
+	var b4 = bl([250, 10]);
+	lzma::lz_delta(b4, 0, 1);
+	pe("e4", b4);
+	var b5 = bl([0xE8, 0, 0, 0]);
+	lzma::lz_x86(b5, 0, 0);
+	pe("e5", b5);
+}
+fn case_f() {
+	neg("pk_garden.txt");
+	neg("pk_garden.txt.gz");
+	neg("pk_empty.gz");
+	neg("pk_rand.bin");
+	neg("lz_garden.xz");
+	neg("lz_garden.lzma");
+	let z = ld("lz_garden.xz");
+	var em byte[>..] = [];
+	let a = ok(lzma::lz_is_xz(em));
+	let b = ok(lzma::lz_is_lzma(em));
+	let c = ok(lzma::lz_is_xz(z[..11]));
+	let d = ok(lzma::lz_is_lzma(z[..11]));
+	var s byte[>..] = [];
+	format(s, "f2 ", a, " ", b, " ", c, " ", d);
+	p(s);
+}
+fn case_s() {
+	sweep("lz_garden_none.xz", 1, 85);
+	sweep("lz_garden_none.xz", 1, 1);
+	sweep("lz_garden_none.xz", 1, 128);
+	sweep("lz_garden_crc32.xz", 1, 85);
+	sweep("lz_garden.xz", 1, 85);
+	sweep("lz_garden_sha256.xz", 1, 85);
+	sweep("lz_garden.lzma", 0, 85);
+	sweep("lz_garden_known.lzma", 0, 85);
+	cutsweep("lz_garden_none.xz", 1);
+	cutsweep("lz_garden_crc32.xz", 1);
+	cutsweep("lz_garden.xz", 1);
+	cutsweep("lz_garden_sha256.xz", 1);
+	cutsweep("lz_garden.lzma", 0);
+	cutsweep("lz_garden_known.lzma", 0);
+}
+fn tq(label const byte[:], q const byte[:]) {
+	var scratch byte[>..] = [];
+	let r = ok(lzma::lz_unxz(q, scratch));
+	var s byte[>..] = [];
+	format(s, label, " ", r, " ", scratch.len);
+	p(s);
+	warns();
+}
+fn xr(z const byte[:], at int, mask int) byte[>..] {
+	var m byte[>..] = [];
+	m.append(z);
+	m[at] = (m[at] as int ^ mask) as! byte;
+	m
+}
+fn case_t() {
+	let z = ld("lz_garden.xz");
+	let e = ld("lz_empty.xz");
+	tq("t1", cat(z, "junk"));
+	tq("t2", cat(z, bl([0, 0, 0])));
+	tq("t3", cat(z, bl([0, 0, 0, 0])));
+	tq("t4", cat(z, e));
+	tq("t5", cat(e, z));
+	tq("t6", xr(z, 9, 1));
+	tq("t7", xr(z, 14, 1));
+	tq("t8", xr(z, 936, 1));
+	mut("t9", z, 18, 7, 1);
+	mut("t10", z, 13, 0xC4, 1);
+	mut("t11", z, 14, 0x88, 1);
+	mut("t12", z, 16, 0xBA, 1);
+	mut("t13", z, 13, 0xC1, 1);
+	mut("t14", z, 14, 0x88, 0);
+}
+fn kl(label const byte[:], r bool, n int) {
+	var s byte[>..] = [];
+	format(s, label, " ", ok(r), " ", n);
+	p(s);
+}
+fn case_k() {
+	let z = ld("lz_garden.xz");
+	lzma::lz_cap = 1000;
+	var s1 byte[>..] = [];
+	let r1 = lzma::lz_unxz(z, s1);
+	kl("k1", r1, s1.len);
+	warns();
+	var s2 byte[>..] = [];
+	let r2 = lzma::lz_unlzma(ld("lz_garden.lzma"), s2);
+	kl("k2", r2, s2.len);
+	warns();
+	var s3 byte[>..] = [];
+	let r3 = lzma::lz_unlzma(ld("lz_garden_known.lzma"), s3);
+	kl("k3", r3, s3.len);
+	warns();
+	lzma::lz_cap = 2000;
+	var s4 byte[>..] = [];
+	let r4 = lzma::lz_lzma2_dec(ld("lz_mixed.lzma2"), 28, s4);
+	kl("k4", r4, s4.len);
+	warns();
+	lzma::lz_cap = 268435456;
+	var s5 byte[>..] = [];
+	let r5 = lzma::lz_unxz(z, s5);
+	kl("k5", r5, s5.len);
+}

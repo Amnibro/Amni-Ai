@@ -1,0 +1,449 @@
+import os;
+import dm;
+import pack;
+import lzma;
+import sevenz;
+import crypto.hash;
+fn ld(name const byte[:]) byte[>..] {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var out byte[>..] = [];
+	let good = read_file(path, out);
+	if !good {
+		out.clear();
+		print("missing ", name);
+	}
+	out
+}
+fn p(text const byte[:]) {
+	print(text);
+}
+fn warns() {
+	let w = dm::dm_warn;
+	var s = 0;
+	fn emit(a int, b int) {
+		var l byte[>..] = [];
+		l.append("warn ");
+		l.append(w[a..b]);
+		p(l);
+	}
+	for i in w.len {
+		if w[i] == 10 {
+			emit(s, i);
+			s = i + 1;
+		}
+	}
+	if s < w.len {
+		emit(s, w.len);
+	}
+	dm::dm_reset("x", "y");
+}
+fn hex(b const byte[:]) byte[>..] {
+	let d = "0123456789abcdef";
+	var out byte[>..] = [];
+	for x in b {
+		let v = x as int;
+		out.push(d[v >> 4]);
+		out.push(d[v & 15]);
+	}
+	out
+}
+fn sha16(b const byte[:]) byte[>..] {
+	let dg = crypto::sha256(b);
+	let h = hex(dg);
+	var out byte[>..] = [];
+	out.append(h[..16]);
+	out
+}
+fn ok(v bool) int {
+	if v { 1 } else { 0 }
+}
+fn cat(a const byte[:], b const byte[:]) byte[>..] {
+	var out byte[>..] = [];
+	out.append(a);
+	out.append(b);
+	out
+}
+fn ids(n int, v int) byte[>..] {
+	var out byte[>..] = [];
+	for i in n {
+		out.push(((v >> (8 * (n - 1 - i))) & 255) as! byte);
+	}
+	out
+}
+fn le(out byte[>..]&, v int, n int) {
+	for i in n {
+		out.push(((v >> (8 * i)) & 255) as! byte);
+	}
+}
+fn put(m byte[>..]&, at int, v int, n int) {
+	for i in n {
+		m[at + i] = ((v >> (8 * i)) & 255) as! byte;
+	}
+}
+fn fixs(m byte[>..]&) {
+	put(m, 8, pack::pk_crc32(m[12..32], 0), 4);
+}
+fn fixh(m byte[>..]&, st int, n int) {
+	put(m, 28, pack::pk_crc32(m[st..st + n], 0), 4);
+	fixs(m);
+}
+fn arc(name const byte[:]) {
+	let z = ld(name);
+	if z.len == 0 { return; }
+	let h = sevenz::sz_open(z);
+	let c = sevenz::sz_count(h);
+	print(name, " open ", h, " ", c);
+	if h >= 0 {
+		for i in c {
+			var out byte[>..] = [];
+			out.append("junk");
+			let r = ok(sevenz::sz_read(h, i, out));
+			let d = if sevenz::sz_is_dir(h, i) { "D" } else { "F" };
+			let e = if sevenz::sz_encrypted(h, i) { "E" } else { "-" };
+			print(name, " ", i, " ", sevenz::sz_name(h, i), " ", sevenz::sz_size(h, i), " ", d, " ", e, " ", r, " ", sha16(out));
+		}
+		sevenz::sz_close(h);
+	}
+	warns();
+}
+fn all7(d const byte[:]) int {
+	let h = sevenz::sz_open(d);
+	if h < 0 {
+		dm::dm_reset("x", "y");
+		return 0;
+	}
+	var good = 1;
+	let c = sevenz::sz_count(h);
+	var out byte[>..] = [];
+	for i in c {
+		if !sevenz::sz_read(h, i, out) { good = 0; }
+	}
+	sevenz::sz_close(h);
+	dm::dm_reset("x", "y");
+	good
+}
+fn zs(name const byte[:], mask int) {
+	let z = ld(name);
+	var c = copy(z);
+	var n = 0;
+	var sum = 0;
+	for k in z.len {
+		c[k] = ((c[k] as int) ^ mask) as! byte;
+		let r = all7(c);
+		if r == 1 {
+			n += 1;
+			sum += k;
+		}
+		c[k] = ((c[k] as int) ^ mask) as! byte;
+	}
+	print("zs ", name, " flip", mask, " ", n, " ", z.len, " ", sum);
+}
+fn zc(name const byte[:]) {
+	let z = ld(name);
+	var n = 0;
+	for k in z.len {
+		if all7(z[..k]) == 1 { n += 1; }
+	}
+	print("zs ", name, " cut ", n, " ", z.len);
+}
+fn fz(name const byte[:], mask int) {
+	let z = ld(name);
+	let noff = lzma::lz_le(z, 12, 8);
+	let nsize = lzma::lz_le(z, 20, 8);
+	let st = 32 + noff;
+	var n = 0;
+	var sum = 0;
+	for k in st..st + nsize {
+		var c = copy(z);
+		c[k] = ((c[k] as int) ^ mask) as! byte;
+		fixh(c, st, nsize);
+		if all7(c) == 1 {
+			n += 1;
+			sum += k - st;
+		}
+	}
+	print("fz ", name, " ", mask, " ", nsize, " ", n, " ", sum);
+}
+fn mk7(id const byte[:], props const byte[:], packed const byte[:], usize int, crc int) byte[>..] {
+	var hd byte[>..] = [];
+	fn add(xs int[:]) {
+		for v in xs { le(hd, v, 1); }
+	}
+	add([1, 4, 6, 0, 1, 9, packed.len, 0, 7, 11, 1, 0, 1]);
+	var fl = id.len;
+	if props.len > 0 { fl += 32; }
+	le(hd, fl, 1);
+	hd.append(id);
+	if props.len > 0 {
+		le(hd, props.len, 1);
+		hd.append(props);
+	}
+	add([12, usize, 10, 1]);
+	le(hd, crc, 4);
+	add([0, 0, 5, 1, 17, 13, 0]);
+	for ch in "a.txt" {
+		le(hd, ch as int, 1);
+		le(hd, 0, 1);
+	}
+	add([0, 0, 0, 0]);
+	var tail byte[>..] = [];
+	le(tail, packed.len, 8);
+	le(tail, hd.len, 8);
+	le(tail, pack::pk_crc32(hd, 0), 4);
+	var a byte[>..] = [];
+	let magic int[8] = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0, 4];
+	for v in magic { le(a, v, 1); }
+	le(a, pack::pk_crc32(tail, 0), 4);
+	a.append(tail);
+	a.append(packed);
+	a.append(hd);
+	a
+}
+fn xc(label const byte[:], a const byte[:]) {
+	let h = sevenz::sz_open(a);
+	var out byte[>..] = [];
+	out.append("junk");
+	let cnt = sevenz::sz_count(h);
+	let nm = sevenz::sz_name(h, 0);
+	let sz = sevenz::sz_size(h, 0);
+	let en = ok(sevenz::sz_encrypted(h, 0));
+	let r = ok(sevenz::sz_read(h, 0, out));
+	print(label, " ", h, " ", cnt, " ", nm, " ", sz, " ", en, " ", r, " ", sha16(out));
+	warns();
+	sevenz::sz_close(h);
+}
+fn main() {
+	dm::dm_reset("x", "y");
+	case_a();
+	case_e();
+	case_n();
+	case_h();
+	case_l();
+	case_b();
+	case_f();
+	case_c();
+	case_r();
+	case_m();
+	case_x();
+	case_s();
+	case_u();
+}
+fn case_a() {
+	arc("sz_basic.7z");
+	arc("sz_plain.7z");
+	arc("sz_lzma.7z");
+	arc("sz_lclp.7z");
+	arc("sz_copy.7z");
+	arc("sz_deflate.7z");
+	arc("sz_bzip2.7z");
+	arc("sz_delta.7z");
+	arc("sz_bcj.7z");
+	arc("sz_bcjdelta.7z");
+	arc("sz_nosolid.7z");
+	arc("sz_folders.7z");
+	arc("sz_empty.7z");
+	arc("sz_enc.7z");
+	arc("sz_ppmd.7z");
+	arc("sz_bcj2.7z");
+	arc("sz_arm64.7z");
+	arc("sz_deflate64.7z");
+	arc("sz_zero.7z");
+}
+fn case_e() {
+	let z = ld("sz_basic.7z");
+	let e = sevenz::sz_open(ld("sz_enche.7z"));
+	print("e1 ", e);
+	warns();
+	let h = sevenz::sz_open(z);
+	print("e2 ", h, " ", sevenz::sz_count(h));
+	sevenz::sz_close(h);
+}
+fn case_n() {
+	let z = ld("sz_basic.7z");
+	let a = sevenz::sz_open(ld("pk_garden.txt"));
+	var e byte[>..] = [];
+	let b = sevenz::sz_open(e);
+	let c = sevenz::sz_open(ld("pk_garden.txt.gz"));
+	let d = sevenz::sz_open(ld("lz_garden.xz"));
+	let zb byte[32] = [0; 32];
+	let f = sevenz::sz_open(zb);
+	let g = sevenz::sz_open(z[..31]);
+	let h = sevenz::sz_open(z[..32]);
+	let i = sevenz::sz_open(z[..40]);
+	var m = copy(z);
+	m[6] = 1;
+	let j = sevenz::sz_open(m);
+	print("n1 ", a, " ", b, " ", c, " ", d, " ", f, " ", g, " ", h, " ", i, " ", j);
+	warns();
+}
+fn case_h() {
+	let z = ld("sz_basic.7z");
+	var c1 = copy(z);
+	c1[8] = ((c1[8] as int) ^ 1) as! byte;
+	var c2 = copy(z);
+	c2[28] = ((c2[28] as int) ^ 1) as! byte;
+	let a = sevenz::sz_open(c1);
+	let b = sevenz::sz_open(c2);
+	print("h1 ", a, " ", b);
+	warns();
+	var c3 = copy(z);
+	for i in 20..28 { c3[i] = 255; }
+	fixs(c3);
+	var c4 = copy(z);
+	c4[17] = 1;
+	fixs(c4);
+	let d = sevenz::sz_open(c3);
+	let e = sevenz::sz_open(c4);
+	print("h2 ", d, " ", e);
+	warns();
+}
+fn rok(h int, i int) int {
+	var out byte[>..] = [];
+	ok(sevenz::sz_read(h, i, out))
+}
+fn rsha(h int, i int) byte[>..] {
+	var out byte[>..] = [];
+	sevenz::sz_read(h, i, out);
+	sha16(out)
+}
+fn case_l() {
+	let z = ld("sz_basic.7z");
+	let ha = sevenz::sz_open(z);
+	let hb = sevenz::sz_open(ld("sz_plain.7z"));
+	print("l1 ", ha, " ", hb, " ", rsha(ha, 4), " ", rsha(hb, 4));
+	sevenz::sz_close(ha);
+	print("l2 ", sevenz::sz_count(ha), " ", sevenz::sz_count(hb), " ", sevenz::sz_size(ha, 4), " ", rsha(hb, 8));
+	let hc = sevenz::sz_open(ld("sz_lzma.7z"));
+	print("l3 ", hc);
+	sevenz::sz_close(hc);
+	sevenz::sz_close(hb);
+	sevenz::sz_close(ha);
+	sevenz::sz_close(7);
+	sevenz::sz_close(-1);
+	let hz = sevenz::sz_open(ld("sz_zero.7z"));
+	print("l4 ", hz, " ", sevenz::sz_count(hz));
+	sevenz::sz_close(hz);
+	sevenz::sz_close(hz);
+	print("l5 ", sevenz::sz_count(hz));
+}
+fn case_b() {
+	let z = ld("sz_basic.7z");
+	var out byte[>..] = [];
+	out.append("junk");
+	let a = sevenz::sz_count(7);
+	let b = sevenz::sz_name(7, 0).len;
+	let c = sevenz::sz_size(7, 0);
+	let d = ok(sevenz::sz_is_dir(7, 0));
+	let e = ok(sevenz::sz_encrypted(7, 0));
+	let f = sevenz::sz_find(7, "x");
+	let g = ok(sevenz::sz_read(7, 0, out));
+	let l = out.len;
+	let m = sevenz::sz_count(-1);
+	print("b1 ", a, " ", b, " ", c, " ", d, " ", e, " ", f, " ", g, " ", l, " ", m);
+	let h = sevenz::sz_open(z);
+	var o2 byte[>..] = [];
+	o2.append("junk");
+	let s1 = sevenz::sz_size(h, 12);
+	let s2 = sevenz::sz_size(h, -1);
+	let n1 = sevenz::sz_name(h, 99).len;
+	let r1 = ok(sevenz::sz_read(h, 99, o2));
+	let l2 = o2.len;
+	let d2 = ok(sevenz::sz_is_dir(h, 2));
+	let d4 = ok(sevenz::sz_is_dir(h, 4));
+	print("b2 ", s1, " ", s2, " ", n1, " ", r1, " ", l2, " ", d2, " ", d4);
+	sevenz::sz_close(h);
+}
+fn case_f() {
+	let z = ld("sz_basic.7z");
+	let h = sevenz::sz_open(z);
+	let bs = cat(cat("garden", ids(1, 92)), "a.txt");
+	print("f1 ", sevenz::sz_find(h, "garden/a.txt"), " ", sevenz::sz_find(h, bs), " ", sevenz::sz_find(h, "GARDEN/A.TXT"), " ", sevenz::sz_find(h, "./garden/a.txt"), " ", sevenz::sz_find(h, "garden/sub/"), " ", sevenz::sz_find(h, "garden/café-ñ.txt"), " ", sevenz::sz_find(h, "GARDEN/CAFÉ-Ñ.TXT"), " ", sevenz::sz_find(h, "nope"), " ", sevenz::sz_find(h, ""));
+	sevenz::sz_close(h);
+}
+fn case_c() {
+	let z = ld("sz_basic.7z");
+	sevenz::sz_cap = 2000;
+	var h = sevenz::sz_open(z);
+	let a = rok(h, 4);
+	let b = rok(h, 3);
+	print("c1 ", h, " ", a, " ", b);
+	warns();
+	sevenz::sz_close(h);
+	h = sevenz::sz_open(ld("sz_copy.7z"));
+	let c = rok(h, 4);
+	let d = rok(h, 7);
+	let e = rok(h, 9);
+	print("c2 ", c, " ", d, " ", e);
+	warns();
+	sevenz::sz_close(h);
+	sevenz::sz_cap = 500;
+	let f = sevenz::sz_open(z);
+	print("c3 ", f);
+	warns();
+	sevenz::sz_cap = 268435456;
+	h = sevenz::sz_open(z);
+	print("c4 ", h);
+	sevenz::sz_close(h);
+}
+fn case_r() {
+	let z = ld("sz_basic.7z");
+	let h = sevenz::sz_open(z);
+	let a = rsha(h, 8);
+	let b = rsha(h, 4);
+	let c = rsha(h, 8);
+	let d = rsha(h, 9);
+	print("r1 ", a, " ", b, " ", c, " ", d);
+	sevenz::sz_close(h);
+}
+fn case_m() {
+	let z = ld("sz_basic.7z");
+	var m1 = copy(ld("sz_copy.7z"));
+	m1[40] = 127;
+	var h = sevenz::sz_open(m1);
+	let a = rok(h, 4);
+	let b = rok(h, 5);
+	print("m1 ", h, " ", a, " ", b);
+	warns();
+	sevenz::sz_close(h);
+	var m2 = copy(z);
+	m2[100] = 127;
+	h = sevenz::sz_open(m2);
+	let c = rok(h, 3);
+	let d = rok(h, 4);
+	let e = rok(h, 8);
+	print("m2 ", c, " ", d, " ", e);
+	warns();
+	sevenz::sz_close(h);
+}
+fn case_x() {
+	let hw = "hello world";
+	let cw = pack::pk_crc32(hw, 0);
+	let hl = "hello";
+	let cl = pack::pk_crc32(hl, 0);
+	xc("x1", mk7(ids(1, 0), "", hw, 11, cw));
+	xc("x2", mk7(ids(1, 0), "", hw, 11, cw ^ 1));
+	xc("x3", mk7(ids(1, 0), "", hw, 12, cw));
+	xc("x4", mk7(ids(4, 0x03030501), "", hw, 11, cw));
+	xc("x6", mk7(ids(4, 0x06F10701), ids(1, 1), hw, 11, cw));
+	xc("x7", mk7(ids(3, 0x030101), ids(2, 0x5D00), hw, 11, cw));
+	xc("x8", mk7(ids(3, 0x040108), "", cat(ids(5, 0x010500FAFF), hl), 5, cl));
+	xc("x9", mk7(ids(1, 0x21), ids(1, 24), cat(cat(ids(3, 0x010004), hl), ids(1, 0)), 5, cl));
+}
+fn case_s() {
+	zs("sz_basic.7z", 85);
+	zs("sz_plain.7z", 85);
+	zs("sz_copy.7z", 85);
+	zc("sz_basic.7z");
+	zc("sz_plain.7z");
+	zc("sz_copy.7z");
+}
+fn case_u() {
+	fz("sz_plain.7z", 1);
+	fz("sz_plain.7z", 85);
+	fz("sz_plain.7z", 255);
+	fz("sz_basic.7z", 1);
+	fz("sz_basic.7z", 85);
+	fz("sz_basic.7z", 255);
+}
