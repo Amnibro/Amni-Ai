@@ -36,5 +36,5 @@ Goal: Adam reads and answers from PDFs, images and other files through a harness
 - [x] code_harness: per-run sandbox copy (reflink when possible), Amni-Code in bubblewrap with the target read-only, docread MCP server seeded, validation in the copy, all-or-nothing placement with conflict detection, new cache/build files never placed, patch kept, sandbox deleted
 - [x] Amni-Code: lenient text tool-call JSON for small local models (branch fix/lenient-tool-json, v3.0.1)
 - [x] Lint, tests, live end-to-end coding run (granite4.2 through Ollama: tests failing → fixed in the sandbox → validated → placed → sandbox deleted)
-- [ ] architecture_map.md and changelog.md entries
+- [x] architecture_map.md and changelog.md entries
 - [ ] Owner confirmation
