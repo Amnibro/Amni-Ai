@@ -1,0 +1,126 @@
+=== 76a636b5234cbadf
+fn emit(text const byte[:]) {
+	fn put(line const byte[:]) {
+		if line.len == 0 {
+			print(".");
+		} else {
+			print(line);
+		}
+	}
+	var start = 0;
+	for i in text.len {
+		if text[i] == 10 {
+			put(text[start..i]);
+			start = i + 1;
+		}
+	}
+	if start < text.len {
+		put(text[start..]);
+	}
+}
+=== -1ba769a9f0d4386f
+fn show(name const byte[:], which int) {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var data byte[>..] = [];
+	if !read_file(path, data) {
+		print("missing");
+		return;
+	}
+	var kind const byte[:] = "docx";
+	var unit const byte[:] = "section";
+	match which {
+		1 => { kind = "docx"; unit = "section"; },
+		2 => { kind = "xlsx"; unit = "sheet"; },
+		3 => { kind = "pptx"; unit = "slide"; },
+		4 => { kind = "odt"; unit = "section"; },
+		5 => { kind = "ods"; unit = "sheet"; },
+		_ => { kind = "odp"; unit = "slide"; },
+	}
+	dm::dm_reset(kind, unit);
+	var ok = false;
+	match which {
+		1 => { ok = office::of_docx(data); },
+		2 => { ok = office::of_xlsx(data); },
+		3 => { ok = office::of_pptx(data); },
+		_ => { ok = office::of_odf(data); },
+	}
+	print("== ", name);
+	var md byte[>..] = [];
+	dm::dm_markdown(md);
+	emit(md);
+	for line in split(dm::dm_meta, '\n') {
+		if line.len == 0 { continue; }
+		var row byte[>..] = [];
+		var seen = false;
+		for c in line {
+			if c == 9 && !seen {
+				row.push('=');
+				seen = true;
+			} else {
+				row.push(c);
+			}
+		}
+		print("meta ", row);
+	}
+	for line in split(dm::dm_warn, '\n') {
+		if line.len == 0 { continue; }
+		print("warn ", line);
+	}
+	if !ok {
+		print("reader returned false");
+	}
+}
+=== 270b75bdc30825ae
+fn main() {
+	show("sample.docx", 1);
+	show("sample.odt", 4);
+	show("sample.xlsx", 2);
+	show("sample.ods", 5);
+	show("sample.pptx", 3);
+	show("sample.odp", 6);
+	show("edge.docx", 1);
+	show("edge1900.xlsx", 2);
+	show("edge1904.xlsx", 2);
+	show("edge.pptx", 3);
+	show("edge.odt", 4);
+	show("edge.ods", 5);
+	print("== bigsheet.xlsx");
+	var bpath byte[>..] = [];
+	bpath.append("tests/fixtures/bigsheet.xlsx");
+	var bdata byte[>..] = [];
+	read_file(bpath, bdata);
+	dm::dm_reset("xlsx", "sheet");
+	office::of_xlsx(bdata);
+	var scratch byte[>..] = [];
+	dm::dm_markdown(scratch);
+	print("len ", scratch.len);
+	for line in split(dm::dm_warn, '\n') {
+		if line.len == 0 { continue; }
+		print("warn ", line);
+	}
+	print("== wrong formats");
+	fn wrong(name const byte[:], which int) {
+		var path byte[>..] = [];
+		path.append("tests/fixtures/");
+		path.append(name);
+		var data byte[>..] = [];
+		read_file(path, data);
+		dm::dm_reset("x", "y");
+		var ok = false;
+		match which {
+			1 => { ok = office::of_docx(data); },
+			2 => { ok = office::of_xlsx(data); },
+			3 => { ok = office::of_pptx(data); },
+			_ => { ok = office::of_odf(data); },
+		}
+		var flag = 0;
+		if ok { flag = 1; }
+		print(name, " ", flag);
+	}
+	wrong("sample.odt", 1);
+	wrong("sample.docx", 2);
+	wrong("sample.xlsx", 4);
+	wrong("table.tsv", 3);
+}

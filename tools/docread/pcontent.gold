@@ -1,0 +1,54 @@
+use std
+into pcontent.amni
+
+This file is a module with no main (namespace pcontent). It runs a PDF page's content streams and records every shown glyph with its position on the upright page, its size and its Unicode text, for the layout step. Paths, colors and images are not drawn; only their effect on text placement matters, plus how much of the page images cover (to spot scanned pages). Every module-level name starts with `pc_` or `PC_`. Nothing here may crash or loop forever on a malformed page. PDF objects are read only through these `pdf` functions, which all take node indexes and dereference them: `pdf::pf_kind(n)` (a `pdf::PF_` type constant such as `pdf::PF_DICT`, `pdf::PF_STREAM`, `pdf::PF_ARR`, `pdf::PF_NAME`, `pdf::PF_INT`, `pdf::PF_REAL`, or -1), `pdf::pf_dget(n, key)` (the value node of a dict or stream for key, a name written without its slash, or -1), `pdf::pf_dhas(n, key)`, `pdf::pf_dict_of(n)`, `pdf::pf_bytes(n)` (the bytes of a name or string node), `pdf::pf_name_is(n, v)`, `pdf::pf_int(n, default)`, `pdf::pf_real(n, default)`, `pdf::pf_len(n)` and `pdf::pf_at(n, i)` (array length and element), `pdf::pf_decode(n, out) bool` (a stream's decoded data) and `pdf::pf_text(n, out)` (a text string as UTF-8); `pdf::pf_get(num)` takes an object number, not a node, and is not needed here.
+
+```amni
+import math;
+import pdf;
+import pfont;
+import dm;
+```
+
+`struct PcGlyph` has `x0 real`, `y0 real` (the glyph origin on the upright page), `x1 real`, `y1 real` (the end of its advance along the baseline on the upright page), `size real` (the glyph's height on the page), `dir int` (0 left to right, 1 bottom to top, 2 right to left upside down, 3 top to bottom), `at int`, `len int` (its UTF-8 text in `pc_txt`), `font int` (the pfont index), `space bool` (the text is a single space).
+
+`struct PcGs` has `m real[6]` (the CTM), `font int`, `fs real`, `tc real`, `tw real`, `th real`, `tl real`, `rise real`.
+
+`struct PcOp` has `t int` (1 number, 2 string, 3 name, 4 array start, 5 array end, 6 dict node, 7 other literal), `v real`, `at int`, `len int` (string and name bytes in `pc_sbuf`).
+
+Module state: `var pc_g PcGlyph[>..]`, `var pc_txt byte[>..]`, `var pc_ops PcOp[>..]`, `var pc_sbuf byte[>..]`, `var pc_gs PcGs[>..]` (the q/Q stack), `var pc_ctm real[6]`, `var pc_tm real[6]`, `var pc_tlm real[6]`, `var pc_font = -1`, `var pc_fs = 0.0`, `var pc_tc = 0.0`, `var pc_tw = 0.0`, `var pc_th = 1.0`, `var pc_tl = 0.0`, `var pc_rise = 0.0`, `var pc_rot = 0`, `var pc_bx real[4]` (the page's crop box x0 y0 x1 y1), `var pc_pw = 0.0`, `var pc_ph = 0.0` (upright page width and height), `var pc_img = 0.0` (the largest fraction of the page one image covers), `var pc_steps = 0` (operators run on this page), `var pc_forms int[>..]` (form XObject nodes being run, against cycles), `var pc_at_on = false`, `var pc_at_depth = 0`, `var pc_at_text byte[>..]`, `var pc_at_seen = false`, `var pc_at_g PcGlyph` (the ActualText span so far), `var pc_mc_depth = 0`, `var pc_tmp byte[>..]`.
+
+`pc_ident(m real[6]&)` sets m to the identity matrix 1 0 0 1 0 0. `pc_mul(a const real[6]&, b const real[6]&, o real[6]&)` sets o to the product a × b of PDF matrices, where a point row vector is multiplied by a first and then by b (o0 = a0 b0 + a1 b2, o1 = a0 b1 + a1 b3, o2 = a2 b0 + a3 b2, o3 = a2 b1 + a3 b3, o4 = a4 b0 + a5 b2 + b4, o5 = a4 b1 + a5 b3 + b5); o may be the same array as a or b, so compute into locals first.
+
+`pc_upright(x real, y real, ox real&, oy real&)` maps a point in default user space to the upright page using the crop box `pc_bx` and `pc_rot`: rotation 0 gives (x − x0, y − y0); 90 gives (y − y0, x1 − x); 180 gives (x1 − x, y1 − y); 270 gives (y1 − y, x − x0).
+
+`pc_reset_page(p int)` clears the glyphs, text pool, operands, string buffer, q/Q stack, form stack and ActualText state, sets the CTM to identity and the text state to font -1, size 0, Tc 0, Tw 0, horizontal scale 1, leading 0 and rise 0, copies page p's crop box and rotation from `pdf::pf_pages[p]` into `pc_bx` and `pc_rot`, and sets `pc_pw` and `pc_ph` to the box width and height (swapped for rotations 90 and 270, each at least 1), `pc_img` 0 and `pc_steps` 0.
+
+`pc_emit(code_text_at int, code_text_len int, w0 real, vertical bool, is_space bool)` records one glyph shown with the current state: build trm = [fs × th, 0, 0, fs, 0, rise] × `pc_tm` × `pc_ctm`; the origin is (trm4, trm5); the end is the origin plus w0 × (trm0, trm1) for horizontal fonts, or minus (trm2, trm3) for vertical ones; map both through `pc_upright`; size is the length of (trm2, trm3), or of (trm0, trm1) for vertical fonts. The direction comes from the upright direction vector (end minus origin; when its length is below 0.0001 use the upright image of (trm0, trm1) relative to the origin): when its x part's magnitude is at least its y part's, x positive is 0 and negative is 2; otherwise y positive is 1 and negative is 3; vertical fonts always use 3. Glyphs with size below 0.5 or above 2000 are dropped. When an ActualText span is active (`pc_at_on`), do not record the glyph: extend `pc_at_g` instead (the first glyph sets its origin, size, font and direction; every glyph sets its end) and set `pc_at_seen`. Otherwise push a `PcGlyph` whose text is `pc_txt[code_text_at .. code_text_at + code_text_len]` (the caller has already appended it), stopping at 1 million glyphs per page.
+
+`pc_show(s const byte[:])` shows a string with the current font (nothing when `pc_font` is -1 or the size is 0): read codes with `pfont::fo_next` until it returns -1, counting the bytes each took; for each code remember `pc_txt.len`, append its text with `pfont::fo_text` (codes with no text append nothing), get w0 = `pfont::fo_width`, is_space when the code took one byte, equals 32 and its text is a single space; call `pc_emit` when text was appended or an ActualText span is active; then advance: for horizontal fonts tx = (w0 × fs + Tc + (Tw when is_space)) × th and the text matrix becomes [1 0 0 1 tx 0] × `pc_tm`; for vertical fonts ty = −fs + Tc + (Tw when is_space) and the text matrix becomes [1 0 0 1 0 ty] × `pc_tm`.
+
+`pc_tj_adjust(n real)` moves the text matrix for a number inside a TJ array: horizontal fonts move by tx = −n / 1000 × fs × th along x, vertical fonts by ty = −n / 1000 × fs along y.
+
+`pc_set_font(res int, name const byte[:])` looks name up in res's /Font dict (`pdf::pf_dget`) and sets `pc_font` with `pfont::fo_load` (-1 when missing).
+
+`pc_image_cover(m const real[6]&)` maps the four corners of the unit square through m and `pc_upright`, takes their bounding box clipped to the page (0 to `pc_pw`, 0 to `pc_ph`), and keeps the largest fraction of the page area seen in `pc_img`.
+
+`pc_inline_image(s const byte[:], at int&)` skips an inline image after its BI operator: parse key and value objects with `pdf::pf_parse` until the keyword ID (a run of regular bytes equal to "ID"), skip one byte after ID, then find the first "EI" at position p ≥ at that is preceded by a whitespace byte and followed by the end of data, a whitespace byte or a delimiter; continue after it, or at the end of s when none is found. The image counts toward `pc_image_cover` with the current CTM.
+
+`pc_actual_text(res int, prop int) int` returns the /ActualText string node of a BDC property operand, or -1: when prop is a dict node use its /ActualText; when it is a name, look it up in res's /Properties dict first.
+
+`pc_exec(s const byte[:], res int, depth int)` runs one content stream with resources res. With `pdf::pf_cur_num` saved and set to -1 for the duration (strings in content streams are not separately encrypted). Read tokens from s after `pdf::pf_skip`: a number (an optional sign, digits and a period) pushes a type 1 operand; "(" reads `pdf::pf_lit_string` into `pc_sbuf` and "<" (not "<<") reads `pdf::pf_hex_string`, pushing a type 2 operand; "/" reads `pdf::pf_name` into `pc_sbuf` and pushes type 3; "[" pushes type 4 and "]" type 5; "<<" parses a dict with `pdf::pf_parse` and pushes type 6 with its node in at; "{" and "}" are skipped; a run of regular bytes is a keyword: true, false and null push type 7, anything else is an operator, run with the operands and then the operand list and `pc_sbuf` are cleared. Any other byte is skipped. Stop when `pc_steps` passes 5 million. Operators, using the last operands (missing or wrong-typed operands make the operator do nothing):
+- q pushes the CTM and text state onto `pc_gs` (at most 256 deep); Q pops them (ignored when empty); cm multiplies [a b c d e f] × `pc_ctm` into the CTM.
+- BT sets `pc_tm` and `pc_tlm` to identity; ET does nothing.
+- Tc, Tw, TL, Ts set Tc, Tw, leading and rise; Tz sets th to its operand / 100; Tf sets the font through `pc_set_font` and fs; Tr is ignored (invisible text is kept, it is how OCR text layers are stored).
+- Td: `pc_tlm` = [1 0 0 1 tx ty] × `pc_tlm` and `pc_tm` = `pc_tlm`; TD also sets the leading to −ty; Tm sets both to its six operands; T* is Td with 0 and −leading.
+- Tj shows its string with `pc_show`; ' does T* then shows; " sets Tw and Tc from its first two operands, does T* and shows its third; TJ walks the operands after the last array start: strings are shown with `pc_show`, numbers move with `pc_tj_adjust`.
+- Do looks up the name in res's /XObject: a /Subtype /Image counts toward `pc_image_cover` with the CTM; a /Subtype /Form (when depth is below 12 and its node is not in `pc_forms`) pushes the graphics state like q, multiplies its /Matrix (default identity) into the CTM, decodes it with `pdf::pf_decode` into a fresh local buffer, pushes its node on `pc_forms`, runs `pc_exec` on it with its own /Resources (or res when it has none) and depth plus 1, then pops the node and restores the state like Q.
+- BI runs `pc_inline_image`.
+- BMC increases `pc_mc_depth`; BDC increases it too and, when no ActualText span is active and `pc_actual_text` finds one with text (through `pdf::pf_text` into `pc_at_text`), starts a span: `pc_at_on` true, `pc_at_depth` = the new depth, `pc_at_seen` false. EMC: when a span is active and `pc_mc_depth` equals `pc_at_depth`, end it: when `pc_at_seen`, append `pc_at_text` to `pc_txt` and push `pc_at_g` with that text (space false); then `pc_at_on` false. Then decrease `pc_mc_depth` (not below 0).
+Restore `pdf::pf_cur_num` at the end.
+
+`pc_run_page(p int) bool` resets with `pc_reset_page(p)`, takes page p's /Contents (a stream, or an array of streams), decodes each with `pdf::pf_decode` into one buffer with a newline after each, and runs `pc_exec` on it with the page's resources from `pdf::pf_pages[p].res` and depth 0; when an ActualText span is still active afterwards end it as EMC would. Returns false when the page has no content.
+
+`pc_count() int` is the number of glyphs recorded; `pc_text(i int) const byte[:]` is glyph i's text.

@@ -1,0 +1,665 @@
+=== 44a64ae4702fea6c
+namespace eml;
+=== 2481fd379c2e8eee
+struct EmAtt { nat int, nlen int, tat int, tlen int, dat int, dlen int }
+var em_atts EmAtt[>..];
+var em_apool byte[>..];
+=== -3921b4853d35371c
+fn em_att_count() int { em_atts.len }
+fn em_att_name(i int, out byte[>..]&) {
+	out.clear();
+	if i < 0 || i >= em_atts.len { return; }
+	let a = em_atts[i];
+	out.append(em_apool[a.nat..a.nat + a.nlen]);
+}
+fn em_att_type(i int, out byte[>..]&) {
+	out.clear();
+	if i < 0 || i >= em_atts.len { return; }
+	let a = em_atts[i];
+	out.append(em_apool[a.tat..a.tat + a.tlen]);
+}
+fn em_att_data(i int, out byte[>..]&) {
+	out.clear();
+	if i < 0 || i >= em_atts.len { return; }
+	let a = em_atts[i];
+	out.append(em_apool[a.dat..a.dat + a.dlen]);
+}
+=== -7ecdfefd9daeb154
+fn em_hexv(c byte) int {
+	let v int = c;
+	if v >= 48 && v <= 57 { return v - 48; }
+	if v >= 97 && v <= 102 { return v - 87; }
+	if v >= 65 && v <= 70 { return v - 55; }
+	-1
+}
+=== -6ff67243b4a2b023
+fn em_ws(c byte) bool { c == 32 || c == 9 || c == 10 || c == 13 }
+=== -55328fe03332a7e
+fn em_b64(s const byte[:], out byte[>..]&) {
+	var acc = 0;
+	var nb = 0;
+	for c in s {
+		let ci int = c;
+		var v = -1;
+		if ci >= 65 && ci <= 90 { v = ci - 65; }
+		else if ci >= 97 && ci <= 122 { v = ci - 71; }
+		else if ci >= 48 && ci <= 57 { v = ci + 4; }
+		else if ci == 43 { v = 62; }
+		else if ci == 47 { v = 63; }
+		else if ci == 61 { break; }
+		if v < 0 { continue; }
+		acc = (acc << 6) | v;
+		nb += 6;
+		if nb >= 8 {
+			nb -= 8;
+			out.push(((acc >> nb) & 255) as byte);
+			acc = acc & ((1 << nb) - 1);
+		}
+	}
+}
+=== 79cf80d7fb97c9b5
+fn em_qp(s const byte[:], hdr bool, out byte[>..]&) {
+	let n = s.len;
+	var i = 0;
+	while i < n {
+		let c = s[i];
+		if c == 61 {
+			if i + 2 < n && em_hexv(s[i + 1]) >= 0 && em_hexv(s[i + 2]) >= 0 {
+				out.push((em_hexv(s[i + 1]) * 16 + em_hexv(s[i + 2])) as byte);
+				i += 3;
+			} else {
+				var j = i + 1;
+				while j < n && (s[j] == 32 || s[j] == 9) { j++; }
+				if j < n && s[j] == 10 {
+					i = j + 1;
+				} else if j + 1 < n && s[j] == 13 && s[j + 1] == 10 {
+					i = j + 2;
+				} else {
+					out.push(c);
+					i++;
+				}
+			}
+		} else if hdr && c == 95 {
+			out.push(32);
+			i++;
+		} else {
+			out.push(c);
+			i++;
+		}
+	}
+}
+=== -4422282567422373
+fn em_charset(cs const byte[:], data const byte[:], out byte[>..]&) {
+	var n byte[>..] = [];
+	for c in cs {
+		if c == 42 { break; }
+		if c == 34 || c == 39 || c == 32 { continue; }
+		if c >= 65 && c <= 90 { n.push(c + 32); } else { n.push(c); }
+	}
+	if n == "iso-8859-1" || n == "iso8859-1" || n == "latin1" || n == "l1" || n == "iso-8859-15" || n == "windows-1252" || n == "cp1252" {
+		for c in data { dm::dm_put_cp(out, dm::dm_cp1252(c)); }
+	} else if n == "macintosh" || n == "mac" || n == "x-mac-roman" {
+		for c in data { dm::dm_put_cp(out, dm::dm_macroman(c)); }
+	} else if n == "utf-16le" {
+		dm::dm_utf16(data, false, out);
+	} else if n == "utf-16be" {
+		dm::dm_utf16(data, true, out);
+	} else {
+		dm::dm_to_utf8(data, out);
+	}
+}
+=== -1cae1eb429bee1df
+fn em_plain(g const byte[:], out byte[>..]&) {
+	var hi = false;
+	for c in g { if c >= 128 { hi = true; break; } }
+	if hi { dm::dm_to_utf8(g, out); } else { out.append(g); }
+}
+fn em_ew(s const byte[:], at int) int, int, int {
+	let n = s.len;
+	if at + 1 >= n || s[at] != 61 || s[at + 1] != 63 { return -1, 0, 0; }
+	var j = at + 2;
+	while j < n && s[j] != 63 && !em_ws(s[j]) { j++; }
+	if j == at + 2 || j + 2 >= n || s[j] != 63 { return -1, 0, 0; }
+	let e = s[j + 1];
+	if !(e == 66 || e == 98 || e == 81 || e == 113) { return -1, 0, 0; }
+	if s[j + 2] != 63 { return -1, 0, 0; }
+	var k = j + 3;
+	while k < n && s[k] != 63 && !em_ws(s[k]) { k++; }
+	if k + 1 >= n || s[k] != 63 || s[k + 1] != 61 { return -1, 0, 0; }
+	return k + 2, j, k;
+}
+fn em_word_dec(s const byte[:], at int, c1 int, t1 int, out byte[>..]&) {
+	var dec byte[>..] = [];
+	let e = s[c1 + 1];
+	if e == 66 || e == 98 { em_b64(s[c1 + 3..t1], dec); } else { em_qp(s[c1 + 3..t1], true, dec); }
+	em_charset(s[at + 2..c1], dec, out);
+}
+fn em_words(s const byte[:], out byte[>..]&) {
+	out.clear();
+	let n = s.len;
+	var i = 0;
+	var run = 0;
+	var last = -1;
+	while i < n {
+		if s[i] == 61 {
+			let end, c1, t1 = em_ew(s, i);
+			if end > 0 {
+				var drop = false;
+				if last >= 0 && last == run {
+					drop = true;
+					for k in run..i { if !em_ws(s[k]) { drop = false; break; } }
+				}
+				if !drop { em_plain(s[run..i], out); }
+				em_word_dec(s, i, c1, t1, out);
+				last = end;
+				run = end;
+				i = end;
+				continue;
+			}
+		}
+		i++;
+	}
+	em_plain(s[run..n], out);
+}
+=== 55c726ce9441aff6
+fn em_split(msg const byte[:], hend int&) int {
+	let n = msg.len;
+	if n > 0 && msg[0] == 10 { hend = 0; return 1; }
+	if n > 1 && msg[0] == 13 && msg[1] == 10 { hend = 0; return 2; }
+	var p = 0;
+	while p < n {
+		if msg[p] == 10 {
+			let q = p + 1;
+			var b = -1;
+			if q < n && msg[q] == 10 {
+				b = q + 1;
+			} else if q + 1 < n && msg[q] == 13 && msg[q + 1] == 10 {
+				b = q + 2;
+			}
+			if b >= 0 {
+				hend = if p > 0 && msg[p - 1] == 13 { p - 1 } else { p };
+				return b;
+			}
+		}
+		p++;
+	}
+	hend = n;
+	n
+}
+=== -bc66024e1939464
+fn em_header(h const byte[:], name const byte[:], out byte[>..]&) bool {
+	out.clear();
+	let n = h.len;
+	var ls = 0;
+	while ls < n {
+		var le = ls;
+		while le < n && h[le] != 10 { le++; }
+		let c0 = h[ls];
+		if !(c0 == 32 || c0 == 9) {
+			var colon = -1;
+			var k = ls;
+			while k < le {
+				if h[k] == 58 { colon = k; break; }
+				k++;
+			}
+			if colon >= 0 {
+				var key byte[>..] = [];
+				html::ht_lower(h[ls..colon], key);
+				if key == name {
+					var raw byte[>..] = [];
+					var a = colon + 1;
+					var b = le;
+					loop {
+						var e2 = b;
+						if e2 > a && h[e2 - 1] == 13 { e2 -= 1; }
+						raw.append(h[a..e2]);
+						let nl = b + 1;
+						if nl >= n { break; }
+						let c = h[nl];
+						if !(c == 32 || c == 9) { break; }
+						var b2 = nl;
+						while b2 < n && h[b2] != 10 { b2++; }
+						a = nl;
+						b = b2;
+					}
+					out.append(trim(raw[..raw.len]));
+					return true;
+				}
+			}
+		}
+		ls = le + 1;
+	}
+	false
+}
+=== -3d9e3f4c68080e40
+fn em_pval(v const byte[:], out byte[>..]&) {
+	out.clear();
+	let n = v.len;
+	if n > 0 && v[0] == 34 {
+		var i = 1;
+		while i < n {
+			let c = v[i];
+			if c == 34 { break; }
+			if c == 92 {
+				i++;
+				if i < n { out.push(v[i]); }
+				i++;
+				continue;
+			}
+			out.push(c);
+			i++;
+		}
+	} else {
+		var i = 0;
+		while i < n && !em_ws(v[i]) {
+			out.push(v[i]);
+			i++;
+		}
+	}
+}
+fn em_pct(s const byte[:], out byte[>..]&) {
+	let n = s.len;
+	var i = 0;
+	while i < n {
+		let c = s[i];
+		if c == 37 && i + 2 < n && em_hexv(s[i + 1]) >= 0 && em_hexv(s[i + 2]) >= 0 {
+			out.push((em_hexv(s[i + 1]) * 16 + em_hexv(s[i + 2])) as byte);
+			i += 3;
+		} else {
+			out.push(c);
+			i++;
+		}
+	}
+}
+fn em_param(value const byte[:], name const byte[:], out byte[>..]&) bool {
+	out.clear();
+	let n = value.len;
+	var i = 0;
+	while i < n && value[i] != 59 { i++; }
+	var plain byte[>..] = [];
+	var have = false;
+	var ext byte[>..] = [];
+	var extcs byte[>..] = [];
+	while i < n {
+		i++;
+		var j = i;
+		var inq = false;
+		while j < n {
+			let c = value[j];
+			if c == 34 {
+				inq = !inq;
+			} else if c == 92 && inq {
+				j++;
+			} else if c == 59 && !inq {
+				break;
+			}
+			j++;
+		}
+		if j > n { j = n; }
+		let par = trim(value[i..j]);
+		i = j;
+		var eq = -1;
+		var k = 0;
+		while k < par.len {
+			if par[k] == 61 { eq = k; break; }
+			k++;
+		}
+		if eq < 0 { continue; }
+		var key byte[>..] = [];
+		html::ht_lower(trim(par[..eq]), key);
+		var val byte[>..] = [];
+		em_pval(trim(par[eq + 1..par.len]), val);
+		if key == name {
+			plain.clear();
+			plain.append(val);
+			have = true;
+			continue;
+		}
+		let nl = name.len;
+		if key.len > nl && key[..nl] == name && key[nl] == 42 {
+			let rest = key[nl + 1..key.len];
+			var d = 0;
+			var num = 0;
+			while d < rest.len && rest[d] >= 48 && rest[d] <= 57 {
+				let dv int = rest[d];
+				if num < 100000 { num = num * 10 + dv - 48; }
+				d++;
+			}
+			let valid = rest.len == 0 || (d > 0 && (d == rest.len || (d == rest.len - 1 && rest[d] == 42)));
+			if valid {
+				let ends_star = rest.len == 0 || rest[rest.len - 1] == 42;
+				if ends_star {
+					var st = 0;
+					if rest.len == 0 || num == 0 {
+						var a1 = -1;
+						var a2 = -1;
+						var q = 0;
+						while q < val.len {
+							if val[q] == 39 {
+								if a1 < 0 { a1 = q; } else { a2 = q; break; }
+							}
+							q++;
+						}
+						if a1 >= 0 {
+							extcs.clear();
+							extcs.append(val[..a1]);
+							st = if a2 >= 0 { a2 + 1 } else { a1 + 1 };
+						}
+					}
+					em_pct(val[st..val.len], ext);
+				} else {
+					ext.append(val);
+				}
+			}
+		}
+	}
+	if ext.len > 0 {
+		em_charset(extcs, ext, out);
+		return true;
+	}
+	if have {
+		em_words(plain, out);
+		return true;
+	}
+	false
+}
+=== -37b0c5cf56aeeca4
+fn em_ctype(ct const byte[:], out byte[>..]&) {
+	out.clear();
+	var i = 0;
+	while i < ct.len && ct[i] != 59 { i++; }
+	html::ht_lower(trim(ct[..i]), out);
+}
+=== -43eb70ed27e75bec
+fn em_decode(body const byte[:], cte const byte[:], out byte[>..]&) {
+	out.clear();
+	var l byte[>..] = [];
+	html::ht_lower(trim(cte), l);
+	if l == "base64" {
+		em_b64(body, out);
+	} else if l == "quoted-printable" {
+		em_qp(body, false, out);
+	} else {
+		out.append(body);
+	}
+}
+=== -541e5e988da7f633
+fn em_add_att(name const byte[:], ctype const byte[:], data const byte[:]) {
+	var nm byte[>..] = [];
+	if name.len == 0 { nm.append("attachment"); } else { nm.append(name); }
+	let nat = em_apool.len;
+	em_apool.append(nm);
+	let tat = em_apool.len;
+	em_apool.append(ctype);
+	let dat = em_apool.len;
+	em_apool.append(data);
+	em_atts.push(EmAtt { nat: nat, nlen: nm.len, tat: tat, tlen: ctype.len, dat: dat, dlen: data.len });
+	var t byte[>..] = [];
+	format(t, "Attachment: ", nm, " (", ctype, ", ", data.len, " bytes)");
+	dm::dm_add(dm::DM_NOTE, 0, t);
+}
+=== -693fa4f0e8b09864
+fn em_delim(line const byte[:], boundary const byte[:]) int {
+	var e = line.len;
+	if e > 0 && line[e - 1] == 13 { e -= 1; }
+	let bl = boundary.len;
+	if e < 2 + bl || line[0] != 45 || line[1] != 45 { return 0; }
+	if line[2..2 + bl] != boundary { return 0; }
+	let p = 2 + bl;
+	if p + 2 <= e && line[p] == 45 && line[p + 1] == 45 { return 2; }
+	for k in p..e {
+		if !(line[k] == 32 || line[k] == 9) { return 0; }
+	}
+	1
+}
+fn em_split_parts(body const byte[:], boundary const byte[:], starts int[>..]&, ends int[>..]&) {
+	starts.clear();
+	ends.clear();
+	let n = body.len;
+	var ls = 0;
+	var cur = -1;
+	var closed = false;
+	while ls < n && !closed {
+		var le = ls;
+		while le < n && body[le] != 10 { le++; }
+		let kind = em_delim(body[ls..le], boundary);
+		if kind > 0 {
+			if cur >= 0 {
+				var e = ls - 1;
+				if e < cur { e = cur; }
+				if e > cur && body[e - 1] == 13 { e -= 1; }
+				starts.push(cur);
+				ends.push(e);
+			}
+			if kind == 2 {
+				closed = true;
+				cur = -1;
+			} else {
+				cur = min(le + 1, n);
+			}
+		}
+		ls = le + 1;
+	}
+	if !closed && cur >= 0 {
+		starts.push(cur);
+		ends.push(n);
+	}
+}
+=== -2a3a363d3282d0e7
+fn em_retag(from int) {
+	var i = from;
+	while i < dm::dm_blocks.len {
+		var b .= dm::dm_blocks[i];
+		let was_row = b.kind == dm::DM_ROW;
+		let lo = b.at;
+		let hi = b.at + b.len;
+		b.kind = dm::DM_NOTE;
+		b.level = 0;
+		if was_row {
+			for j in lo..hi {
+				if dm::dm_pool[j] == 9 { dm::dm_pool[j] = 124; }
+			}
+		}
+		i++;
+	}
+}
+=== -66924aef64daded
+fn em_text(utf8 const byte[:], is_html bool) {
+	if is_html && html::ht_read_utf8(utf8) { return; }
+	if !textfmt::tx_text(utf8) { dm::dm_add(dm::DM_PARA, 0, utf8); }
+}
+=== -a027b2656537036
+fn em_score(part const byte[:]) int {
+	var hend = 0;
+	em_split(part, hend);
+	let h = part[..hend];
+	var ctv byte[>..] = [];
+	var ty byte[>..] = [];
+	if em_header(h, "content-type", ctv) { em_ctype(ctv, ty); } else { ty.append("text/plain"); }
+	var cd byte[>..] = [];
+	em_header(h, "content-disposition", cd);
+	var dl byte[>..] = [];
+	em_ctype(cd, dl);
+	var nm byte[>..] = [];
+	var hasname = em_param(cd, "filename", nm);
+	if !hasname { hasname = em_param(ctv, "name", nm); }
+	if hasname || starts_with(dl, "attachment") { return 0; }
+	if ty == "text/plain" { return 4; }
+	if ty == "text/html" { return 3; }
+	if starts_with(ty, "multipart/") { return 2; }
+	if starts_with(ty, "text/") { return 1; }
+	0
+}
+=== 76b953c02383f08b
+recursive fn em_part(data const byte[:], depth int) {
+	if depth > 16 {
+		dm::dm_warn_add("email: MIME nesting too deep");
+		return;
+	}
+	var hend = 0;
+	let bs = em_split(data, hend);
+	let h = data[..hend];
+	let body = data[bs..data.len];
+	var ctv byte[>..] = [];
+	if !em_header(h, "content-type", ctv) { ctv.append("text/plain"); }
+	var cte byte[>..] = [];
+	em_header(h, "content-transfer-encoding", cte);
+	var cd byte[>..] = [];
+	em_header(h, "content-disposition", cd);
+	var ty byte[>..] = [];
+	em_ctype(ctv, ty);
+	var dl byte[>..] = [];
+	em_ctype(cd, dl);
+	var nm byte[>..] = [];
+	var hasname = em_param(cd, "filename", nm);
+	if !hasname { hasname = em_param(ctv, "name", nm); }
+	var as_text = false;
+	if starts_with(ty, "multipart/") {
+		var bnd byte[>..] = [];
+		if em_param(ctv, "boundary", bnd) && bnd.len > 0 {
+			var starts int[>..] = [];
+			var ends int[>..] = [];
+			em_split_parts(body, bnd, starts, ends);
+			if starts.len > 0 {
+				if ty == "multipart/alternative" {
+					var best = -1;
+					var bests = -1;
+					for i in starts.len {
+						let sc = em_score(body[starts[i]..ends[i]]);
+						if sc > bests {
+							bests = sc;
+							best = i;
+						}
+					}
+					if bests == 0 { best = starts.len - 1; }
+					em_part(body[starts[best]..ends[best]], depth + 1);
+				} else {
+					for i in starts.len {
+						em_part(body[starts[i]..ends[i]], depth + 1);
+					}
+				}
+				return;
+			}
+		}
+		as_text = true;
+	}
+	if !as_text && ty == "message/rfc822" {
+		dm::dm_add(dm::DM_NOTE, 0, "Attached message:");
+		let mark = dm::dm_blocks.len;
+		var inner byte[>..] = [];
+		em_decode(body, cte, inner);
+		em_message(inner[..inner.len], depth + 1, true);
+		em_retag(mark);
+		return;
+	}
+	if !as_text && (hasname || starts_with(dl, "attachment") || !starts_with(ty, "text/")) {
+		var dec byte[>..] = [];
+		em_decode(body, cte, dec);
+		em_add_att(nm, ty, dec);
+		return;
+	}
+	var dec byte[>..] = [];
+	em_decode(body, cte, dec);
+	var cs byte[>..] = [];
+	em_param(ctv, "charset", cs);
+	var utf byte[>..] = [];
+	em_charset(cs, dec, utf);
+	em_text(utf, ty == "text/html");
+}
+=== 72d3daf44f95b4ee
+fn em_field(label const byte[:], key const byte[:], h const byte[:], nested bool) {
+	var raw byte[>..] = [];
+	if !em_header(h, key, raw) { return; }
+	var text byte[>..] = [];
+	em_words(raw, text);
+	if text.len == 0 { return; }
+	var t byte[>..] = [];
+	format(t, label, ": ", text);
+	dm::dm_add(dm::DM_FIELD, 0, t);
+	if !nested && (key == "from" || key == "to" || key == "cc" || key == "date" || key == "subject") {
+		dm::dm_set_meta(key, text);
+	}
+}
+=== 28cafe531218158d
+recursive fn em_message(data const byte[:], depth int, nested bool) {
+	var hend = 0;
+	em_split(data, hend);
+	let h = data[..hend];
+	em_field("From", "from", h, nested);
+	em_field("To", "to", h, nested);
+	em_field("Cc", "cc", h, nested);
+	em_field("Date", "date", h, nested);
+	em_field("Subject", "subject", h, nested);
+	em_part(data, depth);
+}
+=== 5bdadf36b1203bf7
+fn em_looks(msg const byte[:]) bool {
+	let n = msg.len;
+	if n == 0 { return false; }
+	if msg[0] == 32 || msg[0] == 9 { return false; }
+	var found = false;
+	var ls = 0;
+	while ls < n {
+		var le = ls;
+		while le < n && msg[le] != 10 { le++; }
+		var e = le;
+		if e > ls && msg[e - 1] == 13 { e -= 1; }
+		if e == ls { break; }
+		let c = msg[ls];
+		if !(c == 32 || c == 9) {
+			var colon = -1;
+			var k = ls;
+			while k < e {
+				let ch = msg[k];
+				if ch == 58 { colon = k; break; }
+				if ch < 33 || ch > 126 { return false; }
+				k++;
+			}
+			if colon <= ls { return false; }
+			var low byte[>..] = [];
+			html::ht_lower(msg[ls..colon], low);
+			if low == "from" || low == "to" || low == "cc" || low == "subject" || low == "date" || low == "message-id" || low == "mime-version" || low == "received" || low == "return-path" || low == "delivered-to" || low == "reply-to" || low == "content-type" {
+				found = true;
+			}
+		}
+		ls = le + 1;
+	}
+	found
+}
+=== 21ca8346d794f62f
+fn em_read(data const byte[:]) bool {
+	em_atts.clear();
+	em_apool.clear();
+	let n = data.len;
+	var start = 0;
+	if n >= 5 && data[0..5] == "From " && (n == 5 || data[5] != 58) {
+		var p = 0;
+		while p < n && data[p] != 10 { p++; }
+		start = min(p + 1, n);
+	}
+	var stop = n;
+	var ls = start;
+	var prev_empty = false;
+	while ls < n {
+		var le = ls;
+		while le < n && data[le] != 10 { le++; }
+		if prev_empty && le - ls >= 5 && data[ls..ls + 5] == "From " {
+			dm::dm_warn_add("mbox holds more than one message; only the first was read");
+			stop = ls;
+			break;
+		}
+		var e = le;
+		if e > ls && data[e - 1] == 13 { e -= 1; }
+		prev_empty = e == ls;
+		ls = le + 1;
+	}
+	let text = data[start..stop];
+	if !em_looks(text) { return false; }
+	em_message(text, 0, false);
+	if em_att_count() > 0 {
+		var c byte[>..] = [];
+		format(c, em_att_count());
+		dm::dm_set_meta("attachments", c);
+	}
+	true
+}

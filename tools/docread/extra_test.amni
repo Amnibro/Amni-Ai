@@ -1,0 +1,135 @@
+import os;
+import dm;
+import extra;
+fn emit(text const byte[:]) {
+	var start = 0;
+	while start < text.len {
+		var e = start;
+		while e < text.len && text[e] != 10 { e++; }
+		let line = text[start..e];
+		if line.len == 0 {
+			print(".");
+		} else if line.len > 100 {
+			print(line[..20], "~", line.len);
+		} else {
+			print(line);
+		}
+		start = e + 1;
+	}
+}
+fn run(label const byte[:], which int, lang const byte[:], data const byte[:]) {
+	let kind = match which { 1 => "ipynb", 2 => "ics", 3 => "vcf", _ => "code", };
+	let unit = match which { 1 => "cell", 2 => "event", 3 => "card", _ => "line", };
+	dm::dm_reset(kind, unit);
+	var ok = true;
+	match which {
+		1 => { ok = extra::ex_ipynb(data); },
+		2 => { ok = extra::ex_ics(data); },
+		3 => { ok = extra::ex_vcf(data); },
+		_ => { ok = extra::ex_code(data, lang); },
+	}
+	print("== ", label);
+	var md byte[>..] = [];
+	dm::dm_markdown(md);
+	emit(md);
+	var meta byte[>..] = [];
+	meta.append(dm::dm_meta);
+	var start = 0;
+	while start < meta.len {
+		var e = start;
+		while e < meta.len && meta[e] != 10 { e++; }
+		let line = meta[start..e];
+		var t = 0;
+		while t < line.len && line[t] != 9 { t++; }
+		if t < line.len {
+			print("meta ", line[..t], "=", line[t + 1..]);
+		} else {
+			print("meta ", line, "=");
+		}
+		start = e + 1;
+	}
+	var warn byte[>..] = [];
+	warn.append(dm::dm_warn);
+	start = 0;
+	while start < warn.len {
+		var e = start;
+		while e < warn.len && warn[e] != 10 { e++; }
+		print("warn ", warn[start..e]);
+		start = e + 1;
+	}
+	if !ok { print("reader returned false"); }
+}
+fn show(name const byte[:], which int) {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var data byte[>..] = [];
+	if !read_file(path, data) {
+		print("missing ", name);
+		return;
+	}
+	var dot = -1;
+	for i in name.len {
+		if name[i] == '.' { dot = i; }
+	}
+	let lang = if dot >= 0 { name[dot + 1..] } else { name[..] };
+	run(name, which, lang, data);
+}
+fn ext_row(list const byte[:]) {
+	var out byte[>..] = [];
+	out.append("ext");
+	let parts = split(list, ' ');
+	for p in parts {
+		let ext const byte[:] = if p == "_" { "" } else { p };
+		out.push(' ');
+		out.append(p);
+		out.push(':');
+		if extra::ex_is_code_ext(ext) { out.push('1'); } else { out.push('0'); }
+	}
+	print(out);
+}
+fn main() {
+	show("nb4.ipynb", 1);
+	show("nb3.ipynb", 1);
+	show("nb_edge.ipynb", 1);
+	show("nb_empty.ipynb", 1);
+	show("nb_trunc.ipynb", 1);
+	show("nb_notjson.ipynb", 1);
+	show("nb_other.ipynb", 1);
+	show("cal.ics", 2);
+	show("cal_edge.ics", 2);
+	show("cal_empty.ics", 2);
+	show("cal_trunc.ics", 2);
+	show("cal_bin.ics", 2);
+	show("cal_text.ics", 2);
+	show("cards.vcf", 3);
+	show("cards_edge.vcf", 3);
+	show("cards_trunc.vcf", 3);
+	show("cards_open.vcf", 3);
+	show("cards_bin.vcf", 3);
+	show("cards_text.vcf", 3);
+	show("code_src/hello.py", 4);
+	show("code_src/lib.rs", 4);
+	show("code_src/server.go", 4);
+	show("code_src/app.ts", 4);
+	show("code_src/app.js", 4);
+	show("code_src/util.c", 4);
+	show("code_src/Main.java", 4);
+	show("code_src/deploy.sh", 4);
+	show("code_src/garden.rb", 4);
+	show("code_src/tally.he", 4);
+	show("code_src/crlf.py", 4);
+	show("code_src/longfn.py", 4);
+	show("code_src/flat.py", 4);
+	show("code_src/longsig.rs", 4);
+	show("code_src/bin.c", 4);
+	run("inline c1", 4, ".PY", "x = 1\n");
+	run("inline c2", 4, "weird", "alpha\nbeta\n");
+	run("inline c3", 4, "py", "");
+	run("inline c4", 4, "go", "func a() {\n}\n\nfunc b() {\n}");
+	run("inline c5", 4, "py", "def a():\n    return 1\n\n\n\n\n");
+	ext_row("py PY .rs Dockerfile mk make txt md _ . pyc c++ kts scss vhd toml json gold he amni ..py cs fs v");
+	run("inline empty ics", 2, "", "");
+	run("inline empty vcf", 3, "", "");
+	run("inline empty nb", 1, "", "");
+}

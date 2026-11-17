@@ -1,0 +1,22 @@
+BEGIN:VEVENT
+dtstart;tzid=America/Chicago:20260314T093045
+dtend:20260314T120000Z
+summary:Lower case names
+	 folded with a tab
+description:Line one\nLine two\; ends\\ here
+location:Room 7\, Annex
+organizer:mailto:boss@greenhollow.example
+attendee;CN="Lee, Jordan":MAILTO:jordan@greenhollow.example
+END:VEVENT
+BEGIN:VTODO
+SUMMARY:Task with alarm
+DUE:tomorrow
+BEGIN:VALARM
+ACTION:DISPLAY
+SUMMARY:alarm text must not leak
+END:VALARM
+STATUS:COMPLETED
+END:VTODO
+BEGIN:VEVENT
+SUMMARY:Never closed
+DTSTART:20260801T090000Z

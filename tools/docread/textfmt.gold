@@ -1,0 +1,74 @@
+use std
+into textfmt.amni
+
+This file is a module with no main (namespace textfmt). It reads plain text and Markdown, CSV and TSV, and JSON and JSON Lines into the document model. Every module-level name starts with `tx_` or `TX_`. All appends to the document model go through `dm::dm_add`, `dm::dm_new_table`, `dm::dm_end_table`, `dm::dm_set_meta` and `dm::dm_warn_add`; block kinds are `dm::DM_HEAD`, `dm::DM_PARA`, `dm::DM_ITEM`, `dm::DM_ROW`, `dm::DM_NOTE`, `dm::DM_FIELD` and `dm::DM_CODE`. `dm::dm_add` already cleans whitespace (and collapses newlines of paragraphs, items and rows into spaces), so text only has to be roughly right.
+
+```amni
+import dm;
+```
+
+`tx_norm(data const byte[:], out byte[>..]&)` clears out, converts data to UTF-8 with `dm::dm_to_utf8` into a temporary buffer, then appends it to out with every carriage return and newline pair, and every lone carriage return, replaced by one newline byte (10).
+
+`tx_binary(s const byte[:]) bool` is true when s looks like binary data: look at the first 4000 bytes only; true when any byte is 0, or when more than one byte in twenty is a control byte below 32 other than tab (9), newline (10), carriage return (13), form feed (12) and escape (27).
+
+`tx_blank(s const byte[:]) bool` is true when s is empty or holds only spaces and tabs.
+
+`tx_trim(s const byte[:]) const byte[:]` returns s without leading and trailing spaces and tabs.
+
+`tx_indent(s const byte[:]) int` is the width of the leading white space of s, a space counting 1 and a tab counting 4.
+
+`tx_ls` and `tx_le` are module variables, two growable int arrays with the start and the end (exclusive, without the newline) of every line of `tx_src`, another module variable holding the normalised text. `tx_lines()` clears both arrays and fills them from `tx_src`: one entry per line, where a final newline at the very end of the text does not start another line.
+
+`tx_line(k int) const byte[:]` returns line k of `tx_src` using `tx_ls` and `tx_le`.
+
+Paragraph and item buffers are module variables: `var tx_para byte[>..]` (the paragraph being collected), `var tx_hard = false` (the last line added to it ended in a hard break), `var tx_item byte[>..]` (the list item being collected), `var tx_ilvl = 1` (its depth).
+
+`tx_flush()` adds `tx_para` as a `dm::DM_PARA` block (level 0) when it is not empty and clears it, clears `tx_hard`, then adds `tx_item` as a `dm::DM_ITEM` block with level `tx_ilvl` when it is not empty and clears it.
+
+`tx_atx(line const byte[:], level int&, text byte[>..]&) bool` is true when line is an ATX heading: up to three leading spaces, then one to six hash characters, then a space or tab or the end of the line. Then it sets level to the number of hashes and text to the rest of the line trimmed, with any closing run of hash characters (and the spaces before it) removed. A line like "#hashtag" is not a heading.
+
+`tx_fence(line const byte[:], ch byte&, n int&) bool` is true when line, after up to three leading spaces, starts with at least three backticks or at least three tildes; then ch is that character and n the length of the run.
+
+`tx_underline(line const byte[:]) int` returns 1 when the trimmed line is three or more equals signs and nothing else, 2 when it is three or more minus signs and nothing else, otherwise 0.
+
+`tx_rule(line const byte[:]) bool` is true when the line, ignoring spaces, consists only of three or more of one character that is a minus, an asterisk or an underscore (a thematic break like "***", "---" or "* * *").
+
+`tx_mark(line const byte[:], depth int&, text byte[>..]&) bool` is true when line is a list item: leading white space (its width from `tx_indent`), then either a bullet (minus, asterisk or plus) followed by a space or tab, or one to three digits followed by a dot or a closing parenthesis followed by a space or tab, and then non-empty text. Then depth is the indent width divided by 2 plus 1, and text is the item text trimmed, and for a numbered item the text starts with the number, a dot and a space (even when the source used a parenthesis) before the item text.
+
+`tx_cells(line const byte[:], out byte[>..]&)` clears out and appends the cells of a pipe table row separated by tab bytes (9): trim the line, drop one leading and one trailing pipe, split at pipes that are not preceded by a backslash, write an escaped pipe (backslash pipe) as a plain pipe, trim each cell and replace any tab inside a cell by a space.
+
+`tx_sep(line const byte[:]) bool` is true when line is a table separator row: it holds at least one pipe and at least one minus, and every byte is a pipe, minus, colon, space or tab.
+
+`tx_text(data const byte[:]) bool` reads plain text and Markdown. Convert data with `tx_norm` into `tx_src` and return false when `tx_binary` says it is binary. Call `tx_lines()`, clear `tx_para`, `tx_item` and `tx_hard`, then go through the lines with an index k and apply the first matching rule to line k: (1) a fence line (`tx_fence`): call `tx_flush()`, collect the following lines up to the next line that starts, after up to three spaces, with at least n of the same character and nothing else (or up to the end of the text), join them with newline bytes, add them as `dm::DM_CODE` with level 0 and continue after the closing line; (2) a blank line: `tx_flush()` and go on; (3) an ATX heading: `tx_flush()` and add a `dm::DM_HEAD` block with the level and text; (4) an underline line (`tx_underline` not 0) while `tx_para` is not empty: add `tx_para` as `dm::DM_HEAD` with level 1 for equals signs and 2 for minus signs, clear `tx_para` and `tx_hard`; (5) a thematic break (`tx_rule`): `tx_flush()` and go on; (6) a pipe table: line k contains a pipe and line k plus one exists and `tx_sep` accepts it: `tx_flush()`, call `dm::dm_new_table()`, add the cells of line k (`tx_cells`) as one `dm::DM_ROW` block with level 0, skip the separator line, then keep adding the cells of following lines as rows while the line is not blank and contains a pipe, then call `dm::dm_end_table()`; (7) a block quote: the first non-space byte is a greater-than sign: `tx_flush()`, collect consecutive lines whose first non-space byte is a greater-than sign, remove that sign and one following space from each, join them with newline bytes and add them as one `dm::DM_NOTE` block with level 0; (8) a list item (`tx_mark`): `tx_flush()`, set `tx_ilvl` to the depth and `tx_item` to the text; (9) anything else: when `tx_item` is not empty append a space and the trimmed line to it (a continuation line of the item); otherwise add the trimmed line to `tx_para`: when `tx_para` is not empty first append a newline byte if `tx_hard` is set and a space if not; when the trimmed line ends with a backslash remove it and set `tx_hard`, when the original line ends with two or more spaces set `tx_hard`, otherwise clear `tx_hard`. After the last line call `tx_flush()` and return true.
+
+`tx_detect(s const byte[:]) byte` finds the delimiter of CSV text s among comma, tab, semicolon and pipe. Look at the first 20 non-empty lines of s. For each candidate count how many times it occurs in each line outside double quotes (a double quote toggles the quoted state within the line). The candidate's score is 1000 times the number of lines whose count equals the most common non-zero count (the mode), plus that mode count; a candidate that never occurs scores 0. Return the best candidate, preferring comma, then tab, then semicolon, then pipe on a tie, and comma when every score is 0.
+
+`tx_csv(data const byte[:], delim byte) bool` reads RFC 4180 delimited text into one table. Convert with `tx_norm` into a temporary buffer (this drops a byte order mark and unifies line breaks) and return false when `tx_binary` says it is binary. When delim is 0 use `tx_detect`. Parse byte by byte: a field that begins with a double quote is quoted and runs to the closing quote, a doubled quote inside it is one quote, a quote that is not doubled ends the quoted part and any other bytes up to the delimiter are appended as they are, and delimiters and newlines inside the quotes belong to the field; an unquoted field runs to the next delimiter or newline. A newline outside quotes ends the row. Each row is collected as its cells joined with tab bytes (9), a tab inside a cell becoming a space, and added with `dm::dm_add` as a `dm::DM_ROW` block (level 0) between one call of `dm::dm_new_table()` before the first row and `dm::dm_end_table()` after the last. Only rows that have at least one non-empty cell count as rows; empty rows and the empty rows at the end are skipped. Keep the number of counted rows and the largest number of cells (counting trailing empty cells too) in any row. Stop after 100000 counted rows and call `dm::dm_warn_add` with "csv truncated at 100000 rows". At the end call `dm::dm_set_meta("rows", count)` and `dm::dm_set_meta("columns", largest)` with the numbers written as decimal text, and return true.
+
+JSON is parsed into a tree kept in module variables. `struct TxNode` has `kind int` (1 object, 2 array, 3 string, 4 number, 5 true, 6 false, 7 null), `at int` and `len int` (the decoded string, or the number as it was written, in `tx_jp`), `kat int` and `klen int` (the member name in `tx_jp`, for children of objects), `first int`, `last int` and `next int` (child and sibling node indexes, minus one for none) and `n int` (number of children). `var tx_jn TxNode[>..]` holds the nodes and `var tx_jp byte[>..]` the text.
+
+`tx_jnew(kind int) int` pushes a new node of that kind with `first`, `last` and `next` set to minus one and the other fields zero, and returns its index. `tx_jadd(parent int, child int)` appends the child to the parent's child list (through `first`, `last` and `next`) and adds one to the parent's `n`.
+
+`tx_jws(s const byte[:], p int&)` moves p past white space (space, tab, newline, carriage return, form feed), a byte order mark, line comments from two slashes to the end of the line and block comments from slash-asterisk to asterisk-slash.
+
+`tx_jstr(s const byte[:], p int&, at int&, len int&) bool` reads a string that starts at p with a double or a single quote, up to the matching quote, appending its decoded text to `tx_jp` and setting at and len to where it went; the escapes are backslash followed by quote, backslash, slash, b, f, n, r, t, or u with four hex digits (a high surrogate followed by a backslash-u low surrogate is joined into one code point; text is appended with `dm::dm_put_cp`), an unknown escape keeps the character after the backslash. Returns false when the string is not closed. p ends after the closing quote.
+
+`tx_jval(s const byte[:], p int&, depth int) int` parses one value starting at p (after skipping `tx_jws`) and returns its node index, or minus one when it is malformed or depth is above 200. An opening brace starts an object: members are a name (a quoted string, or a bare run of letters, digits, underscore and dollar sign), a colon and a value, separated by commas, a trailing comma before the closing brace is allowed; each child gets the name in `kat` and `klen`. An opening bracket starts an array of values separated by commas with an optional trailing comma. A quote starts a string. The words true, false and null make nodes of those kinds. Otherwise read the run of bytes that are letters, digits, plus, minus or dot: it is a number node when it starts with a digit, plus, minus or dot and holds at least one digit, or when it is NaN, Infinity or minus Infinity; the number's text is kept as written in `tx_jp`. Anything else is an error.
+
+`tx_jparse(s const byte[:]) int` clears `tx_jn` and `tx_jp`, parses one value from the start of s with `tx_jval`, skips white space, and returns the node index only when the whole text was used, otherwise minus one.
+
+`tx_jlines(s const byte[:]) int` clears `tx_jn` and `tx_jp`, makes an array root node, then parses every non-blank line of s as its own value with `tx_jval` (the line must hold nothing but white space after the value) and adds it to the root; returns the root index, or minus one when any line is not a value or there is no line at all.
+
+`tx_jtext(node int, out byte[>..]&)` appends the plain text of a scalar node: a string unquoted, a number as written, and the words true, false and null.
+
+`tx_jfind(obj int, key const byte[:]) int` returns the child of an object node whose name equals key, or minus one.
+
+`tx_jflat(node int) bool` is true when the node is an object with at least one member and all its members are scalars (kind 3 to 7).
+
+`tx_jtable(arr int) bool` is true when arr is an array with at least 2 elements, all of them flat objects (`tx_jflat`), where every element has exactly as many members as the first element and each member name of the first element exists in every other element (by `tx_jfind`).
+
+`var tx_jcount = 0` counts the blocks added by the JSON flattening. `tx_jfield(path const byte[:], text const byte[:])` adds one `dm::DM_FIELD` block (level 0) whose text is the path, a colon, a space and the text, unless `tx_jcount` has reached 50000, in which case it calls `dm::dm_warn_add` with "json truncated at 50000 blocks" and adds nothing; each added block adds one to `tx_jcount`.
+
+`tx_jemit(path byte[>..]&, node int)` flattens a node: a scalar becomes `tx_jfield` with the path and `tx_jtext` (when the path is empty the path used is "value"); an empty object becomes a field with the text "{}" and an empty array one with "[]"; an object recurses into every child with the path extended by the member name (written directly when the path is empty, otherwise after a dot); an array for which `tx_jtable` is true becomes a table: when the path is not empty first add a field block whose text is the path followed by a colon (without the space), call `dm::dm_new_table()`, add a `dm::DM_ROW` block (level 0) with the member names of the first element separated by tab bytes, then one row per element with that element's member values (looked up by the first element's member names, scalar text from `tx_jtext`, any tab replaced by a space) in the same order, then `dm::dm_end_table()`, counting every row in `tx_jcount` and stopping when it reaches 50000 as above; any other array recurses into every element with the path extended by an opening bracket, the element's index counted from 0, and a closing bracket. After each recursion the path is cut back (by popping bytes) to the length it had before. Stop descending once `tx_jcount` has reached 50000.
+
+`tx_json(data const byte[:]) bool` reads JSON. Convert data to UTF-8 with `tx_norm`, return false when `tx_binary` says it is binary, set `tx_jcount` to 0, try `tx_jparse`; when that gives minus one try `tx_jlines` (JSON Lines); when that also fails return false. Otherwise call `tx_jemit` with an empty path on the root and return true.

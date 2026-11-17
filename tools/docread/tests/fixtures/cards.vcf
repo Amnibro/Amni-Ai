@@ -1,0 +1,46 @@
+BEGIN:VCARD
+VERSION:2.1
+FN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:Am=C3=A9lie Dubois
+N;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:Dubois;Am=C3=A9lie;;;
+ORG:Greenhollow Seeds;Sales
+TITLE:Seed buyer
+TEL;CELL;VOICE:+1 555 0141
+TEL;WORK;VOICE:+1 555 0142
+EMAIL;INTERNET:amelie@greenhollow.example
+ADR;HOME;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:;;12 Rue des Tulipes;Li=C3=A8ge;;4000;Belgium
+NOTE;ENCODING=QUOTED-PRINTABLE:Prefers morning calls. Allergic to pea=
+nuts.=0ASecond line after a break.
+BDAY:19900517
+URL:https://greenhollow.example/amelie
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Sam Rivera
+N:Rivera;Sam;Jay;Dr.;III
+ORG:Greenhollow Allotment
+item1.EMAIL;TYPE=INTERNET,WORK:sam@greenhollow.example
+item1.X-ABLabel:work
+TEL;TYPE=CELL,PREF:+1-555-0143
+ADR;TYPE=WORK:;;1 Mill Lane\, Unit 2;Springfield;IL;12345;USA
+NOTE:Line one\nLine two\, with a comma\; and a semicolon. Met at the sp
+ ring fair and agreed to share a stall.
+BDAY:1985-03-09
+URL:https://example.org/sam
+END:VCARD
+BEGIN:VCARD
+VERSION:4.0
+FN:Casey Nguyen
+TEL;VALUE=uri;TYPE="home,voice":tel:+1-555-0144
+EMAIL;TYPE=home:casey@greenhollow.example
+BDAY:--0412
+TITLE:Treasurer
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Okafor;Chidi;;;
+EMAIL:chidi@greenhollow.example
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+ORG:Lone Org
+END:VCARD

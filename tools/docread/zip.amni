@@ -1,0 +1,295 @@
+import gfx.zlib;
+namespace zip;
+let ZP_MAX = 536870912;
+struct ZpArc { base int, len int, first int, nbase int, cnt int, live bool }
+struct ZpEnt { nat int, nlen int, method int, flags int, csize int, usize int, lho int }
+var zp_data byte[>..];
+var zp_names byte[>..];
+var zp_arcs ZpArc[>..];
+var zp_ents ZpEnt[>..];
+fn zp_rd(a int, p int, n int) int {
+	if a < 0 || a >= zp_arcs.len { return -1; }
+	let base = zp_arcs[a].base;
+	let alen = zp_arcs[a].len;
+	if p < 0 || p + n > alen { return -1; }
+	if n == 8 && zp_data[base + p + 7] >= 128 { return -1; }
+	var v = 0;
+	var i = n - 1;
+	while i >= 0 {
+		v = (v << 8) | zp_data[base + p + i];
+		i--;
+	}
+	v
+}
+fn zp_sig(a int, p int, b2 int, b3 int) bool {
+	let x = zp_rd(a, p, 4);
+	x == (0x50 | (0x4B << 8) | (b2 << 16) | (b3 << 24))
+}
+fn zp_eocd(a int) int {
+	let n = zp_arcs[a].len;
+	let lo = max(0, n - 22 - 65535);
+	var p = n - 22;
+	while p >= lo {
+		if zp_sig(a, p, 5, 6) {
+			let c = zp_rd(a, p + 20, 2);
+			if c >= 0 && p + 22 + c <= n { return p; }
+		}
+		p--;
+	}
+	return -1;
+}
+fn zp_x64(a int, p int, m int, usize int&, csize int&, lho int&) {
+	var q = p;
+	let end = p + m;
+	while q + 4 <= end {
+		let id = zp_rd(a, q, 2);
+		let sz = zp_rd(a, q + 2, 2);
+		if q + 4 + sz > end { break; }
+		if id == 1 {
+			var r = q + 4;
+			if usize == 4294967295 { usize = zp_rd(a, r, 8); r += 8; }
+			if csize == 4294967295 { csize = zp_rd(a, r, 8); r += 8; }
+			if lho == 4294967295 { lho = zp_rd(a, r, 8); r += 8; }
+			return;
+		}
+		q += 4 + sz;
+	}
+}
+fn zp_cd_walk(a int, p int, limit int, delta int) int {
+	let alen = zp_arcs[a].len;
+	let base = zp_arcs[a].base;
+	var pos = p;
+	var cnt = 0;
+	while pos + 46 <= limit && zp_sig(a, pos, 1, 2) && cnt < 4000000 {
+		let n = zp_rd(a, pos + 28, 2);
+		let m = zp_rd(a, pos + 30, 2);
+		let k = zp_rd(a, pos + 32, 2);
+		if pos + 46 + n + m + k > alen { break; }
+		let flags = zp_rd(a, pos + 8, 2);
+		let method = zp_rd(a, pos + 10, 2);
+		var cs = zp_rd(a, pos + 20, 4);
+		var us = zp_rd(a, pos + 24, 4);
+		var lh = zp_rd(a, pos + 42, 4);
+		if cs == 4294967295 || us == 4294967295 || lh == 4294967295 {
+			zp_x64(a, pos + 46 + n, m, us, cs, lh);
+		}
+		let nat = zp_names.len;
+		zp_names.append(zp_data[base + pos + 46 .. base + pos + 46 + n]);
+		zp_ents.push(ZpEnt { nat: nat, nlen: n, method: method, flags: flags, csize: cs, usize: us, lho: lh + delta });
+		pos += 46 + n + m + k;
+		cnt++;
+	}
+	cnt
+}
+fn zp_scan(a int) int {
+	let alen = zp_arcs[a].len;
+	let base = zp_arcs[a].base;
+	var p = 0;
+	var cnt = 0;
+	while cnt < 4000000 {
+		if !zp_sig(a, p, 3, 4) {
+			while p < alen && !zp_sig(a, p, 3, 4) && !zp_sig(a, p, 1, 2) { p++; }
+			if !zp_sig(a, p, 3, 4) { break; }
+		}
+		let flags = zp_rd(a, p + 6, 2);
+		let method = zp_rd(a, p + 8, 2);
+		var cs = zp_rd(a, p + 18, 4);
+		var us = zp_rd(a, p + 22, 4);
+		let n = zp_rd(a, p + 26, 2);
+		let m = zp_rd(a, p + 28, 2);
+		if n < 0 || m < 0 || flags < 0 || method < 0 || cs < 0 || us < 0 { break; }
+		let ds = p + 30 + n + m;
+		if ds > alen { break; }
+		if cs == 4294967295 || us == 4294967295 {
+			var dummy = 0;
+			zp_x64(a, p + 30 + n, m, us, cs, dummy);
+		}
+		var next = 0;
+		if (flags & 8) != 0 && cs == 0 && us == 0 {
+			if method == 8 {
+				cs = alen - ds;
+				us = -1;
+				next = ds + 1;
+			} else {
+				var q = ds + 1;
+				while q < alen && !zp_sig(a, q, 7, 8) && !zp_sig(a, q, 3, 4) && !zp_sig(a, q, 1, 2) { q++; }
+				if q > alen { q = alen; }
+				cs = q - ds;
+				us = q - ds;
+				next = q;
+			}
+		} else {
+			next = ds + cs;
+		}
+		let nat = zp_names.len;
+		zp_names.append(zp_data[base + p + 30 .. base + p + 30 + n]);
+		zp_ents.push(ZpEnt { nat: nat, nlen: n, method: method, flags: flags, csize: cs, usize: us, lho: p });
+		cnt++;
+		p = next;
+	}
+	cnt
+}
+fn zp_open(data const byte[:]) int {
+	if data.len < 22 { return -1; }
+	let n0 = zp_names.len;
+	let d0 = zp_data.len;
+	let e0 = zp_ents.len;
+	zp_data.append(data);
+	zp_arcs.push(ZpArc { base: d0, len: data.len, first: e0, nbase: n0, cnt: 0, live: true });
+	let a = zp_arcs.len - 1;
+	var found = 0;
+	var valid_empty = false;
+	let e = zp_eocd(a);
+	if e >= 0 {
+		var size = zp_rd(a, e + 12, 4);
+		var off = zp_rd(a, e + 16, 4);
+		var limit = e;
+		if zp_sig(a, e - 20, 6, 7) {
+			var o64 = zp_rd(a, e - 16, 8);
+			if !zp_sig(a, o64, 6, 6) && zp_sig(a, e - 76, 6, 6) { o64 = e - 76; }
+			if zp_sig(a, o64, 6, 6) {
+				size = zp_rd(a, o64 + 40, 8);
+				off = zp_rd(a, o64 + 48, 8);
+				limit = o64;
+			}
+		}
+		var delta = 0;
+		if !zp_sig(a, off, 1, 2) {
+			let d = limit - size - off;
+			if d >= 0 && zp_sig(a, off + d, 1, 2) { delta = d; }
+		}
+		found = zp_cd_walk(a, off + delta, limit, delta);
+		if found == 0 && zp_rd(a, e + 10, 2) == 0 && size == 0 { valid_empty = true; }
+	}
+	if e < 0 || (found == 0 && !valid_empty) {
+		zp_ents.pop_n(zp_ents.len - e0);
+		found = zp_scan(a);
+	}
+	if found == 0 && !valid_empty {
+		zp_ents.pop_n(zp_ents.len - e0);
+		zp_names.pop_n(zp_names.len - n0);
+		zp_data.pop_n(zp_data.len - d0);
+		zp_arcs.pop();
+		return -1;
+	}
+	zp_arcs[a].cnt = found;
+	a
+}
+fn zp_ok(h int, i int) bool {
+	if h < 0 || h >= zp_arcs.len { return false; }
+	if !zp_arcs[h].live { return false; }
+	i >= 0 && i < zp_arcs[h].cnt
+}
+fn zp_count(h int) int {
+	if h < 0 || h >= zp_arcs.len { return 0; }
+	if !zp_arcs[h].live { return 0; }
+	zp_arcs[h].cnt
+}
+fn zp_name(h int, i int) const byte[:] {
+	if !zp_ok(h, i) { return zp_names[0..0]; }
+	let e = zp_ents[zp_arcs[h].first + i];
+	zp_names[e.nat .. e.nat + e.nlen]
+}
+fn zp_size(h int, i int) int {
+	if !zp_ok(h, i) { return -1; }
+	zp_ents[zp_arcs[h].first + i].usize
+}
+fn zp_encrypted(h int, i int) bool {
+	if !zp_ok(h, i) { return false; }
+	(zp_ents[zp_arcs[h].first + i].flags & 1) != 0
+}
+fn zp_is_dir(h int, i int) bool {
+	let n = zp_name(h, i);
+	n.len > 0 && n[n.len - 1] == '/'
+}
+fn zp_nc(c byte, ci bool) byte {
+	if c == 92 { return 47; }
+	if ci && c >= 65 && c <= 90 { return c + 32; }
+	c
+}
+fn zp_skip(s const byte[:]) int {
+	var i = 0;
+	loop {
+		if i < s.len && zp_nc(s[i], false) == 47 {
+			i++;
+		} else if i + 1 < s.len && s[i] == 46 && zp_nc(s[i + 1], false) == 47 {
+			i += 2;
+		} else {
+			break;
+		}
+	}
+	i
+}
+fn zp_norm_eq(a const byte[:], b const byte[:], ci bool) bool {
+	let i = zp_skip(a);
+	let j = zp_skip(b);
+	if a.len - i != b.len - j { return false; }
+	for k in a.len - i {
+		if zp_nc(a[i + k], ci) != zp_nc(b[j + k], ci) { return false; }
+	}
+	true
+}
+fn zp_find(h int, name const byte[:]) int {
+	let cnt = zp_count(h);
+	for pass in 3 {
+		for i in cnt {
+			let nm = zp_name(h, i);
+			let hit = match pass {
+				0 => nm == name,
+				1 => zp_norm_eq(nm, name, false),
+				_ => zp_norm_eq(nm, name, true),
+			};
+			if hit { return i; }
+		}
+	}
+	return -1;
+}
+fn zp_read(h int, i int, out byte[>..]&) bool {
+	out.clear();
+	if !zp_ok(h, i) { return false; }
+	let e = zp_ents[zp_arcs[h].first + i];
+	let base = zp_arcs[h].base;
+	let alen = zp_arcs[h].len;
+	if (e.flags & 1) != 0 { return false; }
+	if e.method != 0 && e.method != 8 { return false; }
+	if e.usize > ZP_MAX { return false; }
+	let lho = e.lho;
+	if lho < 0 || !zp_sig(h, lho, 3, 4) { return false; }
+	let n = zp_rd(h, lho + 26, 2);
+	let m = zp_rd(h, lho + 28, 2);
+	if n < 0 || m < 0 { return false; }
+	let ds = lho + 30 + n + m;
+	if ds > alen { return false; }
+	if e.method == 0 {
+		let len = if e.csize >= 0 { e.csize } else { e.usize };
+		if len < 0 || ds + len > alen { return false; }
+		out.append(zp_data[base + ds .. base + ds + len]);
+		return true;
+	}
+	var end = alen;
+	if e.csize >= 0 { end = min(alen, ds + e.csize); }
+	let ok = zlib::inflate_raw(zp_data[base + ds .. base + end], out);
+	if !ok {
+		out.clear();
+		return false;
+	}
+	if out.len > ZP_MAX {
+		out.clear();
+		return false;
+	}
+	true
+}
+fn zp_close(h int) {
+	if h < 0 || h >= zp_arcs.len { return; }
+	if !zp_arcs[h].live { return; }
+	zp_arcs[h].live = false;
+	while zp_arcs.len > 0 && !zp_arcs[zp_arcs.len - 1].live {
+		let b = zp_arcs[zp_arcs.len - 1].base;
+		let f = zp_arcs[zp_arcs.len - 1].first;
+		let nb = zp_arcs[zp_arcs.len - 1].nbase;
+		zp_data.pop_n(zp_data.len - b);
+		zp_ents.pop_n(zp_ents.len - f);
+		zp_names.pop_n(zp_names.len - nb);
+		zp_arcs.pop();
+	}
+}

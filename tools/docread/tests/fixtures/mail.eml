@@ -1,0 +1,52 @@
+From: =?UTF-8?Q?Ren=C3=A9e_Fenwick?= <renee@example.org>
+To: Sam Parker <sam@example.com>,
+ "Lee, Bo" <bo@example.net>
+Cc: team@example.org
+Date: Mon, 03 Nov 2025 09:15:00 +0000
+Subject: =?UTF-8?B?UXVhcnRlcmx5IHBsYW4gLSBjYWbDqSBidWRnZXQ=?=
+ =?UTF-8?Q?_ok?=
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="MIXED-1"
+
+This is a multi-part message in MIME format.
+--MIXED-1
+Content-Type: multipart/alternative; boundary="ALT-1"
+
+--ALT-1
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Hi Sam,
+
+The caf=C3=A9 budget is attached. We agreed to keep the total under =E2=82=
+=AC500 and=20
+review it next week.
+
+- check the totals
+- send the final copy
+
+Thanks,
+Ren=C3=A9e
+--ALT-1
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<html><body><p>Hi Sam,</p><p>The caf=C3=A9 budget is <b>attached</b>.</p></body></html>
+--ALT-1--
+
+--MIXED-1
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="=?UTF-8?B?YnVkZ2V0IGNhZsOpLmNzdg==?="
+Content-Transfer-Encoding: base64
+
+SXRlbSxDb3N0DQpUZWEsMy41MA0K
+
+--MIXED-1
+Content-Type: text/plain
+Content-Disposition: attachment;
+ filename*0*=UTF-8''field%20notes;
+ filename*1=.txt
+Content-Transfer-Encoding: base64
+
+UGxhaW4gbm90ZXMKc2Vjb25kIGxpbmUK
+--MIXED-1--

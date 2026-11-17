@@ -1,0 +1,1035 @@
+=== -23f7b5dc85ead883
+namespace pfont;
+=== 4c326fd177802ef6
+struct FoFont {
+	node int,
+	kind int,
+	bold bool,
+	italic bool,
+	vertical bool,
+	nb int,
+	sjis int,
+	ucs2 bool,
+	ident bool,
+	cs_at int,
+	cs_n int,
+	t_at int = -1,
+	m_at int,
+	m_n int,
+	c_at int,
+	c_n int,
+	g_at int,
+	g_n int,
+	w_first int,
+	w_at int,
+	w_n int,
+	missing real,
+	dw real = 1000.0,
+	wl_at int,
+	wl_n int,
+	scale real = 0.001,
+	name_at int,
+	name_len int,
+}
+=== -688364a372e3dae6
+var fo_fonts FoFont[>..];
+var fo_by_node int[>..];
+var fo_names byte[>..];
+var fo_t_at int[>..];
+var fo_t_len int[>..];
+var fo_txt byte[>..];
+var fo_cs_lo int[>..];
+var fo_cs_hi int[>..];
+var fo_cs_nb int[>..];
+var fo_m_lo int[>..];
+var fo_m_hi int[>..];
+var fo_m_at int[>..];
+var fo_m_len int[>..];
+var fo_m_step int[>..];
+var fo_u16 int[>..];
+var fo_c_lo int[>..];
+var fo_c_hi int[>..];
+var fo_c_cid int[>..];
+var fo_g_cid int[>..];
+var fo_g_cp int[>..];
+var fo_w real[>..];
+var fo_wl_lo int[>..];
+var fo_wl_hi int[>..];
+var fo_wl_w real[>..];
+var fo_unmapped = 0;
+var fo_buf byte[>..];
+var fo_tmp byte[>..];
+=== -6a53afc6e8a7598d
+fn fo_reset() {
+	fo_fonts.clear();
+	fo_by_node.clear();
+	fo_names.clear();
+	fo_t_at.clear();
+	fo_t_len.clear();
+	fo_txt.clear();
+	fo_cs_lo.clear();
+	fo_cs_hi.clear();
+	fo_cs_nb.clear();
+	fo_m_lo.clear();
+	fo_m_hi.clear();
+	fo_m_at.clear();
+	fo_m_len.clear();
+	fo_m_step.clear();
+	fo_u16.clear();
+	fo_c_lo.clear();
+	fo_c_hi.clear();
+	fo_c_cid.clear();
+	fo_g_cid.clear();
+	fo_g_cp.clear();
+	fo_w.clear();
+	fo_wl_lo.clear();
+	fo_wl_hi.clear();
+	fo_wl_w.clear();
+	fo_unmapped = 0;
+	fo_buf.clear();
+	fo_tmp.clear();
+}
+=== 644f7caa25c83c15
+fn fo_strip_subset(name const byte[:]) const byte[:] {
+	if name.len > 7 && name[6] == '+' {
+		for i in 6 {
+			if name[i] < 'A' || name[i] > 'Z' { return name; }
+		}
+		return name[7..];
+	}
+	name
+}
+=== 5f20b27c51262963
+fn fo_isws(c int) bool {
+	c == 32 || c == 9 || c == 10 || c == 13 || c == 12 || c == 0
+}
+fn fo_find(s const byte[:], word const byte[:], from int) int {
+	if word.len == 0 { return max(from, 0); }
+	var i = max(from, 0);
+	while i + word.len <= s.len {
+		var k = 0;
+		while k < word.len && s[i + k] == word[k] { k++; }
+		if k == word.len { return i; }
+		i++;
+	}
+	return -1;
+}
+fn fo_has(s const byte[:], word const byte[:]) bool {
+	fo_find(s, word, 0) >= 0
+}
+=== 224fdeb8b66b5dee
+fn fo_put_utf16(units const int[:], out byte[>..]&) {
+	var i = 0;
+	while i < units.len {
+		let u = units[i];
+		i++;
+		if u == 0 { continue; }
+		if u >= 0xD800 && u < 0xDC00 {
+			if i < units.len && units[i] >= 0xDC00 && units[i] < 0xE000 {
+				push_utf8(out, 0x10000 + ((u - 0xD800) << 10) + (units[i] - 0xDC00));
+				i++;
+			} else {
+				push_utf8(out, 0xFFFD);
+			}
+		} else if u >= 0xDC00 && u < 0xE000 {
+			push_utf8(out, 0xFFFD);
+		} else {
+			push_utf8(out, u);
+		}
+	}
+}
+=== -5efe015fca41a04c
+fn fo_hex_val(s const byte[:]) int {
+	var v = 0;
+	var i = max(s.len - 7, 0);
+	while i < s.len {
+		let b int = s[i];
+		v = (v << 8) | b;
+		i++;
+	}
+	v
+}
+fn fo_cm_delim(c int) bool {
+	c <= 32 || c == '<' || c == '>' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '/' || c == '%'
+}
+fn fo_cm_tok(data const byte[:], p int&, buf byte[>..]&) int {
+	buf.clear();
+	pdf::pf_skip(data, p);
+	if p >= data.len { return 0; }
+	let c = data[p];
+	if c == '<' {
+		if p + 1 < data.len && data[p + 1] == '<' {
+			p += 2;
+			return 7;
+		}
+		let p0 = p;
+		pdf::pf_hex_string(data, p, buf);
+		if p == p0 { p++; }
+		return 1;
+	}
+	if c == '/' {
+		let p0 = p;
+		pdf::pf_name(data, p, buf);
+		if p == p0 { p++; }
+		return 2;
+	}
+	if c == '[' {
+		p++;
+		return 4;
+	}
+	if c == ']' {
+		p++;
+		return 5;
+	}
+	if c == '(' {
+		var d = 0;
+		while p < data.len {
+			let x = data[p];
+			p++;
+			if x == '\\' {
+				p++;
+			} else if x == '(' {
+				d++;
+			} else if x == ')' {
+				d--;
+				if d == 0 { break; }
+			}
+		}
+		return 7;
+	}
+	let st = p;
+	while p < data.len && !fo_cm_delim(data[p]) { p++; }
+	if p == st {
+		p++;
+		return 7;
+	}
+	buf.append(data[st..p]);
+	let d = buf[0];
+	if (d >= '0' && d <= '9') || d == '-' || d == '+' || d == '.' { return 6; }
+	return 3;
+}
+fn fo_cm_units(s const byte[:]) int, int {
+	let at = fo_u16.len;
+	var i = 0;
+	while i + 1 < s.len {
+		let hi int = s[i];
+		let lo int = s[i + 1];
+		fo_u16.push((hi << 8) | lo);
+		i += 2;
+	}
+	if i < s.len {
+		let l int = s[i];
+		fo_u16.push(l);
+	}
+	return at, fo_u16.len - at;
+}
+fn fo_cm_name_units(name const byte[:]) int, int {
+	let at = fo_u16.len;
+	fo_tmp.clear();
+	glyph::gl_name_to_text(name, fo_tmp);
+	var i = 0;
+	while i < fo_tmp.len {
+		let c int = fo_tmp[i];
+		var n = 1;
+		var cp = 0xFFFD;
+		if c < 0x80 {
+			cp = c;
+		} else if c >= 0xF0 {
+			cp = c & 7;
+			n = 4;
+		} else if c >= 0xE0 {
+			cp = c & 15;
+			n = 3;
+		} else if c >= 0xC0 {
+			cp = c & 31;
+			n = 2;
+		}
+		for k in 1..n {
+			if i + k < fo_tmp.len {
+				let cc int = fo_tmp[i + k];
+				cp = (cp << 6) | (cc & 63);
+			}
+		}
+		fo_u16.push(cp);
+		i += n;
+	}
+	return at, fo_u16.len - at;
+}
+fn fo_m_push(lo int, hi int, at int, n int, step int) {
+	fo_m_lo.push(lo);
+	fo_m_hi.push(hi);
+	fo_m_at.push(at);
+	fo_m_len.push(n);
+	fo_m_step.push(step);
+}
+fn fo_permute(xs int[>..]&, at int, order const int[:]) {
+	var t int[>..] = [];
+	for i in order.len { t.push(xs[at + order[i]]); }
+	for i in order.len { xs[at + i] = t[i]; }
+}
+fn fo_m_sort(f int) {
+	let at = fo_fonts[f].m_at;
+	let n = fo_fonts[f].m_n;
+	if n < 2 { return; }
+	var order int[>..] = [];
+	for i in n { order.push(i); }
+	stable_sort(order) { a, b => fo_m_lo[at + a] < fo_m_lo[at + b] };
+	fo_permute(fo_m_lo, at, order);
+	fo_permute(fo_m_hi, at, order);
+	fo_permute(fo_m_at, at, order);
+	fo_permute(fo_m_len, at, order);
+	fo_permute(fo_m_step, at, order);
+}
+fn fo_cmap_parse(data const byte[:], f int, to_unicode bool) {
+	if fo_fonts[f].cs_n == 0 { fo_fonts[f].cs_at = fo_cs_lo.len; }
+	if fo_fonts[f].m_n == 0 { fo_fonts[f].m_at = fo_m_lo.len; }
+	if fo_fonts[f].c_n == 0 { fo_fonts[f].c_at = fo_c_lo.len; }
+	let cs0 = fo_cs_lo.len;
+	let m0 = fo_m_lo.len;
+	let c0 = fo_c_lo.len;
+	var budget = 200000 - fo_fonts[f].m_n - fo_fonts[f].c_n;
+	var p = 0;
+	var a byte[>..] = [];
+	var b byte[>..] = [];
+	var c byte[>..] = [];
+	var ident = false;
+	var t = fo_cm_tok(data, p, a);
+	while t != 0 {
+		if t == 2 {
+			ident = fo_has(a, "Identity");
+		} else if t == 3 {
+			if a == "usecmap" {
+				if ident {
+					fo_fonts[f].ident = true;
+					fo_fonts[f].nb = 2;
+				}
+			} else if a == "begincodespacerange" {
+				var u = fo_cm_tok(data, p, a);
+				while u == 1 {
+					let v = fo_cm_tok(data, p, b);
+					if v != 1 { break; }
+					let lo = fo_hex_val(a);
+					let hi = fo_hex_val(b);
+					if hi >= lo && a.len >= 1 && a.len <= 4 {
+						fo_cs_lo.push(lo);
+						fo_cs_hi.push(hi);
+						fo_cs_nb.push(a.len);
+					}
+					u = fo_cm_tok(data, p, a);
+				}
+			} else if a == "beginbfchar" {
+				var u = fo_cm_tok(data, p, a);
+				while u == 1 {
+					let v = fo_cm_tok(data, p, b);
+					if v != 1 && v != 2 { break; }
+					if to_unicode && budget > 0 {
+						let src = fo_hex_val(a);
+						var at = 0;
+						var n = 0;
+						if v == 1 {
+							let x, y = fo_cm_units(b);
+							at = x;
+							n = y;
+						} else {
+							let x, y = fo_cm_name_units(b);
+							at = x;
+							n = y;
+						}
+						fo_m_push(src, src, at, n, 0);
+						budget--;
+					}
+					u = fo_cm_tok(data, p, a);
+				}
+			} else if a == "beginbfrange" {
+				var u = fo_cm_tok(data, p, a);
+				while u == 1 {
+					let v = fo_cm_tok(data, p, b);
+					if v != 1 { break; }
+					let lo = fo_hex_val(a);
+					let hi = fo_hex_val(b);
+					let ok = hi >= lo && hi - lo + 1 <= 65536 && to_unicode;
+					let w = fo_cm_tok(data, p, c);
+					if w == 1 {
+						if ok && budget > 0 {
+							let at, n = fo_cm_units(c);
+							fo_m_push(lo, hi, at, n, 1);
+							budget--;
+						}
+					} else if w == 4 {
+						var code = lo;
+						var e = fo_cm_tok(data, p, c);
+						while e != 5 && e != 0 && e != 3 {
+							if e == 1 {
+								if ok && code <= hi && budget > 0 {
+									let at, n = fo_cm_units(c);
+									fo_m_push(code, code, at, n, 0);
+									budget--;
+								}
+								code++;
+							}
+							e = fo_cm_tok(data, p, c);
+						}
+					} else {
+						break;
+					}
+					u = fo_cm_tok(data, p, a);
+				}
+			} else if a == "begincidrange" {
+				var u = fo_cm_tok(data, p, a);
+				while u == 1 {
+					let v = fo_cm_tok(data, p, b);
+					if v != 1 { break; }
+					let w = fo_cm_tok(data, p, c);
+					if w != 6 { break; }
+					let cid, ok = parse_int(c);
+					let lo = fo_hex_val(a);
+					let hi = fo_hex_val(b);
+					if ok && hi >= lo && hi - lo + 1 <= 65536 && budget > 0 {
+						fo_c_lo.push(lo);
+						fo_c_hi.push(hi);
+						fo_c_cid.push(cid);
+						budget--;
+					}
+					u = fo_cm_tok(data, p, a);
+				}
+			} else if a == "begincidchar" {
+				var u = fo_cm_tok(data, p, a);
+				while u == 1 {
+					let w = fo_cm_tok(data, p, c);
+					if w != 6 { break; }
+					let cid, ok = parse_int(c);
+					let lo = fo_hex_val(a);
+					if ok && budget > 0 {
+						fo_c_lo.push(lo);
+						fo_c_hi.push(lo);
+						fo_c_cid.push(cid);
+						budget--;
+					}
+					u = fo_cm_tok(data, p, a);
+				}
+			}
+		}
+		t = fo_cm_tok(data, p, a);
+	}
+	fo_fonts[f].cs_n += fo_cs_lo.len - cs0;
+	fo_fonts[f].m_n += fo_m_lo.len - m0;
+	fo_fonts[f].c_n += fo_c_lo.len - c0;
+	if to_unicode { fo_m_sort(f); }
+}
+=== -63b3d9fedf21eb5f
+fn fo_tounicode(f int, code int, out byte[>..]&) bool {
+	let at = fo_fonts[f].m_at;
+	let n = fo_fonts[f].m_n;
+	if n <= 0 { return false; }
+	var lo = 0;
+	var hi = n - 1;
+	var best = -1;
+	while lo <= hi {
+		let mid = (lo + hi) / 2;
+		if fo_m_lo[at + mid] <= code {
+			best = mid;
+			lo = mid + 1;
+		} else {
+			hi = mid - 1;
+		}
+	}
+	if best < 0 { return false; }
+	var k = best;
+	var steps = 0;
+	while k >= 0 && steps <= 16 {
+		let e = at + k;
+		if fo_m_hi[e] >= code {
+			let ua = fo_m_at[e];
+			let ul = fo_m_len[e];
+			var units int[>..] = [];
+			if ul > 0 && ua >= 0 && ua + ul <= fo_u16.len {
+				units.append(fo_u16[ua..ua + ul]);
+				if fo_m_step[e] == 1 { units[ul - 1] += code - fo_m_lo[e]; }
+			}
+			fo_put_utf16(units, out);
+			return true;
+		}
+		k--;
+		steps++;
+	}
+	return false;
+}
+=== -32fd1493ecefe266
+let FO_SYM_UP int[26] = [0x391, 0x392, 0x3A7, 0x394, 0x395, 0x3A6, 0x393, 0x397, 0x399, 0x3D1, 0x39A, 0x39B, 0x39C, 0x39D, 0x39F, 0x3A0, 0x398, 0x3A1, 0x3A3, 0x3A4, 0x3A5, 0x3C2, 0x3A9, 0x39E, 0x3A8, 0x396];
+let FO_SYM_LO int[26] = [0x3B1, 0x3B2, 0x3C7, 0x3B4, 0x3B5, 0x3C6, 0x3B3, 0x3B7, 0x3B9, 0x3D5, 0x3BA, 0x3BB, 0x3BC, 0x3BD, 0x3BF, 0x3C0, 0x3B8, 0x3C1, 0x3C3, 0x3C4, 0x3C5, 0x3D6, 0x3C9, 0x3BE, 0x3C8, 0x3B6];
+fn fo_symbol_cp(code int) int {
+	if code >= 65 && code <= 90 { return FO_SYM_UP[code - 65]; }
+	if code >= 97 && code <= 122 { return FO_SYM_LO[code - 97]; }
+	match code {
+		34 => 0x2200,
+		36 => 0x2203,
+		39 => 0x220B,
+		42 => 0x2217,
+		45 => 0x2212,
+		64 => 0x2245,
+		92 => 0x2234,
+		94 => 0x22A5,
+		0xB7 => 0x2022,
+		0xB1 => 0xB1,
+		0xB4 => 0xD7,
+		0xB8 => 0xF7,
+		0xA3 => 0x2264,
+		0xB3 => 0x2265,
+		0xB9 => 0x2260,
+		0xBB => 0x2248,
+		0xA5 => 0x221E,
+		0xD6 => 0x221A,
+		0xE5 => 0x2211,
+		0xF2 => 0x222B,
+		0xAE => 0x2192,
+		0xAC => 0x2190,
+		0xDE => 0x21D2,
+		0xB6 => 0x2202,
+		0xD1 => 0x2207,
+		0xCE => 0x2208,
+		_ => if (code >= 32 && code <= 64) || (code >= 91 && code <= 96) || (code >= 123 && code <= 126) { code } else { 0 },
+	}
+}
+=== 187f5db6e9fffb2f
+fn fo_dingbat_cp(code int) int {
+	match code {
+		32 => 32,
+		51 => 0x2713,
+		52 => 0x2714,
+		53 => 0x2715,
+		54 => 0x2716,
+		55 => 0x2717,
+		56 => 0x2718,
+		108 => 0x25CF,
+		110 => 0x25A0,
+		113 => 0x25A1,
+		115 => 0x25B2,
+		116 => 0x25BC,
+		117 => 0x25C6,
+		118 => 0x2756,
+		_ => if code >= 33 && code <= 254 { 0x2022 } else { 0 },
+	}
+}
+=== -331890bc8c359b31
+fn fo_base_cp(enc int, code int) int {
+	if code < 0 || code > 255 { return 0; }
+	match enc {
+		1, 6 => glyph::gl_std(code),
+		2 => if code >= 128 && code < 160 { dm::dm_cp1252(code) } else if code == 173 { 45 } else if (code >= 32 && code < 127) || code >= 160 { code } else { 0 },
+		3 => if code >= 128 { dm::dm_macroman(code) } else { code },
+		4 => fo_symbol_cp(code),
+		5 => fo_dingbat_cp(code),
+		_ => 0,
+	}
+}
+=== 282a2b13518b8b0f
+fn fo_builtin_type1(f int, data const byte[:], names_out byte[>..]&, codes_out int[>..]&) bool {
+	var lim = fo_find(data, "eexec", 0);
+	if lim < 0 { lim = data.len; }
+	let head = data[..lim];
+	if fo_has(head, "/Encoding StandardEncoding") { return false; }
+	var found = false;
+	var p = fo_find(head, "dup", 0);
+	while p >= 0 {
+		var i = p + 3;
+		while i < head.len && fo_isws(head[i]) { i++; }
+		var num = 0;
+		var nd = 0;
+		while i < head.len && head[i] >= '0' && head[i] <= '9' && nd < 6 {
+			let d int = head[i];
+			num = num * 10 + d - 48;
+			i++;
+			nd++;
+		}
+		while i < head.len && fo_isws(head[i]) { i++; }
+		if nd > 0 && i < head.len && head[i] == '/' {
+			i++;
+			let ns = i;
+			while i < head.len && !fo_isws(head[i]) && head[i] != '/' { i++; }
+			let ne = i;
+			while i < head.len && fo_isws(head[i]) { i++; }
+			if ne > ns && i + 3 <= head.len && head[i] == 'p' && head[i + 1] == 'u' && head[i + 2] == 't' {
+				names_out.append(head[ns..ne]);
+				names_out.push(0);
+				codes_out.push(num);
+				found = true;
+			}
+		}
+		p = fo_find(head, "dup", p + 3);
+	}
+	return found;
+}
+=== 5745e3e7dd661204
+fn fo_be16(d const byte[:], at int) int {
+	if at < 0 || at + 2 > d.len { return 0; }
+	let a int = d[at];
+	let b int = d[at + 1];
+	(a << 8) | b
+}
+fn fo_be32(d const byte[:], at int) int {
+	(fo_be16(d, at) << 16) | fo_be16(d, at + 2)
+}
+fn fo_ttf_set(cps int[>..]&, gid int, cp int) {
+	if gid <= 0 || gid >= 65536 || cp <= 0 { return; }
+	if gid >= cps.len { cps.resize(gid + 1, 0); }
+	if cps[gid] == 0 || cp < cps[gid] { cps[gid] = cp; }
+}
+fn fo_ttf_cmap(data const byte[:], cps int[>..]&) {
+	cps.clear();
+	if data.len < 12 { return; }
+	let nt = fo_be16(data, 4);
+	var coff = -1;
+	for i in nt {
+		let r = 12 + 16 * i;
+		if r + 16 > data.len { break; }
+		if data[r] == 'c' && data[r + 1] == 'm' && data[r + 2] == 'a' && data[r + 3] == 'p' {
+			coff = fo_be32(data, r + 8);
+			break;
+		}
+	}
+	if coff < 0 || coff + 4 > data.len { return; }
+	let ns = fo_be16(data, coff + 2);
+	var best = -1;
+	var score = 0;
+	for i in ns {
+		let r = coff + 4 + 8 * i;
+		if r + 8 > data.len { break; }
+		let pl = fo_be16(data, r);
+		let en = fo_be16(data, r + 2);
+		let off = coff + fo_be32(data, r + 4);
+		if off < 0 || off + 4 > data.len { continue; }
+		let fm = fo_be16(data, off);
+		var sc = 0;
+		if pl == 3 && en == 10 && fm == 12 {
+			sc = 3;
+		} else if pl == 3 && en == 1 && fm == 4 {
+			sc = 2;
+		} else if pl == 0 && (fm == 4 || fm == 12) {
+			sc = 1;
+		}
+		if sc > score {
+			score = sc;
+			best = off;
+		}
+	}
+	if best < 0 { return; }
+	let fmt = fo_be16(data, best);
+	var total = 0;
+	if fmt == 4 {
+		let sx = fo_be16(data, best + 6);
+		let seg = sx / 2;
+		let ends = best + 14;
+		let starts = best + 16 + sx;
+		let deltas = best + 16 + 2 * sx;
+		let ranges = best + 16 + 3 * sx;
+		if ranges + sx > data.len {
+			cps.clear();
+			return;
+		}
+		for i in seg {
+			let e = fo_be16(data, ends + 2 * i);
+			let s = fo_be16(data, starts + 2 * i);
+			let dl = fo_be16(data, deltas + 2 * i);
+			let ro = fo_be16(data, ranges + 2 * i);
+			var c = s;
+			while c <= e && total < 200000 {
+				total++;
+				if c != 0xFFFF {
+					var g = 0;
+					if ro == 0 {
+						g = (c + dl) & 0xFFFF;
+					} else {
+						g = fo_be16(data, ranges + 2 * i + ro + 2 * (c - s));
+						if g != 0 { g = (g + dl) & 0xFFFF; }
+					}
+					fo_ttf_set(cps, g, c);
+				}
+				c++;
+			}
+		}
+	} else if fmt == 12 {
+		let ng = min(fo_be32(data, best + 12), (data.len - best - 16) / 12);
+		for i in ng {
+			let r = best + 16 + 12 * i;
+			let s = fo_be32(data, r);
+			let e = fo_be32(data, r + 4);
+			let g0 = fo_be32(data, r + 8);
+			var c = s;
+			while c <= e && total < 200000 {
+				total++;
+				fo_ttf_set(cps, g0 + c - s, c);
+				c++;
+			}
+			if total >= 200000 { break; }
+		}
+	}
+}
+=== 794e105354ebe2eb
+fn fo_enc_num(name const byte[:]) int {
+	if name == "StandardEncoding" { return 1; }
+	if name == "WinAnsiEncoding" { return 2; }
+	if name == "MacRomanEncoding" { return 3; }
+	if name == "MacExpertEncoding" { return 6; }
+	return 0;
+}
+fn fo_load_composite(f int, node int, desc int, fd int) {
+	let ft .= fo_fonts[f];
+	ft.kind = 1;
+	ft.t_at = -1;
+	let enc = pdf::pf_dget(node, "Encoding");
+	let ek = pdf::pf_kind(enc);
+	if ek == pdf::PF_NAME {
+		let en = pdf::pf_bytes(enc);
+		if en.len >= 2 && en[en.len - 2] == '-' && en[en.len - 1] == 'V' { ft.vertical = true; }
+		if fo_has(en, "Identity") {
+			ft.ident = true;
+			ft.nb = 2;
+		} else if fo_has(en, "UCS2") || fo_has(en, "UTF16") {
+			ft.ucs2 = true;
+			ft.nb = 2;
+		} else if fo_has(en, "RKSJ") {
+			ft.sjis = 1;
+		} else if fo_has(en, "EUC") || fo_has(en, "GBK") || fo_has(en, "GBpc") || fo_has(en, "GBT") || fo_has(en, "KSC") || fo_has(en, "B5") || fo_has(en, "ETen") || fo_has(en, "HKscs") || fo_has(en, "UHC") {
+			ft.sjis = 2;
+		} else {
+			ft.nb = 2;
+		}
+	} else if ek == pdf::PF_STREAM {
+		fo_buf.clear();
+		if pdf::pf_decode(enc, fo_buf) { fo_cmap_parse(fo_buf, f, false); }
+		if ft.nb == 0 && ft.cs_n == 0 { ft.nb = 2; }
+	} else {
+		ft.nb = 2;
+	}
+	ft.dw = pdf::pf_real(pdf::pf_dget(desc, "DW"), 1000.0);
+	ft.wl_at = fo_wl_lo.len;
+	let w = pdf::pf_dget(desc, "W");
+	let wn = pdf::pf_len(w);
+	var i = 0;
+	while i < wn {
+		let c1 = pdf::pf_int(pdf::pf_at(w, i), 0);
+		var nx = -1;
+		if i + 1 < wn { nx = pdf::pf_at(w, i + 1); }
+		if pdf::pf_kind(nx) == pdf::PF_ARR {
+			let an = pdf::pf_len(nx);
+			for j in an {
+				fo_wl_lo.push(c1 + j);
+				fo_wl_hi.push(c1 + j);
+				fo_wl_w.push(pdf::pf_real(pdf::pf_at(nx, j), 0.0));
+			}
+			i += 2;
+		} else {
+			if i + 2 < wn {
+				fo_wl_lo.push(c1);
+				fo_wl_hi.push(pdf::pf_int(pdf::pf_at(w, i + 1), 0));
+				fo_wl_w.push(pdf::pf_real(pdf::pf_at(w, i + 2), 0.0));
+			}
+			i += 3;
+		}
+	}
+	ft.wl_n = fo_wl_lo.len - ft.wl_at;
+	let tu = pdf::pf_dget(node, "ToUnicode");
+	if pdf::pf_kind(tu) != pdf::PF_STREAM && pdf::pf_name_is(pdf::pf_dget(desc, "Subtype"), "CIDFontType2") {
+		let ff = pdf::pf_dget(fd, "FontFile2");
+		if pdf::pf_kind(ff) == pdf::PF_STREAM {
+			fo_buf.clear();
+			if pdf::pf_decode(ff, fo_buf) {
+				var cps int[>..] = [];
+				fo_ttf_cmap(fo_buf, cps);
+				if cps.len > 0 {
+					ft.g_at = fo_g_cid.len;
+					let cm = pdf::pf_dget(desc, "CIDToGIDMap");
+					if pdf::pf_kind(cm) == pdf::PF_STREAM {
+						fo_buf.clear();
+						if pdf::pf_decode(cm, fo_buf) {
+							let lim = min(fo_buf.len / 2, 65536);
+							for cid in lim {
+								let g = fo_be16(fo_buf, cid * 2);
+								if g < cps.len && cps[g] != 0 {
+									fo_g_cid.push(cid);
+									fo_g_cp.push(cps[g]);
+								}
+							}
+						}
+					} else {
+						for g in cps.len {
+							if cps[g] != 0 {
+								fo_g_cid.push(g);
+								fo_g_cp.push(cps[g]);
+							}
+						}
+					}
+					ft.g_n = fo_g_cid.len - ft.g_at;
+				}
+			}
+		}
+	}
+}
+fn fo_load_simple(f int, node int, fd int, nm const byte[:], type3 bool) {
+	let ft .= fo_fonts[f];
+	ft.kind = if type3 { 2 } else { 0 };
+	ft.nb = 1;
+	ft.scale = 0.001;
+	if type3 {
+		let fm = pdf::pf_dget(node, "FontMatrix");
+		if pdf::pf_len(fm) > 0 { ft.scale = pdf::pf_real(pdf::pf_at(fm, 0), 0.001); }
+	}
+	ft.w_first = pdf::pf_int(pdf::pf_dget(node, "FirstChar"), 0);
+	let wa = pdf::pf_dget(node, "Widths");
+	let wn = clamp(pdf::pf_len(wa), 0, 65536);
+	ft.w_at = fo_w.len;
+	ft.w_n = wn;
+	for i in wn { fo_w.push(pdf::pf_real(pdf::pf_at(wa, i), 0.0)); }
+	ft.missing = pdf::pf_real(pdf::pf_dget(fd, "MissingWidth"), 0.0);
+	var base = 0;
+	var diffs = -1;
+	let enc = pdf::pf_dget(node, "Encoding");
+	let ek = pdf::pf_kind(enc);
+	if ek == pdf::PF_NAME {
+		base = fo_enc_num(pdf::pf_bytes(enc));
+	} else if ek == pdf::PF_DICT {
+		let be = pdf::pf_dget(enc, "BaseEncoding");
+		if pdf::pf_kind(be) == pdf::PF_NAME { base = fo_enc_num(pdf::pf_bytes(be)); }
+		diffs = pdf::pf_dget(enc, "Differences");
+	}
+	var bnames byte[>..] = [];
+	var bcodes int[>..] = [];
+	var builtin = false;
+	if base == 0 {
+		let ff = pdf::pf_dget(fd, "FontFile");
+		if pdf::pf_kind(ff) == pdf::PF_STREAM {
+			fo_buf.clear();
+			if pdf::pf_decode(ff, fo_buf) { builtin = fo_builtin_type1(f, fo_buf, bnames, bcodes); }
+		}
+		if !builtin {
+			base = if fo_has(nm, "Symbol") { 4 } else if fo_has(nm, "Dingbats") { 5 } else if pdf::pf_name_is(pdf::pf_dget(node, "Subtype"), "TrueType") { 2 } else { 1 };
+		}
+	}
+	var bi_at int[256] = [-1; 256];
+	var bi_len int[256] = [0; 256];
+	var pos = 0;
+	for k in bcodes.len {
+		var e = pos;
+		while e < bnames.len && bnames[e] != 0 { e++; }
+		let cd = bcodes[k];
+		if cd >= 0 && cd < 256 {
+			bi_at[cd] = pos;
+			bi_len[cd] = e - pos;
+		}
+		pos = e + 1;
+	}
+	ft.t_at = fo_t_at.len;
+	for code in 256 {
+		let st = fo_txt.len;
+		if builtin && bi_at[code] >= 0 {
+			glyph::gl_name_to_text(bnames[bi_at[code]..bi_at[code] + bi_len[code]], fo_txt);
+		} else {
+			let cp = fo_base_cp(if builtin { 1 } else { base }, code);
+			if cp > 0 { push_utf8(fo_txt, cp); }
+		}
+		fo_t_at.push(st);
+		fo_t_len.push(fo_txt.len - st);
+	}
+	let dn = pdf::pf_len(diffs);
+	var cur = 0;
+	for i in dn {
+		let el = pdf::pf_at(diffs, i);
+		let kd = pdf::pf_kind(el);
+		if kd == pdf::PF_INT {
+			cur = pdf::pf_int(el, 0);
+		} else if kd == pdf::PF_NAME {
+			if cur >= 0 && cur < 256 {
+				let gn = pdf::pf_bytes(el);
+				let st = fo_txt.len;
+				glyph::gl_name_to_text(gn, fo_txt);
+				fo_t_at[ft.t_at + cur] = st;
+				fo_t_len[ft.t_at + cur] = fo_txt.len - st;
+			}
+			cur++;
+		}
+	}
+}
+fn fo_load(node int) int {
+	if node < 0 { return -1; }
+	if node < fo_by_node.len && fo_by_node[node] > 0 { return fo_by_node[node] - 1; }
+	if pdf::pf_kind(node) != pdf::PF_DICT { return -1; }
+	if fo_by_node.len <= node { fo_by_node.resize(node + 1, 0); }
+	let f = fo_fonts.len;
+	fo_by_node[node] = f + 1;
+	fo_fonts.push(FoFont { node: node, .. });
+	let sub = pdf::pf_dget(node, "Subtype");
+	let t0 = pdf::pf_name_is(sub, "Type0");
+	let bn = pdf::pf_bytes(pdf::pf_dget(node, "BaseFont"));
+	let nm = fo_strip_subset(bn);
+	fo_fonts[f].name_at = fo_names.len;
+	fo_fonts[f].name_len = nm.len;
+	fo_names.append(nm);
+	var desc = -1;
+	if t0 {
+		let dfs = pdf::pf_dget(node, "DescendantFonts");
+		if pdf::pf_len(dfs) > 0 { desc = pdf::pf_at(dfs, 0); }
+	}
+	let fd = pdf::pf_dget(if t0 { desc } else { node }, "FontDescriptor");
+	let flags = pdf::pf_int(pdf::pf_dget(fd, "Flags"), 0);
+	fo_fonts[f].bold = fo_has(nm, "Bold") || fo_has(nm, "Black") || fo_has(nm, "Heavy") || fo_has(nm, "Semibold") || fo_has(nm, "SemiBold") || fo_has(nm, "Demi") || pdf::pf_int(pdf::pf_dget(fd, "FontWeight"), 0) >= 600 || (flags & 262144) != 0;
+	fo_fonts[f].italic = fo_has(nm, "Italic") || fo_has(nm, "Oblique") || pdf::pf_real(pdf::pf_dget(fd, "ItalicAngle"), 0.0) != 0.0 || (flags & 64) != 0;
+	if t0 {
+		fo_load_composite(f, node, desc, fd);
+	} else {
+		fo_load_simple(f, node, fd, nm, pdf::pf_name_is(sub, "Type3"));
+	}
+	let tu = pdf::pf_dget(node, "ToUnicode");
+	if pdf::pf_kind(tu) == pdf::PF_STREAM {
+		fo_buf.clear();
+		if pdf::pf_decode(tu, fo_buf) { fo_cmap_parse(fo_buf, f, true); }
+	}
+	return f;
+}
+=== 5332e78b41815e0a
+fn fo_next(f int, s const byte[:], at int&) int {
+	if at >= s.len { return -1; }
+	let ft .= fo_fonts[f];
+	let b0 int = s[at];
+	if ft.kind != 1 {
+		at++;
+		return b0;
+	}
+	if ft.sjis == 1 {
+		if ((b0 >= 0x81 && b0 <= 0x9F) || (b0 >= 0xE0 && b0 <= 0xFC)) && at + 1 < s.len {
+			let b1 int = s[at + 1];
+			at += 2;
+			return (b0 << 8) | b1;
+		}
+		at++;
+		return b0;
+	}
+	if ft.sjis == 2 {
+		if b0 >= 0x81 && at + 1 < s.len {
+			let b1 int = s[at + 1];
+			at += 2;
+			return (b0 << 8) | b1;
+		}
+		at++;
+		return b0;
+	}
+	if ft.nb == 2 {
+		if at + 1 < s.len {
+			let b1 int = s[at + 1];
+			at += 2;
+			return (b0 << 8) | b1;
+		}
+		at++;
+		return b0;
+	}
+	for n in 1..5 {
+		if at + n <= s.len {
+			var v = 0;
+			for k in n {
+				let bb int = s[at + k];
+				v = (v << 8) | bb;
+			}
+			for r in ft.cs_n {
+				let e = ft.cs_at + r;
+				if fo_cs_nb[e] == n && v >= fo_cs_lo[e] && v <= fo_cs_hi[e] {
+					at += n;
+					return v;
+				}
+			}
+		}
+	}
+	at++;
+	return b0;
+}
+=== 35b483b9e59b100b
+fn fo_cid(f int, code int) int {
+	let ft .= fo_fonts[f];
+	if ft.ident || ft.ucs2 { return code; }
+	var i = ft.c_n;
+	while i > 0 {
+		i--;
+		let e = ft.c_at + i;
+		if code >= fo_c_lo[e] && code <= fo_c_hi[e] { return fo_c_cid[e] + code - fo_c_lo[e]; }
+	}
+	return code;
+}
+=== 5c28268f8c2fe11f
+fn fo_text(f int, code int, nbytes int, out byte[>..]&) bool {
+	let ft .= fo_fonts[f];
+	let start = out.len;
+	if fo_tounicode(f, code, out) {
+		if out.len > start { return true; }
+	}
+	if ft.kind != 1 && ft.t_at >= 0 && code >= 0 && code < 256 {
+		let l = fo_t_len[ft.t_at + code];
+		if l > 0 {
+			let a = fo_t_at[ft.t_at + code];
+			out.append(fo_txt[a..a + l]);
+			return true;
+		}
+	}
+	if ft.kind == 1 && ft.ucs2 {
+		if code >= 0xD800 && code < 0xE000 {
+			push_utf8(out, 0xFFFD);
+			return true;
+		}
+		if code > 0 {
+			push_utf8(out, code);
+			return true;
+		}
+	}
+	if ft.g_n > 0 {
+		let cid = fo_cid(f, code);
+		var lo = 0;
+		var hi = ft.g_n - 1;
+		while lo <= hi {
+			let mid = (lo + hi) / 2;
+			let v = fo_g_cid[ft.g_at + mid];
+			if v == cid {
+				push_utf8(out, fo_g_cp[ft.g_at + mid]);
+				return true;
+			}
+			if v < cid { lo = mid + 1; } else { hi = mid - 1; }
+		}
+	}
+	if code != 0 { fo_unmapped++; }
+	return false;
+}
+=== -4a464be57fe4a808
+fn fo_width(f int, code int) real {
+	let ft .= fo_fonts[f];
+	if ft.kind == 1 {
+		let cid = fo_cid(f, code);
+		var i = ft.wl_n;
+		while i > 0 {
+			i--;
+			let e = ft.wl_at + i;
+			if cid >= fo_wl_lo[e] && cid <= fo_wl_hi[e] { return fo_wl_w[e] * ft.scale; }
+		}
+		return ft.dw * ft.scale;
+	}
+	let k = code - ft.w_first;
+	if k >= 0 && k < ft.w_n {
+		let w = fo_w[ft.w_at + k];
+		if w > 0.0 { return w * ft.scale; }
+	}
+	if ft.missing > 0.0 { return ft.missing * ft.scale; }
+	let nmv = fo_names[ft.name_at..ft.name_at + ft.name_len];
+	let bw real = glyph::gl_base_width(nmv, code);
+	return bw * ft.scale;
+}
+=== 7682cc0dc14ff90c
+fn fo_is_bold(f int) bool {
+	fo_fonts[f].bold
+}
+fn fo_is_italic(f int) bool {
+	fo_fonts[f].italic
+}
+fn fo_is_vertical(f int) bool {
+	fo_fonts[f].vertical
+}
+fn fo_kind(f int) int {
+	fo_fonts[f].kind
+}
+fn fo_name(f int) const byte[:] {
+	fo_names[fo_fonts[f].name_at..fo_fonts[f].name_at + fo_fonts[f].name_len]
+}

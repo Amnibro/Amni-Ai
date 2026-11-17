@@ -1,0 +1,733 @@
+import os;
+import dm;
+import pack;
+fn ld(name const byte[:]) byte[>..] {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var out byte[>..] = [];
+	if !read_file(path, out) {
+		out.clear();
+		print("missing ", name);
+	}
+	out
+}
+fn p(text const byte[:]) {
+	print(text);
+}
+fn same(a const byte[:], b const byte[:]) int {
+	if a == b { 1 } else { 0 }
+}
+fn yn(x bool) int {
+	if x { 1 } else { 0 }
+}
+fn dup(a const byte[:]) byte[>..] {
+	var o byte[>..] = [];
+	o.append(a);
+	o
+}
+fn warns() {
+	for line in split(dm::dm_warn, 10) {
+		if line.len > 0 {
+			p(str("warn ", line));
+		}
+	}
+	dm::dm_reset("x", "y");
+}
+fn rows() byte[>..] {
+	var o byte[>..] = [];
+	for i in 1..4001 {
+		format(o, "row ", i, ": ", i * 7 % 1000, " tulips, ", i % 97, " spades");
+		o.push(10);
+	}
+	o
+}
+fn runs() byte[>..] {
+	var o byte[>..] = [];
+	for i in 1000 { o.push('a'); }
+	for i in 4 { o.push('b'); }
+	for i in 5 { o.push('c'); }
+	for i in 255 { o.push('d'); }
+	for i in 259 { o.push('e'); }
+	for i in 3 { o.push('f'); }
+	o.append("end");
+	o.push(10);
+	o
+}
+fn tail() byte[>..] {
+	var o byte[>..] = [];
+	o.append("Second member: the tail of the log.");
+	o.push(10);
+	o
+}
+fn le(out byte[>..]&, v int, n int) {
+	for i in n {
+		out.push(((v >> (8 * i)) & 255) as byte);
+	}
+}
+fn mkgz(out byte[>..]&, flags int, name const byte[:], extra const byte[:], comment const byte[:], body const byte[:], crc int, size int, hbad int) {
+	out.clear();
+	out.push(0x1F);
+	out.push(0x8B);
+	out.push(8);
+	out.push(flags as byte);
+	le(out, 0, 4);
+	out.push(0);
+	out.push(3);
+	if (flags & 4) != 0 {
+		le(out, extra.len, 2);
+		out.append(extra);
+	}
+	if (flags & 8) != 0 {
+		out.append(name);
+		out.push(0);
+	}
+	if (flags & 16) != 0 {
+		out.append(comment);
+		out.push(0);
+	}
+	if (flags & 2) != 0 {
+		let c = pack::pk_crc32(out, 0) + hbad;
+		le(out, c & 65535, 2);
+	}
+	out.append(body);
+	le(out, crc, 4);
+	le(out, size, 4);
+}
+fn gzcase(label const byte[:], name const byte[:], want const byte[:]) {
+	let z = ld(name);
+	dm::dm_reset("x", "y");
+	var o byte[>..] = [];
+	let ok = pack::pk_gunzip(z, o);
+	p(str(label, " ", yn(ok), " ", same(o, want), " ", o.len, " [", pack::pk_gz_name(), "]"));
+	warns();
+}
+fn bzcase(label const byte[:], name const byte[:], want const byte[:]) {
+	let z = ld(name);
+	dm::dm_reset("x", "y");
+	var o byte[>..] = [];
+	let ok = pack::pk_bunzip(z, o);
+	p(str(label, " ", yn(ok), " ", same(o, want), " ", o.len));
+	warns();
+}
+fn main() {
+	dm::dm_reset("x", "y");
+	case_magic();
+	case_gzip();
+	case_g7();
+	case_g8();
+	case_bzip();
+	case_b7();
+	case_g9();
+	case_c1();
+	case_t14();
+	case_t5();
+	case_t6();
+	case_t7();
+	case_t8();
+	case_h1();
+	case_t9();
+}
+fn magic_pair(o byte[>..]&, name const byte[:]) {
+	let z = ld(name);
+	format(o, " ", yn(pack::pk_is_gz(z)), yn(pack::pk_is_bz2(z)));
+}
+fn case_magic() {
+	var o byte[>..] = [];
+	o.append("m1");
+	magic_pair(o, "pk_garden.txt.gz");
+	magic_pair(o, "pk_garden.txt.bz2");
+	magic_pair(o, "pk_garden.txt");
+	magic_pair(o, "pk_empty.gz");
+	magic_pair(o, "pk_empty.bz2");
+	p(o);
+}
+fn case_gzip() {
+	let g = ld("pk_garden.txt");
+	let t = tail();
+	var gt byte[>..] = [];
+	gt.append(g);
+	gt.append(t);
+	let r = rows();
+	let u = runs();
+	let d = ld("pk_rand.bin");
+	gzcase("g1", "pk_garden.txt.gz", g);
+	gzcase("g2", "pk_multi.gz", gt);
+	gzcase("g3", "pk_rows.gz", r);
+	gzcase("g4", "pk_rand.bin.gz", d);
+	gzcase("g5", "pk_runs.gz", u);
+	gzcase("g6", "pk_empty.gz", "");
+}
+fn case_g7() {
+	let g = ld("pk_garden.txt");
+	let z = ld("pk_garden.txt.gz");
+	let b = z[24..z.len - 8];
+	let crc = pack::pk_crc32(g, 0);
+	p(str("g7 crc ", crc));
+	var m byte[>..] = [];
+	for flags in [30, 4, 8, 16, 2, 0] {
+		mkgz(m, flags, "orig.txt", "XY", "a comment", b, crc, g.len, 0);
+		var out byte[>..] = [];
+		let ok = pack::pk_gunzip(m, out);
+		p(str("g7 flags ", flags, " ", yn(ok), " ", same(out, g), " [", pack::pk_gz_name(), "]"));
+	}
+	mkgz(m, 2, "", "", "", b, crc, g.len, 1);
+	var o2 byte[>..] = [];
+	let ok2 = pack::pk_gunzip(m, o2);
+	p(str("g7 hcrc ", yn(ok2)));
+	warns();
+	mkgz(m, 32, "", "", "", b, crc, g.len, 0);
+	var o3 byte[>..] = [];
+	let ok3 = pack::pk_gunzip(m, o3);
+	p(str("g7 reserved ", yn(ok3)));
+}
+fn gz_fails(m const byte[:]) bool {
+	var o byte[>..] = [];
+	!pack::pk_gunzip(m, o)
+}
+fn case_g8() {
+	let g = ld("pk_garden.txt");
+	let z = ld("pk_garden.txt.gz");
+	let d = ld("pk_rand.bin");
+	let mu = ld("pk_multi.gz");
+	var bad = 0;
+	for n in z.len {
+		if gz_fails(z[..n]) { bad += 1; }
+	}
+	p(str("g8 trunc ", bad, " ", z.len));
+	dm::dm_reset("x", "y");
+	var c = dup(z);
+	var fl = 0;
+	var tried = 0;
+	for k in 24..z.len - 8 {
+		c[k] = c[k] ^ 85;
+		if gz_fails(c) { fl += 1; }
+		c[k] = c[k] ^ 85;
+		tried += 1;
+	}
+	p(str("g8 flips ", fl, " ", tried));
+	dm::dm_reset("x", "y");
+	var c2 = dup(z);
+	c2[z.len - 8] = c2[z.len - 8] ^ 1;
+	var o2 byte[>..] = [];
+	let ok2 = pack::pk_gunzip(c2, o2);
+	p(str("g8 crc ", yn(ok2)));
+	warns();
+	var c3 = dup(z);
+	c3[z.len - 1] = c3[z.len - 1] ^ 1;
+	var o3 byte[>..] = [];
+	let ok3 = pack::pk_gunzip(c3, o3);
+	p(str("g8 size ", yn(ok3)));
+	warns();
+	var o4 byte[>..] = [];
+	let ok4 = pack::pk_gunzip("this is not a gzip file at all, sorry", o4);
+	p(str("g8 notgz ", yn(ok4)));
+	warns();
+	var j = dup(z);
+	j.append("junk");
+	var o5 byte[>..] = [];
+	let ok5 = pack::pk_gunzip(j, o5);
+	p(str("g8 junk ", yn(ok5), " ", same(o5, g)));
+	warns();
+	var pd = dup(z);
+	for i in 5 { pd.push(0); }
+	var o6 byte[>..] = [];
+	let ok6 = pack::pk_gunzip(pd, o6);
+	p(str("g8 pad ", yn(ok6), " ", same(o6, g)));
+	warns();
+	var bn = dup(mu[..z.len]);
+	bn.push(0x1F);
+	bn.push(0x8B);
+	for i in 18 { bn.push(0); }
+	var o7 byte[>..] = [];
+	let ok7 = pack::pk_gunzip(bn, o7);
+	p(str("g8 badnext ", yn(ok7)));
+	warns();
+	var gb = 0;
+	for k in 401 {
+		var s = dup(d[..3000]);
+		s[0] = 0x1F;
+		s[1] = 0x8B;
+		s[2] = 8;
+		s[k + 3] = d[k + 3] ^ ((k & 255) as byte);
+		if gz_fails(s) { gb += 1; }
+	}
+	p(str("g8 garbage ", gb));
+	dm::dm_reset("x", "y");
+}
+fn case_bzip() {
+	let g = ld("pk_garden.txt");
+	let t = tail();
+	var gt byte[>..] = [];
+	gt.append(g);
+	gt.append(t);
+	let r = rows();
+	let u = runs();
+	let d = ld("pk_rand.bin");
+	bzcase("b1", "pk_garden.txt.bz2", g);
+	bzcase("b2", "pk_multi.bz2", gt);
+	bzcase("b3", "pk_rows.bz2", r);
+	bzcase("b4", "pk_rand.bin.bz2", d);
+	bzcase("b5", "pk_runs.bz2", u);
+	bzcase("b6", "pk_empty.bz2", "");
+}
+fn bz_fails(m const byte[:]) bool {
+	var o byte[>..] = [];
+	!pack::pk_bunzip(m, o)
+}
+fn case_b7() {
+	let g = ld("pk_garden.txt");
+	let z = ld("pk_garden.txt.bz2");
+	var bad = 0;
+	for n in z.len {
+		if bz_fails(z[..n]) { bad += 1; }
+	}
+	p(str("b7 trunc ", bad, " ", z.len));
+	dm::dm_reset("x", "y");
+	var c = dup(z);
+	var fl = 0;
+	var tried = 0;
+	var acc byte[>..] = [];
+	for k in 10..z.len - 6 {
+		c[k] = c[k] ^ 85;
+		if bz_fails(c) {
+			fl += 1;
+		} else {
+			format(acc, " ", k);
+		}
+		c[k] = c[k] ^ 85;
+		tried += 1;
+	}
+	var s byte[>..] = [];
+	format(s, "b7 flips ", fl, " ", tried, " accepted");
+	s.append(acc);
+	p(s);
+	dm::dm_reset("x", "y");
+	var c2 = dup(z);
+	c2[z.len - 3] = c2[z.len - 3] ^ 1;
+	var o2 byte[>..] = [];
+	let ok2 = pack::pk_bunzip(c2, o2);
+	p(str("b7 crc ", yn(ok2)));
+	warns();
+	var o3 byte[>..] = [];
+	let ok3 = pack::pk_bunzip("this is not a bzip2 file at all, sorry", o3);
+	p(str("b7 notbz ", yn(ok3)));
+	warns();
+	var j = dup(z);
+	j.append("junk");
+	var o4 byte[>..] = [];
+	let ok4 = pack::pk_bunzip(j, o4);
+	p(str("b7 junk ", yn(ok4), " ", same(o4, g)));
+	warns();
+	var pd = dup(z);
+	for i in 5 { pd.push(0); }
+	var o5 byte[>..] = [];
+	let ok5 = pack::pk_bunzip(pd, o5);
+	p(str("b7 pad ", yn(ok5)));
+	warns();
+	var bn = dup(z);
+	bn.append(z[..10]);
+	var o6 byte[>..] = [];
+	let ok6 = pack::pk_bunzip(bn, o6);
+	p(str("b7 badnext ", yn(ok6)));
+	warns();
+	let r = ld("pk_rows.bz2");
+	var rc = dup(r);
+	var rf = 0;
+	var rt = 0;
+	var k = 10;
+	while k <= r.len - 7 {
+		rc[k] = rc[k] ^ 85;
+		if bz_fails(rc) { rf += 1; }
+		rc[k] = rc[k] ^ 85;
+		rt += 1;
+		k += 97;
+	}
+	p(str("b7 rowsflips ", rf, " ", rt));
+	dm::dm_reset("x", "y");
+}
+fn case_g9() {
+	let z = ld("pk_rows.gz");
+	var c = dup(z);
+	var fl = 0;
+	var tried = 0;
+	var k = 24;
+	while k <= z.len - 9 {
+		c[k] = c[k] ^ 85;
+		if gz_fails(c) { fl += 1; }
+		c[k] = c[k] ^ 85;
+		tried += 1;
+		k += 97;
+	}
+	p(str("g9 rowsflips ", fl, " ", tried));
+	dm::dm_reset("x", "y");
+}
+fn c1run(z const byte[:], gz bool) {
+	dm::dm_reset("x", "y");
+	var o byte[>..] = [];
+	let ok = if gz { pack::pk_gunzip(z, o) } else { pack::pk_bunzip(z, o) };
+	p(str("c1 ", yn(ok), " ", o.len, " ", yn(pack::pk_capped)));
+	warns();
+}
+fn c1pair(tag const byte[:]) {
+	let a = ld("pk_garden.txt.gz");
+	let b = ld("pk_garden.txt.bz2");
+	var o byte[>..] = [];
+	let ok1 = pack::pk_gunzip(a, o);
+	let ok2 = pack::pk_bunzip(b, o);
+	p(str(tag, yn(ok1), " ", yn(ok2)));
+}
+fn case_c1() {
+	pack::pk_cap = 1000;
+	let a = ld("pk_garden.txt.gz");
+	let b = ld("pk_rand.bin.gz");
+	let c = ld("pk_rows.gz");
+	let d = ld("pk_garden.txt.bz2");
+	let e = ld("pk_runs.bz2");
+	let f = ld("pk_rows.bz2");
+	c1run(a, true);
+	c1run(b, true);
+	c1run(c, true);
+	c1run(d, false);
+	c1run(e, false);
+	c1run(f, false);
+	pack::pk_cap = 1465;
+	c1pair("c1 edge ");
+	pack::pk_cap = 1464;
+	c1pair("c1 over ");
+	pack::pk_cap = 268435456;
+	p(str("c1 cap ", pack::pk_cap));
+}
+fn esc(out byte[>..]&, src const byte[:]) {
+	for c in src {
+		if c == 10 {
+			out.push(92);
+			out.push('n');
+		} else {
+			out.push(c);
+		}
+	}
+}
+fn tarlist(label const byte[:], h int) {
+	let n = pack::pk_tar_count(h);
+	for i in n {
+		var line byte[>..] = [];
+		let rd = pack::pk_tar_readable(h, i);
+		format(line, label, " ", i, " ", pack::pk_tar_name(h, i), " ", pack::pk_tar_size(h, i), " ", yn(pack::pk_tar_is_dir(h, i)), " ", yn(rd));
+		if rd {
+			var o byte[>..] = [];
+			let ok = pack::pk_tar_read(h, i, o);
+			line.append(" [");
+			esc(line, o);
+			line.push(']');
+		}
+		p(line);
+	}
+}
+fn tarshow(h int, name const byte[:]) byte[>..] {
+	let i = pack::pk_tar_find(h, name);
+	var s byte[>..] = [];
+	if i >= 0 {
+		var o byte[>..] = [];
+		if pack::pk_tar_read(h, i, o) {
+			esc(s, o);
+			return s;
+		}
+	}
+	s.append("none");
+	s
+}
+fn case_t14() {
+	let ust = ld("pk_ustar.tar");
+	let h = pack::pk_tar_open(ust);
+	p(str("t1 ", h, " ", pack::pk_tar_count(h)));
+	tarlist("t1", h);
+	var bs byte[>..] = [];
+	bs.append("docs");
+	bs.push(92);
+	bs.append("a.txt");
+	var f byte[>..] = [];
+	format(f, "t1 find ", pack::pk_tar_find(h, "docs/a.txt"), " ", pack::pk_tar_find(h, "./docs/a.txt"), " ", pack::pk_tar_find(h, "DOCS/A.TXT"), " ", pack::pk_tar_find(h, bs), " ", pack::pk_tar_find(h, "/docs/sub"), " ", pack::pk_tar_find(h, "docs/sub/"), " ", pack::pk_tar_find(h, "docs/nope.txt"), " ", pack::pk_tar_find(h, ""));
+	p(f);
+	let deep = tarshow(h, "docs/a_rather_long_directory_name_for_prefix/another_quite_long_directory_name_here/third_long_directory_name_abcdefgh/leaf.txt");
+	p(str("t1 deep ", deep));
+	pack::pk_tar_close(h);
+	let gnu = ld("pk_gnu.tar");
+	let h2 = pack::pk_tar_open(gnu);
+	p(str("t2 ", h2, " ", pack::pk_tar_count(h2)));
+	tarlist("t2", h2);
+	let n2 = pack::pk_tar_name(h2, 1);
+	p(str("t2 ", n2.len));
+	pack::pk_tar_close(h2);
+	let pax = ld("pk_pax.tar");
+	let h3 = pack::pk_tar_open(pax);
+	p(str("t3 ", h3, " ", pack::pk_tar_count(h3)));
+	tarlist("t3", h3);
+	let n3 = pack::pk_tar_name(h3, 2);
+	p(str("t3 ", n3.len));
+	pack::pk_tar_close(h3);
+	let tgz = ld("pk_ustar.tar.gz");
+	let tbz = ld("pk_ustar.tar.bz2");
+	var x byte[>..] = [];
+	var y byte[>..] = [];
+	let okx = pack::pk_gunzip(tgz, x);
+	let oky = pack::pk_bunzip(tbz, y);
+	let h4 = pack::pk_tar_open(x);
+	p(str("t4 ", same(x, ust), " ", same(y, ust), " ", h4, " ", pack::pk_tar_count(h4)));
+	pack::pk_tar_close(h4);
+}
+fn put(h byte[:], at int, s const byte[:]) {
+	for i in s.len { h[at + i] = s[i]; }
+}
+fn th(out byte[>..]&, name const byte[:], size int, kind int, prefix const byte[:], binsize int) {
+	var h byte[512] = [0; 512];
+	put(h, 0, name);
+	put(h, 100, "0000644");
+	put(h, 108, "0000000");
+	put(h, 116, "0000000");
+	if binsize == 1 {
+		h[124] = 0x80;
+		for i in 8 {
+			h[135 - i] = ((size >> (8 * i)) & 255) as byte;
+		}
+	} else {
+		for i in 11 {
+			let dg = (size >> (3 * (10 - i))) & 7;
+			h[124 + i] = ('0' + dg) as byte;
+		}
+	}
+	put(h, 136, "00000000000");
+	for i in 8 { h[148 + i] = 32; }
+	h[156] = kind as byte;
+	put(h, 257, "ustar");
+	put(h, 263, "00");
+	put(h, 345, prefix);
+	var sum = 0;
+	for i in 512 { sum += h[i] as int; }
+	for i in 6 {
+		let dg = (sum >> (3 * (5 - i))) & 7;
+		h[148 + i] = ('0' + dg) as byte;
+	}
+	h[154] = 0;
+	h[155] = 32;
+	out.append(h);
+}
+fn tpad(out byte[>..]&, body const byte[:]) {
+	out.append(body);
+	let r = body.len % 512;
+	if r != 0 {
+		for i in 512 - r { out.push(0); }
+	}
+}
+fn pax(key const byte[:], value const byte[:]) byte[>..] {
+	let rest = key.len + value.len + 3;
+	var d = 1;
+	while str(rest + d).len != d { d += 1; }
+	var o byte[>..] = [];
+	format(o, rest + d, " ", key, "=", value);
+	o.push(10);
+	o
+}
+fn build_t5() byte[>..] {
+	var m byte[>..] = [];
+	th(m, "a.txt", 3, 0x30, "", 0);
+	tpad(m, "abcdefg");
+	var r byte[>..] = [];
+	r.append(pax("path", "dir/override.txt"));
+	r.append(pax("size", "7"));
+	th(m, "PaxHeaders", r.len, 0x78, "", 0);
+	tpad(m, r);
+	th(m, "ignored.txt", 3, 0x30, "", 0);
+	tpad(m, "uvwxyz1");
+	let gp = pax("comment", "hello");
+	th(m, "g", gp.len, 0x67, "", 0);
+	tpad(m, gp);
+	th(m, "after.txt", 5, 0x30, "", 0);
+	tpad(m, "hijkl");
+	var ln byte[>..] = [];
+	ln.append("long/gnu/name.txt");
+	ln.push(0);
+	th(m, "././@LongLink", 18, 0x4C, "", 0);
+	tpad(m, ln);
+	th(m, "short", 4, 0x30, "", 0);
+	tpad(m, "data");
+	th(m, "leaf.bin", 5, 0x30, "some/prefix/dir", 0);
+	tpad(m, "12345");
+	th(m, "bin.dat", 3, 0x37, "", 1);
+	tpad(m, "xyz");
+	for i in 1024 { m.push(0); }
+	m
+}
+fn case_t5() {
+	let m = build_t5();
+	let h = pack::pk_tar_open(m);
+	p(str("t5 ", h, " ", pack::pk_tar_count(h)));
+	tarlist("t5", h);
+	pack::pk_tar_close(h);
+	var m2 byte[>..] = [];
+	let gp = pax("size", "2");
+	th(m2, "g", gp.len, 0x67, "", 0);
+	tpad(m2, gp);
+	th(m2, "first.txt", 5, 0x30, "", 0);
+	tpad(m2, "hijkl");
+	let px = pax("size", "4");
+	th(m2, "PaxHeaders", px.len, 0x78, "", 0);
+	tpad(m2, px);
+	th(m2, "second.txt", 5, 0x30, "", 0);
+	tpad(m2, "mnopq");
+	for i in 1024 { m2.push(0); }
+	let h2 = pack::pk_tar_open(m2);
+	p(str("t5b ", h2, " ", pack::pk_tar_count(h2)));
+	tarlist("t5b", h2);
+	pack::pk_tar_close(h2);
+}
+fn t6open(data const byte[:]) int {
+	let h = pack::pk_tar_open(data);
+	if h >= 0 { pack::pk_tar_close(h); }
+	h
+}
+fn case_t6() {
+	let g = ld("pk_garden.txt");
+	let eg = ld("pk_empty.gz");
+	let ust = ld("pk_ustar.tar");
+	var zeros byte[>..] = [];
+	for i in 1024 { zeros.push(0); }
+	var dmg = dup(ust[..1024]);
+	dmg[100] = dmg[100] ^ 1;
+	var bc = dup(build_t5());
+	bc[153] = 0x39;
+	p(str("t6 ", t6open(g), " ", t6open(eg), " ", t6open(zeros), " ", t6open(ust[..511]), " ", t6open(dmg), " ", t6open(bc)));
+	for n in [512, 1023, 1024, 1026, 1030, 1031, 1537] {
+		let h = pack::pk_tar_open(ust[..n]);
+		let cnt = pack::pk_tar_count(h);
+		var line byte[>..] = [];
+		format(line, "t6 cut ", n, " ", h, " ", cnt);
+		if cnt >= 2 {
+			var o byte[>..] = [];
+			let ok = pack::pk_tar_read(h, 1, o);
+			format(line, " ", pack::pk_tar_name(h, 1), " ", yn(ok));
+		}
+		p(line);
+		pack::pk_tar_close(h);
+	}
+	var dm2 = dup(ust);
+	dm2[1537] = dm2[1537] ^ 1;
+	dm::dm_reset("x", "y");
+	let hd = pack::pk_tar_open(dm2);
+	p(str("t6 dmg ", hd, " ", pack::pk_tar_count(hd)));
+	warns();
+	pack::pk_tar_close(hd);
+}
+fn case_t7() {
+	let ua = ld("pk_ustar.tar");
+	let gn = ld("pk_gnu.tar");
+	let ha = pack::pk_tar_open(ua);
+	let hb = pack::pk_tar_open(gn);
+	p(str("t7 ", ha, " ", hb, " ", pack::pk_tar_count(hb), " ", pack::pk_tar_name(hb, 2)));
+	pack::pk_tar_close(ha);
+	var o byte[>..] = [];
+	let ok = pack::pk_tar_read(hb, 2, o);
+	p(str("t7 ", pack::pk_tar_count(ha), " ", pack::pk_tar_count(hb), " ", yn(ok), " ", pack::pk_tar_find(hb, "g/short.txt")));
+	pack::pk_tar_close(hb);
+	let hc = pack::pk_tar_open(ua);
+	p(str("t7 ", hc));
+	pack::pk_tar_close(hc);
+	var o2 byte[>..] = [];
+	let ok2 = pack::pk_tar_read(7, 0, o2);
+	let nm = pack::pk_tar_name(7, 0);
+	p(str("t7 bad ", pack::pk_tar_count(7), " ", pack::pk_tar_find(7, "a"), " ", pack::pk_tar_size(7, 0), " ", yn(ok2), " ", nm.len));
+	pack::pk_tar_close(7);
+}
+fn fuzz_one(data const byte[:]) int {
+	var c = dup(data);
+	var tried = 0;
+	var k = 0;
+	var o byte[>..] = [];
+	while k < data.len {
+		c[k] = c[k] ^ 0x41;
+		let h = pack::pk_tar_open(c);
+		if h >= 0 {
+			let n = pack::pk_tar_count(h);
+			for i in n {
+				let ok = pack::pk_tar_read(h, i, o);
+			}
+			pack::pk_tar_close(h);
+		}
+		c[k] = c[k] ^ 0x41;
+		tried += 1;
+		k += 3;
+	}
+	tried
+}
+fn case_t8() {
+	let a = ld("pk_pax.tar");
+	let b = ld("pk_gnu.tar");
+	let c = ld("pk_ustar.tar");
+	let total = fuzz_one(a) + fuzz_one(b) + fuzz_one(c);
+	p(str("t8 fuzz ", total));
+}
+fn case_h1() {
+	let g = ld("pk_garden.txt");
+	let z = ld("pk_garden.txt.gz");
+	let b = z[24..z.len - 8];
+	let crc = pack::pk_crc32(g, 0);
+	var c = dup(z);
+	var okc = 0;
+	for k in 24 {
+		c[k] = c[k] ^ 0xFF;
+		var o byte[>..] = [];
+		if pack::pk_gunzip(c, o) { okc += 1; }
+		c[k] = c[k] ^ 0xFF;
+	}
+	p(str("h1 gz ", okc, " 24"));
+	dm::dm_reset("x", "y");
+	var m byte[>..] = [];
+	mkgz(m, 30, "orig.txt", "XY", "a comment", b, crc, g.len, 0);
+	var cut = 0;
+	for n in m.len {
+		if gz_fails(m[..n]) { cut += 1; }
+	}
+	p(str("h1 trunc30 ", cut, " ", m.len));
+	dm::dm_reset("x", "y");
+	let z2 = ld("pk_garden.txt.bz2");
+	var c2 = dup(z2);
+	var okb = 0;
+	for k in 10 {
+		c2[k] = c2[k] ^ 0xFF;
+		var o2 byte[>..] = [];
+		if pack::pk_bunzip(c2, o2) { okb += 1; }
+		c2[k] = c2[k] ^ 0xFF;
+	}
+	p(str("h1 bz ", okb, " 10"));
+	dm::dm_reset("x", "y");
+}
+fn case_t9() {
+	let big = 0x7FFFFFFFFFFFFFFF;
+	var m byte[>..] = [];
+	th(m, "huge.bin", big, 0x30, "", 1);
+	for i in 1024 { m.push(0); }
+	let h1 = pack::pk_tar_open(m);
+	p(str("t9 first ", h1));
+	if h1 >= 0 { pack::pk_tar_close(h1); }
+	var m2 byte[>..] = [];
+	th(m2, "ok.txt", 2, 0x30, "", 0);
+	tpad(m2, "ok");
+	th(m2, "huge.bin", big, 0x30, "", 1);
+	for i in 1024 { m2.push(0); }
+	dm::dm_reset("x", "y");
+	let h2 = pack::pk_tar_open(m2);
+	p(str("t9 second ", h2, " ", pack::pk_tar_count(h2), " ", pack::pk_tar_name(h2, 0)));
+	warns();
+	pack::pk_tar_close(h2);
+	var m3 byte[>..] = [];
+	let r = pax("size", "99999999999999999999999999");
+	th(m3, "PaxHeaders", r.len, 0x78, "", 0);
+	tpad(m3, r);
+	th(m3, "pax.txt", 3, 0x30, "", 0);
+	tpad(m3, "abc");
+	for i in 1024 { m3.push(0); }
+	let h3 = pack::pk_tar_open(m3);
+	p(str("t9 pax ", h3, " ", pack::pk_tar_count(h3)));
+	tarlist("t9", h3);
+	pack::pk_tar_close(h3);
+}

@@ -1,0 +1,975 @@
+=== -2a99958a21b23f3f
+namespace extra;
+=== -7837ec65cf6baf94
+fn ex_cut(s const byte[:], max int) const byte[:] {
+	if s.len <= max { return s; }
+	var c = max;
+	while c > 0 && s[c] >= 128 && s[c] <= 191 { c -= 1; }
+	s[..c]
+}
+=== -61b0f77e1b9ea703
+fn ex_lc(c byte) byte { if c >= 'A' && c <= 'Z' { c + 32 } else { c } }
+fn ex_ieq(a const byte[:], b const byte[:]) bool {
+	if a.len != b.len { return false; }
+	for i in a.len { if ex_lc(a[i]) != ex_lc(b[i]) { return false; } }
+	true
+}
+fn ex_lower(s const byte[:], out byte[>..]&) {
+	for c in s { out.push(ex_lc(c)); }
+}
+fn ex_upper(s const byte[:], out byte[>..]&) {
+	for c in s { out.push(if c >= 'a' && c <= 'z' { c - 32 } else { c }); }
+}
+=== 27d8090f5083f419
+fn ex_unesc(s const byte[:], out byte[>..]&) {
+	var i = 0;
+	while i < s.len {
+		let c = s[i];
+		if c == 92 {
+			if i + 1 < s.len {
+				let d = s[i + 1];
+				if d == 'n' || d == 'N' { out.push(10); } else { out.push(d); }
+			}
+			i += 2;
+		} else {
+			out.push(c);
+			i += 1;
+		}
+	}
+}
+=== -1734790e12f14ba8
+fn ex_hex(c byte) int {
+	if c >= '0' && c <= '9' { c - '0' }
+	else if c >= 'a' && c <= 'f' { c - 'a' + 10 }
+	else if c >= 'A' && c <= 'F' { c - 'A' + 10 }
+	else { -1 }
+}
+=== 2ee3e81879df43b4
+fn ex_qp(s const byte[:], out byte[>..]&) {
+	var tmp byte[>..] = [];
+	var i = 0;
+	while i < s.len {
+		let c = s[i];
+		if c == '=' && i + 2 < s.len + 0 && ex_hex(s[i + 1]) >= 0 && ex_hex(s[i + 2]) >= 0 {
+			tmp.push((ex_hex(s[i + 1]) * 16 + ex_hex(s[i + 2])) as byte);
+			i += 3;
+		} else if c == '=' && i + 1 < s.len && s[i + 1] == 10 {
+			i += 2;
+		} else {
+			tmp.push(c);
+			i += 1;
+		}
+	}
+	var u byte[>..] = [];
+	dm::dm_to_utf8(tmp, u);
+	out.append(u);
+}
+=== -14105dedc9bfcc0c
+fn ex_has(s const byte[:], sub const byte[:]) bool {
+	if sub.len > s.len { return false; }
+	for i in s.len - sub.len + 1 {
+		var ok = true;
+		for j in sub.len { if s[i + j] != sub[j] { ok = false; break; } }
+		if ok { return true; }
+	}
+	false
+}
+fn ex_prep(data const byte[:]) bool {
+	var t byte[>..] = [];
+	textfmt::tx_norm(data, t);
+	if textfmt::tx_binary(t) { return false; }
+	textfmt::tx_src.clear();
+	var pos = 0;
+	var started = false;
+	var qp = false;
+	var ls = 0;
+	while pos < t.len {
+		var e = pos;
+		while e < t.len && t[e] != 10 { e += 1; }
+		let line = t[pos..e];
+		pos = e + 1;
+		if started && (qp || (line.len > 0 && (line[0] == ' ' || line[0] == 9))) {
+			if qp { textfmt::tx_src.append(line); } else { textfmt::tx_src.append(line[1..]); }
+		} else {
+			if started { textfmt::tx_src.push(10); }
+			ls = textfmt::tx_src.len;
+			textfmt::tx_src.append(line);
+			started = true;
+		}
+		qp = false;
+		let total = textfmt::tx_src.len;
+		if total > ls && textfmt::tx_src[total - 1] == '=' {
+			var colon = -1;
+			var i = ls;
+			while i < total {
+				if textfmt::tx_src[i] == ':' { colon = i; break; }
+				i += 1;
+			}
+			if colon >= 0 {
+				var pre byte[>..] = [];
+				ex_lower(textfmt::tx_src[ls..colon], pre);
+				if ex_has(pre, "quoted-printable") {
+					qp = true;
+					textfmt::tx_src.pop();
+				}
+			}
+		}
+	}
+	textfmt::tx_lines();
+	true
+}
+=== -523c2d3fee09ef4d
+fn ex_prop(line const byte[:], name byte[>..]&, params byte[>..]&, value byte[>..]&) bool {
+	name.clear();
+	params.clear();
+	value.clear();
+	var q = false;
+	var colon = -1;
+	var i = 0;
+	while i < line.len {
+		let c = line[i];
+		if c == '"' { q = !q; }
+		else if c == ':' && !q { colon = i; break; }
+		i += 1;
+	}
+	if colon < 0 { return false; }
+	var ne = colon;
+	for j in colon { if line[j] == ';' { ne = j; break; } }
+	var st = 0;
+	for j in ne { if line[j] == '.' { st = j + 1; } }
+	ex_upper(line[st..ne], name);
+	if ne < colon { params.append(line[ne + 1..colon]); }
+	value.append(line[colon + 1..]);
+	true
+}
+=== 00b27a23f302273a
+fn ex_psplit(params const byte[:], ps int[>..]&, pe int[>..]&) {
+	ps.clear();
+	pe.clear();
+	var st = 0;
+	var q = false;
+	for i in params.len + 1 {
+		if i == params.len || (params[i] == ';' && !q) {
+			ps.push(st);
+			pe.push(i);
+			st = i + 1;
+		} else if params[i] == '"' {
+			q = !q;
+		}
+	}
+}
+fn ex_eqpos(p const byte[:]) int {
+	for j in p.len { if p[j] == '=' { return j; } }
+	-1
+}
+fn ex_unq(v const byte[:]) const byte[:] {
+	var a = 0;
+	var b = v.len;
+	if b > 0 && v[0] == '"' { a = 1; }
+	if b > a && v[b - 1] == '"' { b -= 1; }
+	v[a..b]
+}
+fn ex_param(params const byte[:], key const byte[:], out byte[>..]&) bool {
+	var ps int[>..] = [];
+	var pe int[>..] = [];
+	ex_psplit(params, ps, pe);
+	for i in ps.len {
+		let p = params[ps[i]..pe[i]];
+		let eq = ex_eqpos(p);
+		if eq < 0 { continue; }
+		if !ex_ieq(p[..eq], key) { continue; }
+		out.append(ex_unq(p[eq + 1..]));
+		return true;
+	}
+	false
+}
+=== 15b2839d1288f64e
+fn ex_addtypes(s const byte[:], out byte[>..]&) {
+	var st = 0;
+	for i in s.len + 1 {
+		if i == s.len || s[i] == ',' {
+			var w byte[>..] = [];
+			ex_lower(s[st..i], w);
+			if w.len > 0 && w != "internet" && w != "voice" {
+				if out.len > 0 { out.append(", "); }
+				out.append(w);
+			}
+			st = i + 1;
+		}
+	}
+}
+fn ex_types(params const byte[:], out byte[>..]&) {
+	out.clear();
+	var ps int[>..] = [];
+	var pe int[>..] = [];
+	ex_psplit(params, ps, pe);
+	for i in ps.len {
+		let p = params[ps[i]..pe[i]];
+		if p.len == 0 { continue; }
+		let eq = ex_eqpos(p);
+		if eq >= 0 {
+			if ex_ieq(p[..eq], "TYPE") { ex_addtypes(ex_unq(p[eq + 1..]), out); }
+		} else {
+			let skip = ex_ieq(p, "ENCODING") || ex_ieq(p, "CHARSET") || ex_ieq(p, "QUOTED-PRINTABLE") || ex_ieq(p, "BASE64") || ex_ieq(p, "8BIT") || ex_ieq(p, "UTF-8") || ex_ieq(p, "VALUE");
+			if !skip { ex_addtypes(ex_unq(p), out); }
+		}
+	}
+}
+=== 4978e85cb62247dc
+fn ex_value(params const byte[:], raw const byte[:], out byte[>..]&) {
+	var ps int[>..] = [];
+	var pe int[>..] = [];
+	ex_psplit(params, ps, pe);
+	var qp = false;
+	for i in ps.len {
+		let p = params[ps[i]..pe[i]];
+		let eq = ex_eqpos(p);
+		if eq >= 0 {
+			if ex_ieq(p[..eq], "ENCODING") && ex_ieq(ex_unq(p[eq + 1..]), "QUOTED-PRINTABLE") { qp = true; }
+		} else if ex_ieq(p, "QUOTED-PRINTABLE") {
+			qp = true;
+		}
+	}
+	if qp {
+		var tmp byte[>..] = [];
+		ex_qp(raw, tmp);
+		ex_unesc(tmp, out);
+	} else {
+		ex_unesc(raw, out);
+	}
+}
+=== 62030b72408f680b
+fn ex_flat(s const byte[:], out byte[>..]&) {
+	for c in s { out.push(if c == 10 { ' ' } else { c }); }
+}
+=== 6e51960a3deadafb
+fn ex_split(s const byte[:], sep byte, k int, out byte[>..]&) {
+	var f = 0;
+	var st = 0;
+	for i in s.len {
+		if s[i] == sep && (i == 0 || s[i - 1] != 92) {
+			if f == k { out.append(s[st..i]); return; }
+			f += 1;
+			st = i + 1;
+		}
+	}
+	if f == k { out.append(s[st..]); }
+}
+=== -3134e2035fa3246
+fn ex_digits(s const byte[:], a int, b int) bool {
+	if b > s.len { return false; }
+	for i in a..b { if s[i] < '0' || s[i] > '9' { return false; } }
+	true
+}
+fn ex_date(value const byte[:], tzid const byte[:], out byte[>..]&) {
+	let dateonly = value.len == 8 && ex_digits(value, 0, 8);
+	let dt = value.len >= 13 && ex_digits(value, 0, 8) && value[8] == 'T' && ex_digits(value, 9, 13);
+	if dateonly || dt {
+		out.append(value[..4]);
+		out.push('-');
+		out.append(value[4..6]);
+		out.push('-');
+		out.append(value[6..8]);
+		if dt {
+			out.push(' ');
+			out.append(value[9..11]);
+			out.push(':');
+			out.append(value[11..13]);
+			if value[value.len - 1] == 'Z' {
+				out.append(" UTC");
+			} else if tzid.len > 0 {
+				out.push(' ');
+				out.append(tzid);
+			}
+		}
+	} else {
+		out.append(value);
+	}
+}
+=== -3ba7344219350c81
+fn ex_who(params const byte[:], value const byte[:], out byte[>..]&) {
+	let addr = if value.len >= 7 && ex_ieq(value[..7], "mailto:") { value[7..] } else { value[0..] };
+	var name byte[>..] = [];
+	if ex_param(params, "CN", name) && name.len > 0 {
+		out.append(name);
+		out.push(' ');
+		out.push('<');
+		out.append(addr);
+		out.push('>');
+	} else {
+		out.append(addr);
+	}
+}
+=== -5f92037f2e827694
+var ex_cname byte[>..];
+var ex_csum byte[>..];
+var ex_cwhen byte[>..];
+var ex_cend byte[>..];
+var ex_cloc byte[>..];
+var ex_corg byte[>..];
+var ex_cwho byte[>..];
+var ex_cstat byte[>..];
+var ex_cdesc byte[>..];
+var ex_ckind byte[>..];
+=== 2a0dc1aa2c6e8634
+fn ex_cal_field(label const byte[:], v const byte[:]) {
+	if v.len == 0 { return; }
+	var t byte[>..] = [];
+	t.append(label);
+	ex_flat(v, t);
+	dm::dm_add(dm::DM_FIELD, 0, t);
+}
+fn ex_cal_emit() {
+	if ex_csum.len > 0 { dm::dm_add(dm::DM_HEAD, 2, ex_csum); }
+	else { dm::dm_add(dm::DM_HEAD, 2, "(untitled)"); }
+	ex_cal_field("Start: ", ex_cwhen);
+	if ex_ckind == "VTODO" { ex_cal_field("Due: ", ex_cend); }
+	else { ex_cal_field("End: ", ex_cend); }
+	ex_cal_field("Location: ", ex_cloc);
+	ex_cal_field("Organizer: ", ex_corg);
+	ex_cal_field("Attendees: ", ex_cwho);
+	ex_cal_field("Status: ", ex_cstat);
+	if ex_cdesc.len > 0 { dm::dm_add(dm::DM_PARA, 0, ex_cdesc); }
+	ex_cname.clear();
+	ex_csum.clear();
+	ex_cwhen.clear();
+	ex_cend.clear();
+	ex_cloc.clear();
+	ex_corg.clear();
+	ex_cwho.clear();
+	ex_cstat.clear();
+	ex_cdesc.clear();
+	ex_ckind.clear();
+}
+=== 11bae0ce6a9dc0d0
+fn ex_ics(data const byte[:]) bool {
+	if !ex_prep(data) { return false; }
+	var n = 0;
+	var seen = false;
+	var depth = 0;
+	var name byte[>..] = [];
+	var params byte[>..] = [];
+	var value byte[>..] = [];
+	for k in textfmt::tx_ls.len {
+		let line = textfmt::tx_line(k);
+		if !ex_prop(line, name, params, value) { continue; }
+		if name == "BEGIN" {
+			var up byte[>..] = [];
+			ex_upper(value, up);
+			if up == "VCALENDAR" {
+				seen = true;
+			} else if (up == "VEVENT" || up == "VTODO") && depth == 0 {
+				ex_cname.clear();
+				ex_csum.clear();
+				ex_cwhen.clear();
+				ex_cend.clear();
+				ex_cloc.clear();
+				ex_corg.clear();
+				ex_cwho.clear();
+				ex_cstat.clear();
+				ex_cdesc.clear();
+				ex_ckind.clear();
+				ex_ckind.append(up);
+				depth = 1;
+			} else if depth >= 1 {
+				depth += 1;
+			}
+		} else if name == "END" {
+			var up byte[>..] = [];
+			ex_upper(value, up);
+			if (up == "VEVENT" || up == "VTODO") && depth == 1 {
+				ex_cal_emit();
+				n += 1;
+				depth = 0;
+			} else if depth >= 2 {
+				depth -= 1;
+			}
+		} else if depth == 1 {
+			if name == "SUMMARY" {
+				ex_value(params, value, ex_csum);
+			} else if name == "DTSTART" {
+				var tz byte[>..] = [];
+				ex_param(params, "TZID", tz);
+				ex_date(value, tz, ex_cwhen);
+			} else if name == "DTEND" || name == "DUE" {
+				var tz byte[>..] = [];
+				ex_param(params, "TZID", tz);
+				ex_date(value, tz, ex_cend);
+			} else if name == "LOCATION" {
+				ex_value(params, value, ex_cloc);
+			} else if name == "ORGANIZER" {
+				ex_who(params, value, ex_corg);
+			} else if name == "ATTENDEE" {
+				if ex_cwho.len > 0 { ex_cwho.append(", "); }
+				ex_who(params, value, ex_cwho);
+			} else if name == "STATUS" {
+				ex_upper(value, ex_cstat);
+			} else if name == "DESCRIPTION" {
+				ex_value(params, value, ex_cdesc);
+			}
+		} else if depth == 0 && name == "X-WR-CALNAME" {
+			var t byte[>..] = [];
+			ex_value(params, value, t);
+			dm::dm_set_meta("title", t);
+		}
+	}
+	dm::dm_set_meta("events", str(n));
+	seen || n > 0
+}
+=== -1daada34cb442c1
+var ex_vfn byte[>..];
+var ex_vn byte[>..];
+var ex_vorg byte[>..];
+var ex_vf byte[>..];
+=== -20292bd13dfb6855
+fn ex_vcf_emit() {
+	if ex_vfn.len > 0 { dm::dm_add(dm::DM_HEAD, 2, ex_vfn); }
+	else if ex_vn.len > 0 { dm::dm_add(dm::DM_HEAD, 2, ex_vn); }
+	else if ex_vorg.len > 0 { dm::dm_add(dm::DM_HEAD, 2, ex_vorg); }
+	else { dm::dm_add(dm::DM_HEAD, 2, "(unnamed contact)"); }
+	for li in 8 {
+		let letter = (65 + li) as byte;
+		var st = 0;
+		for i in ex_vf.len {
+			if ex_vf[i] == 10 {
+				if i > st && ex_vf[st] == letter {
+					dm::dm_add(dm::DM_FIELD, 0, ex_vf[st + 1..i]);
+				}
+				st = i + 1;
+			}
+		}
+	}
+	ex_vfn.clear();
+	ex_vn.clear();
+	ex_vorg.clear();
+	ex_vf.clear();
+}
+=== -6dd0b4e2db9bee76
+fn ex_vadd(letter byte, label const byte[:], value const byte[:]) {
+	if value.len == 0 { return; }
+	ex_vf.push(letter);
+	ex_vf.append(label);
+	ex_flat(value, ex_vf);
+	ex_vf.push(10);
+}
+fn ex_vpart(params const byte[:], raw const byte[:], sep byte, k int, out byte[>..]&) {
+	var p byte[>..] = [];
+	ex_split(raw, sep, k, p);
+	ex_value(params, p, out);
+}
+fn ex_nparts(s const byte[:], sep byte) int {
+	var c = 1;
+	for i in s.len { if s[i] == sep && (i == 0 || s[i - 1] != 92) { c += 1; } }
+	c
+}
+fn ex_vjoin(params const byte[:], raw const byte[:], sep byte, order const int[:], joiner const byte[:], out byte[>..]&) {
+	for i in order.len {
+		var p byte[>..] = [];
+		ex_vpart(params, raw, sep, order[i], p);
+		if p.len > 0 {
+			if out.len > 0 { out.append(joiner); }
+			out.append(p);
+		}
+	}
+}
+fn ex_vtypes(params const byte[:], v byte[>..]&) {
+	var ty byte[>..] = [];
+	ex_types(params, ty);
+	if ty.len > 0 {
+		v.append(" (");
+		v.append(ty);
+		v.push(')');
+	}
+}
+fn ex_vcf(data const byte[:]) bool {
+	if !ex_prep(data) { return false; }
+	var n = 0;
+	var name byte[>..] = [];
+	var params byte[>..] = [];
+	var value byte[>..] = [];
+	for k in textfmt::tx_ls.len {
+		let line = textfmt::tx_line(k);
+		if !ex_prop(line, name, params, value) { continue; }
+		if name == "BEGIN" {
+			var up byte[>..] = [];
+			ex_upper(value, up);
+			if up == "VCARD" {
+				ex_vfn.clear();
+				ex_vn.clear();
+				ex_vorg.clear();
+				ex_vf.clear();
+			}
+		} else if name == "END" {
+			var up byte[>..] = [];
+			ex_upper(value, up);
+			if up == "VCARD" {
+				ex_vcf_emit();
+				n += 1;
+			}
+		} else if name == "FN" {
+			ex_vfn.clear();
+			ex_value(params, value, ex_vfn);
+		} else if name == "N" {
+			ex_vn.clear();
+			let ord int[5] = [3, 1, 2, 0, 4];
+			ex_vjoin(params, value, ';', ord, " ", ex_vn);
+		} else if name == "ORG" {
+			ex_vorg.clear();
+			var ord int[>..] = [];
+			for i in ex_nparts(value, ';') { ord.push(i); }
+			ex_vjoin(params, value, ';', ord, ", ", ex_vorg);
+			ex_vadd('A', "Organization: ", ex_vorg);
+		} else if name == "TITLE" {
+			var v byte[>..] = [];
+			ex_value(params, value, v);
+			ex_vadd('B', "Title: ", v);
+		} else if name == "TEL" {
+			var t byte[>..] = [];
+			ex_value(params, value, t);
+			var v byte[>..] = [];
+			if t.len >= 4 && ex_ieq(t[..4], "tel:") { v.append(t[4..]); } else { v.append(t); }
+			if v.len > 0 { ex_vtypes(params, v); }
+			ex_vadd('C', "Phone: ", v);
+		} else if name == "EMAIL" {
+			var t byte[>..] = [];
+			ex_value(params, value, t);
+			var v byte[>..] = [];
+			if t.len >= 7 && ex_ieq(t[..7], "mailto:") { v.append(t[7..]); } else { v.append(t); }
+			if v.len > 0 { ex_vtypes(params, v); }
+			ex_vadd('D', "Email: ", v);
+		} else if name == "ADR" {
+			var v byte[>..] = [];
+			let ord int[7] = [0, 1, 2, 3, 4, 5, 6];
+			ex_vjoin(params, value, ';', ord, ", ", v);
+			if v.len > 0 { ex_vtypes(params, v); }
+			ex_vadd('E', "Address: ", v);
+		} else if name == "URL" {
+			var v byte[>..] = [];
+			ex_value(params, value, v);
+			ex_vadd('F', "URL: ", v);
+		} else if name == "BDAY" {
+			var t byte[>..] = [];
+			ex_value(params, value, t);
+			var v byte[>..] = [];
+			if t.len == 8 && ex_digits(t, 0, 8) {
+				v.append(t[..4]);
+				v.push('-');
+				v.append(t[4..6]);
+				v.push('-');
+				v.append(t[6..8]);
+			} else {
+				var e = t.len;
+				for i in t.len { if t[i] == 'T' { e = i; break; } }
+				v.append(t[..e]);
+			}
+			ex_vadd('G', "Birthday: ", v);
+		} else if name == "NOTE" {
+			var v byte[>..] = [];
+			ex_value(params, value, v);
+			ex_vadd('H', "Note: ", v);
+		}
+	}
+	dm::dm_set_meta("contacts", str(n));
+	n > 0
+}
+=== 4f5f0038193284b4
+fn ex_jget(node int, key const byte[:]) int {
+	if node < 0 { return -1; }
+	if textfmt::tx_jn[node].kind != 1 { return -1; }
+	textfmt::tx_jfind(node, key)
+}
+fn ex_jtxt(node int, out byte[>..]&) {
+	if node < 0 { return; }
+	let kind = textfmt::tx_jn[node].kind;
+	if kind == 3 {
+		textfmt::tx_jtext(node, out);
+	} else if kind == 2 {
+		var c = textfmt::tx_jn[node].first;
+		while c >= 0 {
+			if textfmt::tx_jn[c].kind == 3 { textfmt::tx_jtext(c, out); }
+			c = textfmt::tx_jn[c].next;
+		}
+	}
+}
+fn ex_jstr(node int, key const byte[:], out byte[>..]&) bool {
+	let m = ex_jget(node, key);
+	if m < 0 { return false; }
+	ex_jtxt(m, out);
+	true
+}
+=== -56df3dfbdc61971b
+fn ex_out(text const byte[:]) {
+	if text.len == 0 { return; }
+	if text.len > 4000 {
+		dm::dm_warn_add("notebook output truncated at 4000 bytes");
+		dm::dm_add(dm::DM_CODE, 0, ex_cut(text, 4000));
+	} else {
+		dm::dm_add(dm::DM_CODE, 0, text);
+	}
+}
+=== -5c04f32596ee097a
+fn ex_nb_cell(cell int, v3 bool, lang byte[>..]&) {
+	var ty byte[>..] = [];
+	ex_jstr(cell, "cell_type", ty);
+	if ty == "markdown" {
+		var t byte[>..] = [];
+		ex_jstr(cell, "source", t);
+		textfmt::tx_text(t);
+	} else if ty == "heading" && v3 {
+		var t byte[>..] = [];
+		ex_jstr(cell, "source", t);
+		var lv = 1;
+		let ln = ex_jget(cell, "level");
+		if ln >= 0 && textfmt::tx_jn[ln].kind == 4 {
+			var s byte[>..] = [];
+			textfmt::tx_jtext(ln, s);
+			let x, ok = parse_int(s);
+			if ok { lv = x; }
+		}
+		lv = clamp(lv, 1, 6);
+		dm::dm_add(dm::DM_HEAD, lv, t);
+	} else if ty == "raw" {
+		var t byte[>..] = [];
+		ex_jstr(cell, "source", t);
+		dm::dm_add(dm::DM_PARA, 0, t);
+	} else if ty == "code" {
+		let ec = ex_jget(cell, if v3 { "prompt_number" } else { "execution_count" });
+		if ec >= 0 && textfmt::tx_jn[ec].kind == 4 {
+			var s byte[>..] = [];
+			s.append("In [");
+			textfmt::tx_jtext(ec, s);
+			s.push(']');
+			dm::dm_add(dm::DM_NOTE, 0, s);
+		}
+		var code byte[>..] = [];
+		ex_jstr(cell, if v3 { "input" } else { "source" }, code);
+		dm::dm_add(dm::DM_CODE, 0, code);
+		if lang.len == 0 {
+			let lm = ex_jget(cell, "language");
+			if lm >= 0 && textfmt::tx_jn[lm].kind == 3 { textfmt::tx_jtext(lm, lang); }
+		}
+		let o = ex_jget(cell, "outputs");
+		if o >= 0 && textfmt::tx_jn[o].kind == 2 {
+			var c = textfmt::tx_jn[o].first;
+			while c >= 0 {
+				var ot byte[>..] = [];
+				ex_jstr(c, "output_type", ot);
+				var tx byte[>..] = [];
+				if ot == "stream" {
+					ex_jstr(c, "text", tx);
+					ex_out(tx);
+				} else if ot == "display_data" || (v3 && ot == "pyout") || (!v3 && ot == "execute_result") {
+					if v3 { ex_jstr(c, "text", tx); } else { ex_jstr(ex_jget(c, "data"), "text/plain", tx); }
+					ex_out(tx);
+				} else if (v3 && ot == "pyerr") || (!v3 && ot == "error") {
+					ex_jstr(c, "ename", tx);
+					var ev byte[>..] = [];
+					ex_jstr(c, "evalue", ev);
+					if ev.len > 0 {
+						tx.append(": ");
+						tx.append(ev);
+					}
+					ex_out(tx);
+				}
+				c = textfmt::tx_jn[c].next;
+			}
+		}
+	}
+}
+=== 0151008e38904807
+fn ex_nb_list(arr int, v3 bool, lang byte[>..]&) int {
+	var n = 0;
+	if arr < 0 || textfmt::tx_jn[arr].kind != 2 { return 0; }
+	var c = textfmt::tx_jn[arr].first;
+	while c >= 0 {
+		ex_nb_cell(c, v3, lang);
+		n += 1;
+		c = textfmt::tx_jn[c].next;
+	}
+	n
+}
+fn ex_ipynb(data const byte[:]) bool {
+	let root = textfmt::tx_jparse(data);
+	if root < 0 || textfmt::tx_jn[root].kind != 1 { return false; }
+	let cells = ex_jget(root, "cells");
+	let ws = ex_jget(root, "worksheets");
+	if cells < 0 && ws < 0 { return false; }
+	var cl byte[>..] = [];
+	var n = 0;
+	if cells >= 0 {
+		n = ex_nb_list(cells, false, cl);
+	} else if textfmt::tx_jn[ws].kind == 2 {
+		var w = textfmt::tx_jn[ws].first;
+		while w >= 0 {
+			n += ex_nb_list(ex_jget(w, "cells"), true, cl);
+			w = textfmt::tx_jn[w].next;
+		}
+	}
+	let md = ex_jget(root, "metadata");
+	let ks = ex_jget(md, "kernelspec");
+	var ml byte[>..] = [];
+	ex_jstr(ks, "language", ml);
+	if ml.len == 0 { ex_jstr(ex_jget(md, "language_info"), "name", ml); }
+	if ml.len == 0 { ex_jstr(md, "language", ml); }
+	if ml.len == 0 { ex_jstr(ks, "name", ml); }
+	if ml.len == 0 { ml.append(cl); }
+	if ml.len > 0 { dm::dm_set_meta("language", ml); }
+	let nf = ex_jget(root, "nbformat");
+	if nf >= 0 && textfmt::tx_jn[nf].kind == 4 {
+		var t byte[>..] = [];
+		textfmt::tx_jtext(nf, t);
+		dm::dm_set_meta("nbformat", t);
+	}
+	dm::dm_set_meta("cells", str(n));
+	true
+}
+=== -6fb1e374907b9887
+fn ex_inlist(w const byte[:], list const byte[:]) bool {
+	if w.len == 0 { return false; }
+	var st = 0;
+	for i in list.len + 1 {
+		if i == list.len || list[i] == ' ' {
+			if i > st && list[st..i] == w { return true; }
+			st = i + 1;
+		}
+	}
+	false
+}
+fn ex_is_code_ext(ext const byte[:]) bool {
+	let e = if ext.len > 0 && ext[0] == '.' { ext[1..] } else { ext[0..] };
+	var l byte[>..] = [];
+	ex_lower(e, l);
+	ex_inlist(l, "py rs go js mjs cjs ts tsx jsx c h cc cpp hpp cs java kt kts swift rb php lua pl r m scala sh bash zsh fish ps1 bat sql he amni gold zig nim dart ex exs erl hs ml fs v sv vhd cmake gradle make mk dockerfile proto graphql vue svelte css scss less")
+}
+=== -797a289eaf2d10f0
+fn ex_langname(ext const byte[:], out byte[>..]&) {
+	if ex_inlist(ext, "py") { out.append("python"); }
+	else if ex_inlist(ext, "rs") { out.append("rust"); }
+	else if ex_inlist(ext, "go") { out.append("go"); }
+	else if ex_inlist(ext, "js mjs cjs jsx") { out.append("javascript"); }
+	else if ex_inlist(ext, "ts tsx") { out.append("typescript"); }
+	else if ex_inlist(ext, "c h") { out.append("c"); }
+	else if ex_inlist(ext, "cc cpp hpp") { out.append("cpp"); }
+	else if ex_inlist(ext, "cs") { out.append("csharp"); }
+	else if ex_inlist(ext, "java") { out.append("java"); }
+	else if ex_inlist(ext, "kt kts") { out.append("kotlin"); }
+	else if ex_inlist(ext, "swift") { out.append("swift"); }
+	else if ex_inlist(ext, "rb") { out.append("ruby"); }
+	else if ex_inlist(ext, "php") { out.append("php"); }
+	else if ex_inlist(ext, "lua") { out.append("lua"); }
+	else if ex_inlist(ext, "pl") { out.append("perl"); }
+	else if ex_inlist(ext, "r") { out.append("r"); }
+	else if ex_inlist(ext, "m") { out.append("objective-c"); }
+	else if ex_inlist(ext, "scala") { out.append("scala"); }
+	else if ex_inlist(ext, "sh bash zsh") { out.append("shell"); }
+	else if ex_inlist(ext, "fish") { out.append("fish"); }
+	else if ex_inlist(ext, "ps1") { out.append("powershell"); }
+	else if ex_inlist(ext, "bat") { out.append("batch"); }
+	else if ex_inlist(ext, "sql") { out.append("sql"); }
+	else if ex_inlist(ext, "he amni gold") { out.append("helium"); }
+	else if ex_inlist(ext, "zig") { out.append("zig"); }
+	else if ex_inlist(ext, "nim") { out.append("nim"); }
+	else if ex_inlist(ext, "dart") { out.append("dart"); }
+	else if ex_inlist(ext, "ex exs") { out.append("elixir"); }
+	else if ex_inlist(ext, "erl") { out.append("erlang"); }
+	else if ex_inlist(ext, "hs") { out.append("haskell"); }
+	else if ex_inlist(ext, "ml") { out.append("ocaml"); }
+	else if ex_inlist(ext, "fs") { out.append("fsharp"); }
+	else if ex_inlist(ext, "v sv vhd") { out.append("verilog"); }
+	else if ex_inlist(ext, "cmake") { out.append("cmake"); }
+	else if ex_inlist(ext, "gradle") { out.append("gradle"); }
+	else if ex_inlist(ext, "make mk") { out.append("make"); }
+	else if ex_inlist(ext, "dockerfile") { out.append("dockerfile"); }
+	else if ex_inlist(ext, "proto") { out.append("protobuf"); }
+	else if ex_inlist(ext, "graphql") { out.append("graphql"); }
+	else if ex_inlist(ext, "vue") { out.append("vue"); }
+	else if ex_inlist(ext, "svelte") { out.append("svelte"); }
+	else if ex_inlist(ext, "css scss less") { out.append("css"); }
+	else { out.append(ext); }
+}
+=== 4291e992f2c715c2
+fn ex_idc(c byte) bool {
+	(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '$'
+}
+fn ex_word(s const byte[:], at int) int {
+	var i = at;
+	while i < s.len && ex_idc(s[i]) { i += 1; }
+	i
+}
+=== 6072c654179435b7
+fn ex_skip(s const byte[:], at int) int {
+	var i = at;
+	while i < s.len && (s[i] == ' ' || s[i] == 9) { i += 1; }
+	i
+}
+=== -20da970ad99f72dd
+fn ex_sw(s const byte[:], p const byte[:]) bool {
+	if s.len < p.len { return false; }
+	for i in p.len { if s[i] != p[i] { return false; } }
+	true
+}
+fn ex_comment(line const byte[:]) bool {
+	let i = ex_skip(line, 0);
+	if i >= line.len { return true; }
+	let r = line[i..];
+	ex_sw(r, "//") || ex_sw(r, "/*") || ex_sw(r, "*") || ex_sw(r, "#") || ex_sw(r, "@") || ex_sw(r, "--") || ex_sw(r, "\"\"\"")
+}
+=== 1c19b1359b851e7c
+fn ex_isdef(line const byte[:], lang const byte[:]) bool {
+	var t = line[ex_skip(line, 0)..];
+	loop {
+		let we = ex_word(t, 0);
+		if we == 0 { break; }
+		let wd = t[..we];
+		let a = ex_skip(t, we);
+		if ex_inlist(wd, "export default async static public private protected internal final abstract open override extern unsafe inline virtual sealed partial data suspend readonly declare") {
+			t = t[a..];
+			continue;
+		}
+		if wd == "pub" {
+			var b = a;
+			if b < t.len && t[b] == '(' {
+				while b < t.len && t[b] != ')' { b += 1; }
+				if b < t.len { b += 1; }
+				b = ex_skip(t, b);
+			}
+			t = t[b..];
+			continue;
+		}
+		if wd == "const" {
+			let ne = ex_word(t, a);
+			let nw = t[a..ne];
+			if nw == "fn" || nw == "function" || nw == "async" {
+				t = t[a..];
+				continue;
+			}
+		}
+		break;
+	}
+	let we = ex_word(t, 0);
+	let w = t[..we];
+	if ex_inlist(w, "def class fn struct enum impl trait mod func type function interface namespace object protocol extension record module union fun sub proc typedef") && we < t.len {
+		let c = t[we];
+		if c == '<' { return true; }
+		if c == ' ' || c == 9 {
+			let j = ex_skip(t, we);
+			if j < t.len {
+				let d = t[j];
+				if (d >= 'a' && d <= 'z') || (d >= 'A' && d <= 'Z') || d == '_' || d == '$' || d == '*' { return true; }
+				if d == '(' && (w == "func" || w == "function") { return true; }
+			}
+		}
+	}
+	if ex_inlist(w, "const let var") {
+		if ex_has(t, "=>") { return true; }
+		var eq = -1;
+		for i in t.len { if t[i] == '=' { eq = i; break; } }
+		if eq >= 0 && ex_has(t[eq..], "function") { return true; }
+	}
+	if we > 0 {
+		let j = ex_skip(t, we);
+		if j + 1 < t.len && t[j] == '(' && t[j + 1] == ')' {
+			let k = ex_skip(t, j + 2);
+			if k >= t.len || t[k] == '{' { return true; }
+		}
+	}
+	if ex_inlist(lang, "c h cc cpp hpp cs java kt kts swift") {
+		var p = -1;
+		for i in t.len { if t[i] == '(' { p = i; break; } }
+		if p > 0 {
+			var eqf = false;
+			for i in p { if t[i] == '=' { eqf = true; } }
+			let last = t[t.len - 1];
+			if !eqf && t[0] != '#' && !ex_inlist(w, "if for while switch return else do catch try new throw case using sizeof delete") && last != ';' && last != ',' {
+				var i = 0;
+				var cnt = 0;
+				var fu = false;
+				while i < p {
+					if ex_idc(t[i]) {
+						if cnt == 0 { fu = t[i] >= 'A' && t[i] <= 'Z'; }
+						cnt += 1;
+						i = ex_word(t, i);
+					} else {
+						i += 1;
+					}
+				}
+				if cnt >= 2 || (cnt == 1 && fu) { return true; }
+			}
+		}
+	}
+	false
+}
+=== 178fc7eace1b6e60
+fn ex_head(a int, b int, lang const byte[:]) int {
+	let lim = min(b, a + 10);
+	for k in a..lim {
+		let line = textfmt::tx_line(k);
+		if ex_comment(line) { continue; }
+		if ex_isdef(line, lang) { return k; }
+		return -1;
+	}
+	-1
+}
+=== 3812d2d39bb9d3d9
+fn ex_top(k int) bool {
+	let line = textfmt::tx_line(k);
+	!textfmt::tx_blank(line) && line[0] != ' ' && line[0] != 9
+}
+fn ex_bound(k int) bool {
+	k > 0 && textfmt::tx_blank(textfmt::tx_line(k - 1)) && ex_top(k)
+}
+=== 771b257ec53af8d7
+fn ex_split_at(start int, n int, lang const byte[:]) int {
+	var soft = -1;
+	var blank = -1;
+	for k in start + 1..start + 61 {
+		if k == n { return n; }
+		if ex_bound(k) {
+			if ex_head(k, min(k + 10, n), lang) != -1 { return k; }
+			soft = k;
+		}
+		if textfmt::tx_blank(textfmt::tx_line(k - 1)) { blank = k; }
+	}
+	if soft >= 0 { return soft; }
+	if blank >= 0 { return blank; }
+	min(start + 60, n)
+}
+=== -0102e66e3900f1e
+fn ex_code(data const byte[:], lang const byte[:]) bool {
+	let l = if lang.len > 0 && lang[0] == '.' { lang[1..] } else { lang[0..] };
+	var ext byte[>..] = [];
+	ex_lower(l, ext);
+	textfmt::tx_norm(data, textfmt::tx_src);
+	if textfmt::tx_binary(textfmt::tx_src) { return false; }
+	textfmt::tx_lines();
+	let n = textfmt::tx_ls.len;
+	var ln byte[>..] = [];
+	ex_langname(ext, ln);
+	dm::dm_set_meta("language", ln);
+	dm::dm_set_meta("lines", str(n));
+	var start = 0;
+	while start < n {
+		let e = ex_split_at(start, n, ext);
+		var any = false;
+		for k in start..e { if !textfmt::tx_blank(textfmt::tx_line(k)) { any = true; } }
+		if any {
+			dm::dm_page(start + 1, "");
+			let h = ex_head(start, e, ext);
+			if h >= 0 {
+				let line = textfmt::tx_line(h);
+				var a = 0;
+				var b = line.len;
+				while a < b && (line[a] == ' ' || line[a] == 9) { a += 1; }
+				while b > a && (line[b - 1] == ' ' || line[b - 1] == 9) { b -= 1; }
+				if b > a && line[b - 1] == '{' {
+					b -= 1;
+					while b > a && (line[b - 1] == ' ' || line[b - 1] == 9) { b -= 1; }
+				}
+				dm::dm_add(dm::DM_HEAD, 3, ex_cut(line[a..b], 120));
+			}
+			dm::dm_add(dm::DM_CODE, 0, textfmt::tx_src[textfmt::tx_ls[start]..textfmt::tx_le[e - 1]]);
+		}
+		start = e;
+	}
+	true
+}

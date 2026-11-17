@@ -1,0 +1,169 @@
+import os;
+import zip;
+fn le(out byte[>..]&, v int, n int) {
+	for i in n { out.push(((v >> (8 * i)) & 255) as byte); }
+}
+fn local(out byte[>..]&, name const byte[:], body const byte[:], usize int, flags int, method int) int {
+	let at = out.len;
+	le(out, 0x04034b50, 4);
+	le(out, 20, 2);
+	le(out, flags, 2);
+	le(out, method, 2);
+	le(out, 0, 2);
+	le(out, 0, 2);
+	le(out, 0, 4);
+	le(out, body.len, 4);
+	le(out, usize, 4);
+	le(out, name.len, 2);
+	le(out, 0, 2);
+	out.append(name);
+	out.append(body);
+	at
+}
+fn central(out byte[>..]&, name const byte[:], body const byte[:], usize int, flags int, method int, lho int, extra const byte[:]) {
+	le(out, 0x02014b50, 4);
+	le(out, 20, 2);
+	le(out, 20, 2);
+	le(out, flags, 2);
+	le(out, method, 2);
+	le(out, 0, 2);
+	le(out, 0, 2);
+	le(out, 0, 4);
+	le(out, body.len, 4);
+	le(out, usize, 4);
+	le(out, name.len, 2);
+	le(out, extra.len, 2);
+	le(out, 0, 2);
+	le(out, 0, 2);
+	le(out, 0, 2);
+	le(out, 0, 4);
+	le(out, if extra.len > 0 { 4294967295 } else { lho }, 4);
+	out.append(name);
+	out.append(extra);
+}
+fn eocd(out byte[>..]&, count int, size int, off int, comment const byte[:]) {
+	le(out, 0x06054b50, 4);
+	le(out, 0, 2);
+	le(out, 0, 2);
+	le(out, count, 2);
+	le(out, count, 2);
+	le(out, size, 4);
+	le(out, off, 4);
+	le(out, comment.len, 2);
+	out.append(comment);
+}
+fn mkzip(out byte[>..]&, cd bool, comment const byte[:], flags int) {
+	out.clear();
+	let a = local(out, "a.txt", "hello", 5, flags, 0);
+	let b = local(out, "dir/b.txt", "world!", 6, flags, 0);
+	if cd {
+		let start = out.len;
+		central(out, "a.txt", "hello", 5, flags, 0, a, "");
+		central(out, "dir/b.txt", "world!", 6, flags, 0, b, "");
+		let size = out.len - start;
+		eocd(out, 2, size, start, comment);
+	}
+}
+fn rd(h int, i int) byte[>..] {
+	var o byte[>..] = [];
+	let ok = zip::zp_read(h, i, o);
+	if !ok { o.clear(); }
+	o
+}
+fn main() {
+	var z byte[>..] = [];
+	mkzip(z, true, "cmt", 0);
+	var h = zip::zp_open(z);
+	print("t1 ", zip::zp_count(h), " ", zip::zp_name(h, 0), " ", zip::zp_size(h, 0), " ", zip::zp_name(h, 1), " ", zip::zp_size(h, 1));
+	print("t1 read ", rd(h, 0), " ", rd(h, 1));
+	var nm byte[>..] = [];
+	nm.append("dir");
+	nm.push(92);
+	nm.append("b.txt");
+	print("t1 find ", zip::zp_find(h, "a.txt"), " ", zip::zp_find(h, "A.TXT"), " ", zip::zp_find(h, "/dir/b.txt"), " ", zip::zp_find(h, "./DIR/B.TXT"), " ", zip::zp_find(h, nm), " ", zip::zp_find(h, "nope"));
+	zip::zp_close(h);
+	mkzip(z, false, "", 0);
+	h = zip::zp_open(z);
+	print("t2 ", zip::zp_count(h), " ", rd(h, 0), " ", rd(h, 1));
+	zip::zp_close(h);
+	mkzip(z, true, "", 0);
+	var p byte[>..] = [];
+	for i in 100 { p.push('x'); }
+	p.append(z);
+	h = zip::zp_open(p);
+	print("t3 ", zip::zp_count(h), " ", rd(h, 0), " ", rd(h, 1));
+	zip::zp_close(h);
+	mkzip(z, true, "", 1);
+	h = zip::zp_open(z);
+	var t4 byte[>..] = [];
+	let ok4 = zip::zp_read(h, 0, t4);
+	print("t4 ", if ok4 { 0 } else { 1 }, " ", if zip::zp_encrypted(h, 0) { 1 } else { 0 });
+	zip::zp_close(h);
+	var body byte[>..] = [];
+	body.push(1);
+	body.push(5);
+	body.push(0);
+	body.push(250);
+	body.push(255);
+	body.append("hello");
+	var q byte[>..] = [];
+	let qlho = local(q, "d.bin", body, 5, 0, 8);
+	let qstart = q.len;
+	central(q, "d.bin", body, 5, 0, 8, qlho, "");
+	let qsize = q.len - qstart;
+	eocd(q, 1, qsize, qstart, "");
+	h = zip::zp_open(q);
+	print("t5 ", rd(h, 0));
+	zip::zp_close(h);
+	var r byte[>..] = [];
+	let rlho = local(r, "e.txt", "hello", 5, 0, 0);
+	var x byte[>..] = [];
+	le(x, 1, 2);
+	le(x, 8, 2);
+	le(x, rlho, 8);
+	let rstart = r.len;
+	central(r, "e.txt", "hello", 5, 0, 0, 0, x);
+	let rsize = r.len - rstart;
+	let z64 = r.len;
+	le(r, 0x06064b50, 4);
+	le(r, 44, 8);
+	le(r, 45, 2);
+	le(r, 45, 2);
+	le(r, 0, 4);
+	le(r, 0, 4);
+	le(r, 1, 8);
+	le(r, 1, 8);
+	le(r, rsize, 8);
+	le(r, rstart, 8);
+	le(r, 0x07064b50, 4);
+	le(r, 0, 4);
+	le(r, z64, 8);
+	le(r, 1, 4);
+	eocd(r, 65535, 4294967295, 4294967295, "");
+	h = zip::zp_open(r);
+	print("t6 ", zip::zp_count(h), " ", rd(h, 0));
+	zip::zp_close(h);
+	mkzip(z, true, "", 0);
+	var y byte[>..] = [];
+	let ylho = local(y, "b.txt", "second", 6, 0, 0);
+	let ystart = y.len;
+	central(y, "b.txt", "second", 6, 0, 0, ylho, "");
+	let ysize = y.len - ystart;
+	eocd(y, 1, ysize, ystart, "");
+	let ha = zip::zp_open(z);
+	let hb = zip::zp_open(y);
+	print("t7 ", ha, " ", hb, " ", rd(ha, 0), " ", rd(hb, 0));
+	zip::zp_close(ha);
+	print("t7 ", zip::zp_count(ha), " ", rd(hb, 0));
+	zip::zp_close(hb);
+	let hc = zip::zp_open(z);
+	print("t7 ", hc);
+	zip::zp_close(hc);
+	print("t8 ", zip::zp_open("this is not a zip archive at all, sorry"));
+	var e byte[>..] = [];
+	eocd(e, 0, 0, 0, "");
+	h = zip::zp_open(e);
+	print("t9 ", h, " ", zip::zp_count(h));
+	zip::zp_close(h);
+	print("t10 ", zip::zp_count(7), " ", zip::zp_find(7, "a"));
+}

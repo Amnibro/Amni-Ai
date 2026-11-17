@@ -1,0 +1,848 @@
+import dm;
+import gfx.zlib;
+namespace pack;
+var pk_cap = 268435456;
+var pk_capped = false;
+fn pk_over() bool {
+	pk_capped = true;
+	dm::dm_warn_add("decompressed data passes the limit of 256 MiB");
+	false
+}
+fn pk_le(s const byte[:], p int, n int) int {
+	if p < 0 || p + n > s.len { return -1; }
+	var v = 0;
+	for i in n { v = v | ((s[p + i] as int) << (8 * i)); }
+	v
+}
+var pk_crc_t int[>..];
+var pk_crc_b int[>..];
+fn pk_crc_init() {
+	if pk_crc_t.len > 0 { return; }
+	for n in 256 {
+		var c = n;
+		for k in 8 {
+			if (c & 1) != 0 { c = 0xEDB88320 ^ (c >> 1); } else { c = c >> 1; }
+		}
+		pk_crc_t.push(c);
+		var d = n << 24;
+		for k in 8 {
+			if (d & 0x80000000) != 0 { d = ((d << 1) ^ 0x04C11DB7) & 0xFFFFFFFF; } else { d = (d << 1) & 0xFFFFFFFF; }
+		}
+		pk_crc_b.push(d);
+	}
+}
+fn pk_crc32(s const byte[:], crc int) int {
+	pk_crc_init();
+	var c = crc ^ 0xFFFFFFFF;
+	for b in s { c = pk_crc_t[(c ^ (b as int)) & 255] ^ (c >> 8); }
+	c ^ 0xFFFFFFFF
+}
+fn pk_bzcrc(s const byte[:], crc int) int {
+	pk_crc_init();
+	var c = crc;
+	for b in s { c = ((c << 8) & 0xFFFFFFFF) ^ pk_crc_b[((c >> 24) ^ (b as int)) & 255]; }
+	c
+}
+var pk_pos = 0;
+var pk_acc = 0;
+var pk_have = 0;
+var pk_bad = false;
+fn pk_ifill(src const byte[:]) {
+	while pk_have <= 48 {
+		if pk_pos < src.len {
+			pk_acc += (src[pk_pos] as int) << pk_have;
+		} else if pk_pos >= src.len + 8 {
+			pk_bad = true;
+			break;
+		}
+		pk_pos += 1;
+		pk_have += 8;
+	}
+}
+fn pk_take(src const byte[:], n int) int {
+	if n == 0 || pk_bad { return 0; }
+	if pk_have < n {
+		pk_ifill(src);
+		if pk_bad { return 0; }
+	}
+	let v = pk_acc & ((1 << n) - 1);
+	pk_acc = pk_acc >> n;
+	pk_have -= n;
+	v
+}
+fn pk_isym(src const byte[:], c zlib::Code&) int {
+	if pk_have < 16 { pk_ifill(src); }
+	let e = c.fast[pk_acc & 511] as int;
+	if e != 0 {
+		let cl = e & 15;
+		pk_acc = pk_acc >> cl;
+		pk_have -= cl;
+		return e >> 4;
+	}
+	var code = 0;
+	var first = 0;
+	var index = 0;
+	for l in 1..16 {
+		code = code | pk_take(src, 1);
+		let n = c.count[l] as int;
+		if code - first < n { return c.symbol[index + code - first] as int; }
+		index += n;
+		first = (first + n) << 1;
+		code = code << 1;
+	}
+	pk_bad = true;
+	-1
+}
+fn pk_inflate(src const byte[:], start int, out byte[>..]&, endp int&) bool {
+	let base = out.len;
+	pk_pos = start;
+	pk_acc = 0;
+	pk_have = 0;
+	pk_bad = false;
+	var lens i32[320] = [0; 320];
+	var last = 0;
+	while last == 0 {
+		last = pk_take(src, 1);
+		let kind = pk_take(src, 2);
+		if pk_bad { return false; }
+		var lit = zlib::empty_code();
+		var dist = zlib::empty_code();
+		if kind == 0 {
+			let drop = pk_have % 8;
+			pk_acc = pk_acc >> drop;
+			pk_have -= drop;
+			let n = pk_take(src, 16);
+			let nn = pk_take(src, 16);
+			if pk_bad { return false; }
+			if nn != (n ^ 0xFFFF) { return false; }
+			if out.len + n > pk_cap { return pk_over(); }
+			for k in n {
+				out.push(pk_take(src, 8) as byte);
+				if pk_bad { return false; }
+			}
+		} else if kind == 3 {
+			return false;
+		} else {
+			if kind == 1 {
+				for i in 288 {
+					lens[i] = if i < 144 { 8 } else if i < 256 { 9 } else if i < 280 { 7 } else { 8 };
+				}
+				if !zlib::build(lit, lens[..288]) { return false; }
+				for i in 30 { lens[i] = 5; }
+				if !zlib::build(dist, lens[..30]) { return false; }
+			} else {
+				let nlit = pk_take(src, 5) + 257;
+				let ndist = pk_take(src, 5) + 1;
+				let ncl = pk_take(src, 4) + 4;
+				var cl i32[19] = [0; 19];
+				for i in ncl { cl[zlib::CL_ORDER[i]] = pk_take(src, 3) as i32; }
+				if pk_bad { return false; }
+				var clc = zlib::empty_code();
+				if !zlib::build(clc, cl[..]) { return false; }
+				let total = nlit + ndist;
+				var i = 0;
+				while i < total {
+					let s = pk_isym(src, clc);
+					if s < 0 || pk_bad { return false; }
+					if s < 16 {
+						lens[i] = s as i32;
+						i += 1;
+					} else {
+						var rep = 0;
+						var val i32 = 0;
+						if s == 16 {
+							if i == 0 { return false; }
+							val = lens[i - 1];
+							rep = 3 + pk_take(src, 2);
+						} else if s == 17 {
+							rep = 3 + pk_take(src, 3);
+						} else {
+							rep = 11 + pk_take(src, 7);
+						}
+						if i + rep > total { return false; }
+						for k in rep {
+							lens[i] = val;
+							i += 1;
+						}
+					}
+				}
+				if nlit > 286 || ndist > 30 { return false; }
+				if !zlib::build(lit, lens[..nlit]) { return false; }
+				var dl i32[32] = [0; 32];
+				for j in ndist { dl[j] = lens[nlit + j]; }
+				if !zlib::build(dist, dl[..ndist]) { return false; }
+			}
+			var done = false;
+			while !done {
+				let s = pk_isym(src, lit);
+				if pk_bad || s < 0 { return false; }
+				if s < 256 {
+					if out.len >= pk_cap { return pk_over(); }
+					out.push(s as byte);
+				} else if s == 256 {
+					done = true;
+				} else {
+					let li = s - 257;
+					if li >= 29 { return false; }
+					let length = (zlib::LEN_BASE[li] as int) + pk_take(src, zlib::LEN_EXTRA[li] as int);
+					let ds = pk_isym(src, dist);
+					if ds < 0 || ds >= 30 { return false; }
+					let d = (zlib::DIST_BASE[ds] as int) + pk_take(src, zlib::DIST_EXTRA[ds] as int);
+					if d > out.len - base { return false; }
+					if out.len + length > pk_cap { return pk_over(); }
+					for k in length {
+						let b = out[out.len - d];
+						out.push(b);
+					}
+				}
+			}
+		}
+		if pk_bad { return false; }
+	}
+	endp = pk_pos - pk_have / 8;
+	endp <= src.len
+}
+var pk_gzn byte[>..];
+fn pk_gz_name() const byte[:] { pk_gzn[..] }
+fn pk_is_gz(d const byte[:]) bool {
+	d.len >= 18 && d[0] == 0x1F && d[1] == 0x8B && d[2] == 8
+}
+fn pk_is_bz2(d const byte[:]) bool {
+	if d.len < 14 { return false; }
+	if d[0] != 0x42 || d[1] != 0x5A || d[2] != 0x68 { return false; }
+	if d[3] < 0x31 || d[3] > 0x39 { return false; }
+	let a = d[4] == 0x31 && d[5] == 0x41 && d[6] == 0x59 && d[7] == 0x26 && d[8] == 0x53 && d[9] == 0x59;
+	let b = d[4] == 0x17 && d[5] == 0x72 && d[6] == 0x45 && d[7] == 0x38 && d[8] == 0x50 && d[9] == 0x90;
+	a || b
+}
+fn pk_gzfail(out byte[>..]&, msg const byte[:]) bool {
+	out.clear();
+	if !pk_capped { dm::dm_warn_add(msg); }
+	false
+}
+fn pk_gunzip(data const byte[:], out byte[>..]&) bool {
+	out.clear();
+	pk_gzn.clear();
+	pk_capped = false;
+	if !pk_is_gz(data) {
+		dm::dm_warn_add("gzip: not a gzip file");
+		return false;
+	}
+	var p = 0;
+	var members = 0;
+	while p < data.len {
+		if p + 10 > data.len { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+		if data[p] != 0x1F || data[p + 1] != 0x8B || data[p + 2] != 8 { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+		let flags = data[p + 3] as int;
+		if (flags & 0xE0) != 0 { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+		var q = p + 10;
+		if (flags & 4) != 0 {
+			let xl = pk_le(data, q, 2);
+			if xl < 0 || q + 2 + xl > data.len { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+			q += 2 + xl;
+		}
+		if (flags & 8) != 0 {
+			var e = q;
+			while e < data.len && data[e] != 0 { e += 1; }
+			if e >= data.len { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+			if members == 0 {
+				var conv byte[>..] = [];
+				dm::dm_to_utf8(data[q..e], conv);
+				pk_gzn.append(conv);
+			}
+			q = e + 1;
+		}
+		if (flags & 16) != 0 {
+			var e = q;
+			while e < data.len && data[e] != 0 { e += 1; }
+			if e >= data.len { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+			q = e + 1;
+		}
+		if (flags & 2) != 0 {
+			let hc = pk_le(data, q, 2);
+			if hc < 0 || hc != (pk_crc32(data[p..q], 0) & 0xFFFF) { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+			q += 2;
+		}
+		let start = out.len;
+		var endp = 0;
+		if !pk_inflate(data, q, out, endp) { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+		let crc = pk_le(data, endp, 4);
+		let isz = pk_le(data, endp + 4, 4);
+		if crc < 0 || isz < 0 { return pk_gzfail(out, "gzip: corrupt or truncated data"); }
+		if pk_crc32(out[start..], 0) != crc { return pk_gzfail(out, "gzip: CRC mismatch"); }
+		if ((out.len - start) & 0xFFFFFFFF) != isz { return pk_gzfail(out, "gzip: length mismatch"); }
+		members += 1;
+		p = endp + 8;
+		if p < data.len {
+			if p + 1 < data.len && data[p] == 0x1F && data[p + 1] == 0x8B { continue; }
+			var allz = true;
+			for i in p..data.len { if data[i] != 0 { allz = false; } }
+			if !allz { dm::dm_warn_add("gzip: trailing bytes ignored"); }
+			break;
+		}
+	}
+	members > 0
+}
+var pk_bacc = 0;
+var pk_bhave = 0;
+var pk_bpos = 0;
+var pk_bbad = false;
+fn pk_bbits(src const byte[:], n int) int {
+	if pk_bbad { return 0; }
+	while pk_bhave < n && pk_bhave <= 48 {
+		if pk_bpos >= src.len {
+			pk_bbad = true;
+			return 0;
+		}
+		pk_bacc = (pk_bacc << 8) | (src[pk_bpos] as int);
+		pk_bpos += 1;
+		pk_bhave += 8;
+	}
+	let v = (pk_bacc >> (pk_bhave - n)) & ((1 << n) - 1);
+	pk_bhave -= n;
+	pk_bacc = pk_bacc & ((1 << pk_bhave) - 1);
+	v
+}
+var pk_tt int[>..];
+var pk_unz int[>..];
+var pk_mtf int[>..];
+var pk_bmap int[>..];
+var pk_bsel int[>..];
+var pk_hlen int[>..];
+var pk_hcnt int[>..];
+var pk_hsym int[>..];
+fn pk_hinit() {
+	if pk_hcnt.len == 0 { for i in 126 { pk_hcnt.push(0); } }
+	if pk_hsym.len == 0 { for i in 1548 { pk_hsym.push(0); } }
+}
+fn pk_bzmap(src const byte[:]) int {
+	let used = pk_bbits(src, 16);
+	pk_bmap.clear();
+	if pk_bbad { return 0; }
+	for i in 16 {
+		if (used & (0x8000 >> i)) != 0 {
+			let m = pk_bbits(src, 16);
+			for j in 16 {
+				if (m & (0x8000 >> j)) != 0 { pk_bmap.push(i * 16 + j); }
+			}
+		}
+	}
+	if pk_bbad {
+		pk_bmap.clear();
+		return 0;
+	}
+	pk_bmap.len
+}
+fn pk_bzsel(src const byte[:], ngroups int) int {
+	let count = pk_bbits(src, 15);
+	if count == 0 || pk_bbad { return -1; }
+	var list int[6] = [0, 1, 2, 3, 4, 5];
+	pk_bsel.clear();
+	for i in count {
+		var k = 0;
+		while pk_bbits(src, 1) != 0 {
+			k += 1;
+			if k >= ngroups { return -1; }
+		}
+		if pk_bbad { return -1; }
+		let v = list[k];
+		var j = k;
+		while j > 0 {
+			list[j] = list[j - 1];
+			j -= 1;
+		}
+		list[0] = v;
+		pk_bsel.push(v);
+	}
+	pk_bsel.len
+}
+fn pk_bztab(src const byte[:], t int, asize int) bool {
+	pk_hinit();
+	var cl = pk_bbits(src, 5);
+	pk_hlen.clear();
+	for s in asize {
+		while true {
+			if cl < 1 || cl > 20 { return false; }
+			if pk_bbits(src, 1) == 0 { break; }
+			if pk_bbits(src, 1) == 0 { cl += 1; } else { cl -= 1; }
+		}
+		pk_hlen.push(cl);
+		if pk_bbad { return false; }
+	}
+	for l in 21 { pk_hcnt[t * 21 + l] = 0; }
+	for x in pk_hlen { pk_hcnt[t * 21 + x] += 1; }
+	var left = 1;
+	for l in 1..21 {
+		left = left * 2 - pk_hcnt[t * 21 + l];
+		if left < 0 { return false; }
+	}
+	var offs int[22] = [0; 22];
+	for l in 1..21 { offs[l + 1] = offs[l] + pk_hcnt[t * 21 + l]; }
+	for s in asize {
+		let l = pk_hlen[s];
+		pk_hsym[t * 258 + offs[l]] = s;
+		offs[l] += 1;
+	}
+	!pk_bbad
+}
+fn pk_bzdec(src const byte[:], t int) int {
+	var code = 0;
+	var first = 0;
+	var index = 0;
+	for l in 1..21 {
+		code = code | pk_bbits(src, 1);
+		if pk_bbad { return -1; }
+		let count = pk_hcnt[t * 21 + l];
+		if code - count < first { return pk_hsym[t * 258 + index + (code - first)]; }
+		index += count;
+		first += count;
+		first = first << 1;
+		code = code << 1;
+	}
+	-1
+}
+fn pk_bzdata(src const byte[:], ngroups int, nsel int, nin int, bsize int) int {
+	while pk_tt.len < bsize { pk_tt.push(0); }
+	pk_unz.clear();
+	for i in 256 { pk_unz.push(0); }
+	pk_mtf.clear();
+	for i in nin { pk_mtf.push(i); }
+	var n = 0;
+	var run = 0;
+	var weight = 1;
+	var gsel = 0;
+	var left = 0;
+	var tab = 0;
+	while true {
+		if left == 0 {
+			if gsel >= nsel { return -1; }
+			tab = pk_bsel[gsel];
+			gsel += 1;
+			left = 50;
+		}
+		left -= 1;
+		let s = pk_bzdec(src, tab);
+		if s < 0 || pk_bbad { return -1; }
+		if s <= 1 {
+			if s == 0 { run += weight; } else { run += 2 * weight; }
+			weight = weight * 2;
+			if weight >= 2097152 { return -1; }
+			continue;
+		}
+		if run > 0 {
+			if n + run > bsize { return -1; }
+			let rb = pk_bmap[pk_mtf[0]];
+			for k in run {
+				pk_tt[n] = rb;
+				n += 1;
+			}
+			pk_unz[rb] += run;
+			run = 0;
+			weight = 1;
+		}
+		if s == nin + 1 { break; }
+		let idx = s - 1;
+		if idx >= nin { return -1; }
+		let v = pk_mtf[idx];
+		var j = idx;
+		while j > 0 {
+			pk_mtf[j] = pk_mtf[j - 1];
+			j -= 1;
+		}
+		pk_mtf[0] = v;
+		if n >= bsize { return -1; }
+		let b = pk_bmap[v];
+		pk_tt[n] = b;
+		n += 1;
+		pk_unz[b] += 1;
+	}
+	if pk_bbad { return -1; }
+	n
+}
+fn pk_bzout(nblock int, orig int, out byte[>..]&) bool {
+	var start int[256] = [0; 256];
+	var sum = 0;
+	for b in 256 {
+		start[b] = sum;
+		sum += pk_unz[b];
+	}
+	for i in nblock {
+		let u = pk_tt[i] & 255;
+		pk_tt[start[u]] = pk_tt[start[u]] | (i << 8);
+		start[u] += 1;
+	}
+	var tpos = pk_tt[orig] >> 8;
+	var run = 0;
+	var last = -1;
+	for i in nblock {
+		tpos = pk_tt[tpos];
+		let b = tpos & 255;
+		tpos = tpos >> 8;
+		if run == 4 {
+			if out.len + b > pk_cap { return pk_over(); }
+			for k in b { out.push(last as byte); }
+			run = 0;
+			last = -1;
+		} else {
+			if b == last { run += 1; } else {
+				last = b;
+				run = 1;
+			}
+			if out.len >= pk_cap { return pk_over(); }
+			out.push(b as byte);
+		}
+	}
+	true
+}
+var pk_bzwarned = false;
+fn pk_bzblock(src const byte[:], out byte[>..]&, bsize int, crc int&) bool {
+	let hi = pk_bbits(src, 16);
+	let lo = pk_bbits(src, 16);
+	let stored = (hi << 16) | lo;
+	if pk_bbits(src, 1) != 0 {
+		pk_bzwarned = true;
+		dm::dm_warn_add("bzip2: randomised blocks are not supported");
+		return false;
+	}
+	let orig = pk_bbits(src, 24);
+	let nin = pk_bzmap(src);
+	if nin == 0 { return false; }
+	let ngroups = pk_bbits(src, 3);
+	if ngroups < 2 || ngroups > 6 { return false; }
+	let nsel = pk_bzsel(src, ngroups);
+	if nsel < 0 { return false; }
+	for t in ngroups {
+		if !pk_bztab(src, t, nin + 2) { return false; }
+	}
+	let nblock = pk_bzdata(src, ngroups, nsel, nin, bsize);
+	if nblock <= 0 || orig >= nblock { return false; }
+	let before = out.len;
+	if !pk_bzout(nblock, orig, out) { return false; }
+	let bc = pk_bzcrc(out[before..], 0xFFFFFFFF) ^ 0xFFFFFFFF;
+	if bc != stored {
+		pk_bzwarned = true;
+		dm::dm_warn_add("bzip2: CRC mismatch");
+		return false;
+	}
+	crc = (((crc << 1) | (crc >> 31)) & 0xFFFFFFFF) ^ bc;
+	true
+}
+fn pk_bzstream(src const byte[:], p int, out byte[>..]&, endp int&) bool {
+	pk_bpos = p;
+	pk_bhave = 0;
+	pk_bacc = 0;
+	pk_bbad = false;
+	if pk_bbits(src, 8) != 0x42 { return false; }
+	if pk_bbits(src, 8) != 0x5A { return false; }
+	if pk_bbits(src, 8) != 0x68 { return false; }
+	let digit = pk_bbits(src, 8) - 0x30;
+	if pk_bbad || digit < 1 || digit > 9 { return false; }
+	let bsize = digit * 100000;
+	var combined = 0;
+	while true {
+		let m1 = pk_bbits(src, 24);
+		let m2 = pk_bbits(src, 24);
+		if pk_bbad { return false; }
+		if m1 == 0x314159 && m2 == 0x265359 {
+			if !pk_bzblock(src, out, bsize, combined) { return false; }
+		} else if m1 == 0x177245 && m2 == 0x385090 {
+			let hi = pk_bbits(src, 16);
+			let lo = pk_bbits(src, 16);
+			if pk_bbad { return false; }
+			let stored = (hi << 16) | lo;
+			if stored != combined {
+				pk_bzwarned = true;
+				dm::dm_warn_add("bzip2: CRC mismatch");
+				return false;
+			}
+			endp = pk_bpos - pk_bhave / 8;
+			return true;
+		} else {
+			return false;
+		}
+		if pk_bbad { return false; }
+	}
+	false
+}
+fn pk_bunzip(data const byte[:], out byte[>..]&) bool {
+	out.clear();
+	pk_capped = false;
+	pk_bzwarned = false;
+	if !pk_is_bz2(data) {
+		dm::dm_warn_add("bzip2: not a bzip2 stream");
+		return false;
+	}
+	var p = 0;
+	var streams = 0;
+	while p < data.len {
+		var endp = 0;
+		if !pk_bzstream(data, p, out, endp) {
+			out.clear();
+			if !pk_capped && !pk_bzwarned { dm::dm_warn_add("bzip2: corrupt or truncated data"); }
+			return false;
+		}
+		streams += 1;
+		p = endp;
+		if p >= data.len { break; }
+		if data.len - p >= 4 && data[p] == 0x42 && data[p + 1] == 0x5A && data[p + 2] == 0x68 && data[p + 3] >= 0x31 && data[p + 3] <= 0x39 { continue; }
+		var allz = true;
+		for i in p..data.len { if data[i] != 0 { allz = false; } }
+		if !allz { dm::dm_warn_add("bzip2: trailing bytes ignored"); }
+		break;
+	}
+	streams > 0
+}
+struct PkTar { base int, len int, first int, nbase int, cnt int, live bool }
+struct PkTEnt { nat int, nlen int, size int, doff int, kind int }
+var pk_tdata byte[>..];
+var pk_tnames byte[>..];
+var pk_tars PkTar[>..];
+var pk_tents PkTEnt[>..];
+fn pk_oct(s const byte[:]) int {
+	if s.len == 0 { return 0; }
+	if s[0] >= 128 {
+		if (s[0] & 64) != 0 { return -1; }
+		var v = (s[0] as int) & 127;
+		for i in 1..s.len {
+			if v > 281474976710656 { return -1; }
+			v = (v << 8) | (s[i] as int);
+		}
+		if v > 281474976710656 { return -1; }
+		return v;
+	}
+	var i = 0;
+	while i < s.len && (s[i] == 32 || s[i] == 0) { i += 1; }
+	var v = 0;
+	while i < s.len && s[i] != 32 && s[i] != 0 {
+		if s[i] < 0x30 || s[i] > 0x37 { return -1; }
+		v = v * 8 + ((s[i] as int) - 0x30);
+		i += 1;
+	}
+	v
+}
+fn pk_zero(d const byte[:], p int) bool {
+	if p < 0 || p + 512 > d.len { return false; }
+	for i in 512 { if d[p + i] != 0 { return false; } }
+	true
+}
+fn pk_hdr(d const byte[:], p int) bool {
+	if p < 0 || p + 512 > d.len { return false; }
+	if pk_zero(d, p) { return false; }
+	let ck = pk_oct(d[p + 148..p + 156]);
+	if ck < 0 { return false; }
+	var us = 0;
+	var ss = 0;
+	for i in 512 {
+		var b = d[p + i] as int;
+		if i >= 148 && i < 156 { b = 32; }
+		us += b;
+		if b >= 128 { ss += b - 256; } else { ss += b; }
+	}
+	if ck != us && ck != ss { return false; }
+	pk_oct(d[p + 124..p + 136]) >= 0
+}
+fn pk_cstr(d const byte[:], at int, n int) const byte[:] {
+	let lim = min(at + n, d.len);
+	var e = at;
+	while e < lim && d[e] != 0 { e += 1; }
+	d[at..e]
+}
+fn pk_pax(rec const byte[:], path byte[>..]&, havepath bool&, size int&) {
+	var p = 0;
+	while p < rec.len {
+		var q = p;
+		var n = 0;
+		while q < rec.len && rec[q] >= 0x30 && rec[q] <= 0x39 && q - p <= 12 {
+			n = n * 10 + ((rec[q] as int) - 0x30);
+			q += 1;
+		}
+		if q == p || q - p > 12 { break; }
+		if q >= rec.len || rec[q] != 0x20 { break; }
+		if n < 3 || p + n > rec.len { break; }
+		let a = q + 1;
+		let e = p + n - 1;
+		if a > e { break; }
+		var eq = a;
+		while eq < e && rec[eq] != 0x3D { eq += 1; }
+		if eq < e {
+			let key = rec[a..eq];
+			let val = rec[eq + 1..e];
+			if key == "path" {
+				path.clear();
+				path.append(val);
+				havepath = true;
+			} else if key == "size" {
+				if val.len > 0 && val.len <= 12 {
+					var ok = true;
+					var v = 0;
+					for c in val {
+						if c < 0x30 || c > 0x39 { ok = false; } else { v = v * 10 + ((c as int) - 0x30); }
+					}
+					if ok { size = v; }
+				}
+			}
+		}
+		p += n;
+	}
+}
+fn pk_tar_open(data const byte[:]) int {
+	if data.len < 512 || !pk_hdr(data, 0) { return -1; }
+	let nbase0 = pk_tnames.len;
+	let first0 = pk_tents.len;
+	var p = 0;
+	var lname byte[>..] = [];
+	var havel = false;
+	var gpath byte[>..] = [];
+	var haveg = false;
+	var gsize = -1;
+	var xpath byte[>..] = [];
+	var havex = false;
+	var xsize = -1;
+	var cnt = 0;
+	while p + 512 <= data.len {
+		if pk_zero(data, p) { break; }
+		if !pk_hdr(data, p) {
+			dm::dm_warn_add("tar: damaged header, listing stops");
+			break;
+		}
+		var nm byte[>..] = [];
+		let isus = data[p + 257] == 0x75 && data[p + 258] == 0x73 && data[p + 259] == 0x74 && data[p + 260] == 0x61 && data[p + 261] == 0x72;
+		let pre = pk_cstr(data, p + 345, 155);
+		if isus && pre.len > 0 {
+			nm.append(pre);
+			nm.push(0x2F);
+		}
+		nm.append(pk_cstr(data, p, 100));
+		let size = pk_oct(data[p + 124..p + 136]);
+		let kind = data[p + 156] as int;
+		let doff = p + 512;
+		if kind == 0x78 || kind == 0x67 || kind == 0x4C || kind == 0x4B {
+			if doff + size > data.len { break; }
+			let body = data[doff..doff + size];
+			if kind == 0x78 {
+				pk_pax(body, xpath, havex, xsize);
+			} else if kind == 0x67 {
+				pk_pax(body, gpath, haveg, gsize);
+			} else if kind == 0x4C {
+				lname.clear();
+				lname.append(pk_cstr(body, 0, body.len));
+				havel = true;
+			}
+			p = doff + ((size + 511) / 512) * 512;
+			continue;
+		}
+		let nat = pk_tnames.len;
+		if havex { pk_tnames.append(xpath); } else if havel { pk_tnames.append(lname); } else if haveg { pk_tnames.append(gpath); } else { pk_tnames.append(nm); }
+		let nlen = pk_tnames.len - nat;
+		var esize = size;
+		if xsize >= 0 { esize = xsize; } else if gsize >= 0 { esize = gsize; }
+		var k = kind;
+		if k == 0 || k == 0x37 { k = 0x30; }
+		pk_tents.push(PkTEnt { nat: nat, nlen: nlen, size: esize, doff: doff, kind: k });
+		cnt += 1;
+		havex = false;
+		xpath.clear();
+		xsize = -1;
+		havel = false;
+		lname.clear();
+		var adv = esize;
+		if kind >= 0x31 && kind <= 0x36 { adv = 0; }
+		p = doff + ((adv + 511) / 512) * 512;
+		if cnt >= 4000000 { break; }
+	}
+	if cnt == 0 { return -1; }
+	let base = pk_tdata.len;
+	pk_tdata.append(data);
+	pk_tars.push(PkTar { base: base, len: data.len, first: first0, nbase: nbase0, cnt: cnt, live: true });
+	pk_tars.len - 1
+}
+fn pk_tok(h int, i int) bool {
+	if h < 0 || h >= pk_tars.len { return false; }
+	if !pk_tars[h].live { return false; }
+	i >= 0 && i < pk_tars[h].cnt
+}
+fn pk_tar_count(h int) int {
+	if h < 0 || h >= pk_tars.len { return 0; }
+	if !pk_tars[h].live { return 0; }
+	pk_tars[h].cnt
+}
+fn pk_tar_name(h int, i int) const byte[:] {
+	if !pk_tok(h, i) { return ""; }
+	let e = pk_tents[pk_tars[h].first + i];
+	pk_tnames[e.nat..e.nat + e.nlen]
+}
+fn pk_tar_size(h int, i int) int {
+	if !pk_tok(h, i) { return -1; }
+	pk_tents[pk_tars[h].first + i].size
+}
+fn pk_tar_is_dir(h int, i int) bool {
+	if !pk_tok(h, i) { return false; }
+	let e = pk_tents[pk_tars[h].first + i];
+	if e.kind == 0x35 { return true; }
+	let n = pk_tar_name(h, i);
+	n.len > 0 && n[n.len - 1] == 0x2F
+}
+fn pk_tar_readable(h int, i int) bool {
+	if !pk_tok(h, i) { return false; }
+	let e = pk_tents[pk_tars[h].first + i];
+	e.kind == 0x30 && !pk_tar_is_dir(h, i)
+}
+fn pk_norm(s const byte[:], out byte[>..]&, ci bool) int, int {
+	out.clear();
+	for c in s {
+		var b = c;
+		if b == 0x5C { b = 0x2F; }
+		if ci && b >= 0x41 && b <= 0x5A { b += 32; }
+		out.push(b);
+	}
+	var a = 0;
+	while true {
+		if a < out.len && out[a] == 0x2F {
+			a += 1;
+		} else if a + 1 < out.len && out[a] == 0x2E && out[a + 1] == 0x2F {
+			a += 2;
+		} else {
+			break;
+		}
+	}
+	var e = out.len;
+	while e > a && out[e - 1] == 0x2F { e -= 1; }
+	return a, e;
+}
+fn pk_norm_eq(a const byte[:], b const byte[:], ci bool) bool {
+	var x byte[>..] = [];
+	var y byte[>..] = [];
+	let s1, e1 = pk_norm(a, x, ci);
+	let s2, e2 = pk_norm(b, y, ci);
+	x[s1..e1] == y[s2..e2]
+}
+fn pk_tar_find(h int, name const byte[:]) int {
+	let n = pk_tar_count(h);
+	if n == 0 { return -1; }
+	for i in n { if pk_tar_name(h, i) == name { return i; } }
+	for i in n { if pk_norm_eq(pk_tar_name(h, i), name, false) { return i; } }
+	for i in n { if pk_norm_eq(pk_tar_name(h, i), name, true) { return i; } }
+	-1
+}
+fn pk_tar_read(h int, i int, out byte[>..]&) bool {
+	out.clear();
+	if !pk_tar_readable(h, i) { return false; }
+	let t = pk_tars[h];
+	let e = pk_tents[t.first + i];
+	if e.size > pk_cap { return false; }
+	if e.size < 0 || e.doff + e.size > t.len { return false; }
+	out.append(pk_tdata[t.base + e.doff..t.base + e.doff + e.size]);
+	true
+}
+fn pk_tar_close(h int) {
+	if h < 0 || h >= pk_tars.len { return; }
+	if !pk_tars[h].live { return; }
+	pk_tars[h].live = false;
+	while pk_tars.len > 0 && !pk_tars[pk_tars.len - 1].live {
+		let t = pk_tars[pk_tars.len - 1];
+		pk_tdata.pop_n(pk_tdata.len - t.base);
+		pk_tents.pop_n(pk_tents.len - t.first);
+		pk_tnames.pop_n(pk_tnames.len - t.nbase);
+		pk_tars.pop();
+	}
+}

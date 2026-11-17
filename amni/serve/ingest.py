@@ -91,36 +91,50 @@ def _ingest_url(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     taught=_teach_chunks(adam,f'From {label}',chunks,label) if not args.get('dry_run') else 0
     lessons_after=len(getattr(getattr(adam,'sem_lut',None),'_raw',[]) or []) if adam else 0
     return {'url':url,'title':title,'source_kind':'url','chunks_extracted':len(chunks),'chunks_taught':taught,'lessons_total_after':lessons_after,'chunks_preview':[c[:160] for c in chunks[:3]]}
-def _ingest_pdf(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
+def _pypdf_chunks(p,args:Dict[str,Any])->List[str]:
+    try:from pypdf import PdfReader
+    except ImportError:
+        try:from PyPDF2 import PdfReader
+        except ImportError:return []
+    mx=int(args.get('max_pages',60));pages=[]
+    with open(p,'rb') as f:
+        for i,page in enumerate(PdfReader(f).pages):
+            if mx>0 and i>=mx:break
+            try:t=page.extract_text() or ''
+            except Exception:t=''
+            if t.strip():pages.append(t)
+    return _chunk('\n\n'.join(pages),max_chars=int(args.get('chunk_max',_CHUNK_MAX_CHARS)))
+def _ingest_file(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     path=(args.get('path') or '').strip()
-    if not path:return {'error':'need path to local PDF'}
+    if not path:return {'error':'need path to a local document'}
+    from pathlib import Path as _P
+    from amni.serve import docread as _dr
+    p=_P(path).expanduser()
+    if hasattr(reg,'_in_allowed_roots') and not reg._in_allowed_roots(str(p)):return {'error':'path outside allowed roots'}
+    if not p.is_file():return {'error':f'file not found: {path}'}
     try:
-        from pathlib import Path as _P
-        p=_P(path)
-        if hasattr(reg,'_in_allowed_roots') and not reg._in_allowed_roots(str(p)):return {'error':'path outside allowed roots'}
-        if not p.exists():return {'error':f'pdf not found: {path}'}
-        try:from pypdf import PdfReader
-        except ImportError:
-            try:from PyPDF2 import PdfReader
-            except ImportError:return {'error':'pdf reader not installed. pip install pypdf'}
-        pages=[]
-        with open(p,'rb') as f:
-            reader=PdfReader(f);n_pages=len(reader.pages)
-            for i,page in enumerate(reader.pages):
-                if int(args.get('max_pages',60))>0 and i>=int(args.get('max_pages',60)):break
-                try:t=page.extract_text() or ''
-                except Exception:t=''
-                if t.strip():pages.append(t)
-    except Exception as e:return {'error':f'pdf parse failed: {type(e).__name__}: {e}'}
-    text='\n\n'.join(pages)
-    if not text or len(text)<_MIN_CHUNK_CHARS:return {'error':'no extractable text in pdf','path':path}
-    chunks=_dedupe(_chunk(text,max_chars=int(args.get('chunk_max',_CHUNK_MAX_CHARS))))
+        rows=_dr.chunks([p],int(args.get('chunk_max',_CHUNK_MAX_CHARS)))
+        chunks=[(f"{r.get('head')}: " if r.get('head') else '')+str(r.get('text') or '') for r in rows]
+        reader='docread' if chunks else 'pypdf' if p.suffix.lower()=='.pdf' else 'none'
+        chunks=chunks or (_pypdf_chunks(p,args) if p.suffix.lower()=='.pdf' else [])
+        t=_dr.ocr(p) if _dr._img(p) else ''
+        chunks,reader=(chunks+_chunk(f'Text in {p.name}:\n{t}',max_chars=int(args.get('chunk_max',_CHUNK_MAX_CHARS))),'ocr' if reader=='none' else reader+'+ocr') if t else (chunks,reader)
+    except Exception as e:return {'error':f'document parse failed: {type(e).__name__}: {e}','path':str(p)}
+    chunks=_dedupe([c for c in chunks if len(c)>=_MIN_CHUNK_CHARS])
     if int(args.get('max_chunks',_MAX_CHUNKS_PER_URL))>0:chunks=chunks[:int(args.get('max_chunks',_MAX_CHUNKS_PER_URL))]
-    label=p.name
+    if not chunks:return {'error':'no extractable text','path':str(p),'warnings':_dr.info(p).get('warnings',[])}
     adam=ctx.get('adam') if ctx else None
-    taught=_teach_chunks(adam,f'From PDF {label}',chunks,label) if not args.get('dry_run') else 0
+    taught=_teach_chunks(adam,f'From {p.name}',chunks,p.name) if not args.get('dry_run') else 0
     lessons_after=len(getattr(getattr(adam,'sem_lut',None),'_raw',[]) or []) if adam else 0
-    return {'path':str(p),'source_kind':'pdf','pages_read':len(pages),'chunks_extracted':len(chunks),'chunks_taught':taught,'lessons_total_after':lessons_after,'chunks_preview':[c[:160] for c in chunks[:3]]}
+    return {'path':str(p),'source_kind':p.suffix.lower().lstrip('.') or 'file','reader':reader,'chunks_extracted':len(chunks),'chunks_taught':taught,'lessons_total_after':lessons_after,'chunks_preview':[c[:160] for c in chunks[:3]]}
+def _read_document(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
+    from amni.serve import docread as _dr
+    q=(args.get('question') or '').strip();path=(args.get('path') or '').strip();sid=(args.get('session_id') or (ctx or {}).get('session_id') or '')
+    path=str(reg._abs(path)) if path and hasattr(reg,'_abs') else path
+    if path and hasattr(reg,'_in_allowed_roots') and not reg._in_allowed_roots(path):return {'error':'path outside allowed roots'}
+    if path and not q:return {'path':path,**_dr.info(path)}
+    hits=_dr.ask(sid,q,int(args.get('k',4)),[path] if path else None) if q else []
+    return {'question':q,'passages':hits,'facts':[_dr.cite(h) for h in hits]} if hits else {'question':q,'passages':[],'note':'no passage matched' if (path or _dr.files(sid)) else 'no document attached'}
 def _ingest_youtube(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
     url=(args.get('url') or args.get('video') or '').strip()
     if not url:return {'error':'need youtube url or video id'}
@@ -189,6 +203,8 @@ def _build_curriculum(args:Dict[str,Any],ctx:Dict[str,Any],reg)->Dict[str,Any]:
         raise
 def register(reg):
     reg.register('ingest_url',_ingest_url,desc='Fetch a webpage, distill via trafilatura (fallback to HTML strip), chunk, and teach Adam. Args: {url, max_chunks?=24, chunk_max?=900, timeout?=8, dry_run?=false}',schema={'url':'str','max_chunks':'int?','chunk_max':'int?','timeout':'float?','dry_run':'bool?'})
-    reg.register('ingest_pdf',_ingest_pdf,desc='Read a local PDF (pypdf required), extract text per page, chunk, teach Adam. Args: {path, max_pages?=60, max_chunks?=24, chunk_max?=900, dry_run?=false}',schema={'path':'str','max_pages':'int?','max_chunks':'int?','chunk_max':'int?','dry_run':'bool?'})
+    reg.register('ingest_pdf',_ingest_file,desc='Read a local PDF with the docread harness (pypdf fallback), chunk by headings and pages, teach Adam. Args: {path, max_pages?=60 (pypdf only), max_chunks?=24, chunk_max?=900, dry_run?=false}',schema={'path':'str','max_pages':'int?','max_chunks':'int?','chunk_max':'int?','dry_run':'bool?'})
+    reg.register('ingest_file',_ingest_file,desc='Read a local document (PDF, DOCX, XLSX, PPTX, ODT/ODS/ODP, EPUB, HTML, RTF, EML, CSV/TSV, JSON, XML, Markdown, text, ZIP of these) with the docread harness, chunk by headings and pages, teach Adam. Args: {path, max_chunks?=24, chunk_max?=900, dry_run?=false}',schema={'path':'str','max_chunks':'int?','chunk_max':'int?','dry_run':'bool?'})
+    reg.register('read_document',_read_document,desc='Answer from documents: with question, return the best passages (file, page/sheet/slide, heading, text) from a local path or the documents attached to the chat session; with only path, return the document info (format, pages, metadata, warnings). Args: {question?, path?, session_id?, k?=4}',schema={'question':'str?','path':'str?','session_id':'str?','k':'int?'})
     reg.register('ingest_youtube',_ingest_youtube,desc='Fetch a YouTube video transcript (youtube-transcript-api required), chunk, teach Adam. Args: {url|video, max_chunks?=24, chunk_max?=900, dry_run?=false}',schema={'url':'str?','video':'str?','max_chunks':'int?','chunk_max':'int?','dry_run':'bool?'})
     reg.register('build_curriculum',_build_curriculum,desc='Topic → web search → ingest top N URLs → start a coach session on the topic. Args: {topic, query?, max_sources?=3, chunks_per_source?=8, difficulty?=2, skip_coach?=false}',schema={'topic':'str','query':'str?','max_sources':'int?','chunks_per_source':'int?','difficulty':'int?','skip_coach':'bool?'})

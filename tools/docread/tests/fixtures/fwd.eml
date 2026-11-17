@@ -1,0 +1,30 @@
+From mailer@example.org Tue Nov  4 08:00:00 2025
+From: Rae Fenwick <rae@example.org>
+To: sam@example.com
+Subject: Fwd: Pricing =?ISO-8859-1?Q?caf=E9?= update
+Date: Tue, 04 Nov 2025 08:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="outer"
+
+--outer
+Content-Type: text/html; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+<p>See the forwarded note below, caf=E9 crew.</p>
+<ul><li>Item one</li><li>Item two</li></ul>
+--outer
+Content-Type: message/rfc822
+
+From: Lee Bo <bo@example.net>
+Subject: Original note
+Date: Mon, 03 Nov 2025 10:00:00 +0000
+Content-Type: text/plain; charset=us-ascii
+
+Prices hold until Friday.
+Call me if that changes.
+--outer
+Content-Type: image/png; name="dot.png"
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgo=
+--outer--

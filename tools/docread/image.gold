@@ -1,0 +1,144 @@
+use std
+into image.amni
+
+This file is a module with no main (namespace image). It reads the facts an image file carries (format, size, frame and page count, resolution, camera and capture data, text descriptions, keywords, SVG text) into the document model of module `dm`: `dm::dm_set_meta`, `dm::dm_add` with the block kinds `dm::DM_FIELD` and `dm::DM_PARA`, and `dm::dm_warn_add`. It never decodes pixels. The caller has already called `dm::dm_reset`. Every module-level name starts with `im_` or `IM_`. All text written is UTF-8. Parsing never trusts the file: every read goes through the bounds-checked readers below (a read outside the data gives -1 and the caller stops that part), every loop over file data moves forward on every step and has a fixed cap, and anything wrong adds a `dm` warning and ends that part, never a crash. Where a format is described below by byte offsets, the offsets are from the start of the structure being described.
+
+```amni
+import dm;
+import xml;
+import gfx.zlib;
+```
+
+Format codes are module constants: `IM_NONE = 0`, `IM_PNG = 1`, `IM_JPEG = 2`, `IM_GIF = 3`, `IM_WEBP = 4`, `IM_TIFF = 5`, `IM_BMP = 6`, `IM_ICO = 7`, `IM_HEIC = 8`, `IM_AVIF = 9`, `IM_SVG = 10`. `IM_LIMIT = 20000` is the most bytes of text one field or paragraph keeps.
+
+Module state: `var im_w = 0`, `var im_h = 0` (pixel size, 0 when unknown), `var im_frames = 1`, `var im_pages = 1`, `var im_pass = 0` (1 while only collecting, 2 while writing to `dm`), `var im_seen byte[>..]` (every block written so far as one line: the kind digit, the text, a newline), `var im_tmp byte[>..]`, `var im_tmp2 byte[>..]` (scratch lists), `var im_ifds int[>..]` (TIFF directory offsets already visited), `var im_boxn = 0` (boxes visited in one HEIC or AVIF file), `var im_hw = 0` and `var im_hh = 0` (the largest `ispe` size found).
+
+## Readers
+
+`im_u8(d const byte[:], p int) int` is the byte at p, or -1 when p is negative or not below the length. `im_u16(d const byte[:], p int, big bool) int` is the unsigned 2-byte number at p (most significant byte first when big, else least significant first), -1 when p is negative or p plus 2 passes the length. `im_u32(d const byte[:], p int, big bool) int` is the same for 4 bytes, a non-negative int up to 4294967295, -1 when out of range.
+
+`im_starts(d const byte[:], p int, s const byte[:]) bool` is true when p is not negative and d holds the bytes of s at p entirely inside d.
+
+`im_find(d const byte[:], s const byte[:], from int, to int) int` is the first index i with from at most i and i below the smaller of to and the length of d at which d holds s (`im_starts`), or -1.
+
+`im_ieq(a const byte[:], b const byte[:]) bool` is true when a and b are equal ignoring ASCII case.
+
+## Output
+
+`im_dec(v int, out byte[>..]&)` appends the decimal digits of v (a leading minus sign when negative).
+
+`im_num(v real, maxdec int, out byte[>..]&)` appends v as decimal text rounded half away from zero to at most maxdec digits after the period, with trailing zeros removed and then a dangling period removed. Work on the absolute value: scale it by 10 to the power maxdec, add one half, take the floor as an int, split it with division and remainder by that power of ten, write the whole part with `im_dec`, then the fraction padded with leading zeros to maxdec digits. A minus sign is written only when v is negative and the rounded number is not zero.
+
+`im_text(s const byte[:], out byte[>..]&)` appends s as UTF-8 up to its first 0 byte (all of s when there is none) using `dm::dm_to_utf8`.
+
+`im_add(kind int, text const byte[:])` writes one block, and only when `im_pass` is 2. Clean text into `im_tmp` with `dm::dm_clean` (keep_lines false); when that is empty, return. When it is longer than `IM_LIMIT`, cut it to `IM_LIMIT` bytes backing up while the byte after the cut is a UTF-8 continuation byte (128 to 191), and add the warning "text truncated". Build the line (the kind as a decimal digit, the text, byte 10) in `im_tmp2`; when `im_seen` already holds that line anywhere (compare whole lines: search for byte 10, the line) return; otherwise append it to `im_seen` and call `dm::dm_add(kind, 0, text)`.
+
+`im_field(name const byte[:], value const byte[:])` calls `im_add` with `dm::DM_FIELD` and the text name, ": ", value, and does nothing when value is empty (after trimming spaces).
+
+`im_field_px(name const byte[:], v int)` calls `im_field` with the value v in decimal followed by " px", and does nothing when v is not above 0.
+
+`im_dims(w int, h int)` sets `im_w` and `im_h` to w and h when both are above 0 and `im_w` is still 0 (the first size wins).
+
+`im_date(s const byte[:], out byte[>..]&)` appends an EXIF or TIFF date: when s starts with 4 digits, ":" , 2 digits, ":", 2 digits (and the year is not 0000) the result is those parts joined by "-" followed by the rest of s up to its first 0 byte; anything else up to its first 0 byte is copied as is; when the first 4 bytes are not all digits nothing is appended. Example: "2026:03:01 10:00:00" becomes "2026-03-01 10:00:00".
+
+`im_density(x real, y real)` writes the field "Density" with the value x and y each through `im_num` with 1 decimal, joined by " x " and followed by " dpi" (x and y are dots per inch), and does nothing unless both are above 0.
+
+## EXIF and TIFF directories
+
+An EXIF block is a TIFF structure t: the bytes "II" 42 0 (little endian) or "MM" 0 42 (big endian), then the 4-byte offset of the first directory. A directory at off has a 2-byte entry count n, then n entries of 12 bytes (a 2-byte tag at e, a 2-byte type at e plus 2, a 4-byte count at e plus 4, a 4-byte value or offset at e plus 8), then the 4-byte offset of the next directory (0 for none). All numbers use the byte order of the block.
+
+`im_tsize(ty int) int` is the bytes one value of TIFF type ty takes: types 1, 2, 6 and 7 take 1, types 3 and 8 take 2, types 4, 9, 11 and 13 take 4, types 5, 10, 12 and 16 take 8, anything else 0.
+
+`im_e_pos(t const byte[:], e int, big bool) int` is where the values of the entry at e start in t: the entry's type size times its count is the byte size (0 or beyond t gives -1); when the size is at most 4 the values start at e plus 8, otherwise at the offset held in the 4 bytes at e plus 8; return -1 when that offset is negative or the values would end past the end of t.
+
+`im_e_real(t const byte[:], e int, big bool, i int) real` is value number i (from 0) of the entry at e as a real, or 0.0 when i is not below the entry's count or the position is -1: types 1 and 7 are unsigned bytes, 3 unsigned 2-byte numbers, 4 unsigned 4-byte numbers, 8 signed 2-byte, 9 signed 4-byte, types 5 and 10 are a numerator over a denominator (two 4-byte numbers, unsigned for 5 and signed for 10; a denominator of 0 gives 0.0), and every other type gives 0.0.
+
+`im_e_text(t const byte[:], e int, big bool, out byte[>..]&)` appends the entry's bytes (its count of them from `im_e_pos`, nothing when the position is -1) through `im_text`.
+
+`im_x_clear()` resets the capture state: the text lists `var im_x_desc`, `var im_x_make`, `var im_x_model`, `var im_x_taken`, `var im_x_date`, `var im_x_soft`, `var im_x_artist`, `var im_x_copy`, `var im_x_lens`, `var im_x_ucom` (all `byte[>..]`, cleared) and the numbers `var im_x_orient = 0`, `var im_x_exp = 0.0` (exposure seconds), `var im_x_fnum = 0.0`, `var im_x_iso = 0`, `var im_x_focal = 0.0`, `var im_x_xres = 0.0`, `var im_x_yres = 0.0`, `var im_x_runit = 2`, `var im_x_lat = -1.0`, `var im_x_lon = -1.0` (absolute degrees, -1.0 when absent), `var im_x_latref = 0`, `var im_x_lonref = 0` (the reference letter's byte).
+
+`im_gps(t const byte[:], e int, big bool) real` is the degrees held by a GPS entry of 3 rationals (degrees, minutes, seconds): degrees plus minutes over 60 plus seconds over 3600, or -1.0 when the entry's count is below 3, `im_e_pos` is -1, or the degrees are above 180.0.
+
+`im_ifd(t const byte[:], off int, big bool, kind int, page int) int` reads the directory at off and returns the offset of the next directory (0 when there is none, off is below 8, the entry count passes the end of t, or the next-offset bytes are missing). kind is 0 for a directory of a TIFF file, 1 for the main directory of an EXIF block inside another file, 2 for an EXIF sub-directory and 3 for a GPS directory. Read at most 500 entries and stop early when an entry would pass the end of t. For every entry (tag, type, count) act by kind:
+- kinds 0 and 1, when `page` is 0 (for a page above 0 only tags 256 and 257 below are read and every other tag is ignored): tag 270 `im_e_text` into `im_x_desc`; 271 into `im_x_make`; 272 into `im_x_model`; 274 `im_x_orient` as the first value of the entry; 282 `im_x_xres` and 283 `im_x_yres` as the first value (`im_e_real`); 296 `im_x_runit` as the first value; 305 into `im_x_soft`; 306 `im_date` into `im_x_date`; 315 into `im_x_artist`; 33432 into `im_x_copy`; tag 700 (the XMP packet, a run of bytes) `im_xmp` of its bytes (count bytes at `im_e_pos`, only when inside t); tag 33723 `im_iptc` of its bytes the same way; tag 34665 (an offset) remember it as the EXIF sub-directory offset and 34853 the GPS offset. For kind 0 only, tags 256 and 257 (width and height, type 3 or 4, first value) give the page's size: when `page` is 0 call `im_dims` with them, otherwise remember them and, after the loop, write `im_field` named "Page " plus page plus 1 in decimal with the value width, " x ", height, " px" (this field is the only thing a page after the first one writes). After the entry loop, for kinds 0 and 1, call `im_ifd` with the remembered EXIF offset and kind 2 and the remembered GPS offset and kind 3 (when each is above 0 and different from `off`), ignoring what they return.
+- kind 2: tag 33434 `im_x_exp` is the first value; 33437 `im_x_fnum`; 34855 `im_x_iso` as an int of the first value; 36867 `im_date` into `im_x_taken`; 37386 `im_x_focal`; 42036 `im_e_text` into `im_x_lens`; 37510 (UserComment): its bytes (count from `im_e_pos`); when at least 8 bytes long and starting "ASCII" followed by three 0 bytes, or "UNICODE" followed by a 0 byte, or "JIS" followed by five 0 bytes, or eight 0 bytes, the text is the bytes after those 8: for UNICODE it is `dm::dm_utf16` of them with big as the byte order, for the others `im_text`; otherwise the whole value goes through `im_text`; store into `im_x_ucom`.
+- kind 3: tag 1 and 3 set `im_x_latref` and `im_x_lonref` to the first byte of the value; 2 and 4 set `im_x_lat` and `im_x_lon` to `im_gps`.
+
+`im_x_flush()` writes the captured values, in this order, each only when present: `im_add` with `dm::DM_PARA` of `im_x_desc`; the field "Camera" with `im_x_model` when it already starts with `im_x_make` (compared ignoring case, and the make is not empty), otherwise `im_x_make`, a space and `im_x_model` (just the one that exists when the other is empty); "Taken" `im_x_taken`; "Date" `im_x_date`; the field "Orientation" with the number and, in parentheses, 1 normal, 2 mirrored, 3 rotated 180, 4 flipped vertically, 5 transposed, 6 rotated 90 clockwise, 7 transversed, 8 rotated 270 clockwise (just the number for any other value, nothing when `im_x_orient` is 0); "Exposure" from `im_x_exp` when above 0: when it is at least 1 then `im_num` with 1 decimal and " s", otherwise "1/" and 1 divided by it rounded to the nearest int and " s"; "Aperture" "f/" and `im_num` with 2 decimals of `im_x_fnum` when above 0; "ISO" the number when above 0; "Focal length" `im_num` with 2 decimals and " mm" when above 0; "Lens" `im_x_lens`; "Software" `im_x_soft`; "Artist" `im_x_artist`; "Copyright" `im_x_copy`; then `im_density` with `im_x_xres` and `im_x_yres` multiplied by 2.54 when `im_x_runit` is 3 (centimeters; any other unit is taken as inches); "Location" when both `im_x_lat` and `im_x_lon` are not below 0: the latitude (negative when `im_x_latref` is 83, the letter S), a comma and a space, the longitude (negative when `im_x_lonref` is 87, the letter W), each through `im_num` with 5 decimals; finally `im_add` with `dm::DM_PARA` of `im_x_ucom`.
+
+`im_exif(t const byte[:])` reads an EXIF block embedded in another file (a WebP chunk may start with the 6 bytes "Exif" 0 0, which are skipped first): it returns when the block is not a valid TIFF header, otherwise calls `im_x_clear()`, `im_ifd` on the first directory with kind 1 and page 0, then `im_x_flush()`. Only the first directory is read, not the ones chained after it.
+
+`im_tiff(d const byte[:])` reads a TIFF file: it returns when `d` is not a valid TIFF header. Clear `im_ifds` and `im_x_clear()`; set `im_pages` to the number of directories visited. Walk the directory chain from the first offset: for each offset that is at least 8, below the length of d and not in `im_ifds`, push it on `im_ifds`, call `im_ifd` with kind 0 and page equal to the number visited before it, and continue with the offset it returns; stop after 500 directories (and add the warning "TIFF directory chain cut at 500 pages"), and when an offset repeats add the warning "TIFF directory chain loops". Call `im_x_flush()` after the walk.
+
+## XMP and IPTC
+
+`im_xmp(x const byte[:])` reads an XMP packet with `xml::xm_parse` (it returns at once when x is empty or longer than 1000000 bytes). With n the event count, look for the open elements whose qualified name is exactly "dc:title", "dc:description", "dc:subject" and "dc:creator" (`xml::xm_isq`, first match of each by scanning all events) and collect the text of their "li" elements (`xml::xm_find` from the element's index to its close index plus 1, repeatedly, each li's text through `xml::xm_gather`): for dc:title the first li gives the field "Title"; for dc:description the first li gives `im_add` with `dm::DM_PARA`; for dc:subject all the li texts joined by ", " give the field "Keywords"; for dc:creator all joined by ", " give the field "Author".
+
+`im_iptc(d const byte[:])` reads IPTC datasets: at p starting at 0, while p plus 5 is not past the end and the byte at p is 28 and at most 2000 datasets: the record is the byte at p plus 1, the dataset the byte at p plus 2, the length the big endian 2 bytes at p plus 3 (stop when its top bit is set or the data would pass the end), the value is the length bytes at p plus 5, and p moves on by 5 plus the length. Only record 2 matters, and its value goes through `im_text`: dataset 5 is the field "Title", dataset 105 the field "Headline", dataset 80 the field "Author", dataset 116 the field "Copyright", dataset 120 `im_add` with `dm::DM_PARA`, and every dataset 25 is a keyword. After the loop the keywords joined by ", " are the field "Keywords".
+
+`im_photoshop(d const byte[:])` reads Photoshop image resources (the bytes after the "Photoshop 3.0" and 0 header): at p starting at 0, while the 4 bytes at p are "8BIM" and at most 500 resources: the id is the big endian 2 bytes at p plus 4, then a Pascal name (one length byte then that many bytes, the whole name field padded with a 0 byte to an even length) then a big endian 4-byte size, then the data of that size, which is followed by a pad byte when the size is odd. Stop when anything would pass the end of d. For id 1028 (0x0404) call `im_iptc` with the data.
+
+## PNG
+
+`im_kv(key const byte[:], value const byte[:])` writes one PNG text entry: the key is compared ignoring ASCII case (so "comment" and "Comment" are the same): a key starting with "date:" or "Raw profile type" is ignored; "XML:com.adobe.xmp" calls `im_xmp` with the value; "Description" is `im_add` with `dm::DM_PARA` of the value; "Comment" is `im_add` with `dm::DM_PARA` of "Comment: " and the value; "Creation Time" is the field "Created"; "Title", "Author", "Copyright", "Software" and "Source" are fields of that same name; any other key is a field with that key as its name when the value is at most 200 bytes, otherwise `im_add` with `dm::DM_PARA` of the key, ": " and the value. The value and key are converted to UTF-8 with `im_text` into scratch lists first.
+
+`im_png(d const byte[:])` reads a PNG file (8-byte signature, then chunks: a 4-byte big endian length, a 4-byte type, the data, a 4-byte CRC), with at most 5000 chunks; a chunk whose data and CRC would pass the end of d adds the warning "PNG chunk runs past the end of the file" and ends the walk; IEND ends it. By chunk type:
+- IHDR: width and height (big endian 4 bytes at 0 and 4) to `im_dims`; the bit depth is the byte at 8, the color type the byte at 9, the interlace byte at 12: in pass 2 write the field "Color" as the depth, "-bit ", the color type's name (0 gray, 2 RGB, 3 palette, 4 gray with alpha, 6 RGBA) and, when the interlace byte is 1, ", interlaced".
+- acTL: `im_frames` is the big endian 4 bytes at 0 (at least 1).
+- pHYs: x and y are the big endian 4 bytes at 0 and 4, unit the byte at 8: when unit is 1 (meters) call `im_density` with x times 0.0254 and y times 0.0254.
+- tEXt: the data is a keyword, a 0 byte, then the text: call `im_kv` with them.
+- zTXt: a keyword, a 0 byte, a compression method byte, then zlib data: when the zlib part is at most 70000 bytes long, inflate it with `zlib::inflate` into a scratch list (skip the entry when that fails) and call `im_kv`.
+- iTXt: a keyword, a 0 byte, a compression flag byte, a compression method byte, a language tag ending in a 0 byte, a translated keyword ending in a 0 byte, then the text (UTF-8): when the flag is 1 inflate it like zTXt (at most 70000 bytes compressed), then call `im_kv`.
+- eXIf: call `im_exif` with the data.
+
+## JPEG
+
+`im_jpeg(d const byte[:])` walks the JPEG markers of d (it returns at once when d does not start with the bytes 255 216): p starts at 2, at most 2000 segments. Each step: while the byte at p is not 255 advance p (stop the walk at the end); then skip every further 255; the marker is the next byte and p moves past it. Markers 0, 1 and 208 to 216 have no length: continue. Markers 217 (end of image) and 218 (start of scan) end the walk. Otherwise the length is the big endian 2 bytes at p (it must be at least 2 and p plus the length must not pass the end of d, otherwise add the warning "JPEG segment runs past the end of the file" and end the walk); the segment is the bytes from p plus 2 to p plus the length, and p moves to p plus the length. By marker:
+- start-of-frame markers 192 to 195, 197 to 199, 201 to 203 and 205 to 207: the precision is the byte at 0 of the segment, the height the big endian 2 bytes at 1, the width at 3, the component count the byte at 5: call `im_dims`; write the field "Color" as the precision, "-bit, ", the component count, " components" and, for markers 194, 198, 202 and 206, ", progressive".
+- 224 (APP0): when the segment starts with "JFIF" and a 0 byte: units is the byte at 7, x and y the big endian 2 bytes at 8 and 10; when units is 1 call `im_density` with x and y, and when units is 2 call it with x and y times 2.54.
+- 225 (APP1): a segment starting with "Exif" and two 0 bytes calls `im_exif` with the bytes after those 6; a segment starting with "http://ns.adobe.com/xap/1.0/" and a 0 byte (29 bytes) calls `im_xmp` with the rest.
+- 237 (APP13): when the segment starts with "Photoshop 3.0" and a 0 byte, call `im_photoshop` with the bytes after those 14.
+- 254 (COM): `im_add` with `dm::DM_PARA` of "Comment: " and the segment text through `im_text`.
+
+## GIF
+
+`im_sub(d const byte[:], p int, out byte[>..]&) int` reads a chain of GIF data sub-blocks starting at p (a length byte, then that many bytes, repeated until a length byte of 0 or the end of d): the bytes are appended to out (a sub-block that would pass the end of d is cut at the end) and the position after the terminating 0 byte (or the length of d) is returned.
+
+`im_gif(d const byte[:])` reads a GIF file ("GIF" and "87a" or "89a", then the little endian 2-byte width at 6 and height at 8, the flags byte at 10, background and aspect bytes, so the data after the header starts at 13): `im_dims` with the size; when bit 7 of the flags is set a global color table of 3 times 2 to the power (flags and 7, plus 1) bytes follows. Walk the blocks from there (at most 100000): the byte 44 is an image: its 9 following bytes are left, top, width, height (2 bytes each) and a flags byte (at offset 9 from the block start); a local color table of 3 times 2 to the power (flags and 7, plus 1) bytes follows when bit 7 of that flags byte is set; then one byte of LZW code size, then sub-blocks (`im_sub`, discarding the bytes); count one frame. The byte 33 is an extension: the next byte is its label; for label 254 (comment) the sub-blocks after it are read with `im_sub` and `im_add` with `dm::DM_PARA` of "Comment: " and the text (through `im_text`); for any other label skip its sub-blocks. The byte 59 ends the walk, and so does any other byte (add the warning "unknown GIF block") or the end of d. Set `im_frames` to the frame count (at least 1).
+
+## WebP
+
+`im_webp(d const byte[:])` reads a WebP file ("RIFF", a 4-byte size, "WEBP", then chunks from offset 12: a 4-byte tag, a little endian 4-byte size, the data, one pad byte when the size is odd), at most 5000 chunks. For each chunk the data starts at p plus 8; stop when p plus 8 passes the end of d. By tag:
+- "VP8X": flags is the byte at 0 of the data, the canvas width is 1 plus the little endian 3 bytes at 4 and the height 1 plus the 3 bytes at 7: call `im_dims`; write nothing else.
+- "VP8 ": when the bytes at 3 to 5 are 157, 1, 42: width and height are the little endian 2 bytes at 6 and 8 each anded with 16383, `im_dims`, and the field "Encoding" "lossy".
+- "VP8L": when the byte at 0 is 47: bits is the little endian 4 bytes at 1, width is (bits and 16383) plus 1, height is ((bits shifted right 14) and 16383) plus 1: `im_dims` and the field "Encoding" "lossless".
+- "ANIM": the loop count is the little endian 2 bytes at 4: the field "Loops" "forever" when 0, otherwise the count.
+- "ANMF": count one frame.
+- "EXIF" and "XMP ": only when the whole chunk lies inside d: "EXIF" calls `im_exif` with its data, "XMP " calls `im_xmp`.
+Chunks that are not within d (size beyond the end) are only read for the fixed header bytes above when those bytes lie inside d. After the walk set `im_frames` to the ANMF count when it is above 0.
+
+## BMP, ICO and HEIC
+
+`im_bmp(d const byte[:])` reads a BMP file: the DIB header size is the little endian 4 bytes at 14; for size 12 the width and height are the little endian 2 bytes at 18 and 20 and the bits per pixel the 2 bytes at 24; otherwise the width is the 4 bytes at 18 as a signed number, the height the 4 bytes at 22 as a signed number (negative means a top-down bitmap: use its absolute value), the bits per pixel the 2 bytes at 28, and the horizontal and vertical pixels per meter the signed 4 bytes at 38 and 42 (when the header is at least 40 bytes). `im_dims` with the absolute width and height; the field "Color" as the bits, "-bit"; and `im_density` with the pixels per meter times 0.0254 when both are above 0.
+
+`im_ico(d const byte[:])` reads an ICO or CUR file: the little endian 2-byte count at 4 (use at most 256), then entries of 16 bytes from offset 6: width and height are the bytes at 0 and 1 of the entry, where 0 means 256. `im_dims` with the largest entry by area (an entry that would pass the end of d is ignored), `im_frames` the number of entries used; the field "Icons" lists the sizes as "WxH" joined by ", " in file order; the field "Kind" is "icon" for type 1 (little endian 2 bytes at 2) and "cursor" for type 2.
+
+`im_heif_walk(d const byte[:], p int, end int, depth int)` walks the ISO base media boxes in d from p up to end: at most 10000 boxes in total counted in `im_boxn` and depth at most 7. A box has a big endian 4-byte size at p and a 4-byte type at p plus 4; the header is 8 bytes, or 16 when the size is 1 (then the size is the big endian 4 bytes at p plus 12 provided the 4 bytes at p plus 8 are 0), and a size of 0 means the box runs to end. Stop when the size is below the header length or the box passes end. For the type "meta" walk its children from p plus header plus 4 (it is a full box); for "iprp" and "ipco" walk the children from p plus header; for "ispe" the width is the big endian 4 bytes at p plus header plus 4 and the height the 4 bytes after: keep the pair in `im_hw` and `im_hh` when its area is larger than the one kept. Then move on by the size.
+
+`im_heif(d const byte[:])` reads a HEIC or AVIF file: set `im_boxn` to 0, `im_hw` and `im_hh` to 0, call `im_heif_walk` over all of d from 0 at depth 0, then `im_dims` with `im_hw` and `im_hh`. The brand is the 4 bytes at 8; in pass 2 write the field "Brand" with them as text.
+
+## SVG
+
+`im_svg_size(s const byte[:], px bool&) int` reads an SVG length such as "640", "640px", "10.5cm" or "100%": skip leading spaces, read digits and at most one period, and return the whole-number part as an int (0 when there are no digits); px is set to true when the rest of s after trimming trailing spaces is empty or equals "px" ignoring case, otherwise false.
+
+`im_svg(d const byte[:])` reads an SVG document with `xml::xm_parse` and the `xml::xm_*` functions. Find the first open element with local name "svg" (`xml::xm_find` over all events); when there is none add the warning "no svg element" and return. Read its attributes `width`, `height` and `viewBox` (`xml::xm_attr`): call `im_dims` with the sizes of width and height through `im_svg_size` when each is above 0 and in pixels (px true); otherwise, when the viewBox has 4 numbers separated by spaces and/or commas, with the viewBox's third and fourth numbers (whole-number parts); and in pass 2 write the field "Viewbox" with the viewBox text, and, when width or height was given with a unit other than pixels, the field "Declared size" as the width text, " x ", the height text. Then walk the events in order from the svg element: for an open element by local name — "title": the field "Title" with its `xml::xm_gather` text; "desc": `im_add` with `dm::DM_PARA` of its gathered text; "text": build one paragraph from all the text events between it and its close event in order, adding a space after every close event of a "tspan", then `im_add` with `dm::DM_PARA` and continue after its close event (at most 5000 text elements, then add the warning "SVG text truncated"). Every other element is walked into.
+
+## Entry points
+
+`im_kind(d const byte[:]) int` decides the format from the bytes: PNG when d starts with 137 80 78 71 13 10 26 10; JPEG when it starts with 255 216 255; GIF when it starts with "GIF87a" or "GIF89a"; WebP when it starts with "RIFF" and holds "WEBP" at 8; TIFF when it starts with "II" 42 0 or "MM" 0 42; BMP when it starts with "BM" and the little endian 4 bytes at 14 are one of 12, 40, 52, 56, 64, 108 or 124; ICO when the first 4 bytes are 0, 0, 1 or 2, 0, the little endian 2-byte count at 4 is from 1 to 256, d is at least 6 plus 16 times the count long and the byte at 9 (the first entry's reserved byte) is 0; HEIC or AVIF when "ftyp" is at 4: look at the major brand at 8 and the compatible brands (4-byte entries from offset 16 up to the box size at 0, at most 32): AVIF when any is "avif" or "avis", otherwise HEIC when any is "heic", "heix", "hevc", "hevx", "heim", "heis", "mif1" or "msf1"; SVG when, after skipping a UTF-8 byte order mark and whitespace, the first byte is "<", the text does not start "<!doctype html" or "<html" (ignoring case), and "<svg" followed by a space, tab, newline, "/" or ">" occurs within the first 4096 bytes. `IM_NONE` otherwise.
+
+`im_kind_name(k int) const byte[:]` is "png", "jpeg", "gif", "webp", "tiff", "bmp", "ico", "heic", "avif" or "svg" for the codes 1 to 10 and "unknown" for anything else.
+
+`im_run(d const byte[:], k int)` calls the reader for format k: `im_png`, `im_jpeg`, `im_gif`, `im_webp`, `im_tiff`, `im_bmp`, `im_ico`, `im_heif` for both HEIC and AVIF, or `im_svg`.
+
+`im_read(data const byte[:]) bool` adds an image file's information to `dm`. Set `im_pass` to 1, `im_w`, `im_h` to 0, `im_frames`, `im_pages` to 1 and clear `im_seen`. When `im_kind` is `IM_NONE` add the warning "not a recognized image format" and return false. Run the reader (`im_run`) once with `im_pass` 1 (collecting only), then set `im_pass` to 2 and write the basic fields: the field "Format" with the upper-cased kind name, `im_field_px` "Width" with `im_w`, "Height" with `im_h`, the field "Frames" with `im_frames` in decimal when above 1, the field "Pages" with `im_pages` when above 1. Then store the meta keys with `dm::dm_set_meta`: "format" the kind name, "width" and "height" in decimal (only when above 0), "frames" and "pages" in decimal. Then reset `im_w`, `im_h`, `im_frames` and `im_pages` as at the start and run the reader again (`im_run`) with `im_pass` 2 so that everything else is written; its `im_dims` and frame settings change nothing visible. Finally set `im_pass` back to 0 and return true.

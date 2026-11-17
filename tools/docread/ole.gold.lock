@@ -1,0 +1,1917 @@
+=== -7b4f0032cd346111
+namespace ole;
+=== 261173fa42f4dd7e
+var ol_h int = -1;
+var ol_enc bool = false;
+=== 436ebe2566d03177
+fn ol_sx(v int, bits int) int {
+	let p = 1 << bits;
+	if v >= p - 1 { v - p } else { v }
+}
+=== 694874dc74c2f768
+fn ol_cp(cp int, out byte[>..]&) {
+	dm::dm_put_cp(out, cp);
+}
+=== 028afa97b8e71828
+fn ol_trim0(s const byte[:]) const byte[:] {
+	var n = s.len;
+	while n > 0 && s[n - 1] == 0 { n -= 1; }
+	s[..n]
+}
+=== 46c5a1a92c8950c6
+fn ol_flat(s byte[>..]&) {
+	for &b in s {
+		if b == 9 || b == 10 || b == 13 { b = ' '; }
+	}
+}
+=== -6a46900bef03973
+fn ol_filetime(ft int, out byte[>..]&) {
+	let serial = (ft as real) / 864000000000.0 - 109205.0;
+	var t byte[>..] = [];
+	if !office::of_serial_text(serial, false, t) { return; }
+	var sp = -1;
+	for c, i in t {
+		if c == ' ' { sp = i; break; }
+	}
+	if sp >= 0 {
+		t[sp] = 'T';
+		out.append(t);
+	} else {
+		out.append(t);
+		out.append("T00:00:00");
+	}
+	out.append("Z");
+}
+=== 698433384de3e5de
+fn ol_sum_name(out byte[>..]&) {
+	out.push(5);
+	out.append("SummaryInformation");
+}
+=== -2647a6945a699b31
+fn ol_prop(s const byte[:], id int, out byte[>..]&) bool {
+	let cnt = cfb::cf_le(s, 24, 4);
+	if cnt < 1 { return false; }
+	let set = cfb::cf_le(s, 44, 4);
+	if set < 0 { return false; }
+	let np = cfb::cf_le(s, set + 4, 4);
+	if np < 0 { return false; }
+	var off = -1;
+	for k in min(np, 100000) {
+		let pid = cfb::cf_le(s, set + 8 + 8 * k, 4);
+		if pid < 0 { return false; }
+		if pid == id {
+			off = cfb::cf_le(s, set + 8 + 8 * k + 4, 4);
+			break;
+		}
+	}
+	if off < 0 { return false; }
+	let v = set + off;
+	let ty = cfb::cf_le(s, v, 2);
+	if ty == 0x1E {
+		let len = cfb::cf_le(s, v + 4, 4);
+		if len < 0 || v + 8 + len > s.len { return false; }
+		dm::dm_to_utf8(ol_trim0(s[v + 8..v + 8 + len]), out);
+		return true;
+	}
+	if ty == 0x1F {
+		let cc = cfb::cf_le(s, v + 4, 4);
+		if cc < 0 || v + 8 + 2 * cc > s.len { return false; }
+		var n = cc;
+		while n > 0 && s[v + 8 + 2 * (n - 1)] == 0 && s[v + 8 + 2 * (n - 1) + 1] == 0 { n -= 1; }
+		dm::dm_utf16(s[v + 8..v + 8 + 2 * n], false, out);
+		return true;
+	}
+	if ty == 0x40 {
+		let lo = cfb::cf_le(s, v + 4, 4);
+		let hi = cfb::cf_le(s, v + 8, 4);
+		if lo < 0 || hi < 0 { return false; }
+		ol_filetime(hi * 4294967296 + lo, out);
+		return true;
+	}
+	if ty == 0x03 {
+		var n = cfb::cf_le(s, v + 4, 4);
+		if n < 0 { return false; }
+		if n >= 2147483648 { n -= 4294967296; }
+		format(out, n);
+		return true;
+	}
+	return false;
+}
+=== 1269530dc87a0db6
+fn ol_meta_one(s const byte[:], key const byte[:], id int) {
+	var t byte[>..] = [];
+	if ol_prop(s, id, t) { dm::dm_set_meta(key, t); }
+}
+fn ol_meta(pages bool) {
+	var nm byte[>..] = [];
+	ol_sum_name(nm);
+	var s byte[>..] = [];
+	if !cfb::cf_get(ol_h, nm, s) { return; }
+	ol_meta_one(s, "title", 2);
+	ol_meta_one(s, "subject", 3);
+	ol_meta_one(s, "author", 4);
+	ol_meta_one(s, "keywords", 5);
+	ol_meta_one(s, "created", 12);
+	ol_meta_one(s, "modified", 13);
+	if pages { ol_meta_one(s, "pages", 14); }
+}
+=== 0ddb213863c8dc15
+var ol_wd byte[>..];
+var ol_tb byte[>..];
+var ol_w byte[>..];
+var ol_pcp int[>..];
+var ol_pfc int[>..];
+var ol_pcm byte[>..];
+var ol_ph = 0;
+var ol_slv int[>..];
+var ol_rfc int[>..];
+var ol_rfe int[>..];
+var ol_ris int[>..];
+var ol_rfl int[>..];
+var ol_ril int[>..];
+var ol_rlv int[>..];
+var ol_rol int[>..];
+var ol_fst int[>..];
+var ol_fcode = 0;
+var ol_tbo = false;
+var ol_rowb byte[>..];
+var ol_cellb byte[>..];
+var ol_cols = 0;
+var ol_au byte[>..];
+var ol_aat int[>..];
+var ol_alen int[>..];
+=== 14af4914a1a79ca1
+fn ol_wd_pair(n int, fc int&, lcb int&) bool {
+	let cnt = cfb::cf_le(ol_wd, 0x98, 2);
+	if cnt < 0 || n >= cnt { return false; }
+	let a = cfb::cf_le(ol_wd, 0x9A + 8 * n, 4);
+	let b = cfb::cf_le(ol_wd, 0x9E + 8 * n, 4);
+	if a < 0 || b <= 0 { return false; }
+	fc = a;
+	lcb = b;
+	true
+}
+=== 26b31ca464454044
+fn ol_wd_pieces() bool {
+	var fc = 0;
+	var lcb = 0;
+	if !ol_wd_pair(33, fc, lcb) { return false; }
+	ol_pcp.clear();
+	ol_pfc.clear();
+	ol_pcm.clear();
+	var p = fc;
+	var done = false;
+	while !done {
+		let t = cfb::cf_le(ol_tb, p, 1);
+		if t == 1 {
+			let l = cfb::cf_le(ol_tb, p + 1, 2);
+			if l < 0 { return false; }
+			p += 3 + l;
+		} else if t == 2 {
+			done = true;
+		} else {
+			return false;
+		}
+	}
+	let lcb2 = cfb::cf_le(ol_tb, p + 1, 4);
+	let tab = p + 5;
+	let n = (lcb2 - 4) / 12;
+	if n < 1 || n > 1000000 { return false; }
+	for i in n + 1 {
+		let v = cfb::cf_le(ol_tb, tab + 4 * i, 4);
+		ol_pcp.push(v);
+	}
+	for i in n {
+		let d = tab + 4 * (n + 1) + 8 * i;
+		let raw = cfb::cf_le(ol_tb, d + 2, 4);
+		if raw < 0 { return false; }
+		let mark = (raw & 0x40000000) != 0;
+		var off = raw & 0x3FFFFFFF;
+		if mark { off = off / 2; }
+		ol_pfc.push(off);
+		if mark { ol_pcm.push(1); } else { ol_pcm.push(0); }
+	}
+	true
+}
+=== 7fd7743f2d6dadae
+fn ol_wd_text() {
+	ol_w.clear();
+	let np = ol_pcp.len - 1;
+	for i in np {
+		if ol_w.len >= 40000000 { break; }
+		let c = ol_pcp[i + 1] - ol_pcp[i];
+		if c <= 0 { continue; }
+		let off = ol_pfc[i];
+		if ol_pcm[i] == 1 {
+			var n = c;
+			if off + n > ol_wd.len {
+				n = max(ol_wd.len - off, 0);
+				dm::dm_warn_add("document text is truncated");
+			}
+			for j in n {
+				if ol_w.len >= 40000000 { break; }
+				let u = dm::dm_cp1252(ol_wd[off + j] as int);
+				ol_w.push((u & 255) as byte);
+				ol_w.push((u >> 8) as byte);
+			}
+		} else {
+			var n = 2 * c;
+			let avail = ol_wd.len - off;
+			if n > avail {
+				n = max(avail, 0);
+				dm::dm_warn_add("document text is truncated");
+			}
+			if n > 0 { ol_w.append(ol_wd[off..off + n]); }
+		}
+	}
+}
+=== -103a07772ba5a2a7
+fn ol_wd_unit(i int) int {
+	if i < 0 || 2 * i + 1 >= ol_w.len { return -1; }
+	(ol_w[2 * i] as int) | ((ol_w[2 * i + 1] as int) << 8)
+}
+=== 070eca7ef5884ea1
+fn ol_wd_cp2fc(cp int) int {
+	let np = ol_pcp.len - 1;
+	if np < 1 || cp < 0 { return -1; }
+	var i = ol_ph;
+	if i < 0 || i >= np { i = 0; }
+	if cp < ol_pcp[i] { i = 0; }
+	while i < np {
+		if cp >= ol_pcp[i] && cp < ol_pcp[i + 1] {
+			ol_ph = i;
+			let d = cp - ol_pcp[i];
+			if ol_pcm[i] == 1 { return ol_pfc[i] + d; }
+			return ol_pfc[i] + 2 * d;
+		}
+		i += 1;
+	}
+	return -1;
+}
+=== 68d063b7001927e5
+fn ol_wd_styles() {
+	ol_slv.clear();
+	var st = 0;
+	var ln = 0;
+	if !ol_wd_pair(1, st, ln) { return; }
+	let cbs = cfb::cf_le(ol_tb, st, 2);
+	let cstd = cfb::cf_le(ol_tb, st + 2, 2);
+	let cb0 = cfb::cf_le(ol_tb, st + 4, 2);
+	if cbs < 0 || cstd < 0 || cb0 < 0 { return; }
+	var p = st + 2 + cbs;
+	for i in min(cstd, 4000) {
+		let sz = cfb::cf_le(ol_tb, p, 2);
+		if sz < 0 { break; }
+		p += 2;
+		var lvl = 0;
+		if sz >= cb0 + 2 {
+			let sti = cfb::cf_le(ol_tb, p, 2) & 0xFFF;
+			if sti >= 1 && sti <= 9 {
+				lvl = min(sti, 6);
+			} else if sti == 62 {
+				lvl = 1;
+			} else {
+				let nc = cfb::cf_le(ol_tb, p + cb0, 2);
+				if nc > 0 && p + cb0 + 2 + 2 * nc <= ol_tb.len {
+					var nm byte[>..] = [];
+					dm::dm_utf16(ol_tb[p + cb0 + 2..p + cb0 + 2 + 2 * nc], false, nm);
+					var lw byte[>..] = [];
+					for c in nm {
+						if c >= 'A' && c <= 'Z' { lw.push(c + 32); } else { lw.push(c); }
+					}
+					if lw == "title" {
+						lvl = 1;
+					} else if lw.len == 9 && starts_with(lw, "heading ") && lw[8] >= '1' && lw[8] <= '9' {
+						lvl = min((lw[8] as int) - '0', 6);
+					}
+				}
+			}
+		}
+		ol_slv.push(lvl);
+		p += sz;
+	}
+}
+=== -6ff2527af08547f7
+fn ol_wd_sprms(p int, end int, fl int&, ilfo int&, ilvl int&, ol int&) {
+	var q = p;
+	while q + 2 <= end {
+		let op = cfb::cf_le(ol_wd, q, 2);
+		if op < 0 { break; }
+		let spra = op >> 13;
+		var sz = 0;
+		if spra == 0 || spra == 1 {
+			sz = 1;
+		} else if spra == 2 || spra == 4 || spra == 5 {
+			sz = 2;
+		} else if spra == 3 {
+			sz = 4;
+		} else if spra == 7 {
+			sz = 3;
+		} else {
+			sz = 1 + max(cfb::cf_le(ol_wd, q + 2, 1), 0);
+		}
+		if op == 0x2416 {
+			if cfb::cf_le(ol_wd, q + 2, 1) > 0 { fl = fl | 1; }
+		} else if op == 0x2417 {
+			if cfb::cf_le(ol_wd, q + 2, 1) > 0 { fl = fl | 2; }
+		} else if op == 0x460B {
+			let v = cfb::cf_le(ol_wd, q + 2, 2);
+			if v >= 0 { ilfo = v; }
+		} else if op == 0x260A {
+			let v = cfb::cf_le(ol_wd, q + 2, 1);
+			if v >= 0 { ilvl = v; }
+		} else if op == 0x2640 {
+			let v = cfb::cf_le(ol_wd, q + 2, 1);
+			if v >= 0 { ol = v; }
+		}
+		q += 2 + sz;
+	}
+}
+=== 615d8ef2dc3b49b6
+fn ol_wd_fkp(pg int) {
+	if pg < 0 || pg + 512 > ol_wd.len { return; }
+	let crun = ol_wd[pg + 511] as int;
+	for i in crun {
+		let a = cfb::cf_le(ol_wd, pg + 4 * i, 4);
+		let b = cfb::cf_le(ol_wd, pg + 4 * (i + 1), 4);
+		let di = pg + 4 * (crun + 1) + 13 * i;
+		if di >= pg + 512 { break; }
+		let bb = cfb::cf_le(ol_wd, di, 1);
+		var fl = 0;
+		var ilfo = 0;
+		var ilvl = 0;
+		var ol = 9;
+		var sty = 0;
+		if bb > 0 {
+			let o = pg + 2 * bb;
+			let cb = cfb::cf_le(ol_wd, o, 1);
+			if cb >= 0 {
+				var sz = 0;
+				var ds = 0;
+				if cb == 0 {
+					let cb2 = cfb::cf_le(ol_wd, o + 1, 1);
+					sz = 2 * cb2;
+					ds = o + 2;
+				} else {
+					sz = 2 * cb - 1;
+					ds = o + 1;
+				}
+				if sz >= 2 {
+					sty = cfb::cf_le(ol_wd, ds, 2);
+					if sty < 0 { sty = 0; }
+					ol_wd_sprms(ds + 2, ds + sz, fl, ilfo, ilvl, ol);
+				}
+			}
+		}
+		ol_rfc.push(a);
+		ol_rfe.push(b);
+		ol_ris.push(sty);
+		ol_rfl.push(fl);
+		ol_ril.push(ilfo);
+		ol_rlv.push(ilvl);
+		ol_rol.push(ol);
+	}
+}
+=== 4149e4ea0d19c15c
+fn ol_wd_papx() {
+	ol_rfc.clear();
+	ol_rfe.clear();
+	ol_ris.clear();
+	ol_rfl.clear();
+	ol_ril.clear();
+	ol_rlv.clear();
+	ol_rol.clear();
+	var fc = 0;
+	var ln = 0;
+	if !ol_wd_pair(13, fc, ln) { return; }
+	let n = min((ln - 4) / 8, 100000);
+	for k in n {
+		let v = cfb::cf_le(ol_tb, fc + 4 * (n + 1) + 4 * k, 4);
+		if v < 0 { continue; }
+		ol_wd_fkp(512 * (v & 0x3FFFFF));
+	}
+}
+=== -25a8c6037d8c3cb
+fn ol_wd_run(fc int) int {
+	var lo = 0;
+	var hi = ol_rfc.len - 1;
+	var res = -1;
+	while lo <= hi {
+		let mid = (lo + hi) / 2;
+		if ol_rfc[mid] <= fc {
+			res = mid;
+			lo = mid + 1;
+		} else {
+			hi = mid - 1;
+		}
+	}
+	if res >= 0 && fc < ol_rfe[res] { return res; }
+	return -1;
+}
+=== 5c7e4dcf4915dec2
+fn ol_u16(pb byte[>..]&, c int) {
+	pb.push((c & 255) as byte);
+	pb.push((c >> 8) as byte);
+}
+fn ol_wd_put(u int, pb byte[>..]&) {
+	if u == 0x13 {
+		if ol_fst.len < 70 {
+			ol_fst.push(1);
+			ol_fcode += 1;
+		}
+		return;
+	}
+	if u == 0x14 {
+		if ol_fst.len > 0 && ol_fst[ol_fst.len - 1] == 1 {
+			ol_fst[ol_fst.len - 1] = 2;
+			ol_fcode -= 1;
+		}
+		return;
+	}
+	if u == 0x15 {
+		if ol_fst.len > 0 {
+			let v = ol_fst.pop();
+			if v == 1 { ol_fcode -= 1; }
+		}
+		return;
+	}
+	if ol_fcode > 0 { return; }
+	if u == 9 {
+		ol_u16(pb, 9);
+	} else if u == 0x0B {
+		ol_u16(pb, 10);
+	} else if u == 0x0C {
+		ol_u16(pb, 32);
+	} else if u == 0x1E {
+		ol_u16(pb, 45);
+	} else if u < 32 {
+	} else {
+		ol_u16(pb, u);
+	}
+}
+=== -4fad7047a4950031
+fn ol_wd_flat(c0 int, c1 int, out byte[>..]&) {
+	ol_fst.clear();
+	ol_fcode = 0;
+	var pb byte[>..] = [];
+	for i in c0..c1 {
+		let u = ol_wd_unit(i);
+		if u < 0 { break; }
+		if u == 0x0D || u == 0x07 {
+			ol_u16(pb, 10);
+		} else {
+			ol_wd_put(u, pb);
+		}
+	}
+	var t byte[>..] = [];
+	dm::dm_utf16(pb, false, t);
+	var s = 0;
+	var e = t.len;
+	while s < e && (t[s] == ' ' || t[s] == 9 || t[s] == 10 || t[s] == 13) { s += 1; }
+	while e > s && (t[e - 1] == ' ' || t[e - 1] == 9 || t[e - 1] == 10 || t[e - 1] == 13) { e -= 1; }
+	out.append(t[s..e]);
+}
+=== -3d5a728afd701332
+fn ol_wd_close_table() {
+	if !ol_tbo { return; }
+	if ol_rowb.len > 0 {
+		dm::dm_add(dm::DM_ROW, 0, ol_rowb);
+		ol_rowb.clear();
+	}
+	dm::dm_end_table();
+	ol_tbo = false;
+	ol_cols = 0;
+	ol_cellb.clear();
+}
+=== 56c3b638814db615
+fn ol_wd_emit(txt byte[>..]&, cp int, term int) {
+	let run = ol_wd_run(ol_wd_cp2fc(cp));
+	var fl = 0;
+	var lst = 0;
+	var lvl = 0;
+	var ol = 9;
+	var sty = -1;
+	if run >= 0 {
+		fl = ol_rfl[run];
+		lst = ol_ril[run];
+		lvl = ol_rlv[run];
+		ol = ol_rol[run];
+		sty = ol_ris[run];
+	}
+	var intable = (fl & 1) != 0;
+	if ol_rfc.len == 0 {
+		if term == 0x07 { intable = true; }
+		if txt.len == 0 && term == 0x07 && ol_tbo && ol_cols > 0 { fl = fl | 2; }
+	}
+	if intable {
+		if !ol_tbo {
+			dm::dm_new_table();
+			ol_tbo = true;
+		}
+		if (fl & 2) != 0 {
+			if ol_rowb.len > 0 { dm::dm_add(dm::DM_ROW, 0, ol_rowb); }
+			ol_rowb.clear();
+			ol_cols = 0;
+		} else if term == 0x07 {
+			ol_flat(txt);
+			var cell byte[>..] = [];
+			if ol_cellb.len > 0 && txt.len > 0 {
+				cell.append(ol_cellb);
+				cell.push(' ');
+				cell.append(txt);
+			} else if ol_cellb.len > 0 {
+				cell.append(ol_cellb);
+			} else {
+				cell.append(txt);
+			}
+			if ol_cols > 0 { ol_rowb.push(9); }
+			ol_rowb.append(cell);
+			ol_cols += 1;
+			ol_cellb.clear();
+		} else {
+			if ol_cellb.len > 0 && txt.len > 0 { ol_cellb.push(' '); }
+			ol_cellb.append(txt);
+		}
+		return;
+	}
+	ol_wd_close_table();
+	var hl = 0;
+	if ol >= 0 && ol <= 8 {
+		hl = min(ol + 1, 6);
+	} else if sty >= 0 && sty < ol_slv.len {
+		hl = ol_slv[sty];
+	}
+	if hl > 0 {
+		dm::dm_add(dm::DM_HEAD, hl, txt);
+	} else if lst >= 1 && lst <= 2047 {
+		dm::dm_add(dm::DM_ITEM, lvl + 1, txt);
+	} else {
+		dm::dm_add(dm::DM_PARA, 0, txt);
+	}
+}
+=== 390557278885dc92
+fn ol_wd_body(c0 int, c1 int) {
+	ol_fst.clear();
+	ol_fcode = 0;
+	var pb byte[>..] = [];
+	var p0 = c0;
+	for i in c0..c1 {
+		let u = ol_wd_unit(i);
+		if u == 0x0D || u == 0x07 {
+			var text byte[>..] = [];
+			dm::dm_utf16(pb, false, text);
+			ol_wd_emit(text, p0, u);
+			pb.clear();
+			p0 = i + 1;
+		} else {
+			ol_wd_put(u, pb);
+		}
+	}
+	if pb.len > 0 {
+		var text byte[>..] = [];
+		dm::dm_utf16(pb, false, text);
+		ol_wd_emit(text, p0, 0x0D);
+	}
+	ol_wd_close_table();
+}
+=== -720174699fc2608d
+fn ol_wd_authors() {
+	ol_au.clear();
+	ol_aat.clear();
+	ol_alen.clear();
+	var fc = 0;
+	var ln = 0;
+	if !ol_wd_pair(36, fc, ln) { return; }
+	var p = fc;
+	let end = min(fc + ln, ol_tb.len);
+	while p + 2 <= end {
+		let n = cfb::cf_le(ol_tb, p, 2);
+		if n < 0 || p + 2 + 2 * n > end { break; }
+		let at = ol_au.len;
+		ol_aat.push(at);
+		dm::dm_utf16(ol_tb[p + 2..p + 2 + 2 * n], false, ol_au);
+		ol_alen.push(ol_au.len - at);
+		p += 2 + 2 * n;
+	}
+}
+=== -3996a3fb03f06345
+fn ol_wd_notes(kind int) {
+	let text = max(cfb::cf_le(ol_wd, 0x4C, 4), 0);
+	let fnn = max(cfb::cf_le(ol_wd, 0x50, 4), 0);
+	let hdr = max(cfb::cf_le(ol_wd, 0x54, 4), 0);
+	let mac = max(cfb::cf_le(ol_wd, 0x58, 4), 0);
+	let com = max(cfb::cf_le(ol_wd, 0x5C, 4), 0);
+	let enn = max(cfb::cf_le(ol_wd, 0x60, 4), 0);
+	var start = 0;
+	var cnt = 0;
+	var ent = 3;
+	if kind == 1 {
+		start = text;
+		cnt = fnn;
+		ent = 3;
+	} else if kind == 2 {
+		start = text + fnn + hdr + mac + com;
+		cnt = enn;
+		ent = 47;
+	} else {
+		start = text + fnn + hdr + mac;
+		cnt = com;
+		ent = 5;
+	}
+	if cnt <= 0 { return; }
+	var fc = 0;
+	var ln = 0;
+	if !ol_wd_pair(ent, fc, ln) { return; }
+	var rf = 0;
+	var rl = 0;
+	var nr = 0;
+	var has = false;
+	if kind == 3 {
+		ol_wd_authors();
+		has = ol_wd_pair(4, rf, rl);
+		if has { nr = (rl - 4) / 34; }
+	}
+	let n = max(ln / 4 - 1, 0);
+	for i in n {
+		let a = cfb::cf_le(ol_tb, fc + 4 * i, 4);
+		let b = cfb::cf_le(ol_tb, fc + 4 * (i + 1), 4);
+		if a < 0 || b < 0 { break; }
+		var t byte[>..] = [];
+		ol_wd_flat(start + a, start + b, t);
+		if t.len == 0 { continue; }
+		var line byte[>..] = [];
+		if kind == 3 {
+			var au = -1;
+			if has && i < nr {
+				au = cfb::cf_le(ol_tb, rf + 4 * (nr + 1) + 30 * i + 20, 2);
+			}
+			if au >= 0 && au < ol_aat.len && ol_alen[au] > 0 {
+				line.append("Comment by ");
+				line.append(ol_au[ol_aat[au]..ol_aat[au] + ol_alen[au]]);
+				line.append(": ");
+			} else {
+				line.append("Comment: ");
+			}
+		} else {
+			if kind == 1 { line.append("Footnote "); } else { line.append("Endnote "); }
+			format(line, i + 1, ": ");
+		}
+		line.append(t);
+		dm::dm_add(dm::DM_NOTE, 0, line);
+	}
+}
+=== -212302d851b374d3
+fn ol_doc() bool {
+	ol_wd.clear();
+	if !cfb::cf_get(ol_h, "WordDocument", ol_wd) { return false; }
+	if cfb::cf_le(ol_wd, 0, 2) != 0xA5EC { return false; }
+	let nfib = cfb::cf_le(ol_wd, 2, 2);
+	if nfib < 193 {
+		dm::dm_warn_add("Word 6 or 95 document: not supported");
+		return false;
+	}
+	let fl = cfb::cf_le(ol_wd, 10, 2);
+	if fl < 0 { return false; }
+	if (fl & 0x100) != 0 {
+		dm::dm_warn_add("encrypted Word document: it needs its password");
+		ol_enc = true;
+		return false;
+	}
+	ol_tb.clear();
+	var ok = false;
+	if (fl & 0x200) != 0 {
+		ok = cfb::cf_get(ol_h, "1Table", ol_tb);
+	} else {
+		ok = cfb::cf_get(ol_h, "0Table", ol_tb);
+	}
+	if !ok { return false; }
+	ol_fst.clear();
+	ol_fcode = 0;
+	ol_tbo = false;
+	ol_rowb.clear();
+	ol_cellb.clear();
+	ol_cols = 0;
+	ol_ph = 0;
+	if !ol_wd_pieces() { return false; }
+	ol_wd_text();
+	ol_wd_styles();
+	ol_wd_papx();
+	let text = max(cfb::cf_le(ol_wd, 0x4C, 4), 0);
+	let fnn = max(cfb::cf_le(ol_wd, 0x50, 4), 0);
+	let hdr = max(cfb::cf_le(ol_wd, 0x54, 4), 0);
+	let mac = max(cfb::cf_le(ol_wd, 0x58, 4), 0);
+	let com = max(cfb::cf_le(ol_wd, 0x5C, 4), 0);
+	let enn = max(cfb::cf_le(ol_wd, 0x60, 4), 0);
+	let tbx = cfb::cf_le(ol_wd, 0x64, 4);
+	ol_wd_body(0, text);
+	if tbx > 0 {
+		let s = text + fnn + hdr + mac + com + enn;
+		ol_wd_body(s, s + tbx);
+	}
+	ol_wd_notes(1);
+	ol_wd_notes(2);
+	ol_wd_notes(3);
+	ol_meta(true);
+	true
+}
+=== -6c0890917fc5c4bc
+var ol_xb byte[>..];
+var ol_b5 = false;
+var ol_x1904 = false;
+var ol_xs byte[>..];
+var ol_xse int[>..];
+var ol_sst byte[>..];
+var ol_ssa int[>..];
+var ol_ssl int[>..];
+var ol_xfi int[>..];
+var ol_fid int[>..];
+var ol_fdt byte[>..];
+var ol_shp int[>..];
+var ol_shn byte[>..];
+var ol_sha int[>..];
+var ol_shl int[>..];
+var ol_cr int[>..];
+var ol_cc int[>..];
+var ol_ca int[>..];
+var ol_cl int[>..];
+var ol_xp byte[>..];
+var ol_fpend = -1;
+var ol_cnt int[>..];
+var ol_ord int[>..];
+=== 42152836d9897689
+fn ol_hex(out byte[>..]&, v int, width int) {
+	var d byte[>..] = [];
+	var x = v;
+	while x > 0 {
+		let r = x & 15;
+		if r < 10 { d.push(('0' + r) as byte); } else { d.push(('A' + r - 10) as byte); }
+		x = x >> 4;
+	}
+	for j in max(width - d.len, 0) { out.push('0'); }
+	var i = d.len;
+	while i > 0 {
+		i -= 1;
+		out.push(d[i]);
+	}
+}
+=== -5091dc01f535c899
+fn ol_xl_str(s const byte[:], p int, short bool, out byte[>..]&) int {
+	var q = p;
+	var cnt = 0;
+	if short {
+		cnt = cfb::cf_le(s, q, 1);
+		q += 1;
+	} else {
+		cnt = cfb::cf_le(s, q, 2);
+		q += 2;
+	}
+	if cnt < 0 { return -1; }
+	if ol_b5 {
+		if q + cnt > s.len { return -1; }
+		for i in cnt { dm::dm_put_cp(out, dm::dm_cp1252(s[q + i] as int)); }
+		return q + cnt;
+	}
+	let fl = cfb::cf_le(s, q, 1);
+	if fl < 0 { return -1; }
+	q += 1;
+	var runs = 0;
+	var ph = 0;
+	if (fl & 8) != 0 {
+		runs = cfb::cf_le(s, q, 2);
+		if runs < 0 { return -1; }
+		q += 2;
+	}
+	if (fl & 4) != 0 {
+		ph = cfb::cf_le(s, q, 4);
+		if ph < 0 { return -1; }
+		q += 4;
+	}
+	let wide = (fl & 1) != 0;
+	var nb = cnt;
+	if wide { nb = 2 * cnt; }
+	if q + nb > s.len { return -1; }
+	if wide {
+		dm::dm_utf16(s[q..q + nb], false, out);
+	} else {
+		for i in cnt { dm::dm_put_cp(out, s[q + i] as int); }
+	}
+	q += nb;
+	q += 4 * runs + ph;
+	if q > s.len { return -1; }
+	q
+}
+=== -881a30b8dc0d6e7
+fn ol_xl_sstr(pos int&) bool {
+	let cnt = cfb::cf_le(ol_xs, pos, 2);
+	let fl = cfb::cf_le(ol_xs, pos + 2, 1);
+	if cnt < 0 || fl < 0 { return false; }
+	pos += 3;
+	var wide = (fl & 1) != 0;
+	var runs = 0;
+	var ph = 0;
+	if (fl & 8) != 0 {
+		runs = max(cfb::cf_le(ol_xs, pos, 2), 0);
+		pos += 2;
+	}
+	if (fl & 4) != 0 {
+		ph = max(cfb::cf_le(ol_xs, pos, 4), 0);
+		pos += 4;
+	}
+	var seg = 0;
+	var t byte[>..] = [];
+	var ok = true;
+	for i in cnt {
+		while seg < ol_xse.len - 1 && pos >= ol_xse[seg] {
+			seg += 1;
+			if pos == ol_xse[seg - 1] {
+				let f = cfb::cf_le(ol_xs, pos, 1);
+				if f < 0 {
+					ok = false;
+					break;
+				}
+				wide = (f & 1) != 0;
+				pos += 1;
+			}
+		}
+		if !ok { break; }
+		if wide {
+			let c = cfb::cf_le(ol_xs, pos, 2);
+			if c < 0 {
+				ok = false;
+				break;
+			}
+			dm::dm_put_cp(t, c);
+			pos += 2;
+		} else {
+			let c = cfb::cf_le(ol_xs, pos, 1);
+			if c < 0 {
+				ok = false;
+				break;
+			}
+			dm::dm_put_cp(t, c);
+			pos += 1;
+		}
+	}
+	if ok { pos += 4 * runs + ph; }
+	ol_ssa.push(ol_sst.len);
+	ol_ssl.push(t.len);
+	ol_sst.append(t);
+	ok
+}
+=== 66a5726a880fa805
+fn ol_xl_sst(p int) int {
+	ol_xs.clear();
+	ol_xse.clear();
+	ol_sst.clear();
+	ol_ssa.clear();
+	ol_ssl.clear();
+	var q = p;
+	let n = cfb::cf_le(ol_xb, q + 2, 2);
+	if n < 0 || q + 4 + n > ol_xb.len { return ol_xb.len; }
+	ol_xs.append(ol_xb[q + 4..q + 4 + n]);
+	ol_xse.push(ol_xs.len);
+	q += 4 + n;
+	while cfb::cf_le(ol_xb, q, 2) == 0x003C {
+		let m = cfb::cf_le(ol_xb, q + 2, 2);
+		if m < 0 || q + 4 + m > ol_xb.len { break; }
+		ol_xs.append(ol_xb[q + 4..q + 4 + m]);
+		ol_xse.push(ol_xs.len);
+		q += 4 + m;
+	}
+	let uniq = cfb::cf_le(ol_xs, 4, 4);
+	var pos = 8;
+	var k = 0;
+	while k < min(uniq, 1000000) && pos < ol_xs.len {
+		if !ol_xl_sstr(pos) { break; }
+		k += 1;
+	}
+	q
+}
+=== -1ea16ebb7e2dd416
+fn ol_xl_fmt(ixfe int) int {
+	if ixfe < 0 || ixfe >= ol_xfi.len { return 0; }
+	let id = ol_xfi[ixfe];
+	for k in ol_fid.len {
+		if ol_fid[k] == id { return ol_fdt[k] as int; }
+	}
+	if office::of_builtin_date(id) { 1 } else { 0 }
+}
+=== 5b2e9a0a1c2a9cd9
+fn ol_xl_isdate(ixfe int) bool {
+	ol_xl_fmt(ixfe) == 1
+}
+=== 44c95c2d0e428356
+fn ol_xl_num(v real, out byte[>..]&) {
+	if abs(v) < 1e15 && v == ((v as int) as real) {
+		format(out, v as int);
+	} else {
+		out.append(pyg(v, 15));
+	}
+}
+=== -11cbb5fcdb5b119c
+fn ol_xl_rk(rk int) real {
+	var v = 0.0;
+	if (rk & 2) != 0 {
+		var n = rk >> 2;
+		if n >= 536870912 { n -= 1073741824; }
+		v = n as real;
+	} else {
+		var b byte[>..] = [];
+		for i in 4 { b.push(0); }
+		let r = rk & 0xFFFFFFFC;
+		b.push((r & 255) as byte);
+		b.push(((r >> 8) & 255) as byte);
+		b.push(((r >> 16) & 255) as byte);
+		b.push(((r >> 24) & 255) as byte);
+		let x, ok = binary::read_f64le(b, 0);
+		if ok { v = x; }
+	}
+	if (rk & 1) != 0 { v = v / 100.0; }
+	v
+}
+=== -1330d2e4e114297c
+fn ol_xl_err(code int, out byte[>..]&) {
+	if code == 0 {
+		out.append("#NULL!");
+	} else if code == 7 {
+		out.append("#DIV/0!");
+	} else if code == 15 {
+		out.append("#VALUE!");
+	} else if code == 23 {
+		out.append("#REF!");
+	} else if code == 29 {
+		out.append("#NAME?");
+	} else if code == 36 {
+		out.append("#NUM!");
+	} else if code == 42 {
+		out.append("#N/A");
+	}
+}
+=== 08fd319bfb26313f
+fn ol_xl_put(row int, col int, txt const byte[:]) int {
+	if row < 0 || row > 65535 || col < 0 || col > 255 { return -1; }
+	let i = ol_cr.len;
+	ol_cr.push(row);
+	ol_cc.push(col);
+	ol_ca.push(ol_xp.len);
+	ol_cl.push(txt.len);
+	ol_xp.append(txt);
+	i
+}
+=== 330f70a74302c21e
+fn ol_xl_numcell(row int, col int, ixfe int, v real) {
+	if ol_xl_fmt(ixfe) == 2 {
+		if v != 0.0 {
+			ol_xl_put(row, col, "TRUE");
+		} else {
+			ol_xl_put(row, col, "FALSE");
+		}
+		return;
+	}
+	if ol_xl_isdate(ixfe) {
+		var dt byte[>..] = [];
+		if office::of_serial_text(v, ol_x1904, dt) {
+			ol_xl_put(row, col, dt);
+			return;
+		}
+	}
+	var t byte[>..] = [];
+	ol_xl_num(v, t);
+	ol_xl_put(row, col, t);
+}
+=== -56b7872441bf42bf
+fn ol_xl_globals() int {
+	if cfb::cf_le(ol_xb, 0, 2) != 0x0809 { return -1; }
+	let ver = cfb::cf_le(ol_xb, 4, 2);
+	let bty = cfb::cf_le(ol_xb, 6, 2);
+	if ver < 0 || bty != 5 { return -1; }
+	ol_b5 = ver < 0x0600;
+	ol_x1904 = false;
+	ol_xfi.clear();
+	ol_fid.clear();
+	ol_fdt.clear();
+	ol_shp.clear();
+	ol_shn.clear();
+	ol_sha.clear();
+	ol_shl.clear();
+	ol_sst.clear();
+	ol_ssa.clear();
+	ol_ssl.clear();
+	var p = 0;
+	while p + 4 <= ol_xb.len {
+		let id = cfb::cf_le(ol_xb, p, 2);
+		let n = cfb::cf_le(ol_xb, p + 2, 2);
+		if n < 0 || p + 4 + n > ol_xb.len { break; }
+		if id == 0x000A { break; }
+		let d = p + 4;
+		let rec = ol_xb[d..d + n];
+		if id == 0x002F {
+			dm::dm_warn_add("encrypted Excel workbook: it needs its password");
+			ol_enc = true;
+			return -2;
+		} else if id == 0x0022 {
+			ol_x1904 = cfb::cf_le(rec, 0, 2) == 1;
+		} else if id == 0x0085 {
+			let off = cfb::cf_le(rec, 0, 4);
+			let st = cfb::cf_le(rec, 5, 1);
+			var name byte[>..] = [];
+			ol_xl_str(rec, 6, true, name);
+			if st == 0 && off >= 0 {
+				ol_shp.push(off);
+				ol_sha.push(ol_shn.len);
+				ol_shl.push(name.len);
+				ol_shn.append(name);
+			}
+		} else if id == 0x041E {
+			let fid = cfb::cf_le(rec, 0, 2);
+			var code byte[>..] = [];
+			ol_xl_str(rec, 2, ol_b5, code);
+			var lw byte[>..] = [];
+			for c in code {
+				if c >= 'A' && c <= 'Z' { lw.push(c + 32); } else { lw.push(c); }
+			}
+			ol_fid.push(fid);
+			if lw == "\"true\";\"true\";\"false\"" {
+				ol_fdt.push(2);
+			} else if office::of_fmt_is_date(code) {
+				ol_fdt.push(1);
+			} else {
+				ol_fdt.push(0);
+			}
+		} else if id == 0x00E0 {
+			ol_xfi.push(cfb::cf_le(rec, 2, 2));
+		} else if id == 0x00FC {
+			p = ol_xl_sst(p);
+			continue;
+		}
+		p = d + n;
+	}
+	ol_shp.len
+}
+=== -7bf5c704e25af57f
+fn ol_xl_rows(name const byte[:]) {
+	if ol_cr.len == 0 { return; }
+	ol_cnt.clear();
+	for i in 65537 { ol_cnt.push(0); }
+	for r in ol_cr { ol_cnt[r + 1] += 1; }
+	for i in 65536 { ol_cnt[i + 1] += ol_cnt[i]; }
+	var nxt int[>..] = [];
+	for i in 65536 { nxt.push(ol_cnt[i]); }
+	ol_ord.clear();
+	for i in ol_cr.len { ol_ord.push(0); }
+	for i in ol_cr.len {
+		let r = ol_cr[i];
+		ol_ord[nxt[r]] = i;
+		nxt[r] += 1;
+	}
+	var rows = 0;
+	for r in 65536 {
+		let a = ol_cnt[r];
+		let b = ol_cnt[r + 1];
+		if b <= a { continue; }
+		for k in a + 1..b {
+			var j = k;
+			while j > a && ol_cc[ol_ord[j - 1]] > ol_cc[ol_ord[j]] {
+				let t = ol_ord[j];
+				ol_ord[j] = ol_ord[j - 1];
+				ol_ord[j - 1] = t;
+				j -= 1;
+			}
+		}
+		rows += 1;
+		if rows > 50000 {
+			var m byte[>..] = [];
+			m.append("sheet ");
+			m.append(name);
+			m.append(" truncated at 50000 rows");
+			dm::dm_warn_add(m);
+			break;
+		}
+		var row byte[>..] = [];
+		var tabs = 0;
+		var last = -1;
+		for k in a..b {
+			let c = ol_ord[k];
+			let col = ol_cc[c];
+			if col <= last { continue; }
+			last = col;
+			while tabs < col {
+				row.push(9);
+				tabs += 1;
+			}
+			let s = ol_ca[c];
+			for x in ol_xp[s..s + ol_cl[c]] {
+				if x == 9 || x == 10 || x == 13 { row.push(' '); } else { row.push(x); }
+			}
+		}
+		dm::dm_add(dm::DM_ROW, 0, row);
+	}
+}
+=== -62d755a99f249c6a
+fn ol_xl_sheet(k int) {
+	let name = ol_shn[ol_sha[k]..ol_sha[k] + ol_shl[k]];
+	var p = ol_shp[k];
+	if cfb::cf_le(ol_xb, p, 2) != 0x0809 || cfb::cf_le(ol_xb, p + 6, 2) != 0x0010 {
+		var m byte[>..] = [];
+		m.append("sheet ");
+		m.append(name);
+		m.append(" missing");
+		dm::dm_warn_add(m);
+		return;
+	}
+	var h byte[>..] = [];
+	h.append(name);
+	dm::dm_add(dm::DM_HEAD, 2, h);
+	dm::dm_new_table();
+	ol_cr.clear();
+	ol_cc.clear();
+	ol_ca.clear();
+	ol_cl.clear();
+	ol_xp.clear();
+	ol_fpend = -1;
+	p += 4 + max(cfb::cf_le(ol_xb, p + 2, 2), 0);
+	var depth = 0;
+	while p + 4 <= ol_xb.len {
+		let id = cfb::cf_le(ol_xb, p, 2);
+		let n = cfb::cf_le(ol_xb, p + 2, 2);
+		if n < 0 || p + 4 + n > ol_xb.len { break; }
+		let d = p + 4;
+		p += 4 + n;
+		if id == 0x0809 {
+			depth += 1;
+			continue;
+		}
+		if id == 0x000A {
+			if depth == 0 { break; }
+			depth -= 1;
+			continue;
+		}
+		if depth > 0 { continue; }
+		let row = cfb::cf_le(ol_xb, d, 2);
+		let col = cfb::cf_le(ol_xb, d + 2, 2);
+		let ixfe = cfb::cf_le(ol_xb, d + 4, 2);
+		if id == 0x00FD {
+			let si = cfb::cf_le(ol_xb, d + 6, 4);
+			if si >= 0 && si < ol_ssa.len {
+				ol_xl_put(row, col, ol_sst[ol_ssa[si]..ol_ssa[si] + ol_ssl[si]]);
+			} else {
+				ol_xl_put(row, col, "");
+			}
+		} else if id == 0x0204 || id == 0x00D6 {
+			var t byte[>..] = [];
+			ol_xl_str(ol_xb[d..d + n], 6, false, t);
+			ol_xl_put(row, col, t);
+		} else if id == 0x0203 {
+			let v, ok = binary::read_f64le(ol_xb, d + 6);
+			if ok { ol_xl_numcell(row, col, ixfe, v); }
+		} else if id == 0x027E {
+			let rk = cfb::cf_le(ol_xb, d + 6, 4);
+			if rk >= 0 { ol_xl_numcell(row, col, ixfe, ol_xl_rk(rk)); }
+		} else if id == 0x00BD {
+			let first = col;
+			let cnt = (n - 6) / 6;
+			for j in cnt {
+				let o = d + 4 + 6 * j;
+				let x = cfb::cf_le(ol_xb, o, 2);
+				let rk = cfb::cf_le(ol_xb, o + 2, 4);
+				if rk < 0 { break; }
+				ol_xl_numcell(row, first + j, x, ol_xl_rk(rk));
+			}
+		} else if id == 0x0205 {
+			let b = cfb::cf_le(ol_xb, d + 6, 1);
+			let e = cfb::cf_le(ol_xb, d + 7, 1);
+			var t byte[>..] = [];
+			if e == 1 {
+				ol_xl_err(b, t);
+			} else if b != 0 {
+				t.append("TRUE");
+			} else {
+				t.append("FALSE");
+			}
+			ol_xl_put(row, col, t);
+		} else if id == 0x0006 {
+			let b6 = cfb::cf_le(ol_xb, d + 12, 1);
+			let b7 = cfb::cf_le(ol_xb, d + 13, 1);
+			if b6 == 255 && b7 == 255 {
+				let kind = cfb::cf_le(ol_xb, d + 6, 1);
+				if kind == 0 {
+					ol_fpend = ol_xl_put(row, col, "");
+				} else if kind == 1 {
+					if cfb::cf_le(ol_xb, d + 8, 1) != 0 {
+						ol_xl_put(row, col, "TRUE");
+					} else {
+						ol_xl_put(row, col, "FALSE");
+					}
+				} else if kind == 2 {
+					var t byte[>..] = [];
+					ol_xl_err(cfb::cf_le(ol_xb, d + 8, 1), t);
+					ol_xl_put(row, col, t);
+				} else if kind == 3 {
+					ol_xl_put(row, col, "");
+				}
+			} else {
+				let v, ok = binary::read_f64le(ol_xb, d + 6);
+				if ok { ol_xl_numcell(row, col, ixfe, v); }
+			}
+		} else if id == 0x0207 {
+			if ol_fpend >= 0 {
+				var t byte[>..] = [];
+				ol_xl_str(ol_xb[d..d + n], 0, false, t);
+				ol_ca[ol_fpend] = ol_xp.len;
+				ol_cl[ol_fpend] = t.len;
+				ol_xp.append(t);
+				ol_fpend = -1;
+			}
+		}
+	}
+	ol_xl_rows(name);
+	dm::dm_end_table();
+}
+=== -373151b71f0af15b
+fn ol_xls() bool {
+	ol_xb.clear();
+	if !cfb::cf_get(ol_h, "Workbook", ol_xb) {
+		ol_xb.clear();
+		if !cfb::cf_get(ol_h, "Book", ol_xb) { return false; }
+	}
+	let n = ol_xl_globals();
+	if n < 0 {
+		ol_xb.clear();
+		return false;
+	}
+	for k in n { ol_xl_sheet(k); }
+	var t byte[>..] = [];
+	format(t, n);
+	dm::dm_set_meta("sheets", t);
+	ol_meta(false);
+	true
+}
+=== 53530a39164cf882
+fn ol_isblank(s const byte[:]) bool {
+	for c in s {
+		if c != ' ' && c != 9 && c != 10 && c != 13 { return false; }
+	}
+	true
+}
+var ol_ps byte[>..];
+var ol_pid int[>..];
+var ol_pu int[>..];
+var ol_pty = 0;
+var ol_pskip = false;
+var ol_pph = 0;
+var ol_pfs = -1;
+var ol_pfe = -1;
+var ol_pnotes = false;
+var ol_pnt byte[>..];
+var ol_sid int[>..];
+var ol_spe int[>..];
+var ol_sa0 int[>..];
+var ol_sa1 int[>..];
+var ol_nsl int[>..];
+var ol_npe int[>..];
+var ol_na0 int[>..];
+var ol_na1 int[>..];
+=== -51d72c2555af00f4
+fn ol_pp_rec(p int, ty int&, ver int&, inst int&, n int&) bool {
+	let a = cfb::cf_le(ol_ps, p, 2);
+	let t = cfb::cf_le(ol_ps, p + 2, 2);
+	let l = cfb::cf_le(ol_ps, p + 4, 4);
+	if a < 0 || t < 0 || l < 0 || p + 8 + l > ol_ps.len { return false; }
+	ver = a & 15;
+	inst = a >> 4;
+	ty = t;
+	n = l;
+	true
+}
+=== -3ae158fc5e4465c9
+fn ol_pp_persist(off int) bool {
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	if !ol_pp_rec(off, ty, ver, inst, n) { return false; }
+	if ty != 0x1772 { return false; }
+	var q = off + 8;
+	let end = q + n;
+	while q + 4 <= end {
+		let h = cfb::cf_le(ol_ps, q, 4);
+		let first = h & 0xFFFFF;
+		let c = h >> 20;
+		q += 4;
+		for j in c {
+			if q + 4 > end { break; }
+			let o = cfb::cf_le(ol_ps, q, 4);
+			q += 4;
+			let id = first + j;
+			if id >= 1000000 { continue; }
+			while ol_pid.len <= id { ol_pid.push(-1); }
+			if ol_pid[id] == -1 { ol_pid[id] = o; }
+		}
+	}
+	true
+}
+=== 56915a6470a0bca7
+fn ol_pp_edits() int {
+	var cu byte[>..] = [];
+	if !cfb::cf_get(ol_h, "Current User", cu) { return -1; }
+	let tok = cfb::cf_le(cu, 12, 4);
+	if tok == 0xF3D1C4DF {
+		dm::dm_warn_add("encrypted PowerPoint document: it needs its password");
+		ol_enc = true;
+		return -2;
+	}
+	if tok != 0xE391C05F { return -1; }
+	var e = cfb::cf_le(cu, 16, 4);
+	ol_pid.clear();
+	var doc = -1;
+	var cnt = 0;
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	while cnt < 1000 {
+		cnt += 1;
+		if e < 0 { break; }
+		if !ol_pp_rec(e, ty, ver, inst, n) { break; }
+		if ty != 0x0FF5 { break; }
+		let d = e + 8;
+		let prev = cfb::cf_le(ol_ps, d + 8, 4);
+		let pd = cfb::cf_le(ol_ps, d + 12, 4);
+		let did = cfb::cf_le(ol_ps, d + 16, 4);
+		if !ol_pp_persist(pd) { break; }
+		if doc == -1 { doc = did; }
+		if prev == 0 || prev == e { break; }
+		e = prev;
+	}
+	doc
+}
+=== 569d7fc5e5905760
+var ol_prs int[>..];
+var ol_prv int[>..];
+var ol_prb int[>..];
+fn ol_pp_pf(p int, n int, total int) {
+	ol_prs.clear();
+	ol_prv.clear();
+	ol_prb.clear();
+	var c = 0;
+	var q = p;
+	let end = p + n;
+	while c <= total && q + 10 <= end && ol_prs.len < 10000 {
+		let cc = cfb::cf_le(ol_ps, q, 4);
+		let lvl = cfb::cf_le(ol_ps, q + 4, 2);
+		let m = cfb::cf_le(ol_ps, q + 6, 4);
+		if cc < 0 || lvl < 0 || m < 0 { break; }
+		var b = -1;
+		if (m & 1) != 0 {
+			if (cfb::cf_le(ol_ps, q + 10, 2) & 1) != 0 { b = 1; } else { b = 0; }
+		}
+		ol_prs.push(c);
+		ol_prv.push(lvl);
+		ol_prb.push(b);
+		q += 10;
+		if (m & 0x0F) != 0 { q += 2; }
+		for mk in [0x80, 0x10, 0x40] {
+			if (m & mk) != 0 { q += 2; }
+		}
+		if (m & 0x20) != 0 { q += 4; }
+		for mk in [0x800, 0x1000, 0x2000, 0x4000, 0x100, 0x400, 0x8000] {
+			if (m & mk) != 0 { q += 2; }
+		}
+		if (m & 0x100000) != 0 {
+			let tc = max(cfb::cf_le(ol_ps, q, 2), 0);
+			q += 2 + 4 * tc;
+		}
+		if (m & 0x10000) != 0 { q += 2; }
+		if (m & 0xE0000) != 0 { q += 2; }
+		if (m & 0x200000) != 0 { q += 2; }
+		c += cc;
+	}
+}
+=== -494888401287b920
+fn ol_pp_box() {
+	if ol_pskip || ol_pph == 7 || ol_pph == 8 || ol_pph == 9 || ol_pph == 10 { return; }
+	let title = ol_pty == 0 || ol_pty == 6;
+	if !ol_pnotes && !title {
+		if ol_pfs >= 0 {
+			ol_pp_pf(ol_pfs, ol_pfe - ol_pfs, ol_pu.len);
+		} else {
+			ol_prs.clear();
+			ol_prv.clear();
+			ol_prb.clear();
+		}
+	}
+	var head byte[>..] = [];
+	var pb byte[>..] = [];
+	var first = 0;
+	let n = ol_pu.len;
+	for i in n + 1 {
+		var u = 0x0D;
+		if i < n { u = ol_pu[i]; }
+		if u != 0x0D {
+			if u == 0x0B {
+				ol_u16(pb, 10);
+			} else if u == 9 {
+				ol_u16(pb, 9);
+			} else if u < 32 || u == 0xFFFF {
+			} else {
+				ol_u16(pb, u);
+			}
+			continue;
+		}
+		if i == n && first >= n && n > 0 { break; }
+		var txt byte[>..] = [];
+		dm::dm_utf16(pb, false, txt);
+		pb.clear();
+		let at = first;
+		first = i + 1;
+		if ol_pnotes {
+			if !ol_isblank(txt) {
+				if ol_pnt.len > 0 { ol_pnt.push(10); }
+				ol_pnt.append(txt);
+			}
+		} else if title {
+			if txt.len > 0 {
+				if head.len > 0 { head.push(' '); }
+				head.append(txt);
+			}
+		} else {
+			var r = -1;
+			for k in ol_prs.len {
+				if ol_prs[k] <= at { r = k; }
+			}
+			var lvl = 0;
+			var bul = false;
+			if r >= 0 {
+				lvl = ol_prv[r];
+				if ol_prb[r] == 1 {
+					bul = true;
+				} else if ol_prb[r] == -1 {
+					bul = ol_pty == 1 || ol_pty == 5 || ol_pty == 7 || ol_pty == 8;
+				}
+			}
+			if lvl > 0 || bul {
+				dm::dm_add(dm::DM_ITEM, lvl + 1, txt);
+			} else {
+				dm::dm_add(dm::DM_PARA, 0, txt);
+			}
+		}
+	}
+	if title && head.len > 0 { dm::dm_add(dm::DM_HEAD, 2, head); }
+}
+fn ol_pp_flush() {
+	if ol_pu.len == 0 { return; }
+	ol_pp_box();
+	ol_pu.clear();
+	ol_pskip = false;
+	ol_pfs = -1;
+	ol_pfe = -1;
+}
+=== -44cdfa608b8bd9cc
+fn ol_pp_atoms(p int, end int) {
+	var q = p;
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	while q + 8 <= end {
+		if !ol_pp_rec(q, ty, ver, inst, n) { break; }
+		if q + 8 + n > end { break; }
+		let d = q + 8;
+		if ty == 0x0F9F {
+			ol_pp_flush();
+			ol_pty = max(cfb::cf_le(ol_ps, d, 4), 0);
+		} else if ty == 0x0FA0 {
+			ol_pu.clear();
+			for j in n / 2 { ol_pu.push(cfb::cf_le(ol_ps, d + 2 * j, 2)); }
+		} else if ty == 0x0FA8 {
+			ol_pu.clear();
+			for j in n { ol_pu.push(ol_ps[d + j] as int); }
+		} else if ty == 0x0FA1 {
+			ol_pfs = d;
+			ol_pfe = d + n;
+		} else if ty == 0x0FD8 || ty == 0x0FF7 || ty == 0x0FF8 || ty == 0x0FF9 || ty == 0x0FFA {
+			ol_pskip = true;
+		}
+		q = d + n;
+	}
+	ol_pp_flush();
+}
+=== -5e70ed9bcb47b666
+recursive fn ol_pp_walk(p int, end int, depth int) {
+	var q = p;
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	while q + 8 <= end {
+		if !ol_pp_rec(q, ty, ver, inst, n) { break; }
+		if q + 8 + n > end { break; }
+		let d = q + 8;
+		let e = d + n;
+		let t = ty;
+		if ver == 15 {
+			if t == 0xF004 {
+				ol_pph = 0;
+				ol_pp_walk(d, e, depth + 1);
+			} else if t == 0xF00D {
+				ol_pp_atoms(d, e);
+			} else if depth < 12 {
+				ol_pp_walk(d, e, depth + 1);
+			}
+		} else if t == 0x0BC3 {
+			ol_pph = max(cfb::cf_le(ol_ps, d + 4, 1), 0);
+		}
+		q = e;
+	}
+}
+=== -1f3bd122b6f268a8
+fn ol_pp_lists(doc int) {
+	ol_sid.clear();
+	ol_spe.clear();
+	ol_sa0.clear();
+	ol_sa1.clear();
+	ol_nsl.clear();
+	ol_npe.clear();
+	ol_na0.clear();
+	ol_na1.clear();
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	if !ol_pp_rec(doc, ty, ver, inst, n) { return; }
+	if ty != 0x03E8 { return; }
+	var q = doc + 8;
+	let end = q + n;
+	while q + 8 <= end {
+		if !ol_pp_rec(q, ty, ver, inst, n) { break; }
+		let d = q + 8;
+		let e = d + n;
+		if ty == 0x0FF0 && (inst == 0 || inst == 2) {
+			let slides = inst == 0;
+			var have = false;
+			var r = d;
+			var t2 = 0;
+			var v2 = 0;
+			var i2 = 0;
+			var n2 = 0;
+			while r + 8 <= e {
+				if !ol_pp_rec(r, t2, v2, i2, n2) { break; }
+				if t2 == 0x03F3 {
+					if have {
+						if slides { ol_sa1[ol_sa1.len - 1] = r; } else { ol_na1[ol_na1.len - 1] = r; }
+					}
+					have = true;
+					let pe = cfb::cf_le(ol_ps, r + 8, 4);
+					let sid = cfb::cf_le(ol_ps, r + 20, 4);
+					if slides {
+						ol_sid.push(sid);
+						ol_spe.push(pe);
+						ol_sa0.push(r + 8 + n2);
+						ol_sa1.push(e);
+					} else {
+						ol_npe.push(pe);
+						ol_na0.push(r + 8 + n2);
+						ol_na1.push(e);
+					}
+				}
+				r += 8 + n2;
+			}
+		}
+		q = e;
+	}
+}
+=== -6fca5166c14ed3a0
+fn ol_pp_notes_of() {
+	ol_nsl.clear();
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	for i in ol_npe.len {
+		var sid = -1;
+		let pe = ol_npe[i];
+		if pe >= 0 && pe < ol_pid.len && ol_pid[pe] >= 0 {
+			let o = ol_pid[pe];
+			if ol_pp_rec(o, ty, ver, inst, n) && ty == 0x03F0 {
+				if ol_pp_rec(o + 8, ty, ver, inst, n) && ty == 0x03F1 {
+					sid = cfb::cf_le(ol_ps, o + 16, 4);
+				}
+			}
+		}
+		ol_nsl.push(sid);
+	}
+}
+=== -12f8c8e1550487f1
+fn ol_pp_cont(pe int, want int, s int&, e int&) bool {
+	if pe < 0 || pe >= ol_pid.len { return false; }
+	let o = ol_pid[pe];
+	if o < 0 { return false; }
+	var ty = 0;
+	var ver = 0;
+	var inst = 0;
+	var n = 0;
+	if !ol_pp_rec(o, ty, ver, inst, n) { return false; }
+	if ty != want { return false; }
+	s = o + 8;
+	e = o + 8 + n;
+	true
+}
+fn ol_ppt() bool {
+	ol_ps.clear();
+	if !cfb::cf_get(ol_h, "PowerPoint Document", ol_ps) { return false; }
+	let id = ol_pp_edits();
+	if id == -2 { return false; }
+	var doc = -1;
+	if id >= 0 && id < ol_pid.len { doc = ol_pid[id]; }
+	if id == -1 || doc < 0 {
+		dm::dm_warn_add("PowerPoint slide directory is damaged");
+		return false;
+	}
+	ol_pp_lists(doc);
+	ol_pp_notes_of();
+	var mt byte[>..] = [];
+	format(mt, ol_sid.len);
+	dm::dm_set_meta("slides", mt);
+	for i in ol_sid.len {
+		var t byte[>..] = [];
+		format(t, "Slide ", i + 1);
+		dm::dm_page(i + 1, t);
+		ol_pnotes = false;
+		ol_pph = 0;
+		ol_pp_atoms(ol_sa0[i], ol_sa1[i]);
+		var s = 0;
+		var e = 0;
+		if ol_pp_cont(ol_spe[i], 0x03EE, s, e) { ol_pp_walk(s, e, 0); }
+		var found = -1;
+		for k in ol_nsl.len {
+			if ol_nsl[k] == ol_sid[i] {
+				found = k;
+				break;
+			}
+		}
+		if found >= 0 {
+			ol_pnotes = true;
+			ol_pnt.clear();
+			ol_pph = 0;
+			ol_pp_atoms(ol_na0[found], ol_na1[found]);
+			if ol_pp_cont(ol_npe[found], 0x03F0, s, e) { ol_pp_walk(s, e, 0); }
+			ol_pnotes = false;
+			if !ol_isblank(ol_pnt) {
+				var line byte[>..] = [];
+				line.append("Notes: ");
+				line.append(ol_pnt);
+				dm::dm_add(dm::DM_NOTE, 0, line);
+			}
+		}
+	}
+	ol_meta(false);
+	ol_ps.clear();
+	true
+}
+=== 1a60b517f519ac97
+struct OlAtt { nat int, nlen int, tat int, tlen int, dat int, dlen int }
+var ol_atts OlAtt[>..];
+var ol_apool byte[>..];
+=== 662950fe4cdfb9b4
+fn ol_att_count() int {
+	ol_atts.len
+}
+fn ol_att_name(i int, out byte[>..]&) {
+	out.clear();
+	if i < 0 || i >= ol_atts.len { return; }
+	let a = ol_atts[i];
+	out.append(ol_apool[a.nat..a.nat + a.nlen]);
+}
+fn ol_att_type(i int, out byte[>..]&) {
+	out.clear();
+	if i < 0 || i >= ol_atts.len { return; }
+	let a = ol_atts[i];
+	out.append(ol_apool[a.tat..a.tat + a.tlen]);
+}
+fn ol_att_data(i int, out byte[>..]&) {
+	out.clear();
+	if i < 0 || i >= ol_atts.len { return; }
+	let a = ol_atts[i];
+	out.append(ol_apool[a.dat..a.dat + a.dlen]);
+}
+=== -41e02d8e2a312d71
+fn ol_msg_str(prefix const byte[:], id int, out byte[>..]&) bool {
+	var nm byte[>..] = [];
+	nm.append(prefix);
+	nm.append("__substg1.0_");
+	ol_hex(nm, id, 4);
+	nm.append("001F");
+	var s byte[>..] = [];
+	if cfb::cf_get(ol_h, nm, s) {
+		var u byte[>..] = [];
+		for i in s.len / 2 {
+			let lo = s[2 * i];
+			let hi = s[2 * i + 1];
+			if lo == 0 && hi == 0 { continue; }
+			u.push(lo);
+			u.push(hi);
+		}
+		dm::dm_utf16(u, false, out);
+		return true;
+	}
+	nm.pop_n(4);
+	nm.append("001E");
+	s.clear();
+	if cfb::cf_get(ol_h, nm, s) {
+		for b in s {
+			if b != 0 { dm::dm_put_cp(out, dm::dm_cp1252(b as int)); }
+		}
+		return true;
+	}
+	false
+}
+=== 2bcbc1677fbc7cc2
+fn ol_msg_bin(prefix const byte[:], id int, out byte[>..]&) bool {
+	var nm byte[>..] = [];
+	nm.append(prefix);
+	nm.append("__substg1.0_");
+	ol_hex(nm, id, 4);
+	nm.append("0102");
+	cfb::cf_get(ol_h, nm, out)
+}
+=== -4f6f18c0d21a4d7e
+fn ol_msg_time(out byte[>..]&) {
+	var s byte[>..] = [];
+	if !cfb::cf_get(ol_h, "__properties_version1.0", s) { return; }
+	var at = -1;
+	var alt = -1;
+	var p = 32;
+	while p + 16 <= s.len {
+		let ty = cfb::cf_le(s, p, 2);
+		let id = cfb::cf_le(s, p + 2, 2);
+		if ty == 0x0040 && id == 0x0039 {
+			at = p;
+			break;
+		}
+		if id == 0x0E06 && alt < 0 { alt = p; }
+		p += 16;
+	}
+	if at < 0 { at = alt; }
+	if at < 0 { return; }
+	let lo = cfb::cf_le(s, at + 8, 4);
+	let hi = cfb::cf_le(s, at + 12, 4);
+	if lo < 0 || hi < 0 { return; }
+	ol_filetime(hi * 4294967296 + lo, out);
+}
+=== 3eb668d066cca56a
+fn ol_msg_who(prefix const byte[:], nameid int, mailid int, mailid2 int, out byte[>..]&) {
+	var nm byte[>..] = [];
+	ol_msg_str(prefix, nameid, nm);
+	var ad byte[>..] = [];
+	ol_msg_str(prefix, mailid, ad);
+	if ad.len == 0 { ol_msg_str(prefix, mailid2, ad); }
+	if nm.len > 0 && ad.len > 0 && !(nm == ad) {
+		out.append(nm);
+		out.append(" <");
+		out.append(ad);
+		out.append(">");
+	} else if nm.len > 0 {
+		out.append(nm);
+	} else {
+		out.append(ad);
+	}
+}
+=== -2f4e27f88c0cb9e1
+fn ol_msg_list(id int, out byte[>..]&) {
+	var t byte[>..] = [];
+	ol_msg_str("", id, t);
+	for c, i in t {
+		if c == ';' {
+			out.push(',');
+			if i + 1 >= t.len || t[i + 1] != ' ' { out.push(' '); }
+		} else if c == ' ' && out.len >= 2 && out[out.len - 1] == ' ' && out[out.len - 2] == ',' {
+		} else {
+			out.push(c);
+		}
+	}
+}
+=== -207fed5adef5b763
+fn ol_msg_field(label const byte[:], key const byte[:], text const byte[:]) {
+	if ol_isblank(text) { return; }
+	var line byte[>..] = [];
+	line.append(label);
+	line.append(": ");
+	line.append(text);
+	dm::dm_add(dm::DM_FIELD, 0, line);
+	dm::dm_set_meta(key, text);
+}
+=== 2f3798af62ba17ee
+fn ol_msg_text(utf8 const byte[:], isHtml bool) {
+	if isHtml {
+		if html::ht_read_utf8(utf8) { return; }
+	}
+	if textfmt::tx_text(utf8) { return; }
+	var b byte[>..] = [];
+	b.append(utf8);
+	dm::dm_add(dm::DM_PARA, 0, b);
+}
+=== 1a4cdf45a6f41618
+fn ol_msg_atts() {
+	ol_atts.clear();
+	ol_apool.clear();
+	var pr byte[>..] = [];
+	if !cfb::cf_get(ol_h, "__properties_version1.0", pr) { return; }
+	let cnt = min(max(cfb::cf_le(pr, 20, 4), 0), 10000);
+	for i in cnt {
+		var prefix byte[>..] = [];
+		prefix.append("__attach_version1.0_#");
+		ol_hex(prefix, i, 8);
+		prefix.push('/');
+		var data byte[>..] = [];
+		if !ol_msg_bin(prefix, 0x3701, data) { continue; }
+		var name byte[>..] = [];
+		ol_msg_str(prefix, 0x3707, name);
+		if name.len == 0 { ol_msg_str(prefix, 0x3704, name); }
+		var ty byte[>..] = [];
+		ol_msg_str(prefix, 0x370E, ty);
+		for &c in ty {
+			if c >= 'A' && c <= 'Z' { c = c + 32; }
+		}
+		if ty.len == 0 { ty.append("application/octet-stream"); }
+		let a = OlAtt { nat: ol_apool.len, nlen: name.len, tat: ol_apool.len + name.len, tlen: ty.len, dat: ol_apool.len + name.len + ty.len, dlen: data.len };
+		ol_apool.append(name);
+		ol_apool.append(ty);
+		ol_apool.append(data);
+		ol_atts.push(a);
+	}
+}
+=== 4577b03b8b192cf0
+fn ol_msg() bool {
+	ol_atts.clear();
+	ol_apool.clear();
+	var t byte[>..] = [];
+	ol_msg_who("", 0x0C1A, 0x5D01, 0x0C1F, t);
+	ol_msg_field("From", "from", t);
+	t.clear();
+	ol_msg_list(0x0E04, t);
+	ol_msg_field("To", "to", t);
+	t.clear();
+	ol_msg_list(0x0E03, t);
+	ol_msg_field("Cc", "cc", t);
+	t.clear();
+	ol_msg_time(t);
+	ol_msg_field("Date", "date", t);
+	t.clear();
+	ol_msg_str("", 0x0037, t);
+	ol_msg_field("Subject", "subject", t);
+	var body byte[>..] = [];
+	ol_msg_str("", 0x1000, body);
+	if !ol_isblank(body) {
+		ol_msg_text(body, false);
+	} else {
+		var bytes byte[>..] = [];
+		ol_msg_bin("", 0x1013, bytes);
+		if ol_isblank(bytes) {
+			bytes.clear();
+			ol_msg_str("", 0x1013, bytes);
+		}
+		if !ol_isblank(bytes) {
+			if !html::ht_read(bytes) { ol_msg_text(bytes, false); }
+		} else {
+			var rt byte[>..] = [];
+			if ol_msg_bin("", 0x1009, rt) {
+				dm::dm_warn_add("message body is compressed RTF: not decoded");
+			}
+		}
+	}
+	ol_msg_atts();
+	if ol_att_count() > 0 {
+		var c byte[>..] = [];
+		format(c, ol_att_count());
+		dm::dm_set_meta("attachments", c);
+	}
+	true
+}
+=== -48f46757202aecd3
+fn ol_read(data const byte[:]) bool {
+	ol_h = cfb::cf_open(data);
+	if ol_h < 0 {
+		ol_h = -1;
+		return false;
+	}
+	ol_enc = false;
+	ol_atts.clear();
+	ol_apool.clear();
+	var r = false;
+	if cfb::cf_find(ol_h, "EncryptedPackage") >= 0 {
+		dm::dm_warn_add("encrypted Office document: it needs its password");
+		ol_enc = true;
+		r = false;
+	} else if cfb::cf_find(ol_h, "WordDocument") >= 0 {
+		r = ol_doc();
+	} else if cfb::cf_find(ol_h, "Workbook") >= 0 || cfb::cf_find(ol_h, "Book") >= 0 {
+		r = ol_xls();
+	} else if cfb::cf_find(ol_h, "PowerPoint Document") >= 0 {
+		r = ol_ppt();
+	} else if cfb::cf_find(ol_h, "__properties_version1.0") >= 0 {
+		r = ol_msg();
+	}
+	cfb::cf_close(ol_h);
+	ol_h = -1;
+	r
+}

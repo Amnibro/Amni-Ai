@@ -1,0 +1,955 @@
+import dm;
+namespace textfmt;
+fn tx_norm(data const byte[:], out byte[>..]&) {
+	out.clear();
+	var tmp byte[>..] = [];
+	dm::dm_to_utf8(data, tmp);
+	var i = 0;
+	while i < tmp.len {
+		let c = tmp[i];
+		if c == 13 {
+			out.push(10);
+			if i + 1 < tmp.len && tmp[i + 1] == 10 { i++; }
+		} else {
+			out.push(c);
+		}
+		i++;
+	}
+}
+fn tx_binary(s const byte[:]) bool {
+	let n = min(s.len, 4000);
+	var ctl = 0;
+	for i in n {
+		let c = s[i];
+		if c == 0 { return true; }
+		if c < 32 && c != 9 && c != 10 && c != 13 && c != 12 && c != 27 { ctl++; }
+	}
+	ctl * 20 > n
+}
+fn tx_blank(s const byte[:]) bool {
+	for c in s {
+		if c != 32 && c != 9 { return false; }
+	}
+	true
+}
+fn tx_trim(s const byte[:]) const byte[:] {
+	var a = 0;
+	var b = s.len;
+	while a < b && (s[a] == 32 || s[a] == 9) { a++; }
+	while b > a && (s[b - 1] == 32 || s[b - 1] == 9) { b--; }
+	s[a..b]
+}
+fn tx_indent(s const byte[:]) int {
+	var w = 0;
+	for c in s {
+		if c == 32 { w += 1; } else if c == 9 { w += 4; } else { break; }
+	}
+	w
+}
+var tx_src byte[>..];
+var tx_ls int[>..];
+var tx_le int[>..];
+fn tx_lines() {
+	tx_ls.clear();
+	tx_le.clear();
+	var st = 0;
+	for i in tx_src.len {
+		if tx_src[i] == 10 {
+			tx_ls.push(st);
+			tx_le.push(i);
+			st = i + 1;
+		}
+	}
+	if st < tx_src.len {
+		tx_ls.push(st);
+		tx_le.push(tx_src.len);
+	}
+}
+fn tx_line(k int) const byte[:] {
+	tx_src[tx_ls[k]..tx_le[k]]
+}
+var tx_para byte[>..];
+var tx_hard = false;
+var tx_item byte[>..];
+var tx_ilvl = 1;
+fn tx_flush() {
+	if tx_para.len > 0 {
+		dm::dm_add(dm::DM_PARA, 0, tx_para);
+		tx_para.clear();
+	}
+	tx_hard = false;
+	if tx_item.len > 0 {
+		dm::dm_add(dm::DM_ITEM, tx_ilvl, tx_item);
+		tx_item.clear();
+	}
+}
+fn tx_atx(line const byte[:], level int&, text byte[>..]&) bool {
+	var i = 0;
+	while i < line.len && i < 3 && line[i] == 32 { i++; }
+	var h = 0;
+	while i < line.len && line[i] == '#' { h++; i++; }
+	if h < 1 || h > 6 { return false; }
+	if i < line.len && line[i] != 32 && line[i] != 9 { return false; }
+	level = h;
+	let r = tx_trim(line[i..]);
+	var e = r.len;
+	while e > 0 && r[e - 1] == '#' { e--; }
+	if e < r.len && e > 0 && r[e - 1] != 32 && r[e - 1] != 9 { e = r.len; }
+	text.clear();
+	text.append(tx_trim(r[..e]));
+	true
+}
+fn tx_fence(line const byte[:], ch byte&, n int&) bool {
+	var i = 0;
+	while i < line.len && i < 3 && line[i] == 32 { i++; }
+	if i >= line.len { return false; }
+	let c = line[i];
+	if c != '`' && c != '~' { return false; }
+	var m = 0;
+	while i + m < line.len && line[i + m] == c { m++; }
+	if m < 3 { return false; }
+	ch = c;
+	n = m;
+	true
+}
+fn tx_underline(line const byte[:]) int {
+	let t = tx_trim(line);
+	if t.len < 3 { return 0; }
+	let c = t[0];
+	if c != '=' && c != '-' { return 0; }
+	for x in t {
+		if x != c { return 0; }
+	}
+	if c == '=' { return 1; }
+	return 2;
+}
+fn tx_rule(line const byte[:]) bool {
+	var c byte = 0;
+	var n = 0;
+	for x in line {
+		if x == 32 { continue; }
+		if c == 0 {
+			if x != '-' && x != '*' && x != '_' { return false; }
+			c = x;
+		} else if x != c {
+			return false;
+		}
+		n++;
+	}
+	n >= 3
+}
+fn tx_mark(line const byte[:], depth int&, text byte[>..]&) bool {
+	let ind = tx_indent(line);
+	var i = 0;
+	while i < line.len && (line[i] == 32 || line[i] == 9) { i++; }
+	if i >= line.len { return false; }
+	let c = line[i];
+	var numbered = false;
+	var ns = 0;
+	var ne = 0;
+	if c == '-' || c == '*' || c == '+' {
+		i++;
+	} else {
+		var j = i;
+		while j < line.len && line[j] >= '0' && line[j] <= '9' { j++; }
+		let nd = j - i;
+		if nd < 1 || nd > 3 { return false; }
+		if j >= line.len { return false; }
+		if line[j] != '.' && line[j] != ')' { return false; }
+		numbered = true;
+		ns = i;
+		ne = j;
+		i = j + 1;
+	}
+	if i >= line.len { return false; }
+	if line[i] != 32 && line[i] != 9 { return false; }
+	let t = tx_trim(line[i..]);
+	if t.len == 0 { return false; }
+	depth = ind / 2 + 1;
+	text.clear();
+	if numbered {
+		text.append(line[ns..ne]);
+		text.push('.');
+		text.push(' ');
+	}
+	text.append(t);
+	true
+}
+fn tx_cells(line const byte[:], out byte[>..]&) {
+	out.clear();
+	let t = tx_trim(line);
+	var a = 0;
+	var b = t.len;
+	if a < b && t[a] == '|' { a++; }
+	if b > a && t[b - 1] == '|' { b--; }
+	var cell byte[>..] = [];
+	var first = true;
+	var i = a;
+	while i <= b {
+		if i == b || t[i] == '|' {
+			if !first { out.push(9); }
+			first = false;
+			let ct = tx_trim(cell);
+			for x in ct {
+				if x == 9 { out.push(32); } else { out.push(x); }
+			}
+			cell.clear();
+			i++;
+			continue;
+		}
+		let c = t[i];
+		if c == 92 && i + 1 < b && t[i + 1] == '|' {
+			cell.push('|');
+			i += 2;
+			continue;
+		}
+		cell.push(c);
+		i++;
+	}
+}
+fn tx_sep(line const byte[:]) bool {
+	var pipe = false;
+	var minus = false;
+	for c in line {
+		if c == '|' {
+			pipe = true;
+		} else if c == '-' {
+			minus = true;
+		} else if c != ':' && c != 32 && c != 9 {
+			return false;
+		}
+	}
+	pipe && minus
+}
+fn tx_haspipe(s const byte[:]) bool {
+	for c in s {
+		if c == '|' { return true; }
+	}
+	false
+}
+fn tx_text(data const byte[:]) bool {
+	tx_norm(data, tx_src);
+	if tx_binary(tx_src) { return false; }
+	tx_lines();
+	tx_para.clear();
+	tx_item.clear();
+	tx_hard = false;
+	let n = tx_ls.len;
+	var k = 0;
+	var level = 0;
+	var depth = 0;
+	var text byte[>..] = [];
+	while k < n {
+		let line = tx_line(k);
+		var fc byte = 0;
+		var fnn = 0;
+		if tx_fence(line, fc, fnn) {
+			tx_flush();
+			var code byte[>..] = [];
+			var firstl = true;
+			k++;
+			while k < n {
+				let l2 = tx_line(k);
+				let t2 = tx_trim(l2);
+				var ok = t2.len >= fnn && tx_indent(l2) <= 3;
+				if ok {
+					for x in t2 {
+						if x != fc { ok = false; }
+					}
+				}
+				if ok { break; }
+				if !firstl { code.push(10); }
+				firstl = false;
+				code.append(l2);
+				k++;
+			}
+			dm::dm_add(dm::DM_CODE, 0, code);
+			k++;
+			continue;
+		}
+		if tx_blank(line) {
+			tx_flush();
+			k++;
+			continue;
+		}
+		if tx_atx(line, level, text) {
+			tx_flush();
+			dm::dm_add(dm::DM_HEAD, level, text);
+			k++;
+			continue;
+		}
+		let u = tx_underline(line);
+		if u != 0 && tx_para.len > 0 {
+			dm::dm_add(dm::DM_HEAD, u, tx_para);
+			tx_para.clear();
+			tx_hard = false;
+			k++;
+			continue;
+		}
+		if tx_rule(line) {
+			tx_flush();
+			k++;
+			continue;
+		}
+		if tx_haspipe(line) && k + 1 < n && tx_sep(tx_line(k + 1)) {
+			tx_flush();
+			dm::dm_new_table();
+			var cells byte[>..] = [];
+			tx_cells(line, cells);
+			dm::dm_add(dm::DM_ROW, 0, cells);
+			k += 2;
+			while k < n {
+				let l3 = tx_line(k);
+				if tx_blank(l3) || !tx_haspipe(l3) { break; }
+				tx_cells(l3, cells);
+				dm::dm_add(dm::DM_ROW, 0, cells);
+				k++;
+			}
+			dm::dm_end_table();
+			continue;
+		}
+		let tl = tx_trim(line);
+		if tl.len > 0 && tl[0] == '>' {
+			tx_flush();
+			var q byte[>..] = [];
+			var fq = true;
+			while k < n {
+				let t4 = tx_trim(tx_line(k));
+				if t4.len == 0 || t4[0] != '>' { break; }
+				var st = 1;
+				if t4.len > 1 && t4[1] == 32 { st = 2; }
+				if !fq { q.push(10); }
+				fq = false;
+				q.append(t4[st..]);
+				k++;
+			}
+			dm::dm_add(dm::DM_NOTE, 0, q);
+			continue;
+		}
+		if tx_mark(line, depth, text) {
+			tx_flush();
+			tx_ilvl = depth;
+			tx_item.clear();
+			tx_item.append(text);
+			k++;
+			continue;
+		}
+		if tx_item.len > 0 {
+			tx_item.push(32);
+			tx_item.append(tl);
+		} else {
+			if tx_para.len > 0 {
+				if tx_hard { tx_para.push(10); } else { tx_para.push(32); }
+			}
+			var e = tl.len;
+			var hard = false;
+			if e > 0 && tl[e - 1] == 92 {
+				e--;
+				hard = true;
+			}
+			tx_para.append(tl[..e]);
+			if line.len >= 2 && line[line.len - 1] == 32 && line[line.len - 2] == 32 { hard = true; }
+			tx_hard = hard;
+		}
+		k++;
+	}
+	tx_flush();
+	true
+}
+fn tx_detect(s const byte[:]) byte {
+	let cands byte[4] = [44, 9, 59, 124];
+	var best = 0;
+	var bs = -1;
+	for ci in 4 {
+		let d = cands[ci];
+		var cs int[>..] = [];
+		var pos = 0;
+		var lines = 0;
+		while pos < s.len && lines < 20 {
+			var e = pos;
+			while e < s.len && s[e] != 10 { e++; }
+			if e > pos {
+				var q = false;
+				var c = 0;
+				for i in pos..e {
+					let b = s[i];
+					if b == '"' {
+						q = !q;
+					} else if b == d && !q {
+						c++;
+					}
+				}
+				cs.push(c);
+				lines++;
+			}
+			pos = e + 1;
+		}
+		var bestn = 0;
+		var bestv = 0;
+		for v in cs {
+			if v == 0 { continue; }
+			var m = 0;
+			for w in cs {
+				if w == v { m++; }
+			}
+			if m > bestn {
+				bestn = m;
+				bestv = v;
+			}
+		}
+		var score = 0;
+		if bestn > 0 { score = 1000 * bestn + bestv; }
+		if score > bs {
+			bs = score;
+			best = ci;
+		}
+	}
+	cands[best]
+}
+fn tx_csv(data const byte[:], delim byte) bool {
+	var buf byte[>..] = [];
+	tx_norm(data, buf);
+	if tx_binary(buf) { return false; }
+	var d byte = delim;
+	if d == 0 { d = tx_detect(buf); }
+	dm::dm_new_table();
+	var row byte[>..] = [];
+	var cell byte[>..] = [];
+	var cellcount = 0;
+	var nonempty = false;
+	var rows = 0;
+	var widest = 0;
+	var i = 0;
+	let n = buf.len;
+	while i < n {
+		cell.clear();
+		if buf[i] == '"' {
+			i++;
+			var inq = true;
+			while i < n && inq {
+				let c = buf[i];
+				if c == '"' {
+					if i + 1 < n && buf[i + 1] == '"' {
+						cell.push('"');
+						i += 2;
+					} else {
+						inq = false;
+						i++;
+					}
+				} else {
+					cell.push(c);
+					i++;
+				}
+			}
+			while i < n && buf[i] != d && buf[i] != 10 {
+				cell.push(buf[i]);
+				i++;
+			}
+		} else {
+			while i < n && buf[i] != d && buf[i] != 10 {
+				cell.push(buf[i]);
+				i++;
+			}
+		}
+		if cellcount > 0 { row.push(9); }
+		for x in cell {
+			if x == 9 { row.push(32); } else { row.push(x); }
+		}
+		if cell.len > 0 { nonempty = true; }
+		cellcount++;
+		var endrow = false;
+		if i >= n {
+			endrow = true;
+		} else if buf[i] == 10 {
+			endrow = true;
+			i++;
+		} else {
+			i++;
+			if i >= n {
+				row.push(9);
+				cellcount++;
+				endrow = true;
+			}
+		}
+		if endrow {
+			var stop = false;
+			if nonempty {
+				rows++;
+				widest = max(widest, cellcount);
+				dm::dm_add(dm::DM_ROW, 0, row);
+				if rows >= 100000 {
+					dm::dm_warn_add("csv truncated at 100000 rows");
+					stop = true;
+				}
+			}
+			row.clear();
+			cellcount = 0;
+			nonempty = false;
+			if stop { break; }
+		}
+	}
+	dm::dm_end_table();
+	dm::dm_set_meta("rows", str(rows));
+	dm::dm_set_meta("columns", str(widest));
+	true
+}
+struct TxNode { kind int, at int, len int, kat int, klen int, first int, last int, next int, n int }
+var tx_jn TxNode[>..];
+var tx_jp byte[>..];
+fn tx_jnew(kind int) int {
+	tx_jn.push(TxNode { kind: kind, at: 0, len: 0, kat: 0, klen: 0, first: -1, last: -1, next: -1, n: 0 });
+	tx_jn.len - 1
+}
+fn tx_jadd(parent int, child int) {
+	let l = tx_jn[parent].last;
+	if l < 0 {
+		tx_jn[parent].first = child;
+	} else {
+		tx_jn[l].next = child;
+	}
+	tx_jn[parent].last = child;
+	tx_jn[parent].n += 1;
+}
+fn tx_jws(s const byte[:], p int&) {
+	while p < s.len {
+		let c = s[p];
+		if c == 32 || c == 9 || c == 10 || c == 13 || c == 12 {
+			p++;
+		} else if c == 239 && p + 2 < s.len && s[p + 1] == 187 && s[p + 2] == 191 {
+			p += 3;
+		} else if c == '/' && p + 1 < s.len && s[p + 1] == '/' {
+			while p < s.len && s[p] != 10 { p++; }
+		} else if c == '/' && p + 1 < s.len && s[p + 1] == '*' {
+			p += 2;
+			while p < s.len && !(s[p] == '*' && p + 1 < s.len && s[p + 1] == '/') { p++; }
+			if p < s.len { p += 2; }
+		} else {
+			break;
+		}
+	}
+}
+fn tx_jhex(s const byte[:], at int) int {
+	if at + 4 > s.len { return -1; }
+	var v = 0;
+	for i in 4 {
+		let c int = s[at + i];
+		var d = -1;
+		if c >= '0' && c <= '9' {
+			d = c - '0';
+		} else if c >= 'a' && c <= 'f' {
+			d = c - 'a' + 10;
+		} else if c >= 'A' && c <= 'F' {
+			d = c - 'A' + 10;
+		}
+		if d < 0 { return -1; }
+		v = v * 16 + d;
+	}
+	v
+}
+fn tx_jstr(s const byte[:], p int&, at int&, len int&) bool {
+	if p >= s.len { return false; }
+	let q = s[p];
+	if q != 34 && q != 39 { return false; }
+	p++;
+	at = tx_jp.len;
+	while p < s.len {
+		let c = s[p];
+		if c == q {
+			p++;
+			len = tx_jp.len - at;
+			return true;
+		}
+		if c == 92 {
+			p++;
+			if p >= s.len { return false; }
+			let e = s[p];
+			if e == 'b' {
+				tx_jp.push(8);
+			} else if e == 'f' {
+				tx_jp.push(12);
+			} else if e == 'n' {
+				tx_jp.push(10);
+			} else if e == 'r' {
+				tx_jp.push(13);
+			} else if e == 't' {
+				tx_jp.push(9);
+			} else if e == 'u' {
+				var cp = tx_jhex(s, p + 1);
+				if cp < 0 {
+					tx_jp.push(e);
+				} else {
+					p += 4;
+					if cp >= 55296 && cp < 56320 && p + 2 < s.len && s[p + 1] == 92 && s[p + 2] == 'u' {
+						let lo = tx_jhex(s, p + 3);
+						if lo >= 56320 && lo < 57344 {
+							cp = 65536 + ((cp - 55296) << 10) + (lo - 56320);
+							p += 6;
+						}
+					}
+					dm::dm_put_cp(tx_jp, cp);
+				}
+			} else {
+				tx_jp.push(e);
+			}
+			p++;
+			continue;
+		}
+		tx_jp.push(c);
+		p++;
+	}
+	false
+}
+fn tx_jdig(c byte) bool { c >= '0' && c <= '9' }
+fn tx_jalpha(c byte) bool { (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+fn tx_jident(c byte) bool { tx_jalpha(c) || tx_jdig(c) || c == '_' || c == '$' }
+fn tx_jword(c byte) bool { tx_jalpha(c) || tx_jdig(c) || c == '+' || c == '-' || c == '.' }
+recursive fn tx_jval(s const byte[:], p int&, depth int) int {
+	if depth > 200 { return -1; }
+	tx_jws(s, p);
+	if p >= s.len { return -1; }
+	let c = s[p];
+	if c == '{' {
+		p++;
+		let obj = tx_jnew(1);
+		while true {
+			tx_jws(s, p);
+			if p >= s.len { return -1; }
+			if s[p] == '}' {
+				p++;
+				return obj;
+			}
+			let nc = s[p];
+			var ka = 0;
+			var kl = 0;
+			if nc == 34 || nc == 39 {
+				if !tx_jstr(s, p, ka, kl) { return -1; }
+			} else {
+				ka = tx_jp.len;
+				while p < s.len && tx_jident(s[p]) {
+					tx_jp.push(s[p]);
+					p++;
+				}
+				kl = tx_jp.len - ka;
+				if kl == 0 { return -1; }
+			}
+			tx_jws(s, p);
+			if p >= s.len || s[p] != ':' { return -1; }
+			p++;
+			let ch = tx_jval(s, p, depth + 1);
+			if ch < 0 { return -1; }
+			tx_jn[ch].kat = ka;
+			tx_jn[ch].klen = kl;
+			tx_jadd(obj, ch);
+			tx_jws(s, p);
+			if p >= s.len { return -1; }
+			if s[p] == ',' {
+				p++;
+				continue;
+			}
+			if s[p] == '}' {
+				p++;
+				return obj;
+			}
+			return -1;
+		}
+	}
+	if c == '[' {
+		p++;
+		let arr = tx_jnew(2);
+		while true {
+			tx_jws(s, p);
+			if p >= s.len { return -1; }
+			if s[p] == ']' {
+				p++;
+				return arr;
+			}
+			let ch = tx_jval(s, p, depth + 1);
+			if ch < 0 { return -1; }
+			tx_jadd(arr, ch);
+			tx_jws(s, p);
+			if p >= s.len { return -1; }
+			if s[p] == ',' {
+				p++;
+				continue;
+			}
+			if s[p] == ']' {
+				p++;
+				return arr;
+			}
+			return -1;
+		}
+	}
+	if c == 34 || c == 39 {
+		var a = 0;
+		var l = 0;
+		if !tx_jstr(s, p, a, l) { return -1; }
+		let nd = tx_jnew(3);
+		tx_jn[nd].at = a;
+		tx_jn[nd].len = l;
+		return nd;
+	}
+	var e = p;
+	while e < s.len && tx_jword(s[e]) { e++; }
+	if e == p { return -1; }
+	let run = s[p..e];
+	if run == "true" {
+		p = e;
+		return tx_jnew(5);
+	}
+	if run == "false" {
+		p = e;
+		return tx_jnew(6);
+	}
+	if run == "null" {
+		p = e;
+		return tx_jnew(7);
+	}
+	let f = run[0];
+	var hasd = false;
+	for x in run {
+		if tx_jdig(x) { hasd = true; }
+	}
+	let isnum = ((tx_jdig(f) || f == '+' || f == '-' || f == '.') && hasd) || run == "NaN" || run == "Infinity" || run == "-Infinity";
+	if !isnum { return -1; }
+	let nd = tx_jnew(4);
+	tx_jn[nd].at = tx_jp.len;
+	tx_jn[nd].len = run.len;
+	tx_jp.append(run);
+	p = e;
+	nd
+}
+fn tx_jparse(s const byte[:]) int {
+	tx_jn.clear();
+	tx_jp.clear();
+	var p = 0;
+	let r = tx_jval(s, p, 0);
+	if r < 0 { return -1; }
+	tx_jws(s, p);
+	if p != s.len { return -1; }
+	r
+}
+fn tx_jlines(s const byte[:]) int {
+	tx_jn.clear();
+	tx_jp.clear();
+	let root = tx_jnew(2);
+	var pos = 0;
+	var cnt = 0;
+	while pos < s.len {
+		var e = pos;
+		while e < s.len && s[e] != 10 { e++; }
+		let line = s[pos..e];
+		var q = 0;
+		tx_jws(line, q);
+		if q < line.len {
+			var p = 0;
+			let v = tx_jval(line, p, 0);
+			if v < 0 { return -1; }
+			tx_jws(line, p);
+			if p != line.len { return -1; }
+			tx_jadd(root, v);
+			cnt++;
+		}
+		pos = e + 1;
+	}
+	if cnt == 0 { return -1; }
+	root
+}
+fn tx_jtext(node int, out byte[>..]&) {
+	let k = tx_jn[node].kind;
+	let a = tx_jn[node].at;
+	let l = tx_jn[node].len;
+	if k == 3 || k == 4 {
+		out.append(tx_jp[a..a + l]);
+	} else if k == 5 {
+		out.append("true");
+	} else if k == 6 {
+		out.append("false");
+	} else if k == 7 {
+		out.append("null");
+	}
+}
+fn tx_jfind(obj int, key const byte[:]) int {
+	if tx_jn[obj].kind != 1 { return -1; }
+	var c = tx_jn[obj].first;
+	while c >= 0 {
+		let a = tx_jn[c].kat;
+		let l = tx_jn[c].klen;
+		if tx_jp[a..a + l] == key { return c; }
+		c = tx_jn[c].next;
+	}
+	-1
+}
+fn tx_jflat(node int) bool {
+	if tx_jn[node].kind != 1 || tx_jn[node].n == 0 { return false; }
+	var c = tx_jn[node].first;
+	while c >= 0 {
+		let k = tx_jn[c].kind;
+		if k < 3 || k > 7 { return false; }
+		c = tx_jn[c].next;
+	}
+	true
+}
+fn tx_jtable(arr int) bool {
+	if tx_jn[arr].kind != 2 || tx_jn[arr].n < 2 { return false; }
+	let f = tx_jn[arr].first;
+	if !tx_jflat(f) { return false; }
+	let fn_n = tx_jn[f].n;
+	var el = tx_jn[arr].first;
+	while el >= 0 {
+		if !tx_jflat(el) { return false; }
+		if tx_jn[el].n != fn_n { return false; }
+		var m = tx_jn[f].first;
+		while m >= 0 {
+			let a = tx_jn[m].kat;
+			let l = tx_jn[m].klen;
+			if tx_jfind(el, tx_jp[a..a + l]) < 0 { return false; }
+			m = tx_jn[m].next;
+		}
+		el = tx_jn[el].next;
+	}
+	true
+}
+var tx_jcount = 0;
+fn tx_jfield(path const byte[:], text const byte[:]) {
+	if tx_jcount >= 50000 {
+		dm::dm_warn_add("json truncated at 50000 blocks");
+		return;
+	}
+	var line byte[>..] = [];
+	line.append(path);
+	line.push(':');
+	line.push(' ');
+	line.append(text);
+	dm::dm_add(dm::DM_FIELD, 0, line);
+	tx_jcount++;
+}
+fn tx_jput(path const byte[:], text const byte[:]) {
+	if path.len == 0 {
+		tx_jfield("value", text);
+	} else {
+		tx_jfield(path, text);
+	}
+}
+fn tx_jscalar(path const byte[:], node int) {
+	var t byte[>..] = [];
+	tx_jtext(node, t);
+	tx_jput(path, t);
+}
+fn tx_jtab(path const byte[:], node int) {
+	if path.len > 0 {
+		if tx_jcount >= 50000 {
+			dm::dm_warn_add("json truncated at 50000 blocks");
+			return;
+		}
+		var f byte[>..] = [];
+		f.append(path);
+		f.push(':');
+		dm::dm_add(dm::DM_FIELD, 0, f);
+		tx_jcount++;
+	}
+	if tx_jcount >= 50000 {
+		dm::dm_warn_add("json truncated at 50000 blocks");
+		return;
+	}
+	dm::dm_new_table();
+	let f0 = tx_jn[node].first;
+	var row byte[>..] = [];
+	var t byte[>..] = [];
+	var m = tx_jn[f0].first;
+	var firstc = true;
+	while m >= 0 {
+		if !firstc { row.push(9); }
+		firstc = false;
+		let a = tx_jn[m].kat;
+		let l = tx_jn[m].klen;
+		for i in a..a + l {
+			let x = tx_jp[i];
+			if x == 9 { row.push(32); } else { row.push(x); }
+		}
+		m = tx_jn[m].next;
+	}
+	dm::dm_add(dm::DM_ROW, 0, row);
+	tx_jcount++;
+	var el = f0;
+	while el >= 0 {
+		if tx_jcount >= 50000 {
+			dm::dm_warn_add("json truncated at 50000 blocks");
+			break;
+		}
+		row.clear();
+		var m2 = tx_jn[f0].first;
+		var fc = true;
+		while m2 >= 0 {
+			if !fc { row.push(9); }
+			fc = false;
+			let a = tx_jn[m2].kat;
+			let l = tx_jn[m2].klen;
+			let v = tx_jfind(el, tx_jp[a..a + l]);
+			t.clear();
+			tx_jtext(v, t);
+			for x in t {
+				if x == 9 { row.push(32); } else { row.push(x); }
+			}
+			m2 = tx_jn[m2].next;
+		}
+		dm::dm_add(dm::DM_ROW, 0, row);
+		tx_jcount++;
+		el = tx_jn[el].next;
+	}
+	dm::dm_end_table();
+}
+recursive fn tx_jemit(path byte[>..]&, node int) {
+	let k = tx_jn[node].kind;
+	if k >= 3 {
+		tx_jscalar(path, node);
+		return;
+	}
+	if tx_jn[node].n == 0 {
+		if k == 1 { tx_jput(path, "{}"); } else { tx_jput(path, "[]"); }
+		return;
+	}
+	if k == 1 {
+		var c = tx_jn[node].first;
+		while c >= 0 {
+			if tx_jcount >= 50000 { break; }
+			let base = path.len;
+			if base > 0 { path.push('.'); }
+			let a = tx_jn[c].kat;
+			let l = tx_jn[c].klen;
+			path.append(tx_jp[a..a + l]);
+			tx_jemit(path, c);
+			while path.len > base { path.pop(); }
+			c = tx_jn[c].next;
+		}
+		return;
+	}
+	if tx_jtable(node) {
+		tx_jtab(path, node);
+		return;
+	}
+	var c = tx_jn[node].first;
+	var idx = 0;
+	while c >= 0 {
+		if tx_jcount >= 50000 { break; }
+		let base = path.len;
+		path.push('[');
+		format(path, idx);
+		path.push(']');
+		tx_jemit(path, c);
+		while path.len > base { path.pop(); }
+		idx++;
+		c = tx_jn[c].next;
+	}
+}
+fn tx_json(data const byte[:]) bool {
+	var buf byte[>..] = [];
+	tx_norm(data, buf);
+	if tx_binary(buf) { return false; }
+	tx_jcount = 0;
+	var root = tx_jparse(buf);
+	if root < 0 { root = tx_jlines(buf); }
+	if root < 0 { return false; }
+	var path byte[>..] = [];
+	tx_jemit(path, root);
+	true
+}

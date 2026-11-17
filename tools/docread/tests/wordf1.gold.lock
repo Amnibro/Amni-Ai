@@ -1,0 +1,105 @@
+=== -7d3d7377a4888442
+let wf_usage = "usage: wordf1 TEST REF";
+=== 5392f5ff55630282
+fn wf_tokens(s const byte[:], out int[>..]&) {
+	out.clear();
+	var h u32 = 2166136261;
+	var in_tok = false;
+	for c in s {
+		var v int = c;
+		if v >= 'A' && v <= 'Z' { v += 32; }
+		let word = (v >= 'a' && v <= 'z') || (v >= '0' && v <= '9') || v >= 128;
+		if word {
+			if !in_tok { h = 2166136261; in_tok = true; }
+			h = (h ^ (v as u32)) * 16777619;
+		} else if in_tok {
+			out.push(h);
+			in_tok = false;
+		}
+	}
+	if in_tok { out.push(h); }
+}
+=== -169c1571307b992d
+fn wf_matches(a const int[:], b const int[:]) int {
+	var x int[>..] = [];
+	var y int[>..] = [];
+	x.append(a);
+	y.append(b);
+	sort(x) { p, q => p < q };
+	sort(y) { p, q => p < q };
+	var i = 0;
+	var j = 0;
+	var m = 0;
+	while i < x.len && j < y.len {
+		if x[i] == y[j] { m += 1; i += 1; j += 1; }
+		else if x[i] < y[j] { i += 1; }
+		else { j += 1; }
+	}
+	m
+}
+fn wf_f1(a const int[:], b const int[:]) real {
+	if a.len == 0 || b.len == 0 { return 0.0; }
+	let m = wf_matches(a, b);
+	let p = m as real / a.len as real;
+	let r = m as real / b.len as real;
+	if p + r == 0.0 { return 0.0; }
+	2.0 * p * r / (p + r)
+}
+=== 0ae1a3e9094b5219
+fn wf_pairs(t const int[:], out int[>..]&) {
+	out.clear();
+	if t.len < 2 { return; }
+	for i in t.len - 1 {
+		var h u32 = 2166136261;
+		for k in 2 {
+			let v int = t[i + k];
+			for j in 4 {
+				let by = (v >> (8 * j)) & 255;
+				h = (h ^ (by as u32)) * 16777619;
+			}
+		}
+		out.push(h);
+	}
+}
+=== -6b0c61a0ecbd6ae8
+fn main() {
+	var p1 byte[>..] = [];
+	var p2 byte[>..] = [];
+	var n = 0;
+	for a, i in args() {
+		if i == 1 { p1.append(a); }
+		if i == 2 { p2.append(a); }
+		n += 1;
+	}
+	if n < 3 { print(wf_usage); return; }
+	var ta byte[>..] = [];
+	var tb byte[>..] = [];
+	if !read_file(p1, ta) { print(wf_usage); return; }
+	if !read_file(p2, tb) { print(wf_usage); return; }
+	var ua int[>..] = [];
+	var ub int[>..] = [];
+	wf_tokens(ta, ua);
+	wf_tokens(tb, ub);
+	var pa int[>..] = [];
+	var pb int[>..] = [];
+	wf_pairs(ua, pa);
+	wf_pairs(ub, pb);
+	let f = wf_f1(ua, ub);
+	let bf = wf_f1(pa, pb);
+	var pr = 0.0;
+	var rc = 0.0;
+	if ua.len > 0 && ub.len > 0 {
+		let m = wf_matches(ua, ub);
+		pr = m as real / ua.len as real;
+		rc = m as real / ub.len as real;
+	}
+	var out byte[>..] = [];
+	format_flt(out, f, 4);
+	out.push(' ');
+	format_flt(out, pr, 4);
+	out.push(' ');
+	format_flt(out, rc, 4);
+	out.push(' ');
+	format_flt(out, bf, 4);
+	print("words ", out, " ", ua.len, " ", ub.len);
+}

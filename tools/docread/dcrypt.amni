@@ -1,0 +1,405 @@
+import crypto.aead;
+import crypto.hash;
+namespace dcrypt;
+let DC_K u32[64] = [0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501, 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821, 0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8, 0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a, 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70, 0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665, 0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1, 0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391];
+let DC_SH int[16] = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+fn dc_md5(d const byte[:]) byte[>..] {
+	var m byte[>..] = [];
+	m.append(d);
+	m.push(128);
+	while m.len % 64 != 56 { m.push(0); }
+	let bits = (d.len * 8) as u64;
+	for i in 8 { m.push((bits >> (8 * i)) as! byte); }
+	var a0 u32 = 0x67452301;
+	var b0 u32 = 0xefcdab89;
+	var c0 u32 = 0x98badcfe;
+	var d0 u32 = 0x10325476;
+	for blk in m.len / 64 {
+		var w u32[16];
+		for j in 16 {
+			let p = blk * 64 + j * 4;
+			w[j] = (m[p] as u32) | ((m[p + 1] as u32) << 8) | ((m[p + 2] as u32) << 16) | ((m[p + 3] as u32) << 24);
+		}
+		var aa u32 = a0;
+		var bb u32 = b0;
+		var cc u32 = c0;
+		var dd u32 = d0;
+		for i in 64 {
+			var f u32 = 0;
+			var g = 0;
+			if i < 16 {
+				f = (bb & cc) | (~bb & dd);
+				g = i;
+			} else if i < 32 {
+				f = (dd & bb) | (~dd & cc);
+				g = (5 * i + 1) % 16;
+			} else if i < 48 {
+				f = bb ^ cc ^ dd;
+				g = (3 * i + 5) % 16;
+			} else {
+				f = cc ^ (bb | ~dd);
+				g = (7 * i) % 16;
+			}
+			f = f + aa + DC_K[i] + w[g];
+			aa = dd;
+			dd = cc;
+			cc = bb;
+			let s = DC_SH[(i / 16) * 4 + i % 4];
+			bb = bb + ((f << s) | (f >> (32 - s)));
+		}
+		a0 = a0 + aa;
+		b0 = b0 + bb;
+		c0 = c0 + cc;
+		d0 = d0 + dd;
+	}
+	var words u32[4] = [a0, b0, c0, d0];
+	var out byte[>..] = [];
+	for wi in 4 {
+		for k in 4 { out.push((words[wi] >> (8 * k)) as! byte); }
+	}
+	out
+}
+fn dc_rc4(key const byte[:], d const byte[:], out byte[>..]&) {
+	out.clear();
+	if key.len == 0 { return; }
+	var s byte[256];
+	for i in 256 { s[i] = i as! byte; }
+	var j = 0;
+	for i in 256 {
+		j = (j + (s[i] as int) + (key[i % key.len] as int)) % 256;
+		let t = s[i];
+		s[i] = s[j];
+		s[j] = t;
+	}
+	var a = 0;
+	var b = 0;
+	for n in d.len {
+		a = (a + 1) % 256;
+		b = (b + (s[a] as int)) % 256;
+		let t = s[a];
+		s[a] = s[b];
+		s[b] = t;
+		let k = s[((s[a] as int) + (s[b] as int)) % 256];
+		out.push(d[n] ^ k);
+	}
+}
+var DC_ISBOX byte[256];
+var dc_ready = false;
+fn dc_init() {
+	if dc_ready { return; }
+	for i in 256 { DC_ISBOX[crypto::SBOX[i] as int] = i as! byte; }
+	dc_ready = true;
+}
+fn dc_mul(a byte, b byte) byte {
+	var p byte = 0;
+	var x byte = a;
+	var y byte = b;
+	for i in 8 {
+		if (y & 1) != 0 { p = p ^ x; }
+		x = crypto::xt(x);
+		y = y >> 1;
+	}
+	p
+}
+fn dc_aes_dec(a const crypto::Aes&, inp const byte[:], o byte[16]&) {
+	dc_init();
+	let nr = a.nr as int;
+	var st byte[16];
+	var t byte[16];
+	for i in 16 { st[i] = inp[i] ^ a.rk[nr * 16 + i]; }
+	var round = nr - 1;
+	while round >= 1 {
+		for c in 4 {
+			for r in 4 { t[r + 4 * c] = st[r + 4 * ((c + 4 - r) % 4)]; }
+		}
+		for i in 16 { st[i] = DC_ISBOX[t[i] as int] ^ a.rk[round * 16 + i]; }
+		for c in 4 {
+			let s0 = st[4 * c];
+			let s1 = st[4 * c + 1];
+			let s2 = st[4 * c + 2];
+			let s3 = st[4 * c + 3];
+			t[4 * c] = dc_mul(s0, 14) ^ dc_mul(s1, 11) ^ dc_mul(s2, 13) ^ dc_mul(s3, 9);
+			t[4 * c + 1] = dc_mul(s0, 9) ^ dc_mul(s1, 14) ^ dc_mul(s2, 11) ^ dc_mul(s3, 13);
+			t[4 * c + 2] = dc_mul(s0, 13) ^ dc_mul(s1, 9) ^ dc_mul(s2, 14) ^ dc_mul(s3, 11);
+			t[4 * c + 3] = dc_mul(s0, 11) ^ dc_mul(s1, 13) ^ dc_mul(s2, 9) ^ dc_mul(s3, 14);
+		}
+		for i in 16 { st[i] = t[i]; }
+		round -= 1;
+	}
+	for c in 4 {
+		for r in 4 { t[r + 4 * c] = st[r + 4 * ((c + 4 - r) % 4)]; }
+	}
+	for i in 16 { o[i] = DC_ISBOX[t[i] as int] ^ a.rk[i]; }
+}
+fn dc_aes_cbc_dec(key const byte[:], d const byte[:], out byte[>..]&) bool {
+	out.clear();
+	if d.len < 16 { return true; }
+	dc_init();
+	let a = crypto::aes_key(key);
+	let nblk = d.len / 16 - 1;
+	for b in nblk {
+		var o byte[16];
+		dc_aes_dec(a, d[16 + b * 16..32 + b * 16], o);
+		for i in 16 { out.push(o[i] ^ d[b * 16 + i]); }
+	}
+	if out.len > 0 {
+		let p = out[out.len - 1] as int;
+		if p >= 1 && p <= 16 && p <= out.len {
+			var good = true;
+			for i in p {
+				if (out[out.len - 1 - i] as int) != p { good = false; }
+			}
+			if good { out.pop_n(p); }
+		}
+	}
+	true
+}
+fn dc_aes_cbc_enc_nopad(key const byte[:], iv const byte[:], d const byte[:], out byte[>..]&) {
+	out.clear();
+	let a = crypto::aes_key(key);
+	var prev byte[16];
+	for i in 16 { prev[i] = iv[i]; }
+	for b in d.len / 16 {
+		var x byte[16];
+		for i in 16 { x[i] = d[b * 16 + i] ^ prev[i]; }
+		var o byte[16];
+		crypto::aes_block(a, x, o);
+		for i in 16 {
+			out.push(o[i]);
+			prev[i] = o[i];
+		}
+	}
+}
+var dc_on = false;
+var dc_key byte[>..];
+var dc_rev = 0;
+var dc_stm = 0;
+var dc_str = 0;
+var dc_scratch byte[>..];
+let DC_PAD byte[32] = [0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A];
+fn dc_padpw(pw const byte[:], out byte[>..]&) {
+	out.clear();
+	let n = min(pw.len, 32);
+	for i in n { out.push(pw[i]); }
+	for k in 32 - n { out.push(DC_PAD[k]); }
+}
+fn dc_key_r4(pw const byte[:], o const byte[:], p int, id0 const byte[:], rev int, nbytes int, meta bool, out byte[>..]&) {
+	var buf byte[>..] = [];
+	var pp byte[>..] = [];
+	dc_padpw(pw, pp);
+	buf.append(pp);
+	buf.append(o[..32]);
+	for i in 4 { buf.push((p >> (8 * i)) as! byte); }
+	buf.append(id0);
+	if rev >= 4 && !meta {
+		for i in 4 { buf.push(255); }
+	}
+	var h byte[>..] = [];
+	h.append(dc_md5(buf));
+	if rev >= 3 {
+		for i in 50 {
+			let t = dc_md5(h[..nbytes]);
+			h = copy(t);
+		}
+	}
+	out.clear();
+	for i in nbytes { out.push(h[i]); }
+}
+fn dc_eq(a const byte[:], b const byte[:], n int) bool {
+	if a.len < n || b.len < n { return false; }
+	for i in n {
+		if a[i] != b[i] { return false; }
+	}
+	true
+}
+fn dc_check_user_r4(key const byte[:], u const byte[:], id0 const byte[:], rev int) bool {
+	var r byte[>..] = [];
+	if rev == 2 {
+		dc_rc4(key, DC_PAD, r);
+		return dc_eq(r, u, 32);
+	}
+	var buf byte[>..] = [];
+	buf.append(DC_PAD);
+	buf.append(id0);
+	let h = dc_md5(buf);
+	dc_rc4(key, h, r);
+	for i in 1..20 {
+		var kx byte[>..] = [];
+		for j in key.len { kx.push(key[j] ^ (i as! byte)); }
+		var r2 byte[>..] = [];
+		dc_rc4(kx, r, r2);
+		r = copy(r2);
+	}
+	dc_eq(r, u, 16)
+}
+fn dc_owner_to_user_r4(opw const byte[:], o const byte[:], rev int, nbytes int, out byte[>..]&) {
+	var pb byte[>..] = [];
+	dc_padpw(opw, pb);
+	var h byte[>..] = [];
+	h.append(dc_md5(pb));
+	if rev >= 3 {
+		for i in 50 {
+			let t = dc_md5(h);
+			h = copy(t);
+		}
+	}
+	var key byte[>..] = [];
+	for i in nbytes { key.push(h[i]); }
+	if rev == 2 {
+		dc_rc4(key, o[..32], out);
+		return;
+	}
+	var cur byte[>..] = [];
+	cur.append(o[..32]);
+	for i in 20 {
+		let x = 19 - i;
+		var kx byte[>..] = [];
+		for j in key.len { kx.push(key[j] ^ (x as! byte)); }
+		var tmp byte[>..] = [];
+		dc_rc4(kx, cur, tmp);
+		cur = copy(tmp);
+	}
+	out.clear();
+	out.append(cur);
+}
+fn dc_hash_r6(pw const byte[:], salt const byte[:], udata const byte[:], rev int, out byte[>..]&) {
+	let p = pw[..min(pw.len, 127)];
+	var one byte[>..] = [];
+	one.append(p);
+	one.append(salt);
+	one.append(udata);
+	var k byte[>..] = [];
+	k.append(crypto::sha256(one));
+	if rev == 5 {
+		out.clear();
+		out.append(k[..32]);
+		return;
+	}
+	var i = 0;
+	loop {
+		var seg byte[>..] = [];
+		seg.append(p);
+		seg.append(k);
+		seg.append(udata);
+		var k1 byte[>..] = [];
+		for j in 64 { k1.append(seg); }
+		var e byte[>..] = [];
+		dc_aes_cbc_enc_nopad(k[..16], k[16..32], k1, e);
+		var sum = 0;
+		for j in 16 { sum += e[j] as int; }
+		var nk byte[>..] = [];
+		let m = sum % 3;
+		if m == 0 {
+			nk.append(crypto::sha256(e));
+		} else if m == 1 {
+			nk.append(crypto::sha384(e));
+		} else {
+			nk.append(crypto::sha512(e));
+		}
+		k = copy(nk);
+		let last = e[e.len - 1] as int;
+		if i >= 63 && last <= i - 32 { break; }
+		i += 1;
+	}
+	out.clear();
+	out.append(k[..32]);
+}
+fn dc_dec_ue(ik const byte[:], ue const byte[:], out byte[>..]&) {
+	dc_init();
+	let a = crypto::aes_key(ik);
+	var o0 byte[16];
+	var o1 byte[16];
+	dc_aes_dec(a, ue[0..16], o0);
+	dc_aes_dec(a, ue[16..32], o1);
+	out.clear();
+	for i in 16 { out.push(o0[i]); }
+	for i in 16 { out.push(o1[i] ^ ue[i]); }
+}
+fn dc_key_r6(pw const byte[:], o const byte[:], u const byte[:], oe const byte[:], ue const byte[:], rev int, out byte[>..]&) bool {
+	var empty byte[>..] = [];
+	var h byte[>..] = [];
+	dc_hash_r6(pw, u[32..40], empty, rev, h);
+	if dc_eq(h, u, 32) {
+		var ik byte[>..] = [];
+		dc_hash_r6(pw, u[40..48], empty, rev, ik);
+		dc_dec_ue(ik, ue, out);
+		return true;
+	}
+	let u48 = u[..48];
+	dc_hash_r6(pw, o[32..40], u48, rev, h);
+	if dc_eq(h, o, 32) {
+		var ik byte[>..] = [];
+		dc_hash_r6(pw, o[40..48], u48, rev, ik);
+		dc_dec_ue(ik, oe, out);
+		return true;
+	}
+	false
+}
+fn dc_setup(rev int, v int, length_bits int, o const byte[:], u const byte[:], oe const byte[:], ue const byte[:], p int, id0 const byte[:], meta bool, stm int, str int) bool {
+	var damaged = false;
+	if rev == 5 || rev == 6 {
+		if o.len < 48 || u.len < 48 || oe.len < 32 || ue.len < 32 { damaged = true; }
+	} else {
+		if o.len < 32 || u.len < 32 { damaged = true; }
+	}
+	if damaged {
+		dc_on = false;
+		return false;
+	}
+	dc_rev = rev;
+	dc_stm = stm;
+	dc_str = str;
+	var empty byte[>..] = [];
+	var ok = false;
+	if rev == 5 || rev == 6 {
+		ok = dc_key_r6(empty, o, u, oe, ue, rev, dc_key);
+	} else {
+		var nbytes = 5;
+		if rev != 2 {
+			nbytes = length_bits / 8;
+			if length_bits == 0 { nbytes = 16; }
+			nbytes = min(nbytes, 16);
+		}
+		dc_key_r4(empty, o, p, id0, rev, nbytes, meta, dc_key);
+		ok = dc_check_user_r4(dc_key, u, id0, rev);
+		if !ok {
+			var upw byte[>..] = [];
+			dc_owner_to_user_r4(empty, o, rev, nbytes, upw);
+			dc_key_r4(upw, o, p, id0, rev, nbytes, meta, dc_key);
+			ok = dc_check_user_r4(dc_key, u, id0, rev);
+		}
+	}
+	dc_on = ok;
+	ok
+}
+fn dc_object_key(num int, gen int, aes bool, out byte[>..]&) {
+	var buf byte[>..] = [];
+	buf.append(dc_key);
+	for i in 3 { buf.push((num >> (8 * i)) as! byte); }
+	for i in 2 { buf.push((gen >> (8 * i)) as! byte); }
+	if aes { buf.append("sAlT"); }
+	let h = dc_md5(buf);
+	let n = min(dc_key.len + 5, 16);
+	out.clear();
+	for i in n { out.push(h[i]); }
+}
+fn dc_decrypt(d const byte[:], num int, gen int, is_str bool, out byte[>..]&) {
+	out.clear();
+	var m = dc_stm;
+	if is_str { m = dc_str; }
+	if !dc_on || m == 0 {
+		out.append(d);
+		return;
+	}
+	if m == 3 {
+		dc_aes_cbc_dec(dc_key, d, out);
+		return;
+	}
+	var k byte[>..] = [];
+	dc_object_key(num, gen, m == 2, k);
+	if m == 1 {
+		dc_rc4(k, d, out);
+	} else {
+		dc_aes_cbc_dec(k, d, out);
+	}
+}

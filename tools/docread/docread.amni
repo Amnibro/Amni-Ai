@@ -1,0 +1,1117 @@
+import os;
+import json;
+import dm;
+import zip;
+import xml;
+import office;
+import html;
+import rtf;
+import textfmt;
+import eml;
+import playout;
+import image;
+import pimage;
+import pack;
+import extra;
+import ole;
+
+let DR_UNKNOWN = 0;
+let DR_PDF = 1;
+let DR_DOCX = 2;
+let DR_XLSX = 3;
+let DR_PPTX = 4;
+let DR_ODF = 5;
+let DR_EPUB = 6;
+let DR_ZIP = 7;
+let DR_HTML = 8;
+let DR_RTF = 9;
+let DR_EML = 10;
+let DR_CSV = 11;
+let DR_TSV = 12;
+let DR_JSON = 13;
+let DR_XML = 14;
+let DR_TEXT = 15;
+let DR_OLE = 16;
+let DR_IMAGE = 17;
+let DR_BINARY = 18;
+let DR_GZIP = 19;
+let DR_BZIP2 = 20;
+let DR_TAR = 21;
+let DR_IPYNB = 22;
+let DR_ICS = 23;
+let DR_VCF = 24;
+let DR_CODE = 25;
+let dr_kind_names = ["unknown", "pdf", "docx", "xlsx", "pptx", "odf", "epub", "zip", "html", "rtf", "eml", "csv", "tsv", "json", "xml", "text", "ole", "image", "binary", "gzip", "bzip2", "tar", "ipynb", "ics", "vcf", "code"];
+let dr_units = ["part", "page", "section", "sheet", "slide", "part", "chapter", "part", "section", "section", "part", "part", "part", "part", "part", "section", "part", "part", "part", "part", "part", "part", "part", "part", "part", "line"];
+var dr_tmp byte[>..];
+var dr_out byte[>..];
+fn dr_ext(path const byte[:], out byte[>..]&) {
+	out.clear();
+	var dot = -1;
+	for i in path.len {
+		let c = path[i];
+		if c == '/' {
+			dot = -1;
+		} else if c == '.' {
+			dot = i;
+		}
+	}
+	if dot < 0 { return; }
+	for i in (dot + 1)..path.len {
+		var c = path[i];
+		if c >= 'A' && c <= 'Z' { c += 32; }
+		out.push(c);
+	}
+}
+fn dr_lc(c int) int {
+	if c >= 'A' && c <= 'Z' { c + 32 } else { c }
+}
+fn dr_starts(d const byte[:], at int, s const byte[:]) bool {
+	if at < 0 || at + s.len > d.len { return false; }
+	for i in s.len {
+		if d[at + i] != s[i] { return false; }
+	}
+	return true;
+}
+fn dr_starts_ci(d const byte[:], at int, s const byte[:]) bool {
+	if at < 0 || at + s.len > d.len { return false; }
+	for i in s.len {
+		if dr_lc(d[at + i]) != dr_lc(s[i]) { return false; }
+	}
+	return true;
+}
+fn dr_ends(s const byte[:], suf const byte[:]) bool {
+	if s.len < suf.len { return false; }
+	for i in suf.len {
+		if dr_lc(s[s.len - suf.len + i]) != dr_lc(suf[i]) { return false; }
+	}
+	return true;
+}
+fn dr_find(d const byte[:], s const byte[:], limit int) int {
+	let n = min(limit, d.len);
+	var i = 0;
+	while i + s.len <= n {
+		if dr_starts(d, i, s) { return i; }
+		i++;
+	}
+	return -1;
+}
+fn dr_lower_eq(a const byte[:], b const byte[:]) bool {
+	if a.len != b.len { return false; }
+	for i in a.len {
+		if dr_lc(a[i]) != dr_lc(b[i]) { return false; }
+	}
+	return true;
+}
+let DR_OLE_MAGIC = [208, 207, 17, 224, 161, 177, 26, 225];
+let DR_EML_HDRS = ["From:", "To:", "Subject:", "Date:", "Received:", "Return-Path:", "Message-ID:", "MIME-Version:", "Delivered-To:"];
+let DR_HTML_EXT = ["html", "htm", "xhtml", "xht"];
+let DR_JSON_EXT = ["json", "geojson", "jsonl", "ndjson"];
+let DR_TEXT_EXT = ["md", "markdown", "txt", "text", "log", "rst", "org", "ini", "cfg", "conf", "yaml", "yml", "toml", "tex", "srt", "vtt"];
+fn dr_ext_in(ext const byte[:], list const byte[:][:]) bool {
+	for x in list {
+		if ext == x { return true; }
+	}
+	return false;
+}
+fn dr_text_ok(d const byte[:]) bool {
+	let n = min(d.len, 65536);
+	if n == 0 { return true; }
+	var bad = 0;
+	for i in n {
+		let c = d[i];
+		if c == 0 || (c < 32 && c != 9 && c != 10 && c != 13 && c != 12) { bad++; }
+	}
+	return bad * 100 < n;
+}
+fn dr_find_ci(d const byte[:], s const byte[:], limit int) int {
+	let n = min(limit, d.len);
+	var i = 0;
+	while i + s.len <= n {
+		if dr_starts_ci(d, i, s) { return i; }
+		i++;
+	}
+	return -1;
+}
+fn dr_eml_headers(s const byte[:]) bool {
+	var count = 0;
+	var at = 0;
+	for ln in 30 {
+		if at >= s.len { break; }
+		var e = at;
+		while e < s.len && s[e] != 10 { e++; }
+		var le = e;
+		if le > at && s[le - 1] == 13 { le--; }
+		if le == at { break; }
+		for h in DR_EML_HDRS {
+			if at + h.len <= le && dr_starts_ci(s, at, h) {
+				count++;
+				break;
+			}
+		}
+		at = e + 1;
+	}
+	return count >= 2;
+}
+fn dr_json_ok(s const byte[:]) bool {
+	var jd json::Doc;
+	let root, err = json::parse(s, jd);
+	return err.len == 0;
+}
+fn dr_sniff(name const byte[:], d const byte[:]) int {
+	if dr_find(d, "%PDF", 1024) >= 0 { return DR_PDF; }
+	if d.len >= 8 {
+		var ole = true;
+		for i in 8 {
+			if d[i] != DR_OLE_MAGIC[i] { ole = false; }
+		}
+		if ole { return DR_OLE; }
+	}
+	if image::im_kind(d) != 0 { return DR_IMAGE; }
+	if d.len >= 4 && d[0] == 'P' && d[1] == 'K' && ((d[2] == 3 && d[3] == 4) || (d[2] == 5 && d[3] == 6)) {
+		let h = zip::zp_open(d);
+		if h < 0 { return DR_ZIP; }
+		var res = DR_ZIP;
+		if zip::zp_find(h, "word/document.xml") >= 0 {
+			res = DR_DOCX;
+		} else if zip::zp_find(h, "xl/workbook.xml") >= 0 {
+			res = DR_XLSX;
+		} else if zip::zp_find(h, "ppt/presentation.xml") >= 0 {
+			res = DR_PPTX;
+		} else {
+			var mt byte[>..] = [];
+			let hasmt = dr_zip_text(h, "mimetype", mt);
+			if hasmt && dr_starts(mt, 0, "application/epub+zip") {
+				res = DR_EPUB;
+			} else if zip::zp_find(h, "META-INF/container.xml") >= 0 && dr_ends(name, ".epub") {
+				res = DR_EPUB;
+			} else if hasmt && dr_starts(mt, 0, "application/vnd.oasis.opendocument.") {
+				res = DR_ODF;
+			}
+		}
+		zip::zp_close(h);
+		return res;
+	}
+	if pack::pk_is_gz(d) { return DR_GZIP; }
+	if pack::pk_is_bz2(d) { return DR_BZIP2; }
+	let th = pack::pk_tar_open(d);
+	if th >= 0 {
+		pack::pk_tar_close(th);
+		return DR_TAR;
+	}
+	var ext byte[>..] = [];
+	dr_ext(name, ext);
+	var st = 0;
+	if d.len >= 3 && d[0] == 239 && d[1] == 187 && d[2] == 191 { st = 3; }
+	while st < d.len && (d[st] == 32 || d[st] == 9 || d[st] == 10 || d[st] == 13 || d[st] == 12) { st++; }
+	let s = d[st..d.len];
+	if dr_starts(s, 0, "{\\rtf") { return DR_RTF; }
+	if ((ext == "eml" || ext == "mbox" || ext == "") && dr_starts(s, 0, "From ")) || dr_eml_headers(s) { return DR_EML; }
+	if dr_starts_ci(s, 0, "BEGIN:VCALENDAR") || ext == "ics" || ext == "ical" || ext == "ifb" { return DR_ICS; }
+	if dr_starts_ci(s, 0, "BEGIN:VCARD") || ext == "vcf" || ext == "vcard" { return DR_VCF; }
+	if ext == "ipynb" { return DR_IPYNB; }
+	if dr_find_ci(d, "<!doctype html", 4096) >= 0 || dr_find_ci(d, "<html", 4096) >= 0 || dr_find_ci(d, "<head", 4096) >= 0 || dr_find_ci(d, "<body", 4096) >= 0 || dr_ext_in(ext, DR_HTML_EXT) { return DR_HTML; }
+	let texty = dr_text_ok(d);
+	if extra::ex_is_code_ext(ext) && texty { return DR_CODE; }
+	if dr_starts(s, 0, "<?xml") { return DR_XML; }
+	if s.len > 1 && s[0] == '<' && ((s[1] >= 'a' && s[1] <= 'z') || (s[1] >= 'A' && s[1] <= 'Z')) { return DR_XML; }
+	if s.len > 0 && (s[0] == '{' || s[0] == '[') && (ext == "json" || ext == "jsonl") { return DR_JSON; }
+	if dr_ext_in(ext, DR_JSON_EXT) && dr_json_ok(s) { return DR_JSON; }
+	if ext == "csv" { return DR_CSV; }
+	if ext == "tsv" || ext == "tab" { return DR_TSV; }
+	if dr_ext_in(ext, DR_TEXT_EXT) || texty { return DR_TEXT; }
+	return DR_BINARY;
+}
+fn dr_zip_text(h int, name const byte[:], out byte[>..]&) bool {
+	let i = zip::zp_find(h, name);
+	if i < 0 { return false; }
+	return zip::zp_read(h, i, out);
+}
+fn dr_hex(c int) int {
+	if c >= '0' && c <= '9' { return c - '0'; }
+	let l = dr_lc(c);
+	if l >= 'a' && l <= 'f' { return l - 'a' + 10; }
+	return -1;
+}
+fn dr_pop_seg(out byte[>..]&) {
+	if out.len > 0 { out.pop(); }
+	while out.len > 0 && out[out.len - 1] != '/' { out.pop(); }
+}
+fn dr_join_path(base const byte[:], rel const byte[:], out byte[>..]&) {
+	out.clear();
+	var dec byte[>..] = [];
+	var i = 0;
+	while i < rel.len {
+		let c = rel[i];
+		if c == '#' { break; }
+		if c == '%' && i + 2 < rel.len && dr_hex(rel[i + 1]) >= 0 && dr_hex(rel[i + 2]) >= 0 {
+			dec.push((dr_hex(rel[i + 1]) * 16 + dr_hex(rel[i + 2])) as byte);
+			i += 3;
+		} else {
+			dec.push(c);
+			i++;
+		}
+	}
+	let rooted = dec.len > 0 && dec[0] == '/';
+	if !rooted {
+		var last = -1;
+		for k in base.len {
+			if base[k] == '/' { last = k; }
+		}
+		for k in last + 1 { out.push(base[k]); }
+	}
+	var st = 0;
+	for k in dec.len + 1 {
+		if k == dec.len || dec[k] == '/' {
+			let seg = dec[st..k];
+			st = k + 1;
+			if seg.len == 0 || seg == "." { continue; }
+			if seg == ".." {
+				dr_pop_seg(out);
+				continue;
+			}
+			out.append(seg);
+			out.push('/');
+		}
+	}
+	if out.len > 0 && out[out.len - 1] == '/' { out.pop(); }
+}
+struct DR_Item { id_at int, id_len int, href_at int, href_len int, ty_at int, ty_len int }
+let DR_EPUB_LOCALS = ["title", "creator", "language", "publisher", "date"];
+let DR_EPUB_KEYS = ["title", "author", "language", "publisher", "date"];
+fn dr_xml_text(i int, out byte[>..]&) {
+	let e = xml::xm_close_of(i);
+	for j in (i + 1)..e {
+		if xml::xm_kind(j) == xml::XM_TEXT { xml::xm_text(j, out); }
+	}
+}
+fn dr_epub(d const byte[:]) bool {
+	let h = zip::zp_open(d);
+	if h < 0 { return false; }
+	var cont byte[>..] = [];
+	var pkg byte[>..] = [];
+	if dr_zip_text(h, "META-INF/container.xml", cont) {
+		xml::xm_parse(cont);
+		for i in xml::xm_count() {
+			if xml::xm_kind(i) == xml::XM_OPEN && xml::xm_local(i) == "rootfile" {
+				xml::xm_attr(i, "full-path", pkg);
+				break;
+			}
+		}
+	}
+	if pkg.len == 0 {
+		for i in zip::zp_count(h) {
+			let nm = zip::zp_name(h, i);
+			if dr_ends(nm, ".opf") {
+				pkg.append(nm);
+				break;
+			}
+		}
+	}
+	var opf byte[>..] = [];
+	if pkg.len == 0 || !dr_zip_text(h, pkg, opf) {
+		zip::zp_close(h);
+		return false;
+	}
+	xml::xm_parse(opf);
+	var mbuf byte[>..] = [];
+	var items DR_Item[>..] = [];
+	var spine int[>..] = [];
+	var seen bool[5] = [false; 5];
+	for i in xml::xm_count() {
+		if xml::xm_kind(i) != xml::XM_OPEN { continue; }
+		let loc = xml::xm_local(i);
+		for k in 5 {
+			if !seen[k] && loc == DR_EPUB_LOCALS[k] {
+				var t byte[>..] = [];
+				dr_xml_text(i, t);
+				dm::dm_set_meta(DR_EPUB_KEYS[k], trim(t));
+				seen[k] = true;
+			}
+		}
+		if loc == "item" {
+			var m = DR_Item { 0, 0, 0, 0, 0, 0 };
+			m.id_at = mbuf.len;
+			xml::xm_attr(i, "id", mbuf);
+			m.id_len = mbuf.len - m.id_at;
+			m.href_at = mbuf.len;
+			xml::xm_attr(i, "href", mbuf);
+			m.href_len = mbuf.len - m.href_at;
+			m.ty_at = mbuf.len;
+			xml::xm_attr(i, "media-type", mbuf);
+			m.ty_len = mbuf.len - m.ty_at;
+			items.push(m);
+		} else if loc == "itemref" {
+			let a = mbuf.len;
+			xml::xm_attr(i, "idref", mbuf);
+			spine.push(a);
+			spine.push(mbuf.len - a);
+		}
+	}
+	var n = 0;
+	var path byte[>..] = [];
+	var ch byte[>..] = [];
+	var si = 0;
+	while si < spine.len {
+		let ia = spine[si];
+		let il = spine[si + 1];
+		si += 2;
+		let idref = mbuf[ia..ia + il];
+		for m in items {
+			if mbuf[m.id_at..m.id_at + m.id_len] == idref {
+				let href = mbuf[m.href_at..m.href_at + m.href_len];
+				let ty = mbuf[m.ty_at..m.ty_at + m.ty_len];
+				if ty == "application/xhtml+xml" || ty == "text/html" || dr_ends(href, ".xhtml") || dr_ends(href, ".html") || dr_ends(href, ".htm") {
+					n++;
+					dm::dm_page(n, "");
+					dr_join_path(pkg, href, path);
+					ch.clear();
+					if dr_zip_text(h, path, ch) { html::ht_read(ch); }
+				}
+				break;
+			}
+		}
+	}
+	let cs = str(n);
+	dm::dm_set_meta("chapters", cs);
+	zip::zp_close(h);
+	return true;
+}
+fn dr_xml(d const byte[:]) bool {
+	xml::xm_parse(d);
+	let n = xml::xm_count();
+	var found = false;
+	var line byte[>..] = [];
+	var t byte[>..] = [];
+	for i in n {
+		if xml::xm_kind(i) != xml::XM_OPEN { continue; }
+		if !found {
+			found = true;
+			dm::dm_set_meta("root", xml::xm_name(i));
+		}
+		let e = xml::xm_close_of(i);
+		var kids = false;
+		for j in (i + 1)..e {
+			if xml::xm_kind(j) == xml::XM_OPEN {
+				kids = true;
+				break;
+			}
+		}
+		t.clear();
+		for j in (i + 1)..e {
+			if xml::xm_kind(j) == xml::XM_TEXT && xml::xm_parent(j) == i { xml::xm_text(j, t); }
+		}
+		let tr = trim(t);
+		if tr.len > 200 {
+			dm::dm_add(dm::DM_PARA, 0, tr);
+		} else if tr.len > 0 && !kids {
+			line.clear();
+			line.append(xml::xm_local(i));
+			line.append(": ");
+			line.append(tr);
+			dm::dm_add(dm::DM_FIELD, 0, line);
+		}
+	}
+	return found;
+}
+var dr_arena byte[>..];
+var dr_atts int[>..];
+var dr_kinds int[>..];
+fn dr_dm2(kind int, level int, pre const byte[:], text const byte[:]) {
+	var s byte[>..] = [];
+	s.append(pre);
+	s.append(text);
+	dm::dm_add(kind, level, s);
+}
+fn dr_unreadable(name const byte[:], d const byte[:]) {
+	var s byte[>..] = [];
+	s.append("(not readable: ");
+	s.append(dr_kind_names[dr_sniff(name, d)]);
+	s.append(")");
+	dm::dm_add(dm::DM_NOTE, 0, s);
+}
+fn dr_entry_name(tar bool, h int, i int, out byte[>..]&) {
+	if tar {
+		out.append(pack::pk_tar_name(h, i));
+	} else {
+		out.append(zip::zp_name(h, i));
+	}
+}
+fn dr_plan(tar bool, h int) int {
+	var n = 0;
+	if tar {
+		n = pack::pk_tar_count(h);
+	} else {
+		n = zip::zp_count(h);
+	}
+	n = min(n, 500);
+	var total = 0;
+	var nm byte[>..] = [];
+	var data byte[>..] = [];
+	for i in n {
+		nm.clear();
+		dr_entry_name(tar, h, i, nm);
+		var isdir = false;
+		var sz = 0;
+		if tar {
+			isdir = pack::pk_tar_is_dir(h, i);
+			sz = pack::pk_tar_size(h, i);
+		} else {
+			isdir = zip::zp_is_dir(h, i);
+			sz = zip::zp_size(h, i);
+		}
+		var kd = -1;
+		if isdir || dr_starts(nm, 0, "__MACOSX/") || nm == ".DS_Store" || dr_ends(nm, "/.DS_Store") {
+			kd = -1;
+		} else if total + sz > 268435456 {
+			kd = -1;
+		} else if tar && !pack::pk_tar_readable(h, i) {
+			total += sz;
+			kd = -2;
+		} else if !tar && zip::zp_encrypted(h, i) {
+			total += sz;
+			kd = -2;
+		} else {
+			total += sz;
+			data.clear();
+			var ok = false;
+			if tar {
+				ok = pack::pk_tar_read(h, i, data);
+			} else {
+				ok = zip::zp_read(h, i, data);
+			}
+			if !ok {
+				kd = -2;
+			} else {
+				let k = dr_sniff(nm, data);
+				if k == DR_BINARY || k == DR_UNKNOWN {
+					kd = -2;
+				} else {
+					kd = k;
+				}
+			}
+		}
+		dr_kinds.push(kd);
+	}
+	return n;
+}
+fn dr_stash_entry(tar bool, h int, i int) int, int, int, int, bool {
+	var data byte[>..] = [];
+	var nm byte[>..] = [];
+	dr_entry_name(tar, h, i, nm);
+	var ok = false;
+	if tar {
+		ok = pack::pk_tar_read(h, i, data);
+	} else {
+		ok = zip::zp_read(h, i, data);
+	}
+	let nat = dr_arena.len;
+	dr_arena.append(nm);
+	let at = dr_arena.len;
+	dr_arena.append(data);
+	return at, data.len, nat, nm.len, ok;
+}
+fn dr_others_note(tar bool, h int, base int, cnt int) {
+	var t byte[>..] = [];
+	var nm byte[>..] = [];
+	var n = 0;
+	for i in cnt {
+		if dr_kinds[base + i] != -2 { continue; }
+		if n >= 50 { break; }
+		if n > 0 { t.append(", "); }
+		nm.clear();
+		dr_entry_name(tar, h, i, nm);
+		t.append(nm);
+		n++;
+	}
+	if n > 0 { dr_dm2(dm::DM_NOTE, 0, "Other files: ", t); }
+}
+fn dr_att_stash(ole bool) int {
+	var cnt = 0;
+	if ole {
+		cnt = ole::ol_att_count();
+	} else {
+		cnt = eml::em_att_count();
+	}
+	var tmp byte[>..] = [];
+	for i in cnt {
+		if ole {
+			ole::ol_att_name(i, tmp);
+		} else {
+			eml::em_att_name(i, tmp);
+		}
+		dr_atts.push(dr_arena.len);
+		dr_atts.push(tmp.len);
+		dr_arena.append(tmp);
+		if ole {
+			ole::ol_att_type(i, tmp);
+		} else {
+			eml::em_att_type(i, tmp);
+		}
+		dr_atts.push(dr_arena.len);
+		dr_atts.push(tmp.len);
+		dr_arena.append(tmp);
+		if ole {
+			ole::ol_att_data(i, tmp);
+		} else {
+			eml::em_att_data(i, tmp);
+		}
+		dr_atts.push(dr_arena.len);
+		dr_atts.push(tmp.len);
+		dr_arena.append(tmp);
+	}
+	return cnt;
+}
+fn dr_inner_name(name const byte[:], bz bool, out byte[>..]&) {
+	var dot = -1;
+	for i in name.len {
+		if name[i] == '/' {
+			dot = -1;
+		} else if name[i] == '.' {
+			dot = i;
+		}
+	}
+	if dot < 0 {
+		out.append(name);
+		return;
+	}
+	let ext = name[(dot + 1)..name.len];
+	out.append(name[0..dot]);
+	if (!bz && dr_lower_eq(ext, "tgz")) || (bz && (dr_lower_eq(ext, "tbz2") || dr_lower_eq(ext, "tbz"))) {
+		out.append(".tar");
+	}
+}
+fn dr_unpack_stash(bz bool, name const byte[:], d const byte[:]) int, int, int, int, bool {
+	var out byte[>..] = [];
+	var ok = false;
+	if bz {
+		ok = pack::pk_bunzip(d, out);
+	} else {
+		ok = pack::pk_gunzip(d, out);
+	}
+	var nm byte[>..] = [];
+	if ok {
+		if !bz && pack::pk_gz_name().len > 0 { nm.append(pack::pk_gz_name()); }
+		if nm.len == 0 { dr_inner_name(name, bz, nm); }
+	}
+	let nat = dr_arena.len;
+	dr_arena.append(nm);
+	let at = dr_arena.len;
+	dr_arena.append(out);
+	return at, out.len, nat, nm.len, ok;
+}
+fn dr_code(name const byte[:], d const byte[:]) bool {
+	var ext byte[>..] = [];
+	dr_ext(name, ext);
+	if extra::ex_code(d, ext) { return true; }
+	return textfmt::tx_text(d);
+}
+fn dr_flat(kind int, name const byte[:], d const byte[:]) bool {
+	if kind == DR_PDF { return playout::pl_read_pdf(d); }
+	if kind == DR_DOCX { return office::of_docx(d); }
+	if kind == DR_XLSX { return office::of_xlsx(d); }
+	if kind == DR_PPTX { return office::of_pptx(d); }
+	if kind == DR_ODF { return office::of_odf(d); }
+	if kind == DR_EPUB { return dr_epub(d); }
+	if kind == DR_HTML { return html::ht_read(d); }
+	if kind == DR_RTF { return rtf::rt_read(d); }
+	if kind == DR_CSV { return textfmt::tx_csv(d, 0); }
+	if kind == DR_TSV { return textfmt::tx_csv(d, 9); }
+	if kind == DR_JSON { return textfmt::tx_json(d); }
+	if kind == DR_XML { return dr_xml(d); }
+	if kind == DR_TEXT { return textfmt::tx_text(d); }
+	if kind == DR_IPYNB {
+		if extra::ex_ipynb(d) { return true; }
+		return textfmt::tx_json(d);
+	}
+	if kind == DR_ICS {
+		if extra::ex_ics(d) { return true; }
+		return textfmt::tx_text(d);
+	}
+	if kind == DR_VCF {
+		if extra::ex_vcf(d) { return true; }
+		return textfmt::tx_text(d);
+	}
+	if kind == DR_CODE { return dr_code(name, d); }
+	if kind == DR_IMAGE { return image::im_read(d); }
+	dm::dm_warn_add("unsupported binary format");
+	return false;
+}
+recursive fn dr_container(tar bool, h int, depth int) bool {
+	let base = dr_kinds.len;
+	let cnt = dr_plan(tar, h);
+	for i in cnt {
+		let kd = dr_kinds[base + i];
+		if kd < 0 { continue; }
+		let at, len, nat, nlen, ok = dr_stash_entry(tar, h, i);
+		if !ok { continue; }
+		let en = dr_arena[nat..nat + nlen];
+		let ed = dr_arena[at..at + len];
+		dm::dm_add(dm::DM_HEAD, 1, en);
+		let sh = dm::dm_shift;
+		dm::dm_shift = sh + 1;
+		dr_read(en, ed, depth + 1);
+		dm::dm_shift = sh;
+	}
+	dr_others_note(tar, h, base, cnt);
+	if tar {
+		pack::pk_tar_close(h);
+	} else {
+		zip::zp_close(h);
+	}
+	return true;
+}
+recursive fn dr_read(name const byte[:], d const byte[:], depth int) bool {
+	let kind = dr_sniff(name, d);
+	if kind == DR_EML || kind == DR_OLE {
+		let isole = kind == DR_OLE;
+		var r = false;
+		if isole {
+			r = ole::ol_read(d);
+		} else {
+			r = eml::em_read(d);
+		}
+		if !r { return false; }
+		let base = dr_atts.len;
+		let cnt = dr_att_stash(isole);
+		if depth < 4 {
+			for k in cnt {
+				let o = base + k * 6;
+				let nat = dr_atts[o];
+				let nlen = dr_atts[o + 1];
+				let dat = dr_atts[o + 4];
+				let dlen = dr_atts[o + 5];
+				let an = dr_arena[nat..nat + nlen];
+				let ad = dr_arena[dat..dat + dlen];
+				dr_dm2(dm::DM_HEAD, 2, "Attachment: ", an);
+				let sh = dm::dm_shift;
+				dm::dm_shift = sh + 2;
+				let ok = dr_read(an, ad, depth + 1);
+				dm::dm_shift = sh;
+				if !ok { dr_unreadable(an, ad); }
+			}
+		}
+		return r;
+	}
+	if kind == DR_ZIP {
+		if depth >= 4 { return false; }
+		let h = zip::zp_open(d);
+		if h < 0 { return false; }
+		return dr_container(false, h, depth);
+	}
+	if kind == DR_TAR {
+		if depth >= 4 {
+			dm::dm_warn_add("archive nested too deeply");
+			return false;
+		}
+		let h = pack::pk_tar_open(d);
+		if h < 0 { return false; }
+		return dr_container(true, h, depth);
+	}
+	if kind == DR_GZIP || kind == DR_BZIP2 {
+		if depth >= 4 {
+			dm::dm_warn_add("archive nested too deeply");
+			return false;
+		}
+		let at, len, nat, nlen, ok = dr_unpack_stash(kind == DR_BZIP2, name, d);
+		if !ok { return false; }
+		let inner = dr_arena[nat..nat + nlen];
+		let data = dr_arena[at..at + len];
+		return dr_read(inner, data, depth + 1);
+	}
+	return dr_flat(kind, name, d);
+}
+fn dr_usage() {
+	write_stderr("usage: docread md|json|info FILE...\n       docread chunks MAXBYTES FILE...\n       docread ask K QUESTION FILE...\n       docread sniff FILE...\n       docread images OUTDIR FILE...\n       docread mcp\n");
+	exit(2);
+}
+fn dr_load(files const byte[:][:]) int {
+	var okn = 0;
+	var data byte[>..] = [];
+	for i in files.len {
+		let f = files[i];
+		data.clear();
+		let rd = read_file(f, data);
+		var kind = DR_UNKNOWN;
+		if rd { kind = dr_sniff(f, data); }
+		if i == 0 {
+			dm::dm_reset(dr_kind_names[kind], dr_units[kind]);
+			dm::dm_shift = 0;
+			dm::dm_set_meta("file", f);
+			dm::dm_set_meta("format", dr_kind_names[kind]);
+		}
+		if !rd {
+			dr_tmp.clear();
+			dr_tmp.append("cannot read ");
+			dr_tmp.append(f);
+			dm::dm_warn_add(dr_tmp);
+			continue;
+		}
+		if files.len > 1 {
+			var bs = 0;
+			for k in f.len {
+				if f[k] == '/' { bs = k + 1; }
+			}
+			dm::dm_shift = 0;
+			dm::dm_add(dm::DM_HEAD, 1, f[bs..f.len]);
+			dm::dm_shift = 1;
+		}
+		let r = dr_read(f, data, 0);
+		dm::dm_shift = 0;
+		if r { okn++; }
+	}
+	return okn;
+}
+fn dr_info_json(out byte[>..]&) {
+	var v byte[>..] = [];
+	dm::dm_get_meta("format", v);
+	out.append("{\"format\": ");
+	dm::dm_json_str(out, v);
+	out.append(", \"unit\": ");
+	dm::dm_json_str(out, dm::dm_unit);
+	out.append(", \"count\": ");
+	format(out, dm::dm_locs);
+	out.append(", \"blocks\": ");
+	format(out, dm::dm_blocks.len);
+	var chars = 0;
+	for b in dm::dm_blocks { chars += b.len; }
+	out.append(", \"chars\": ");
+	format(out, chars);
+	out.append(", \"meta\": {");
+	var firstm = true;
+	let ml = split(dm::dm_meta, '\n');
+	for ln in ml {
+		if ln.len == 0 { continue; }
+		var t = 0;
+		while t < ln.len && ln[t] != 9 { t++; }
+		if !firstm { out.append(", "); }
+		firstm = false;
+		dm::dm_json_str(out, ln[..t]);
+		out.append(": ");
+		if t < ln.len {
+			dm::dm_json_str(out, ln[(t + 1)..ln.len]);
+		} else {
+			dm::dm_json_str(out, "");
+		}
+	}
+	out.append("}, \"warnings\": [");
+	var fw = true;
+	let wl = split(dm::dm_warn, '\n');
+	for w in wl {
+		if w.len == 0 { continue; }
+		if !fw { out.append(", "); }
+		fw = false;
+		dm::dm_json_str(out, w);
+	}
+	out.append("]}");
+}
+fn dr_chunks_json(max int, out byte[>..]&) {
+	dm::dm_chunk(max);
+	for c in dm::dm_chunks {
+		out.append("{\"loc0\": ");
+		format(out, c.loc0);
+		out.append(", \"loc1\": ");
+		format(out, c.loc1);
+		out.append(", \"unit\": ");
+		dm::dm_json_str(out, dm::dm_unit);
+		out.append(", \"head\": ");
+		dm::dm_json_str(out, dm::dm_ctext[c.hat..c.hat + c.hlen]);
+		out.append(", \"text\": ");
+		dm::dm_json_str(out, dm::dm_ctext[c.at..c.at + c.len]);
+		out.append("}\n");
+	}
+}
+fn dr_utf8_cut(s const byte[:], n int) int {
+	var k = max(min(n, s.len), 0);
+	while k > 0 && k < s.len && s[k] >= 128 && s[k] < 192 { k--; }
+	return k;
+}
+fn dr_mcp_reply(id const byte[:], result const byte[:]) {
+	var line byte[>..] = [];
+	line.append("{\"jsonrpc\":\"2.0\",\"id\":");
+	line.append(id);
+	line.append(",\"result\":");
+	line.append(result);
+	line.append("}\n");
+	write_stdout(line);
+	flush_stdout();
+}
+fn dr_mcp_error(id const byte[:], code int, msg const byte[:]) {
+	var line byte[>..] = [];
+	line.append("{\"jsonrpc\":\"2.0\",\"id\":");
+	line.append(id);
+	line.append(",\"error\":{\"code\":");
+	format(line, code);
+	line.append(",\"message\":");
+	dm::dm_json_str(line, msg);
+	line.append("}}\n");
+	write_stdout(line);
+	flush_stdout();
+}
+fn dr_mcp_text(out byte[>..]&, text const byte[:], is_error bool) {
+	out.append("{\"content\":[{\"type\":\"text\",\"text\":");
+	dm::dm_json_str(out, text);
+	out.append("}],\"isError\":");
+	if is_error {
+		out.append("true");
+	} else {
+		out.append("false");
+	}
+	out.append("}");
+}
+fn dr_arg_str(d json::Doc&, args int, key const byte[:], out byte[>..]&) bool {
+	if args < 0 { return false; }
+	let n = json::member(d, args, key);
+	if n < 0 { return false; }
+	out.append(json::as_string(d, n));
+	return true;
+}
+fn dr_arg_int(d json::Doc&, args int, key const byte[:], def int, lo int, hi int) int {
+	if args < 0 { return def; }
+	let n = json::member(d, args, key);
+	if n < 0 { return def; }
+	let v, ok = json::as_i64(d, n);
+	if !ok { return def; }
+	return clamp(v, lo, hi);
+}
+fn dr_mcp_tool(name const byte[:], d json::Doc&, args int, out byte[>..]&) {
+	var path byte[>..] = [];
+	dr_arg_str(d, args, "path", path);
+	if path.len == 0 {
+		dr_mcp_text(out, "path is required", true);
+		return;
+	}
+	var msg byte[>..] = [];
+	var probe byte[>..] = [];
+	if !read_file(path, probe) {
+		msg.append("cannot read ");
+		msg.append(path);
+		dr_mcp_text(out, msg, true);
+		return;
+	}
+	let pth = path[0..path.len];
+	let n = dr_load([pth]);
+	if n == 0 {
+		dr_mcp_text(out, dm::dm_warn, true);
+		return;
+	}
+	if name == "read_document" {
+		let mx = dr_arg_int(d, args, "max_chars", 20000, 1000, 200000);
+		var md byte[>..] = [];
+		dm::dm_markdown(md);
+		var txt byte[>..] = [];
+		if md.len > mx {
+			let cut = dr_utf8_cut(md, mx);
+			txt.append(md[0..cut]);
+			txt.append("\n\n[truncated at ");
+			format(txt, cut);
+			txt.append(" of ");
+			format(txt, md.len);
+			txt.append(" bytes]");
+		} else {
+			txt.append(md);
+		}
+		let ws = split(dm::dm_warn, '\n');
+		for w in ws {
+			if w.len > 0 {
+				txt.append("\nwarning: ");
+				txt.append(w);
+			}
+		}
+		dr_mcp_text(out, txt, false);
+	} else if name == "document_info" {
+		var info byte[>..] = [];
+		dr_info_json(info);
+		dr_mcp_text(out, info, false);
+	} else if name == "ask_document" {
+		var q byte[>..] = [];
+		if !dr_arg_str(d, args, "question", q) || q.len == 0 {
+			dr_mcp_text(out, "question is required", true);
+			return;
+		}
+		let k = dr_arg_int(d, args, "k", 5, 1, 20);
+		dm::dm_chunk(1200);
+		var ans byte[>..] = [];
+		dm::dm_ask(q, k, ans);
+		if ans.len == 0 {
+			dr_mcp_text(out, "no passage matched", false);
+		} else {
+			dr_mcp_text(out, ans, false);
+		}
+	} else {
+		msg.append("unknown tool ");
+		msg.append(name);
+		dr_mcp_text(out, msg, true);
+	}
+}
+let DR_MCP_TOOLS = "{\"tools\":[{\"name\":\"read_document\",\"description\":\"Read a document (PDF, Word, Excel, PowerPoint, OpenDocument, EPUB, HTML, RTF, email, CSV, JSON, XML, notebooks, archives, images, text) and return it as Markdown with page markers\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"max_chars\":{\"type\":\"integer\"}},\"required\":[\"path\"]}},{\"name\":\"ask_document\",\"description\":\"Find the passages of a document that best answer a question, with their page, sheet or slide\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"question\":{\"type\":\"string\"},\"k\":{\"type\":\"integer\"}},\"required\":[\"path\",\"question\"]}},{\"name\":\"document_info\",\"description\":\"Format, page count, title, author and other metadata of a document\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}]}";
+fn dr_mcp() {
+	var line byte[>..] = [];
+	while true {
+		line.clear();
+		if !read_line(line) { break; }
+		if trim(line).len == 0 { continue; }
+		var d json::Doc;
+		let root, err = json::parse(line, d);
+		let tl = trim(line);
+		if err.len > 0 || tl[0] != '{' {
+			dr_mcp_error("null", -32700, "parse error");
+			continue;
+		}
+		let idn = json::member(d, root, "id");
+		if idn < 0 { continue; }
+		var id byte[>..] = [];
+		json::format_node(id, d, idn);
+		var method byte[>..] = [];
+		let mn = json::member(d, root, "method");
+		if mn >= 0 { method.append(json::as_string(d, mn)); }
+		var res byte[>..] = [];
+		if method == "initialize" {
+			var pv byte[>..] = [];
+			let pn = json::member(d, root, "params");
+			if pn >= 0 {
+				let vn = json::member(d, pn, "protocolVersion");
+				if vn >= 0 { pv.append(json::as_string(d, vn)); }
+			}
+			if pv.len == 0 { pv.append("2024-11-05"); }
+			res.append("{\"protocolVersion\":");
+			dm::dm_json_str(res, pv);
+			res.append(",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"docread\",\"version\":\"1.0.0\"}}");
+			dr_mcp_reply(id, res);
+		} else if method == "ping" {
+			dr_mcp_reply(id, "{}");
+		} else if method == "tools/list" {
+			dr_mcp_reply(id, DR_MCP_TOOLS);
+		} else if method == "tools/call" {
+			let pn = json::member(d, root, "params");
+			var nm byte[>..] = [];
+			var an = -1;
+			if pn >= 0 {
+				let nn = json::member(d, pn, "name");
+				if nn >= 0 { nm.append(json::as_string(d, nn)); }
+				an = json::member(d, pn, "arguments");
+			}
+			dr_mcp_tool(nm, d, an, res);
+			dr_mcp_reply(id, res);
+		} else {
+			dr_mcp_error(id, -32601, "method not found");
+		}
+	}
+}
+fn dr_warn_stderr() {
+	let ws = split(dm::dm_warn, '\n');
+	for w in ws {
+		if w.len == 0 { continue; }
+		write_stderr("docread: ");
+		write_stderr(w);
+		write_stderr("\n");
+	}
+}
+fn main() {
+	let a = args();
+	if a.len < 2 { dr_usage(); }
+	let mode = a[1];
+	if mode == "mcp" {
+		dr_mcp();
+		exit(0);
+	}
+	var first = 2;
+	if mode == "chunks" || mode == "images" {
+		first = 3;
+	} else if mode == "ask" {
+		first = 4;
+	}
+	let known = mode == "md" || mode == "json" || mode == "info" || mode == "chunks" || mode == "ask" || mode == "sniff" || mode == "images";
+	if !known || a.len <= first { dr_usage(); }
+	var fl const byte[:][>..] = [];
+	for i in first..a.len {
+		let s = a[i];
+		fl.push(s[0..s.len]);
+	}
+	if mode == "sniff" {
+		var data byte[>..] = [];
+		for f in fl {
+			data.clear();
+			var kind = DR_UNKNOWN;
+			if read_file(f, data) { kind = dr_sniff(f, data); }
+			dr_out.clear();
+			dr_out.append(f);
+			dr_out.push(9);
+			dr_out.append(dr_kind_names[kind]);
+			dr_out.push('\n');
+			write_stdout(dr_out);
+		}
+		exit(0);
+	}
+	if mode == "images" {
+		let outdir = a[2];
+		dm::dm_reset("pdf", "page");
+		var okn = 0;
+		let one = fl.len == 1;
+		var data byte[>..] = [];
+		for i in fl.len {
+			let f = fl[i];
+			data.clear();
+			if !read_file(f, data) {
+				dr_tmp.clear();
+				dr_tmp.append("cannot read ");
+				dr_tmp.append(f);
+				dm::dm_warn_add(dr_tmp);
+				continue;
+			}
+			okn++;
+			if dr_sniff(f, data) != DR_PDF { continue; }
+			dr_tmp.clear();
+			dr_tmp.append(outdir);
+			if !one {
+				dr_tmp.push('/');
+				format(dr_tmp, i);
+			}
+			let made = pimage::pi_extract(data, dr_tmp);
+			for j in pimage::pi_count() {
+				dr_out.clear();
+				dr_out.append("{\"file\": ");
+				dm::dm_json_str(dr_out, f);
+				dr_out.append(", \"page\": ");
+				format(dr_out, pimage::pi_page(j));
+				dr_out.append(", \"path\": ");
+				dm::dm_json_str(dr_out, pimage::pi_path(j));
+				dr_out.append(", \"w\": ");
+				format(dr_out, pimage::pi_width(j));
+				dr_out.append(", \"h\": ");
+				format(dr_out, pimage::pi_height(j));
+				dr_out.append(", \"kind\": ");
+				dm::dm_json_str(dr_out, pimage::pi_kind_name(pimage::pi_kind(j)));
+				dr_out.append("}\n");
+				write_stdout(dr_out);
+			}
+		}
+		dr_warn_stderr();
+		exit(if okn > 0 { 0 } else { 1 });
+	}
+	let n = dr_load(fl);
+	dr_out.clear();
+	if mode == "md" {
+		dm::dm_markdown(dr_out);
+	} else if mode == "json" {
+		dm::dm_json(dr_out);
+		dr_out.push('\n');
+	} else if mode == "info" {
+		dr_info_json(dr_out);
+		dr_out.push('\n');
+	} else if mode == "chunks" {
+		var mx = 1200;
+		let mv, mok = parse_int(trim(a[2]));
+		if mok { mx = clamp(mv, 200, 20000); }
+		dr_chunks_json(mx, dr_out);
+	} else {
+		var k = 5;
+		let kv, kok = parse_int(trim(a[2]));
+		if kok { k = clamp(kv, 1, 50); }
+		dm::dm_chunk(1200);
+		dm::dm_ask(a[3], k, dr_out);
+	}
+	write_stdout(dr_out);
+	if mode == "md" || n == 0 { dr_warn_stderr(); }
+	if n == 0 { exit(1); }
+}

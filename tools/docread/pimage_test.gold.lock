@@ -1,0 +1,499 @@
+=== 76a636b5234cbadf
+fn emit(text const byte[:]) {
+	let n = text.len;
+	var start = 0;
+	for i in 0..n + 1 {
+		let atend = i == n;
+		if !atend && text[i] != 10 { continue; }
+		if atend && start >= n { continue; }
+		let piece = text[start..i];
+		var o byte[>..] = [];
+		if piece.len == 0 { o.push('.'); } else { o.append(piece); }
+		print(o);
+		start = i + 1;
+	}
+}
+=== 07c12764b322615f
+fn num(out byte[>..]&, v int, digits int) {
+	var t byte[..24] = [];
+	var x = v;
+	loop {
+		t.push(('0' + x % 10) as byte);
+		x /= 10;
+		if x == 0 { break; }
+	}
+	var k = t.len;
+	while k < digits { out.push('0'); k++; }
+	for i in t.len { out.push(t[t.len - 1 - i]); }
+}
+=== -3c0a48a97548a162
+fn pix(out byte[>..]&, n int, seed int) {
+	for i in n { out.push(((i * 37 + seed * 11 + i / 7) & 255) as byte); }
+}
+=== -74c020eae41a01e6
+fn hexs(out byte[>..]&, n int, seed int) {
+	var tmp byte[>..] = [];
+	pix(tmp, n, seed);
+	let hx = "0123456789abcdef";
+	for b in tmp {
+		out.push(hx[((b >> 4) & 15) as int]);
+		out.push(hx[(b & 15) as int]);
+	}
+	out.push('>');
+}
+=== 030df02bf7bad4af
+fn zstored(out byte[>..]&, data const byte[:]) {
+	out.push(120);
+	out.push(1);
+	out.push(1);
+	let n = data.len;
+	out.push((n & 255) as byte);
+	out.push(((n >> 8) & 255) as byte);
+	let c = 65535 - n;
+	out.push((c & 255) as byte);
+	out.push(((c >> 8) & 255) as byte);
+	out.append(data);
+	var a = 1;
+	var b = 0;
+	for x in data {
+		a = (a + (x as int)) % 65521;
+		b = (b + a) % 65521;
+	}
+	let s = b * 65536 + a;
+	out.push(((s >> 24) & 255) as byte);
+	out.push(((s >> 16) & 255) as byte);
+	out.push(((s >> 8) & 255) as byte);
+	out.push((s & 255) as byte);
+}
+=== 4de88155d57067b2
+fn rows(out byte[>..]&, rowbytes int, h int, seed int, png bool) {
+	for r in h {
+		if png { out.push((r % 5) as byte); }
+		pix(out, rowbytes, seed + r);
+	}
+}
+=== 1ec7d394426d80b3
+fn pdfbegin(out byte[>..]&, offs int[>..]&) {
+	out.clear();
+	offs.clear();
+	out.append("%PDF-1.4");
+	out.push(10);
+}
+=== -4408f8124104b2cd
+fn pdfobj(out byte[>..]&, offs int[>..]&, dict const byte[:], body const byte[:], stream bool) {
+	let no = offs.len + 1;
+	offs.push(out.len);
+	format(out, no, " 0 obj\n<<", dict);
+	if stream {
+		format(out, " /Length ", body.len, ">>\nstream\n");
+		out.append(body);
+		out.append("\nendstream");
+	} else {
+		out.append(">>");
+	}
+	out.append("\nendobj\n");
+}
+=== -558e0bb7549692e6
+fn pdfend(out byte[>..]&, offs int[>..]&) {
+	let x = out.len;
+	let cnt = offs.len + 1;
+	format(out, "xref\n0 ", cnt, "\n0000000000 65535 f \n");
+	for o in offs {
+		num(out, o, 10);
+		out.append(" 00000 n \n");
+	}
+	format(out, "trailer\n<< /Size ", cnt, " /Root 1 0 R >>\nstartxref\n", x, "\n%%EOF\n");
+}
+=== -535743db631e266e
+fn img(out byte[>..]&, offs int[>..]&, w int, h int, space const byte[:], bpc int, extra const byte[:], body const byte[:]) {
+	var d byte[>..] = [];
+	format(d, "/Type /XObject /Subtype /Image /Width ", w, " /Height ", h, " /ColorSpace ", space, " /BitsPerComponent ", bpc, " ", extra);
+	pdfobj(out, offs, d, body, true);
+}
+fn imgp(out byte[>..]&, offs int[>..]&, w int, h int, space const byte[:], bpc int, extra const byte[:], n int, seed int) {
+	var b byte[>..] = [];
+	pix(b, n, seed);
+	img(out, offs, w, h, space, bpc, extra, b);
+}
+fn objp(out byte[>..]&, offs int[>..]&, dict const byte[:], n int, seed int) {
+	var b byte[>..] = [];
+	pix(b, n, seed);
+	pdfobj(out, offs, dict, b, true);
+}
+=== 58244560c601a2bc
+fn doc(out byte[>..]&, offs int[>..]&, kids const byte[:], pagesextra const byte[:], first int) {
+	pdfbegin(out, offs);
+	pdfobj(out, offs, "/Type /Catalog /Pages 2 0 R", "", false);
+	var d byte[>..] = [];
+	format(d, "/Type /Pages /Count 2 /Kids [", kids, "] ", pagesextra);
+	pdfobj(out, offs, d, "", false);
+}
+=== 43679344e4523752
+fn page(out byte[>..]&, offs int[>..]&, xobjs const byte[:], contents int) {
+	var d byte[>..] = [];
+	format(d, "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << ", xobjs, " >> >>");
+	if contents > 0 { format(d, " /Contents ", contents, " 0 R"); }
+	pdfobj(out, offs, d, "", false);
+}
+=== -d3e88c755e68aed
+fn mk(which int) byte[>..] {
+	var out byte[>..] = [];
+	var offs int[>..] = [];
+	if which == 1 { case1(out, offs); }
+	if which == 2 { case2(out, offs); }
+	if which == 3 { case3(out, offs); }
+	if which == 4 { case4(out, offs); }
+	if which == 5 { case5(out, offs); }
+	if which == 6 { case6(out, offs); }
+	if which == 7 { case7(out, offs); }
+	if which == 8 { case8(out, offs); }
+	if which == 9 { case9(out, offs); }
+	out
+}
+=== -48bc496d40556f3b
+fn case1(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "", 3);
+	page(out, offs, "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R /I4 8 0 R", 9);
+	imgp(out, offs, 64, 40, "/DeviceGray", 1, "", 320, 1);
+	imgp(out, offs, 64, 40, "/DeviceGray", 1, "/Decode [1 0]", 320, 1);
+	imgp(out, offs, 32, 32, "/DeviceGray", 4, "", 512, 2);
+	imgp(out, offs, 40, 36, "/DeviceGray", 2, "", 360, 3);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "/Decode [1 0]", 1024, 4);
+	pdfobj(out, offs, "", "q /I0 Do /I1 Do /I2 Do /I3 Do /I4 Do Q", true);
+	pdfend(out, offs);
+}
+=== 79fe27893bc0de48
+fn case2(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "", 3);
+	page(out, offs, "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R /I4 8 0 R /I5 10 0 R /I6 11 0 R", 13);
+	imgp(out, offs, 32, 32, "/DeviceRGB", 16, "", 6144, 5);
+	imgp(out, offs, 32, 32, "/DeviceRGB", 8, "/Decode [1 0 0 1 1 0]", 3072, 6);
+	imgp(out, offs, 33, 32, "/DeviceCMYK", 8, "", 4224, 7);
+	imgp(out, offs, 32, 32, "[/Indexed /DeviceRGB 3 <000000ff000000ff000000ff>]", 2, "", 256, 8);
+	imgp(out, offs, 32, 32, "[/Indexed /DeviceGray 1 9 0 R]", 1, "", 128, 9);
+	var pal byte[>..] = [];
+	pal.push(0);
+	pal.push(255);
+	pdfobj(out, offs, "", pal, true);
+	imgp(out, offs, 32, 32, "[/ICCBased 12 0 R]", 8, "", 3072, 10);
+	imgp(out, offs, 32, 32, "[/CalRGB << /WhitePoint [0.95 1 1.09] >>]", 8, "", 3072, 11);
+	pdfobj(out, offs, "/N 3", "", true);
+	pdfobj(out, offs, "", "/I0 Do /I1 Do /I2 Do /I3 Do /I4 Do /I5 Do /I6 Do", true);
+	pdfend(out, offs);
+}
+=== 257b423ec29b0b64
+fn case3(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "", 3);
+	page(out, offs, "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R /I4 8 0 R /I5 9 0 R /I6 10 0 R /I7 11 0 R /I8 12 0 R /I9 13 0 R /I10 14 0 R /I11 15 0 R", 16);
+	imgp(out, offs, 16, 16, "/DeviceGray", 8, "", 256, 1);
+	objp(out, offs, "/Type /XObject /Subtype /Image /Width 64 /Height 64 /ImageMask true /BitsPerComponent 1", 512, 2);
+	imgp(out, offs, 32, 32, "/DeviceGray", 1, "/Filter /CCITTFaxDecode /DecodeParms << /K -1 /Columns 32 >>", 40, 3);
+	imgp(out, offs, 32, 32, "/DeviceGray", 1, "/Filter /JBIG2Decode", 40, 4);
+	img(out, offs, 32, 32, "/DeviceRGB", 8, "/Filter /DCTDecode", "this is not a jpeg");
+	imgp(out, offs, 32, 32, "[/Lab << /WhitePoint [1 1 1] >>]", 8, "", 3072, 5);
+	imgp(out, offs, 32, 32, "/DeviceGray", 3, "", 400, 6);
+	imgp(out, offs, 31, 40, "/DeviceGray", 8, "", 1240, 7);
+	var h byte[>..] = [];
+	hexs(h, 1024, 8);
+	pdfobj(out, offs, "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /ASCIIHexDecode", h, true);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 600, 9);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 100, 10);
+	objp(out, offs, "/Type /XObject /Subtype /Image /Width 32 /Height 32 /BitsPerComponent 8", 1024, 11);
+	pdfobj(out, offs, "", "/I0 Do /I1 Do /I2 Do /I3 Do /I4 Do /I5 Do /I6 Do /I7 Do /I8 Do /I9 Do /I10 Do /I11 Do", true);
+	pdfend(out, offs);
+}
+=== 36444cf233d97190
+fn case4(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R 4 0 R", "", 3);
+	page(out, offs, "/I0 5 0 R /F1 6 0 R", 0);
+	page(out, offs, "/I0 5 0 R /I9 8 0 R", 0);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 1);
+	pdfobj(out, offs, "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /I1 7 0 R /F1 6 0 R /F2 9 0 R /F3 10 0 R >> >>", "q Q", true);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 2);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 3);
+	pdfobj(out, offs, "/Type /XObject /Subtype /Form /BBox [0 0 10 10]", "q Q", true);
+	pdfobj(out, offs, "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /I2 11 0 R >> >>", "q Q", true);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 4);
+	pdfend(out, offs);
+}
+=== -7c16ba78b4753d12
+fn case5(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "/Resources << /XObject << /I0 4 0 R >> >>", 3);
+	pdfobj(out, offs, "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]", "", false);
+	imgp(out, offs, 40, 40, "/DeviceGray", 8, "", 1600, 1);
+	pdfend(out, offs);
+}
+=== 07e083ca3197ba5e
+fn case6(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "", 3);
+	pdfobj(out, offs, "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /F0 4 0 R >> >> /Contents 20 0 R", "", false);
+	for k in 14 {
+		var d byte[>..] = [];
+		format(d, "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /F", k + 1, " ", 5 + k, " 0 R /IA 18 0 R /IB 19 0 R >> >>");
+		var b byte[>..] = [];
+		if k == 11 { b.append("/IA Do "); }
+		if k == 12 { b.append("/IB Do "); }
+		if k < 13 { format(b, "/F", k + 1, " Do"); } else { b.append("q Q"); }
+		pdfobj(out, offs, d, b, true);
+	}
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 1);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 2);
+	pdfobj(out, offs, "", "/F0 Do", true);
+	pdfend(out, offs);
+}
+=== 44280159e4c2cd88
+fn case7(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "4 0 R 5 0 R", "", 3);
+	pdfobj(out, offs, "/XObject << /Ia 6 0 R /Ib 7 0 R /Ic 8 0 R >>", "", false);
+	pdfobj(out, offs, "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources 3 0 R /Contents 9 0 R", "", false);
+	pdfobj(out, offs, "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources 3 0 R /Contents [10 0 R 11 0 R]", "", false);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 1);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 2);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 3);
+	var b byte[>..] = [];
+	b.append("q (fake /Ia Do) Tj /Zz Do % /Ia Do");
+	b.push(10);
+	b.append("BI /W 2 /H 2 /BPC 8 /CS /G ID /Ia Do EI /Ib Do /Ic Do Q");
+	pdfobj(out, offs, "", b, true);
+	pdfobj(out, offs, "", "q /Ia", true);
+	pdfobj(out, offs, "", "Do Q", true);
+	pdfend(out, offs);
+}
+=== 4dfe451743b78d3e
+fn case8(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "", 3);
+	pdfobj(out, offs, "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /I0 5 0 R /F1 6 0 R /F2 8 0 R /I2 9 0 R >> >> /Contents 4 0 R", "", false);
+	pdfobj(out, offs, "", "/I0 Do /F1 Do /F2 Do", true);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 1);
+	pdfobj(out, offs, "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /I1 7 0 R /F1 6 0 R >> >>", "/I1 Do /F1 Do", true);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 2);
+	pdfobj(out, offs, "/Type /XObject /Subtype /Form /BBox [0 0 10 10]", "/I2 Do", true);
+	imgp(out, offs, 32, 32, "/DeviceGray", 8, "", 1024, 3);
+	pdfend(out, offs);
+}
+=== -2d4a7cc1d5c8b633
+fn p9(out byte[>..]&, offs int[>..]&, dict const byte[:], rowbytes int, h int, seed int, png bool) {
+	var r byte[>..] = [];
+	rows(r, rowbytes, h, seed, png);
+	var z byte[>..] = [];
+	zstored(z, r);
+	pdfobj(out, offs, dict, z, true);
+}
+fn case9(out byte[>..]&, offs int[>..]&) {
+	doc(out, offs, "3 0 R", "", 3);
+	page(out, offs, "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R", 8);
+	p9(out, offs, "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /Columns 32 /BitsPerComponent 8 >>", 96, 32, 1, true);
+	p9(out, offs, "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 2 /Colors 1 /Columns 32 /BitsPerComponent 8 >>", 32, 32, 2, false);
+	p9(out, offs, "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceRGB /BitsPerComponent 16 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /Columns 32 /BitsPerComponent 16 >>", 192, 32, 3, true);
+	p9(out, offs, "/Type /XObject /Subtype /Image /Width 64 /Height 40 /ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 1 /Columns 64 /BitsPerComponent 1 >>", 8, 40, 4, true);
+	pdfobj(out, offs, "", "/I0 Do /I1 Do /I2 Do /I3 Do", true);
+	pdfend(out, offs);
+}
+=== 6996c993fa40b899
+fn load(name const byte[:], out byte[>..]&) bool {
+	var p byte[>..] = [];
+	p.append("tests/fixtures/");
+	p.append(name);
+	read_file(p, out)
+}
+=== -42a9e6047434e65
+fn fnv(d const byte[:]) int {
+	var h = 2166136261;
+	for b in d { h = ((h ^ (b as int)) * 16777619) & 4294967295; }
+	h
+}
+=== 26dddd1fa1eebff1
+fn wipe() {
+	for i in pimage::pi_count() { delete_file(pimage::pi_path(i)); }
+}
+=== 044ceb82f3b4fc78
+fn run(d const byte[:]) {
+	dm::dm_reset("pimage", "part");
+	let n = pimage::pi_extract(d, "tests/pimage-out");
+	var h byte[>..] = [];
+	format(h, "count ", n, " skipped ", pimage::pi_skipped());
+	emit(h);
+	for i in n {
+		var f byte[>..] = [];
+		let ok = read_file(pimage::pi_path(i), f);
+		var sz = 0;
+		if ok { sz = f.len; }
+		var t byte[>..] = [];
+		format(t, "img ", i, " p", pimage::pi_page(i), " ", pimage::pi_width(i), "x", pimage::pi_height(i), " ", pimage::pi_kind_name(pimage::pi_kind(i)), " ", sz, " ", fnv(f));
+		emit(t);
+	}
+	let w = dm::dm_warn;
+	let parts = split(w, 10);
+	for k in parts.len {
+		let ln = parts[k];
+		if ln.len == 0 && k == parts.len - 1 { continue; }
+		var t byte[>..] = [];
+		format(t, "warn ", ln);
+		emit(t);
+	}
+	wipe();
+}
+=== 035114738a8b02ec
+fn show(name const byte[:]) {
+	var t byte[>..] = [];
+	format(t, "== ", name);
+	emit(t);
+	var d byte[>..] = [];
+	if !load(name, d) {
+		emit("missing");
+		return;
+	}
+	run(d);
+}
+=== -7ebe545eccbe581a
+fn synth(which int) {
+	var t byte[>..] = [];
+	format(t, "== synthetic ", which);
+	emit(t);
+	let d = mk(which);
+	run(d);
+	var k byte[>..] = [];
+	if env("PIMAGE_KEEP", k) {
+		if !is_dir("tests/pimage-out") { make_dir("tests/pimage-out"); }
+		var p byte[>..] = [];
+		format(p, "tests/pimage-out/syn", which, ".pdf");
+		write_file(p, d);
+	}
+}
+=== 4c22fe6cc77571d9
+fn main() {
+	sec_show();
+	sec_synth();
+	sec_wrong();
+	sec_acc();
+	sec_fuzz();
+}
+=== -19005c32512d3571
+fn fname(i int) const byte[:] {
+	match i {
+		0 => "pimg_rgb.pdf",
+		1 => "pimg_gray.pdf",
+		2 => "pimg_pal.pdf",
+		3 => "pimg_tiny.pdf",
+		4 => "pimg_photo.pdf",
+		5 => "pimg_cmyk.pdf",
+		6 => "pimg_cmykz.pdf",
+		7 => "pimg_g4.pdf",
+		8 => "pimg_jpx.pdf",
+		9 => "pimg_inline.pdf",
+		10 => "pimg_notes.pdf",
+		11 => "pimg_enc128.pdf",
+		_ => "",
+	}
+}
+fn sec_show() {
+	for i in 12 { show(fname(i)); }
+}
+=== -5225e0cf3d2ef2b8
+fn sec_synth() {
+	for i in 1..10 { synth(i); }
+}
+=== -6365dbe6e586f5c3
+fn wname(i int) const byte[:] {
+	match i {
+		0 => "table.tsv",
+		1 => "page.html",
+		2 => "sample.docx",
+		3 => "garden-lo.pdf",
+		4 => "layout-groff.pdf",
+		5 => "garden-aes128.pdf",
+		_ => "",
+	}
+}
+fn sec_wrong() {
+	emit("== wrong");
+	for i in 6 {
+		let name = wname(i);
+		var d byte[>..] = [];
+		let ok = load(name, d);
+		let n = pimage::pi_extract(d, "tests/pimage-out");
+		var t byte[>..] = [];
+		format(t, name, " ", n);
+		emit(t);
+		wipe();
+	}
+}
+=== 040e281e879a3531
+fn sec_acc() {
+	emit("== accessors");
+	var d byte[>..] = [];
+	let ok = load("pimg_rgb.pdf", d);
+	let n = pimage::pi_extract(d, "tests/pimage-out");
+	wipe();
+	var t byte[>..] = [];
+	format(t, pimage::pi_page(99), " ", pimage::pi_width(99), " ", pimage::pi_height(99), " ", pimage::pi_kind(99), " ", pimage::pi_path(99).len);
+	emit(t);
+	var u byte[>..] = [];
+	format(u, pimage::pi_page(-1), " [", pimage::pi_kind_name(9), "]");
+	emit(u);
+}
+=== -2852eb54168e5cfe
+fn fz(d const byte[:]) {
+	dm::dm_reset("pimage", "part");
+	let n = pimage::pi_extract(d, "tests/pimage-out");
+	wipe();
+}
+fn getdoc(i int, d byte[>..]&) bool {
+	if i < 11 { return load(fname(i), d); }
+	let m = mk(i - 10);
+	d.append(m);
+	true
+}
+fn sec_fuzz() {
+	emit("== fuzz");
+	var cuts = 0;
+	var flips = 0;
+	var rnd = 0;
+	var state = 4242;
+	for i in 20 {
+		var d byte[>..] = [];
+		if !getdoc(i, d) { continue; }
+		let n = d.len;
+		var c = 0;
+		while c <= n {
+			fz(d[..c]);
+			cuts++;
+			c += 13;
+		}
+		var p = 0;
+		while p < n {
+			var e byte[>..] = [];
+			e.append(d);
+			e[p] = 255;
+			fz(e);
+			flips++;
+			e[p] = 0;
+			fz(e);
+			flips++;
+			p += 17;
+		}
+	}
+	for i in 20 {
+		var d byte[>..] = [];
+		if !getdoc(i, d) { continue; }
+		let n = d.len;
+		if n == 0 { continue; }
+		for k in 60 {
+			state = (state * 1103515245 + 12345) & 2147483647;
+			let pos = (state >> 8) % n;
+			state = (state * 1103515245 + 12345) & 2147483647;
+			let v = (state >> 8) & 255;
+			var e byte[>..] = [];
+			e.append(d);
+			e[pos] = v as byte;
+			fz(e);
+			rnd++;
+		}
+	}
+	var t byte[>..] = [];
+	format(t, "cuts ", cuts, " flips ", flips, " random ", rnd);
+	emit(t);
+	emit("done");
+	var x byte[>..] = [];
+	if !env("PIMAGE_KEEP", x) { delete_dir("tests/pimage-out"); }
+}

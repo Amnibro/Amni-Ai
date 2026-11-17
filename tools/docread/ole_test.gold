@@ -1,0 +1,557 @@
+use std
+into ole_test.amni
+
+```amni
+import os;
+import dm;
+import ole;
+import cfbmk;
+```
+
+`emit(text const byte[:])` prints text one line at a time with `os::write_stdout`: for each line (split at the newline byte 10, ignoring the empty piece after a final newline) it prints the line itself followed by a newline, except that an empty line is printed as a single dot "." followed by a newline.
+
+`dump(name const byte[:], ok bool)` prints a line "== " and the name, then the Markdown from `dm::dm_markdown` (written into a scratch list and printed with `emit`), then one line "meta " plus key, an equals sign and value for each line of `dm::dm_meta` (the key and value are separated by the tab byte 9 there), then one line "warn " plus the line for each line of `dm::dm_warn`, and when ok is false one line "reader returned false".
+
+`show(name const byte[:], kind const byte[:], unit const byte[:])` reads the file "tests/fixtures/" followed by name with `os::read_file` (printing "missing" and returning when it cannot be read), calls `dm::dm_reset(kind, unit)`, then `dump(name, ole::ol_read(data))`.
+
+`le(out byte[>..]&, v int, n int)` appends v to out as n little-endian bytes.
+
+`txt(out byte[>..]&, s const byte[:], wide bool)` appends s to out: each byte of s as one byte when wide is false, and as a 2-byte little-endian unit when wide is true.
+
+`rec(out byte[>..]&, id int, data const byte[:])` appends a BIFF record to out: `le` of id (2 bytes), `le` of the length of data (2 bytes), then data.
+
+`bof(out byte[>..]&, ver int, ty int)` appends the record 0x0809 whose 16 data bytes are `le` of ver (2), of ty (2) and 12 zero bytes.
+
+`cell(out byte[>..]&, id int, row int, col int, ixfe int, tail const byte[:])` appends the record id whose data is `le` of row, col and ixfe (2 bytes each) followed by tail.
+
+`numc(out byte[>..]&, row int, col int, ixfe int, hi int, lo int)` appends a NUMBER cell (id 0x0203) whose 8 value bytes are `le` of lo (4 bytes) then of hi (4 bytes).
+
+`rkc(out byte[>..]&, row int, col int, ixfe int, rk int)` appends an RK cell (id 0x027E) whose value is `le` of rk (4 bytes).
+
+`labc(out byte[>..]&, row int, col int, s const byte[:])` appends a LABEL cell (id 0x0204) with ixfe 0 whose tail is `le` of the length of s (2 bytes), a flags byte 0 and s as 8-bit characters.
+
+`sstc(out byte[>..]&, row int, col int, n int)` appends a LABELSST cell (id 0x00FD) with ixfe 0 whose tail is `le` of n (4 bytes).
+
+`xf(out byte[>..]&, ifmt int)` appends an XF record (id 0x00E0) of 20 bytes: 2 zero bytes, `le` of ifmt (2 bytes), then 16 zero bytes.
+
+`fmt(out byte[>..]&, id int, code const byte[:])` appends a FORMAT record (id 0x041E): `le` of id (2), `le` of the length of code (2), a flags byte 0 and code as 8-bit characters.
+
+`bsheet(out byte[>..]&, off int, state int, ty int, name const byte[:])` appends a BOUNDSHEET record (id 0x0085): `le` of off (4), the bytes state and ty, one byte holding the length of name, a flags byte 0 and the name as 8-bit characters.
+
+`sstblock(out byte[>..]&)` appends the shared string table of the workbook tests as four records. The first, id 0x00FC, has data: `le` of 7 (4 bytes, total count), `le` of 7 (4 bytes, unique count), then strings: "plain" (`le` of 5 in 2 bytes, flags 0, the 5 characters); then "alpha beta gamma" cut inside its characters: `le` of 16 (2), flags 0, and just the first 6 characters "alpha ". The second record, id 0x003C, has data: a flags byte 0, the remaining 10 characters "beta gamma", then the string "caf" cut after 3 characters: `le` of 11 (2), flags 0 and "caf". The third, id 0x003C, has data: a flags byte 1, the 8 UTF-16 code units of "é Привет" as `le` values of 0xE9, 0x20, 0x41F, 0x440, 0x438, 0x432, 0x435, 0x442 (2 bytes each), then a rich string: `le` of 4 (2), flags 8, `le` of 1 (2, run count), the 4 characters "rich" and 4 bytes of run data (all zero); then an extended string: `le` of 3 (2), flags 4, `le` of 3 (4, phonetic length), the characters "ext" and 3 bytes of phonetic data (all zero). The fourth, id 0x003C, has data that starts directly with the string "after" (`le` of 5 in 2 bytes, flags 0, the 5 characters) with no flags byte.
+
+`cellsa(out byte[>..]&)` appends these cells of the first sheet: row 0, columns 0 to 5: `sstc` of strings 0, 1, 2, 3, 4, 5 (a label cell is not used there). Row 1: `rkc` in column 0 with ixfe 1 and rk 10 (the date 2 in a date format), `rkc` in column 1 with ixfe 2 and rk 16400303 (41000.75 in a custom date format), `rkc` in column 2 with ixfe 3 and rk 10 (2 in a plain format), `numc` in column 3 with ixfe 4 and hi 0x3FF00000, lo 0 (1.0 in a boolean format), `numc` in column 4 with ixfe 4 and hi 0, lo 0 (0.0 in a boolean format), `numc` in column 5 with ixfe 0 and hi 0x401C0000, lo 0 (7.0). Row 2: a MULRK record (id 0x00BD) with data `le` of 2 (row, 2 bytes), `le` of 0 (first column, 2 bytes), then three entries of ixfe 0 (2 bytes) and an RK (4 bytes): 22, 5003 and 0x3FE00000, then `le` of 2 (last column, 2 bytes); and an RK cell in column 3 with the negative integer minus 3 as the RK 0xFFFFFFF6. Row 3: BOOLERR cells (id 0x0205, tail the value byte and then the error byte): column 0 value 1 and 0, column 1 value 0 and 0, column 2 value 0x2A and 1, column 3 value 0x24 and 1.
+
+`cellsb(out byte[>..]&)` appends these cells of the first sheet: row 4: FORMULA cells (id 0x0006, tail: 8 result bytes, then 2 bytes of flags, 4 bytes of chain and `le` of 0 (2 bytes, no tokens)): column 0 with result 7.0 (`le` of 0 in 4 bytes then `le` of 0x401C0000 in 4 bytes); column 1 with the special result bytes 0, 0, 0, 0, 0, 0, 255, 255 (a string), immediately followed by a STRING record (id 0x0207) whose data is `le` of 3 (2), flags 0 and "str"; column 2 with the special result 1, 0, 1, 0, 0, 0, 255, 255 (a boolean true); column 3 with 2, 0, 0x17, 0, 0, 0, 255, 255 (an error); column 4 with 3, 0, 0, 0, 0, 0, 255, 255 (an empty string); then `labc` in column 5 with the text "t" followed by a tab byte and "x". Then a nested chart: `bof(out, 0x600, 0x20)`, `sstc` of row 4 column 6 and string 0, and the end record (id 0x000A, no data); the nested cell must not show up. Row 5 is left out. Row 6 as the file holds it: `labc` of row 6 column 2 "c", then `labc` of row 6 column 0 "a", then `labc` of row 6 column 0 "dup". Row 8 before row 7: `labc` of row 8 column 0 "eight", then `labc` of row 7 column 0 "seven". Row 9: a BLANK record (id 0x0201, tail empty, ixfe 0, column 0) and `labc` of row 9 column 1 "z".
+
+`wbglobals(out byte[>..]&, d1904 bool, o1 int, o2 int)` appends the workbook globals: `bof(out, 0x600, 5)`, a DATEMODE record (id 0x0022) with `le` of 1 or 0 (2 bytes) by d1904, the `fmt` records 164 "yyyy-mm-dd hh:mm", 165 "0.00" and 166 holding the text of the three words TRUE, TRUE and FALSE each in double quotes and joined by semicolons, five `xf` records with ifmt 0, 14, 164, 165 and 166, `bsheet` records: offset o1 state 0 type 0 "Data"; offset o2 state 1 type 0 "Hid & Den"; offset 0 state 0 type 2 "Chart", then `sstblock`, and the end record (id 0x000A, no data).
+
+`wbbuild(d1904 bool, out byte[>..]&)` clears out and builds a BIFF8 workbook: first the first sheet in a scratch list a (`bof(a, 0x600, 0x10)`, `cellsa`, `cellsb`, the end record) and the second in b (`bof(b, 0x600, 0x10)`, `sstc` of row 0 column 0 and string 0, the end record); then the globals in a scratch list g with `wbglobals(g, d1904, 0, 0)` to learn its length; then clear g and `wbglobals(g, d1904, g's old length, g's old length plus the length of a)`; out is g followed by a and b.
+
+`cfile(name const byte[:], stream const byte[:], out byte[>..]&)` clears out and builds a compound file holding one stream, called name, with `cfbmk::cm_reset`, `cfbmk::cm_add(name, stream)` and `cfbmk::cm_build(false, 109, out)`.
+
+`runx(label const byte[:], name const byte[:], stream const byte[:])` builds `cfile` of name and stream, calls `dm::dm_reset("xls", "sheet")` and `dump(label, ole::ol_read(file))`.
+
+`bigbook(out byte[>..]&)` clears out and builds a BIFF8 workbook with one sheet "Big" of 50001 rows: a scratch list a holds `bof(a, 0x600, 0x10)`, then for rows 0 to 50000 a `numc` in column 0 with ixfe 0 and hi 0x401C0000, lo 0, then the end record (id 0x000A, no data); the globals g are `bof(g, 0x600, 5)`, a `bsheet` at offset 0 first to learn the length, then the real one: `bsheet(g, length of the globals, 0, 0, "Big")` and the end record; out is g followed by a. The globals are built twice with a fresh g, the first time with offset 0, to know their length.
+
+`lockedbook(out byte[>..]&)` clears out and builds a workbook whose globals are `bof(out, 0x600, 5)`, a FILEPASS record (id 0x002F, data `le` of 1 (2 bytes) and 4 zero bytes), a `bsheet` with offset 0, state 0, type 0 and name "Secret", and the end record (id 0x000A, no data).
+
+`oldbook(out byte[>..]&)` clears out and builds a BIFF5 workbook (8-bit strings): the globals g are `bof(g, 0x500, 5)`, a FORMAT record (id 0x041E) with `le` of 164 (2), a 1-byte length and the text "yyyy-mm-dd", two XF records (id 0x00E0, 16 bytes each: 2 zero bytes, `le` of ifmt (2), 12 zero bytes) with ifmt 0 and 164, a BOUNDSHEET (id 0x0085) with `le` of the offset (4), the bytes 0 and 0, a 1-byte length and the name "Old" (8-bit, no flags byte), and the end record; the sheet a holds `bof(a, 0x500, 0x10)`, a LABEL cell (id 0x0204, row 0, column 0, ixfe 0, tail `le` of 4 (2) then "caf" and the byte 0xE9, no flags byte), an RK cell in row 0, column 1 with ixfe 1 and rk 10 (the date 2), a NUMBER cell in row 1, column 0 with ixfe 0 and hi 0x40040000, lo 0, and the end record. As with the other workbook builders, build g twice to learn its length for the offset; out is g followed by a.
+
+`wdbuild(nfib int, flags int, tabname const byte[:], out byte[>..]&)` clears out and builds a compound file holding a Word document. The table stream t is the byte 2, `le` of the length of the piece table (4 bytes) and the piece table: `le` of 0, 19 and 70 (4 bytes each, the character positions), then two 8-byte descriptors: `le` of 0 (2), `le` of 0x40001000 (4), `le` of 0 (2) and `le` of 0 (2), `le` of 0x900 (4), `le` of 0 (2). The main stream w holds, in this order: `le` of 0xA5EC (2), of nfib (2), 6 zero bytes, `le` of flags (2), zero bytes until w is 0x4C long, `le` of 70 (4), zero bytes until w is 0x98 long, `le` of 80 (2), zero bytes until w is 0x1A2 long, `le` of 0 (4) and of the length of t (4), zero bytes until w is 0x800 long, the 19 bytes of the first piece: "Caf", the byte 0xE9, a space, the byte 0x93, "q", the byte 0x94, a space, the byte 0x80, " 5", the byte 13 and "Hello ", zero bytes until w is 0x900 long, then the second piece as 51 UTF-16 units (`le` of each, 2 bytes): the text "world" (use `txt` with wide true) then 13, then the 6 units 0x41F, 0x440, 0x438, 0x432, 0x435, 0x442 then 13, then 0x13, the text " HYPERLINK " (wide), 0x14, "link" (wide), 0x15, " end" (wide), 13, then the cells 65 ("A"), 7, 66 ("B"), 7, 7, 67 ("C"), 7, 68 ("D"), 7, 7, then "Last" (wide) and 13. Build the compound file with `cfbmk::cm_reset`, `cfbmk::cm_add("WordDocument", w)`, `cfbmk::cm_add(tabname, t)` and `cfbmk::cm_build(false, 109, out)`.
+
+`prc(out byte[>..]&, ver int, inst int, ty int, data const byte[:])` appends a PowerPoint record: `le` of ver plus 16 times inst (2 bytes), `le` of ty (2), `le` of the length of data (4), then data.
+
+`ptext(out byte[>..]&, kind int, wide bool, s const byte[:])` appends a text header record (type 0x0F9F, version 0, instance 0, data `le` of kind (4 bytes)) and then a text record: type 0x0FA0 when wide (s as UTF-16, by `txt` with wide true) or type 0x0FA8 (s as bytes) when not.
+
+`pbox(out byte[>..]&, ph int, body const byte[:])` appends a shape: a record of type 0xF004 and version 15 whose data is, when ph is above 0, a record of type 0xF011 (version 15) holding a record of type 0x0BC3 whose 8 data bytes are `le` of 0 (4), the byte ph and 3 zero bytes; then a record of type 0xF00D (version 15) holding body.
+
+`pdraw(out byte[>..]&, shapes const byte[:])` appends a record of type 0x040C (version 15) holding a record of type 0xF002 (version 15) holding a record of type 0xF003 (version 15) holding shapes.
+
+`ppbuild(token int, out byte[>..]&)` clears out and builds the compound file of a presentation with two streams. In the stream d ("PowerPoint Document"), written in this order, with offsets taken from the length of d when each part starts: (1) the document: a record of type 0x03E8 (version 15) holding two list records of type 0x0FF0 (version 15): the first with instance 0 holding a persist atom (type 0x03F3, 20 bytes: `le` of 2, 0, 0 and 256, then 4 zero bytes, each 4 bytes), `ptext(0, true, "Title one")`, `ptext(1, false, ...)` of the bytes "First point", 13, "Second", the byte 0xE9 and " point", a style record (type 0x0FA1, data: a paragraph run of `le` of 12 (4), `le` of 0 (2), `le` of 0 (4); another run of `le` of 13 (4), `le` of 1 (2), `le` of 0 (4); then a character run of `le` of 25 (4) and `le` of 0 (4)), a persist atom with `le` of 3, 0, 0 and 257 and 4 zero bytes (each 4 bytes), and `ptext(0, true, "Second slide")`; the second list with instance 2 holding a persist atom with `le` of 4, 0, 0 and 257 and 4 zero bytes, a persist atom with `le` of 5, 0, 0 and 256 and 4 zero bytes, and `ptext(2, true, "Remember the demo")`. (2) The first slide at offset s1: a record of type 0x03EE (version 15) holding a record of type 0x03EF with 24 zero bytes and `pdraw` of the shapes `pbox(0, ...)` with body a record 0x0F9E of 4 bytes (`le` of 0), `pbox(0, ...)` with `ptext(4, true, "Free box")`, `pbox(9, ...)` with `ptext(4, true, "Footer text")` and `pbox(7, ...)` with `ptext(4, true, "Date text")`. (3) The second slide at offset s2: the same record layout with one shape `pbox(0, ...)` with `ptext(4, true, "Old text")`. (4) The notes of the second slide at offset n2: a record of type 0x03F0 (version 15) holding a record of type 0x03F1 with `le` of 257 (4) and 4 zero bytes and `pdraw` of one shape `pbox(0, ...)` with `ptext(2, true, "Second notes")`. (5) The notes of the first slide at offset n1: the same without the shape and with `le` of 256 in the notes atom, and `pdraw` of nothing. (6) The first persist directory at offset pa: a record of type 0x1772 whose data is `le` of 1 plus 5 times 1048576 (4 bytes: first id 1, count 5) and then the five offsets 0, s1, s2, n2 and n1 (4 bytes each). (7) The first edit at offset ea: a record of type 0x0FF5 with data: `le` of 256 (4), 4 zero bytes, `le` of 0 (4, no earlier edit), `le` of pa (4), `le` of 1 (4, the document id), `le` of 7 (4), 4 zero bytes. (8) A later version of the second slide at offset s2b: the layout of the second slide with the text "Edited later". (9) The second persist directory at offset pb: type 0x1772, data `le` of 3 plus 1 times 1048576 (4) and `le` of s2b (4). (10) The second edit at offset eb: type 0x0FF5 with data: `le` of 256 (4), 4 zero bytes, `le` of ea (4), `le` of pb (4), `le` of 1 (4), `le` of 7 (4), 4 zero bytes. The stream u ("Current User") is a record header (`le` of 0 (2), `le` of 0x0FF6 (2), `le` of 20 (4)), then `le` of 20 (4), `le` of token (4), `le` of eb (4) and 4 zero bytes. Build the compound file with `cfbmk::cm_reset`, `cfbmk::cm_add("Current User", u)`, `cfbmk::cm_add("PowerPoint Document", d)` and `cfbmk::cm_build(false, 109, out)`.
+
+`putps(out byte[>..]&, id int, ty int, data const byte[:])` appends to out the 16-byte entry of a message property stream for a fixed-size value: `le` of ty (2), of id (2), of 0 (4, flags), then data padded with zero bytes to 8.
+
+`msgprops(natt int, out byte[>..]&)` clears out and builds the property stream of a message: 8 zero bytes, `le` of 0 and of natt (4 bytes each, the next ids), `le` of 0 (4, recipients) and of natt (4, attachments), 8 zero bytes, then `putps` with id 0x0039, type 0x0040 and the 8 bytes `le` of 134168328000000000 (8 bytes).
+
+`ustream(name const byte[:], s const byte[:])` adds to the compound file being built the stream whose name is name and whose content is s as UTF-16 (`txt` with wide true), with `cfbmk::cm_add`.
+
+`msgbuild(kind int, out byte[>..]&)` clears out and builds a message file with `cfbmk::cm_reset` and `cfbmk::cm_build(false, 109, out)`. Kind 1 (full message): `cm_add("__properties_version1.0", ...)` with `msgprops(2, ...)`, then `ustream` of "__substg1.0_0037001F" "Invented subject", "__substg1.0_0C1A001F" "Ada Example", "__substg1.0_5D01001F" "ada@example.invalid", "__substg1.0_0E04001F" "Ben Sample; Cy Test", "__substg1.0_0E03001F" "Di Copy" and "__substg1.0_1000001F" "Hello team." followed by the bytes 13 and 10 (use `txt` of the text, then the two bytes as units) and "Second line."; the first attachment: `ustream` of "__attach_version1.0_#00000000/__substg1.0_3707001F" "report.txt", `ustream` of "__attach_version1.0_#00000000/__substg1.0_370E001F" "TEXT/Plain" and `cm_add("__attach_version1.0_#00000000/__substg1.0_37010102", ...)` with the 6 bytes "abc123"; the second attachment: `cm_add("__attach_version1.0_#00000001/__substg1.0_3704001E", ...)` with the 7 bytes "pic.png", `ustream` of "__attach_version1.0_#00000001/__substg1.0_370E001F" "image/png" and `cm_add("__attach_version1.0_#00000001/__substg1.0_37010102", ...)` with the 4 bytes 137, 80, 78 and 71. Kind 2 (HTML only): `msgprops(0, ...)`, `ustream` of "__substg1.0_0037001F" "Page", "__substg1.0_0C1A001F" "Eve Only" and `cm_add("__substg1.0_10130102", ...)` with the bytes of "<html><body><p>Hi <b>there</b></p></body></html>". Kind 3 (RTF only): `msgprops(0, ...)`, `ustream` of "__substg1.0_0037001F" "Rich" and `cm_add("__substg1.0_10090102", ...)` with the 4 bytes "xxxx". Kind 4 (nothing but a subject): `msgprops(0, ...)` and `ustream` of "__substg1.0_0037001F" "Bare".
+
+`attsum()` prints one line for each attachment i of `ole::ol_att_count()`: "att ", i, a space, the name from `ole::ol_att_name`, a space, the type from `ole::ol_att_type`, a space, the number of data bytes from `ole::ol_att_data` and then a space and each of its first 4 bytes as decimal numbers separated by spaces (as many as exist).
+
+`runm(label const byte[:], file const byte[:])` calls `dm::dm_reset("msg", "part")`, `dump(label, ole::ol_read(file))` and `attsum()`.
+
+`runw(label const byte[:], file const byte[:], kind const byte[:], unit const byte[:])` calls `dm::dm_reset(kind, unit)` and `dump(label, ole::ol_read(file))`.
+
+`wrong(label const byte[:], data const byte[:])` calls `dm::dm_reset("x", "y")` and prints the label, a space, and 1 or 0 for whether `ole::ol_read(data)` returned true, then one "warn " line for each line of `dm::dm_warn`.
+
+`main()` first calls `show` with these file names, kinds and units: "sample.doc" ("doc", "section"), "legacy.doc" ("doc", "section"), "edge.doc" ("doc", "section"), "boxes.doc" ("doc", "section"), "sample.xls" ("xls", "sheet"), "legacy.xls" ("xls", "sheet"), "edge1900.xls" ("xls", "sheet"), "edge1904.xls" ("xls", "sheet"), "sample.ppt" ("ppt", "slide"), "legacy.ppt" ("ppt", "slide"). Then, each with a scratch list and `runw` or `runx` as named: `wbbuild(false, ...)` with `runx("synth1900", "Workbook", ...)`; `wbbuild(true, ...)` with `runx("synth1904", "Workbook", ...)`; `oldbook` with `runx("biff5", "Book", ...)`; `lockedbook` with `runx("locked", "Workbook", ...)`; for `bigbook`, call `cfile("Workbook", ...)`, `dm::dm_reset("xls", "sheet")`, read it, write the Markdown from `dm::dm_markdown` into a scratch list, and print "== big", "len " and its length, "ok " and 1 or 0 for the reader result and one "warn " line for each line of `dm::dm_warn`; then `wdbuild(0xC1, 0x200, "1Table", ...)` with `runw("synthdoc", ..., "doc", "section")`; `wdbuild(0xC1, 0, "0Table", ...)` with `runw("synthdoc0", ...)`; `wdbuild(0xC1, 0x300, "1Table", ...)` with `runw("lockeddoc", ...)`; `wdbuild(0x65, 0x200, "1Table", ...)` with `runw("olddoc", ...)`; `ppbuild(0xE391C05F, ...)` with `runw("synthppt", ..., "ppt", "slide")`; `ppbuild(0xF3D1C4DF, ...)` with `runw("lockedppt", ...)`; `msgbuild(1, ...)`, `msgbuild(2, ...)`, `msgbuild(3, ...)`, `msgbuild(4, ...)` with `runm("msg1", ...)` to `runm("msg4", ...)`; the file made by `cfile("EncryptedPackage", the bytes of "data", ...)` with `runw("encpkg", ..., "x", "y")`. Last, "== wrong formats": `wrong` of "empty" with no bytes, of "text" with the bytes of "hello world", of "unknown" with `cfile("Foo", "bar", ...)`, of "cut" with the first 3000 bytes of the fixture "tests/fixtures/sample.doc" read with `os::read_file`, of "zip" with the fixture "tests/fixtures/edge.docx".
+
+expect:
+== sample.doc
+# Quarterly Garden Report
+.
+# Quarterly Garden Report
+.
+# Overview
+.
+The café opened in March. Sales reached 1,250 € in the first week.
+.
+## Plans
+.
+- Plant tulips
+- Order soil
+  - Peat moss
+.
+The budget was approved in April.
+.
+| Item | Qty | Price |
+|---|---|---|
+| Tulips | 10 | 5 |
+| Soil | 4 | 12 |
+.
+End of report.
+.
+> Footnote 1: Figures come from the till roll.
+.
+> Comment by Sam Rivera: Please check these numbers.
+.
+meta title=Quarterly Garden Report
+meta subject=Garden club
+meta author=Jordan Lee
+meta keywords=garden, report
+meta created=2026-03-01T15:00:00Z
+meta modified=2026-03-20T17:30:00Z
+== legacy.doc
+# Harbor Lights Festival
+.
+# Harbor Lights Festival
+.
+Planning notes for the committee
+.
+# Schedule
+.
+The festival runs for three evenings. Lanterns cost 4,50 € each, naïve estimates were wrong, and the café “Brise” has a menu — see the menu page for details.
+.
+## Friday
+.
+Opening parade at dusk.
+.
+- Hang the lanterns
+- Test the speakers
+  - Check the cables
+.
+### Saturday
+.
+- Market opens
+- Boat race
+.
+Greeting in other scripts: Привет, мир! Καλημέρα κόσμε. 你好，世界。 Tab stop and a line break.
+.
+| Item | Qty | Cost |
+|---|---|---|
+| Lanterns |  | 180 |
+| Stage and lights | 1 |
+.
+Closing remarks follow the table.
+.
+> Footnote 1: Prices are set by the harbor board.
+.
+> Comment by Sam Rivera: Confirm the route with the police.
+.
+meta title=Harbor Lights Festival
+meta subject=Event plan
+meta author=Riley Park
+meta keywords=festival, harbor
+meta created=2026-04-02T14:15:00Z
+meta modified=2026-04-10T21:45:00Z
+== edge.doc
+# Edge & Corner Cases
+.
+# Edge Title
+.
+Just a subtitle
+.
+First heading
+.
+Inherited heading
+.
+## Outlined heading
+.
+Deep heading
+.
+Alpha Beta Gamma-Deltaé
+.
+Keep gonekept HYPERLINK "http://example.invalid" and a link
+.
+Host paragraph
+.
+In content control
+.
+Styled item
+.
+Numbering off
+.
+Nested numbered
+.
+| Span | Z |
+|---|---|
+| x | y second para |
+| n1 | n2 |
+.
+After table
+.
+meta title=Edge & Corner Cases
+meta subject=Reader tests
+meta author=Alex Morgan
+meta keywords=alpha, beta
+meta created=2026-01-02T08:04:05Z
+meta modified=2026-02-03T09:05:06Z
+== boxes.doc
+Body before the box.
+.
+Anchor paragraph continues here.
+.
+Cited text and a note.
+.
+Body after.
+.
+Inside the box
+.
+Second box line
+.
+> Footnote 1: Footnote body text
+.
+> Endnote 1: Endnote body text
+.
+== sample.xls
+# Garden Sales
+.
+## Sales
+.
+| Item | Qty | Price | Date | Paid | Total |  | Note |
+|---|---|---|---|---|---|---|---|
+| Tulips | 10 | 2.5 | 2026-03-15 | TRUE | 25 |  | café € |
+| Soil | 4 | 12.75 | 2026-03-16 14:30:00 | FALSE | 51 |
+| Total | 14 |
+.
+## Notes
+.
+| Name | Value |
+|---|---|
+| Sum | 0.3 |
+| Big | 1234567890123 |
+| Ratio | 0.0000125 |
+| Greeting | Naïve façade |
+.
+meta sheets=2
+meta title=Garden Sales
+meta author=Jordan Lee
+meta created=2026-03-01T15:00:00Z
+meta modified=2026-03-20T17:30:00Z
+== legacy.xls
+# Harbor Orders
+.
+## Orders
+.
+| Item | Qty | Price | Ordered | Paid | Total |  | Note |
+|---|---|---|---|---|---|---|---|
+| Lanterns | 12 | 4.5 | 2026-04-15 | TRUE | 54 |  | Brise café € |
+| Ribbon | 7 | 0.25 | 2026-04-16 14:30:00 | FALSE | 1.75 |  | Привет, мир |
+| Negative | -3 | 1234567890123 | 0.0000125 | 0.3 | -1.5 |
+| 1 | 2 | 3 | 4 | 5 | 6 |
+| 13:45:00 | #DIV/0! | Lanterns (rush) | TRUE |
+| left |  | right |
+|  | after gap |
+.
+## Notes & Terms
+.
+| Terms |
+|---|
+| Net thirty days. Orders ship after the committee signs off on the proposed budget and the harbor board has confirmed the schedule in writing, including the Friday parade route and the Saturday market layout near the lighthouse pier. |
+| Tab inside and second line |
+.
+## Hid
+.
+| secret |
+|---|
+.
+meta sheets=3
+meta title=Harbor Orders
+meta subject=Festival supplies
+meta author=Riley Park
+meta keywords=orders
+meta created=2026-04-02T14:15:00Z
+meta modified=2026-04-10T21:45:00Z
+== edge1900.xls
+## Edge
+.
+| Hello | inline | TRUE | #DIV/0! | Hello! | café & co |
+|---|---|---|---|---|---|
+| 0.3 | 0.00001 | 123456789012 | 1000000000000000 | -2.5 |
+| 1900-01-01 | 1900-02-28 | 1900-02-29 | 1900-03-01 | 1970-01-01 |
+| 2026-03-15 12:00:00 | 12:00:00 | 1.5 | 3 | 2023-03-16 |
+|  |  | gap |
+| p | 7 |
+| FALSE | 5 |
+.
+## Chart
+.
+## Hid & Den
+.
+| secret |
+|---|
+.
+meta sheets=3
+== edge1904.xls
+## D
+.
+| 1904-01-01 | 1904-01-02 | 2016-04-02 18:00:00 | -1 | 41000 |
+|---|---|---|---|---|
+.
+meta sheets=1
+== sample.ppt
+# Spring Plan Deck
+.
+--- Slide 1 ---
+.
+## Spring Plan
+.
+- Plant tulips
+- Order soil
+  - Peat moss
+- Café menu €5
+.
+> Notes: Open with the tulip photo.
+> Mention the soil delivery date.
+.
+--- Slide 2 ---
+.
+Costs
+.
+Item
+.
+Qty
+.
+Price
+.
+Tulips
+.
+10
+.
+5
+.
+Soil
+.
+4
+.
+12
+.
+> Notes: Prices include delivery.
+.
+meta slides=2
+meta title=Spring Plan Deck
+meta author=Jordan Lee
+meta created=2026-03-01T15:00:00Z
+meta modified=2026-03-20T17:30:00Z
+== legacy.ppt
+# Harbor Lights Pitch
+.
+--- Slide 1 ---
+.
+## Harbor Lights Festival
+.
+- Three evenings of lantern light
+  - Parade on Friday
+- Café “Brise” menu — 4,50 €
+- Привет, мир
+.
+Free text box note
+.
+> Notes: Open with the lantern photo.
+> Mention the harbor board.
+.
+--- Slide 2 ---
+.
+Budget
+.
+- Lanterns 180
+- Stage and lights 950
+.
+> Notes: Prices include delivery.
+.
+--- Slide 3 ---
+.
+Thank you
+.
+meta slides=3
+meta title=Harbor Lights Pitch
+meta subject=Sponsor deck
+meta author=Riley Park
+meta created=2026-04-02T14:15:00Z
+meta modified=2026-04-10T21:45:00Z
+== synth1900
+## Data
+.
+| plain | alpha beta gamma | café Привет | rich | ext | after |
+|---|---|---|---|---|---|
+| 1900-01-02 | 2012-04-01 18:00:00 | 2 | TRUE | FALSE | 7 |
+| 5 | 12.5 | 0.5 | -3 |
+| TRUE | FALSE | #N/A | #NUM! |
+| 7 | str | TRUE | #REF! |  | t x |
+| a |  | c |
+| seven |
+| eight |
+|  | z |
+.
+## Hid & Den
+.
+| plain |
+|---|
+.
+meta sheets=2
+== synth1904
+## Data
+.
+| plain | alpha beta gamma | café Привет | rich | ext | after |
+|---|---|---|---|---|---|
+| 1904-01-03 | 2016-04-02 18:00:00 | 2 | TRUE | FALSE | 7 |
+| 5 | 12.5 | 0.5 | -3 |
+| TRUE | FALSE | #N/A | #NUM! |
+| 7 | str | TRUE | #REF! |  | t x |
+| a |  | c |
+| seven |
+| eight |
+|  | z |
+.
+## Hid & Den
+.
+| plain |
+|---|
+.
+meta sheets=2
+== biff5
+## Old
+.
+| café | 1900-01-02 |
+|---|---|
+| 2.5 |
+.
+meta sheets=1
+== locked
+warn encrypted Excel workbook: it needs its password
+reader returned false
+== big
+len 300015
+ok 1
+warn sheet Big truncated at 50000 rows
+== synthdoc
+Café “q” € 5
+.
+Hello world
+.
+Привет
+.
+link end
+.
+| A | B |
+|---|---|
+| C | D |
+.
+Last
+.
+== synthdoc0
+Café “q” € 5
+.
+Hello world
+.
+Привет
+.
+link end
+.
+| A | B |
+|---|---|
+| C | D |
+.
+Last
+.
+== lockeddoc
+warn encrypted Word document: it needs its password
+reader returned false
+== olddoc
+warn Word 6 or 95 document: not supported
+reader returned false
+== synthppt
+--- Slide 1 ---
+.
+## Title one
+.
+- First point
+  - Secondé point
+.
+Free box
+.
+> Notes: Remember the demo
+.
+--- Slide 2 ---
+.
+## Second slide
+.
+Edited later
+.
+> Notes: Second notes
+.
+meta slides=2
+== lockedppt
+warn encrypted PowerPoint document: it needs its password
+reader returned false
+== msg1
+From: Ada Example <ada@example.invalid>
+To: Ben Sample, Cy Test
+Cc: Di Copy
+Date: 2026-03-01T10:00:00Z
+Subject: Invented subject
+.
+Hello team. Second line.
+.
+meta from=Ada Example <ada@example.invalid>
+meta to=Ben Sample, Cy Test
+meta cc=Di Copy
+meta date=2026-03-01T10:00:00Z
+meta subject=Invented subject
+meta attachments=2
+att 0 report.txt text/plain 6 97 98 99 49
+att 1 pic.png image/png 4 137 80 78 71
+== msg2
+From: Eve Only
+Date: 2026-03-01T10:00:00Z
+Subject: Page
+.
+Hi there
+.
+meta from=Eve Only
+meta date=2026-03-01T10:00:00Z
+meta subject=Page
+== msg3
+Date: 2026-03-01T10:00:00Z
+Subject: Rich
+.
+meta date=2026-03-01T10:00:00Z
+meta subject=Rich
+warn message body is compressed RTF: not decoded
+== msg4
+Date: 2026-03-01T10:00:00Z
+Subject: Bare
+.
+meta date=2026-03-01T10:00:00Z
+meta subject=Bare
+== encpkg
+warn encrypted Office document: it needs its password
+reader returned false
+== wrong formats
+empty 0
+text 0
+unknown 0
+cut 0
+zip 0

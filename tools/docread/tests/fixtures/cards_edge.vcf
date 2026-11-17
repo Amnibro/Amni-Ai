@@ -1,0 +1,19 @@
+begin:vcard
+version:2.1
+n;charset=utf-8;encoding=quoted-printable:Sch=C3=BCtz;J=C3=BCrgen;;Prof.;
+org;charset=utf-8;encoding=quoted-printable:Garten GmbH;Einkauf
+tel;home;fax:+49 30 5550123
+tel;work:tel:+49 30 5550124
+adr;work:;;Main St 1;Berlin;;10115;Germany
+email;pref;internet:j@garten.example
+note;encoding=quoted-printable:soft=
+ break joined=0Aand a hard break
+bday:1980-02-29T00:00:00Z
+end:vcard
+BEGIN:VCARD
+VERSION:4.0
+N:Solo;Pat;;;
+END:VCARD
+BEGIN:VCARD
+VERSION:4.0
+END:VCARD

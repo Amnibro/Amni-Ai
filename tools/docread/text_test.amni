@@ -1,0 +1,155 @@
+import os;
+import dm;
+import html;
+import rtf;
+import textfmt;
+import eml;
+fn put_line(line const byte[:]) {
+	var n = line.len;
+	if n > 0 && line[n - 1] == 13 { n -= 1; }
+	if n == 0 {
+		print(".");
+	} else {
+		print(line[..n]);
+	}
+}
+fn put(text const byte[:]) {
+	var start = 0;
+	for i in text.len {
+		if text[i] == 10 {
+			put_line(text[start..i]);
+			start = i + 1;
+		}
+	}
+	if start < text.len {
+		put_line(text[start..]);
+	}
+}
+fn show(name const byte[:], which int) {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var data byte[>..] = [];
+	if !read_file(path, data) {
+		print("missing");
+		return;
+	}
+	var kind const byte[:] = "text";
+	var unit const byte[:] = "section";
+	if which == 1 {
+		kind = "html";
+	} else if which == 2 {
+		kind = "rtf";
+	} else if which == 4 || which == 5 || which == 6 || which == 8 {
+		kind = "csv";
+		unit = "sheet";
+	} else if which == 7 {
+		kind = "json";
+	} else if which == 9 {
+		kind = "eml";
+		unit = "part";
+	}
+	dm::dm_reset(kind, unit);
+	var ok = true;
+	if which == 1 {
+		ok = html::ht_read(data);
+	} else if which == 2 {
+		ok = rtf::rt_read(data);
+	} else if which == 3 {
+		ok = textfmt::tx_text(data);
+	} else if which == 4 {
+		ok = textfmt::tx_csv(data, 0);
+	} else if which == 5 {
+		ok = textfmt::tx_csv(data, 9);
+	} else if which == 7 {
+		ok = textfmt::tx_json(data);
+	} else if which == 9 {
+		ok = eml::em_read(data);
+	}
+	print("== ", name);
+	var md byte[>..] = [];
+	dm::dm_markdown(md);
+	put(md);
+	for line in split(dm::dm_meta, 10) {
+		if line.len == 0 { continue; }
+		var t = 0;
+		while t < line.len && line[t] != 9 { t++; }
+		if t < line.len {
+			print("meta ", line[..t], "=", line[t + 1..]);
+		} else {
+			print("meta ", line, "=");
+		}
+	}
+	for line in split(dm::dm_warn, 10) {
+		if line.len == 0 { continue; }
+		print("warn ", line);
+	}
+	if !ok {
+		print("reader returned false");
+	}
+}
+fn main() {
+	show("page.html", 1);
+	show("memo.rtf", 2);
+	show("escapes.rtf", 2);
+	show("notes.md", 3);
+	show("quoted.csv", 4);
+	show("semi.csv", 4);
+	show("table.tsv", 5);
+	show("data.json", 7);
+	show("records.json", 7);
+	show("lines.jsonl", 7);
+	show("mail.eml", 9);
+	show("fwd.eml", 9);
+	show("nested.eml", 9);
+	print("== page.html text-only");
+	var page byte[>..] = [];
+	read_file("tests/fixtures/page.html", page);
+	var plain byte[>..] = [];
+	html::ht_text_only(page, plain);
+	put(plain);
+	print("== mail.eml attachments");
+	var mail byte[>..] = [];
+	read_file("tests/fixtures/mail.eml", mail);
+	dm::dm_reset("eml", "part");
+	eml::em_read(mail);
+	for i in eml::em_att_count() {
+		var an byte[>..] = [];
+		var at byte[>..] = [];
+		var data byte[>..] = [];
+		eml::em_att_name(i, an);
+		eml::em_att_type(i, at);
+		eml::em_att_data(i, data);
+		print("att ", i, " ", an, " ", at, " ", data.len);
+		put(data);
+	}
+	negatives();
+}
+fn neg_line(reader const byte[:], name const byte[:], which int) {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	var data byte[>..] = [];
+	read_file(path, data);
+	dm::dm_reset("text", "section");
+	var ok = false;
+	if which == 1 {
+		ok = html::ht_read(data);
+	} else if which == 2 {
+		ok = rtf::rt_read(data);
+	} else if which == 3 {
+		ok = eml::em_read(data);
+	} else {
+		ok = textfmt::tx_json(data);
+	}
+	let word = if ok { "true" } else { "false" };
+	print(reader, " on ", name, ": ", word);
+}
+fn negatives() {
+	print("== negatives");
+	neg_line("html::ht_read", "notes.md", 1);
+	neg_line("rtf::rt_read", "notes.md", 2);
+	neg_line("eml::em_read", "notes.md", 3);
+	neg_line("eml::em_read", "page.html", 3);
+	neg_line("textfmt::tx_json", "notes.md", 4);
+}

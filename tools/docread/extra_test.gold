@@ -1,0 +1,1245 @@
+use std
+into extra_test.amni
+
+```amni
+import os;
+import dm;
+import extra;
+```
+
+`emit(text const byte[:])` prints text one line at a time with `os::write_stdout`: for each line (split at the newline byte 10, ignoring the empty piece after a final newline) it prints the line followed by a newline, except that an empty line is printed as a single dot "." and a line longer than 100 bytes is printed as its first 20 bytes, a tilde "~" and its length in bytes.
+
+`run(label const byte[:], which int, lang const byte[:], data const byte[:])` calls `dm::dm_reset(kind, unit)` where kind and unit are "ipynb" and "cell" for which 1, "ics" and "event" for 2, "vcf" and "card" for 3, "code" and "line" for 4, then the reader chosen by which: 1 `extra::ex_ipynb(data)`, 2 `extra::ex_ics(data)`, 3 `extra::ex_vcf(data)`, 4 `extra::ex_code(data, lang)`. It prints a line "== " and the label, then the Markdown from `dm::dm_markdown` (written into a scratch list and printed with `emit`), then one line "meta " plus key, an equals sign and value for each line of `dm::dm_meta` (the key and value are separated by the tab byte 9 there), then one line "warn " plus the line for each line of `dm::dm_warn`, and when the reader returned false one line "reader returned false".
+
+`show(name const byte[:], which int)` reads the file "tests/fixtures/" followed by name with `os::read_file` (printing "missing " and the name, and returning, when it cannot be read) and calls `run` with name as the label, which, the text of name after its last period (the whole name when it has none) as lang, and the file's bytes.
+
+`ext_row(list const byte[:])` takes extensions separated by single spaces and prints one line: "ext" followed by, for each extension, a space, the extension, a colon and 1 or 0 for `extra::ex_is_code_ext` of it. An extension written as "_" stands for the empty string (it is still printed as "_").
+
+`main()` calls `show` for these files in this order: "nb4.ipynb", "nb3.ipynb", "nb_edge.ipynb", "nb_empty.ipynb", "nb_trunc.ipynb", "nb_notjson.ipynb" and "nb_other.ipynb", each with 1; "cal.ics", "cal_edge.ics", "cal_empty.ics", "cal_trunc.ics", "cal_bin.ics" and "cal_text.ics", each with 2; "cards.vcf", "cards_edge.vcf", "cards_trunc.vcf", "cards_open.vcf", "cards_bin.vcf" and "cards_text.vcf", each with 3; and then each with 4: "code_src/hello.py", "code_src/lib.rs", "code_src/server.go", "code_src/app.ts", "code_src/app.js", "code_src/util.c", "code_src/Main.java", "code_src/deploy.sh", "code_src/garden.rb", "code_src/tally.he", "code_src/crlf.py", "code_src/longfn.py", "code_src/flat.py", "code_src/longsig.rs" and "code_src/bin.c". Then it calls `run("inline c1", 4, ".PY", "x = 1\n")`, `run("inline c2", 4, "weird", "alpha\nbeta\n")`, `run("inline c3", 4, "py", "")`, `run("inline c4", 4, "go", "func a() {\n}\n\nfunc b() {\n}")` and `run("inline c5", 4, "py", "def a():\n    return 1\n\n\n\n\n")`, then `ext_row("py PY .rs Dockerfile mk make txt md _ . pyc c++ kts scss vhd toml json gold he amni ..py cs fs v")`, and lastly `run("inline empty ics", 2, "", "")`, `run("inline empty vcf", 3, "", "")` and `run("inline empty nb", 1, "", "")`.
+
+expect:
+== nb4.ipynb
+# Seed Germination Study
+.
+We compare *two* soil mixes for tulip bulbs.
+.
+- peat blend
+- compost blend
+.
+> In [1]
+.
+```
+import statistics
+rates = {'peat': [71, 74, 72], 'compost': [80, 83, 84]}
+```
+.
+> In [2]
+.
+```
+for name, vals in rates.items():
+    print(name, round(statistics.mean(vals), 2))
+```
+.
+```
+peat 72.33
+compost 82.33
+```
+.
+> In [3]
+.
+```
+ratio = 0.8
+ratio
+```
+.
+```
+0.8
+```
+.
+> In [4]
+.
+```
+plot_rates(rates)
+```
+.
+```
+<Figure size 800x400 with 1 Axes>
+```
+.
+```
+pending = None
+```
+.
+> In [5]
+.
+```
+1 / 0
+```
+.
+```
+ZeroDivisionError: division by zero
+```
+.
+## Notes
+.
+The compost blend germinated best. Retest next spring.
+.
+raw cell: keep for the export step
+.
+> In [7]
+.
+```
+print('abcdefghij' * 410)
+```
+.
+```
+abcdefghijabcdefghij~4000
+```
+.
+meta language=python
+meta nbformat=4
+meta cells=10
+warn notebook output truncated at 4000 bytes
+== nb3.ipynb
+# Legacy Notebook
+.
+An old style notebook with a *worksheet*.
+.
+> In [1]
+.
+```
+x = 3
+print x
+```
+.
+```
+3
+```
+.
+```
+3
+```
+.
+> In [2]
+.
+```
+1/0
+```
+.
+```
+ZeroDivisionError: integer division or modulo by zero
+```
+.
+meta language=python
+meta nbformat=3
+meta cells=4
+== nb_edge.ipynb
+## String source
+.
+Plain paragraph in one string.
+.
+> In [12]
+.
+```
+a = 1
+```
+.
+```
+warn line
+second line
+```
+.
+```
+1
+```
+.
+```
+KeyError
+```
+.
+```
+été plain string
+```
+.
+meta language=julia
+meta nbformat=4
+meta cells=5
+== nb_empty.ipynb
+meta nbformat=4
+meta cells=0
+== nb_trunc.ipynb
+reader returned false
+== nb_notjson.ipynb
+reader returned false
+== nb_other.ipynb
+reader returned false
+== cal.ics
+# Greenhollow Calendar
+.
+## Spring planting day, north terrace
+.
+Start: 2026-03-14 09:30 Europe/Paris
+End: 2026-03-14 11:30 Europe/Paris
+Location: Plot 12, Greenhollow Allotment
+Organizer: Jordan Lee <jordan@greenhollow.example>
+Attendees: Sam Rivera <sam@greenhollow.example>, casey@greenhollow.example
+Status: CONFIRMED
+.
+Bring gloves and a t~113
+.
+## Committee meeting
+.
+Start: 2026-05-02 18:00 UTC
+End: 2026-05-02 20:00 UTC
+Status: TENTATIVE
+.
+## Open day
+.
+Start: 2026-07-20
+End: 2026-07-21
+.
+Gates open to the public all day.
+.
+## Order seed potatoes
+.
+Due: 2026-04-01 12:00 UTC
+Status: NEEDS-ACTION
+.
+Check the catalogue for first early varieties.
+.
+## (untitled)
+.
+Start: 2026-07-10 10:00
+.
+meta title=Greenhollow Calendar
+meta events=5
+== cal_edge.ics
+## Lower case names folded with a tab
+.
+Start: 2026-03-14 09:30 America/Chicago
+End: 2026-03-14 12:00 UTC
+Location: Room 7, Annex
+Organizer: boss@greenhollow.example
+Attendees: Lee, Jordan <jordan@greenhollow.example>
+.
+Line one Line two; ends\ here
+.
+## Task with alarm
+.
+Due: tomorrow
+Status: COMPLETED
+.
+meta events=2
+== cal_empty.ics
+meta events=0
+== cal_trunc.ics
+# Greenhollow Calendar
+.
+## Spring planting day, north terrace
+.
+Start: 2026-03-14 09:30 Europe/Paris
+End: 2026-03-14 11:30 Europe/Paris
+Location: Plot 12, Greenhollow Allotment
+Organizer: Jordan Lee <jordan@greenhollow.example>
+Attendees: Sam Rivera <sam@greenhollow.example>, casey@greenhollow.example
+Status: CONFIRMED
+.
+Bring gloves and a t~113
+.
+## Committee meeting
+.
+Start: 2026-05-02 18:00 UTC
+End: 2026-05-02 20:00 UTC
+Status: TENTATIVE
+.
+meta title=Greenhollow Calendar
+meta events=2
+== cal_bin.ics
+reader returned false
+== cal_text.ics
+meta events=0
+reader returned false
+== cards.vcf
+## Amélie Dubois
+.
+Organization: Greenhollow Seeds, Sales
+Title: Seed buyer
+Phone: +1 555 0141 (cell)
+Phone: +1 555 0142 (work)
+Email: amelie@greenhollow.example
+Address: 12 Rue des Tulipes, Liège, 4000, Belgium (home)
+URL: https://greenhollow.example/amelie
+Birthday: 1990-05-17
+Note: Prefers morning calls. Allergic to peanuts. Second line after a break.
+.
+## Sam Rivera
+.
+Organization: Greenhollow Allotment
+Phone: +1-555-0143 (cell, pref)
+Email: sam@greenhollow.example (work)
+Address: 1 Mill Lane, Unit 2, Springfield, IL, 12345, USA (work)
+URL: https://example.org/sam
+Birthday: 1985-03-09
+Note: Line one Line ~107
+.
+## Casey Nguyen
+.
+Title: Treasurer
+Phone: +1-555-0144 (home)
+Email: casey@greenhollow.example (home)
+Birthday: --0412
+.
+## Chidi Okafor
+.
+Email: chidi@greenhollow.example
+.
+## Lone Org
+.
+Organization: Lone Org
+.
+meta contacts=5
+== cards_edge.vcf
+## Prof. Jürgen Schütz
+.
+Organization: Garten GmbH, Einkauf
+Phone: +49 30 5550123 (home, fax)
+Phone: +49 30 5550124 (work)
+Email: j@garten.example (pref)
+Address: Main St 1, Berlin, 10115, Germany (work)
+Birthday: 1980-02-29
+Note: soft break joined and a hard break
+.
+## Pat Solo
+.
+## (unnamed contact)
+.
+meta contacts=3
+== cards_trunc.vcf
+## Cut Off Card
+.
+Phone: +1 555 0100
+.
+meta contacts=1
+== cards_open.vcf
+meta contacts=0
+reader returned false
+== cards_bin.vcf
+reader returned false
+== cards_text.vcf
+meta contacts=0
+reader returned false
+== code_src/hello.py
+--- Line 1 ---
+.
+```
+import os
+import sys
+.
+GREETING = "hello"
+LIMIT = 10
+```
+.
+--- Line 8 ---
+.
+### def greet(name, times=1):
+.
+```
+def greet(name, times=1):
+    """Say hello."""
+    return (GREETING + " " + name + "\n") * times
+```
+.
+--- Line 13 ---
+.
+### def helper(values):
+.
+```
+@staticmethod
+def helper(values):
+    total = 0
+    for v in values:
+        total += v
+.
+    return total
+```
+.
+--- Line 22 ---
+.
+### class Garden:
+.
+```
+class Garden:
+    def __init__(self, rows):
+        self.rows = rows
+.
+    def count(self):
+        return len(self.rows)
+```
+.
+--- Line 30 ---
+.
+### async def main():
+.
+```
+async def main():
+    g = Garden(["tulips", "beans"])
+    print(greet("world", g.count()))
+.
+.
+if __name__ == "__main__":
+    main()
+```
+.
+meta language=python
+meta lines=36
+== code_src/lib.rs
+--- Line 1 ---
+.
+```
+use std::collections::HashMap;
+.
+pub const MAX: usize = 8;
+```
+.
+--- Line 5 ---
+.
+### pub struct Plot
+.
+```
+/// A plot of land.
+#[derive(Debug, Clone)]
+pub struct Plot {
+    pub name: String,
+    pub area: f32,
+}
+```
+.
+--- Line 12 ---
+.
+### pub enum Crop
+.
+```
+pub enum Crop {
+    Bean,
+    Potato,
+}
+```
+.
+--- Line 17 ---
+.
+### pub trait Describe
+.
+```
+pub trait Describe {
+    fn describe(&self) -> String;
+}
+```
+.
+--- Line 21 ---
+.
+### impl Describe for Plot
+.
+```
+impl Describe for Plot {
+    fn describe(&self) -> String {
+        format!("{} ({} sq m)", self.name, self.area)
+    }
+}
+```
+.
+--- Line 27 ---
+.
+### pub fn total_area(plots: &[Plot]) -> f32
+.
+```
+pub fn total_area(plots: &[Plot]) -> f32 {
+    plots.iter().map(|p| p.area).sum()
+}
+```
+.
+--- Line 31 ---
+.
+### pub async fn load(path: &str) -> Option<HashMap<String, Plot>>
+.
+```
+pub async fn load(path: &str) -> Option<HashMap<String, Plot>> {
+    None
+}
+```
+.
+--- Line 35 ---
+.
+### mod tests
+.
+```
+mod tests {
+    use super::*;
+}
+```
+.
+meta language=rust
+meta lines=37
+== code_src/server.go
+--- Line 1 ---
+.
+```
+package main
+.
+import (
+	"fmt"
+	"net/http"
+)
+```
+.
+--- Line 8 ---
+.
+### type Handler struct
+.
+```
+type Handler struct {
+	Name string
+}
+```
+.
+--- Line 12 ---
+.
+### func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request)
+.
+```
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hello from %s", h.Name)
+}
+```
+.
+--- Line 16 ---
+.
+### func main()
+.
+```
+func main() {
+	http.Handle("/", &Handler{Name: "garden"})
+	http.ListenAndServe(":8080", nil)
+}
+```
+.
+meta language=go
+meta lines=19
+== code_src/app.ts
+--- Line 1 ---
+.
+```
+import { readFileSync } from "fs";
+```
+.
+--- Line 3 ---
+.
+### export interface Plot
+.
+```
+export interface Plot {
+  name: string;
+  area: number;
+}
+```
+.
+--- Line 8 ---
+.
+### export const area = (p: Plot): number => p.area * 2;
+.
+```
+export const area = (p: Plot): number => p.area * 2;
+```
+.
+--- Line 10 ---
+.
+### const label = async (p: Plot) =>
+.
+```
+const label = async (p: Plot) => {
+  return p.name.toUpperCase();
+};
+```
+.
+--- Line 14 ---
+.
+### export default class Garden
+.
+```
+export default class Garden {
+  constructor(private plots: Plot[]) {}
+.
+  total(): number {
+    return this.plots.reduce((s, p) => s + p.area, 0);
+  }
+}
+```
+.
+--- Line 22 ---
+.
+### export function load(path: string): Plot[]
+.
+```
+export function load(path: string): Plot[] {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+```
+.
+meta language=typescript
+meta lines=24
+== code_src/app.js
+--- Line 1 ---
+.
+```
+const fs = require("fs");
+```
+.
+--- Line 3 ---
+.
+### function load(path)
+.
+```
+function load(path) {
+  return JSON.parse(fs.readFileSync(path, "utf8"));
+}
+```
+.
+--- Line 7 ---
+.
+### const area = function (p)
+.
+```
+const area = function (p) {
+  return p.w * p.h;
+};
+```
+.
+--- Line 11 ---
+.
+### const double = (x) => x * 2;
+.
+```
+const double = (x) => x * 2;
+.
+module.exports = { load, area, double };
+```
+.
+meta language=javascript
+meta lines=13
+== code_src/util.c
+--- Line 1 ---
+.
+```
+#include <stdio.h>
+#include <stdlib.h>
+```
+.
+--- Line 4 ---
+.
+```
+#define MAX_ROWS 100
+```
+.
+--- Line 6 ---
+.
+### typedef struct Plot
+.
+```
+typedef struct Plot {
+    int id;
+    double area;
+} Plot;
+```
+.
+--- Line 11 ---
+.
+### static int count_rows(const char *text)
+.
+```
+static int count_rows(const char *text)
+{
+    int n = 0;
+    for (const char *p = text; *p; p++) {
+        if (*p == '\n') {
+            n++;
+        }
+    }
+    return n;
+}
+```
+.
+--- Line 22 ---
+.
+### int main(int argc, char **argv)
+.
+```
+int main(int argc, char **argv) {
+    if (argc > 1) {
+        printf("%d\n", count_rows(argv[1]));
+    }
+    return 0;
+}
+```
+.
+meta language=c
+meta lines=27
+== code_src/Main.java
+--- Line 1 ---
+.
+```
+package garden;
+.
+import java.util.List;
+```
+.
+--- Line 5 ---
+.
+### public class Main
+.
+```
+public class Main {
+    private final List<String> rows;
+.
+    public Main(List<String> rows) {
+        this.rows = rows;
+    }
+.
+    public static void main(String[] args) {
+        System.out.println("hello");
+    }
+}
+```
+.
+meta language=java
+meta lines=15
+== code_src/deploy.sh
+--- Line 1 ---
+.
+```
+#!/bin/bash
+set -e
+```
+.
+--- Line 4 ---
+.
+### log()
+.
+```
+log() {
+  echo "[deploy] $1"
+}
+```
+.
+--- Line 8 ---
+.
+### function build_all
+.
+```
+function build_all {
+  log "building"
+  make all
+}
+.
+build_all
+```
+.
+meta language=shell
+meta lines=13
+== code_src/garden.rb
+--- Line 1 ---
+.
+```
+require "json"
+```
+.
+--- Line 3 ---
+.
+### module Garden
+.
+```
+module Garden
+  class Plot
+    attr_reader :name
+.
+    def initialize(name)
+      @name = name
+    end
+.
+    def to_s
+      "plot #{@name}"
+    end
+  end
+end
+```
+.
+meta language=ruby
+meta lines=15
+== code_src/tally.he
+--- Line 1 ---
+.
+```
+import os;
+.
+let LIMIT = 10;
+```
+.
+--- Line 5 ---
+.
+### struct Plot
+.
+```
+struct Plot {
+	id int;
+	area f32;
+}
+```
+.
+--- Line 10 ---
+.
+### fn total(plots Plot[:]) f32
+.
+```
+fn total(plots Plot[:]) f32 {
+	var sum f32 = 0.0;
+	for p in plots {
+		sum += p.area;
+	}
+	return sum;
+}
+```
+.
+--- Line 18 ---
+.
+### fn main()
+.
+```
+fn main() {
+	print("tally ", LIMIT);
+}
+```
+.
+meta language=helium
+meta lines=20
+== code_src/crlf.py
+--- Line 1 ---
+.
+### def crlf(x):
+.
+```
+def crlf(x):
+    return x + 1
+```
+.
+--- Line 5 ---
+.
+### class K:
+.
+```
+class K:
+    pass
+```
+.
+meta language=python
+meta lines=6
+== code_src/longfn.py
+--- Line 1 ---
+.
+### def big():
+.
+```
+def big():
+    a = 0
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+.
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+```
+.
+--- Line 55 ---
+.
+```
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+.
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+```
+.
+--- Line 107 ---
+.
+```
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+.
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    a = a + 1
+    return a
+```
+.
+--- Line 141 ---
+.
+### def after(x):
+.
+```
+def after(x):
+    return x + 1
+```
+.
+meta language=python
+meta lines=142
+== code_src/flat.py
+--- Line 1 ---
+.
+```
+# one hundred thirty lines without any blank line
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+```
+.
+--- Line 61 ---
+.
+```
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+```
+.
+--- Line 121 ---
+.
+```
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+total = total + 1
+```
+.
+meta language=python
+meta lines=131
+== code_src/longsig.rs
+--- Line 1 ---
+.
+### fn aaaaaaaaaaaaa~124
+.
+```
+fn aaaaaaaaaaaaaaaaa~157
+    1
+}
+```
+.
+--- Line 5 ---
+.
+### fn bbbbbbbbbbbbb~123
+.
+```
+fn bbbbbbbbbbbbbbbbb~127
+    2
+}
+```
+.
+meta language=rust
+meta lines=7
+== code_src/bin.c
+reader returned false
+== inline c1
+--- Line 1 ---
+.
+```
+x = 1
+```
+.
+meta language=python
+meta lines=1
+== inline c2
+--- Line 1 ---
+.
+```
+alpha
+beta
+```
+.
+meta language=weird
+meta lines=2
+== inline c3
+meta language=python
+meta lines=0
+== inline c4
+--- Line 1 ---
+.
+### func a()
+.
+```
+func a() {
+}
+```
+.
+--- Line 4 ---
+.
+### func b()
+.
+```
+func b() {
+}
+```
+.
+meta language=go
+meta lines=5
+== inline c5
+--- Line 1 ---
+.
+### def a():
+.
+```
+def a():
+    return 1
+```
+.
+meta language=python
+meta lines=6
+ext py:1 PY:1 .rs:1 Dockerfile:1 mk:1 make:1 txt:0 md:0 _:0 .:0 pyc:0 c++:0 kts:1 scss:1 vhd:1 toml:0 json:0 gold:1 he:1 amni:1 ..py:0 cs:1 fs:1 v:1
+== inline empty ics
+meta events=0
+reader returned false
+== inline empty vcf
+meta contacts=0
+reader returned false
+== inline empty nb
+reader returned false

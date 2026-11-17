@@ -1,0 +1,139 @@
+=== -72680e470d32051f
+fn blob(out byte[>..]&, n int, m int) {
+	for i in n {
+		out.push(((i * m + i / 256) % 256) as byte);
+	}
+}
+=== 1b764145432fa768
+fn mk(out byte[>..]&, v4 bool, hdr int, big int) {
+	out.clear();
+	cfbmk::cm_reset();
+	var t byte[>..] = [];
+	blob(t, 40, 1);
+	cfbmk::cm_add("Small", t);
+	t.clear();
+	blob(t, 70, 3);
+	cfbmk::cm_add("Dir/Mid", t);
+	t.clear();
+	blob(t, big, 5);
+	cfbmk::cm_add("Dir/Big", t);
+	t.clear();
+	cfbmk::cm_add("Zed", t);
+	cfbmk::cm_build(v4, hdr, out);
+}
+=== 190eb4bc59eda8fc
+fn same(h int, path const byte[:], n int, m int) int {
+	var got byte[>..] = [];
+	var want byte[>..] = [];
+	if !cfb::cf_get(h, path, got) { return 0; }
+	blob(want, n, m);
+	if got == want { 1 } else { 0 }
+}
+=== -5162bc34a39644df
+fn kind(h int, i int) const byte[:] {
+	if i == 0 { "R" } else if cfb::cf_is_stream(h, i) { "S" } else { "D" }
+}
+=== 577ebe0506f297c1
+fn report(tag const byte[:], data const byte[:]) {
+	let h = cfb::cf_open(data);
+	let cnt = cfb::cf_count(h);
+	print(tag, " handle ", h, " count ", cnt);
+	if h < 0 { return; }
+	for i in cnt {
+		if i == 0 {
+			print(tag, " ", i, " ", kind(h, i), " ", cfb::cf_size(h, i), " ", "-");
+		} else {
+			print(tag, " ", i, " ", kind(h, i), " ", cfb::cf_size(h, i), " ", cfb::cf_path(h, i));
+		}
+	}
+	let bigi = cfb::cf_find(h, "Dir/Big");
+	print(tag, " read ", same(h, "Small", 40, 1), " ", same(h, "Dir/Mid", 70, 3), " ", same(h, "Dir/Big", cfb::cf_size(h, bigi), 5), " ", same(h, "zed", 0, 1));
+	var bs byte[>..] = [];
+	bs.append("Dir");
+	bs.push(92);
+	bs.append("Mid");
+	print(tag, " find ", cfb::cf_find(h, "dir/BIG"), " ", cfb::cf_find(h, "/Dir/Mid"), " ", cfb::cf_find(h, "Dir"), " ", cfb::cf_find(h, ""), " ", cfb::cf_find(h, "Dir/Nope"), " ", cfb::cf_find(h, bs));
+	cfb::cf_close(h);
+}
+=== 1e387537497d8c06
+fn main() {
+	var d byte[>..] = [];
+	mk(d, false, 109, 5000);
+	report("v3", d);
+	mk(d, true, 109, 5000);
+	report("v4", d);
+	mk(d, false, 0, 100000);
+	report("d0", d);
+	mk(d, false, 1, 100000);
+	report("d1", d);
+	mk(d, true, 1, 5000000);
+	report("v4d", d);
+	mk(d, false, 109, 7300000);
+	report("big", d);
+	mk(d, false, 109, 5000);
+	var c byte[>..] = [];
+	c.append(d[..700]);
+	print("cut ", cfb::cf_open(c));
+	var sh byte[>..] = [];
+	sh.append(d[..d.len - 300]);
+	report("short", sh);
+	var lp byte[>..] = [];
+	lp.append(d);
+	lp[7692] = 1;
+	lp[7693] = 0;
+	lp[7694] = 0;
+	lp[7695] = 0;
+	report("loop", lp);
+	var z byte[>..] = [];
+	z.resize(700, 0);
+	var sg byte[>..] = [];
+	sg.push(0xD0);
+	sg.push(0xCF);
+	sg.push(0x11);
+	sg.push(0xE0);
+	sg.push(0xA1);
+	sg.push(0xB1);
+	sg.push(0x1A);
+	sg.push(0xE1);
+	sg.append(z);
+	print("none ", cfb::cf_open("hello"), " ", cfb::cf_open(z), " ", cfb::cf_open(sg));
+	var a byte[>..] = [];
+	var b byte[>..] = [];
+	mk(a, false, 109, 5000);
+	mk(b, true, 109, 5000);
+	let p = cfb::cf_open(a);
+	let q = cfb::cf_open(b);
+	print("multi ", p, " ", q, " ", same(p, "Dir/Big", 5000, 5), " ", same(q, "Dir/Big", 5000, 5));
+	cfb::cf_close(p);
+	print("multi after close ", same(q, "Small", 40, 1));
+	cfb::cf_close(q);
+	let r = cfb::cf_open(a);
+	print("multi reopen ", r);
+	cfb::cf_close(r);
+	let names = ["sample.doc", "sample.xls", "sample.ppt"];
+	for name in names {
+		var path byte[>..] = [];
+		path.append("tests/fixtures/");
+		path.append(name);
+		var data byte[>..] = [];
+		read_file(path, data);
+		let h = cfb::cf_open(data);
+		let cnt = cfb::cf_count(h);
+		print(name, " handle ", h, " count ", cnt);
+		for i in cnt {
+			if cfb::cf_is_stream(h, i) {
+				var s byte[>..] = [];
+				for ch in cfb::cf_path(h, i) {
+					if ch < 32 {
+						s.push('^');
+						s.push(ch + 64);
+					} else {
+						s.push(ch);
+					}
+				}
+				print(s, " ", cfb::cf_size(h, i));
+			}
+		}
+		cfb::cf_close(h);
+	}
+}

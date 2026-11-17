@@ -1,0 +1,374 @@
+use std
+into office_test.amni
+
+```amni
+import os;
+import dm;
+import office;
+```
+
+`emit(text const byte[:])` prints text one line at a time with `os::write_stdout`: for each line (split at the newline byte 10, ignoring the empty piece after a final newline) it prints the line itself followed by a newline, except that an empty line is printed as a single dot "." followed by a newline.
+
+`show(name const byte[:], which int)` reads the file "tests/fixtures/" followed by name with `os::read_file` (printing "missing" and returning when it cannot be read), calls `dm::dm_reset(kind, unit)` where kind and unit are "docx" and "section" for which 1, "xlsx" and "sheet" for 2, "pptx" and "slide" for 3, "odt" and "section" for 4, "ods" and "sheet" for 5, "odp" and "slide" for 6, then calls the reader chosen by which: 1 `office::of_docx`, 2 `office::of_xlsx`, 3 `office::of_pptx`, 4, 5 and 6 `office::of_odf`. It prints a line "== " and the name, then the Markdown from `dm::dm_markdown` (written into a scratch list and printed with `emit`), then one line "meta " plus key, an equals sign and value for each line of `dm::dm_meta` (the key and value are separated by the tab byte 9 there), then one line "warn " plus the line for each line of `dm::dm_warn`, and when the reader returned false one line "reader returned false".
+
+`main()` calls `show` for these files in this order: "sample.docx" with 1, "sample.odt" with 4, "sample.xlsx" with 2, "sample.ods" with 5, "sample.pptx" with 3, "sample.odp" with 6, "edge.docx" with 1, "edge1900.xlsx" with 2, "edge1904.xlsx" with 2, "edge.pptx" with 3, "edge.odt" with 4, "edge.ods" with 5. Then it prints a line "== bigsheet.xlsx", reads that fixture, calls `dm::dm_reset("xlsx", "sheet")` and `office::of_xlsx`, writes the Markdown from `dm::dm_markdown` into a scratch list, and prints "len " and the length of that list, then "warn " plus the line for each line of `dm::dm_warn`. Then it prints a line "== wrong formats" and then for each of these four pairs one line: the name, a space, and 1 or 0 for whether the reader returned true (after a fresh `dm::dm_reset("x", "y")`): "sample.odt" with `office::of_docx`, "sample.docx" with `office::of_xlsx`, "sample.xlsx" with `office::of_odf`, "table.tsv" with `office::of_pptx`.
+
+expect:
+== sample.docx
+# Quarterly Garden Report
+.
+# Quarterly Garden Report
+.
+# Overview
+.
+The café opened in March. Sales reached 1,250 € in the first week.
+.
+## Plans
+.
+- Plant tulips
+- Order soil
+  - Peat moss
+.
+The budget was approved in April.
+.
+| Item | Qty | Price |
+|---|---|---|
+| Tulips | 10 | 5 |
+| Soil | 4 | 12 |
+.
+End of report.
+.
+> Footnote 1: Figures come from the till roll.
+.
+> Comment by Sam Rivera: Please check these numbers.
+.
+meta title=Quarterly Garden Report
+meta subject=Garden club
+meta author=Jordan Lee
+meta keywords=garden report
+meta created=2026-03-01T10:00:00Z
+meta modified=2026-03-20T12:30:00Z
+== sample.odt
+# Quarterly Garden Report
+.
+# Quarterly Garden Report
+.
+# Overview
+.
+The café opened in March. Sales reached 1,250 € in the first week.
+.
+> Footnote 1: Figures come from the till roll.
+.
+## Plans
+.
+- Plant tulips
+- Order soil
+  - Peat moss
+.
+The budget was approved in April.
+.
+> Comment by Sam Rivera: Please check these numbers.
+.
+| Item | Qty | Price |
+|---|---|---|
+| Tulips | 10 | 5 |
+| Soil | 4 | 12 |
+.
+End of report.
+.
+meta title=Quarterly Garden Report
+meta subject=Garden club
+meta author=Jordan Lee
+meta created=2026-03-01T10:00:00
+meta modified=2026-03-20T12:30:00
+meta keywords=garden, report
+meta pages=1
+== sample.xlsx
+# Garden Sales
+.
+## Sales
+.
+| Item | Qty | Price | Date | Paid | Total |  | Note |
+|---|---|---|---|---|---|---|---|
+| Tulips | 10 | 2.5 | 2026-03-15 | TRUE | 25 |  | café € |
+| Soil | 4 | 12.75 | 2026-03-16 14:30:00 | FALSE | 51 |
+| Total | 14 |
+.
+## Notes
+.
+| Name | Value |
+|---|---|
+| Sum | 0.3 |
+| Big | 1234567890123 |
+| Ratio | 0.0000125 |
+| Greeting | Naïve façade |
+.
+meta sheets=2
+meta title=Garden Sales
+meta author=Jordan Lee
+meta created=2026-03-01T10:00:00Z
+meta modified=2026-03-20T12:30:00Z
+== sample.ods
+# Garden Sales
+.
+## Sales
+.
+| Item | Qty | Price | Date | Paid | Total |  | Note |
+|---|---|---|---|---|---|---|---|
+| Tulips | 10 | 2.5 | 2026-03-15 | TRUE | 25 |  | café € |
+| Soil | 4 | 12.75 | 2026-03-16 14:30:00 | FALSE | 51 |
+| Total | 14 |
+.
+## Notes
+.
+| Name | Value |
+|---|---|
+| Sum | 0.3 |
+| Big | 1234567890123 |
+| Ratio | 0.0000125 |
+| Greeting | Naïve façade |
+.
+meta sheets=2
+meta title=Garden Sales
+meta author=Jordan Lee
+meta created=2026-03-01T10:00:00
+meta modified=2026-03-20T12:30:00
+== sample.pptx
+# Spring Plan Deck
+.
+--- Slide 1 ---
+.
+## Spring Plan
+.
+- Plant tulips
+- Order soil
+  - Peat moss
+- Café menu €5
+.
+> Notes: Open with the tulip photo.
+> Mention the soil delivery date.
+.
+--- Slide 2 ---
+.
+## Costs
+.
+| Item | Qty | Price |
+|---|---|---|
+| Tulips | 10 | 5 |
+| Soil | 4 | 12 |
+.
+> Notes: Prices include delivery.
+.
+meta slides=2
+meta title=Spring Plan Deck
+meta author=Jordan Lee
+meta created=2026-03-01T10:00:00Z
+meta modified=2026-03-20T12:30:00Z
+== sample.odp
+# Spring Plan Deck
+.
+--- Spring Plan ---
+.
+## Spring Plan
+.
+- Plant tulips
+- Order soil
+  - Peat moss
+- Café menu €5
+.
+> Notes: Open with the tulip photo. Mention the soil delivery date.
+.
+--- Costs ---
+.
+## Costs
+.
+| Item | Qty | Price |
+|---|---|---|
+| Tulips | 10 | 5 |
+| Soil | 4 | 12 |
+.
+> Notes: Prices include delivery.
+.
+meta slides=2
+meta title=Spring Plan Deck
+meta author=Jordan Lee
+meta created=2026-03-01T10:00:00
+meta modified=2026-03-20T12:30:00
+== edge.docx
+# Edge & Corner Cases
+.
+# Edge Title
+.
+Just a subtitle
+.
+# First heading
+.
+# Inherited heading
+.
+## Outlined heading
+.
+###### Deep heading
+.
+Alpha Beta Gamma-Delta•é
+.
+Keep kept and a link
+.
+Host paragraph
+.
+Inside box
+.
+In content control
+.
+- Styled item
+.
+Numbering off
+.
+  - Nested numbered
+.
+| Span |  | Z |
+|---|---|---|
+| x | y second para | n1 n2 |
+.
+After table
+.
+> Endnote 1: Endnote body
+.
+> Comment: No author
+> second line
+.
+> Comment by Kim Lee: With author
+.
+meta title=Edge & Corner Cases
+meta subject=Reader tests
+meta author=Alex Morgan
+meta keywords=alpha, beta
+meta created=2026-01-02T03:04:05Z
+meta modified=2026-02-03T04:05:06Z
+meta pages=3
+== edge1900.xlsx
+## Edge
+.
+| Hello | inline | TRUE | #DIV/0! | formula text | café & co |
+|---|---|---|---|---|---|
+| 0.3 | 0.00001 | 123456789012 | 1000000000000000 | -2.5 |
+| 1900-01-01 | 1900-02-28 | 1900-02-29 | 1900-03-01 | 1970-01-01 |
+| 2026-03-15 12:00:00 | 12:00:00 | 1.5 | 3 | 2023-03-16 |
+|  |  | gap |
+| p | 7 |
+| FALSE | 5 |
+.
+## Hid & Den
+.
+| secret |
+|---|
+.
+meta sheets=3
+== edge1904.xlsx
+## D
+.
+| 1904-01-01 | 1904-01-02 | 2016-04-02 18:00:00 | -1 | 41000 |
+|---|---|---|---|---|
+.
+meta sheets=1
+== edge.pptx
+# Edge Deck
+.
+--- Slide 1 ---
+.
+## Big Title two lines
+.
+- Bullet zero
+  - Bullet one
+.
+No bullet here
+.
+Plain box text
+.
+- Box bullet
+.
+Page
+.
+Choice text
+.
+| Wide |  | End |
+|---|---|---|
+| l1 l2 |  | c |
+.
+> Notes: First note line
+> Second note line
+.
+--- Slide 2 ---
+.
+## Only a title
+.
+--- Slide 3 ---
+.
+meta slides=3
+meta title=Edge Deck
+meta author=Pat Doe
+== edge.odt
+# Odd Text
+.
+# Odd Title
+.
+### Third level
+.
+# Default level
+.
+Spaces here tab broke spanned linked tail
+.
+> Footnote 1: First note
+> Second para
+.
+> Endnote i: An endnote
+.
+> Comment: Anonymous remark
+.
+Inside frame
+.
+- Top one
+  - Child one
+    - Grandchild
+- Top two
+.
+After list
+.
+| H1 | H23 |
+|---|---|
+| 7 | a b | xy |
+.
+Last
+.
+meta title=Odd Text
+meta author=First Author
+meta keywords=one, two, three
+meta pages=4
+== edge.ods
+# Odd Sheet
+.
+## Rep
+.
+| Head | rep | rep |
+|---|---|---|
+| 25% | 1234.5 | from attribute | 01:30:00 |
+| 25% | 1234.5 | from attribute | 01:30:00 |
+| 25% | 1234.5 | from attribute | 01:30:00 |
+| 2026-05-06 | 2026-05-06 07:08:09 | FALSE | sp aced t l |
+.
+## Sheet 2
+.
+| 1000 | 0.5 |
+|---|---|
+.
+## Blank
+.
+meta sheets=3
+meta title=Odd Sheet
+== bigsheet.xlsx
+len 500019
+warn sheet Big truncated at 50000 rows
+== wrong formats
+sample.odt 0
+sample.docx 0
+sample.xlsx 0
+table.tsv 0

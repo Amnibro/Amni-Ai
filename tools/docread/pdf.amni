@@ -1,0 +1,1758 @@
+import os;
+import gfx.zlib;
+import dm;
+import dcrypt;
+namespace pdf;
+let PF_NULL = 0;
+let PF_BOOL = 1;
+let PF_INT = 2;
+let PF_REAL = 3;
+let PF_NAME = 4;
+let PF_STR = 5;
+let PF_ARR = 6;
+let PF_DICT = 7;
+let PF_REF = 8;
+let PF_STREAM = 9;
+struct PfNode { t int, a int, b int, r real }
+struct PfStream { at int, len int, num int, gen int }
+struct PfXref { t int, f2 int, f3 int }
+struct PfPage { node int, res int, num int, x0 real, y0 real, x1 real, y1 real, rot int }
+var pf_buf byte[>..];
+var pf_nodes PfNode[>..];
+var pf_kids int[>..];
+var pf_strs byte[>..];
+var pf_streams PfStream[>..];
+var pf_xref PfXref[>..];
+var pf_cache int[>..];
+var pf_busy bool[>..];
+var pf_stack int[>..];
+var pf_trailer = -1;
+var pf_root = -1;
+var pf_info = -1;
+var pf_pages PfPage[>..];
+var pf_pageof int[>..];
+var pf_cur_num = -1;
+var pf_cur_gen = 0;
+var pf_enc_num = -1;
+var pf_rebuilt = false;
+var pf_tmp byte[>..];
+var pf_tmp2 byte[>..];
+var pf_depth = 0;
+var pf_crypt = false;
+var pf_os_num int[>..];
+var pf_os_at int[>..];
+var pf_os_len int[>..];
+var pf_os_buf byte[>..];
+var pf_ol_level int[>..];
+var pf_ol_page int[>..];
+var pf_ol_text byte[>..];
+var pf_ol_at int[>..];
+var pf_ol_len int[>..];
+fn pf_reset() {
+	pf_buf.clear();
+	pf_nodes.clear();
+	pf_kids.clear();
+	pf_strs.clear();
+	pf_streams.clear();
+	pf_xref.clear();
+	pf_cache.clear();
+	pf_busy.clear();
+	pf_stack.clear();
+	pf_pages.clear();
+	pf_pageof.clear();
+	pf_tmp.clear();
+	pf_tmp2.clear();
+	pf_os_num.clear();
+	pf_os_at.clear();
+	pf_os_len.clear();
+	pf_os_buf.clear();
+	pf_ol_level.clear();
+	pf_ol_page.clear();
+	pf_ol_text.clear();
+	pf_ol_at.clear();
+	pf_ol_len.clear();
+	pf_trailer = -1;
+	pf_root = -1;
+	pf_info = -1;
+	pf_cur_num = -1;
+	pf_cur_gen = 0;
+	pf_enc_num = -1;
+	pf_rebuilt = false;
+	pf_depth = 0;
+	pf_crypt = false;
+	pf_nodes.push(PfNode { t: PF_NULL, a: 0, b: 0, r: 0.0 });
+}
+fn pf_ws(c byte) bool { c == 0 || c == 9 || c == 10 || c == 12 || c == 13 || c == 32 }
+fn pf_delim(c byte) bool { c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' || c == '{' || c == '}' || c == '/' || c == '%' }
+fn pf_regular(c byte) bool { !pf_ws(c) && !pf_delim(c) }
+fn pf_skip(s const byte[:], at int&) {
+	while at < s.len {
+		let c = s[at];
+		if pf_ws(c) {
+			at += 1;
+		} else if c == '%' {
+			while at < s.len && s[at] != 13 && s[at] != 10 { at += 1; }
+		} else {
+			return;
+		}
+	}
+}
+fn pf_new(t int, a int, b int, r real) int {
+	pf_nodes.push(PfNode { t: t, a: a, b: b, r: r });
+	pf_nodes.len - 1
+}
+fn pf_add_bytes(d const byte[:]) int {
+	let st = pf_strs.len;
+	pf_strs.append(d);
+	st
+}
+fn pf_find(s const byte[:], pat const byte[:], from int) int {
+	var i = max(from, 0);
+	let n = pat.len;
+	if n == 0 { return i; }
+	while i + n <= s.len {
+		if s[i] == pat[0] && s[i..i + n] == pat { return i; }
+		i += 1;
+	}
+	-1
+}
+fn pf_hexval(c byte) int {
+	let v = c as int;
+	if v >= 48 && v <= 57 { return v - 48; }
+	if v >= 65 && v <= 70 { return v - 55; }
+	if v >= 97 && v <= 102 { return v - 87; }
+	-1
+}
+fn pf_uint(s const byte[:], at int&) int {
+	if at >= s.len || s[at] < '0' || s[at] > '9' { return -1; }
+	var v = 0;
+	while at < s.len && s[at] >= '0' && s[at] <= '9' {
+		if v < 100000000000000 { v = v * 10 + (s[at] as int) - 48; }
+		at += 1;
+	}
+	v
+}
+fn pf_lit_string(s const byte[:], at int&, out byte[>..]&) {
+	var depth = 0;
+	at += 1;
+	while at < s.len {
+		let c = s[at] as int;
+		at += 1;
+		if c == '(' {
+			depth += 1;
+			out.push(40);
+		} else if c == ')' {
+			if depth == 0 { return; }
+			depth -= 1;
+			out.push(41);
+		} else if c == 92 {
+			if at >= s.len { return; }
+			let e = s[at] as int;
+			at += 1;
+			if e == 'n' { out.push(10); }
+			else if e == 'r' { out.push(13); }
+			else if e == 't' { out.push(9); }
+			else if e == 'b' { out.push(8); }
+			else if e == 'f' { out.push(12); }
+			else if e >= '0' && e <= '7' {
+				var v = e - 48;
+				var k = 1;
+				while k < 3 && at < s.len && s[at] >= '0' && s[at] <= '7' {
+					v = v * 8 + (s[at] as int) - 48;
+					at += 1;
+					k += 1;
+				}
+				out.push((v % 256) as! byte);
+			} else if e == 13 {
+				if at < s.len && s[at] == 10 { at += 1; }
+			} else if e == 10 {
+			} else {
+				out.push(e as! byte);
+			}
+		} else if c == 13 {
+			if at < s.len && s[at] == 10 { at += 1; }
+			out.push(10);
+		} else {
+			out.push(c as! byte);
+		}
+	}
+}
+fn pf_hex_string(s const byte[:], at int&, out byte[>..]&) {
+	at += 1;
+	var hi = -1;
+	while at < s.len {
+		let c = s[at];
+		at += 1;
+		if c == '>' { break; }
+		let v = pf_hexval(c);
+		if v < 0 { continue; }
+		if hi < 0 {
+			hi = v;
+		} else {
+			out.push((hi * 16 + v) as! byte);
+			hi = -1;
+		}
+	}
+	if hi >= 0 { out.push((hi * 16) as! byte); }
+}
+fn pf_name(s const byte[:], at int&, out byte[>..]&) {
+	at += 1;
+	while at < s.len && pf_regular(s[at]) {
+		let c = s[at];
+		if c == '#' && at + 2 < s.len {
+			let h1 = pf_hexval(s[at + 1]);
+			let h2 = pf_hexval(s[at + 2]);
+			if h1 >= 0 && h2 >= 0 {
+				out.push((h1 * 16 + h2) as! byte);
+				at += 3;
+				continue;
+			}
+		}
+		out.push(c);
+		at += 1;
+	}
+}
+fn pf_number(s const byte[:], at int&) int {
+	var neg = false;
+	while at < s.len && (s[at] == '+' || s[at] == '-') {
+		if s[at] == '-' { neg = true; }
+		at += 1;
+	}
+	var iv = 0;
+	var wr = 0.0;
+	var fr = 0.0;
+	var fd = 1.0;
+	var dot = false;
+	var big = false;
+	while at < s.len {
+		let c = s[at];
+		if c >= '0' && c <= '9' {
+			let dg = (c as int) - 48;
+			if dot {
+				if fd < 1.0e17 {
+					fr = fr * 10.0 + dg;
+					fd = fd * 10.0;
+				}
+			} else {
+				wr = wr * 10.0 + dg;
+				if iv > 900719925474098 { big = true; } else { iv = iv * 10 + dg; }
+			}
+		} else if c == '.' && !dot { dot = true; } else { break; }
+		at += 1;
+	}
+	if dot || big {
+		var v = wr + fr / fd;
+		if neg { v = -v; }
+		return pf_new(PF_REAL, 0, 0, v);
+	}
+	if neg { iv = -iv; }
+	pf_new(PF_INT, iv, 0, 0.0)
+}
+fn pf_str_node(t int, dec bool) int {
+	if dec && pf_crypt && pf_cur_num != -1 && pf_cur_num != pf_enc_num {
+		pf_tmp2.clear();
+		dcrypt::dc_decrypt(pf_tmp, pf_cur_num, pf_cur_gen, false, pf_tmp2);
+		let st2 = pf_add_bytes(pf_tmp2);
+		return pf_new(t, st2, pf_tmp2.len, 0.0);
+	}
+	let st = pf_add_bytes(pf_tmp);
+	pf_new(t, st, pf_tmp.len, 0.0)
+}
+recursive fn pf_parse(s const byte[:], at int&) int {
+	pf_skip(s, at);
+	if at >= s.len { return -1; }
+	if pf_depth > 64 { return 0; }
+	let c = s[at];
+	if c == '<' && at + 1 < s.len && s[at + 1] == '<' {
+		at += 2;
+		pf_depth += 1;
+		let base = pf_stack.len;
+		loop {
+			pf_skip(s, at);
+			if at >= s.len { break; }
+			if s[at] == '>' {
+				if at + 1 < s.len && s[at + 1] == '>' { at += 2; }
+				break;
+			}
+			if s[at] != '/' { break; }
+			let kn = pf_parse(s, at);
+			pf_skip(s, at);
+			if at + 1 < s.len && s[at] == '>' && s[at + 1] == '>' {
+				at += 2;
+				break;
+			}
+			let vn = pf_parse(s, at);
+			if vn < 0 { break; }
+			pf_stack.push(kn);
+			pf_stack.push(vn);
+		}
+		pf_depth -= 1;
+		let first = pf_kids.len;
+		var i = base;
+		while i < pf_stack.len {
+			pf_kids.push(pf_stack[i]);
+			i += 1;
+		}
+		let cnt = (pf_stack.len - base) / 2;
+		pf_stack.pop_n(pf_stack.len - base);
+		let d = pf_new(PF_DICT, first, cnt, 0.0);
+		let save = at;
+		pf_skip(s, at);
+		if at + 6 <= s.len && s[at..at + 6] == "stream" {
+			return pf_stream_body(s, at, d);
+		}
+		at = save;
+		return d;
+	}
+	if c == '<' {
+		pf_tmp.clear();
+		pf_hex_string(s, at, pf_tmp);
+		return pf_str_node(PF_STR, true);
+	}
+	if c == '(' {
+		pf_tmp.clear();
+		pf_lit_string(s, at, pf_tmp);
+		return pf_str_node(PF_STR, true);
+	}
+	if c == '/' {
+		pf_tmp.clear();
+		pf_name(s, at, pf_tmp);
+		return pf_str_node(PF_NAME, false);
+	}
+	if c == '[' {
+		at += 1;
+		pf_depth += 1;
+		let base = pf_stack.len;
+		loop {
+			pf_skip(s, at);
+			if at >= s.len { break; }
+			if s[at] == ']' {
+				at += 1;
+				break;
+			}
+			let before = at;
+			let n = pf_parse(s, at);
+			if n >= 0 { pf_stack.push(n); }
+			if at == before { at += 1; }
+		}
+		pf_depth -= 1;
+		let first = pf_kids.len;
+		var i = base;
+		while i < pf_stack.len {
+			pf_kids.push(pf_stack[i]);
+			i += 1;
+		}
+		let cnt = pf_stack.len - base;
+		pf_stack.pop_n(cnt);
+		return pf_new(PF_ARR, first, cnt, 0.0);
+	}
+	if (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.' {
+		let n = pf_number(s, at);
+		if c >= '0' && c <= '9' && pf_nodes[n].t == PF_INT && pf_nodes[n].a >= 0 {
+			let k0 = at;
+			var k = k0;
+			while k < s.len && pf_ws(s[k]) { k += 1; }
+			if k > k0 && k < s.len && s[k] >= '0' && s[k] <= '9' {
+				var g = 0;
+				while k < s.len && s[k] >= '0' && s[k] <= '9' {
+					if g < 1000000 { g = g * 10 + (s[k] as int) - 48; }
+					k += 1;
+				}
+				let k2 = k;
+				while k < s.len && pf_ws(s[k]) { k += 1; }
+				if k > k2 && k < s.len && s[k] == 'R' && (k + 1 >= s.len || !pf_regular(s[k + 1])) {
+					at = k + 1;
+					return pf_new(PF_REF, pf_nodes[n].a, g, 0.0);
+				}
+			}
+		}
+		return n;
+	}
+	if pf_regular(c) {
+		let st = at;
+		while at < s.len && pf_regular(s[at]) { at += 1; }
+		let w = s[st..at];
+		if w == "true" { return pf_new(PF_BOOL, 1, 0, 0.0); }
+		if w == "false" { return pf_new(PF_BOOL, 0, 0, 0.0); }
+		return 0;
+	}
+	at += 1;
+	-1
+}
+fn pf_stream_body(s const byte[:], at int&, dict int) int {
+	at += 6;
+	if at < s.len && s[at] == 13 {
+		at += 1;
+		if at < s.len && s[at] == 10 { at += 1; }
+	} else if at < s.len && s[at] == 10 {
+		at += 1;
+	}
+	let st = at;
+	var len = -1;
+	let ln = pf_dget(dict, "Length");
+	if ln >= 0 && pf_nodes[ln].t == PF_INT { len = pf_nodes[ln].a; }
+	var ok = false;
+	if len >= 0 && st + len <= s.len {
+		var e = st + len;
+		while e < s.len && pf_ws(s[e]) { e += 1; }
+		if e + 9 <= s.len && s[e..e + 9] == "endstream" {
+			ok = true;
+			at = e + 9;
+		}
+	}
+	if !ok {
+		let p = pf_find(s, "endstream", st);
+		if p < 0 {
+			len = s.len - st;
+			at = s.len;
+		} else {
+			var e = p;
+			if e > st && s[e - 1] == 10 { e -= 1; }
+			if e > st && s[e - 1] == 13 { e -= 1; }
+			len = e - st;
+			at = p + 9;
+		}
+	}
+	pf_streams.push(PfStream { at: st, len: len, num: pf_cur_num, gen: pf_cur_gen });
+	pf_new(PF_STREAM, dict, pf_streams.len - 1, 0.0)
+}
+fn pf_bytes(n int) const byte[:] {
+	if n < 0 || n >= pf_nodes.len { return pf_strs[0..0]; }
+	let nd = pf_nodes[n];
+	if nd.t != PF_NAME && nd.t != PF_STR { return pf_strs[0..0]; }
+	if nd.a < 0 || nd.b < 0 || nd.a + nd.b > pf_strs.len { return pf_strs[0..0]; }
+	pf_strs[nd.a..nd.a + nd.b]
+}
+fn pf_name_is(n int, v const byte[:]) bool {
+	let d = pf_deref(n);
+	if d < 0 { return false; }
+	pf_nodes[d].t == PF_NAME && pf_bytes(d) == v
+}
+fn pf_int(n int, def int) int {
+	let d = pf_deref(n);
+	if d < 0 { return def; }
+	let nd = pf_nodes[d];
+	if nd.t == PF_INT { return nd.a; }
+	if nd.t == PF_REAL {
+		if nd.r > -9.0e18 && nd.r < 9.0e18 { return nd.r as int; }
+		return def;
+	}
+	def
+}
+fn pf_real(n int, def real) real {
+	let d = pf_deref(n);
+	if d < 0 { return def; }
+	let nd = pf_nodes[d];
+	if nd.t == PF_REAL { return nd.r; }
+	if nd.t == PF_INT { return nd.a; }
+	def
+}
+fn pf_len(n int) int {
+	let d = pf_deref(n);
+	if d < 0 { return 0; }
+	if pf_nodes[d].t == PF_ARR { return pf_nodes[d].b; }
+	0
+}
+fn pf_at(n int, i int) int {
+	let d = pf_deref(n);
+	if d < 0 || pf_nodes[d].t != PF_ARR { return -1; }
+	if i < 0 || i >= pf_nodes[d].b { return -1; }
+	let k = pf_nodes[d].a + i;
+	if k < 0 || k >= pf_kids.len { return -1; }
+	pf_deref(pf_kids[k])
+}
+fn pf_kind(n int) int {
+	let d = pf_deref(n);
+	if d < 0 { return -1; }
+	pf_nodes[d].t
+}
+fn pf_dict_of(n int) int {
+	let d = pf_deref(n);
+	if d < 0 { return -1; }
+	if pf_nodes[d].t == PF_DICT { return d; }
+	if pf_nodes[d].t == PF_STREAM { return pf_nodes[d].a; }
+	-1
+}
+fn pf_draw(n int, key const byte[:]) int {
+	let dd = pf_dict_of(n);
+	if dd < 0 { return -1; }
+	let a = pf_nodes[dd].a;
+	let cnt = pf_nodes[dd].b;
+	var i = 0;
+	while i < cnt {
+		let kn = pf_kids[a + 2 * i];
+		if kn >= 0 && kn < pf_nodes.len && pf_nodes[kn].t == PF_NAME && pf_bytes(kn) == key {
+			return pf_kids[a + 2 * i + 1];
+		}
+		i += 1;
+	}
+	-1
+}
+fn pf_dhas(n int, key const byte[:]) bool { pf_draw(n, key) >= 0 }
+fn pf_dget(n int, key const byte[:]) int {
+	let v = pf_deref(pf_draw(n, key));
+	if v >= 0 && pf_nodes[v].t == PF_NULL { return -1; }
+	v
+}
+fn pf_deref(n int) int {
+	if n < 0 || n >= pf_nodes.len { return -1; }
+	var x = n;
+	var steps = 0;
+	while x >= 0 && x < pf_nodes.len && pf_nodes[x].t == PF_REF {
+		if steps >= 32 { return -1; }
+		x = pf_get(pf_nodes[x].a);
+		steps += 1;
+	}
+	x
+}
+recursive fn pf_get(num int) int {
+	if num < 0 || num >= pf_xref.len { return -1; }
+	while pf_cache.len <= num { pf_cache.push(-1); }
+	while pf_busy.len <= num { pf_busy.push(false); }
+	if pf_cache[num] >= 0 { return pf_cache[num]; }
+	if pf_busy[num] { return -1; }
+	let e = pf_xref[num];
+	if e.t == 0 { return -1; }
+	pf_busy[num] = true;
+	var r = -1;
+	if e.t == 1 {
+		r = pf_parse_indirect(e.f2, num);
+		if r < 0 && !pf_rebuilt {
+			pf_rebuild();
+			if num < pf_xref.len {
+				let e2 = pf_xref[num];
+				if e2.t == 1 { r = pf_parse_indirect(e2.f2, num); }
+				else if e2.t == 2 { r = pf_from_objstm(e2.f2, e2.f3, num); }
+			}
+		}
+	} else if e.t == 2 {
+		r = pf_from_objstm(e.f2, e.f3, num);
+	}
+	pf_busy[num] = false;
+	if r >= 0 {
+		while pf_cache.len <= num { pf_cache.push(-1); }
+		pf_cache[num] = r;
+	}
+	r
+}
+fn pf_parse_indirect(off int, num int) int {
+	if off < 0 || off >= pf_buf.len { return -1; }
+	var at = off;
+	pf_skip(pf_buf, at);
+	let n = pf_uint(pf_buf, at);
+	if n < 0 { return -1; }
+	pf_skip(pf_buf, at);
+	let g = pf_uint(pf_buf, at);
+	if g < 0 { return -1; }
+	pf_skip(pf_buf, at);
+	if !(at + 3 <= pf_buf.len && pf_buf[at..at + 3] == "obj") { return -1; }
+	if num != -1 && n != num { return -1; }
+	at += 3;
+	let sn = pf_cur_num;
+	let sg = pf_cur_gen;
+	pf_cur_num = n;
+	pf_cur_gen = g;
+	let r = pf_parse(pf_buf, at);
+	pf_cur_num = sn;
+	pf_cur_gen = sg;
+	r
+}
+fn pf_from_objstm(snum int, idx int, num int) int {
+	let sn = pf_get(snum);
+	if sn < 0 || pf_nodes[sn].t != PF_STREAM { return -1; }
+	var slot = -1;
+	var q = 0;
+	while q < pf_os_num.len {
+		if pf_os_num[q] == snum {
+			slot = q;
+			break;
+		}
+		q += 1;
+	}
+	let cnt = pf_int(pf_dget(sn, "N"), 0);
+	let first = pf_int(pf_dget(sn, "First"), 0);
+	if slot < 0 {
+		pf_decode(sn, pf_tmp);
+		pf_os_num.push(snum);
+		pf_os_at.push(pf_os_buf.len);
+		pf_os_len.push(pf_tmp.len);
+		pf_os_buf.append(pf_tmp);
+		slot = pf_os_num.len - 1;
+	}
+	let st = pf_os_at[slot];
+	let ln = pf_os_len[slot];
+	let b = pf_os_buf[st..st + ln];
+	var at = 0;
+	var k = 0;
+	var off_idx = -1;
+	var num_idx = -1;
+	var off_num = -1;
+	while k < cnt && k < 1000000 {
+		pf_skip(b, at);
+		let on = pf_uint(b, at);
+		pf_skip(b, at);
+		let ofs = pf_uint(b, at);
+		if on < 0 || ofs < 0 { break; }
+		if k == idx {
+			num_idx = on;
+			off_idx = ofs;
+		}
+		if on == num && off_num < 0 { off_num = ofs; }
+		k += 1;
+	}
+	var off = off_num;
+	if num_idx == num { off = off_idx; }
+	if off < 0 { return -1; }
+	var p = first + off;
+	if p < 0 || p >= ln { return -1; }
+	let sc = pf_cur_num;
+	pf_cur_num = -1;
+	let r = pf_parse(b, p);
+	pf_cur_num = sc;
+	r
+}
+
+fn pf_put_xref(num int, t int, f2 int, f3 int) {
+	if num < 0 || num > 10000000 { return; }
+	while pf_xref.len <= num { pf_xref.push(PfXref { t: 0, f2: 0, f3: -1 }); }
+	pf_xref[num] = PfXref { t: t, f2: f2, f3: max(f3, 0) };
+}
+fn pf_set_xref(num int, t int, f2 int, f3 int) {
+	if num < 0 || num > 10000000 { return; }
+	while pf_xref.len <= num { pf_xref.push(PfXref { t: 0, f2: 0, f3: -1 }); }
+	let e = pf_xref[num];
+	if e.t == 0 && e.f3 == -1 {
+		if t == 0 {
+			pf_xref[num] = PfXref { t: 0, f2: 0, f3: 0 };
+		} else {
+			pf_xref[num] = PfXref { t: t, f2: f2, f3: max(f3, 0) };
+		}
+	}
+}
+fn pf_read_table(start int) int {
+	var at = start + 4;
+	var bad = false;
+	while !bad {
+		pf_skip(pf_buf, at);
+		if at >= pf_buf.len || pf_buf[at] < '0' || pf_buf[at] > '9' { break; }
+		let first = pf_uint(pf_buf, at);
+		pf_skip(pf_buf, at);
+		let cnt = pf_uint(pf_buf, at);
+		if cnt < 0 { return -1; }
+		var i = 0;
+		var base = first;
+		while i < cnt {
+			pf_skip(pf_buf, at);
+			let off = pf_uint(pf_buf, at);
+			pf_skip(pf_buf, at);
+			let g = pf_uint(pf_buf, at);
+			pf_skip(pf_buf, at);
+			if off < 0 || g < 0 || at >= pf_buf.len {
+				bad = true;
+				break;
+			}
+			let kind = pf_buf[at];
+			at += 1;
+			if i == 0 && first == 1 && kind == 'f' && g == 65535 { base = 0; }
+			if kind == 'n' {
+				pf_set_xref(base + i, 1, off, g);
+			} else if kind == 'f' {
+				pf_set_xref(base + i, 0, 0, 0);
+			} else {
+				bad = true;
+				break;
+			}
+			i += 1;
+		}
+	}
+	pf_skip(pf_buf, at);
+	if at + 7 <= pf_buf.len && pf_buf[at..at + 7] == "trailer" {
+		at += 7;
+		pf_skip(pf_buf, at);
+		let d = pf_parse(pf_buf, at);
+		if d >= 0 && pf_nodes[d].t == PF_DICT { return d; }
+	}
+	-1
+}
+fn pf_be(d const byte[:], at int, w int) int {
+	var v u64 = 0;
+	var i = 0;
+	while i < w {
+		v = (v << 8) | (d[at + i] as u64);
+		i += 1;
+	}
+	v as! int
+}
+fn pf_read_xstream(node int) {
+	let wn = pf_dget(node, "W");
+	if pf_len(wn) < 3 { return; }
+	let w0 = pf_int(pf_at(wn, 0), 0);
+	let w1 = pf_int(pf_at(wn, 1), 0);
+	let w2 = pf_int(pf_at(wn, 2), 0);
+	if w0 < 0 || w1 < 0 || w2 < 0 || w0 > 8 || w1 > 8 || w2 > 8 { return; }
+	let size = pf_int(pf_dget(node, "Size"), 0);
+	let ix = pf_dget(node, "Index");
+	var ranges int[>..] = [];
+	if pf_len(ix) >= 2 {
+		var p = 0;
+		while p + 1 < pf_len(ix) {
+			ranges.push(pf_int(pf_at(ix, p), 0));
+			ranges.push(pf_int(pf_at(ix, p + 1), 0));
+			p += 2;
+		}
+	} else {
+		ranges.push(0);
+		ranges.push(size);
+	}
+	var data byte[>..] = [];
+	if !pf_decode(node, data) && data.len == 0 { return; }
+	let rl = w0 + w1 + w2;
+	if rl <= 0 { return; }
+	var pos = 0;
+	var r = 0;
+	while r + 1 < ranges.len {
+		let s0 = ranges[r];
+		let c0 = ranges[r + 1];
+		var e = 0;
+		while e < c0 && pos + rl <= data.len {
+			var t = 1;
+			if w0 > 0 { t = pf_be(data, pos, w0); }
+			let f2 = pf_be(data, pos + w0, w1);
+			let f3 = pf_be(data, pos + w0 + w1, w2);
+			pos += rl;
+			if t == 0 {
+				pf_set_xref(s0 + e, 0, 0, 0);
+			} else if t == 1 || t == 2 {
+				pf_set_xref(s0 + e, t, f2, f3);
+			}
+			e += 1;
+		}
+		r += 2;
+	}
+}
+fn pf_read_xref(start int) bool {
+	var seen int[..64] = [];
+	var off = start;
+	var n = 0;
+	var got = false;
+	while n < 64 {
+		if off < 0 || off >= pf_buf.len { break; }
+		if seen.contains(off) { break; }
+		seen.push(off);
+		n += 1;
+		var at = off;
+		pf_skip(pf_buf, at);
+		var tr = -1;
+		if at + 4 <= pf_buf.len && pf_buf[at..at + 4] == "xref" {
+			tr = pf_read_table(at);
+			if tr >= 0 {
+				let xo = pf_int(pf_dget(tr, "XRefStm"), -1);
+				if xo >= 0 {
+					let sn = pf_parse_indirect(xo, -1);
+					if sn >= 0 && pf_nodes[sn].t == PF_STREAM { pf_read_xstream(sn); }
+				}
+			}
+		} else {
+			let sn = pf_parse_indirect(at, -1);
+			if sn < 0 || pf_nodes[sn].t != PF_STREAM { break; }
+			if !pf_name_is(pf_dget(sn, "Type"), "XRef") { break; }
+			pf_read_xstream(sn);
+			tr = pf_nodes[sn].a;
+		}
+		if tr < 0 { break; }
+		got = true;
+		if pf_trailer < 0 { pf_trailer = tr; }
+		off = pf_int(pf_dget(tr, "Prev"), -1);
+	}
+	got
+}
+fn pf_rebuild() {
+	pf_rebuilt = true;
+	let sc = pf_cur_num;
+	let sd = pf_depth;
+	pf_cur_num = -1;
+	pf_depth = 0;
+	let n = pf_buf.len;
+	var i = 0;
+	while i < n {
+		let c = pf_buf[i];
+		if c >= '0' && c <= '9' && (i == 0 || !pf_regular(pf_buf[i - 1])) {
+			var at = i;
+			let num = pf_uint(pf_buf, at);
+			let k1 = at;
+			while at < n && pf_ws(pf_buf[at]) { at += 1; }
+			if at > k1 {
+				let g = pf_uint(pf_buf, at);
+				if g >= 0 {
+					let k2 = at;
+					while at < n && pf_ws(pf_buf[at]) { at += 1; }
+					if at > k2 && at + 3 <= n && pf_buf[at..at + 3] == "obj" {
+						pf_put_xref(num, 1, i, g);
+						i = at + 3;
+						continue;
+					}
+				}
+			}
+		}
+		i += 1;
+	}
+	pf_cache.clear();
+	var best = -1;
+	var p = pf_find(pf_buf, "trailer", 0);
+	while p >= 0 {
+		var at = p + 7;
+		pf_skip(pf_buf, at);
+		let d = pf_parse(pf_buf, at);
+		if d >= 0 && pf_nodes[d].t == PF_DICT && pf_dhas(d, "Root") { best = d; }
+		p = pf_find(pf_buf, "trailer", p + 7);
+	}
+	if best < 0 {
+		var num = 0;
+		while num < pf_xref.len && best < 0 {
+			if pf_xref[num].t == 1 {
+				let nd = pf_get(num);
+				if nd >= 0 && pf_nodes[nd].t == PF_STREAM {
+					let dd = pf_nodes[nd].a;
+					if pf_name_is(pf_dget(dd, "Type"), "XRef") && pf_dhas(dd, "Root") { best = dd; }
+				}
+			}
+			num += 1;
+		}
+	}
+	if best >= 0 { pf_trailer = best; }
+	var num2 = 0;
+	let n0 = pf_xref.len;
+	while num2 < n0 {
+		if pf_xref[num2].t == 1 {
+			let nd = pf_get(num2);
+			if nd >= 0 && pf_nodes[nd].t == PF_STREAM && pf_name_is(pf_dget(nd, "Type"), "ObjStm") {
+				let cnt = pf_int(pf_dget(nd, "N"), 0);
+				if pf_decode(nd, pf_tmp) || pf_tmp.len > 0 {
+					var at = 0;
+					var k = 0;
+					while k < cnt && k < 1000000 {
+						pf_skip(pf_tmp, at);
+						let on = pf_uint(pf_tmp, at);
+						pf_skip(pf_tmp, at);
+						let ofs = pf_uint(pf_tmp, at);
+						if on < 0 || ofs < 0 { break; }
+						if !(on < pf_xref.len && pf_xref[on].t == 1) { pf_put_xref(on, 2, num2, k); }
+						k += 1;
+					}
+				}
+			}
+		}
+		num2 += 1;
+	}
+	if best < 0 && (pf_trailer < 0 || !pf_dhas(pf_trailer, "Root")) {
+		var num3 = 0;
+		while num3 < pf_xref.len {
+			if pf_xref[num3].t != 0 {
+				let nd = pf_get(num3);
+				if nd >= 0 && pf_nodes[nd].t == PF_DICT && pf_name_is(pf_dget(nd, "Type"), "Catalog") {
+					let rf = pf_new(PF_REF, num3, 0, 0.0);
+					let nm = pf_add_bytes("Root");
+					let kn = pf_new(PF_NAME, nm, 4, 0.0);
+					let first = pf_kids.len;
+					pf_kids.push(kn);
+					pf_kids.push(rf);
+					pf_trailer = pf_new(PF_DICT, first, 1, 0.0);
+					break;
+				}
+			}
+			num3 += 1;
+		}
+	}
+	pf_cur_num = sc;
+	pf_depth = sd;
+}
+fn pf_png_unpredict(d byte[>..]&, columns int, colors int, bpc int) {
+	let bpp = max(1, colors * bpc / 8);
+	let rl = (colors * bpc * columns + 7) / 8;
+	if rl <= 0 { return; }
+	var i = 0;
+	var o = 0;
+	while i < d.len {
+		let ft = d[i] as int;
+		i += 1;
+		let n = min(rl, d.len - i);
+		let prev = o - rl;
+		var k = 0;
+		while k < n {
+			let x = d[i + k] as int;
+			var a = 0;
+			if k >= bpp { a = d[o + k - bpp] as int; }
+			var b = 0;
+			if prev >= 0 { b = d[prev + k] as int; }
+			var c = 0;
+			if prev >= 0 && k >= bpp { c = d[prev + k - bpp] as int; }
+			var v = x;
+			if ft == 1 {
+				v = x + a;
+			} else if ft == 2 {
+				v = x + b;
+			} else if ft == 3 {
+				v = x + (a + b) / 2;
+			} else if ft == 4 {
+				let pp = a + b - c;
+				let pa = abs(pp - a);
+				let pb = abs(pp - b);
+				let pc = abs(pp - c);
+				var pv = c;
+				if pa <= pb && pa <= pc { pv = a; } else if pb <= pc { pv = b; }
+				v = x + pv;
+			}
+			d[o + k] = (v & 255) as! byte;
+			k += 1;
+		}
+		o += n;
+		i += n;
+	}
+	if d.len > o { d.pop_n(d.len - o); }
+}
+fn pf_tiff_unpredict(d byte[>..]&, columns int, colors int, bpc int) {
+	if bpc != 8 || columns < 1 || colors < 1 { return; }
+	let rl = columns * colors;
+	var r = 0;
+	while r < d.len {
+		let n = min(rl, d.len - r);
+		var k = colors;
+		while k < n {
+			d[r + k] = (((d[r + k] as int) + (d[r + k - colors] as int)) & 255) as! byte;
+			k += 1;
+		}
+		r += rl;
+	}
+}
+fn pf_lzw(src const byte[:], early int, out byte[>..]&) {
+	var prefix int[4096] = [0; 4096];
+	var suffix byte[4096] = [0; 4096];
+	var stk byte[4200] = [0; 4200];
+	var next = 258;
+	var width = 9;
+	var prev = -1;
+	var acc = 0;
+	var nb = 0;
+	var idx = 0;
+	loop {
+		while nb < width && idx < src.len {
+			acc = (acc << 8) | (src[idx] as int);
+			idx += 1;
+			nb += 8;
+		}
+		if nb < width { break; }
+		let code = (acc >> (nb - width)) & ((1 << width) - 1);
+		nb -= width;
+		acc = acc & ((1 << nb) - 1);
+		if code == 256 {
+			next = 258;
+			width = 9;
+			prev = -1;
+			continue;
+		}
+		if code == 257 { break; }
+		if prev < 0 {
+			if code > 255 { break; }
+			out.push(code as! byte);
+			prev = code;
+			continue;
+		}
+		if code > next || (code == next && next >= 4096) { break; }
+		var c = prev;
+		if code < next { c = code; }
+		var n = 0;
+		while c >= 258 && n < 4096 {
+			stk[n] = suffix[c];
+			n += 1;
+			c = prefix[c];
+		}
+		stk[n] = c as! byte;
+		n += 1;
+		let firstc = stk[n - 1];
+		var j = n - 1;
+		while j >= 0 {
+			out.push(stk[j]);
+			j -= 1;
+		}
+		if code == next { out.push(firstc); }
+		if next < 4096 {
+			prefix[next] = prev;
+			suffix[next] = firstc;
+			next += 1;
+		}
+		prev = code;
+		let lim = next + early;
+		if lim >= 2048 { width = 12; }
+		else if lim >= 1024 { width = 11; }
+		else if lim >= 512 { width = 10; }
+		else { width = 9; }
+	}
+}
+fn pf_a85_emit(v int, cnt int, out byte[>..]&) {
+	var k = 0;
+	while k < cnt {
+		out.push(((v >> (24 - 8 * k)) & 255) as! byte);
+		k += 1;
+	}
+}
+fn pf_a85(src const byte[:], out byte[>..]&) {
+	var v = 0;
+	var n = 0;
+	var i = 0;
+	while i < src.len {
+		let b = src[i];
+		i += 1;
+		if pf_ws(b) { continue; }
+		let c = b as int;
+		if c == '~' { break; }
+		if c == 'z' && n == 0 {
+			pf_a85_emit(0, 4, out);
+			continue;
+		}
+		if c < 33 || c > 117 { continue; }
+		v = v * 85 + (c - 33);
+		n += 1;
+		if n == 5 {
+			pf_a85_emit(v & 4294967295, 4, out);
+			v = 0;
+			n = 0;
+		}
+	}
+	if n > 1 {
+		var k = n;
+		while k < 5 {
+			v = v * 85 + 84;
+			k += 1;
+		}
+		pf_a85_emit(v & 4294967295, n - 1, out);
+	}
+}
+fn pf_ahex(src const byte[:], out byte[>..]&) {
+	var hi = -1;
+	for c in src {
+		if c == '>' { break; }
+		let v = pf_hexval(c);
+		if v < 0 { continue; }
+		if hi < 0 {
+			hi = v;
+		} else {
+			out.push((hi * 16 + v) as! byte);
+			hi = -1;
+		}
+	}
+	if hi >= 0 { out.push((hi * 16) as! byte); }
+}
+fn pf_rle(src const byte[:], out byte[>..]&) {
+	var i = 0;
+	while i < src.len {
+		let l = src[i] as int;
+		i += 1;
+		if l == 128 { break; }
+		if l < 128 {
+			let n = l + 1;
+			var k = 0;
+			while k < n && i < src.len {
+				out.push(src[i]);
+				i += 1;
+				k += 1;
+			}
+		} else {
+			if i >= src.len { break; }
+			let n = 257 - l;
+			let b = src[i];
+			i += 1;
+			var k = 0;
+			while k < n {
+				out.push(b);
+				k += 1;
+			}
+		}
+	}
+}
+fn pf_filter_kind(n int) int {
+	let b = pf_bytes(n);
+	if b == "FlateDecode" || b == "Fl" { return 1; }
+	if b == "LZWDecode" || b == "LZW" { return 2; }
+	if b == "ASCIIHexDecode" || b == "AHx" { return 3; }
+	if b == "ASCII85Decode" || b == "A85" { return 4; }
+	if b == "RunLengthDecode" || b == "RL" { return 5; }
+	if b == "Crypt" { return 6; }
+	0
+}
+recursive fn pf_decode(n int, out byte[>..]&) bool {
+	let sn = pf_deref(n);
+	if sn < 0 || pf_nodes[sn].t != PF_STREAM {
+		out.clear();
+		return false;
+	}
+	let sm = pf_streams[pf_nodes[sn].b];
+	let dict = pf_nodes[sn].a;
+	let isx = pf_name_is(pf_dget(dict, "Type"), "XRef");
+	let fnode = pf_dget(dict, "Filter");
+	var parms = pf_dget(dict, "DecodeParms");
+	if parms < 0 { parms = pf_dget(dict, "DP"); }
+	var fk int[16] = [0; 16];
+	var fp int[16] = [1; 16];
+	var fc int[16] = [1; 16];
+	var fo int[16] = [1; 16];
+	var fb int[16] = [8; 16];
+	var fe int[16] = [1; 16];
+	var nf = 0;
+	var crypt_f = false;
+	if fnode >= 0 {
+		if pf_nodes[fnode].t == PF_ARR {
+			nf = min(pf_nodes[fnode].b, 16);
+		} else if pf_nodes[fnode].t == PF_NAME {
+			nf = 1;
+		}
+	}
+	var i = 0;
+	while i < nf {
+		var fnm = fnode;
+		if pf_nodes[fnode].t == PF_ARR { fnm = pf_at(fnode, i); }
+		fk[i] = pf_filter_kind(fnm);
+		if fk[i] == 6 { crypt_f = true; }
+		var pm = -1;
+		if parms >= 0 {
+			if pf_nodes[parms].t == PF_ARR {
+				pm = pf_at(parms, i);
+			} else if i == 0 {
+				pm = parms;
+			}
+		}
+		if pm >= 0 && pf_nodes[pm].t != PF_DICT { pm = -1; }
+		fp[i] = pf_int(pf_dget(pm, "Predictor"), 1);
+		fc[i] = pf_int(pf_dget(pm, "Columns"), 1);
+		fo[i] = pf_int(pf_dget(pm, "Colors"), 1);
+		fb[i] = pf_int(pf_dget(pm, "BitsPerComponent"), 8);
+		fe[i] = pf_int(pf_dget(pm, "EarlyChange"), 1);
+		i += 1;
+	}
+	var at0 = sm.at;
+	var ln = sm.len;
+	if at0 < 0 || at0 > pf_buf.len {
+		at0 = 0;
+		ln = 0;
+	}
+	if ln < 0 { ln = 0; }
+	if at0 + ln > pf_buf.len { ln = pf_buf.len - at0; }
+	let raw = pf_buf[at0..at0 + ln];
+	out.clear();
+	var a byte[>..] = [];
+	var b byte[>..] = [];
+	if pf_crypt && sm.num != -1 && !isx && !crypt_f {
+		dcrypt::dc_decrypt(raw, sm.num, sm.gen, true, a);
+	} else {
+		a.append(raw);
+	}
+	var ok = true;
+	var j = 0;
+	while j < nf {
+		let k = fk[j];
+		if k == 6 {
+			j += 1;
+			continue;
+		}
+		if k == 0 {
+			ok = false;
+			break;
+		}
+		b.clear();
+		if k == 1 {
+			if !zlib::inflate(a, b) {
+				b.clear();
+				zlib::inflate_raw(a[min(2, a.len)..a.len], b);
+			}
+		} else if k == 2 {
+			pf_lzw(a, fe[j], b);
+		} else if k == 3 {
+			pf_ahex(a, b);
+		} else if k == 4 {
+			pf_a85(a, b);
+		} else {
+			pf_rle(a, b);
+		}
+		if k == 1 || k == 2 {
+			if fp[j] >= 10 {
+				pf_png_unpredict(b, fc[j], fo[j], fb[j]);
+			} else if fp[j] == 2 {
+				pf_tiff_unpredict(b, fc[j], fo[j], fb[j]);
+			}
+		}
+		a.clear();
+		a.append(b);
+		j += 1;
+	}
+	out.append(a);
+	ok
+}
+let PF_DOC_LOW int[8] = [0x2D8, 0x2C7, 0x2C6, 0x2D9, 0x2DD, 0x2DB, 0x2DA, 0x2DC];
+let PF_DOC_HI int[33] = [0x2022, 0x2020, 0x2021, 0x2026, 0x2014, 0x2013, 0x192, 0x2044, 0x2039, 0x203A, 0x2212, 0x2030, 0x201E, 0x201C, 0x201D, 0x2018, 0x2019, 0x201A, 0x2122, 0xFB01, 0xFB02, 0x141, 0x152, 0x160, 0x178, 0x17D, 0x131, 0x142, 0x153, 0x161, 0x17E, 0xFFFD, 0x20AC];
+fn pf_pdfdoc(c int) int {
+	if c >= 24 && c <= 31 { return PF_DOC_LOW[c - 24]; }
+	if c >= 128 && c <= 160 { return PF_DOC_HI[c - 128]; }
+	c
+}
+fn pf_text(n int, out byte[>..]&) {
+	out.clear();
+	let d = pf_deref(n);
+	if d < 0 { return; }
+	let nd = pf_nodes[d];
+	if nd.t == PF_NAME {
+		out.append(pf_bytes(d));
+		return;
+	}
+	if nd.t != PF_STR { return; }
+	let b = pf_bytes(d);
+	if b.len >= 2 && b[0] == 254 && b[1] == 255 {
+		dm::dm_utf16(b[2..b.len], true, out);
+		return;
+	}
+	if b.len >= 3 && b[0] == 239 && b[1] == 187 && b[2] == 191 {
+		out.append(b[3..b.len]);
+		return;
+	}
+	for c in b { push_utf8(out, pf_pdfdoc(c as int)); }
+}
+fn pf_digits(s const byte[:], at int, n int) bool {
+	if at < 0 || at + n > s.len { return false; }
+	var i = 0;
+	while i < n {
+		if s[at + i] < '0' || s[at + i] > '9' { return false; }
+		i += 1;
+	}
+	true
+}
+let PF_DATE_SEP int[5] = [45, 45, 32, 58, 58];
+fn pf_date(s const byte[:], out byte[>..]&) {
+	out.clear();
+	var i = 0;
+	if s.len >= 2 && s[0] == 'D' && s[1] == ':' { i = 2; }
+	if !pf_digits(s, i, 4) {
+		out.append(s);
+		return;
+	}
+	out.append(s[i..i + 4]);
+	var k = 0;
+	while k < 5 {
+		let p = i + 4 + 2 * k;
+		if !pf_digits(s, p, 2) { break; }
+		out.push(PF_DATE_SEP[k] as! byte);
+		out.append(s[p..p + 2]);
+		k += 1;
+	}
+}
+fn pf_cf_method(cf int, nm int) int {
+	if nm < 0 { return 0; }
+	let name = pf_bytes(nm);
+	if name == "Identity" || name == "None" { return 0; }
+	let f = pf_dget(cf, name);
+	if f < 0 { return 0; }
+	let m = pf_bytes(pf_dget(f, "CFM"));
+	if m == "V2" { return 1; }
+	if m == "AESV2" { return 2; }
+	if m == "AESV3" { return 3; }
+	0
+}
+fn pf_warn(msg const byte[:]) {
+	if dm::dm_warn.len > 0 { dm::dm_warn.push(10); }
+	dm::dm_warn.append(msg);
+}
+fn pf_setup_crypt() {
+	pf_crypt = false;
+	if pf_trailer < 0 { return; }
+	let raw = pf_draw(pf_trailer, "Encrypt");
+	if raw < 0 { return; }
+	if pf_nodes[raw].t == PF_REF { pf_enc_num = pf_nodes[raw].a; }
+	let e = pf_deref(raw);
+	if e < 0 || pf_nodes[e].t != PF_DICT { return; }
+	if !pf_name_is(pf_dget(e, "Filter"), "Standard") {
+		pf_warn("encrypted with an unsupported security handler");
+		return;
+	}
+	let v int = pf_int(pf_dget(e, "V"), 0);
+	let r int = pf_int(pf_dget(e, "R"), 0);
+	let length int = pf_int(pf_dget(e, "Length"), 40);
+	let p int = pf_int(pf_dget(e, "P"), 0);
+	let o = pf_bytes(pf_dget(e, "O"));
+	let u = pf_bytes(pf_dget(e, "U"));
+	let oe = pf_bytes(pf_dget(e, "OE"));
+	let ue = pf_bytes(pf_dget(e, "UE"));
+	let id0 = pf_bytes(pf_at(pf_dget(pf_trailer, "ID"), 0));
+	var em = true;
+	let emn = pf_dget(e, "EncryptMetadata");
+	if emn >= 0 && pf_nodes[emn].t == PF_BOOL { em = pf_nodes[emn].a != 0; }
+	var stm int = 0;
+	var smeth int = 0;
+	if v == 1 || v == 2 {
+		stm = 1;
+		smeth = 1;
+	} else if v == 4 {
+		let cf = pf_dget(e, "CF");
+		stm = pf_cf_method(cf, pf_dget(e, "StmF"));
+		smeth = pf_cf_method(cf, pf_dget(e, "StrF"));
+	} else if v == 5 {
+		stm = 3;
+		smeth = 3;
+	}
+	if dcrypt::dc_setup(r, v, length, o, u, oe, ue, p, id0, em, stm, smeth) {
+		pf_crypt = true;
+		pf_cache.clear();
+		pf_os_num.clear();
+		pf_os_at.clear();
+		pf_os_len.clear();
+		pf_os_buf.clear();
+	} else {
+		pf_warn("encrypted with a password; text could not be decrypted");
+	}
+}
+fn pf_add_page(d int, num int, res int, mb int, cb int, rot int) {
+	var x0 = 0.0;
+	var y0 = 0.0;
+	var x1 = 612.0;
+	var y1 = 792.0;
+	var box = cb;
+	if box < 0 || pf_len(box) < 4 { box = mb; }
+	if box >= 0 && pf_len(box) >= 4 {
+		let ax = pf_real(pf_at(box, 0), 0.0);
+		let ay = pf_real(pf_at(box, 1), 0.0);
+		let bx = pf_real(pf_at(box, 2), 612.0);
+		let by = pf_real(pf_at(box, 3), 792.0);
+		x0 = min(ax, bx);
+		x1 = max(ax, bx);
+		y0 = min(ay, by);
+		y1 = max(ay, by);
+	}
+	let r = ((rot % 360) / 90) * 90;
+	pf_pages.push(PfPage { node: d, res: res, num: num, x0: x0, y0: y0, x1: x1, y1: y1, rot: r });
+	if num >= 0 && num <= 10000000 {
+		while pf_pageof.len <= num { pf_pageof.push(0); }
+		pf_pageof[num] = pf_pages.len;
+	}
+}
+fn pf_collect_pages() {
+	pf_pages.clear();
+	pf_pageof.clear();
+	var mark bool[>..] = [];
+	var s_raw int[>..<] = [];
+	var s_res int[>..<] = [];
+	var s_mb int[>..<] = [];
+	var s_cb int[>..<] = [];
+	var s_rot int[>..<] = [];
+	if pf_root >= 0 {
+		let pr = pf_draw(pf_root, "Pages");
+		if pr >= 0 {
+			s_raw.push(pr);
+			s_res.push(-1);
+			s_mb.push(-1);
+			s_cb.push(-1);
+			s_rot.push(0);
+		}
+	}
+	var steps = 0;
+	while s_raw.len > 0 && pf_pages.len < 100000 && steps < 1000000 {
+		steps += 1;
+		let raw = s_raw.pop();
+		let ires = s_res.pop();
+		let imb = s_mb.pop();
+		let icb = s_cb.pop();
+		let irot = s_rot.pop();
+		if raw < 0 || raw >= pf_nodes.len { continue; }
+		var num = -1;
+		if pf_nodes[raw].t == PF_REF { num = pf_nodes[raw].a; }
+		let d = pf_deref(raw);
+		if d < 0 || pf_nodes[d].t != PF_DICT { continue; }
+		while mark.len <= d { mark.push(false); }
+		if mark[d] { continue; }
+		mark[d] = true;
+		var res = ires;
+		let r2 = pf_dget(d, "Resources");
+		if r2 >= 0 && pf_nodes[r2].t == PF_DICT { res = r2; }
+		var mb = imb;
+		let m2 = pf_dget(d, "MediaBox");
+		if m2 >= 0 && pf_nodes[m2].t == PF_ARR { mb = m2; }
+		var cb = icb;
+		let c2 = pf_dget(d, "CropBox");
+		if c2 >= 0 && pf_nodes[c2].t == PF_ARR { cb = c2; }
+		var rot = irot;
+		let ro = pf_dget(d, "Rotate");
+		if ro >= 0 && (pf_nodes[ro].t == PF_INT || pf_nodes[ro].t == PF_REAL) { rot = pf_int(ro, 0); }
+		let kids = pf_dget(d, "Kids");
+		if kids >= 0 && pf_nodes[kids].t == PF_ARR {
+			var k = pf_nodes[kids].b - 1;
+			while k >= 0 {
+				s_raw.push(pf_kids[pf_nodes[kids].a + k]);
+				s_res.push(res);
+				s_mb.push(mb);
+				s_cb.push(cb);
+				s_rot.push(rot);
+				k -= 1;
+			}
+		} else {
+			pf_add_page(d, num, res, mb, cb, rot);
+		}
+	}
+	if pf_pages.len == 0 {
+		var num = 0;
+		while num < pf_xref.len && pf_pages.len < 100000 {
+			if pf_xref[num].t != 0 {
+				let nd = pf_get(num);
+				if nd >= 0 && pf_nodes[nd].t == PF_DICT && pf_name_is(pf_dget(nd, "Type"), "Page") {
+					var res = pf_dget(nd, "Resources");
+					if res >= 0 && pf_nodes[res].t != PF_DICT { res = -1; }
+					var rot = 0;
+					let ro = pf_dget(nd, "Rotate");
+					if ro >= 0 { rot = pf_int(ro, 0); }
+					pf_add_page(nd, num, res, pf_dget(nd, "MediaBox"), pf_dget(nd, "CropBox"), rot);
+				}
+			}
+			num += 1;
+		}
+	}
+}
+fn pf_set_roots() {
+	pf_root = pf_dget(pf_trailer, "Root");
+	pf_info = pf_dget(pf_trailer, "Info");
+	if pf_root >= 0 && pf_nodes[pf_root].t != PF_DICT { pf_root = -1; }
+}
+fn pf_open(data const byte[:]) bool {
+	pf_reset();
+	pf_buf.append(data);
+	let hp = pf_find(pf_buf, "%PDF", 0);
+	if hp < 0 || hp >= 1024 { return false; }
+	var sx = -1;
+	var p = pf_find(pf_buf, "startxref", max(pf_buf.len - 2048, 0));
+	while p >= 0 {
+		sx = p;
+		p = pf_find(pf_buf, "startxref", p + 9);
+	}
+	var off = -1;
+	if sx >= 0 {
+		var at = sx + 9;
+		pf_skip(pf_buf, at);
+		off = pf_uint(pf_buf, at);
+	}
+	var ok = false;
+	if off >= 0 { ok = pf_read_xref(off); }
+	if !ok || pf_trailer < 0 || !pf_dhas(pf_trailer, "Root") { pf_rebuild(); }
+	pf_set_roots();
+	pf_setup_crypt();
+	if pf_crypt { pf_set_roots(); }
+	pf_collect_pages();
+	if pf_pages.len == 0 && !pf_rebuilt {
+		pf_rebuild();
+		pf_set_roots();
+		pf_collect_pages();
+	}
+	pf_trailer >= 0
+}
+fn pf_meta_one(key const byte[:], name const byte[:], date bool) bool {
+	let v = pf_dget(pf_info, key);
+	if v < 0 { return false; }
+	var t byte[>..] = [];
+	pf_text(v, t);
+	if t.len == 0 { return false; }
+	if date {
+		var d byte[>..] = [];
+		pf_date(t, d);
+		dm::dm_set_meta(name, d);
+	} else {
+		dm::dm_set_meta(name, t);
+	}
+	true
+}
+fn pf_info_meta() {
+	var have = false;
+	if pf_info >= 0 {
+		have = pf_meta_one("Title", "title", false);
+		pf_meta_one("Author", "author", false);
+		pf_meta_one("Subject", "subject", false);
+		pf_meta_one("Keywords", "keywords", false);
+		pf_meta_one("Creator", "creator", false);
+		pf_meta_one("Producer", "producer", false);
+		pf_meta_one("CreationDate", "created", true);
+		pf_meta_one("ModDate", "modified", true);
+	}
+	if !have && pf_root >= 0 {
+		let m = pf_dget(pf_root, "Metadata");
+		if m >= 0 {
+			var xm byte[>..] = [];
+			pf_decode(m, xm);
+			let t0 = pf_find(xm, "<dc:title", 0);
+			if t0 >= 0 {
+				let li = pf_find(xm, "<rdf:li", t0);
+				if li >= 0 {
+					let gt = pf_find(xm, ">", li);
+					if gt >= 0 {
+						let en = pf_find(xm, "</rdf:li>", gt);
+						if en > gt {
+							var ti byte[>..] = [];
+							dm::dm_decode_entities(xm[gt + 1..en], ti);
+							if ti.len > 0 { dm::dm_set_meta("title", ti); }
+						}
+					}
+				}
+			}
+		}
+	}
+	var pg byte[>..] = [];
+	format(pg, pf_pages.len);
+	dm::dm_set_meta("pages", pg);
+	if pf_trailer >= 0 && pf_dhas(pf_trailer, "Encrypt") { dm::dm_set_meta("encrypted", "yes"); }
+}
+fn pf_name_tree(root int, key const byte[:]) int {
+	var sn int[>..<] = [];
+	var sd int[>..<] = [];
+	sn.push(root);
+	sd.push(0);
+	var steps = 0;
+	while sn.len > 0 && steps < 100000 {
+		steps += 1;
+		let nd = sn.pop();
+		let dp = sd.pop();
+		let names = pf_dget(nd, "Names");
+		if names >= 0 && pf_nodes[names].t == PF_ARR {
+			var i = 0;
+			while i + 1 < pf_nodes[names].b {
+				let kk = pf_at(names, i);
+				if kk >= 0 && pf_bytes(kk) == key { return pf_at(names, i + 1); }
+				i += 2;
+			}
+		}
+		if dp < 64 {
+			let kids = pf_dget(nd, "Kids");
+			if kids >= 0 && pf_nodes[kids].t == PF_ARR {
+				var q = pf_nodes[kids].b - 1;
+				while q >= 0 {
+					let kd = pf_at(kids, q);
+					if kd >= 0 {
+						sn.push(kd);
+						sd.push(dp + 1);
+					}
+					q -= 1;
+				}
+			}
+		}
+	}
+	-1
+}
+fn pf_lookup_dest(key const byte[:]) int {
+	if pf_root < 0 { return -1; }
+	let dd = pf_dget(pf_root, "Dests");
+	if dd >= 0 {
+		let v = pf_dget(dd, key);
+		if v >= 0 { return v; }
+	}
+	let nm = pf_dget(pf_root, "Names");
+	let tr = pf_dget(nm, "Dests");
+	if tr < 0 { return -1; }
+	pf_name_tree(tr, key)
+}
+fn pf_dest_page(d int) int {
+	var x = pf_deref(d);
+	var guard_n = 0;
+	while x >= 0 && guard_n < 8 {
+		guard_n += 1;
+		let t = pf_nodes[x].t;
+		if t == PF_NAME || t == PF_STR {
+			x = pf_lookup_dest(pf_bytes(x));
+		} else if t == PF_DICT {
+			x = pf_dget(x, "D");
+		} else if t == PF_ARR {
+			if pf_nodes[x].b == 0 { return -1; }
+			let raw = pf_kids[pf_nodes[x].a];
+			if raw < 0 || raw >= pf_nodes.len { return -1; }
+			if pf_nodes[raw].t == PF_REF {
+				let num = pf_nodes[raw].a;
+				if num >= 0 && num < pf_pageof.len { return pf_pageof[num] - 1; }
+				return -1;
+			}
+			if pf_nodes[raw].t == PF_INT {
+				let pi = pf_nodes[raw].a;
+				if pi >= 0 && pi < pf_pages.len { return pi; }
+			}
+			return -1;
+		} else {
+			return -1;
+		}
+	}
+	-1
+}
+fn pf_outline(out_heads bool) {
+	pf_ol_level.clear();
+	pf_ol_page.clear();
+	pf_ol_text.clear();
+	pf_ol_at.clear();
+	pf_ol_len.clear();
+	if pf_root < 0 { return; }
+	let ol = pf_dget(pf_root, "Outlines");
+	if ol < 0 { return; }
+	var s_n int[>..<] = [];
+	var s_l int[>..<] = [];
+	var mark bool[>..] = [];
+	let f = pf_dget(ol, "First");
+	if f >= 0 {
+		s_n.push(f);
+		s_l.push(1);
+	}
+	var items = 0;
+	var steps = 0;
+	while s_n.len > 0 && items < 10000 && steps < 100000 {
+		steps += 1;
+		let item = s_n.pop();
+		let lv = s_l.pop();
+		if pf_nodes[item].t != PF_DICT { continue; }
+		while mark.len <= item { mark.push(false); }
+		if mark[item] { continue; }
+		mark[item] = true;
+		items += 1;
+		let nx = pf_dget(item, "Next");
+		if nx >= 0 {
+			s_n.push(nx);
+			s_l.push(lv);
+		}
+		let fc = pf_dget(item, "First");
+		if fc >= 0 {
+			s_n.push(fc);
+			s_l.push(lv + 1);
+		}
+		var t byte[>..] = [];
+		pf_text(pf_dget(item, "Title"), t);
+		if t.len > 0 {
+			var page = -1;
+			let dest = pf_dget(item, "Dest");
+			if dest >= 0 {
+				page = pf_dest_page(dest);
+			} else {
+				let ac = pf_dget(item, "A");
+				if ac >= 0 && pf_name_is(pf_dget(ac, "S"), "GoTo") { page = pf_dest_page(pf_dget(ac, "D")); }
+			}
+			pf_ol_level.push(min(lv, 6));
+			pf_ol_page.push(page);
+			pf_ol_at.push(pf_ol_text.len);
+			pf_ol_len.push(t.len);
+			pf_ol_text.append(t);
+		}
+	}
+}
+fn pf_field_value(v int, out byte[>..]&) {
+	out.clear();
+	let t = pf_nodes[v].t;
+	if t == PF_STR || t == PF_NAME {
+		pf_text(v, out);
+	} else if t == PF_INT {
+		format(out, pf_nodes[v].a);
+	} else if t == PF_REAL {
+		format(out, pf_nodes[v].r);
+	} else if t == PF_ARR {
+		var i = 0;
+		let cnt = pf_nodes[v].b;
+		var one byte[>..] = [];
+		while i < cnt {
+			let e = pf_at(v, i);
+			if e >= 0 && (pf_nodes[e].t == PF_STR || pf_nodes[e].t == PF_NAME) {
+				pf_text(e, one);
+				if one.len > 0 {
+					if out.len > 0 { out.append(", "); }
+					out.append(one);
+				}
+			}
+			i += 1;
+		}
+	}
+}
+fn pf_fields() {
+	if pf_root < 0 { return; }
+	let af = pf_dget(pf_root, "AcroForm");
+	let fl = pf_dget(af, "Fields");
+	if fl < 0 || pf_nodes[fl].t != PF_ARR { return; }
+	var names byte[>..] = [];
+	var st_n int[>..<] = [];
+	var st_a int[>..<] = [];
+	var st_l int[>..<] = [];
+	var mark bool[>..] = [];
+	var k = pf_nodes[fl].b - 1;
+	while k >= 0 {
+		st_n.push(pf_kids[pf_nodes[fl].a + k]);
+		st_a.push(0);
+		st_l.push(0);
+		k -= 1;
+	}
+	var count = 0;
+	var headed = false;
+	while st_n.len > 0 && count < 20000 {
+		let raw = st_n.pop();
+		let pa = st_a.pop();
+		let pl = st_l.pop();
+		let d = pf_deref(raw);
+		if d < 0 || pf_nodes[d].t != PF_DICT { continue; }
+		while mark.len <= d { mark.push(false); }
+		if mark[d] { continue; }
+		mark[d] = true;
+		count += 1;
+		var tt byte[>..] = [];
+		pf_text(pf_dget(d, "T"), tt);
+		var full byte[>..] = [];
+		full.append(names[pa..pa + pl]);
+		if full.len > 0 && tt.len > 0 { full.push('.'); }
+		full.append(tt);
+		let nat = names.len;
+		names.append(full);
+		let v = pf_dget(d, "V");
+		if v >= 0 {
+			var val byte[>..] = [];
+			pf_field_value(v, val);
+			if val.len > 0 && !(pf_nodes[v].t == PF_NAME && val == "Off") {
+				if !headed {
+					dm::dm_add(dm::DM_HEAD, 2, "Form fields");
+					headed = true;
+				}
+				var line byte[>..] = [];
+				line.append(full);
+				line.append(": ");
+				line.append(val);
+				dm::dm_add(dm::DM_FIELD, 0, line);
+			}
+		}
+		let kids = pf_dget(d, "Kids");
+		if kids >= 0 && pf_nodes[kids].t == PF_ARR {
+			var q = pf_nodes[kids].b - 1;
+			while q >= 0 {
+				st_n.push(pf_kids[pf_nodes[kids].a + q]);
+				st_a.push(nat);
+				st_l.push(full.len);
+				q -= 1;
+			}
+		}
+	}
+}
+fn pf_note_subtype(b const byte[:]) bool {
+	b == "Text" || b == "FreeText" || b == "Highlight" || b == "Underline" || b == "StrikeOut" || b == "Squiggly" || b == "Note" || b == "Stamp" || b == "Caret" || b == "Square" || b == "Circle" || b == "Line" || b == "Polygon" || b == "PolyLine" || b == "Ink"
+}
+fn pf_annots(page int) {
+	if page < 0 || page >= pf_pages.len { return; }
+	let an = pf_dget(pf_pages[page].node, "Annots");
+	if an < 0 || pf_nodes[an].t != PF_ARR { return; }
+	var i = 0;
+	while i < pf_nodes[an].b && i < 100000 {
+		let a = pf_at(an, i);
+		i += 1;
+		if a < 0 || pf_nodes[a].t != PF_DICT { continue; }
+		let sub = pf_dget(a, "Subtype");
+		if sub < 0 || !pf_note_subtype(pf_bytes(sub)) { continue; }
+		var body byte[>..] = [];
+		pf_text(pf_dget(a, "Contents"), body);
+		if body.len == 0 { continue; }
+		var note byte[>..] = [];
+		note.append("Comment");
+		var au byte[>..] = [];
+		pf_text(pf_dget(a, "T"), au);
+		if au.len > 0 {
+			note.append(" by ");
+			note.append(au);
+		}
+		note.append(": ");
+		note.append(body);
+		dm::dm_add(dm::DM_NOTE, 0, note);
+	}
+}

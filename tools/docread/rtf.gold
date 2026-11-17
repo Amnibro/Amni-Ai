@@ -1,0 +1,56 @@
+use std
+into rtf.amni
+
+This file is a module with no main (namespace rtf). It reads Rich Text Format files into the document model with a single pass over the bytes: groups, control words, control symbols and text; paragraphs, headings, list items, tables and footnotes become blocks and the info group becomes metadata. Every module-level name starts with `rt_` or `RT_`. All appends to the document model go through `dm::dm_add`, `dm::dm_new_table`, `dm::dm_end_table`, `dm::dm_set_meta` and `dm::dm_warn_add`; block kinds are `dm::DM_HEAD`, `dm::DM_PARA`, `dm::DM_ITEM`, `dm::DM_ROW` and `dm::DM_NOTE`. `dm::dm_add` already cleans whitespace, so text only has to be roughly right.
+
+```amni
+import dm;
+```
+
+Destination codes are module constants: `RT_BODY = 0` (document text), `RT_SKIP = 1` (ignored), `RT_INFO = 2` (the info group: its own text is ignored but its title, subject, author and keywords children are captured), `RT_CAP = 3` (capturing a metadata value), `RT_STYLE = 4` (the stylesheet), `RT_NOTE = 5` (a footnote).
+
+`struct RtGrp` has `dest int`, `uc int` (the current unicode fallback length) and `key int` (which metadata value a capture group holds: 1 title, 2 subject, 3 author, 4 keywords).
+
+Module words: `let RT_SKIPS` is the string " fonttbl colortbl listtable listoverridetable pict object themedata datastore latentstyles rsidtbl generator xmlnstbl header headerl headerr headerf footer footerl footerr footerf fldinst private colorschememapping template filetbl revtbl pgptbl listtext pntext pn userprops mmathpr wgrffmtfilter shpinst nonshppict falt panose fname ftnsep ftnsepc aftnsep aftnsepc ftncn aftncn ", and `let RT_SYMS` is the string " emdash:8212 endash:8211 bullet:8226 lquote:8216 rquote:8217 ldblquote:8220 rdblquote:8221 enspace:8194 emspace:8195 qmspace:8197 zwj:8205 zwnj:8204 ", both starting and ending with a space.
+
+Module state: `var rt_stk RtGrp[>..]` (the group stack), `var rt_buf byte[>..]` (the paragraph or table cell text), `var rt_aux byte[>..]` (the text of a metadata capture, a style name or a footnote), `var rt_pend byte[>..]` (finished footnotes waiting to be added, each followed by the byte 1), `var rt_row byte[>..]` (cells of the table row being collected, separated by tab bytes), `var rt_cells = 0` (cells in the row), `var rt_cp = 1252` (the document code page), `var rt_skipn = 0` (fallback characters still to skip after a unicode escape), `var rt_hi = 0` (a pending high surrogate), `var rt_hl = 0` (heading level of the current paragraph, 0 for none), `var rt_ls = false` (the paragraph is a list item), `var rt_ilvl = 0`, `var rt_intbl = false`, `var rt_tab = false` (a table is open in the model), `var rt_sn int[>..]` and `var rt_sl int[>..]` (pairs of style number and heading level from the stylesheet), `var rt_scur = -1` and `var rt_sol = -1` (the style number and outline level of the style definition being read), `var rt_warned = false`.
+
+`rt_reset()` clears every module variable above and sets the others to the starting values given there.
+
+`rt_hexv(c byte) int` is the value of a hex digit (upper or lower case), or minus one.
+
+`rt_sym(name const byte[:]) int` looks the name up in `RT_SYMS` by searching for a space, the name and a colon, and returns the number after the colon; minus one when not found.
+
+`rt_in(list const byte[:], word const byte[:]) bool` is true when list contains a space, the word and a space; an empty word is never in a list.
+
+`rt_dest() int` is the dest of the top group, `RT_BODY` when the stack is empty.
+
+`rt_cpt(b int) int` maps a byte to a code point with the document code page: 10000 uses `dm::dm_macroman`; every other page uses `dm::dm_cp1252` (and when the page is not 1252, 1250, 1251, 10000 or 0, call `dm::dm_warn_add` once, guarded by `rt_warned`, with the text "rtf: unsupported code page, read as Windows-1252").
+
+`rt_put(cp int)` appends a code point to the text sink of the top group: for `RT_BODY` it goes to `rt_buf` through `dm::dm_put_cp`, except that a tab (9) becomes a space when `rt_intbl` is true; for `RT_CAP`, `RT_STYLE` and `RT_NOTE` it goes to `rt_aux`; for `RT_SKIP` and `RT_INFO` it is dropped.
+
+`rt_char(cp int)` adds a text character or an escaped byte: when `rt_skipn` is above zero subtract one from it and drop the character; otherwise when `rt_hi` is not zero first call `rt_put(65533)`, set `rt_hi` to 0; when the top group is `RT_STYLE` and cp is a semicolon call `rt_style_end()` instead of adding it; else call `rt_put(cp)`.
+
+`rt_style_end()` is called at the semicolon that ends a style name in the stylesheet: let name be `rt_aux` trimmed and lower-cased; when it starts with "heading " followed by a digit 1 to 6, the level is that digit; otherwise when `rt_sol` is from 0 to 5 the level is `rt_sol` plus one, otherwise 0. When `rt_scur` is not below zero and the level is above zero push `rt_scur` onto `rt_sn` and the level onto `rt_sl`. Then clear `rt_aux`, set `rt_scur` and `rt_sol` to minus one.
+
+`rt_style_of(n int) int` returns the level paired with style number n in `rt_sn` and `rt_sl`, or 0.
+
+`rt_uni(n int)` handles a unicode escape with the parameter n: when n is negative add 65536. If n is a high surrogate (55296 to 56319) set `rt_hi` to n; if n is a low surrogate (56320 to 57343) and `rt_hi` is not zero put the combined code point 65536 plus the high surrogate minus 55296 shifted left by 10 plus n minus 56320 with `rt_put` and clear `rt_hi`; otherwise call `rt_put(n)` (a lone low surrogate and an unexpected one just give the replacement character through `dm::dm_put_cp`). In every case set `rt_skipn` to the `uc` of the top group (0 when the stack is empty).
+
+`rt_notes()` adds every note waiting in `rt_pend` as a `dm::DM_NOTE` block (level 0), splitting at the byte 1, then clears `rt_pend`.
+
+`rt_flush()` ends the current paragraph. When `rt_buf` is not empty after trimming white space: when `rt_tab` is true call `dm::dm_end_table()` and set it false; then add `rt_buf` as `dm::DM_HEAD` with level `rt_hl` (at most 6) when `rt_hl` is above zero, else as `dm::DM_ITEM` with level `rt_ilvl` plus one when `rt_ls` is true, else as `dm::DM_PARA` with level 0. Then clear `rt_buf`, and call `rt_notes()`.
+
+`rt_cell()` ends a table cell: when `rt_tab` is false call `dm::dm_new_table()` and set it true; append the tab byte to `rt_row` when `rt_cells` is above zero, then `rt_buf`, add one to `rt_cells` and clear `rt_buf`.
+
+`rt_rowend()` ends a table row: when `rt_buf` is not empty (a cell without an end mark) call `rt_cell()`; call `dm::dm_add(dm::DM_ROW, 0, rt_row)` when `rt_cells` is above zero, then clear `rt_row`, set `rt_cells` to 0 and `rt_intbl` to false.
+
+`rt_par()` ends a paragraph: for a `RT_NOTE` group push a newline byte onto `rt_aux` (when it is not empty); for `RT_BODY` append a space to `rt_buf` when `rt_intbl` is true, otherwise call `rt_flush()`; other destinations ignore it.
+
+`rt_word(name const byte[:], has bool, val int, s const byte[:], p int&)` handles one control word with its numeric parameter val (has says whether there was one); p is the read position after the word and its delimiter. Apply the first matching rule. (1) When the name is in `RT_SKIPS` (use `rt_in`) and the top group is not `RT_SKIP`: set the top group's dest to `RT_SKIP`, and for the name "pntext" also set `rt_ls` to true. (2) Name "bin" with a parameter: move p forward by val bytes (not past the end). (3) When the top group is `RT_SKIP` ignore everything else. (4) Name "info": set the top group's dest to `RT_INFO`. (5) Name "stylesheet": set it to `RT_STYLE`. (6) Name "footnote": set it to `RT_NOTE` and clear `rt_aux`. (7) Names "title", "subject", "author", "keywords" when the top group's dest is `RT_INFO`: set it to `RT_CAP`, its `key` to 1, 2, 3 or 4 and clear `rt_aux`. (8) "ansicpg" with a parameter sets `rt_cp` to it; "mac" sets `rt_cp` to 10000. (9) "uc" with a parameter sets the top group's `uc` to it. (10) "u" with a parameter calls `rt_uni`. (11) "par", "sect" and "page" call `rt_par()`. (12) "line" puts a newline (10) with `rt_put`. (13) "tab" puts a tab (9) with `rt_put`. (14) "cell" and "nestcell" call `rt_cell()`; "row" and "nestrow" call `rt_rowend()`. (15) A name for which `rt_sym` gives a code point puts it with `rt_put`. (16) When the top group is `RT_STYLE`: "s" with a parameter sets `rt_scur` to it, "outlinelevel" with a parameter sets `rt_sol` to it; ignore the rest. (17) Only when the top group is `RT_BODY`: "pard" sets `rt_hl` to 0, `rt_ls` to false, `rt_ilvl` to 0 and `rt_intbl` to false; "plain" does nothing; "intbl" sets `rt_intbl` true; "outlinelevel" with a parameter from 0 to 5 sets `rt_hl` to the parameter plus one; "s" with a parameter sets `rt_hl` to `rt_style_of` of it when that is above zero; "ls" with a parameter above zero sets `rt_ls` true; "ilvl" with a parameter sets `rt_ilvl` to it. Everything else is ignored.
+
+`rt_sym_at(s const byte[:], p int&) bool` is called after a backslash at position p (p is the position of the byte after the backslash) when that byte is not a letter, and handles the control symbol: an apostrophe followed by two hex digits calls `rt_char(rt_cpt(value))` and moves p past them; an asterisk: move p past it; then unless the top group is `RT_STYLE`, skip unless the text at p is a backslash, "ud" and a non-letter (a starred "ud" group holds the unicode copy of its parent and is read normally): in the skip case set the top group's dest to `RT_SKIP`; a tilde calls `rt_put(160)`; a minus sign does nothing; an underscore calls `rt_put(45)`; a backslash, an opening brace or a closing brace calls `rt_char` with that byte; a newline or carriage return calls `rt_par()`; any other symbol is ignored. In every case p moves past the symbol byte(s). Returns true.
+
+`rt_group_end()` pops the top group (when there is one). When the popped group's dest differs from the dest of the group below it (or there is none below): for `RT_CAP`, call `dm::dm_set_meta` with "title", "subject", "author" or "keywords" by the popped group's key and the text of `rt_aux`, then clear `rt_aux`; for `RT_NOTE`, when `rt_aux` is not empty after trimming white space append it and the byte 1 to `rt_pend`, then clear `rt_aux`; for `RT_STYLE` clear `rt_aux`.
+
+`rt_read(data const byte[:]) bool` returns false unless data starts with the five bytes "{\rtf". Otherwise call `rt_reset()` and go through data with an index i: an opening brace pushes a group copying the dest and `uc` of the top group (a first group with dest `RT_BODY` and `uc` 1 when the stack is empty) and moves on; a closing brace calls `rt_group_end()` and, when the stack is now empty, stops reading; a newline or carriage return is ignored; a backslash starts a control: when the next byte is a letter read the whole run of letters as the name, then an optional minus sign and digits as the parameter (the minus makes it negative), then skip one space when it follows, and call `rt_word`; otherwise call `rt_sym_at`; any other byte is text: call `rt_char(rt_cpt(byte))`. At the end call `rt_flush()` and, when `rt_tab` is true, `dm::dm_end_table()`, and return true.

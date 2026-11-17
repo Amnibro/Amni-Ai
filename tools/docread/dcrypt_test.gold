@@ -1,0 +1,22 @@
+use std
+into dcrypt_test.amni
+
+```amni
+import os;
+import dcrypt;
+```
+
+`hex(b const byte[:]) byte[>..]` returns the bytes of b as lower-case hex digits. `unhex(s const byte[:]) byte[>..]` turns a hex string into bytes.
+
+`main()` prints these lines, each a test name, a space and the hex result: "md5-empty" with `dcrypt::dc_md5` of ""; "md5-abc" with the MD5 of "abc"; "md5-msg" with the MD5 of "message digest"; "md5-long" with the MD5 of "12345678901234567890123456789012345678901234567890123456789012345678901234567890"; "rc4" with `dcrypt::dc_rc4` of "Plaintext" under the key "Key"; "aes128" with `dcrypt::dc_aes_dec` of the block 69c4e0d86a7b0430d8cdb78070b4c55a under the key 000102030405060708090a0b0c0d0e0f (key schedule from `crypto::aes_key`); "aes256" with the block 8ea2b7ca516745bfeafc49904b496089 under the key 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f; "cbc" with `dcrypt::dc_aes_cbc_dec` under the AES-128 key 2b7e151628aed2a6abf7158809cf4f3c of the IV 000102030405060708090a0b0c0d0e0f followed by the ciphertext 7649abac8119b246cee98e9b12e9197d (no valid padding, so the block is returned whole); "cbcenc" with `dcrypt::dc_aes_cbc_enc_nopad` of 6bc1bee22e409f96e93d7e117393172a under that key and IV.
+
+expect:
+md5-empty d41d8cd98f00b204e9800998ecf8427e
+md5-abc 900150983cd24fb0d6963f7d28e17f72
+md5-msg f96b697d7cb7938d525a2f31aaf161d0
+md5-long 57edf4a22be3c955ac49da2e2107b67a
+rc4 bbf316e8d940af0ad3
+aes128 00112233445566778899aabbccddeeff
+aes256 00112233445566778899aabbccddeeff
+cbc 6bc1bee22e409f96e93d7e117393172a
+cbcenc 7649abac8119b246cee98e9b12e9197d

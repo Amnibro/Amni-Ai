@@ -1,0 +1,131 @@
+use std
+into cfb_test.amni
+
+```amni
+import os;
+import cfb;
+import cfbmk;
+```
+
+`blob(out byte[>..]&, n int, m int)` appends n bytes to out where byte i is (i times m plus i divided by 256) modulo 256.
+
+`mk(out byte[>..]&, v4 bool, hdr int, big int)` clears out and builds a compound file with `cfbmk::cm_reset`, then `cfbmk::cm_add` of four streams in this order: "Small" holding `blob` of 40 and 1, "Dir/Mid" holding `blob` of 70 and 3, "Dir/Big" holding `blob` of big and 5, and "Zed" holding nothing; then `cfbmk::cm_build(v4, hdr, out)`.
+
+`same(h int, path const byte[:], n int, m int) int` is 1 when `cfb::cf_get` of the path in handle h succeeds and its bytes are exactly what `blob` of n and m gives, and 0 otherwise.
+
+`kind(h int, i int) const byte[:]` is "S" for a stream, "R" for entry 0 and "D" for anything else.
+
+`report(tag const byte[:], data const byte[:])` opens data with `cfb::cf_open`. It prints the tag, " handle " and the handle, then " count " and `cfb::cf_count`. For every entry i it prints the tag, a space, i, a space, `kind`, a space, `cfb::cf_size` and a space and `cfb::cf_path` (for the root, which has an empty path, print a single dash instead). Then it prints the tag, " read " and the results of `same` for "Small" (40, 1), "Dir/Mid" (70, 3), "Dir/Big" (the size `cfb::cf_size` gives for that path found with `cfb::cf_find`, 5) and "zed" (spelled in lower case, 0, 1), separated by spaces. Then it prints the tag, " find " and the results of `cfb::cf_find` for "dir/BIG", "/Dir/Mid", "Dir", "", "Dir/Nope" and the string with a backslash between "Dir" and "Mid" (byte 92), separated by spaces. Then `cfb::cf_close`. When the handle is below 0 it prints only the first line.
+
+`main()` runs these cases, each with a scratch list d made by `mk`:
+1. `mk(d, false, 109, 5000)` then `report("v3", d)`.
+2. `mk(d, true, 109, 5000)` then `report("v4", d)`.
+3. `mk(d, false, 0, 100000)` then `report("d0", d)` (all FAT sector numbers in an extra DIFAT sector).
+4. `mk(d, false, 1, 100000)` then `report("d1", d)`.
+5. `mk(d, true, 1, 5000000)` then `report("v4d", d)`.
+6. `mk(d, false, 109, 7300000)` then `report("big", d)` (more FAT sectors than the header holds).
+7. Damage, on `mk(d, false, 109, 5000)`: a copy of the first 700 bytes opened with `cfb::cf_open`, printing "cut " and the handle; a copy without its last 300 bytes, reported with `report("short", ...)`; a copy where the 4-byte FAT entry for sector 3 is changed to 1 (the FAT is the last sector of the file, which is sector 14, so its bytes start at offset 7680, and entry 3 is at 7680 plus 12), reported with `report("loop", ...)`.
+8. Not a compound file: print "none " then the handles of `cfb::cf_open` for the text "hello", for 700 zero bytes, and for the first 8 signature bytes of a real header (0xD0 0xCF 0x11 0xE0 0xA1 0xB1 0x1A 0xE1) followed by 700 zero bytes, separated by spaces.
+9. Handles: build a v3 file a and a v4 file b with `mk` (5000 for big), open a (handle p) then b (handle q) with `cfb::cf_open`, print "multi " p " " q " " followed by `same` of each handle for "Dir/Big" (5000, 5), then `cfb::cf_close` p, print "multi after close " and `same` of q for "Small" (40, 1), close q, open a again and print "multi reopen " and that handle, then close it.
+10. Real files: for each of "sample.doc", "sample.xls", "sample.ppt" read the file "tests/fixtures/" followed by the name with `os::read_file`, open it with `cfb::cf_open` and print the name, " handle " and the handle, " count " and the count, then one line for each entry that is a stream: the stream's path with every byte below 32 replaced by a "^" followed by the letter whose code is that byte plus 64, a space, and `cfb::cf_size`; then close it.
+
+
+expect:
+v3 handle 0 count 6
+v3 0 R 192 -
+v3 1 D 0 Dir
+v3 2 S 5000 Dir/Big
+v3 3 S 70 Dir/Mid
+v3 4 S 0 Zed
+v3 5 S 40 Small
+v3 read 1 1 1 1
+v3 find 2 3 1 0 -1 3
+v4 handle 0 count 6
+v4 0 R 192 -
+v4 1 D 0 Dir
+v4 2 S 5000 Dir/Big
+v4 3 S 70 Dir/Mid
+v4 4 S 0 Zed
+v4 5 S 40 Small
+v4 read 1 1 1 1
+v4 find 2 3 1 0 -1 3
+d0 handle 0 count 6
+d0 0 R 192 -
+d0 1 D 0 Dir
+d0 2 S 100000 Dir/Big
+d0 3 S 70 Dir/Mid
+d0 4 S 0 Zed
+d0 5 S 40 Small
+d0 read 1 1 1 1
+d0 find 2 3 1 0 -1 3
+d1 handle 0 count 6
+d1 0 R 192 -
+d1 1 D 0 Dir
+d1 2 S 100000 Dir/Big
+d1 3 S 70 Dir/Mid
+d1 4 S 0 Zed
+d1 5 S 40 Small
+d1 read 1 1 1 1
+d1 find 2 3 1 0 -1 3
+v4d handle 0 count 6
+v4d 0 R 192 -
+v4d 1 D 0 Dir
+v4d 2 S 5000000 Dir/Big
+v4d 3 S 70 Dir/Mid
+v4d 4 S 0 Zed
+v4d 5 S 40 Small
+v4d read 1 1 1 1
+v4d find 2 3 1 0 -1 3
+big handle 0 count 6
+big 0 R 192 -
+big 1 D 0 Dir
+big 2 S 7300000 Dir/Big
+big 3 S 70 Dir/Mid
+big 4 S 0 Zed
+big 5 S 40 Small
+big read 1 1 1 1
+big find 2 3 1 0 -1 3
+cut -1
+short handle 0 count 6
+short 0 R 192 -
+short 1 D 0 Dir
+short 2 S 5000 Dir/Big
+short 3 S 70 Dir/Mid
+short 4 S 0 Zed
+short 5 S 40 Small
+short read 1 1 1 1
+short find 2 3 1 0 -1 3
+loop handle 0 count 6
+loop 0 R 192 -
+loop 1 D 0 Dir
+loop 2 S 5000 Dir/Big
+loop 3 S 70 Dir/Mid
+loop 4 S 0 Zed
+loop 5 S 40 Small
+loop read 1 1 0 1
+loop find 2 3 1 0 -1 3
+none -1 -1 -1
+multi 0 1 1 1
+multi after close 1
+multi reopen 0
+sample.doc handle 0 count 7
+^AOle 20
+1Table 5365
+^ACompObj 106
+WordDocument 5693
+^ESummaryInformation 300
+^EDocumentSummaryInformation 172
+sample.xls handle 0 count 6
+^AOle 20
+^ACompObj 73
+Workbook 3086
+^ESummaryInformation 232
+^EDocumentSummaryInformation 172
+sample.ppt handle 0 count 8
+^AOle 20
+^ACompObj 57
+Pictures 0
+Current User 44
+^ESummaryInformation 590124
+PowerPoint Document 18302
+^EDocumentSummaryInformation 328

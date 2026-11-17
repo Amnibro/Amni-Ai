@@ -1,0 +1,435 @@
+import dm;
+namespace cfb;
+let CF_FREE = 0xFFFFFFFF;
+let CF_END = 0xFFFFFFFE;
+let CF_FATSEC = 0xFFFFFFFD;
+let CF_DIFSEC = 0xFFFFFFFC;
+let CF_MAXSEC = 0xFFFFFFFA;
+let CF_NOSTREAM = 0xFFFFFFFF;
+struct CfFile { base int, len int, ssz int, mini int, cutoff int, fat0 int, nfat int, mf0 int, nmf int, ms0 int, nms int, e0 int, ne int, live bool }
+struct CfEnt { nat int, nlen int, pat int, plen int, kind int, start int, size int }
+struct CfRaw { nat int, nlen int, kind int, left int, right int, child int, start int, size int }
+var cf_data byte[>..];
+var cf_fat int[>..];
+var cf_mfat int[>..];
+var cf_ms byte[>..];
+var cf_names byte[>..];
+var cf_files CfFile[>..];
+var cf_ents CfEnt[>..];
+var cf_raw CfRaw[>..];
+var cf_difat int[>..];
+var cf_work int[>..];
+var cf_seen byte[>..];
+var cf_tmp byte[>..];
+fn cf_le(s const byte[:], p int, n int) int {
+	if p < 0 || n < 1 || n > 8 || p + n > s.len { return -1; }
+	var v = 0;
+	var i = n - 1;
+	while i >= 0 {
+		let b int = s[p + i];
+		if i == 7 && b >= 128 { return -1; }
+		v = (v << 8) | b;
+		i -= 1;
+	}
+	v
+}
+fn cf_rd(f int, p int, n int) int {
+	let fl = cf_files[f];
+	if p < 0 || p + n > fl.len { return -1; }
+	cf_le(cf_data[fl.base..fl.base + fl.len], p, n)
+}
+fn cf_sec(f int, s int) int {
+	if s < 0 || s > CF_MAXSEC { return -1; }
+	let fl = cf_files[f];
+	let o = (s + 1) * fl.ssz;
+	if o >= fl.len { return -1; }
+	o
+}
+fn cf_lc(c int) int {
+	if c >= 65 && c <= 90 { c + 32 } else { c }
+}
+fn cf_eq(a const byte[:], b const byte[:]) bool {
+	if a.len != b.len { return false; }
+	for i in a.len {
+		if cf_lc(a[i]) != cf_lc(b[i]) { return false; }
+	}
+	true
+}
+fn cf_chain_sectors(f int, first int, cap int, out int[>..]&) {
+	let fl = cf_files[f];
+	var seen byte[>..] = [];
+	seen.resize(fl.len / fl.ssz + 2, 0);
+	var s = first;
+	var n = 0;
+	while n < cap {
+		if s < 0 || s > CF_MAXSEC { break; }
+		if cf_sec(f, s) < 0 { break; }
+		if s >= seen.len || seen[s] != 0 { break; }
+		seen[s] = 1;
+		out.push(s);
+		n += 1;
+		if s >= fl.nfat { break; }
+		s = cf_fat[fl.fat0 + s];
+	}
+}
+fn cf_sector_bytes(f int, s int, out byte[>..]&, want int) int {
+	let o = cf_sec(f, s);
+	if o < 0 { return 0; }
+	let fl = cf_files[f];
+	var n = fl.ssz;
+	if n > want { n = want; }
+	if o + n > fl.len { n = fl.len - o; }
+	if n <= 0 { return 0; }
+	out.append(cf_data[fl.base + o..fl.base + o + n]);
+	n
+}
+fn cf_walk(f int) {
+	let nraw = cf_raw.len;
+	if nraw == 0 { return; }
+	let base = cf_ents.len;
+	cf_seen.clear();
+	cf_seen.resize(nraw, 0);
+	cf_work.clear();
+	let r0 = cf_raw[0];
+	cf_ents.push(CfEnt { nat: r0.nat, nlen: r0.nlen, pat: cf_names.len, plen: 0, kind: 5, start: r0.start, size: r0.size });
+	cf_work.push(0);
+	cf_work.push(r0.child);
+	cf_work.push(0);
+	var pops = 0;
+	let maxp = 3 * nraw + 10;
+	while cf_work.len > 0 && pops < maxp {
+		pops += 1;
+		let par = cf_work.pop();
+		let e = cf_work.pop();
+		let t = cf_work.pop();
+		if t == 0 {
+			if e < 0 || e >= nraw || e == CF_NOSTREAM { continue; }
+			if cf_seen[e] != 0 { continue; }
+			cf_seen[e] = 1;
+			let r = cf_raw[e];
+			cf_work.push(0);
+			cf_work.push(r.right);
+			cf_work.push(par);
+			cf_work.push(1);
+			cf_work.push(e);
+			cf_work.push(par);
+			cf_work.push(0);
+			cf_work.push(r.left);
+			cf_work.push(par);
+		} else {
+			if e < 0 || e >= nraw { continue; }
+			let r = cf_raw[e];
+			if r.kind != 1 && r.kind != 2 { continue; }
+			if cf_ents.len - base >= nraw { continue; }
+			let idx = cf_ents.len - base;
+			let pe = cf_ents[base + par];
+			cf_tmp.clear();
+			if par != 0 {
+				cf_tmp.append(cf_names[pe.pat..pe.pat + pe.plen]);
+				cf_tmp.push(47);
+			}
+			cf_tmp.append(cf_names[r.nat..r.nat + r.nlen]);
+			let pat = cf_names.len;
+			cf_names.append(cf_tmp[0..cf_tmp.len]);
+			let plen = cf_names.len - pat;
+			cf_ents.push(CfEnt { nat: r.nat, nlen: r.nlen, pat: pat, plen: plen, kind: r.kind, start: r.start, size: r.size });
+			if r.kind == 1 && r.child != CF_NOSTREAM {
+				cf_work.push(0);
+				cf_work.push(r.child);
+				cf_work.push(idx);
+			}
+		}
+	}
+}
+fn cf_utf16(out byte[>..]&, s const byte[:]) {
+	let n = s.len / 2 * 2;
+	var i = 0;
+	while i < n {
+		let a int = s[i];
+		let b int = s[i + 1];
+		var u = a | (b << 8);
+		i += 2;
+		if u >= 0xD800 && u <= 0xDBFF && i + 1 < n {
+			let c int = s[i];
+			let d int = s[i + 1];
+			let lo = c | (d << 8);
+			if lo >= 0xDC00 && lo <= 0xDFFF {
+				u = 0x10000 + ((u - 0xD800) << 10) + (lo - 0xDC00);
+				i += 2;
+			} else {
+				u = 0xFFFD;
+			}
+		} else if u >= 0xD800 && u <= 0xDFFF {
+			u = 0xFFFD;
+		}
+		if u < 0x80 {
+			out.push(u as! byte);
+		} else if u < 0x800 {
+			out.push((0xC0 | (u >> 6)) as! byte);
+			out.push((0x80 | (u & 0x3F)) as! byte);
+		} else if u < 0x10000 {
+			out.push((0xE0 | (u >> 12)) as! byte);
+			out.push((0x80 | ((u >> 6) & 0x3F)) as! byte);
+			out.push((0x80 | (u & 0x3F)) as! byte);
+		} else {
+			out.push((0xF0 | (u >> 18)) as! byte);
+			out.push((0x80 | ((u >> 12) & 0x3F)) as! byte);
+			out.push((0x80 | ((u >> 6) & 0x3F)) as! byte);
+			out.push((0x80 | (u & 0x3F)) as! byte);
+		}
+	}
+}
+fn cf_undo(ld int, lf int, lm int, ls int, ln int, le int) {
+	cf_data.pop_n(cf_data.len - ld);
+	cf_fat.pop_n(cf_fat.len - lf);
+	cf_mfat.pop_n(cf_mfat.len - lm);
+	cf_ms.pop_n(cf_ms.len - ls);
+	cf_names.pop_n(cf_names.len - ln);
+	cf_ents.pop_n(cf_ents.len - le);
+	cf_files.pop();
+}
+fn cf_open(data const byte[:]) int {
+	if data.len < 512 { return -1; }
+	let sig int[8] = [208, 207, 17, 224, 161, 177, 26, 225];
+	for i in 8 {
+		if data[i] != sig[i] { return -1; }
+	}
+	let ver = cf_le(data, 26, 2);
+	if ver != 3 && ver != 4 { return -1; }
+	if cf_le(data, 28, 2) != 0xFFFE { return -1; }
+	let ss = cf_le(data, 30, 2);
+	if ss != 9 && ss != 12 { return -1; }
+	let msh = cf_le(data, 32, 2);
+	if msh < 3 || msh > 9 { return -1; }
+	let dirs = cf_le(data, 48, 4);
+	var cutoff = cf_le(data, 56, 4);
+	if cutoff == 0 { cutoff = 4096; }
+	let mfs = cf_le(data, 60, 4);
+	let dif0 = cf_le(data, 68, 4);
+	let ndif = cf_le(data, 72, 4);
+	let ssz = 1 << ss;
+	let mini = 1 << msh;
+	let ld = cf_data.len;
+	let lf = cf_fat.len;
+	let lm = cf_mfat.len;
+	let ls = cf_ms.len;
+	let ln = cf_names.len;
+	let le = cf_ents.len;
+	let h = cf_files.len;
+	cf_data.append(data);
+	cf_files.push(CfFile { base: ld, len: data.len, ssz: ssz, mini: mini, cutoff: cutoff, fat0: lf, nfat: 0, mf0: lm, nmf: 0, ms0: ls, nms: 0, e0: le, ne: 0, live: true });
+	cf_raw.clear();
+	cf_difat.clear();
+	cf_work.clear();
+	cf_seen.clear();
+	let nsec = data.len / ssz;
+	let cap = nsec + 2;
+	for i in 109 {
+		let v = cf_le(data, 76 + 4 * i, 4);
+		if v >= 0 && v <= CF_MAXSEC { cf_difat.push(v); }
+	}
+	var ds = dif0;
+	var k = 0;
+	let per = ssz / 4 - 1;
+	while k < ndif && k < cap {
+		let o = cf_sec(h, ds);
+		if o < 0 { break; }
+		for j in per {
+			let v = cf_rd(h, o + 4 * j, 4);
+			if v >= 0 && v <= CF_MAXSEC { cf_difat.push(v); }
+		}
+		ds = cf_rd(h, o + 4 * per, 4);
+		k += 1;
+	}
+	for x in cf_difat {
+		let o = cf_sec(h, x);
+		if o < 0 { continue; }
+		for j in ssz / 4 {
+			let v = cf_rd(h, o + 4 * j, 4);
+			if v < 0 { break; }
+			cf_fat.push(v);
+		}
+	}
+	cf_files[h].nfat = cf_fat.len - lf;
+	var secs int[>..] = [];
+	cf_chain_sectors(h, dirs, cap, secs);
+	for s in secs {
+		let o = cf_sec(h, s);
+		if o < 0 { continue; }
+		for q in ssz / 128 {
+			let p = o + q * 128;
+			if p + 128 > data.len { break; }
+			let nl = cf_rd(h, p + 64, 2);
+			let nat = cf_names.len;
+			if nl >= 2 && nl <= 64 {
+				cf_utf16(cf_names, data[p..p + nl - 2]);
+			}
+			let nlen = cf_names.len - nat;
+			let kind = cf_rd(h, p + 66, 1);
+			let left = cf_rd(h, p + 68, 4);
+			let right = cf_rd(h, p + 72, 4);
+			let child = cf_rd(h, p + 76, 4);
+			let start = cf_rd(h, p + 116, 4);
+			var size = if ver == 3 { cf_rd(h, p + 120, 4) } else { cf_rd(h, p + 120, 8) };
+			if size > 2147483647 { size = -1; }
+			cf_raw.push(CfRaw { nat: nat, nlen: nlen, kind: kind, left: left, right: right, child: child, start: start, size: size });
+		}
+	}
+	if cf_raw.len == 0 || cf_raw[0].kind != 5 {
+		cf_undo(ld, lf, lm, ls, ln, le);
+		return -1;
+	}
+	secs.clear();
+	cf_chain_sectors(h, mfs, cap, secs);
+	for s in secs {
+		let o = cf_sec(h, s);
+		if o < 0 { continue; }
+		for j in ssz / 4 {
+			let v = cf_rd(h, o + 4 * j, 4);
+			if v < 0 { break; }
+			cf_mfat.push(v);
+		}
+	}
+	cf_files[h].nmf = cf_mfat.len - lm;
+	let root = cf_raw[0];
+	if root.size > 0 && cf_sec(h, root.start) >= 0 {
+		secs.clear();
+		cf_chain_sectors(h, root.start, cap, secs);
+		var left = root.size;
+		for s in secs {
+			if left <= 0 { break; }
+			left -= cf_sector_bytes(h, s, cf_ms, left);
+		}
+	}
+	cf_files[h].nms = cf_ms.len - ls;
+	cf_walk(h);
+	cf_files[h].e0 = le;
+	cf_files[h].ne = cf_ents.len - le;
+	h
+}
+fn cf_eix(h int, i int) int {
+	if h < 0 || h >= cf_files.len { return -1; }
+	let fl = cf_files[h];
+	if !fl.live { return -1; }
+	if i < 0 || i >= fl.ne { return -1; }
+	fl.e0 + i
+}
+fn cf_count(h int) int {
+	if h < 0 || h >= cf_files.len { return 0; }
+	let fl = cf_files[h];
+	if !fl.live { return 0; }
+	fl.ne
+}
+fn cf_name(h int, i int) const byte[:] {
+	let x = cf_eix(h, i);
+	if x < 0 { return ""; }
+	let e = cf_ents[x];
+	cf_names[e.nat..e.nat + e.nlen]
+}
+fn cf_path(h int, i int) const byte[:] {
+	let x = cf_eix(h, i);
+	if x < 0 { return ""; }
+	let e = cf_ents[x];
+	cf_names[e.pat..e.pat + e.plen]
+}
+fn cf_is_stream(h int, i int) bool {
+	let x = cf_eix(h, i);
+	if x < 0 { return false; }
+	cf_ents[x].kind == 2
+}
+fn cf_size(h int, i int) int {
+	let x = cf_eix(h, i);
+	if x < 0 { return -1; }
+	cf_ents[x].size
+}
+fn cf_find(h int, path const byte[:]) int {
+	if cf_eix(h, 0) < 0 { return -1; }
+	cf_tmp.clear();
+	for c in path {
+		if c == 92 || c == 47 {
+			if cf_tmp.len == 0 { continue; }
+			cf_tmp.push(47);
+		} else {
+			cf_tmp.push(c);
+		}
+	}
+	if cf_tmp.len == 0 { return 0; }
+	let fl = cf_files[h];
+	for i in fl.ne {
+		let e = cf_ents[fl.e0 + i];
+		if cf_eq(cf_names[e.pat..e.pat + e.plen], cf_tmp[0..cf_tmp.len]) { return i; }
+	}
+	-1
+}
+fn cf_read(h int, i int, out byte[>..]&) bool {
+	let x = cf_eix(h, i);
+	if x < 0 { return false; }
+	let e = cf_ents[x];
+	if e.kind != 2 || e.size < 0 { return false; }
+	let fl = cf_files[h];
+	let size = e.size;
+	if size > fl.len { return false; }
+	if size == 0 { return true; }
+	let orig = out.len;
+	var ok = true;
+	var got = 0;
+	if size < fl.cutoff {
+		var seen byte[>..] = [];
+		seen.resize(fl.nmf, 0);
+		let cap = size / fl.mini + 2;
+		var s = e.start;
+		var n = 0;
+		while got < size {
+			if n >= cap { ok = false; break; }
+			n += 1;
+			if s < 0 || s >= fl.nmf { ok = false; break; }
+			if seen[s] != 0 { ok = false; break; }
+			seen[s] = 1;
+			let o = s * fl.mini;
+			if o >= fl.nms { ok = false; break; }
+			var take = fl.mini;
+			if take > size - got { take = size - got; }
+			if o + take > fl.nms { ok = false; break; }
+			out.append(cf_ms[fl.ms0 + o..fl.ms0 + o + take]);
+			got += take;
+			s = cf_mfat[fl.mf0 + s];
+		}
+	} else {
+		var secs int[>..] = [];
+		cf_chain_sectors(h, e.start, size / fl.ssz + 2, secs);
+		for s in secs {
+			if got >= size { break; }
+			let want = size - got;
+			let n = cf_sector_bytes(h, s, out, want);
+			var need = fl.ssz;
+			if need > want { need = want; }
+			if n < need { ok = false; break; }
+			got += n;
+		}
+		if got < size { ok = false; }
+	}
+	if !ok {
+		out.pop_n(out.len - orig);
+		return false;
+	}
+	true
+}
+fn cf_get(h int, path const byte[:], out byte[>..]&) bool {
+	let i = cf_find(h, path);
+	if i < 0 || !cf_is_stream(h, i) { return false; }
+	cf_read(h, i, out)
+}
+fn cf_close(h int) {
+	if h < 0 || h >= cf_files.len { return; }
+	cf_files[h].live = false;
+	for f in cf_files {
+		if f.live { return; }
+	}
+	cf_data.clear();
+	cf_fat.clear();
+	cf_mfat.clear();
+	cf_ms.clear();
+	cf_names.clear();
+	cf_ents.clear();
+	cf_files.clear();
+}

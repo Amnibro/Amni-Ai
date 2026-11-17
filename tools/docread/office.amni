@@ -1,0 +1,1567 @@
+import dm;
+import zip;
+import xml;
+namespace office;
+
+fn of_lower(c int) int {
+	if c >= 'A' && c <= 'Z' { c + 32 } else { c }
+}
+fn of_ieq(a const byte[:], b const byte[:]) bool {
+	if a.len != b.len { return false; }
+	for i in a.len {
+		if of_lower(a[i]) != of_lower(b[i]) { return false; }
+	}
+	true
+}
+fn of_blank(s const byte[:]) bool {
+	for c in s {
+		if c != ' ' && c != '\t' && c != '\n' && c != '\r' { return false; }
+	}
+	true
+}
+fn of_flat(out byte[>..]&, from int, cr bool) {
+	for i in from..out.len {
+		let c = out[i];
+		if c == '\t' || c == '\n' || (cr && c == '\r') { out[i] = ' '; }
+	}
+}
+fn of_int(s const byte[:], dflt int) int {
+	let n, ok = parse_int(trim(s));
+	if ok { n } else { dflt }
+}
+fn of_attr_int(k int, name const byte[:], dflt int) int {
+	var b byte[>..] = [];
+	if !xml::xm_attr(k, name, b) { return dflt; }
+	of_int(b, dflt)
+}
+fn of_dir(path const byte[:]) const byte[:] {
+	var i = path.len;
+	while i > 0 {
+		if path[i - 1] == '/' { return path[..i]; }
+		i -= 1;
+	}
+	path[..0]
+}
+fn of_base(path const byte[:]) const byte[:] {
+	var i = path.len;
+	while i > 0 {
+		if path[i - 1] == '/' { return path[i..]; }
+		i -= 1;
+	}
+	path
+}
+fn of_part(h int, name const byte[:], out byte[>..]&) bool {
+	let i = zip::zp_find(h, name);
+	if i < 0 { return false; }
+	zip::zp_read(h, i, out)
+}
+fn of_load(h int, name const byte[:]) bool {
+	var d byte[>..] = [];
+	if !of_part(h, name, d) {
+		xml::xm_clear();
+		return false;
+	}
+	xml::xm_parse(d);
+	true
+}
+fn of_isopen(k int) bool {
+	xml::xm_kind(k) == xml::XM_OPEN
+}
+fn of_resolve(base const byte[:], target const byte[:], out byte[>..]&) {
+	out.clear();
+	var n = target.len;
+	for i in target.len {
+		if target[i] == '#' { n = i; break; }
+	}
+	let tg = target[..n];
+	var t byte[>..] = [];
+	if n > 0 && tg[0] == '/' {
+		t.append(tg[1..]);
+	} else {
+		t.append(of_dir(base));
+		t.append(tg);
+	}
+	for i in t.len {
+		if t[i] == '\\' { t[i] = '/'; }
+	}
+	var s = 0;
+	for i in t.len + 1 {
+		if i == t.len || t[i] == '/' {
+			let seg = t[s..i];
+			s = i + 1;
+			if seg.len == 0 || seg == "." { continue; }
+			if seg == ".." {
+				var j = out.len;
+				while j > 0 && out[j - 1] != '/' { j -= 1; }
+				if j > 0 { j -= 1; }
+				out.pop_n(out.len - j);
+				continue;
+			}
+			if out.len > 0 { out.push('/'); }
+			out.append(seg);
+		}
+	}
+}
+fn of_rels_path(part const byte[:], out byte[>..]&) {
+	out.clear();
+	out.append(of_dir(part));
+	out.append("_rels/");
+	out.append(of_base(part));
+	out.append(".rels");
+}
+struct OfRel { iat int, ilen int, tat int, tlen int, yat int, ylen int }
+var of_rels OfRel[>..];
+var of_rpool byte[>..];
+fn of_aput(k int, name const byte[:], pool byte[>..]&) int, int {
+	var b byte[>..] = [];
+	xml::xm_attr(k, name, b);
+	let at = pool.len;
+	pool.append(b);
+	return at, b.len;
+}
+fn of_rels_load(h int, path const byte[:]) int {
+	of_rels.clear();
+	of_rpool.clear();
+	if !of_load(h, path) { return 0; }
+	let n = xml::xm_count();
+	for k in n {
+		if !of_isopen(k) { continue; }
+		if xml::xm_local(k) != "Relationship" { continue; }
+		var tm byte[>..] = [];
+		xml::xm_attr(k, "TargetMode", tm);
+		if tm == "External" { continue; }
+		let ia, il = of_aput(k, "Id", of_rpool);
+		let ta, tl = of_aput(k, "Target", of_rpool);
+		let ya, yl = of_aput(k, "Type", of_rpool);
+		of_rels.push(OfRel { iat: ia, ilen: il, tat: ta, tlen: tl, yat: ya, ylen: yl });
+	}
+	of_rels.len
+}
+fn of_rel_type(suffix const byte[:]) int {
+	for i in of_rels.len {
+		let r = of_rels[i];
+		if ends_with(of_rpool[r.yat..r.yat + r.ylen], suffix) { return i; }
+	}
+	-1
+}
+fn of_rel_id(id const byte[:]) int {
+	for i in of_rels.len {
+		let r = of_rels[i];
+		if of_rpool[r.iat..r.iat + r.ilen] == id { return i; }
+	}
+	-1
+}
+fn of_rel_target(i int) const byte[:] {
+	if i < 0 || i >= of_rels.len { return of_rpool[..0]; }
+	let r = of_rels[i];
+	of_rpool[r.tat..r.tat + r.tlen]
+}
+fn of_has(s const byte[:], sub const byte[:]) bool {
+	if sub.len > s.len { return false; }
+	for i in s.len - sub.len + 1 {
+		if s[i..i + sub.len] == sub { return true; }
+	}
+	false
+}
+fn of_main(h int, ct const byte[:], dflt const byte[:], out byte[>..]&) bool {
+	out.clear();
+	of_rels_load(h, "_rels/.rels");
+	let i = of_rel_type("/officeDocument");
+	if i >= 0 {
+		of_resolve("", of_rel_target(i), out);
+		if zip::zp_find(h, out) >= 0 { return true; }
+	}
+	if of_load(h, "[Content_Types].xml") {
+		let n = xml::xm_count();
+		for k in n {
+			if !of_isopen(k) { continue; }
+			if xml::xm_local(k) != "Override" { continue; }
+			var c byte[>..] = [];
+			xml::xm_attr(k, "ContentType", c);
+			if !of_has(c, ct) { continue; }
+			var p byte[>..] = [];
+			if !xml::xm_attr(k, "PartName", p) { continue; }
+			out.clear();
+			if p.len > 0 && p[0] == '/' { out.append(p[1..]); } else { out.append(p); }
+			if zip::zp_find(h, out) >= 0 { return true; }
+			break;
+		}
+	}
+	out.clear();
+	out.append(dflt);
+	if zip::zp_find(h, out) >= 0 { return true; }
+	out.clear();
+	false
+}
+fn of_meta_one(name const byte[:], key const byte[:]) {
+	let k = xml::xm_find(0, xml::xm_count(), name);
+	if k < 0 { return; }
+	var b byte[>..] = [];
+	xml::xm_gather(k, b);
+	dm::dm_set_meta(key, b);
+}
+fn of_meta_ooxml(h int, pages bool) {
+	of_rels_load(h, "_rels/.rels");
+	var cp byte[>..] = [];
+	let i = of_rel_type("/core-properties");
+	if i >= 0 { of_resolve("", of_rel_target(i), cp); } else { cp.append("docProps/core.xml"); }
+	var ap byte[>..] = [];
+	let j = of_rel_type("/extended-properties");
+	if j >= 0 { of_resolve("", of_rel_target(j), ap); } else { ap.append("docProps/app.xml"); }
+	if of_load(h, cp) {
+		of_meta_one("title", "title");
+		of_meta_one("subject", "subject");
+		of_meta_one("creator", "author");
+		of_meta_one("keywords", "keywords");
+		of_meta_one("created", "created");
+		of_meta_one("modified", "modified");
+	}
+	if pages {
+		if of_load(h, ap) { of_meta_one("Pages", "pages"); }
+	}
+}
+struct OfSty { at int, len int, lvl int, lst bool, bat int, blen int }
+var of_sty OfSty[>..];
+var of_spool byte[>..];
+fn of_sty_find(id const byte[:]) int {
+	for i in of_sty.len {
+		let s = of_sty[i];
+		if of_spool[s.at..s.at + s.len] == id { return i; }
+	}
+	-1
+}
+fn of_level_of_name(name const byte[:]) int {
+	if of_ieq(name, "title") { return 1; }
+	if name.len < 7 { return 0; }
+	if !of_ieq(name[..7], "heading") { return 0; }
+	var i = 7;
+	while i < name.len && name[i] == ' ' { i += 1; }
+	if i >= name.len { return 0; }
+	var v = 0;
+	while i < name.len {
+		let c int = name[i];
+		if c < '0' || c > '9' { return 0; }
+		v = v * 10 + (c - 48);
+		if v > 100 { return 0; }
+		i += 1;
+	}
+	if v >= 1 && v <= 9 { min(v, 6) } else { 0 }
+}
+fn of_docx_styles(h int, dir const byte[:]) {
+	of_sty.clear();
+	of_spool.clear();
+	var p byte[>..] = [];
+	p.append(dir);
+	p.append("styles.xml");
+	if !of_load(h, p) { return; }
+	let n = xml::xm_count();
+	for k in n {
+		if !of_isopen(k) || xml::xm_local(k) != "style" { continue; }
+		var ty byte[>..] = [];
+		xml::xm_attr(k, "type", ty);
+		if ty != "paragraph" { continue; }
+		var id byte[>..] = [];
+		xml::xm_attr(k, "styleId", id);
+		if id.len == 0 { continue; }
+		var name byte[>..] = [];
+		let nc = xml::xm_child(k, "name");
+		if nc >= 0 { xml::xm_attr(nc, "val", name); }
+		if name.len == 0 { name.append(id); }
+		var lvl = of_level_of_name(name);
+		let ppr = xml::xm_child(k, "pPr");
+		if lvl == 0 && ppr >= 0 {
+			let ol = xml::xm_child(ppr, "outlineLvl");
+			if ol >= 0 {
+				let v = of_attr_int(ol, "val", -1);
+				if v >= 0 && v <= 8 { lvl = min(v + 1, 6); }
+			}
+		}
+		var lst = false;
+		if of_ieq(name, "list paragraph") { lst = true; }
+		if name.len >= 11 && (of_ieq(name[..11], "list bullet") || of_ieq(name[..11], "list number")) { lst = true; }
+		if ppr >= 0 {
+			let np = xml::xm_child(ppr, "numPr");
+			if np >= 0 {
+				let ni = xml::xm_child(np, "numId");
+				if ni >= 0 {
+					var nv byte[>..] = [];
+					xml::xm_attr(ni, "val", nv);
+					if nv != "0" { lst = true; }
+				}
+			}
+		}
+		var bo byte[>..] = [];
+		let bc = xml::xm_child(k, "basedOn");
+		if bc >= 0 { xml::xm_attr(bc, "val", bo); }
+		let at = of_spool.len;
+		of_spool.append(id);
+		let bat = of_spool.len;
+		of_spool.append(bo);
+		of_sty.push(OfSty { at: at, len: id.len, lvl: lvl, lst: lst, bat: bat, blen: bo.len });
+	}
+	for i in of_sty.len {
+		var cur = i;
+		var lv = of_sty[i].lvl;
+		var ls = of_sty[i].lst;
+		for step in 8 {
+			let s = of_sty[cur];
+			let nx = of_sty_find(of_spool[s.bat..s.bat + s.blen]);
+			if nx < 0 { break; }
+			if lv == 0 && of_sty[nx].lvl > 0 { lv = of_sty[nx].lvl; }
+			if of_sty[nx].lst { ls = true; }
+			cur = nx;
+		}
+		of_sty[i].lvl = lv;
+		of_sty[i].lst = ls;
+	}
+}
+fn of_dx_text(from int, to int, boxes bool, flat bool, out byte[>..]&) {
+	let start = out.len;
+	var k = from;
+	while k < to {
+		if !of_isopen(k) { k += 1; continue; }
+		let nm = xml::xm_local(k);
+		if nm == "t" {
+			xml::xm_gather(k, out);
+			k = xml::xm_close_of(k) + 1;
+			continue;
+		}
+		if nm == "delText" || nm == "instrText" || nm == "del" || nm == "moveFrom" || nm == "Fallback" {
+			k = xml::xm_close_of(k) + 1;
+			continue;
+		}
+		if nm == "txbxContent" {
+			if !boxes { k = xml::xm_close_of(k) + 1; continue; }
+			k += 1;
+			continue;
+		}
+		if nm == "p" {
+			if out.len > 0 { out.push('\n'); }
+			k += 1;
+			continue;
+		}
+		if nm == "tc" {
+			if out.len > 0 && out[out.len - 1] != '\n' && out[out.len - 1] != ' ' { out.push(' '); }
+			k += 1;
+			continue;
+		}
+		if nm == "tab" || nm == "ptab" || nm == "br" || nm == "cr" {
+			let pa = xml::xm_parent(k);
+			if pa >= 0 && xml::xm_local(pa) == "r" {
+				if nm == "tab" || nm == "ptab" {
+					out.push(if flat { ' ' } else { '\t' });
+				} else {
+					out.push(if flat { ' ' } else { '\n' });
+				}
+			}
+			k += 1;
+			continue;
+		}
+		if nm == "noBreakHyphen" {
+			out.push('-');
+			k += 1;
+			continue;
+		}
+		if nm == "sym" {
+			var cs byte[>..] = [];
+			xml::xm_attr(k, "char", cs);
+			let c, ok = parse_int(cs, 16);
+			if ok {
+				if c >= 0xF000 && c <= 0xF0FF {
+					let b = c - 0xF000;
+					if b == 0xB7 {
+						dm::dm_put_cp(out, 0x2022);
+					} else if b == 0xA7 {
+						dm::dm_put_cp(out, 0x25AA);
+					} else if b == 0xD8 {
+						dm::dm_put_cp(out, 0x27A2);
+					} else if b == 0xFC {
+						dm::dm_put_cp(out, 0x2713);
+					} else if b >= 0x20 && b <= 0x7E {
+						out.push(b as byte);
+					}
+				} else if c > 0 {
+					dm::dm_put_cp(out, c);
+				}
+			}
+			k += 1;
+			continue;
+		}
+		k += 1;
+	}
+	if flat { of_flat(out, start, false); }
+}
+fn of_dx_para(i int) {
+	let ppr = xml::xm_child(i, "pPr");
+	var sid byte[>..] = [];
+	var numbered = false;
+	var off = false;
+	var ilvl = 0;
+	var exl = 0;
+	if ppr >= 0 {
+		let ps = xml::xm_child(ppr, "pStyle");
+		if ps >= 0 { xml::xm_attr(ps, "val", sid); }
+		let np = xml::xm_child(ppr, "numPr");
+		if np >= 0 {
+			numbered = true;
+			let il = xml::xm_child(np, "ilvl");
+			if il >= 0 { ilvl = of_attr_int(il, "val", 0); }
+			let ni = xml::xm_child(np, "numId");
+			if ni >= 0 {
+				var v byte[>..] = [];
+				xml::xm_attr(ni, "val", v);
+				if v == "0" { off = true; }
+			}
+		}
+		let ol = xml::xm_child(ppr, "outlineLvl");
+		if ol >= 0 {
+			let v = of_attr_int(ol, "val", -1);
+			if v >= 0 && v <= 8 { exl = min(v + 1, 6); }
+		}
+	}
+	let si = of_sty_find(sid);
+	var lvl = exl;
+	if lvl == 0 && si >= 0 { lvl = of_sty[si].lvl; }
+	let lst = si >= 0 && of_sty[si].lst;
+	let item = !off && (numbered || lst);
+	var text byte[>..] = [];
+	of_dx_text(i + 1, xml::xm_close_of(i), false, false, text);
+	if lvl > 0 {
+		dm::dm_add(dm::DM_HEAD, lvl, text);
+	} else if item {
+		dm::dm_add(dm::DM_ITEM, ilvl + 1, text);
+	} else {
+		dm::dm_add(dm::DM_PARA, 0, text);
+	}
+}
+fn of_dx_table(i int) {
+	dm::dm_new_table();
+	let end = xml::xm_close_of(i);
+	var r = i + 1;
+	while r < end {
+		if xml::xm_local(r) == "tr" {
+			var row byte[>..] = [];
+			let re = xml::xm_close_of(r);
+			var c = r + 1;
+			var first = true;
+			while c < re {
+				if xml::xm_local(c) == "tc" {
+					if !first { row.push('\t'); }
+					first = false;
+					of_dx_text(c + 1, xml::xm_close_of(c), true, true, row);
+					let pr = xml::xm_child(c, "tcPr");
+					if pr >= 0 {
+						let gs = xml::xm_child(pr, "gridSpan");
+						if gs >= 0 {
+							let n = of_attr_int(gs, "val", 1);
+							if n > 1 {
+								for j in n - 1 { row.push('\t'); }
+							}
+						}
+					}
+				}
+				c = xml::xm_next(c);
+			}
+			dm::dm_add(dm::DM_ROW, 0, row);
+		}
+		r = xml::xm_next(r);
+	}
+	dm::dm_end_table();
+}
+fn of_dx_body() {
+	let n = xml::xm_count();
+	var k = 0;
+	while k < n {
+		if of_isopen(k) {
+			let nm = xml::xm_local(k);
+			if nm == "Fallback" {
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+			if nm == "tbl" {
+				of_dx_table(k);
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+			if nm == "p" { of_dx_para(k); }
+		}
+		k += 1;
+	}
+}
+fn of_dx_notes(h int, dir const byte[:], file const byte[:], tag const byte[:], label const byte[:]) {
+	var p byte[>..] = [];
+	p.append(dir);
+	p.append(file);
+	if !of_load(h, p) { return; }
+	var n = 0;
+	let cnt = xml::xm_count();
+	for k in cnt {
+		if !of_isopen(k) || xml::xm_local(k) != tag { continue; }
+		var ty byte[>..] = [];
+		xml::xm_attr(k, "type", ty);
+		if ty == "separator" || ty == "continuationSeparator" || ty == "continuationNotice" { continue; }
+		n += 1;
+		var text byte[>..] = [];
+		of_dx_text(k + 1, xml::xm_close_of(k), true, false, text);
+		if of_blank(text) { continue; }
+		var line byte[>..] = [];
+		if tag == "comment" {
+			var au byte[>..] = [];
+			xml::xm_attr(k, "author", au);
+			if au.len > 0 {
+				line.append("Comment by ");
+				line.append(au);
+				line.append(": ");
+			} else {
+				line.append("Comment: ");
+			}
+		} else {
+			line.append(label);
+			line.append(" ");
+			format(line, n);
+			line.append(": ");
+		}
+		line.append(text);
+		dm::dm_add(dm::DM_NOTE, 0, line);
+	}
+}
+fn of_docx(data const byte[:]) bool {
+	let h = zip::zp_open(data);
+	if h < 0 { return false; }
+	var path byte[>..] = [];
+	if !of_main(h, "wordprocessingml.document", "word/document.xml", path) {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	var dir byte[>..] = [];
+	dir.append(of_dir(path));
+	of_docx_styles(h, dir);
+	if !of_load(h, path) || xml::xm_count() == 0 || !of_isopen(0) || xml::xm_local(0) != "document" {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	of_dx_body();
+	of_dx_notes(h, dir, "footnotes.xml", "footnote", "Footnote");
+	of_dx_notes(h, dir, "endnotes.xml", "endnote", "Endnote");
+	of_dx_notes(h, dir, "comments.xml", "comment", "Comment");
+	of_meta_ooxml(h, true);
+	zip::zp_close(h);
+	xml::xm_clear();
+	true
+}
+var of_sspool byte[>..];
+var of_ssat int[>..];
+var of_sslen int[>..];
+var of_xfd byte[>..];
+var of_nfid int[>..];
+var of_nfd byte[>..];
+var of_shpool byte[>..];
+var of_shnat int[>..];
+var of_shnlen int[>..];
+var of_shpat int[>..];
+var of_shplen int[>..];
+fn of_col_index(r const byte[:]) int {
+	var v = 0;
+	var i = 0;
+	while i < r.len {
+		let c = of_lower(r[i]);
+		if c < 'a' || c > 'z' { break; }
+		v = v * 26 + (c - 96);
+		i += 1;
+	}
+	if i == 0 { -1 } else { v - 1 }
+}
+fn of_fmt_is_date(code const byte[:]) bool {
+	var marked = false;
+	var elapsed = false;
+	var i = 0;
+	while i < code.len {
+		let c = code[i];
+		if c == '"' {
+			i += 1;
+			while i < code.len && code[i] != '"' { i += 1; }
+			i += 1;
+			continue;
+		}
+		if c == '[' {
+			var j = i + 1;
+			while j < code.len && code[j] != ']' { j += 1; }
+			let inner = code[i + 1..j];
+			if of_ieq(inner, "h") || of_ieq(inner, "hh") || of_ieq(inner, "m") || of_ieq(inner, "mm") || of_ieq(inner, "s") || of_ieq(inner, "ss") { elapsed = true; }
+			i = j + 1;
+			continue;
+		}
+		if c == '\\' || c == '_' || c == '*' {
+			i += 2;
+			continue;
+		}
+		let l = of_lower(c);
+		if l == 'd' || l == 'm' || l == 'y' || l == 'h' || l == 's' { marked = true; }
+		i += 1;
+	}
+	marked && !elapsed
+}
+fn of_builtin_date(id int) bool {
+	(id >= 14 && id <= 22) || (id >= 27 && id <= 36) || (id >= 45 && id <= 47) || (id >= 50 && id <= 58)
+}
+fn of_xlsx_styles(h int, path const byte[:]) {
+	of_xfd.clear();
+	of_nfid.clear();
+	of_nfd.clear();
+	if !of_load(h, path) { return; }
+	let n = xml::xm_count();
+	for k in n {
+		if of_isopen(k) && xml::xm_local(k) == "numFmt" {
+			var code byte[>..] = [];
+			xml::xm_attr(k, "formatCode", code);
+			of_nfid.push(of_attr_int(k, "numFmtId", 0));
+			var f byte = 0;
+			if of_fmt_is_date(code) { f = 1; }
+			of_nfd.push(f);
+		}
+	}
+	let cx = xml::xm_find(0, n, "cellXfs");
+	if cx < 0 { return; }
+	let end = xml::xm_close_of(cx);
+	var c = cx + 1;
+	while c < end {
+		if xml::xm_local(c) == "xf" {
+			let id = of_attr_int(c, "numFmtId", 0);
+			var ci = -1;
+			for j in of_nfid.len {
+				if of_nfid[j] == id { ci = j; break; }
+			}
+			var d byte = 0;
+			if (ci >= 0 && of_nfd[ci] == 1) || of_builtin_date(id) { d = 1; }
+			of_xfd.push(d);
+		}
+		c = xml::xm_next(c);
+	}
+}
+fn of_si_text(k int, out byte[>..]&) {
+	let end = xml::xm_close_of(k);
+	var j = k + 1;
+	while j < end {
+		if of_isopen(j) {
+			let nm = xml::xm_local(j);
+			if nm == "rPh" {
+				j = xml::xm_close_of(j) + 1;
+				continue;
+			}
+			if nm == "t" {
+				xml::xm_gather(j, out);
+				j = xml::xm_close_of(j) + 1;
+				continue;
+			}
+		}
+		j += 1;
+	}
+}
+fn of_xlsx_sst(h int, path const byte[:]) {
+	of_sspool.clear();
+	of_ssat.clear();
+	of_sslen.clear();
+	if !of_load(h, path) { return; }
+	let n = xml::xm_count();
+	for k in n {
+		if of_isopen(k) && xml::xm_local(k) == "si" {
+			let at = of_sspool.len;
+			of_si_text(k, of_sspool);
+			of_ssat.push(at);
+			of_sslen.push(of_sspool.len - at);
+		}
+	}
+}
+fn of_num_text(s const byte[:], out byte[>..]&) {
+	let t = trim(s);
+	if t.len == 0 { return; }
+	let n, ok = parse_int(t);
+	if ok {
+		format(out, n);
+		return;
+	}
+	for c in t {
+		if !((c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E') {
+			out.append(t);
+			return;
+		}
+	}
+	let v = to_real(t);
+	if abs(v) < 1e15 && v == ifloor(v) {
+		format(out, ifloor(v));
+	} else {
+		out.append(pyg(v, 15));
+	}
+}
+fn of_pad(out byte[>..]&, v int, width int) {
+	var n = 1;
+	var t = v;
+	while t >= 10 {
+		t /= 10;
+		n += 1;
+	}
+	while n < width {
+		out.push('0');
+		n += 1;
+	}
+	format(out, v);
+}
+fn of_serial_text(v real, d1904 bool, out byte[>..]&) bool {
+	if !(v >= 0.0) || v >= 2958466.0 { return false; }
+	var days = ifloor(v);
+	let frac = v - days;
+	var secs = ifloor(frac * 86400.0 + 0.5);
+	if secs >= 86400 {
+		secs -= 86400;
+		days += 1;
+	}
+	var hasdate = true;
+	var leap = false;
+	var n = 0;
+	if d1904 {
+		n = days - 24107;
+	} else if days == 0 {
+		hasdate = false;
+	} else if days < 60 {
+		n = days - 25568;
+	} else if days == 60 {
+		leap = true;
+	} else {
+		n = days - 25569;
+	}
+	if !hasdate && secs == 0 { return false; }
+	var tm byte[>..] = [];
+	of_pad(tm, secs / 3600, 2);
+	tm.push(':');
+	of_pad(tm, (secs % 3600) / 60, 2);
+	tm.push(':');
+	of_pad(tm, secs % 60, 2);
+	if hasdate {
+		if leap {
+			out.append("1900-02-29");
+		} else {
+			let z = n + 719468;
+			let era = z / 146097;
+			let doe = z - era * 146097;
+			let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+			var y = yoe + era * 400;
+			let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+			let mp = (5 * doy + 2) / 153;
+			let d = doy - (153 * mp + 2) / 5 + 1;
+			let m = if mp < 10 { mp + 3 } else { mp - 9 };
+			if m <= 2 { y += 1; }
+			of_pad(out, y, 4);
+			out.push('-');
+			of_pad(out, m, 2);
+			out.push('-');
+			of_pad(out, d, 2);
+		}
+		if secs > 0 {
+			out.push(' ');
+			out.append(tm);
+		}
+	} else {
+		out.append(tm);
+	}
+	true
+}
+fn of_xlsx_cell(c int, d1904 bool, out byte[>..]&) {
+	let start = out.len;
+	var t byte[>..] = [];
+	xml::xm_attr(c, "t", t);
+	var v byte[>..] = [];
+	let vc = xml::xm_child(c, "v");
+	if vc >= 0 { xml::xm_gather(vc, v); }
+	if t == "s" {
+		let n, ok = parse_int(trim(v));
+		if ok && n >= 0 && n < of_ssat.len {
+			out.append(of_sspool[of_ssat[n]..of_ssat[n] + of_sslen[n]]);
+		}
+	} else if t == "inlineStr" {
+		let ic = xml::xm_child(c, "is");
+		if ic >= 0 { of_si_text(ic, out); }
+	} else if t == "b" {
+		if v == "1" || v == "true" {
+			out.append("TRUE");
+		} else if v.len > 0 {
+			out.append("FALSE");
+		}
+	} else if t == "str" || t == "e" || t == "d" {
+		out.append(v);
+	} else if v.len > 0 {
+		let s = of_attr_int(c, "s", -1);
+		var done = false;
+		if s >= 0 && s < of_xfd.len && of_xfd[s] == 1 {
+			done = of_serial_text(to_real(v), d1904, out);
+		}
+		if !done { of_num_text(v, out); }
+	}
+	of_flat(out, start, true);
+}
+fn of_xlsx_sheet(path const byte[:], name const byte[:], d1904 bool, h int) {
+	if !of_load(h, path) {
+		var w byte[>..] = [];
+		format(w, "sheet ", name, " missing");
+		dm::dm_warn_add(w);
+		return;
+	}
+	dm::dm_add(dm::DM_HEAD, 2, name);
+	dm::dm_new_table();
+	let n = xml::xm_count();
+	var rows = 0;
+	var k = 0;
+	while k < n {
+		if of_isopen(k) && xml::xm_local(k) == "row" {
+			rows += 1;
+			if rows > 50000 {
+				var w byte[>..] = [];
+				format(w, "sheet ", name, " truncated at 50000 rows");
+				dm::dm_warn_add(w);
+				break;
+			}
+			var row byte[>..] = [];
+			var tabs = 0;
+			var last = -1;
+			let re = xml::xm_close_of(k);
+			var c = k + 1;
+			while c < re {
+				if xml::xm_local(c) == "c" {
+					var rf byte[>..] = [];
+					var col = last + 1;
+					if xml::xm_attr(c, "r", rf) {
+						let ci = of_col_index(rf);
+						if ci >= 0 { col = ci; }
+					}
+					last = col;
+					if col <= 16383 {
+						while tabs < col {
+							row.push('\t');
+							tabs += 1;
+						}
+						of_xlsx_cell(c, d1904, row);
+					}
+				}
+				c = xml::xm_next(c);
+			}
+			dm::dm_add(dm::DM_ROW, 0, row);
+			k = re + 1;
+			continue;
+		}
+		k += 1;
+	}
+	dm::dm_end_table();
+}
+fn of_xlsx(data const byte[:]) bool {
+	let h = zip::zp_open(data);
+	if h < 0 { return false; }
+	var path byte[>..] = [];
+	if !of_main(h, "spreadsheetml.sheet", "xl/workbook.xml", path) {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	if !of_load(h, path) || xml::xm_count() == 0 || !of_isopen(0) || xml::xm_local(0) != "workbook" {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	let n = xml::xm_count();
+	var d1904 = false;
+	let wp = xml::xm_find(0, n, "workbookPr");
+	if wp >= 0 {
+		var dv byte[>..] = [];
+		xml::xm_attr(wp, "date1904", dv);
+		d1904 = dv == "1" || dv == "true";
+	}
+	var sp byte[>..] = [];
+	var sat int[>..] = [];
+	var sln int[>..] = [];
+	var rat int[>..] = [];
+	var rln int[>..] = [];
+	for k in n {
+		if of_isopen(k) && xml::xm_local(k) == "sheet" {
+			var b byte[>..] = [];
+			xml::xm_attr(k, "name", b);
+			sat.push(sp.len);
+			sln.push(b.len);
+			sp.append(b);
+			var r byte[>..] = [];
+			xml::xm_attr_pre(k, "id", r);
+			rat.push(sp.len);
+			rln.push(r.len);
+			sp.append(r);
+		}
+	}
+	let cnt = sat.len;
+	var rp byte[>..] = [];
+	of_rels_path(path, rp);
+	of_rels_load(h, rp);
+	of_shpool.clear();
+	of_shnat.clear();
+	of_shnlen.clear();
+	of_shpat.clear();
+	of_shplen.clear();
+	for i in cnt {
+		let ri = of_rel_id(sp[rat[i]..rat[i] + rln[i]]);
+		if ri < 0 { continue; }
+		let rr = of_rels[ri];
+		if !ends_with(of_rpool[rr.yat..rr.yat + rr.ylen], "/worksheet") { continue; }
+		var rs byte[>..] = [];
+		of_resolve(path, of_rel_target(ri), rs);
+		of_shnat.push(of_shpool.len);
+		of_shnlen.push(sln[i]);
+		of_shpool.append(sp[sat[i]..sat[i] + sln[i]]);
+		of_shpat.push(of_shpool.len);
+		of_shplen.push(rs.len);
+		of_shpool.append(rs);
+	}
+	var st byte[>..] = [];
+	let si = of_rel_type("/styles");
+	if si >= 0 {
+		of_resolve(path, of_rel_target(si), st);
+	} else {
+		st.append(of_dir(path));
+		st.append("styles.xml");
+	}
+	var ss byte[>..] = [];
+	let hi = of_rel_type("/sharedStrings");
+	if hi >= 0 {
+		of_resolve(path, of_rel_target(hi), ss);
+	} else {
+		ss.append(of_dir(path));
+		ss.append("sharedStrings.xml");
+	}
+	of_xlsx_styles(h, st);
+	of_xlsx_sst(h, ss);
+	for i in of_shnat.len {
+		of_xlsx_sheet(of_shpool[of_shpat[i]..of_shpat[i] + of_shplen[i]], of_shpool[of_shnat[i]..of_shnat[i] + of_shnlen[i]], d1904, h);
+	}
+	var cs byte[>..] = [];
+	format(cs, cnt);
+	dm::dm_set_meta("sheets", cs);
+	of_meta_ooxml(h, false);
+	zip::zp_close(h);
+	xml::xm_clear();
+	true
+}
+var of_nt byte[>..];
+fn of_pp_text(from int, to int, out byte[>..]&) {
+	var j = from;
+	while j < to {
+		if of_isopen(j) {
+			let nm = xml::xm_local(j);
+			if nm == "t" {
+				xml::xm_gather(j, out);
+				j = xml::xm_close_of(j) + 1;
+				continue;
+			}
+			if nm == "br" {
+				out.push('\n');
+				j += 1;
+				continue;
+			}
+			if nm == "fld" {
+				var ty byte[>..] = [];
+				xml::xm_attr(j, "type", ty);
+				if starts_with(ty, "slidenum") || starts_with(ty, "datetime") {
+					j = xml::xm_close_of(j) + 1;
+					continue;
+				}
+			}
+		}
+		j += 1;
+	}
+}
+fn of_pp_para(p int, body bool) {
+	var text byte[>..] = [];
+	of_pp_text(p + 1, xml::xm_close_of(p), text);
+	let ppr = xml::xm_child(p, "pPr");
+	var lvl = 0;
+	var bullet = false;
+	var none = false;
+	if ppr >= 0 {
+		lvl = of_attr_int(ppr, "lvl", 0);
+		if xml::xm_child(ppr, "buChar") >= 0 || xml::xm_child(ppr, "buAutoNum") >= 0 || xml::xm_child(ppr, "buBlip") >= 0 { bullet = true; }
+		none = xml::xm_child(ppr, "buNone") >= 0;
+	}
+	if body && !none { bullet = true; }
+	if lvl > 0 || bullet {
+		dm::dm_add(dm::DM_ITEM, lvl + 1, text);
+	} else {
+		dm::dm_add(dm::DM_PARA, 0, text);
+	}
+}
+fn of_pp_skip(t const byte[:]) bool {
+	t == "sldNum" || t == "dt" || t == "ftr" || t == "hdr" || t == "sldImg"
+}
+fn of_pp_shape(k int, notes bool) {
+	let e = xml::xm_close_of(k);
+	let ph = xml::xm_find(k, e, "ph");
+	var ty byte[>..] = [];
+	if ph >= 0 { xml::xm_attr(ph, "type", ty); }
+	let tb = xml::xm_find(k, e, "txBody");
+	if tb < 0 { return; }
+	if of_pp_skip(ty) { return; }
+	let te = xml::xm_close_of(tb);
+	if notes {
+		var c = tb + 1;
+		while c < te {
+			if xml::xm_local(c) == "p" {
+				if of_nt.len > 0 { of_nt.push('\n'); }
+				of_pp_text(c + 1, xml::xm_close_of(c), of_nt);
+			}
+			c = xml::xm_next(c);
+		}
+		return;
+	}
+	if ty == "title" || ty == "ctrTitle" {
+		var text byte[>..] = [];
+		var first = true;
+		var c = tb + 1;
+		while c < te {
+			if xml::xm_local(c) == "p" {
+				if !first { text.push(' '); }
+				first = false;
+				of_pp_text(c + 1, xml::xm_close_of(c), text);
+			}
+			c = xml::xm_next(c);
+		}
+		dm::dm_add(dm::DM_HEAD, 2, text);
+		return;
+	}
+	let body = ph >= 0 && (ty.len == 0 || ty == "body" || ty == "obj");
+	var c = tb + 1;
+	while c < te {
+		if xml::xm_local(c) == "p" { of_pp_para(c, body); }
+		c = xml::xm_next(c);
+	}
+}
+fn of_pp_table(t int) {
+	dm::dm_new_table();
+	let end = xml::xm_close_of(t);
+	var r = t + 1;
+	while r < end {
+		if xml::xm_local(r) == "tr" {
+			var row byte[>..] = [];
+			let re = xml::xm_close_of(r);
+			var c = r + 1;
+			var first = true;
+			while c < re {
+				if xml::xm_local(c) == "tc" {
+					if !first { row.push('\t'); }
+					first = false;
+					var cell byte[>..] = [];
+					let ce = xml::xm_close_of(c);
+					var pf = true;
+					var j = c + 1;
+					while j < ce {
+						if of_isopen(j) && xml::xm_local(j) == "p" {
+							if !pf { cell.push(' '); }
+							pf = false;
+							of_pp_text(j + 1, xml::xm_close_of(j), cell);
+							j = xml::xm_close_of(j) + 1;
+							continue;
+						}
+						j += 1;
+					}
+					of_flat(cell, 0, false);
+					row.append(cell);
+				}
+				c = xml::xm_next(c);
+			}
+			dm::dm_add(dm::DM_ROW, 0, row);
+		}
+		r = xml::xm_next(r);
+	}
+	dm::dm_end_table();
+}
+fn of_pp_walk(notes bool) {
+	let n = xml::xm_count();
+	var k = 0;
+	while k < n {
+		if of_isopen(k) {
+			let nm = xml::xm_local(k);
+			if nm == "Fallback" {
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+			if nm == "sp" {
+				of_pp_shape(k, notes);
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+			if !notes && nm == "tbl" {
+				of_pp_table(k);
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+		}
+		k += 1;
+	}
+}
+fn of_pptx(data const byte[:]) bool {
+	let h = zip::zp_open(data);
+	if h < 0 { return false; }
+	var path byte[>..] = [];
+	if !of_main(h, "presentationml.presentation", "ppt/presentation.xml", path) {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	if !of_load(h, path) || xml::xm_count() == 0 || !of_isopen(0) || xml::xm_local(0) != "presentation" {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	let n = xml::xm_count();
+	var ids byte[>..] = [];
+	var iat int[>..] = [];
+	var iln int[>..] = [];
+	for k in n {
+		if of_isopen(k) && xml::xm_local(k) == "sldId" {
+			var b byte[>..] = [];
+			xml::xm_attr_pre(k, "id", b);
+			iat.push(ids.len);
+			iln.push(b.len);
+			ids.append(b);
+		}
+	}
+	var rp byte[>..] = [];
+	of_rels_path(path, rp);
+	of_rels_load(h, rp);
+	var spool byte[>..] = [];
+	var pat int[>..] = [];
+	var pln int[>..] = [];
+	for i in iat.len {
+		let ri = of_rel_id(ids[iat[i]..iat[i] + iln[i]]);
+		if ri < 0 { continue; }
+		var rs byte[>..] = [];
+		of_resolve(path, of_rel_target(ri), rs);
+		pat.push(spool.len);
+		pln.push(rs.len);
+		spool.append(rs);
+	}
+	var cs byte[>..] = [];
+	format(cs, pat.len);
+	dm::dm_set_meta("slides", cs);
+	for i in pat.len {
+		let num = i + 1;
+		let sl = spool[pat[i]..pat[i] + pln[i]];
+		var lab byte[>..] = [];
+		format(lab, "Slide ", num);
+		dm::dm_page(num, lab);
+		if !of_load(h, sl) { continue; }
+		of_pp_walk(false);
+		var rp2 byte[>..] = [];
+		of_rels_path(sl, rp2);
+		of_rels_load(h, rp2);
+		let ni = of_rel_type("/notesSlide");
+		if ni >= 0 {
+			var np byte[>..] = [];
+			of_resolve(sl, of_rel_target(ni), np);
+			of_nt.clear();
+			of_load(h, np);
+			of_pp_walk(true);
+			if !of_blank(of_nt) {
+				var line byte[>..] = [];
+				line.append("Notes: ");
+				line.append(of_nt);
+				dm::dm_add(dm::DM_NOTE, 0, line);
+			}
+		}
+	}
+	of_meta_ooxml(h, false);
+	zip::zp_close(h);
+	xml::xm_clear();
+	true
+}
+var of_odn int = 0;
+fn of_od_depth(k int) int {
+	var d = 0;
+	var p = xml::xm_parent(k);
+	while p >= 0 {
+		if xml::xm_isq(p, "text:list") { d += 1; }
+		p = xml::xm_parent(p);
+	}
+	d
+}
+fn of_od_text(from int, to int, flat bool, out byte[>..]&) {
+	let start = out.len;
+	var k = from;
+	while k < to {
+		if xml::xm_kind(k) == xml::XM_TEXT {
+			xml::xm_text(k, out);
+			k += 1;
+			continue;
+		}
+		if of_isopen(k) {
+			if xml::xm_isq(k, "text:s") {
+				let c = min(of_attr_int(k, "c", 1), 100);
+				for i in c { out.push(' '); }
+			} else if xml::xm_isq(k, "text:tab") {
+				out.push(if flat { ' ' } else { '\t' });
+			} else if xml::xm_isq(k, "text:line-break") {
+				out.push(if flat { ' ' } else { '\n' });
+			} else if xml::xm_isq(k, "text:note") || xml::xm_isq(k, "office:annotation") || xml::xm_isq(k, "draw:text-box") || xml::xm_isq(k, "svg:title") || xml::xm_isq(k, "svg:desc") {
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+		}
+		k += 1;
+	}
+	if flat { of_flat(out, start, false); }
+}
+fn of_od_notes(from int, to int) {
+	var k = from;
+	while k < to {
+		if !of_isopen(k) { k += 1; continue; }
+		let e = xml::xm_close_of(k);
+		if xml::xm_isq(k, "text:note") {
+			var cls byte[>..] = [];
+			xml::xm_attr(k, "note-class", cls);
+			var cit byte[>..] = [];
+			let cc = xml::xm_find(k, e, "note-citation");
+			if cc >= 0 { xml::xm_gather(cc, cit); }
+			var body byte[>..] = [];
+			let nb = xml::xm_find(k, e, "note-body");
+			if nb >= 0 {
+				let be = xml::xm_close_of(nb);
+				var first = true;
+				var j = nb + 1;
+				while j < be {
+					if of_isopen(j) && (xml::xm_isq(j, "text:p") || xml::xm_isq(j, "text:h")) {
+						if !first { body.push('\n'); }
+						first = false;
+						of_od_text(j + 1, xml::xm_close_of(j), false, body);
+						j = xml::xm_close_of(j) + 1;
+						continue;
+					}
+					j += 1;
+				}
+			}
+			if !of_blank(body) {
+				var line byte[>..] = [];
+				line.append(if cls == "endnote" { "Endnote" } else { "Footnote" });
+				if cit.len > 0 {
+					line.push(' ');
+					line.append(cit);
+				}
+				line.append(": ");
+				line.append(body);
+				dm::dm_add(dm::DM_NOTE, 0, line);
+			}
+			k = e + 1;
+			continue;
+		}
+		if xml::xm_isq(k, "office:annotation") {
+			var cr byte[>..] = [];
+			var body byte[>..] = [];
+			var first = true;
+			var c = k + 1;
+			while c < e {
+				if xml::xm_isq(c, "dc:creator") { xml::xm_gather(c, cr); }
+				if xml::xm_isq(c, "text:p") {
+					if !first { body.push('\n'); }
+					first = false;
+					of_od_text(c + 1, xml::xm_close_of(c), false, body);
+				}
+				c = xml::xm_next(c);
+			}
+			if !of_blank(body) {
+				var line byte[>..] = [];
+				if cr.len > 0 {
+					line.append("Comment by ");
+					line.append(cr);
+					line.append(": ");
+				} else {
+					line.append("Comment: ");
+				}
+				line.append(body);
+				dm::dm_add(dm::DM_NOTE, 0, line);
+			}
+			k = e + 1;
+			continue;
+		}
+		k += 1;
+	}
+}
+fn of_od_para(i int) {
+	let e = xml::xm_close_of(i);
+	var text byte[>..] = [];
+	of_od_text(i + 1, e, false, text);
+	if xml::xm_isq(i, "text:h") {
+		let lv = clamp(of_attr_int(i, "outline-level", 1), 1, 6);
+		dm::dm_add(dm::DM_HEAD, lv, text);
+	} else {
+		var sn byte[>..] = [];
+		xml::xm_attr(i, "style-name", sn);
+		if of_ieq(sn, "Title") {
+			dm::dm_add(dm::DM_HEAD, 1, text);
+		} else {
+			let d = of_od_depth(i);
+			if d > 0 {
+				dm::dm_add(dm::DM_ITEM, d, text);
+			} else {
+				dm::dm_add(dm::DM_PARA, 0, text);
+			}
+		}
+	}
+	of_od_notes(i + 1, e);
+}
+fn of_od_cell(c int, out byte[>..]&) {
+	if xml::xm_isq(c, "table:covered-table-cell") { return; }
+	var vt byte[>..] = [];
+	xml::xm_attr(c, "value-type", vt);
+	if vt == "date" {
+		var dv byte[>..] = [];
+		xml::xm_attr(c, "date-value", dv);
+		for i in dv.len {
+			if dv[i] == 'T' { dv[i] = ' '; }
+		}
+		if ends_with(dv, " 00:00:00") { dv.pop_n(9); }
+		out.append(dv);
+		return;
+	}
+	if vt == "boolean" {
+		var bv byte[>..] = [];
+		xml::xm_attr(c, "boolean-value", bv);
+		out.append(if bv == "true" { "TRUE" } else { "FALSE" });
+		return;
+	}
+	var text byte[>..] = [];
+	var first = true;
+	let e = xml::xm_close_of(c);
+	var j = c + 1;
+	while j < e {
+		if of_isopen(j) {
+			if xml::xm_isq(j, "text:note") || xml::xm_isq(j, "office:annotation") {
+				j = xml::xm_close_of(j) + 1;
+				continue;
+			}
+			if xml::xm_isq(j, "text:p") || xml::xm_isq(j, "text:h") {
+				if !first { text.push(' '); }
+				first = false;
+				of_od_text(j + 1, xml::xm_close_of(j), true, text);
+				j = xml::xm_close_of(j) + 1;
+				continue;
+			}
+		}
+		j += 1;
+	}
+	if of_blank(text) {
+		var v byte[>..] = [];
+		if xml::xm_attr(c, "value", v) { of_num_text(v, text); }
+	}
+	if of_blank(text) {
+		var sv byte[>..] = [];
+		if xml::xm_attr(c, "string-value", sv) { text.append(sv); }
+	}
+	out.append(text);
+}
+fn of_od_table(t int, sheet bool, n int) {
+	if sheet {
+		var nm byte[>..] = [];
+		xml::xm_attr(t, "name", nm);
+		if nm.len == 0 { format(nm, "Sheet ", n); }
+		dm::dm_add(dm::DM_HEAD, 2, nm);
+	}
+	dm::dm_new_table();
+	let e = xml::xm_close_of(t);
+	var k = t + 1;
+	var rows = 0;
+	while k < e {
+		if !of_isopen(k) { k += 1; continue; }
+		if xml::xm_isq(k, "table:table-row") {
+			rows += 1;
+			if rows > 50000 {
+				dm::dm_warn_add("table truncated at 50000 rows");
+				break;
+			}
+			var row byte[>..] = [];
+			let re = xml::xm_close_of(k);
+			var c = k + 1;
+			var first = true;
+			while c < re {
+				if xml::xm_isq(c, "table:table-cell") || xml::xm_isq(c, "table:covered-table-cell") {
+					var ct byte[>..] = [];
+					of_od_cell(c, ct);
+					let rep = min(of_attr_int(c, "number-columns-repeated", 1), 100);
+					for r in rep {
+						if !first { row.push('\t'); }
+						first = false;
+						row.append(ct);
+					}
+				}
+				c = xml::xm_next(c);
+			}
+			if !of_blank(row) {
+				let rr = min(of_attr_int(k, "number-rows-repeated", 1), 100);
+				for r in rr { dm::dm_add(dm::DM_ROW, 0, row); }
+			}
+			k = re + 1;
+			continue;
+		}
+		if xml::xm_isq(k, "table:table-header-rows") || xml::xm_isq(k, "table:table-row-group") || xml::xm_isq(k, "table:table-rows") {
+			k += 1;
+			continue;
+		}
+		k = xml::xm_close_of(k) + 1;
+	}
+	dm::dm_end_table();
+}
+fn of_od_frame_text(f int, out byte[>..]&) {
+	let e = xml::xm_close_of(f);
+	var first = true;
+	var j = f + 1;
+	while j < e {
+		if of_isopen(j) && (xml::xm_isq(j, "text:p") || xml::xm_isq(j, "text:h")) {
+			if !first { out.push(' '); }
+			first = false;
+			of_od_text(j + 1, xml::xm_close_of(j), true, out);
+			j = xml::xm_close_of(j) + 1;
+			continue;
+		}
+		j += 1;
+	}
+}
+fn of_od_scan(kind int) {
+	let cnt = xml::xm_count();
+	var n = 0;
+	var k = 0;
+	while k < cnt {
+		if !of_isopen(k) { k += 1; continue; }
+		if xml::xm_isq(k, "office:automatic-styles") || xml::xm_isq(k, "office:font-face-decls") || xml::xm_isq(k, "office:forms") || xml::xm_isq(k, "office:scripts") || xml::xm_isq(k, "text:tracked-changes") || xml::xm_isq(k, "text:note") || xml::xm_isq(k, "office:annotation") {
+			k = xml::xm_close_of(k) + 1;
+			continue;
+		}
+		if xml::xm_isq(k, "draw:page") {
+			n += 1;
+			var nm byte[>..] = [];
+			xml::xm_attr(k, "name", nm);
+			var dflt = nm.len == 0 || starts_with(nm, "page");
+			if dflt {
+				for i in 4..nm.len {
+					if nm[i] < '0' || nm[i] > '9' { dflt = false; }
+				}
+			}
+			var lab byte[>..] = [];
+			if dflt { format(lab, "Slide ", n); } else { lab.append(nm); }
+			dm::dm_page(n, lab);
+			k += 1;
+			continue;
+		}
+		if xml::xm_isq(k, "presentation:notes") {
+			var t byte[>..] = [];
+			of_od_frame_text(k, t);
+			if !of_blank(t) {
+				var line byte[>..] = [];
+				line.append("Notes: ");
+				line.append(t);
+				dm::dm_add(dm::DM_NOTE, 0, line);
+			}
+			k = xml::xm_close_of(k) + 1;
+			continue;
+		}
+		if xml::xm_isq(k, "draw:frame") {
+			var cl byte[>..] = [];
+			xml::xm_attr(k, "class", cl);
+			if cl == "title" {
+				var t byte[>..] = [];
+				of_od_frame_text(k, t);
+				dm::dm_add(dm::DM_HEAD, 2, t);
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+			if cl == "header" || cl == "footer" || cl == "date-time" || cl == "page-number" {
+				k = xml::xm_close_of(k) + 1;
+				continue;
+			}
+			k += 1;
+			continue;
+		}
+		if xml::xm_isq(k, "text:h") || xml::xm_isq(k, "text:p") {
+			of_od_para(k);
+			k += 1;
+			continue;
+		}
+		if xml::xm_isq(k, "table:table") {
+			of_od_table(k, kind == 2, n + 1);
+			if kind == 2 { n += 1; }
+			k = xml::xm_close_of(k) + 1;
+			continue;
+		}
+		k += 1;
+	}
+	of_odn = n;
+}
+fn of_odf(data const byte[:]) bool {
+	let h = zip::zp_open(data);
+	if h < 0 { return false; }
+	let mi = zip::zp_find(h, "mimetype");
+	if mi >= 0 {
+		var m byte[>..] = [];
+		zip::zp_read(h, mi, m);
+		var low byte[>..] = [];
+		for c in m { low.push(of_lower(c) as byte); }
+		if !of_has(low, "opendocument") {
+			zip::zp_close(h);
+			return false;
+		}
+	}
+	if !of_load(h, "content.xml") {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	if xml::xm_count() == 0 || !of_isopen(0) || xml::xm_local(0) != "document-content" {
+		zip::zp_close(h);
+		xml::xm_clear();
+		return false;
+	}
+	let n = xml::xm_count();
+	var kind = 1;
+	if xml::xm_find(0, n, "spreadsheet") >= 0 {
+		kind = 2;
+	} else if xml::xm_find(0, n, "presentation") >= 0 || xml::xm_find(0, n, "drawing") >= 0 {
+		kind = 3;
+	}
+	of_od_scan(kind);
+	if kind == 2 || kind == 3 {
+		var cs byte[>..] = [];
+		format(cs, of_odn);
+		dm::dm_set_meta(if kind == 2 { "sheets" } else { "slides" }, cs);
+	}
+	if of_load(h, "meta.xml") {
+		let m = xml::xm_count();
+		of_meta_one("title", "title");
+		of_meta_one("subject", "subject");
+		let ic = xml::xm_find(0, m, "initial-creator");
+		if ic >= 0 {
+			of_meta_one("initial-creator", "author");
+		} else {
+			of_meta_one("creator", "author");
+		}
+		of_meta_one("creation-date", "created");
+		of_meta_one("date", "modified");
+		var kw byte[>..] = [];
+		var first = true;
+		for k in m {
+			if of_isopen(k) && xml::xm_local(k) == "keyword" {
+				if !first { kw.append(", "); }
+				first = false;
+				xml::xm_gather(k, kw);
+			}
+		}
+		if !first { dm::dm_set_meta("keywords", kw); }
+		let ds = xml::xm_find(0, m, "document-statistic");
+		if ds >= 0 {
+			var pg byte[>..] = [];
+			if xml::xm_attr(ds, "page-count", pg) { dm::dm_set_meta("pages", pg); }
+		}
+	}
+	zip::zp_close(h);
+	xml::xm_clear();
+	true
+}

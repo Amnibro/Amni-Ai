@@ -1,0 +1,177 @@
+use std
+into pimage_test.amni
+
+```amni
+import os;
+import dm;
+import pimage;
+```
+
+`emit(text const byte[:])` prints text one line at a time with `os::write_stdout`: for each line (split at the newline byte 10, ignoring the empty piece after a final newline) it prints the line itself followed by a newline, except that an empty line is printed as a single dot "." followed by a newline.
+
+`num(out byte[>..]&, v int, digits int)` appends the decimal digits of the non-negative v to out, padded with leading zeros to at least `digits` digits.
+
+`pix(out byte[>..]&, n int, seed int)` appends n bytes to out, byte i (counting from 0) being (i times 37 plus seed times 11 plus i divided by 7) anded with 255.
+
+`hexs(out byte[>..]&, n int, seed int)` appends n bytes as lowercase hexadecimal text (two digits per byte, no separators) of the bytes `pix` would give for n and seed, followed by the byte for the greater-than sign.
+
+`zstored(out byte[>..]&, data const byte[:])` appends data wrapped as a zlib stream with one stored block: the bytes 120 and 1, then the byte 1 (the final block, stored), then the length of data in 2 little endian bytes and 65535 minus that length in 2 little endian bytes, then data, then the Adler-32 checksum of data in 4 big endian bytes (a starts at 1 and b at 0; for each byte of data a becomes (a plus the byte) modulo 65521 and then b becomes (b plus a) modulo 65521; the checksum is b times 65536 plus a).
+
+`rows(out byte[>..]&, rowbytes int, h int, seed int, png bool)` appends h rows to out: for each row r from 0 to h minus 1, when png is true first the byte r modulo 5 (the PNG filter type), then `pix` of rowbytes bytes with the seed seed plus r.
+
+`pdfbegin(out byte[>..]&, offs int[>..]&)` clears both lists and appends "%PDF-1.4" and a newline to out.
+
+`pdfobj(out byte[>..]&, offs int[>..]&, dict const byte[:], body const byte[:], stream bool)` writes the next object, numbered offs.len plus 1: it pushes out.len on offs, then appends the number, " 0 obj", a newline and "<<" and dict; when stream is true it then appends " /Length " and the length of body, then ">>", a newline, "stream", a newline, body, a newline and "endstream", otherwise just ">>"; in both cases it ends with a newline, "endobj" and a newline.
+
+`pdfend(out byte[>..]&, offs int[>..]&)` appends the cross reference table and trailer: remember x = out.len, append "xref", a newline, "0 " and offs.len plus 1, a newline, "0000000000 65535 f " and a newline, then for each offset the offset as 10 digits (`num`), " 00000 n " and a newline, then "trailer", a newline, "<< /Size " and offs.len plus 1 and " /Root 1 0 R >>", a newline, "startxref", a newline, x, a newline and "%%EOF" and a newline.
+
+`img(out byte[>..]&, offs int[>..]&, w int, h int, space const byte[:], bpc int, extra const byte[:], body const byte[:])` writes an image object with `pdfobj` (stream true) whose dict is "/Type /XObject /Subtype /Image /Width " w " /Height " h " /ColorSpace " space " /BitsPerComponent " bpc " " extra.
+
+`doc(out byte[>..]&, offs int[>..]&, kids const byte[:], pagesextra const byte[:], first int)` starts a document with `pdfbegin` and writes object 1, the catalog, `pdfobj` with dict "/Type /Catalog /Pages 2 0 R" and an empty body, stream false, then object 2, the page tree, with dict "/Type /Pages /Count 2 /Kids [" kids "] " pagesextra. The caller writes the rest of the objects starting with object 3.
+
+`page(out byte[>..]&, offs int[>..]&, xobjs const byte[:], contents int)` writes a page object with `pdfobj` (stream false, empty body) whose dict is "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << " xobjs " >> >>" followed, when contents is above 0, by " /Contents " contents " 0 R".
+
+`mk(which int) byte[>..]` builds a small PDF in memory for the case numbered which, 1 to 9, described below (all nine cases are dispatched; an empty list for any other number).
+
+Case 1 (gray modes, painted by a content stream): `doc` with kids "3 0 R", empty pagesextra; `page` with xobjs "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R /I4 8 0 R" and contents 9; then objects 4 to 8, all `img`: object 4 is 64 by 40, space "/DeviceGray", bpc 1, extra empty, body `pix` 320 bytes seed 1; object 5 the same with extra "/Decode [1 0]"; object 6 is 32 by 32, bpc 4, extra empty, body `pix` 512 bytes seed 2; object 7 is 40 by 36, bpc 2, extra empty, body `pix` 360 bytes seed 3; object 8 is 32 by 32, bpc 8, extra "/Decode [1 0]", body `pix` 1024 bytes seed 4; object 9 is a `pdfobj` with an empty dict, stream true and the body "q /I0 Do /I1 Do /I2 Do /I3 Do /I4 Do Q"; then `pdfend`.
+
+Case 2 (color modes, painted by a content stream): `doc` with kids "3 0 R", empty pagesextra; `page` with xobjs "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R /I4 8 0 R /I5 10 0 R /I6 11 0 R" and contents 13; object 4: `img` 32 by 32, "/DeviceRGB", bpc 16, extra empty, `pix` 6144 bytes seed 5; object 5: 32 by 32, "/DeviceRGB", bpc 8, extra "/Decode [1 0 0 1 1 0]", `pix` 3072 seed 6; object 6: 33 by 32, "/DeviceCMYK", bpc 8, extra empty, `pix` 4224 seed 7; object 7: 32 by 32, space "[/Indexed /DeviceRGB 3 <000000ff000000ff000000ff>]", bpc 2, extra empty, `pix` 256 seed 8; object 8: 32 by 32, space "[/Indexed /DeviceGray 1 9 0 R]", bpc 1, extra empty, `pix` 128 seed 9; object 9 is not an image but `pdfobj` with dict empty, body the two bytes 0 and 255, stream true; object 10: 32 by 32, space "[/ICCBased 12 0 R]", bpc 8, extra empty, `pix` 3072 seed 10; object 11: 32 by 32, space "[/CalRGB << /WhitePoint [0.95 1 1.09] >>]", bpc 8, extra empty, `pix` 3072 seed 11; object 12: `pdfobj` with dict "/N 3", empty body, stream true; object 13 is a `pdfobj` with an empty dict, stream true and the body "/I0 Do /I1 Do /I2 Do /I3 Do /I4 Do /I5 Do /I6 Do"; then `pdfend`.
+
+Case 3 (skips, painted by a content stream): `doc` with kids "3 0 R", empty pagesextra; `page` with xobjs "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R /I4 8 0 R /I5 9 0 R /I6 10 0 R /I7 11 0 R /I8 12 0 R /I9 13 0 R /I10 14 0 R /I11 15 0 R" and contents 16; object 4: `img` 16 by 16, "/DeviceGray", bpc 8, extra empty, `pix` 256 seed 1 (too small); object 5: `pdfobj` stream true with dict "/Type /XObject /Subtype /Image /Width 64 /Height 64 /ImageMask true /BitsPerComponent 1" and `pix` 512 seed 2; object 6: `img` 32 by 32, "/DeviceGray", bpc 1, extra "/Filter /CCITTFaxDecode /DecodeParms << /K -1 /Columns 32 >>", `pix` 40 seed 3; object 7: the same with extra "/Filter /JBIG2Decode", `pix` 40 seed 4; object 8: `img` 32 by 32, "/DeviceRGB", bpc 8, extra "/Filter /DCTDecode", body the text "this is not a jpeg"; object 9: 32 by 32, space "[/Lab << /WhitePoint [1 1 1] >>]", bpc 8, extra empty, `pix` 3072 seed 5; object 10: 32 by 32, "/DeviceGray", bpc 3, extra empty, `pix` 400 seed 6; object 11: 31 by 40, "/DeviceGray", bpc 8, extra empty, `pix` 1240 seed 7 (too narrow); object 12: `pdfobj` stream true with dict "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /ASCIIHexDecode" and body from `hexs` 1024 bytes seed 8; object 13: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 600 seed 9 (short data); object 14: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 100 seed 10 (far too short); object 15: `pdfobj` stream true with dict "/Type /XObject /Subtype /Image /Width 32 /Height 32 /BitsPerComponent 8" and `pix` 1024 seed 11 (no color space); object 16 is a `pdfobj` with an empty dict, stream true and the body "/I0 Do /I1 Do /I2 Do /I3 Do /I4 Do /I5 Do /I6 Do /I7 Do /I8 Do /I9 Do /I10 Do /I11 Do"; then `pdfend`.
+
+Case 4 (forms, cycles, page order and sharing, no content streams so the resource dicts are walked): `doc` with kids "3 0 R 4 0 R", empty pagesextra; object 3 is `page` with xobjs "/I0 5 0 R /F1 6 0 R" and contents 0; object 4 is `page` with xobjs "/I0 5 0 R /I9 8 0 R" and contents 0; object 5: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 1; object 6, a form: `pdfobj` stream true with dict "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /I1 7 0 R /F1 6 0 R /F2 9 0 R /F3 10 0 R >> >>" and the body "q Q"; object 7: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 2; object 8: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 3; object 9, a form with no resources: `pdfobj` stream true with dict "/Type /XObject /Subtype /Form /BBox [0 0 10 10]" and body "q Q"; object 10, a form: `pdfobj` stream true with dict "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /I2 11 0 R >> >>" and body "q Q"; object 11: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 4; then `pdfend`.
+
+Case 5 (inherited resources, no content stream): `doc` with kids "3 0 R" and pagesextra "/Resources << /XObject << /I0 4 0 R >> >>"; object 3: `pdfobj` with dict "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]", empty body, stream false; object 4: `img` 40 by 40, "/DeviceGray", bpc 8, extra empty, `pix` 1600 seed 1; then `pdfend`.
+
+Case 6 (forms nested deeper than the limit, painted by content streams): `doc` with kids "3 0 R", empty pagesextra; object 3 is a `pdfobj` with dict "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /F0 4 0 R >> >> /Contents 20 0 R", empty body, stream false; then 14 forms, object 4 plus k for k from 0 to 13, each a `pdfobj` stream true with the dict "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /F" followed by k plus 1 " " 5 plus k " 0 R /IA 18 0 R /IB 19 0 R >> >>" and a body that is "/F" k plus 1 " Do" for every k below 13, preceded by "/IA Do " for k equal to 11 and by "/IB Do " for k equal to 12, and "q Q" for k equal to 13; object 18 is an `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 1 and object 19 the same with seed 2; object 20 is a `pdfobj` with an empty dict, stream true and the body "/F0 Do"; then `pdfend`. Form number k is scanned at nesting depth k, so the image IA painted in form 11 (depth 12) is written and the image IB painted in form 12 (depth 13) is not.
+
+Case 7 (shared resources, content arrays, tricky operands): `doc` with kids "4 0 R 5 0 R", empty pagesextra; object 3 is a `pdfobj` with dict "/XObject << /Ia 6 0 R /Ib 7 0 R /Ic 8 0 R >>", empty body, stream false (a resource dict shared by both pages); object 4 is a `pdfobj` with dict "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources 3 0 R /Contents 9 0 R", empty body, stream false; object 5 the same but with "/Contents [10 0 R 11 0 R]" at the end; objects 6, 7 and 8 are `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 bytes with the seeds 1, 2 and 3; object 9 is a `pdfobj` with an empty dict, stream true and the body "q (fake /Ia Do) Tj /Zz Do % /Ia Do" then a newline and then "BI /W 2 /H 2 /BPC 8 /CS /G ID /Ia Do EI /Ib Do /Ic Do Q"; object 10 is a `pdfobj` with an empty dict, stream true and the body "q /Ia"; object 11 the same with the body "Do Q"; then `pdfend`. The first page paints Ib and Ic, the second page Ia (named by the last bytes of its first content stream and the first of its second).
+
+Case 8 (forms painted by content, with and without their own resources): `doc` with kids "3 0 R", empty pagesextra; object 3 is a `pdfobj` with dict "/Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /I0 5 0 R /F1 6 0 R /F2 8 0 R /I2 9 0 R >> >> /Contents 4 0 R", empty body, stream false; object 4 is a `pdfobj` with an empty dict, stream true and the body "/I0 Do /F1 Do /F2 Do"; object 5: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 1; object 6, a form: `pdfobj` stream true with dict "/Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources << /XObject << /I1 7 0 R /F1 6 0 R >> >>" and the body "/I1 Do /F1 Do"; object 7: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 2; object 8, a form with no resources: `pdfobj` stream true with dict "/Type /XObject /Subtype /Form /BBox [0 0 10 10]" and the body "/I2 Do"; object 9: `img` 32 by 32, "/DeviceGray", bpc 8, extra empty, `pix` 1024 seed 3; then `pdfend`. The images come out in the order I0, I1, I2.
+
+Case 9 (predictors, painted by a content stream): `doc` with kids "3 0 R", empty pagesextra; `page` with xobjs "/I0 4 0 R /I1 5 0 R /I2 6 0 R /I3 7 0 R" and contents 8; object 4: `pdfobj` stream true with the dict "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /Columns 32 /BitsPerComponent 8 >>" and as body `zstored` of a list made by `rows` with 96 bytes per row, 32 rows, seed 1, png true; object 5: the dict "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 2 /Colors 1 /Columns 32 /BitsPerComponent 8 >>" and the body `zstored` of `rows` with 32 bytes per row, 32 rows, seed 2, png false; object 6: the dict "/Type /XObject /Subtype /Image /Width 32 /Height 32 /ColorSpace /DeviceRGB /BitsPerComponent 16 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /Columns 32 /BitsPerComponent 16 >>" and the body `zstored` of `rows` with 192 bytes per row, 32 rows, seed 3, png true; object 7: the dict "/Type /XObject /Subtype /Image /Width 64 /Height 40 /ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 1 /Columns 64 /BitsPerComponent 1 >>" and the body `zstored` of `rows` with 8 bytes per row, 40 rows, seed 4, png true; object 8 is a `pdfobj` with an empty dict, stream true and the body "/I0 Do /I1 Do /I2 Do /I3 Do"; then `pdfend`.
+
+`load(name const byte[:], out byte[>..]&) bool` reads the file "tests/fixtures/" followed by name with `os::read_file` into out and returns whether that worked.
+
+`fnv(d const byte[:]) int` is the 32 bit FNV-1a hash of d: start with 2166136261 and for every byte set h to ((h xor the byte) times 16777619) anded with 4294967295; returns h.
+
+`wipe()` deletes with `os::delete_file` the file of every image `pimage::pi_path` of 0 to `pimage::pi_count` minus 1.
+
+`run(d const byte[:])` calls `dm::dm_reset("pimage", "part")`, then `let n = pimage::pi_extract(d, "tests/pimage-out")`, prints on one line "count ", n, " skipped " and the number returned by calling `pimage::pi_skipped()`, then for each image i from 0 to n minus 1 one line: "img ", i, " p", the page, " ", the width, "x", the height, " ", `pimage::pi_kind_name` of its kind, " ", the size in bytes of the file read back with `os::read_file` from `pimage::pi_path` (0 when it cannot be read), " ", the `fnv` of those bytes. Then one line "warn " plus the line for each line of `dm::dm_warn`. Then calls `wipe()`. Lines are printed with `emit`.
+
+`show(name const byte[:])` prints "== " and the name, loads the fixture (printing "missing" and returning when it cannot be read), and calls `run` with its bytes.
+
+`synth(which int)` prints "== synthetic " and the number and calls `run` on `mk(which)`; when `os::env("PIMAGE_KEEP", x)` is true it also writes the PDF with `os::write_file` to "tests/pimage-out/syn" followed by the number and ".pdf" after making the directory "tests/pimage-out" with `os::make_dir` when `os::is_dir` says it is missing.
+
+`main()` prints these sections in order.
+
+First `show` for each of: "pimg_rgb.pdf", "pimg_gray.pdf", "pimg_pal.pdf", "pimg_tiny.pdf", "pimg_photo.pdf", "pimg_cmyk.pdf", "pimg_cmykz.pdf", "pimg_g4.pdf", "pimg_jpx.pdf", "pimg_inline.pdf", "pimg_notes.pdf", "pimg_enc128.pdf".
+
+Then `synth` for the numbers 1 to 9.
+
+Then "== wrong" and for each of "table.tsv", "page.html", "sample.docx", "garden-lo.pdf", "layout-groff.pdf", "garden-aes128.pdf", one line: the name, a space and the result of `pimage::pi_extract` on its bytes with the directory "tests/pimage-out", and then `wipe()`.
+
+Then "== accessors" and one line holding `pimage::pi_page(99)`, `pimage::pi_width(99)`, `pimage::pi_height(99)` and `pimage::pi_kind(99)` and `pimage::pi_path(99).len` separated by spaces, after a `pimage::pi_extract` of the bytes of "pimg_rgb.pdf" into the directory "tests/pimage-out" (then `wipe()`), then one line with `pimage::pi_page(minus 1)` and `pimage::pi_kind_name(9)`: that line is the two values separated by a space, where the second is printed between square brackets.
+
+Then "== fuzz" and these loops, each of which must finish without crashing, each run being `dm::dm_reset("pimage", "part")`, `pimage::pi_extract` of the bytes with the directory "tests/pimage-out" and `wipe()`, counting the runs: first, for each of the first 11 files of the first section (all but "pimg_enc128.pdf", whose damaged copies crash code in `dcrypt` that this test does not own) and each of the 9 `mk` documents, each cut length from 0 up to the length in steps of 13 (the bytes cut to that length); second, for each of those same documents and each byte position from 0 up to the length in steps of 17, a copy with that byte replaced by 255 and another with it replaced by 0; third, a pseudo random generator with the state starting at 4242, next state = (state times 1103515245 plus 12345) anded with 2147483647, whose value is the next state shifted right 8: for each of those same documents 60 times, a copy with one byte, at position value modulo the length, replaced by the next generated value anded with 255. Then print "cuts " and the first count, " flips " and the second count, " random " and the third count, then "done". Then, unless `os::env("PIMAGE_KEEP", x)` is true, `os::delete_dir` of "tests/pimage-out".
+
+expect:
+== pimg_rgb.pdf
+count 1 skipped 0
+img 0 p1 120x80 ppm 28814 501206037
+== pimg_gray.pdf
+count 1 skipped 0
+img 0 p1 120x80 pgm 9614 1287019856
+== pimg_pal.pdf
+count 1 skipped 0
+img 0 p1 120x80 ppm 28814 2032967138
+== pimg_tiny.pdf
+count 0 skipped 0
+== pimg_photo.pdf
+count 1 skipped 0
+img 0 p1 120x80 jpg 1359 158293548
+== pimg_cmyk.pdf
+count 1 skipped 0
+img 0 p1 120x80 jpg 2062 1676352430
+== pimg_cmykz.pdf
+count 1 skipped 0
+img 0 p1 120x80 ppm 28814 3195634306
+== pimg_g4.pdf
+count 0 skipped 1
+warn 1 image(s) skipped (CCITTFax, JBIG2, undecodable or unsupported color space)
+== pimg_jpx.pdf
+count 1 skipped 0
+img 0 p1 120x80 jp2 7409 1607783302
+== pimg_inline.pdf
+count 0 skipped 0
+== pimg_notes.pdf
+count 4 skipped 0
+img 0 p1 120x80 ppm 28814 501206037
+img 1 p1 90x60 jpg 1568 2015930767
+img 2 p2 120x80 jpg 1971 3666017902
+img 3 p2 120x80 ppm 28814 2032967138
+== pimg_enc128.pdf
+count 1 skipped 0
+img 0 p1 120x80 jpg 1359 158293548
+== synthetic 1
+count 5 skipped 0
+img 0 p1 64x40 pbm 329 605693526
+img 1 p1 64x40 pbm 329 871811986
+img 2 p1 32x32 pgm 1037 3778358127
+img 3 p1 40x36 pgm 1453 1072800726
+img 4 p1 32x32 pgm 1037 3939215123
+== synthetic 2
+count 7 skipped 0
+img 0 p1 32x32 ppm 3085 2842032055
+img 1 p1 32x32 ppm 3085 1245656212
+img 2 p1 33x32 ppm 3181 2626422888
+img 3 p1 32x32 ppm 3085 2524857070
+img 4 p1 32x32 pgm 1037 4173349959
+img 5 p1 32x32 ppm 3085 776926980
+img 6 p1 32x32 ppm 3085 2728183282
+== synthetic 3
+count 2 skipped 7
+img 0 p1 32x32 pgm 1037 1665965383
+img 1 p1 32x32 pgm 1037 2920732665
+warn 7 image(s) skipped (CCITTFax, JBIG2, undecodable or unsupported color space)
+== synthetic 4
+count 4 skipped 0
+img 0 p1 32x32 pgm 1037 1544013865
+img 1 p1 32x32 pgm 1037 2702956931
+img 2 p1 32x32 pgm 1037 1834090983
+img 3 p2 32x32 pgm 1037 1992812809
+== synthetic 5
+count 1 skipped 0
+img 0 p1 40x40 pgm 1613 1380091964
+== synthetic 6
+count 1 skipped 0
+img 0 p1 32x32 pgm 1037 1544013865
+== synthetic 7
+count 3 skipped 0
+img 0 p1 32x32 pgm 1037 2702956931
+img 1 p1 32x32 pgm 1037 1992812809
+img 2 p2 32x32 pgm 1037 1544013865
+== synthetic 8
+count 3 skipped 0
+img 0 p1 32x32 pgm 1037 1544013865
+img 1 p1 32x32 pgm 1037 2702956931
+img 2 p1 32x32 pgm 1037 1992812809
+== synthetic 9
+count 4 skipped 0
+img 0 p1 32x32 ppm 3085 1633507899
+img 1 p1 32x32 pgm 1037 336210874
+img 2 p1 32x32 ppm 3085 3570014661
+img 3 p1 64x40 pbm 329 3375285026
+== wrong
+table.tsv 0
+page.html 0
+sample.docx 0
+garden-lo.pdf 0
+layout-groff.pdf 0
+garden-aes128.pdf 0
+== accessors
+0 0 0 0 0
+0 []
+== fuzz
+cuts 10020 flips 15326 random 1200
+done

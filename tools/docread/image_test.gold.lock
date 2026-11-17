@@ -1,0 +1,329 @@
+=== 76a636b5234cbadf
+fn emit(text const byte[:]) {
+	fn put(l const byte[:]) {
+		if l.len == 0 {
+			print(".");
+		} else {
+			print(l);
+		}
+	}
+	var start = 0;
+	for i in text.len {
+		if text[i] == 10 {
+			put(text[start..i]);
+			start = i + 1;
+		}
+	}
+	if start < text.len {
+		put(text[start..text.len]);
+	}
+}
+=== 5d1855d825429e13
+fn le(out byte[>..]&, v int, n int) {
+	for i in n {
+		out.push(((v >> (8 * i)) & 255) as byte);
+	}
+}
+fn be(out byte[>..]&, v int, n int) {
+	for i in n {
+		out.push(((v >> (8 * (n - 1 - i))) & 255) as byte);
+	}
+}
+=== 190f6baf62f9d3aa
+fn synth(which int) byte[>..] {
+	var out byte[>..] = [];
+	fn ent(tag int, ty int, cnt int, val int) {
+		le(out, tag, 2);
+		le(out, ty, 2);
+		le(out, cnt, 4);
+		le(out, val, 4);
+	}
+	if which == 1 {
+		out.append("BM");
+		le(out, 54, 4);
+		le(out, 0, 4);
+		le(out, 54, 4);
+		le(out, 40, 4);
+		le(out, 7, 4);
+		le(out, 4294967291, 4);
+		le(out, 1, 2);
+		le(out, 24, 2);
+		le(out, 0, 4);
+		le(out, 0, 4);
+		le(out, 2835, 4);
+		le(out, 2835, 4);
+		le(out, 0, 4);
+		le(out, 0, 4);
+	} else if which == 2 {
+		out.append("BM");
+		le(out, 26, 4);
+		le(out, 0, 4);
+		le(out, 26, 4);
+		le(out, 12, 4);
+		le(out, 30, 2);
+		le(out, 20, 2);
+		le(out, 1, 2);
+		le(out, 8, 2);
+	} else if which == 3 {
+		le(out, 0, 2);
+		le(out, 2, 2);
+		le(out, 1, 2);
+		out.append([0, 0, 0, 0]);
+		le(out, 1, 2);
+		le(out, 32, 2);
+		le(out, 0, 4);
+		le(out, 22, 4);
+	} else if which == 4 {
+		out.append("GIF87a");
+		le(out, 5, 2);
+		le(out, 3, 2);
+		out.append([0, 0, 0]);
+		out.append([33, 254, 5]);
+		out.append("hello");
+		out.push(0);
+		out.push(44);
+		le(out, 0, 2);
+		le(out, 0, 2);
+		le(out, 5, 2);
+		le(out, 3, 2);
+		out.push(0);
+		out.push(2);
+		out.append([2, 1, 1]);
+		out.push(0);
+		out.push(59);
+	} else if which == 5 {
+		out.append([137, 80, 78, 71, 13, 10, 26, 10]);
+		be(out, 13, 4);
+		out.append("IHDR");
+		be(out, 20, 4);
+		be(out, 10, 4);
+		out.append([8, 2, 0, 0, 0]);
+		be(out, 0, 4);
+		be(out, 1000, 4);
+		out.append("tEXt");
+		out.append("Title");
+		out.push(0);
+		out.append("abc");
+	} else if which == 6 {
+		out.append("II");
+		le(out, 42, 2);
+		le(out, 8, 4);
+		le(out, 2, 2);
+		ent(256, 3, 1, 10);
+		ent(257, 3, 1, 20);
+		le(out, 8, 4);
+	} else if which == 7 {
+		out.append([255, 216, 255, 224]);
+		be(out, 255, 2);
+		out.append("JFIF");
+		out.append([0, 1, 1]);
+	} else if which == 8 {
+		out.append("GIF89a");
+		le(out, 5, 2);
+		le(out, 3, 2);
+		out.append([0, 0, 0]);
+		out.push(7);
+	} else if which == 9 {
+		out.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2in\" height=\"3in\"><title>Unit test</title></svg>");
+	} else if which == 10 {
+		out.append("II");
+		le(out, 42, 2);
+		le(out, 8, 4);
+		le(out, 4, 2);
+		ent(256, 3, 1, 10);
+		ent(257, 3, 1, 20);
+		ent(34665, 4, 1, 62);
+		ent(34853, 4, 1, 92);
+		le(out, 0, 4);
+		le(out, 2, 2);
+		ent(33434, 5, 1, 194);
+		ent(34855, 3, 1, 400);
+		le(out, 0, 4);
+		le(out, 4, 2);
+		ent(1, 2, 2, 83);
+		ent(2, 5, 3, 146);
+		ent(3, 2, 2, 87);
+		ent(4, 5, 3, 170);
+		le(out, 0, 4);
+		le(out, 33, 4);
+		le(out, 1, 4);
+		le(out, 52, 4);
+		le(out, 1, 4);
+		le(out, 8, 4);
+		le(out, 1, 4);
+		le(out, 151, 4);
+		le(out, 1, 4);
+		le(out, 12, 4);
+		le(out, 1, 4);
+		le(out, 40, 4);
+		le(out, 1, 4);
+		le(out, 1, 4);
+		le(out, 2, 4);
+	}
+	out
+}
+=== 6996c993fa40b899
+fn load(name const byte[:], out byte[>..]&) bool {
+	var path byte[>..] = [];
+	path.append("tests/fixtures/");
+	path.append(name);
+	read_file(path, out)
+}
+=== 50d78b8f9da7ebb9
+fn dump(d const byte[:]) {
+	dm::dm_reset("image", "part");
+	let ok = image::im_read(d);
+	var md byte[>..] = [];
+	dm::dm_markdown(md);
+	emit(md);
+	for line in split(dm::dm_meta, 10) {
+		if line.len == 0 { continue; }
+		var t = -1;
+		for i in line.len {
+			if line[i] == 9 { t = i; break; }
+		}
+		if t < 0 {
+			emit(str("meta ", line, "="));
+		} else {
+			emit(str("meta ", line[..t], "=", line[t + 1..line.len]));
+		}
+	}
+	for line in split(dm::dm_warn, 10) {
+		if line.len == 0 { continue; }
+		emit(str("warn ", line));
+	}
+	if !ok {
+		emit("reader returned false");
+	}
+}
+=== -45c45a61a38f041a
+fn show(name const byte[:]) {
+	emit(str("== ", name));
+	var buf byte[>..] = [];
+	if !load(name, buf) {
+		emit("missing");
+		return;
+	}
+	dump(buf);
+}
+=== 2af77ec9a89c46aa
+fn prefix(i int) byte[>..] {
+	var o byte[>..] = [];
+	if i == 0 {
+		o.append([137, 80, 78, 71, 13, 10, 26, 10]);
+	} else if i == 1 {
+		o.append([255, 216, 255, 224]);
+	} else if i == 2 {
+		o.append("GIF89a");
+	} else if i == 3 {
+		o.append("RIFF");
+		o.append([0, 0, 0, 0]);
+		o.append("WEBPVP8X");
+	} else if i == 4 {
+		o.append([73, 73, 42, 0, 8, 0, 0, 0]);
+	} else if i == 5 {
+		o.append([77, 77, 0, 42, 0, 0, 0, 8]);
+	} else if i == 6 {
+		o.append("BM");
+		o.append([0; 12]);
+		o.append([40, 0, 0, 0]);
+	} else if i == 7 {
+		o.append([0, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+	} else if i == 8 {
+		o.append([0, 0, 0, 24]);
+		o.append("ftypheic");
+	} else if i == 9 {
+		o.append("<svg width=\"5\" height=\"7\">");
+	} else if i == 10 {
+		o.append([255, 216, 255, 225, 255, 255]);
+		o.append("Exif");
+		o.append([0, 0, 77, 77, 0, 42, 0, 0, 0, 8]);
+	} else {
+		o.append([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13]);
+		o.append("IHDR");
+		o.append([255; 8]);
+	}
+	o
+}
+fn run_read(d const byte[:]) {
+	dm::dm_reset("image", "part");
+	image::im_read(d);
+}
+fn main() {
+	let files = ["img_photo.jpg", "img_jfif72.jpg", "img_jfifcm.jpg", "img_text.png", "img_exif.png", "img_anim.png", "img_anim.gif", "img_lossy.webp", "img_lossless.webp", "img_anim.webp", "img_meta.webp", "img_meta.tif", "img_pages.tif", "img_icon.ico", "img_plain.bmp", "img_plain.heic", "img_plain.avif", "img_sign.svg", "img_pct.svg"];
+	for f in files {
+		show(f);
+	}
+	print("== kinds");
+	for f in files {
+		var buf byte[>..] = [];
+		load(f, buf);
+		print(f, " ", image::im_kind_name(image::im_kind(buf)));
+	}
+	print("== wrong");
+	let wrong = ["table.tsv", "page.html", "sample.docx", "garden-lo.pdf"];
+	for f in wrong {
+		var buf byte[>..] = [];
+		load(f, buf);
+		let k = image::im_kind_name(image::im_kind(buf));
+		dm::dm_reset("image", "part");
+		let ok = image::im_read(buf);
+		print(f, " ", k, " ", if ok { 1 } else { 0 });
+	}
+	print("== synthetic");
+	for n in 1..11 {
+		print("-- ", n);
+		let s = synth(n);
+		dump(s);
+	}
+	print("== fuzz");
+	var runs1 = 0;
+	for f in files {
+		var buf byte[>..] = [];
+		load(f, buf);
+		var cut = 0;
+		while cut <= buf.len {
+			run_read(buf[..cut]);
+			runs1 += 1;
+			cut += 7;
+		}
+		let lim = min(buf.len, 4000);
+		var c byte[>..] = [];
+		c.append(buf);
+		var pos = 0;
+		while pos < lim {
+			let orig = c[pos];
+			c[pos] = 255;
+			run_read(c);
+			runs1 += 1;
+			c[pos] = 0;
+			run_read(c);
+			runs1 += 1;
+			c[pos] = orig;
+			pos += 7;
+		}
+	}
+	var state = 12345;
+	fn gen() int {
+		state = (state * 1103515245 + 12345) & 2147483647;
+		(state >> 16) & 255
+	}
+	var runs2 = 0;
+	for i in 12 {
+		for t in 40 {
+			var d byte[>..] = [];
+			d.append(prefix(i));
+			let a = gen();
+			let b = gen();
+			let n = a + b / 2;
+			for j in n {
+				d.push(gen() as byte);
+			}
+			run_read(d);
+			runs2 += 1;
+		}
+	}
+	print("cuts and flips ", runs1);
+	print("random ", runs2);
+	print("done");
+}
